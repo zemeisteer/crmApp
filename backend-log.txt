@@ -1,0 +1,57 @@
+
+> backend@0.0.1 start:dev
+> nest start --watch
+
+[2J[3J[H[[90m1:08:13 AM[0m] Starting compilation in watch mode...
+
+[[90m1:08:33 AM[0m] Found 0 errors. Watching for file changes.
+
+[32m[Nest] 17500  - [39m09/19/2026, 1:09:28 AM [32m    LOG[39m [38;5;3m[NestFactory] [39m[32mStarting Nest application...[39m
+[32m[Nest] 17500  - [39m09/19/2026, 1:09:28 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mAppModule dependencies initialized[39m[38;5;3m +44ms[39m
+[32m[Nest] 17500  - [39m09/19/2026, 1:09:28 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mPassportModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 17500  - [39m09/19/2026, 1:09:28 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mConfigHostModule dependencies initialized[39m[38;5;3m +4ms[39m
+[32m[Nest] 17500  - [39m09/19/2026, 1:09:28 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mConfigModule dependencies initialized[39m[38;5;3m +12ms[39m
+[32m[Nest] 17500  - [39m09/19/2026, 1:09:28 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mConfigModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 17500  - [39m09/19/2026, 1:09:28 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mAuthCommonModule dependencies initialized[39m[38;5;3m +2ms[39m
+[32m[Nest] 17500  - [39m09/19/2026, 1:09:28 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mDbModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 17500  - [39m09/19/2026, 1:09:28 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mJwtModule dependencies initialized[39m[38;5;3m +10ms[39m
+[32m[Nest] 17500  - [39m09/19/2026, 1:09:28 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mTenantsModule dependencies initialized[39m[38;5;3m +4ms[39m
+[32m[Nest] 17500  - [39m09/19/2026, 1:09:28 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mGroupsModule dependencies initialized[39m[38;5;3m +1ms[39m
+[32m[Nest] 17500  - [39m09/19/2026, 1:09:28 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mStudentsModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 17500  - [39m09/19/2026, 1:09:28 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mTeachersModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 17500  - [39m09/19/2026, 1:09:28 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mPaymentsModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 17500  - [39m09/19/2026, 1:09:28 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mAuthModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 17500  - [39m09/19/2026, 1:09:30 AM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mAuthController {/api/auth}:[39m[38;5;3m +1559ms[39m
+[32m[Nest] 17500  - [39m09/19/2026, 1:09:30 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/auth/register, POST} route[39m[38;5;3m +9ms[39m
+[32m[Nest] 17500  - [39m09/19/2026, 1:09:30 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/auth/login, POST} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 17500  - [39m09/19/2026, 1:09:30 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/auth/me, GET} route[39m[38;5;3m +2ms[39m
+[32m[Nest] 17500  - [39m09/19/2026, 1:09:30 AM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mTenantsController {/api/tenants}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 17500  - [39m09/19/2026, 1:09:30 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tenants/by-subdomain/:subdomain, GET} route[39m[38;5;3m +2ms[39m
+[32m[Nest] 17500  - [39m09/19/2026, 1:09:30 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tenants, GET} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 17500  - [39m09/19/2026, 1:09:30 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tenants/:id, GET} route[39m[38;5;3m +2ms[39m
+[32m[Nest] 17500  - [39m09/19/2026, 1:09:30 AM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mGroupsController {/api/groups}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 17500  - [39m09/19/2026, 1:09:30 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/groups, GET} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 17500  - [39m09/19/2026, 1:09:30 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/groups/:id, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 17500  - [39m09/19/2026, 1:09:30 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/groups, POST} route[39m[38;5;3m +2ms[39m
+[32m[Nest] 17500  - [39m09/19/2026, 1:09:30 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/groups/:id, PATCH} route[39m[38;5;3m +3ms[39m
+[32m[Nest] 17500  - [39m09/19/2026, 1:09:30 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/groups/:id, DELETE} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 17500  - [39m09/19/2026, 1:09:30 AM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mStudentsController {/api/students}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 17500  - [39m09/19/2026, 1:09:30 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/students, GET} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 17500  - [39m09/19/2026, 1:09:30 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/students/:id, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 17500  - [39m09/19/2026, 1:09:30 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/students, POST} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 17500  - [39m09/19/2026, 1:09:30 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/students/:id, PATCH} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 17500  - [39m09/19/2026, 1:09:30 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/students/:id, DELETE} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 17500  - [39m09/19/2026, 1:09:30 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/students/:id/enroll/:groupId, POST} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 17500  - [39m09/19/2026, 1:09:30 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/students/:id/enroll/:groupId, DELETE} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 17500  - [39m09/19/2026, 1:09:30 AM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mTeachersController {/api/teachers}:[39m[38;5;3m +1ms[39m
+[32m[Nest] 17500  - [39m09/19/2026, 1:09:30 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/teachers, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 17500  - [39m09/19/2026, 1:09:30 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/teachers/:id, GET} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 17500  - [39m09/19/2026, 1:09:30 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/teachers, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 17500  - [39m09/19/2026, 1:09:30 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/teachers/:id, PATCH} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 17500  - [39m09/19/2026, 1:09:30 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/teachers/:id, DELETE} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 17500  - [39m09/19/2026, 1:09:30 AM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mPaymentsController {/api/payments}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 17500  - [39m09/19/2026, 1:09:30 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/payments, GET} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 17500  - [39m09/19/2026, 1:09:30 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/payments/summary, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 17500  - [39m09/19/2026, 1:09:30 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/payments, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 17500  - [39m09/19/2026, 1:09:30 AM [32m    LOG[39m [38;5;3m[NestApplication] [39m[32mNest application successfully started[39m[38;5;3m +9ms[39m
+TalimCRM backend running on http://localhost:4000/api
