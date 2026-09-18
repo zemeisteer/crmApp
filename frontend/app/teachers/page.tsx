@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import DashboardShell from "@/components/DashboardShell";
 import Modal from "@/components/Modal";
 import { teachersApi, Teacher, ApiError } from "@/lib/api";
@@ -17,6 +18,7 @@ function TeachersContent() {
   const [fullName, setFullName] = useState("");
   const [subject, setSubject] = useState("");
   const [phone, setPhone] = useState("");
+  const [salaryType, setSalaryType] = useState("FIXED");
   const [salaryValue, setSalaryValue] = useState("");
 
   function load() {
@@ -33,6 +35,7 @@ function TeachersContent() {
     setFullName("");
     setSubject("");
     setPhone("");
+    setSalaryType("FIXED");
     setSalaryValue("");
     setError(null);
   }
@@ -46,6 +49,7 @@ function TeachersContent() {
         fullName,
         subject: subject || undefined,
         phone: phone || undefined,
+        salaryType: salaryValue ? salaryType : undefined,
         salaryValue: salaryValue ? Number(salaryValue) : undefined,
       });
       setModalOpen(false);
@@ -109,7 +113,9 @@ function TeachersContent() {
                       >
                         {t.fullName.slice(0, 2).toUpperCase()}
                       </div>
-                      {t.fullName}
+                      <Link href={`/teachers/${t.id}`} style={{ color: ACCENT }}>
+                        {t.fullName}
+                      </Link>
                     </td>
                     <td>{t.subject || "—"}</td>
                     <td>{t.phone || "—"}</td>
@@ -136,8 +142,22 @@ function TeachersContent() {
           <Field label="Telefon">
             <input className="field-input" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+998 90 123 45 67" />
           </Field>
-          <Field label="Oylik maosh (so'm)">
-            <input className="field-input" type="number" min={0} value={salaryValue} onChange={(e) => setSalaryValue(e.target.value)} placeholder="2000000" />
+          <Field label="Maosh turi">
+            <select className="field-input" value={salaryType} onChange={(e) => setSalaryType(e.target.value)}>
+              <option value="FIXED">Belgilangan (oylik)</option>
+              <option value="PERCENT">Foizli (guruh tushumidan)</option>
+            </select>
+          </Field>
+          <Field label={salaryType === "PERCENT" ? "Foiz (%)" : "Oylik maosh (so'm)"}>
+            <input
+              className="field-input"
+              type="number"
+              min={0}
+              max={salaryType === "PERCENT" ? 100 : undefined}
+              value={salaryValue}
+              onChange={(e) => setSalaryValue(e.target.value)}
+              placeholder={salaryType === "PERCENT" ? "40" : "2000000"}
+            />
           </Field>
           <button
             className="btn"

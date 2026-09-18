@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import DashboardShell from "@/components/DashboardShell";
 import Modal from "@/components/Modal";
 import { studentsApi, groupsApi, Student, Group, ApiError } from "@/lib/api";
@@ -95,7 +96,11 @@ function StudentsContent() {
               <tbody>
                 {students.map((s) => (
                   <tr key={s.id}>
-                    <td style={{ fontWeight: 600 }}>{s.fullName}</td>
+                    <td style={{ fontWeight: 600 }}>
+                      <Link href={`/students/${s.id}`} style={{ color: ACCENT }}>
+                        {s.fullName}
+                      </Link>
+                    </td>
                     <td>{s.enrollments?.map((e) => e.group.name).join(", ") || "—"}</td>
                     <td>{s.phone || "—"}</td>
                     <td>{s.parentPhone || "—"}</td>

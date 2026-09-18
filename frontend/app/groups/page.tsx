@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import DashboardShell from "@/components/DashboardShell";
 import Modal from "@/components/Modal";
 import { groupsApi, Group, ApiError } from "@/lib/api";
@@ -93,7 +94,11 @@ function GroupsContent() {
               <tbody>
                 {groups.map((g) => (
                   <tr key={g.id}>
-                    <td style={{ fontWeight: 600 }}>{g.name}</td>
+                    <td style={{ fontWeight: 600 }}>
+                      <Link href={`/groups/${g.id}`} style={{ color: ACCENT }}>
+                        {g.name}
+                      </Link>
+                    </td>
                     <td>{g.subject}</td>
                     <td>{g.schedule || "—"}</td>
                     <td>{g.monthlyPrice ? `${new Intl.NumberFormat("uz-UZ").format(g.monthlyPrice)} so'm` : "—"}</td>

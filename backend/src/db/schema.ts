@@ -38,6 +38,11 @@ export const paymentStatusEnum = pgEnum('payment_status', [
   'PENDING',
   'FAILED',
 ]);
+export const attendanceStatusEnum = pgEnum('attendance_status', [
+  'PRESENT',
+  'ABSENT',
+  'LATE',
+]);
 
 export const tenants = pgTable('tenants', {
   id: text('id').primaryKey().$defaultFn(() => createId()),
@@ -139,6 +144,21 @@ export const payments = pgTable('payments', {
   tenantIdx: index('payments_tenant_idx').on(t.tenantId),
 }));
 
+export const attendance = pgTable('attendance', {
+  id: text('id').primaryKey().$defaultFn(() => createId()),
+  tenantId: text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  groupId: text('group_id').notNull().references(() => groups.id, { onDelete: 'cascade' }),
+  studentId: text('student_id').notNull().references(() => students.id, { onDelete: 'cascade' }),
+  date: text('date').notNull(), // "2026-09-19"
+  status: attendanceStatusEnum('status').notNull().default('PRESENT'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+}, (t) => ({
+  tenantIdx: index('attendance_tenant_idx').on(t.tenantId),
+  groupDateIdx: index('attendance_group_date_idx').on(t.groupId, t.date),
+  uniq: uniqueIndex('attendance_student_group_date_idx').on(t.studentId, t.groupId, t.date),
+}));
+
 // ---- relations ----
 export const tenantsRelations = relations(tenants, ({ many }) => ({
   users: many(users),
@@ -146,6 +166,7 @@ export const tenantsRelations = relations(tenants, ({ many }) => ({
   students: many(students),
   teachers: many(teachers),
   payments: many(payments),
+  attendance: many(attendance),
 }));
 
 export const usersRelations = relations(users, ({ one }) => ({
@@ -162,12 +183,14 @@ export const groupsRelations = relations(groups, ({ one, many }) => ({
   tenant: one(tenants, { fields: [groups.tenantId], references: [tenants.id] }),
   teacher: one(teachers, { fields: [groups.teacherId], references: [teachers.id] }),
   enrollments: many(enrollments),
+  attendance: many(attendance),
 }));
 
 export const studentsRelations = relations(students, ({ one, many }) => ({
   tenant: one(tenants, { fields: [students.tenantId], references: [tenants.id] }),
   enrollments: many(enrollments),
   payments: many(payments),
+  attendance: many(attendance),
 }));
 
 export const enrollmentsRelations = relations(enrollments, ({ one }) => ({
@@ -178,4 +201,10 @@ export const enrollmentsRelations = relations(enrollments, ({ one }) => ({
 export const paymentsRelations = relations(payments, ({ one }) => ({
   tenant: one(tenants, { fields: [payments.tenantId], references: [tenants.id] }),
   student: one(students, { fields: [payments.studentId], references: [students.id] }),
+}));
+
+export const attendanceRelations = relations(attendance, ({ one }) => ({
+  tenant: one(tenants, { fields: [attendance.tenantId], references: [tenants.id] }),
+  group: one(groups, { fields: [attendance.groupId], references: [groups.id] }),
+  student: one(students, { fields: [attendance.studentId], references: [students.id] }),
 }));

@@ -55,3 +55,123 @@
 [32m[Nest] 17500  - [39m09/19/2026, 1:09:30 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/payments, POST} route[39m[38;5;3m +0ms[39m
 [32m[Nest] 17500  - [39m09/19/2026, 1:09:30 AM [32m    LOG[39m [38;5;3m[NestApplication] [39m[32mNest application successfully started[39m[38;5;3m +9ms[39m
 TalimCRM backend running on http://localhost:4000/api
+[2J[3J[H[[90m1:24:14 AM[0m] File change detected. Starting incremental compilation...
+
+[[90m1:24:16 AM[0m] Found 0 errors. Watching for file changes.
+
+[2J[3J[H[[90m1:24:19 AM[0m] File change detected. Starting incremental compilation...
+
+[32m[Nest] 4840  - [39m09/19/2026, 1:24:19 AM [32m    LOG[39m [38;5;3m[NestFactory] [39m[32mStarting Nest application...[39m
+[32m[Nest] 4840  - [39m09/19/2026, 1:24:19 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mAppModule dependencies initialized[39m[38;5;3m +18ms[39m
+[32m[Nest] 4840  - [39m09/19/2026, 1:24:19 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mPassportModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 4840  - [39m09/19/2026, 1:24:19 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mConfigHostModule dependencies initialized[39m[38;5;3m +1ms[39m
+[32m[Nest] 4840  - [39m09/19/2026, 1:24:19 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mConfigModule dependencies initialized[39m[38;5;3m +4ms[39m
+[32m[Nest] 4840  - [39m09/19/2026, 1:24:19 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mConfigModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 4840  - [39m09/19/2026, 1:24:19 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mAuthCommonModule dependencies initialized[39m[38;5;3m +1ms[39m
+[32m[Nest] 4840  - [39m09/19/2026, 1:24:19 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mDbModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 4840  - [39m09/19/2026, 1:24:19 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mJwtModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 4840  - [39m09/19/2026, 1:24:19 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mTenantsModule dependencies initialized[39m[38;5;3m +3ms[39m
+[32m[Nest] 4840  - [39m09/19/2026, 1:24:19 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mGroupsModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 4840  - [39m09/19/2026, 1:24:19 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mStudentsModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 4840  - [39m09/19/2026, 1:24:19 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mTeachersModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 4840  - [39m09/19/2026, 1:24:19 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mPaymentsModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 4840  - [39m09/19/2026, 1:24:19 AM [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mAuthModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 4840  - [39m09/19/2026, 1:24:19 AM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mAuthController {/api/auth}:[39m[38;5;3m +172ms[39m
+[32m[Nest] 4840  - [39m09/19/2026, 1:24:20 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/auth/register, POST} route[39m[38;5;3m +4ms[39m
+[32m[Nest] 4840  - [39m09/19/2026, 1:24:20 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/auth/login, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 4840  - [39m09/19/2026, 1:24:20 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/auth/me, GET} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 4840  - [39m09/19/2026, 1:24:20 AM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mTenantsController {/api/tenants}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 4840  - [39m09/19/2026, 1:24:20 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tenants/by-subdomain/:subdomain, GET} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 4840  - [39m09/19/2026, 1:24:20 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tenants, GET} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 4840  - [39m09/19/2026, 1:24:20 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/tenants/:id, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 4840  - [39m09/19/2026, 1:24:20 AM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mGroupsController {/api/groups}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 4840  - [39m09/19/2026, 1:24:20 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/groups, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 4840  - [39m09/19/2026, 1:24:20 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/groups/:id, GET} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 4840  - [39m09/19/2026, 1:24:20 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/groups, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 4840  - [39m09/19/2026, 1:24:20 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/groups/:id, PATCH} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 4840  - [39m09/19/2026, 1:24:20 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/groups/:id, DELETE} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 4840  - [39m09/19/2026, 1:24:20 AM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mStudentsController {/api/students}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 4840  - [39m09/19/2026, 1:24:20 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/students, GET} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 4840  - [39m09/19/2026, 1:24:20 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/students/:id, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 4840  - [39m09/19/2026, 1:24:20 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/students, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 4840  - [39m09/19/2026, 1:24:20 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/students/:id, PATCH} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 4840  - [39m09/19/2026, 1:24:20 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/students/:id, DELETE} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 4840  - [39m09/19/2026, 1:24:20 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/students/:id/enroll/:groupId, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 4840  - [39m09/19/2026, 1:24:20 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/students/:id/enroll/:groupId, DELETE} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 4840  - [39m09/19/2026, 1:24:20 AM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mTeachersController {/api/teachers}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 4840  - [39m09/19/2026, 1:24:20 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/teachers, GET} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 4840  - [39m09/19/2026, 1:24:20 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/teachers/:id, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 4840  - [39m09/19/2026, 1:24:20 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/teachers, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 4840  - [39m09/19/2026, 1:24:20 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/teachers/:id, PATCH} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 4840  - [39m09/19/2026, 1:24:20 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/teachers/:id, DELETE} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 4840  - [39m09/19/2026, 1:24:20 AM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mPaymentsController {/api/payments}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 4840  - [39m09/19/2026, 1:24:20 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/payments, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 4840  - [39m09/19/2026, 1:24:20 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/payments/summary, GET} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 4840  - [39m09/19/2026, 1:24:20 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/payments, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 4840  - [39m09/19/2026, 1:24:20 AM [32m    LOG[39m [38;5;3m[NestApplication] [39m[32mNest application successfully started[39m[38;5;3m +4ms[39m
+[31m[Nest] 4840  - [39m09/19/2026, 1:24:20 AM [31m  ERROR[39m [38;5;3m[NestApplication] [39m[31mError: listen EADDRINUSE: address already in use :::4000[39m[38;5;3m +3ms[39m
+node:net:1941
+    const ex = new UVExceptionWithHostPort(err, 'listen', address, port);
+               ^
+
+Error: listen EADDRINUSE: address already in use :::4000
+    at Server.setupListenHandle [as _listen2] (node:net:1941:16)
+    at listenInCluster (node:net:1998:12)
+    at Server.listen (node:net:2103:7)
+    at ExpressAdapter.listen (file:///C:/Users/user/Documents/GitHub/crmApp/backend/node_modules/@nestjs/platform-express/adapters/express-adapter.js:146:32)
+    at file:///C:/Users/user/Documents/GitHub/crmApp/backend/node_modules/@nestjs/core/nest-application.js:270:30
+    at new Promise (<anonymous>)
+    at NestApplication.listen (file:///C:/Users/user/Documents/GitHub/crmApp/backend/node_modules/@nestjs/core/nest-application.js:260:16)
+    at async bootstrap (C:\Users\user\Documents\GitHub\crmApp\backend\src\main.ts:14:3) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '::',
+  port: 4000
+}
+
+Node.js v22.23.2
+ERROR: The process "19780" not found.
+ERROR: The process "19780" not found.
+node:child_process:991
+    throw err;
+    ^
+
+Error: Command failed: taskkill /pid 19780 /T /F
+ERROR: The process "19780" not found.
+
+    at genericNodeError (node:internal/errors:983:15)
+    at wrappedFn (node:internal/errors:537:14)
+    at checkExecSyncError (node:child_process:916:11)
+    at execSync (node:child_process:988:15)
+    at treeKillSync (file:///C:/Users/user/Documents/GitHub/crmApp/backend/node_modules/@nestjs/cli/lib/utils/tree-kill.js:4:9)
+    at file:///C:/Users/user/Documents/GitHub/crmApp/backend/node_modules/@nestjs/cli/actions/start.action.js:86:17
+    at Object.onWatchStatusChange (file:///C:/Users/user/Documents/GitHub/crmApp/backend/node_modules/@nestjs/cli/lib/compiler/watch-compiler.js:81:17)
+    at C:\Users\user\Documents\GitHub\crmApp\backend\node_modules\typescript\lib\typescript.js:134575:30
+    at emitFilesAndReportErrors (C:\Users\user\Documents\GitHub\crmApp\backend\node_modules\typescript\lib\typescript.js:134396:5)
+    at result.afterProgramCreate (C:\Users\user\Documents\GitHub\crmApp\backend\node_modules\typescript\lib\typescript.js:134571:5) {
+  status: 128,
+  signal: null,
+  output: [
+    null,
+    Buffer(0) [Uint8Array] [],
+    Buffer(39) [Uint8Array] [
+       69,  82,  82,  79,  82,  58,  32,  84, 104,
+      101,  32, 112, 114, 111,  99, 101, 115, 115,
+       32,  34,  49,  57,  55,  56,  48,  34,  32,
+      110, 111, 116,  32, 102, 111, 117, 110, 100,
+       46,  13,  10
+    ]
+  ],
+  pid: 14024,
+  stdout: Buffer(0) [Uint8Array] [],
+  stderr: Buffer(39) [Uint8Array] [
+     69,  82,  82,  79,  82,  58,  32,  84, 104,
+    101,  32, 112, 114, 111,  99, 101, 115, 115,
+     32,  34,  49,  57,  55,  56,  48,  34,  32,
+    110, 111, 116,  32, 102, 111, 117, 110, 100,
+     46,  13,  10
+  ]
+}
+
+Node.js v22.23.2

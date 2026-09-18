@@ -158,6 +158,19 @@ export interface PaymentsSummary {
   count: number;
 }
 
+export type AttendanceStatus = "PRESENT" | "ABSENT" | "LATE";
+
+export interface AttendanceRecord {
+  id: string;
+  tenantId: string;
+  groupId: string;
+  studentId: string;
+  date: string;
+  status: AttendanceStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
 // ---- Auth ----
 
 export const authApi = {
@@ -222,4 +235,19 @@ export const paymentsApi = {
   summary: () => request<PaymentsSummary>("/payments/summary"),
   create: (data: Partial<Payment>) =>
     request<Payment>("/payments", { method: "POST", body: JSON.stringify(data) }),
+};
+
+// ---- Attendance ----
+
+export const attendanceApi = {
+  list: (params?: { groupId?: string; studentId?: string; date?: string }) => {
+    const qs = new URLSearchParams();
+    if (params?.groupId) qs.set("groupId", params.groupId);
+    if (params?.studentId) qs.set("studentId", params.studentId);
+    if (params?.date) qs.set("date", params.date);
+    const suffix = qs.toString() ? `?${qs.toString()}` : "";
+    return request<AttendanceRecord[]>(`/attendance${suffix}`);
+  },
+  mark: (data: { groupId: string; date: string; entries: { studentId: string; status: AttendanceStatus }[] }) =>
+    request<AttendanceRecord[]>("/attendance", { method: "POST", body: JSON.stringify(data) }),
 };
