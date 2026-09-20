@@ -3,23 +3,31 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
+import { useLanguage } from "@/lib/i18n-context";
 import { ApiError } from "@/lib/api";
 
 const ACCENT = "#4F46E5";
 
 export default function LoginPage() {
-  const { login } = useAuth();
+  const { login, completeTwoFactorLogin } = useAuth();
+  const { t, lang, setLang } = useLanguage();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  const [pendingToken, setPendingToken] = useState<string | null>(null);
+  const [code, setCode] = useState("");
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     setLoading(true);
     try {
-      await login(email, password);
+      const res = await login(email, password);
+      if ("pendingToken" in res) {
+        setPendingToken(res.pendingToken);
+      }
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Xatolik yuz berdi");
     } finally {
@@ -27,8 +35,84 @@ export default function LoginPage() {
     }
   }
 
+  async function onSubmitCode(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setLoading(true);
+    try {
+      await completeTwoFactorLogin(pendingToken!, code);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Xatolik yuz berdi");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  if (pendingToken) {
+    return (
+      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#F7F7F5" }}>
+        <form onSubmit={onSubmitCode} style={{ width: 380, background: "#fff", borderRadius: 16, padding: 32, display: "flex", flexDirection: "column", gap: 18 }}>
+          <div>
+            <h2 style={{ fontSize: 20, fontWeight: 800 }}>{t("twofa.title")}</h2>
+            <p style={{ fontSize: 13, color: "#8A8D96", marginTop: 4 }}>{t("twofa.subtitle")}</p>
+          </div>
+          {error && (
+            <div style={{ background: "#FDEBEC", color: "#B23A47", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: 10 }}>{error}</div>
+          )}
+          <input
+            className="field-input"
+            required
+            autoFocus
+            inputMode="numeric"
+            maxLength={6}
+            value={code}
+            onChange={(e) => setCode(e.target.value)}
+            placeholder="000000"
+            style={{ textAlign: "center", fontSize: 20, letterSpacing: 6 }}
+          />
+          <button
+            className="btn"
+            type="submit"
+            disabled={loading}
+            style={{ background: ACCENT, color: "#fff", fontSize: 14, fontWeight: 700, padding: 12, borderRadius: 10 }}
+          >
+            {loading ? t("twofa.verifying") : t("twofa.confirm")}
+          </button>
+          <button
+            type="button"
+            className="btn"
+            onClick={() => {
+              setPendingToken(null);
+              setCode("");
+            }}
+            style={{ background: "transparent", color: "#8A8D96", fontSize: 13, fontWeight: 600, padding: 6 }}
+          >
+            {t("twofa.back")}
+          </button>
+        </form>
+      </div>
+    );
+  }
+
   return (
-    <div style={{ minHeight: "100vh", display: "flex", background: "#F7F7F5" }}>
+    <div style={{ minHeight: "100vh", display: "flex", background: "#F7F7F5", position: "relative" }}>
+      <div style={{ position: "absolute", top: 20, right: 20, zIndex: 10, display: "flex", gap: 4, background: "#F2F1EC", borderRadius: 9, padding: 3 }}>
+        {(["UZ", "RU", "EN"] as const).map((l) => (
+          <button
+            key={l}
+            type="button"
+            onClick={() => setLang(l)}
+            style={{
+              fontSize: 11, fontWeight: 700, padding: "6px 10px", borderRadius: 7, border: "none", cursor: "pointer",
+              background: lang === l ? "#fff" : "transparent",
+              color: lang === l ? "#181A1F" : "#8A8D96",
+              boxShadow: lang === l ? "0 1px 3px rgba(18,19,26,0.08)" : "none",
+            }}
+          >
+            {l}
+          </button>
+        ))}
+      </div>
       {/* LEFT: brand panel */}
       <div
         style={{
@@ -68,15 +152,15 @@ export default function LoginPage() {
 
         <div style={{ position: "relative", zIndex: 2, display: "flex", flexDirection: "column", gap: 18, maxWidth: 420 }}>
           <h1 style={{ fontSize: 34, lineHeight: 1.2, fontWeight: 800, color: "#fff", letterSpacing: "-0.02em" }}>
-            O&apos;quv markazingizni bitta joydan boshqaring
+            {t("landing.heroTitle")}
           </h1>
           <p style={{ fontSize: 15, lineHeight: 1.65, color: "#B7B0E8" }}>
-            Jadval, davomat, to&apos;lovlar, AI yordamchi va hisobotlar — hammasi bitta panelda.
+            {t("landing.heroSubtitle")}
           </p>
         </div>
 
         <div style={{ position: "relative", zIndex: 2, fontSize: 12.5, color: "#71737C" }}>
-          © 2026 TalimCRM. Barcha huquqlar himoyalangan.
+          {t("landing.footer")}
         </div>
         <div
           style={{
@@ -109,7 +193,7 @@ export default function LoginPage() {
                 boxShadow: "0 1px 3px rgba(18,19,26,0.08)",
               }}
             >
-              Kirish
+              {t("auth.login")}
             </div>
             <Link
               href="/register"
@@ -123,13 +207,13 @@ export default function LoginPage() {
                 color: "#8A8D96",
               }}
             >
-              Ro&apos;yxatdan o&apos;tish
+              {t("auth.register")}
             </Link>
           </div>
 
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            <h2 style={{ fontSize: 24, fontWeight: 800, letterSpacing: "-0.02em" }}>Xush kelibsiz, boss</h2>
-            <p style={{ fontSize: 13.5, color: "#8A8D96" }}>Admin panelga kirish uchun ma&apos;lumotlaringizni kiriting.</p>
+            <h2 style={{ fontSize: 24, fontWeight: 800, letterSpacing: "-0.02em" }}>{t("auth.welcomeBack")}</h2>
+            <p style={{ fontSize: 13.5, color: "#8A8D96" }}>{t("auth.loginSubtitle")}</p>
           </div>
 
           {error && (
@@ -140,7 +224,7 @@ export default function LoginPage() {
 
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
             <div>
-              <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>Email</div>
+              <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>{t("auth.email")}</div>
               <input
                 className="field-input"
                 type="email"
@@ -151,7 +235,12 @@ export default function LoginPage() {
               />
             </div>
             <div>
-              <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>Parol</div>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+                <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58" }}>{t("auth.password")}</div>
+                <Link href="/forgot-password" style={{ fontSize: 12, fontWeight: 600, color: ACCENT }}>
+                  {t("auth.forgotPassword")}
+                </Link>
+              </div>
               <input
                 className="field-input"
                 type="password"
@@ -169,13 +258,13 @@ export default function LoginPage() {
             disabled={loading}
             style={{ background: ACCENT, color: "#fff", fontSize: 14.5, fontWeight: 700, padding: 13, borderRadius: 10 }}
           >
-            {loading ? "Kirilmoqda..." : "Kirish"}
+            {loading ? t("auth.loggingIn") : t("auth.login")}
           </button>
 
           <p style={{ textAlign: "center", fontSize: 13, color: "#8A8D96" }}>
-            Hisobingiz yo&apos;qmi?{" "}
+            {t("auth.noAccount")}{" "}
             <Link href="/register" style={{ color: ACCENT, fontWeight: 700 }}>
-              7 kun bepul sinab ko&apos;ring
+              {t("auth.tryFree")}
             </Link>
           </p>
         </form>

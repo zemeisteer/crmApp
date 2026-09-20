@@ -7,6 +7,7 @@ export class CreateTeacherDto {
   @IsOptional() @IsString() subject?: string;
   @IsOptional() @IsString() phone?: string;
   @IsOptional() @IsString() email?: string;
+  @IsOptional() @IsString() birthDate?: string;
   @IsOptional() @IsString() salaryType?: string;
   @IsOptional() @IsInt() salaryValue?: number;
 }
@@ -16,6 +17,7 @@ export class UpdateTeacherDto {
   @IsOptional() @IsString() subject?: string;
   @IsOptional() @IsString() phone?: string;
   @IsOptional() @IsString() email?: string;
+  @IsOptional() @IsString() birthDate?: string;
   @IsOptional() @IsString() salaryType?: string;
   @IsOptional() @IsInt() salaryValue?: number;
 }

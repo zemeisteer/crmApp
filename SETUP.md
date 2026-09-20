@@ -1,4 +1,4 @@
-# TalimCRM — Phase 1 (Auth + asosiy CRM)
+# TalimCRM — holat va o'rnatish
 
 Bu arxivda ikkita alohida loyiha bor:
 
@@ -16,16 +16,14 @@ npm install --legacy-peer-deps
 
 `--legacy-peer-deps` shart — NestJS 12 + Vitest shablonidagi peer-dependency grafida `npm`ning arborist bug'i bor, shusiz `npm install` xato beradi.
 
-`.env` fayli allaqachon bor (`DATABASE_URL`, `JWT_SECRET`, `JWT_EXPIRES_IN`, `PORT=4000`). Productionga chiqarishdan oldin `JWT_SECRET`ni albatta almashtiring.
+`.env` fayli allaqachon bor. Productionga chiqarishdan oldin `JWT_SECRET`ni albatta almashtiring. Fayl oxiridagi ixtiyoriy integratsiya bo'limi (Telegram, Click, Payme, SMTP, Sentry, AI) — har biri bo'sh qoldirilsa, o'sha xususiyat avtomatik o'chirilgan holda ishlaydi, xato bermaydi.
 
-PostgreSQL 16 kerak. Lokal yoki Docker orqali o'rnating, so'ng `.env`dagi `DATABASE_URL`ni moslang (standart: `postgresql://postgres:postgres@localhost:5432/talimcrm`). Keyin bazani yarating:
+PostgreSQL 16+ kerak. Lokal yoki Docker orqali o'rnating, so'ng `.env`dagi `DATABASE_URL`ni moslang. Keyin bazani yarating:
 
 ```bash
-createdb talimcrm   # yoki: psql -U postgres -c "CREATE DATABASE talimcrm;"
-npx drizzle-kit push --force
+createdb talimcrm
+npm run db:push
 ```
-
-Bu Drizzle sxemasini (`src/db/schema.ts`) to'g'ridan-to'g'ri bazaga push qiladi (migratsiya fayllarisiz — hozircha shu tarzda ishlatilgan).
 
 Ishga tushirish:
 
@@ -35,22 +33,40 @@ npm run start:dev
 
 Backend `http://localhost:4000/api` manzilida ishga tushadi.
 
+### Migratsiyalar
+
+Loyiha hozircha dev muhitda `drizzle-kit push` (sxemani to'g'ridan-to'g'ri bazaga surish) orqali ishlaydi — tez, lekin versiyalanmagan. Production uchun `drizzle/0000_*.sql` boshlang'ich migratsiya fayli allaqachon generatsiya qilingan. Yangi production bazani shu bilan ko'taring:
+
+```bash
+npm run db:migrate
+```
+
+Kelgusi sxema o'zgarishlari uchun: `schema.ts`ni tahrirlang → `npm run db:generate` (yangi migratsiya fayli yaratadi) → `npm run db:migrate` (production'ga qo'llaydi). Dev muhitda tezlik uchun hali ham `npm run db:push` ishlatishingiz mumkin.
+
+### Zaxira nusxalash
+
+```bash
+npm run db:backup   # backups/talimcrm_<sana>.sql.gz yaratadi
+```
+
+Buni cron/Task Scheduler orqali kunlik ishga tushiring va nusxalarni bazadan alohida joyda (S3 va h.k.) saqlang — tafsilotlar `scripts/backup.sh` ichida.
+
+### Testlar
+
+```bash
+npm run test      # unit testlar (guard'lar)
+npm run test:e2e  # to'liq HTTP orqali multi-tenant izolyatsiyani tekshiradi (haqiqiy DB kerak)
+```
+
+### API tuzilishi (qisqacha)
+
+Auth, tenant, guruh/o'quvchi/o'qituvchi CRUD (soft-delete + tiklash bilan), to'lov, davomat, maosh, uy vazifasi, filial, Excel export/import, PDF kvitansiya, faoliyat jurnali (audit log), AI tahlil/materiallar, Telegram bot, Click/Payme (markaz ↔ o'quvchi va markaz ↔ platforma), platform (superadmin) boshqaruvi. To'liq ro'yxat uchun `src/*/​*.controller.ts` fayllariga qarang.
+
+Barcha tenant-scoped so'rovlar JWT'dagi `tenantId` bo'yicha avtomatik filtrlaydi (multi-tenancy izolyatsiyasi) — bu backendning eng muhim xavfsizlik qatlami, o'zgartirganda ehtiyot bo'ling. Bu `test:e2e` bilan avtomatik tekshiriladi.
+
 ### Nima uchun Prisma emas, Drizzle?
 
-Boshida Prisma bilan boshlangan edi, lekin build-sandbox muhitida Prisma'ning binary query-engine fayllarini yuklab olib bo'lmadi (tarmoq cheklovi — `binaries.prisma.sh` bloklangan edi). Shuning uchun Drizzle ORM'ga o'tildi — u sof TypeScript, binary kerak emas. Sizning muhitingizda tarmoq cheklovi bo'lmasa, xohlasangiz Prisma'ga qaytarishingiz ham mumkin, lekin buning uchun `src/db/`dagi barcha service'larni qayta yozish kerak bo'ladi.
-
-### API tuzilishi (Phase 1)
-
-- `POST /api/auth/register` — markaz + admin yaratadi (tenant + user birga)
-- `POST /api/auth/login`
-- `GET /api/auth/me`
-- `GET/POST/PATCH/DELETE /api/groups`
-- `GET/POST/PATCH/DELETE /api/students`, `POST/DELETE /api/students/:id/enroll/:groupId`
-- `GET/POST/PATCH/DELETE /api/teachers`
-- `GET/POST /api/payments`, `GET /api/payments/summary`
-- `GET /api/tenants` (faqat SUPERADMIN), `GET /api/tenants/by-subdomain/:subdomain` (ochiq)
-
-Barcha tenant-scoped so'rovlar JWT'dagi `tenantId` bo'yicha avtomatik filtrlaydi (multi-tenancy izolyatsiyasi) — bu backendning eng muhim xavfsizlik qatlami, o'zgartirganda ehtiyot bo'ling.
+Boshida Prisma bilan boshlangan edi, lekin build-sandbox muhitida Prisma'ning binary query-engine fayllarini yuklab olib bo'lmadi. Shuning uchun Drizzle ORM'ga o'tildi — u sof TypeScript, binary kerak emas.
 
 ## 2. Frontend
 
@@ -59,20 +75,38 @@ cd frontend
 npm install
 ```
 
-`.env.local` allaqachon bor: `NEXT_PUBLIC_API_URL=http://localhost:4000/api` — agar backend boshqa portda/domainda bo'lsa, shu yerni o'zgartiring.
+`.env.local` allaqachon bor: `NEXT_PUBLIC_API_URL=http://localhost:4000/api`.
 
 ```bash
 npm run dev
 ```
 
-Frontend `http://localhost:3000` da ishga tushadi. `/`, `/login`, `/register`, `/dashboard`, `/groups`, `/students`, `/teachers`, `/payments` sahifalari bor.
+Frontend `http://localhost:3000` da ishga tushadi.
 
-### Diqqat: shrift yuklanishi
+## 3. Docker orqali ishga tushirish (ixtiyoriy)
 
-`app/layout.tsx` Google Fonts'ni (Manrope, Inter) `<link>` orqali yuklaydi — build vaqtida emas, brauzerda. Agar sizning ishlab chiqish muhitingiz internetga to'liq ochiq bo'lsa, muammo bo'lmaydi.
+```bash
+docker compose up --build
+```
 
-## 3. Loyihaning umumiy holati
+Postgres + backend + frontend'ni birga ko'taradi. Birinchi marta ko'targandan keyin sxemani qo'llang:
 
-- Dizayn-makketlar (barcha sahifalarning UI dizayni) alohida Claude Artifact'da: `https://claude.ai/artifact/8KSxnc3d5eN1g71UTucyS5` — frontend shu dizaynlarga asoslanib qurilgan, lekin hozircha faqat Login/Register/Dashboard/Groups/Students/Teachers/Payments haqiqiy backend'ga ulangan. Qolgan sahifalar (GroupDetail, StudentDetail, AIInsights, AIMaterials, Homework, StudentAI, Reports, Pricing, PublicSite, Settings, AdminPanel) hali faqat dizayn-makket, real funksional emas.
-- Backend'da Phase 1 (auth + asosiy CRUD) to'liq ishlaydi va sinovdan o'tgan: tenant izolyatsiyasi, rol tekshiruvi (RBAC), JWT autentifikatsiya.
-- Keyingi bosqichlar (hali boshlanmagan): AI xususiyatlari, sub-domen ochiq sayt, Click/Payme to'lov integratsiyasi, Telegram bot, Super Admin platform-boshqaruv backend'i.
+```bash
+docker compose exec backend npm run db:push
+```
+
+Ixtiyoriy integratsiya kalitlarini (Telegram, Click, Payme, SMTP...) `.env` fayliga yozib, `docker compose up` oldidan environment o'zgaruvchisi sifatida eksport qiling — `docker-compose.yml` ularni avtomatik backend konteyneriga uzatadi.
+
+## 4. Loyihaning umumiy holati
+
+Barcha asosiy funksiyalar (auth, tenant izolyatsiyasi, RBAC, guruh/o'quvchi/o'qituvchi/to'lov/davomat/maosh CRUD, soft-delete+tiklash, audit log, Excel export/import, PDF kvitansiya, uy vazifalari, filiallar, hisobotlar, sozlamalar, superadmin panel, parolni tiklash/email tasdiqlash/refresh token) **ishlab chiqilgan va sinovdan o'tgan** (backend: unit+e2e testlar; frontend: TypeScript + production build + brauzerda qo'lda tekshirilgan).
+
+Uch integratsiya **kodi tayyor, lekin real kalitlarsiz ishlamaydi** (`.env`ga qiymat qo'yilishi kerak, keyin qayta ishga tushirilganda avtomatik yoqiladi):
+
+- **Telegram bot** — @BotFather'dan token oling, `.env`ga yozing, so'ng Telegram'da `setWebhook` orqali `https://<domen>/api/telegram/webhook`ni ulang.
+- **Click/Payme** (markaz o'z o'quvchilaridan, va markaz platformadan) — merchant kabinetdagi ID/kalitlarni `.env`ga yozing. **Real pul bilan ishlaydi — production'ga chiqarishdan oldin sandbox'da sinab ko'ring.**
+- **AI xususiyatlar** (tahlil, materiallar) — `ANTHROPIC_API_KEY` kerak (console.anthropic.com).
+
+Domen sotib olish va DNS sozlash (`*.talimcrm.uz` wildcard, HTTPS) — bu Claude Code tomonidan bajarib bo'lmaydigan yagona bosqich, qo'lda amalga oshirilishi kerak.
+
+Dizayn-makketlar: `https://claude.ai/artifact/8KSxnc3d5eN1g71UTucyS5`.

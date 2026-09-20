@@ -3,17 +3,29 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
-import { ApiError } from "@/lib/api";
+import { useLanguage } from "@/lib/i18n-context";
+import { ApiError, TenantCategory } from "@/lib/api";
+import type { TranslationKey } from "@/lib/i18n";
 
 const ACCENT = "#4F46E5";
 
+const CATEGORY_OPTIONS: TenantCategory[] = ["TIL_MARKAZI", "MATEMATIKA", "IT", "BOSHQA"];
+const CATEGORY_LABEL_KEYS: Record<TenantCategory, TranslationKey> = {
+  TIL_MARKAZI: "category.tilMarkazi",
+  MATEMATIKA: "category.matematika",
+  IT: "category.it",
+  BOSHQA: "category.boshqa",
+};
+
 export default function RegisterPage() {
   const { register } = useAuth();
+  const { t, lang, setLang } = useLanguage();
   const [centerName, setCenterName] = useState("");
   const [subdomain, setSubdomain] = useState("");
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [category, setCategory] = useState<TenantCategory>("TIL_MARKAZI");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -22,7 +34,7 @@ export default function RegisterPage() {
     setError(null);
     setLoading(true);
     try {
-      await register({ centerName, subdomain, fullName, email, password });
+      await register({ centerName, subdomain, fullName, email, password, category });
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Xatolik yuz berdi");
     } finally {
@@ -31,7 +43,24 @@ export default function RegisterPage() {
   }
 
   return (
-    <div style={{ minHeight: "100vh", display: "flex", background: "#F7F7F5" }}>
+    <div style={{ minHeight: "100vh", display: "flex", background: "#F7F7F5", position: "relative" }}>
+      <div style={{ position: "absolute", top: 20, right: 20, zIndex: 10, display: "flex", gap: 4, background: "#F2F1EC", borderRadius: 9, padding: 3 }}>
+        {(["UZ", "RU", "EN"] as const).map((l) => (
+          <button
+            key={l}
+            type="button"
+            onClick={() => setLang(l)}
+            style={{
+              fontSize: 11, fontWeight: 700, padding: "6px 10px", borderRadius: 7, border: "none", cursor: "pointer",
+              background: lang === l ? "#fff" : "transparent",
+              color: lang === l ? "#181A1F" : "#8A8D96",
+              boxShadow: lang === l ? "0 1px 3px rgba(18,19,26,0.08)" : "none",
+            }}
+          >
+            {l}
+          </button>
+        ))}
+      </div>
       {/* LEFT: brand panel */}
       <div
         style={{
@@ -71,15 +100,15 @@ export default function RegisterPage() {
 
         <div style={{ position: "relative", zIndex: 2, display: "flex", flexDirection: "column", gap: 18, maxWidth: 420 }}>
           <h1 style={{ fontSize: 34, lineHeight: 1.2, fontWeight: 800, color: "#fff", letterSpacing: "-0.02em" }}>
-            7 kun bepul — kartasiz sinab ko&apos;ring
+            {t("register.heroTitle")}
           </h1>
           <p style={{ fontSize: 15, lineHeight: 1.65, color: "#B7B0E8" }}>
-            O&apos;z sub-domeningiz, guruhlar, o&apos;quvchilar va to&apos;lovlar boshqaruvi — bir necha daqiqada tayyor.
+            {t("register.heroSubtitle")}
           </p>
         </div>
 
         <div style={{ position: "relative", zIndex: 2, fontSize: 12.5, color: "#71737C" }}>
-          © 2026 TalimCRM. Barcha huquqlar himoyalangan.
+          {t("landing.footer")}
         </div>
         <div
           style={{
@@ -111,7 +140,7 @@ export default function RegisterPage() {
                 color: "#8A8D96",
               }}
             >
-              Kirish
+              {t("auth.login")}
             </Link>
             <div
               style={{
@@ -126,13 +155,13 @@ export default function RegisterPage() {
                 boxShadow: "0 1px 3px rgba(18,19,26,0.08)",
               }}
             >
-              Ro&apos;yxatdan o&apos;tish
+              {t("auth.register")}
             </div>
           </div>
 
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            <h2 style={{ fontSize: 24, fontWeight: 800, letterSpacing: "-0.02em" }}>O&apos;quv markazingizni yarating</h2>
-            <p style={{ fontSize: 13.5, color: "#8A8D96" }}>Boss, bir necha maydonni to&apos;ldiring — hoziroq boshlaymiz.</p>
+            <h2 style={{ fontSize: 24, fontWeight: 800, letterSpacing: "-0.02em" }}>{t("register.formTitle")}</h2>
+            <p style={{ fontSize: 13.5, color: "#8A8D96" }}>{t("register.formSubtitle")}</p>
           </div>
 
           {error && (
@@ -143,7 +172,7 @@ export default function RegisterPage() {
 
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
             <div>
-              <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>Markaz nomi</div>
+              <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>{t("register.centerName")}</div>
               <input
                 className="field-input"
                 required
@@ -153,7 +182,7 @@ export default function RegisterPage() {
               />
             </div>
             <div>
-              <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>Markaz manzili</div>
+              <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>{t("register.centerAddress")}</div>
               <div style={{ display: "flex", alignItems: "center", border: "1px solid #EAE8E2", borderRadius: 10, overflow: "hidden" }}>
                 <input
                   className="field-input"
@@ -171,7 +200,7 @@ export default function RegisterPage() {
               </div>
             </div>
             <div>
-              <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>To&apos;liq ismingiz</div>
+              <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>{t("register.fullName")}</div>
               <input
                 className="field-input"
                 required
@@ -181,7 +210,7 @@ export default function RegisterPage() {
               />
             </div>
             <div>
-              <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>Email</div>
+              <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>{t("auth.email")}</div>
               <input
                 className="field-input"
                 type="email"
@@ -192,7 +221,27 @@ export default function RegisterPage() {
               />
             </div>
             <div>
-              <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>Parol</div>
+              <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>{t("register.direction")}</div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                {CATEGORY_OPTIONS.map((c) => (
+                  <button
+                    type="button"
+                    key={c}
+                    onClick={() => setCategory(c)}
+                    style={{
+                      textAlign: "left", fontSize: 13, fontWeight: 600, padding: "10px 12px", borderRadius: 9, cursor: "pointer",
+                      border: category === c ? `1.5px solid ${ACCENT}` : "1px solid #EAE8E2",
+                      background: category === c ? "#EEF0FF" : "#fff",
+                      color: category === c ? ACCENT : "#4A4E58",
+                    }}
+                  >
+                    {t(CATEGORY_LABEL_KEYS[c])}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>{t("auth.password")}</div>
               <input
                 className="field-input"
                 type="password"
@@ -211,13 +260,13 @@ export default function RegisterPage() {
             disabled={loading}
             style={{ background: ACCENT, color: "#fff", fontSize: 14.5, fontWeight: 700, padding: 13, borderRadius: 10 }}
           >
-            {loading ? "Yaratilmoqda..." : "Bepul boshlash"}
+            {loading ? t("auth.loggingIn") : t("landing.getStarted")}
           </button>
 
           <p style={{ textAlign: "center", fontSize: 13, color: "#8A8D96" }}>
-            Hisobingiz bormi?{" "}
+            {t("auth.haveAccount")}{" "}
             <Link href="/login" style={{ color: ACCENT, fontWeight: 700 }}>
-              Kirish
+              {t("auth.login")}
             </Link>
           </p>
         </form>

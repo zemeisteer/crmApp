@@ -5,14 +5,19 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import DashboardShell from "@/components/DashboardShell";
 import Modal from "@/components/Modal";
-import { studentsApi, groupsApi, paymentsApi, attendanceApi, Student, Group, Payment, AttendanceRecord, ApiError } from "@/lib/api";
+import Select from "@/components/Select";
+import MonthPicker from "@/components/MonthPicker";
+import { studentsApi, groupsApi, paymentsApi, attendanceApi, billingApi, telegramApi, exportApi, Student, Group, Payment, AttendanceRecord, ApiError } from "@/lib/api";
+import { localMonthStr } from "@/lib/date";
+import { useLanguage } from "@/lib/i18n-context";
+import type { TranslationKey } from "@/lib/i18n";
 
 const ACCENT = "#4F46E5";
 
-const STATUS_LABEL: Record<string, string> = {
-  PAID: "To'landi",
-  PENDING: "Kutilmoqda",
-  FAILED: "Muvaffaqiyatsiz",
+const STATUS_LABEL_KEYS: Record<string, TranslationKey> = {
+  PAID: "payment.statusPaid",
+  PENDING: "payment.statusPending",
+  FAILED: "payment.statusFailed",
 };
 
 const STATUS_CLASS: Record<string, string> = {
@@ -21,20 +26,15 @@ const STATUS_CLASS: Record<string, string> = {
   FAILED: "badge-danger",
 };
 
-const METHOD_LABEL: Record<string, string> = {
-  CASH: "Naqd",
-  CLICK: "Click",
-  PAYME: "Payme",
-  BANK_TRANSFER: "Bank o'tkazmasi",
+const METHOD_LABEL_KEYS: Record<string, TranslationKey> = {
+  CASH: "payment.methodCash",
+  CLICK: "payment.methodClick",
+  PAYME: "payment.methodPayme",
+  BANK_TRANSFER: "payment.methodBankTransfer",
 };
 
 function formatMoney(n: number) {
   return new Intl.NumberFormat("uz-UZ").format(n);
-}
-
-function formatDate(iso: string | null) {
-  if (!iso) return "—";
-  return new Date(iso).toLocaleDateString("uz-UZ", { day: "numeric", month: "long", year: "numeric" });
 }
 
 function initials(name: string) {
@@ -50,6 +50,12 @@ function StudentDetailContent() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const id = params.id;
+  const { t, lang } = useLanguage();
+
+  function formatDate(iso: string | null) {
+    if (!iso) return "—";
+    return new Date(iso).toLocaleDateString(lang === "UZ" ? "uz-UZ" : lang === "RU" ? "ru-RU" : "en-US", { day: "numeric", month: "long", year: "numeric" });
+  }
 
   const [student, setStudent] = useState<(Student & { payments?: Payment[] }) | null>(null);
   const [groups, setGroups] = useState<Group[]>([]);
@@ -64,10 +70,24 @@ function StudentDetailContent() {
   const [paymentOpen, setPaymentOpen] = useState(false);
   const [amount, setAmount] = useState("");
   const [method, setMethod] = useState("CASH");
-  const [forMonth, setForMonth] = useState(() => new Date().toISOString().slice(0, 7));
+  const [forMonth, setForMonth] = useState(() => localMonthStr());
   const [paymentError, setPaymentError] = useState<string | null>(null);
 
   const [saving, setSaving] = useState(false);
+
+  const [botUsername, setBotUsername] = useState<string | null>(null);
+
+  const [billingOpen, setBillingOpen] = useState(false);
+  const [billingProvider, setBillingProvider] = useState<"CLICK" | "PAYME">("CLICK");
+  const [billingAmount, setBillingAmount] = useState("");
+  const [billingMonth, setBillingMonth] = useState(() => localMonthStr());
+  const [billingResult, setBillingResult] = useState<string | null>(null);
+  const [billingError, setBillingError] = useState<string | null>(null);
+  const [billingSaving, setBillingSaving] = useState(false);
+
+  useEffect(() => {
+    telegramApi.status().then((s) => setBotUsername(s.botUsername)).catch(() => setBotUsername(null));
+  }, []);
 
   function load() {
     setLoading(true);
@@ -86,16 +106,16 @@ function StudentDetailContent() {
   useEffect(load, [id]);
 
   if (loading) {
-    return <div style={{ padding: 32, color: "#8A8D96", fontSize: 14 }}>Yuklanmoqda...</div>;
+    return <div style={{ padding: 32, color: "#8A8D96", fontSize: 14 }}>{t("common.loading")}</div>;
   }
 
   if (notFound || !student) {
     return (
       <div style={{ padding: 32 }}>
         <div style={{ color: "#8A8D96", fontSize: 14, background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 32, textAlign: "center" }}>
-          O&apos;quvchi topilmadi.{" "}
+          {t("studentDetail.notFound")}{" "}
           <Link href="/students" style={{ color: ACCENT, fontWeight: 600 }}>
-            O&apos;quvchilarga qaytish
+            {t("studentDetail.back")}
           </Link>
         </div>
       </div>
@@ -129,7 +149,7 @@ function StudentDetailContent() {
   }
 
   async function onUnenroll(groupId: string) {
-    if (!confirm("O'quvchini bu guruhdan chiqarishni tasdiqlaysizmi?")) return;
+    if (!confirm(t("studentDetail.confirmUnenroll"))) return;
     await studentsApi.unenroll(id, groupId);
     load();
   }
@@ -148,7 +168,7 @@ function StudentDetailContent() {
       });
       setPaymentOpen(false);
       setAmount("");
-      setForMonth(new Date().toISOString().slice(0, 7));
+      setForMonth(localMonthStr());
       load();
     } catch (err) {
       setPaymentError(err instanceof ApiError ? err.message : "Xatolik yuz berdi");
@@ -157,8 +177,30 @@ function StudentDetailContent() {
     }
   }
 
+  function openBilling() {
+    setBillingResult(null);
+    setBillingError(null);
+    setBillingOpen(true);
+  }
+
+  async function onGenerateBillingLink(e: React.FormEvent) {
+    e.preventDefault();
+    setBillingError(null);
+    setBillingResult(null);
+    setBillingSaving(true);
+    try {
+      const api = billingProvider === "CLICK" ? billingApi.clickLink : billingApi.paymeLink;
+      const res = await api({ studentId: id, amount: Number(billingAmount), forMonth: billingMonth });
+      setBillingResult(res.url);
+    } catch (err) {
+      setBillingError(err instanceof ApiError ? err.message : "Xatolik yuz berdi");
+    } finally {
+      setBillingSaving(false);
+    }
+  }
+
   async function onDeleteStudent() {
-    if (!confirm("O'quvchini butunlay o'chirishni tasdiqlaysizmi?")) return;
+    if (!confirm(t("studentDetail.confirmDelete"))) return;
     await studentsApi.remove(id);
     router.push("/students");
   }
@@ -170,7 +212,7 @@ function StudentDetailContent() {
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
             <path d="M15 18l-6-6 6-6" />
           </svg>
-          O&apos;quvchilarga qaytish
+          {t("studentDetail.back")}
         </Link>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
@@ -194,7 +236,7 @@ function StudentDetailContent() {
             <div>
               <h1 style={{ fontSize: 22, fontWeight: 800 }}>{student.fullName}</h1>
               <div style={{ fontSize: 13, color: "#8A8D96", marginTop: 2 }}>
-                {student.phone || "Telefon kiritilmagan"} · Ro&apos;yxatdan o&apos;tgan: {formatDate(student.startDate)}
+                {student.phone || t("studentDetail.phoneMissing")} · {t("studentDetail.registeredOn")}: {formatDate(student.startDate)}
               </div>
             </div>
           </div>
@@ -203,7 +245,7 @@ function StudentDetailContent() {
             onClick={onDeleteStudent}
             style={{ background: "#FDEBEC", color: "#B23A47", border: "none", fontSize: 13, fontWeight: 700, padding: "9px 16px", borderRadius: 9 }}
           >
-            O&apos;quvchini o&apos;chirish
+            {t("studentDetail.deleteStudent")}
           </button>
         </div>
       </div>
@@ -211,21 +253,21 @@ function StudentDetailContent() {
       <div style={{ flex: 1, minHeight: 0, padding: "26px 32px", display: "flex", flexDirection: "column", gap: 20, overflow: "auto", boxSizing: "border-box" }}>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0,1fr))", gap: 16 }}>
           <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 14, padding: 18 }}>
-            <div style={{ fontSize: 12, color: "#8A8D96" }}>Faol guruhlar</div>
+            <div style={{ fontSize: 12, color: "#8A8D96" }}>{t("studentDetail.statActiveGroups")}</div>
             <div style={{ fontSize: 24, fontWeight: 800, fontFamily: "'Manrope', sans-serif", marginTop: 4 }}>{enrollments.length}</div>
           </div>
           <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 14, padding: 18 }}>
-            <div style={{ fontSize: 12, color: "#8A8D96" }}>Umumiy davomat</div>
+            <div style={{ fontSize: 12, color: "#8A8D96" }}>{t("studentDetail.statTotalAttendance")}</div>
             <div style={{ fontSize: 24, fontWeight: 800, fontFamily: "'Manrope', sans-serif", marginTop: 4 }}>
               {attendancePercent === null ? "—" : `${attendancePercent}%`}
             </div>
           </div>
           <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 14, padding: 18 }}>
-            <div style={{ fontSize: 12, color: "#8A8D96" }}>Jami to&apos;lagan</div>
-            <div style={{ fontSize: 24, fontWeight: 800, fontFamily: "'Manrope', sans-serif", marginTop: 4 }}>{formatMoney(totalPaid)} so&apos;m</div>
+            <div style={{ fontSize: 12, color: "#8A8D96" }}>{t("studentDetail.statTotalPaid")}</div>
+            <div style={{ fontSize: 24, fontWeight: 800, fontFamily: "'Manrope', sans-serif", marginTop: 4 }}>{formatMoney(totalPaid)} {t("common.sumUnit")}</div>
           </div>
           <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 14, padding: 18 }}>
-            <div style={{ fontSize: 12, color: "#8A8D96" }}>Jami to&apos;lovlar soni</div>
+            <div style={{ fontSize: 12, color: "#8A8D96" }}>{t("studentDetail.statPaymentsCount")}</div>
             <div style={{ fontSize: 24, fontWeight: 800, fontFamily: "'Manrope', sans-serif", marginTop: 4 }}>{payments.length}</div>
           </div>
         </div>
@@ -233,18 +275,18 @@ function StudentDetailContent() {
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
           <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 20 }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-              <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 700, fontSize: 15 }}>Guruhlar</div>
+              <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 700, fontSize: 15 }}>{t("studentDetail.groupsTitle")}</div>
               <button
                 className="btn"
                 onClick={() => setEnrollOpen(true)}
                 disabled={availableGroups.length === 0}
                 style={{ background: ACCENT, color: "#fff", border: "none", fontSize: 12, fontWeight: 700, padding: "7px 12px", borderRadius: 8 }}
               >
-                + Guruhga qo&apos;shish
+                {t("studentDetail.addToGroup")}
               </button>
             </div>
             {enrollments.length === 0 ? (
-              <div style={{ color: "#8A8D96", fontSize: 13.5 }}>Hali guruhga qo&apos;shilmagan.</div>
+              <div style={{ color: "#8A8D96", fontSize: 13.5 }}>{t("studentDetail.noGroupsYet")}</div>
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                 {enrollments.map((e) => (
@@ -256,14 +298,14 @@ function StudentDetailContent() {
                       <Link href={`/groups/${e.group.id}`} style={{ fontSize: 13.5, fontWeight: 600, color: ACCENT }}>
                         {e.group.name}
                       </Link>
-                      <div style={{ fontSize: 12, color: "#8A8D96", marginTop: 2 }}>{e.group.schedule || "Jadval kiritilmagan"}</div>
+                      <div style={{ fontSize: 12, color: "#8A8D96", marginTop: 2 }}>{e.group.schedule || t("studentDetail.scheduleMissing")}</div>
                     </div>
                     <button
                       className="btn"
                       onClick={() => onUnenroll(e.group.id)}
                       style={{ background: "transparent", color: "#B23A47", fontSize: 12, fontWeight: 600, padding: "6px 8px", borderRadius: 8 }}
                     >
-                      Chiqarish
+                      {t("studentDetail.remove")}
                     </button>
                   </div>
                 ))}
@@ -272,38 +314,66 @@ function StudentDetailContent() {
           </div>
 
           <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 20 }}>
-            <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 700, fontSize: 15, marginBottom: 14 }}>O&apos;quvchi haqida</div>
+            <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 700, fontSize: 15, marginBottom: 14 }}>{t("studentDetail.aboutStudent")}</div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0,1fr))", gap: "18px 16px" }}>
-              <InfoField label="Tug'ilgan sana" value={formatDate(student.birthDate)} />
-              <InfoField label="Telegram" value={student.telegramUsername ? `@${student.telegramUsername}` : "—"} />
-              <InfoField label="Ota-ona telefoni" value={student.parentPhone || "—"} />
-              <InfoField label="Manzil" value={student.address || "—"} />
+              <InfoField label={t("studentDetail.birthDate")} value={formatDate(student.birthDate)} />
+              <InfoField label={t("studentDetail.telegram")} value={student.telegramUsername ? `@${student.telegramUsername}` : "—"} />
+              <InfoField label={t("studentDetail.parentPhone")} value={student.parentPhone || "—"} />
+              <InfoField label={t("studentDetail.address")} value={student.address || "—"} />
+            </div>
+            <div style={{ marginTop: 16, paddingTop: 16, borderTop: "1px solid #EAE8E2" }}>
+              <div style={{ fontSize: 11.5, color: "#8A8D96", marginBottom: 6 }}>{t("studentDetail.telegramNotifications")}</div>
+              {student.telegramChatId ? (
+                <span className="badge badge-success">{t("studentDetail.telegramLinked")}</span>
+              ) : botUsername ? (
+                <div style={{ fontSize: 12.5 }}>
+                  <span className="badge badge-neutral">{t("studentDetail.telegramNotLinked")}</span>
+                  <div style={{ marginTop: 8, color: "#4A4E58" }}>
+                    {t("studentDetail.telegramLinkHint")}
+                  </div>
+                  <code style={{ display: "block", marginTop: 4, background: "#F7F7F5", padding: "8px 10px", borderRadius: 8, fontSize: 11.5, wordBreak: "break-all" }}>
+                    {`https://t.me/${botUsername}?start=${student.id}`}
+                  </code>
+                </div>
+              ) : (
+                <span style={{ fontSize: 12, color: "#8A8D96" }}>{t("studentDetail.telegramNotConfigured")}</span>
+              )}
             </div>
           </div>
         </div>
 
         <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, overflow: "hidden" }}>
           <div style={{ padding: "16px 20px 4px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 700, fontSize: 15 }}>To&apos;lovlar tarixi</div>
-            <button
-              className="btn"
-              onClick={() => setPaymentOpen(true)}
-              style={{ background: ACCENT, color: "#fff", border: "none", fontSize: 12.5, fontWeight: 700, padding: "8px 14px", borderRadius: 8 }}
-            >
-              + To&apos;lov qo&apos;shish
-            </button>
+            <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 700, fontSize: 15 }}>{t("studentDetail.paymentHistory")}</div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button
+                className="btn"
+                onClick={openBilling}
+                style={{ background: "#F2F1EC", color: "#181A1F", border: "none", fontSize: 12.5, fontWeight: 700, padding: "8px 14px", borderRadius: 8 }}
+              >
+                {t("studentDetail.paymentLink")}
+              </button>
+              <button
+                className="btn"
+                onClick={() => setPaymentOpen(true)}
+                style={{ background: ACCENT, color: "#fff", border: "none", fontSize: 12.5, fontWeight: 700, padding: "8px 14px", borderRadius: 8 }}
+              >
+                {t("studentDetail.addPayment")}
+              </button>
+            </div>
           </div>
           {payments.length === 0 ? (
-            <div style={{ color: "#8A8D96", fontSize: 14, padding: "24px 20px" }}>Hali to&apos;lov yo&apos;q.</div>
+            <div style={{ color: "#8A8D96", fontSize: 14, padding: "24px 20px" }}>{t("studentDetail.noPaymentsYet")}</div>
           ) : (
             <table>
               <thead>
                 <tr>
-                  <th style={{ paddingTop: 14 }}>Sana</th>
-                  <th style={{ paddingTop: 14 }}>Oy</th>
-                  <th style={{ paddingTop: 14 }}>Summa</th>
-                  <th style={{ paddingTop: 14 }}>Usul</th>
-                  <th style={{ paddingTop: 14 }}>Holat</th>
+                  <th style={{ paddingTop: 14 }}>{t("studentDetail.colDate")}</th>
+                  <th style={{ paddingTop: 14 }}>{t("studentDetail.colMonth")}</th>
+                  <th style={{ paddingTop: 14 }}>{t("studentDetail.colAmount")}</th>
+                  <th style={{ paddingTop: 14 }}>{t("studentDetail.colMethod")}</th>
+                  <th style={{ paddingTop: 14 }}>{t("studentDetail.colStatus")}</th>
+                  <th style={{ paddingTop: 14 }}></th>
                 </tr>
               </thead>
               <tbody>
@@ -311,10 +381,21 @@ function StudentDetailContent() {
                   <tr key={p.id}>
                     <td>{formatDate(p.paidAt)}</td>
                     <td>{p.forMonth}</td>
-                    <td style={{ fontWeight: 700 }}>{formatMoney(p.amount)} so&apos;m</td>
-                    <td>{p.method ? METHOD_LABEL[p.method] || p.method : "—"}</td>
+                    <td style={{ fontWeight: 700 }}>{formatMoney(p.amount)} {t("common.sumUnit")}</td>
+                    <td>{p.method ? t(METHOD_LABEL_KEYS[p.method] || "payment.methodCash") : "—"}</td>
                     <td>
-                      <span className={`badge ${STATUS_CLASS[p.status] || "badge-neutral"}`}>{STATUS_LABEL[p.status] || p.status}</span>
+                      <span className={`badge ${STATUS_CLASS[p.status] || "badge-neutral"}`}>{STATUS_LABEL_KEYS[p.status] ? t(STATUS_LABEL_KEYS[p.status]) : p.status}</span>
+                    </td>
+                    <td style={{ textAlign: "right" }}>
+                      {p.status === "PAID" && (
+                        <button
+                          className="btn"
+                          onClick={() => exportApi.receiptPdf(p.id)}
+                          style={{ background: "transparent", color: ACCENT, fontSize: 12, fontWeight: 600, padding: "4px 8px", borderRadius: 8 }}
+                        >
+                          {t("studentDetail.receipt")}
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -324,21 +405,18 @@ function StudentDetailContent() {
         </div>
       </div>
 
-      <Modal open={enrollOpen} onClose={() => setEnrollOpen(false)} title="Guruhga qo'shish">
+      <Modal open={enrollOpen} onClose={() => setEnrollOpen(false)} title={t("studentDetail.modalAddToGroup")}>
         <form onSubmit={onEnroll} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           {enrollError && (
             <div style={{ background: "#FDEBEC", color: "#B23A47", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: 10 }}>{enrollError}</div>
           )}
           <div>
-            <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>Guruh</div>
-            <select className="field-input" required value={enrollGroupId} onChange={(e) => setEnrollGroupId(e.target.value)}>
-              <option value="">— Tanlang —</option>
-              {availableGroups.map((g) => (
-                <option key={g.id} value={g.id}>
-                  {g.name}
-                </option>
-              ))}
-            </select>
+            <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>{t("studentDetail.groupField")}</div>
+            <Select
+              options={[{ value: "", label: t("groups.selectPlaceholder") }, ...availableGroups.map((g) => ({ value: g.id, label: g.name }))]}
+              value={enrollGroupId}
+              onChange={setEnrollGroupId}
+            />
           </div>
           <button
             className="btn"
@@ -346,32 +424,36 @@ function StudentDetailContent() {
             disabled={saving}
             style={{ background: ACCENT, color: "#fff", fontSize: 14, fontWeight: 700, padding: 12, borderRadius: 10, marginTop: 6 }}
           >
-            {saving ? "Saqlanmoqda..." : "Qo'shish"}
+            {saving ? t("common.saving") : t("common.add")}
           </button>
         </form>
       </Modal>
 
-      <Modal open={paymentOpen} onClose={() => setPaymentOpen(false)} title="Yangi to'lov">
+      <Modal open={paymentOpen} onClose={() => setPaymentOpen(false)} title={t("studentDetail.modalNewPayment")}>
         <form onSubmit={onAddPayment} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           {paymentError && (
             <div style={{ background: "#FDEBEC", color: "#B23A47", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: 10 }}>{paymentError}</div>
           )}
           <div>
-            <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>Summa (so&apos;m)</div>
+            <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>{t("studentDetail.amountSum")}</div>
             <input className="field-input" type="number" min={0} required value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="500000" />
           </div>
           <div>
-            <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>To&apos;lov usuli</div>
-            <select className="field-input" value={method} onChange={(e) => setMethod(e.target.value)}>
-              <option value="CASH">Naqd</option>
-              <option value="CLICK">Click</option>
-              <option value="PAYME">Payme</option>
-              <option value="BANK_TRANSFER">Bank o&apos;tkazmasi</option>
-            </select>
+            <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>{t("studentDetail.paymentMethodField")}</div>
+            <Select
+              options={[
+                { value: "CASH", label: t("payment.methodCash") },
+                { value: "CLICK", label: t("payment.methodClick") },
+                { value: "PAYME", label: t("payment.methodPayme") },
+                { value: "BANK_TRANSFER", label: t("payment.methodBankTransfer") },
+              ]}
+              value={method}
+              onChange={setMethod}
+            />
           </div>
           <div>
-            <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>Oy</div>
-            <input className="field-input" type="month" required value={forMonth} onChange={(e) => setForMonth(e.target.value)} />
+            <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>{t("studentDetail.monthField")}</div>
+            <MonthPicker value={forMonth} onChange={setForMonth} />
           </div>
           <button
             className="btn"
@@ -379,9 +461,63 @@ function StudentDetailContent() {
             disabled={saving}
             style={{ background: ACCENT, color: "#fff", fontSize: 14, fontWeight: 700, padding: 12, borderRadius: 10, marginTop: 6 }}
           >
-            {saving ? "Saqlanmoqda..." : "To'lovni qo'shish"}
+            {saving ? t("common.saving") : t("studentDetail.addPaymentBtn")}
           </button>
         </form>
+      </Modal>
+      <Modal open={billingOpen} onClose={() => setBillingOpen(false)} title={t("studentDetail.modalCreateLink")}>
+        {billingResult ? (
+          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <div style={{ background: "#E9F8EF", color: "#1FA463", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: 10 }}>
+              {t("studentDetail.linkCreated")}
+            </div>
+            <code style={{ display: "block", background: "#F7F7F5", padding: "10px 12px", borderRadius: 8, fontSize: 12, wordBreak: "break-all" }}>
+              {billingResult}
+            </code>
+            <button
+              className="btn"
+              onClick={() => {
+                navigator.clipboard?.writeText(billingResult);
+              }}
+              style={{ background: "#F2F1EC", color: "#181A1F", border: "none", fontSize: 13, fontWeight: 700, padding: 10, borderRadius: 9 }}
+            >
+              {t("studentDetail.copy")}
+            </button>
+          </div>
+        ) : (
+          <form onSubmit={onGenerateBillingLink} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            {billingError && (
+              <div style={{ background: "#FDEBEC", color: "#B23A47", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: 10 }}>{billingError}</div>
+            )}
+            <div style={{ fontSize: 12, color: "#8A8D96", lineHeight: 1.5 }}>
+              {t("studentDetail.billingHint")}
+            </div>
+            <div>
+              <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>{t("studentDetail.providerField")}</div>
+              <Select
+                options={[{ value: "CLICK", label: t("payment.methodClick") }, { value: "PAYME", label: t("payment.methodPayme") }]}
+                value={billingProvider}
+                onChange={(v) => setBillingProvider(v as "CLICK" | "PAYME")}
+              />
+            </div>
+            <div>
+              <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>{t("studentDetail.amountSum")}</div>
+              <input className="field-input" type="number" min={1000} required value={billingAmount} onChange={(e) => setBillingAmount(e.target.value)} placeholder="500000" />
+            </div>
+            <div>
+              <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>{t("studentDetail.monthField")}</div>
+              <MonthPicker value={billingMonth} onChange={setBillingMonth} />
+            </div>
+            <button
+              className="btn"
+              type="submit"
+              disabled={billingSaving}
+              style={{ background: ACCENT, color: "#fff", fontSize: 14, fontWeight: 700, padding: 12, borderRadius: 10, marginTop: 6 }}
+            >
+              {billingSaving ? t("studentDetail.creatingLink") : t("studentDetail.createLink")}
+            </button>
+          </form>
+        )}
       </Modal>
     </>
   );

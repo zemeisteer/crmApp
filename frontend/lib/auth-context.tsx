@@ -2,21 +2,24 @@
 
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { authApi, getToken, setToken, clearToken, Tenant, User } from "./api";
+import { authApi, getToken, setToken, setRefreshToken, clearToken, Tenant, User, LoginResponse, TenantCategory } from "./api";
 
 interface AuthContextValue {
   user: User | null;
   tenant: Tenant | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<LoginResponse>;
+  completeTwoFactorLogin: (pendingToken: string, code: string) => Promise<void>;
   register: (data: {
     centerName: string;
     subdomain: string;
     email: string;
     password: string;
     fullName: string;
+    category?: TenantCategory;
   }) => Promise<void>;
   logout: () => void;
+  refreshMe: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -27,13 +30,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
-  useEffect(() => {
-    const token = getToken();
-    if (!token) {
-      setLoading(false);
-      return;
-    }
-    authApi
+  function loadMe() {
+    return authApi
       .me()
       .then(({ user, tenant }) => {
         setUser(user);
@@ -41,13 +39,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       })
       .catch(() => {
         clearToken();
-      })
-      .finally(() => setLoading(false));
+      });
+  }
+
+  useEffect(() => {
+    const token = getToken();
+    if (!token) {
+      setLoading(false);
+      return;
+    }
+    loadMe().finally(() => setLoading(false));
   }, []);
 
-  async function login(email: string, password: string) {
+  async function login(email: string, password: string): Promise<LoginResponse> {
     const res = await authApi.login({ email, password });
+    // Both response shapes carry `twoFactorRequired` (false on a normal
+    // login too) — `pendingToken` only exists on the 2FA-pending shape,
+    // so that's the real discriminator.
+    if ("pendingToken" in res) return res;
     setToken(res.accessToken);
+    setRefreshToken(res.refreshToken);
+    setUser(res.user);
+    setTenant(res.tenant);
+    router.push("/dashboard");
+    return res;
+  }
+
+  async function completeTwoFactorLogin(pendingToken: string, code: string) {
+    const res = await authApi.verifyTwoFactorLogin(pendingToken, code);
+    setToken(res.accessToken);
+    setRefreshToken(res.refreshToken);
     setUser(res.user);
     setTenant(res.tenant);
     router.push("/dashboard");
@@ -59,15 +80,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     email: string;
     password: string;
     fullName: string;
+    category?: TenantCategory;
   }) {
     const res = await authApi.register(data);
     setToken(res.accessToken);
+    setRefreshToken(res.refreshToken);
     setUser(res.user);
     setTenant(res.tenant);
     router.push("/dashboard");
   }
 
   function logout() {
+    authApi.logout().catch(() => undefined);
     clearToken();
     setUser(null);
     setTenant(null);
@@ -75,7 +99,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, tenant, loading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, tenant, loading, login, completeTwoFactorLogin, register, logout, refreshMe: loadMe }}>
       {children}
     </AuthContext.Provider>
   );

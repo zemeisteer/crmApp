@@ -1,4 +1,4 @@
-import { IsEmail, IsString, MinLength, Matches } from 'class-validator';
+import { IsEmail, IsIn, IsOptional, IsString, MinLength, Matches } from 'class-validator';
 
 export class RegisterDto {
   @IsString()
@@ -10,6 +10,10 @@ export class RegisterDto {
     message: 'Sub-domen faqat kichik lotin harflari, raqam va - dan iborat bo\'lishi kerak',
   })
   subdomain: string;
+
+  @IsOptional()
+  @IsIn(['TIL_MARKAZI', 'MATEMATIKA', 'IT', 'BOSHQA'])
+  category?: string;
 
   @IsEmail()
   email: string;

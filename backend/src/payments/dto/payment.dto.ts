@@ -9,6 +9,11 @@ export class CreatePaymentDto {
   amount: number;
 
   @IsOptional()
+  @IsInt()
+  @Min(0)
+  discount?: number;
+
+  @IsOptional()
   @IsIn(['CLICK', 'PAYME', 'BANK_TRANSFER', 'CASH'])
   method?: string;
 
