@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { createContext, useContext, useState, ReactNode } from "react";
 import { useAuth } from "./auth-context";
 import { Lang, TranslationKey, translate } from "./i18n";
 
@@ -14,34 +14,27 @@ interface LanguageContextValue {
 
 const LanguageContext = createContext<LanguageContextValue | undefined>(undefined);
 
+function readStoredLang(): Lang | null {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY) as Lang | null;
+    if (stored === "UZ" || stored === "RU" || stored === "EN") return stored;
+  } catch {
+    // ignore
+  }
+  return null;
+}
+
 export function LanguageProvider({ children }: { children: ReactNode }) {
   const { tenant } = useAuth();
-  const [lang, setLangState] = useState<Lang>("UZ");
-  const [manualOverride, setManualOverride] = useState(false);
-
   // Local, per-browser choice (e.g. picked on the login page before any
-  // tenant is known) always wins over the tenant's saved preference.
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY) as Lang | null;
-      if (stored === "UZ" || stored === "RU" || stored === "EN") {
-        setLangState(stored);
-        setManualOverride(true);
-      }
-    } catch {
-      // ignore
-    }
-  }, []);
+  // tenant is known) always wins over the tenant's saved preference — once
+  // set, manualLang short-circuits the tenant-derived fallback below.
+  const [manualLang, setManualLang] = useState<Lang | null>(() => readStoredLang());
 
-  useEffect(() => {
-    if (!manualOverride && tenant?.language) {
-      setLangState(tenant.language);
-    }
-  }, [tenant, manualOverride]);
+  const lang = manualLang ?? tenant?.language ?? "UZ";
 
   function setLang(next: Lang) {
-    setLangState(next);
-    setManualOverride(true);
+    setManualLang(next);
     try {
       localStorage.setItem(STORAGE_KEY, next);
     } catch {
