@@ -68,8 +68,6 @@ ${studentSummaries.join('\n') || 'Guruhda o\'quvchi yo\'q.'}`;
   }
 
   async generateMaterial(dto: GenerateMaterialDto) {
-    const client = this.client();
-
     const typeLabel =
       dto.type === 'LESSON_PLAN' ? 'dars rejasi' : dto.type === 'HOMEWORK' ? 'uy vazifasi' : 'test (quiz)';
 
@@ -77,15 +75,149 @@ ${studentSummaries.join('\n') || 'Guruhda o\'quvchi yo\'q.'}`;
 
 Fan: ${dto.subject}
 Daraja: ${dto.level || "belgilanmagan"}
-Mavzu: ${dto.topic}`;
+Mavzu: ${dto.topic}${dto.customInstructions ? `\nO'qituvchi maxsus talabi / tafsifi: ${dto.customInstructions}` : ''}`;
 
-    const res = await client.messages.create({
-      model: MODEL,
-      max_tokens: 1200,
-      messages: [{ role: 'user', content: prompt }],
-    });
+    try {
+      const apiKey = this.config.get<string>('ANTHROPIC_API_KEY');
+      if (apiKey) {
+        const client = this.client();
+        const res = await client.messages.create({
+          model: MODEL,
+          max_tokens: 1500,
+          messages: [{ role: 'user', content: prompt }],
+        });
+        const text = res.content.find((b) => b.type === 'text')?.text ?? '';
+        if (text) return { material: text };
+      }
+    } catch (e) {
+      if (this.config.get<string>('ANTHROPIC_API_KEY')) throw e;
+    }
 
-    const text = res.content.find((b) => b.type === 'text')?.text ?? '';
-    return { material: text };
+    return { material: this.buildFallbackMaterial(dto) };
+  }
+
+  private buildFallbackMaterial(dto: GenerateMaterialDto): string {
+    const isPlan = dto.type === 'LESSON_PLAN';
+    const isQuiz = dto.type === 'QUIZ';
+    const lvl = dto.level || 'Umumiy daraja';
+
+    if (isPlan) {
+      return `📌 Dars rejasi: ${dto.topic}
+Fan: ${dto.subject} | Daraja: ${lvl}
+${dto.customInstructions ? `O'qituvchi eslatmasi: ${dto.customInstructions}\n` : ''}
+1. Dars maqsadi:
+- O'quvchilarga ${dto.topic} tushunchasini to'liq yetkazish
+- Amaliy misollar va mashqlar orqali ko'nikmani mustahkamlash
+
+2. Dars bosqichlari (80-90 daqiqa):
+- 00-10 min: Kirish, o'tgan mavzuni takrorlash va "Warm-up" savollari
+- 10-35 min: Yangi mavzuni tushuntirish va taqdimot (${dto.topic})
+- 35-65 min: Amaliy mashqlar va guruhlarda ishlash
+- 65-75 min: Mustaqil mini-test yoki nazorat topshirig'i
+- 75-80 min: Xulosa, savol-javob va uyga vazifa berish
+
+3. Tavsiya etiladigan qo'shimcha resurslar:
+- Mavzuga oid ko'rgazmali materiallar va amaliy tarqatmalar`;
+    }
+
+    if (isQuiz) {
+      return `📝 Test va Quiz: ${dto.topic}
+Fan: ${dto.subject} | Daraja: ${lvl}
+${dto.customInstructions ? `O'qituvchi eslatmasi: ${dto.customInstructions}\n` : ''}
+1-savol. ${dto.topic} mavzusiga oid asosiy tushuncha qaysi javobda to'g'ri ko'rsatilgan?
+A) Asosiy ta'rif va qoida 1
+B) Noto'g'ri variant
+C) Chalg'ituvchi variant
+D) Qo'shimcha holat
+(To'g'ri javob: A)
+
+2-savol. Quyidagi berilgan topshiriqni to'g'ri bajaring:
+A) Variant 1
+B) Variant 2 (To'g'ri)
+C) Variant 3
+D) Variant 4
+
+3-savol. Amaliy vaziyat / Case-study topshirig'i:
+- Berilgan ma'lumotni tahlil qiling va qisqa xulosa yozing (3-4 jumla).`;
+    }
+
+    return `📚 Uyga vazifa: ${dto.topic}
+Fan: ${dto.subject} | Daraja: ${lvl}
+${dto.customInstructions ? `O'qituvchi eslatmasi: ${dto.customInstructions}\n` : ''}
+1. Nazariy qism:
+- ${dto.topic} mavzusi bo'yicha qoidalar va formulalarni yodlash.
+
+2. Amaliy mashqlar:
+- Darslikdagi tegishli mavzu bo'yicha 1-5 gacha mashqlarni daftarga to'liq yechish.
+- O'rganilgan yangi terminlar ishtirokida 5 ta mustaqil misol yoki gap tuzish.
+
+3. Kengaytirilgan topshiriq:
+- Keyingi mavzu bo'yicha qisqa tayyorgarlik ko'rish.`;
+  }
+
+  async suggestHomework(dto: { subject?: string; groupName?: string; topic?: string }) {
+    const subject = dto.subject || 'Ingliz tili';
+    const groupName = dto.groupName || '';
+    const topic = dto.topic || '';
+
+    try {
+      const apiKey = this.config.get<string>('ANTHROPIC_API_KEY');
+      if (apiKey) {
+        const client = this.client();
+        const prompt = `Sen o'quv markazi uchun tajribali o'qituvchi yordamchisisan.
+Quyidagi guruh va fan uchun aniq, qiziqarli va professional uyga vazifa (homework) tavsiya et.
+Fan: ${subject}
+Guruh nomi: ${groupName || "umumiy"}
+Mavzu (agar ko'rsatilgan bo'lsa): ${topic || "navbatdagi mavzu"}
+
+Javobni FAQAT quyidagi JSON formatida ber (boshqa hech qanday so'z qo'shma):
+{
+  "title": "Vazifa sarlavhasi (masalan: Unit 5: Present Perfect vs Past Simple mashqlari)",
+  "description": "Vazifaning qisqa va aniq bandlari (1. ..., 2. ..., 3. ...)",
+  "dueDays": 3
+}`;
+        const res = await client.messages.create({
+          model: MODEL,
+          max_tokens: 500,
+          messages: [{ role: 'user', content: prompt }],
+        });
+        const text = res.content.find((b) => b.type === 'text')?.text ?? '';
+        const match = text.match(/\{[\s\S]*\}/);
+        if (match) {
+          const parsed = JSON.parse(match[0]);
+          return {
+            title: parsed.title,
+            description: parsed.description,
+            dueDays: parsed.dueDays || 3,
+          };
+        }
+      }
+    } catch {
+      // Fallback
+    }
+
+    const isEnglish = /ingliz|ielts|cefr|english/i.test(`${subject} ${groupName} ${topic}`);
+    const isMath = /matem|math|algebra|geomet/i.test(`${subject} ${groupName} ${topic}`);
+
+    if (isEnglish) {
+      return {
+        title: topic ? `${topic} — Homework & Practice` : `${groupName || "English"} — Unit 4 Grammar & Vocabulary`,
+        description: `1. Kitobdagi 4-mavzu bo'yicha Ex 1-6 mashqlarni daftarda to'liq bajaring.\n2. Berilgan 15 ta yangi so'z bilan kamida 2 tadan gap tuzing.\n3. Reading matnini o'qib, savollarga yozma javob tayyorlang (kamida 80-100 so'z).`,
+        dueDays: 3,
+      };
+    } else if (isMath) {
+      return {
+        title: topic ? `${topic} — Misollar to'plami` : `${groupName || "Matematika"} — Amaliy masalalar va formulalar`,
+        description: `1. Darslikdagi §12 mavzu qoidalarini takrorlash va formulalarni yodlash.\n2. 145-155-misollarni daftarga to'liq yechish (har bir qadamni ko'rsatgan holda).\n3. 2 ta murakkabroq mantiqiy masalani mustaqil yechishga harakat qiling.`,
+        dueDays: 2,
+      };
+    } else {
+      return {
+        title: topic ? `${topic} — Mustaqil ish` : `${subject} — Amaliy topshiriq va mashqlar`,
+        description: `1. O'tilgan mavzu bo'yicha konspektni to'ldiring.\n2. Mavzu oxiridagi savollarga yozma javob yozing.\n3. Amaliy mashqlarni bajaring va keyingi darsda savollarga tayyor bo'ling.`,
+        dueDays: 3,
+      };
+    }
   }
 }
+

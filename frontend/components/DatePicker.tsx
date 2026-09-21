@@ -25,6 +25,9 @@ function parseLocalStr(s: string): Date | null {
   return new Date(y, m - 1, d);
 }
 
+const currentYear = new Date().getFullYear();
+const YEARS = Array.from({ length: 90 }, (_, i) => currentYear + 5 - i);
+
 export default function DatePicker({
   value,
   onChange,
@@ -39,13 +42,17 @@ export default function DatePicker({
   const { t, lang } = useLanguage();
   const effectivePlaceholder = placeholder ?? t("picker.selectDate");
   const [open, setOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<"days" | "months" | "years">("days");
   const selected = parseLocalStr(value);
   const [viewDate, setViewDate] = useState(() => selected || new Date());
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     function onClickOutside(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+        setViewMode("days");
+      }
     }
     document.addEventListener("mousedown", onClickOutside);
     return () => document.removeEventListener("mousedown", onClickOutside);
@@ -72,6 +79,7 @@ export default function DatePicker({
     const d = new Date(year, month, day);
     onChange(toLocalStr(d));
     setOpen(false);
+    setViewMode("days");
   }
 
   const displayLabel = selected
@@ -82,7 +90,10 @@ export default function DatePicker({
     <div ref={ref} style={{ position: "relative", ...style }}>
       <button
         type="button"
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => {
+          setOpen((v) => !v);
+          setViewMode("days");
+        }}
         className="field-input"
         style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, cursor: "pointer", textAlign: "left", width: "100%" }}
       >
@@ -92,47 +103,224 @@ export default function DatePicker({
         </svg>
       </button>
       {open && (
-        <div style={{ marginTop: 6, background: "#fff", border: "1px solid #EAE8E2", borderRadius: 12, padding: 14, boxShadow: "0 8px 24px rgba(18,19,26,0.1)" }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-            <button type="button" onClick={() => setViewDate(new Date(year, month - 1, 1))} style={{ background: "none", border: "none", cursor: "pointer", padding: 4, color: "#4A4E58" }}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
+        <div
+          style={{
+            position: "absolute",
+            top: "calc(100% + 6px)",
+            right: 0,
+            width: 300,
+            zIndex: 100,
+            background: "#fff",
+            border: "1px solid #EAE8E2",
+            borderRadius: 14,
+            padding: 14,
+            boxShadow: "0 14px 36px rgba(18,19,26,0.14), 0 2px 8px rgba(18,19,26,0.06)",
+          }}
+        >
+          {/* Header */}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6, marginBottom: 12 }}>
+            <button
+              type="button"
+              onClick={() => {
+                if (viewMode === "days") {
+                  setViewDate(new Date(year, month - 1, 1));
+                } else if (viewMode === "years") {
+                  setViewDate(new Date(year - 10, month, 1));
+                }
+              }}
+              style={{ background: "none", border: "none", cursor: "pointer", padding: 5, color: "#4A4E58", borderRadius: 6 }}
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
             </button>
-            <span style={{ fontSize: 13.5, fontWeight: 700 }}>{t(MONTH_KEYS[month])} {year}</span>
-            <button type="button" onClick={() => setViewDate(new Date(year, month + 1, 1))} style={{ background: "none", border: "none", cursor: "pointer", padding: 4, color: "#4A4E58" }}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6" /></svg>
+
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              {/* Custom Month Toggle Button */}
+              <button
+                type="button"
+                onClick={() => setViewMode((m) => (m === "months" ? "days" : "months"))}
+                style={{
+                  fontSize: 12.5,
+                  fontWeight: 700,
+                  border: `1px solid ${viewMode === "months" ? ACCENT : "#EAE8E2"}`,
+                  borderRadius: 8,
+                  padding: "5px 10px",
+                  background: viewMode === "months" ? "#EEF0FF" : "#F7F6F3",
+                  color: viewMode === "months" ? ACCENT : "#181A1F",
+                  cursor: "pointer",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 4,
+                  transition: "all 0.15s ease",
+                }}
+              >
+                <span>{t(MONTH_KEYS[month])}</span>
+                <span style={{ fontSize: 9, opacity: 0.7 }}>▾</span>
+              </button>
+
+              {/* Custom Year Toggle Button */}
+              <button
+                type="button"
+                onClick={() => setViewMode((m) => (m === "years" ? "days" : "years"))}
+                style={{
+                  fontSize: 12.5,
+                  fontWeight: 700,
+                  border: `1px solid ${viewMode === "years" ? ACCENT : "#EAE8E2"}`,
+                  borderRadius: 8,
+                  padding: "5px 10px",
+                  background: viewMode === "years" ? "#EEF0FF" : "#F7F6F3",
+                  color: viewMode === "years" ? ACCENT : "#181A1F",
+                  cursor: "pointer",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 4,
+                  transition: "all 0.15s ease",
+                }}
+              >
+                <span>{year}</span>
+                <span style={{ fontSize: 9, opacity: 0.7 }}>▾</span>
+              </button>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                if (viewMode === "days") {
+                  setViewDate(new Date(year, month + 1, 1));
+                } else if (viewMode === "years") {
+                  setViewDate(new Date(year + 10, month, 1));
+                }
+              }}
+              style={{ background: "none", border: "none", cursor: "pointer", padding: 5, color: "#4A4E58", borderRadius: 6 }}
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6" /></svg>
             </button>
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 2, marginBottom: 4 }}>
-            {WEEKDAY_KEYS.map((wk) => (
-              <div key={wk} style={{ fontSize: 10.5, color: "#8A8D96", textAlign: "center", fontWeight: 700, padding: "4px 0" }}>{t(wk)}</div>
-            ))}
-          </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 2 }}>
-            {cells.map((day, i) => {
-              if (day === null) return <div key={i} />;
-              const cellStr = toLocalStr(new Date(year, month, day));
-              const isSelected = cellStr === value;
-              const isToday = cellStr === today;
-              return (
-                <button
-                  type="button"
-                  key={i}
-                  onClick={() => pick(day)}
-                  style={{
-                    width: 30, height: 30, borderRadius: 8, border: isToday && !isSelected ? `1px solid ${ACCENT}` : "none",
-                    background: isSelected ? ACCENT : "transparent", color: isSelected ? "#fff" : "#181A1F",
-                    fontSize: 12.5, fontWeight: isSelected ? 700 : 500, cursor: "pointer",
-                  }}
-                >
-                  {day}
-                </button>
-              );
-            })}
-          </div>
+
+          {/* VIEW: Months Selector Grid */}
+          {viewMode === "months" && (
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 6, padding: "6px 0 10px" }}>
+              {MONTH_KEYS.map((mk, idx) => {
+                const isCurr = idx === month;
+                return (
+                  <button
+                    key={mk}
+                    type="button"
+                    onClick={() => {
+                      setViewDate(new Date(year, idx, 1));
+                      setViewMode("days");
+                    }}
+                    style={{
+                      padding: "10px 4px",
+                      borderRadius: 8,
+                      border: "none",
+                      background: isCurr ? ACCENT : "#F7F6F3",
+                      color: isCurr ? "#fff" : "#181A1F",
+                      fontSize: 12,
+                      fontWeight: 700,
+                      cursor: "pointer",
+                      transition: "all 0.15s ease",
+                    }}
+                  >
+                    {t(mk)}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          {/* VIEW: Years Selector Grid */}
+          {viewMode === "years" && (
+            <div style={{ maxHeight: 210, overflowY: "auto", display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 6, padding: "4px 2px 10px" }}>
+              {YEARS.map((y) => {
+                const isCurr = y === year;
+                return (
+                  <button
+                    key={y}
+                    type="button"
+                    onClick={() => {
+                      setViewDate(new Date(y, month, 1));
+                      setViewMode("days");
+                    }}
+                    style={{
+                      padding: "8px 4px",
+                      borderRadius: 8,
+                      border: "none",
+                      background: isCurr ? ACCENT : "#F7F6F3",
+                      color: isCurr ? "#fff" : "#181A1F",
+                      fontSize: 12.5,
+                      fontWeight: 700,
+                      cursor: "pointer",
+                      transition: "all 0.15s ease",
+                    }}
+                  >
+                    {y}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          {/* VIEW: Normal Days Calendar */}
+          {viewMode === "days" && (
+            <>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 2, marginBottom: 4 }}>
+                {WEEKDAY_KEYS.map((wk) => (
+                  <div key={wk} style={{ fontSize: 10.5, color: "#8A8D96", textAlign: "center", fontWeight: 700, padding: "4px 0" }}>
+                    {t(wk)}
+                  </div>
+                ))}
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 3 }}>
+                {cells.map((day, i) => {
+                  if (day === null) return <div key={i} />;
+                  const cellStr = toLocalStr(new Date(year, month, day));
+                  const isSelected = cellStr === value;
+                  const isToday = cellStr === today;
+                  return (
+                    <button
+                      type="button"
+                      key={i}
+                      onClick={() => pick(day)}
+                      style={{
+                        width: 34,
+                        height: 34,
+                        borderRadius: 8,
+                        border: isToday && !isSelected ? `1.5px solid ${ACCENT}` : "none",
+                        background: isSelected ? ACCENT : "transparent",
+                        color: isSelected ? "#fff" : "#181A1F",
+                        fontSize: 12.5,
+                        fontWeight: isSelected ? 800 : 600,
+                        cursor: "pointer",
+                        transition: "all 0.12s ease",
+                      }}
+                    >
+                      {day}
+                    </button>
+                  );
+                })}
+              </div>
+            </>
+          )}
+
           <button
             type="button"
-            onClick={() => { onChange(""); setOpen(false); }}
-            style={{ marginTop: 10, width: "100%", background: "#F2F1EC", border: "none", borderRadius: 8, padding: "7px 0", fontSize: 12, fontWeight: 600, color: "#4A4E58", cursor: "pointer" }}
+            onClick={() => {
+              onChange("");
+              setOpen(false);
+              setViewMode("days");
+            }}
+            style={{
+              marginTop: 10,
+              width: "100%",
+              background: "#F2F1EC",
+              border: "none",
+              borderRadius: 8,
+              padding: "8px 0",
+              fontSize: 12,
+              fontWeight: 700,
+              color: "#4A4E58",
+              cursor: "pointer",
+            }}
           >
             {t("common.clear")}
           </button>

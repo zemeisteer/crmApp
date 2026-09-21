@@ -61,7 +61,20 @@ export default function MonthPicker({
         </svg>
       </button>
       {open && (
-        <div style={{ marginTop: 6, background: "#fff", border: "1px solid #EAE8E2", borderRadius: 12, padding: 14, boxShadow: "0 8px 24px rgba(18,19,26,0.1)" }}>
+        <div
+          style={{
+            position: "absolute",
+            top: "calc(100% + 6px)",
+            right: 0,
+            width: 250,
+            zIndex: 50,
+            background: "#fff",
+            border: "1px solid #EAE8E2",
+            borderRadius: 14,
+            padding: 14,
+            boxShadow: "0 12px 32px rgba(18,19,26,0.14)",
+          }}
+        >
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
             <button type="button" onClick={() => setViewYear((v) => v - 1)} style={{ background: "none", border: "none", cursor: "pointer", padding: 4, color: "#4A4E58" }}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>

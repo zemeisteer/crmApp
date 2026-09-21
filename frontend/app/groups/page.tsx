@@ -175,7 +175,7 @@ function GroupsContent() {
 
       <div style={{ flex: 1, minHeight: 0, padding: "26px 32px", overflow: "auto", boxSizing: "border-box" }}>
         {!loading && groups.length > 0 && (
-          <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
+          <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap", alignItems: "center" }}>
             <input
               className="field-input"
               placeholder={t("groups.searchPlaceholder")}
@@ -207,6 +207,7 @@ function GroupsContent() {
               <thead>
                 <tr>
                   <th style={{ paddingTop: 16 }}>{t("groups.colGroup")}</th>
+                  <th style={{ paddingTop: 16 }}>{t("teachers.colTeacher")}</th>
                   <th style={{ paddingTop: 16 }}>{t("groups.colSubject")}</th>
                   <th style={{ paddingTop: 16 }}>{t("groups.colBranch")}</th>
                   <th style={{ paddingTop: 16 }}>{t("groups.colSchedule")}</th>
@@ -219,11 +220,47 @@ function GroupsContent() {
                 {pageItems.map((g) => (
                   <tr key={g.id}>
                     <td style={{ fontWeight: 600 }}>{g.name}</td>
+                    <td>
+                      {g.teacher ? (
+                        <Link
+                          href={`/teachers/${g.teacher.id}`}
+                          style={{
+                            color: ACCENT,
+                            fontWeight: 600,
+                            textDecoration: "none",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 6,
+                          }}
+                        >
+                          <span
+                            style={{
+                              width: 24,
+                              height: 24,
+                              borderRadius: "50%",
+                              background: "#EEF0FF",
+                              color: ACCENT,
+                              display: "inline-flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              fontSize: 10.5,
+                              fontWeight: 700,
+                            }}
+                          >
+                            {g.teacher.fullName.slice(0, 2).toUpperCase()}
+                          </span>
+                          <span>{g.teacher.fullName}</span>
+                        </Link>
+                      ) : (
+                        <span style={{ color: "#A0A3AB", fontSize: 13 }}>—</span>
+                      )}
+                    </td>
                     <td>{g.subject}</td>
                     <td>{g.branch?.name || "—"}</td>
                     <td>{g.schedule || "—"}</td>
                     <td>{g.monthlyPrice ? `${new Intl.NumberFormat("uz-UZ").format(g.monthlyPrice)} ${t("common.sumUnit")}` : "—"}</td>
                     <td>{g.maxStudents}</td>
+
                     <td style={{ textAlign: "right" }}>
                       <Link
                         href={`/groups/${g.id}`}

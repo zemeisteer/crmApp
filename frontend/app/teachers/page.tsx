@@ -17,6 +17,35 @@ import { PHONE_PATTERN, PHONE_TITLE, NAME_PATTERN, NAME_TITLE } from "@/lib/vali
 const ACCENT = "#4F46E5";
 const OTHER_SUBJECT = "__OTHER__";
 
+const SUGGESTED_DIRECTIONS = [
+  "Ingliz tili (IELTS)",
+  "Ingliz tili (CEFR)",
+  "General English",
+  "Matematika",
+  "Fizika",
+  "Kimyo",
+  "Biologiya",
+  "Ona tili",
+  "Rus tili",
+  "IT / Dasturlash",
+  "Arab tili",
+  "Koreys tili",
+];
+
+function formatPhoneInput(val: string) {
+  const digits = val.replace(/\D/g, "");
+  if (!digits) return "";
+  let d = digits;
+  if (d.startsWith("998")) d = d.slice(3);
+  d = d.slice(0, 9);
+  let res = "+998";
+  if (d.length > 0) res += ` ${d.slice(0, 2)}`;
+  if (d.length > 2) res += ` ${d.slice(2, 5)}`;
+  if (d.length > 5) res += ` ${d.slice(5, 7)}`;
+  if (d.length > 7) res += ` ${d.slice(7, 9)}`;
+  return res;
+}
+
 function formatMoney(n: number) {
   return new Intl.NumberFormat("uz-UZ").format(n);
 }
@@ -36,19 +65,45 @@ function TeachersContent() {
   const [page, setPage] = useState(1);
 
   const [fullName, setFullName] = useState("");
-  const [subject, setSubject] = useState("");
-  const [customSubject, setCustomSubject] = useState("");
+  const [selectedDirections, setSelectedDirections] = useState<string[]>([]);
+  const [customDirection, setCustomDirection] = useState("");
   const [assignedGroupIds, setAssignedGroupIds] = useState<string[]>([]);
+  const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [birthDate, setBirthDate] = useState("");
   const [salaryType, setSalaryType] = useState("FIXED");
   const [salaryValue, setSalaryValue] = useState("");
 
   const usedSubjects = useMemo(() => Array.from(new Set(groups.map((g) => g.subject))).sort(), [groups]);
-  const unassignedGroupsInDirection = useMemo(
-    () => groups.filter((g) => !g.teacherId && (!subject || subject === OTHER_SUBJECT || g.subject === subject)),
-    [groups, subject],
-  );
+
+  const groupsForTeacherModal = useMemo(() => {
+    if (selectedDirections.length === 0) return groups;
+    return groups.filter((g) => {
+      const gSubject = (g.subject || "").toLowerCase().trim();
+      const gName = (g.name || "").toLowerCase().trim();
+      return selectedDirections.some((dir) => {
+        const d = dir.toLowerCase().trim();
+        if (gSubject.includes(d) || d.includes(gSubject)) return true;
+        if (d.includes("matem") && (gSubject.includes("matem") || gName.includes("matem"))) return true;
+        if (
+          (d.includes("ingliz") || d.includes("ielts") || d.includes("cefr") || d.includes("english")) &&
+          (gSubject.includes("ingliz") || gSubject.includes("ielts") || gSubject.includes("cefr") || gSubject.includes("english") || gName.includes("ielts") || gName.includes("cefr"))
+        ) {
+          return true;
+        }
+        if (d.includes("fizik") && gSubject.includes("fizik")) return true;
+        if (d.includes("kimyo") && gSubject.includes("kimyo")) return true;
+        if (d.includes("bio") && gSubject.includes("bio")) return true;
+        if ((d.includes("it") || d.includes("dastur")) && (gSubject.includes("it") || gSubject.includes("dastur"))) return true;
+        if (d.includes("ona tili") && gSubject.includes("ona tili")) return true;
+        if (d.includes("rus") && gSubject.includes("rus")) return true;
+        if (d.includes("arab") && gSubject.includes("arab")) return true;
+        if (d.includes("koreys") && gSubject.includes("koreys")) return true;
+        return false;
+      });
+    });
+  }, [groups, selectedDirections]);
+
 
   function load() {
     setLoading(true);
@@ -66,9 +121,10 @@ function TeachersContent() {
 
   function resetForm() {
     setFullName("");
-    setSubject("");
-    setCustomSubject("");
+    setSelectedDirections([]);
+    setCustomDirection("");
     setAssignedGroupIds([]);
+    setEmail("");
     setPhone("");
     setBirthDate("");
     setSalaryType("FIXED");
@@ -81,9 +137,14 @@ function TeachersContent() {
     setError(null);
     setSaving(true);
     try {
-      const effectiveSubject = subject === OTHER_SUBJECT ? customSubject : subject;
+      const allDirs = [...selectedDirections];
+      if (customDirection.trim() && !allDirs.includes(customDirection.trim())) {
+        allDirs.push(customDirection.trim());
+      }
+      const effectiveSubject = allDirs.join(", ");
       const teacher = await teachersApi.create({
         fullName,
+        email: email.trim() || undefined,
         subject: effectiveSubject || undefined,
         phone: phone || undefined,
         birthDate: birthDate || undefined,
@@ -273,33 +334,92 @@ function TeachersContent() {
               title={NAME_TITLE}
             />
           </Field>
-          <Field label={tr("teachers.fieldDirection")}>
-            <Select
-              options={[
-                { value: "", label: tr("groups.notSelected") },
-                ...usedSubjects.map((s) => ({ value: s, label: s })),
-                { value: OTHER_SUBJECT, label: tr("groups.otherSubject") },
-              ]}
-              value={subject}
-              onChange={(v) => { setSubject(v); setAssignedGroupIds([]); }}
-            />
-            {subject === OTHER_SUBJECT && (
+          <Field label={tr("teachers.fieldDirection") + " (bir nechta tanlash mumkin)"}>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 8 }}>
+              {Array.from(new Set([...SUGGESTED_DIRECTIONS, ...usedSubjects])).map((s) => {
+                const active = selectedDirections.includes(s);
+                return (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => {
+                      setSelectedDirections((prev) => (active ? prev.filter((x) => x !== s) : [...prev, s]));
+                    }}
+                    style={{
+                      fontSize: 12,
+                      fontWeight: 600,
+                      padding: "5px 10px",
+                      borderRadius: 8,
+                      cursor: "pointer",
+                      border: `1px solid ${active ? ACCENT : "#EAE8E2"}`,
+                      background: active ? "#EEF0FF" : "#fff",
+                      color: active ? ACCENT : "#4A4E58",
+                      transition: "all 0.15s ease",
+                    }}
+                  >
+                    {active ? "✓ " : "+ "}{s}
+                  </button>
+                );
+              })}
+            </div>
+            <div style={{ display: "flex", gap: 6 }}>
               <input
                 className="field-input"
-                required
-                value={customSubject}
-                onChange={(e) => setCustomSubject(e.target.value)}
-                placeholder={tr("groups.newDirectionPlaceholder")}
-                style={{ marginTop: 8 }}
+                value={customDirection}
+                onChange={(e) => setCustomDirection(e.target.value)}
+                placeholder="Boshqa yo'nalish yoki bo'lim (masalan: SAT, SAT Math)..."
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    if (customDirection.trim() && !selectedDirections.includes(customDirection.trim())) {
+                      setSelectedDirections((prev) => [...prev, customDirection.trim()]);
+                      setCustomDirection("");
+                    }
+                  }
+                }}
               />
-            )}
+              <button
+                type="button"
+                className="btn"
+                onClick={() => {
+                  if (customDirection.trim() && !selectedDirections.includes(customDirection.trim())) {
+                    setSelectedDirections((prev) => [...prev, customDirection.trim()]);
+                    setCustomDirection("");
+                  }
+                }}
+                style={{ background: "#F2F1EC", color: "#181A1F", fontSize: 12, fontWeight: 700, padding: "0 14px", borderRadius: 8, whiteSpace: "nowrap" }}
+              >
+                + Qo&apos;shish
+              </button>
+            </div>
           </Field>
-          <Field label={tr("teachers.fieldAssignedGroups")}>
+          <Field
+            label={`${tr("teachers.fieldAssignedGroups")}${selectedDirections.length > 0 ? ` (${selectedDirections.join(", ")} yo'nalishi)` : ""}`}
+          >
             <MultiSelect
-              options={unassignedGroupsInDirection.map((g) => ({ value: g.id, label: g.name }))}
+              options={groupsForTeacherModal.map((g) => ({
+                value: g.id,
+                label: g.teacher ? `${g.name} (${g.teacher.fullName})` : g.name,
+              }))}
               selected={assignedGroupIds}
               onChange={setAssignedGroupIds}
-              placeholder={tr("teachers.selectGroups")}
+              placeholder={
+                groups.length === 0
+                  ? "Markazda guruhlar mavjud emas"
+                  : selectedDirections.length > 0 && groupsForTeacherModal.length === 0
+                    ? "Tanlangan yo'nalish bo'yicha guruhlar mavjud emas"
+                    : tr("teachers.selectGroups")
+              }
+            />
+          </Field>
+
+          <Field label="Email">
+            <input
+              className="field-input"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="oqituvchi@example.uz"
             />
           </Field>
           <Field label={tr("teachers.fieldPhone")}>
@@ -307,10 +427,8 @@ function TeachersContent() {
               className="field-input"
               type="tel"
               value={phone}
-              onChange={(e) => setPhone(e.target.value)}
+              onChange={(e) => setPhone(formatPhoneInput(e.target.value))}
               placeholder="+998 90 123 45 67"
-              pattern={PHONE_PATTERN}
-              title={PHONE_TITLE}
             />
           </Field>
           <Field label={tr("teachers.fieldBirthDate")}>

@@ -57,7 +57,10 @@ function GroupDetailContent() {
   const [notFound, setNotFound] = useState(false);
 
   const [enrollOpen, setEnrollOpen] = useState(false);
+  const [enrollMode, setEnrollMode] = useState<"existing" | "new">("existing");
   const [enrollStudentId, setEnrollStudentId] = useState("");
+  const [newFullName, setNewFullName] = useState("");
+  const [newPhone, setNewPhone] = useState("");
   const [enrollError, setEnrollError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -156,9 +159,29 @@ function GroupDetailContent() {
     setEnrollError(null);
     setSaving(true);
     try {
-      await studentsApi.enroll(enrollStudentId, id);
+      if (enrollMode === "existing") {
+        if (!enrollStudentId) {
+          setEnrollError("Iltimos, o'quvchini tanlang");
+          setSaving(false);
+          return;
+        }
+        await studentsApi.enroll(enrollStudentId, id);
+      } else {
+        if (!newFullName.trim()) {
+          setEnrollError("Iltimos, o'quvchi ism-familiyasini kiriting");
+          setSaving(false);
+          return;
+        }
+        await studentsApi.create({
+          fullName: newFullName.trim(),
+          phone: newPhone.trim() || undefined,
+          groupId: id,
+        });
+      }
       setEnrollOpen(false);
       setEnrollStudentId("");
+      setNewFullName("");
+      setNewPhone("");
       load();
     } catch (err) {
       setEnrollError(err instanceof ApiError ? err.message : "Xatolik yuz berdi");
@@ -319,8 +342,10 @@ function GroupDetailContent() {
             <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 700, fontSize: 15 }}>{t("groupDetail.statStudents")}</div>
             <button
               className="btn"
-              onClick={() => setEnrollOpen(true)}
-              disabled={availableStudents.length === 0}
+              onClick={() => {
+                setEnrollMode(availableStudents.length > 0 ? "existing" : "new");
+                setEnrollOpen(true);
+              }}
               style={{ background: ACCENT, color: "#fff", border: "none", fontSize: 12.5, fontWeight: 700, padding: "8px 14px", borderRadius: 8 }}
             >
               {t("groupDetail.addStudent")}
@@ -375,26 +400,108 @@ function GroupDetailContent() {
         </div>
       </div>
 
-      <Modal open={enrollOpen} onClose={() => { setEnrollOpen(false); setEnrollStudentId(""); setEnrollError(null); }} title={t("groupDetail.modalTitle")}>
+      <Modal
+        open={enrollOpen}
+        onClose={() => {
+          setEnrollOpen(false);
+          setEnrollStudentId("");
+          setNewFullName("");
+          setNewPhone("");
+          setEnrollError(null);
+        }}
+        title={t("groupDetail.modalTitle")}
+      >
+        <div style={{ display: "flex", background: "#F2F1EC", borderRadius: 9, padding: 3, marginBottom: 16 }}>
+          <button
+            type="button"
+            onClick={() => setEnrollMode("existing")}
+            disabled={availableStudents.length === 0}
+            style={{
+              flex: 1,
+              fontSize: 12,
+              fontWeight: 700,
+              padding: "7px 10px",
+              borderRadius: 7,
+              cursor: availableStudents.length === 0 ? "not-allowed" : "pointer",
+              border: "none",
+              opacity: availableStudents.length === 0 ? 0.45 : 1,
+              background: enrollMode === "existing" ? "#fff" : "transparent",
+              color: enrollMode === "existing" ? "#181A1F" : "#8A8D96",
+              boxShadow: enrollMode === "existing" ? "0 1px 3px rgba(18,19,26,0.08)" : "none",
+            }}
+          >
+            Mavjud o&apos;quvchi ({availableStudents.length})
+          </button>
+          <button
+            type="button"
+            onClick={() => setEnrollMode("new")}
+            style={{
+              flex: 1,
+              fontSize: 12,
+              fontWeight: 700,
+              padding: "7px 10px",
+              borderRadius: 7,
+              cursor: "pointer",
+              border: "none",
+              background: enrollMode === "new" ? "#fff" : "transparent",
+              color: enrollMode === "new" ? "#181A1F" : "#8A8D96",
+              boxShadow: enrollMode === "new" ? "0 1px 3px rgba(18,19,26,0.08)" : "none",
+            }}
+          >
+            + Yangi o&apos;quvchi
+          </button>
+        </div>
+
         <form onSubmit={onEnroll} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           {enrollError && (
             <div style={{ background: "#FDEBEC", color: "#B23A47", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: 10 }}>{enrollError}</div>
           )}
-          <div>
-            <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>{t("groupDetail.studentField")}</div>
-            <Select
-              options={[{ value: "", label: t("groups.selectPlaceholder") }, ...availableStudents.map((s) => ({ value: s.id, label: s.fullName }))]}
-              value={enrollStudentId}
-              onChange={setEnrollStudentId}
-            />
-          </div>
+
+          {enrollMode === "existing" ? (
+            <div>
+              <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>{t("groupDetail.studentField")}</div>
+              <Select
+                options={[{ value: "", label: t("groups.selectPlaceholder") }, ...availableStudents.map((s) => ({ value: s.id, label: s.fullName }))]}
+                value={enrollStudentId}
+                onChange={setEnrollStudentId}
+              />
+            </div>
+          ) : (
+            <>
+              {availableStudents.length === 0 && (
+                <div style={{ background: "#EEF0FF", color: ACCENT, fontSize: 12.5, fontWeight: 600, padding: "10px 12px", borderRadius: 10, lineHeight: 1.4 }}>
+                  Markazdagi barcha o&apos;quvchilar bu guruhga allaqachon biriktirilgan. Quyida yangi o&apos;quvchi kiritsangiz, u avtomatik shu guruhga qo&apos;shiladi:
+                </div>
+              )}
+              <div>
+                <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>{t("students.fieldFullName")} *</div>
+                <input
+                  className="field-input"
+                  placeholder="Masalan: Dilshod Alimov"
+                  value={newFullName}
+                  onChange={(e) => setNewFullName(e.target.value)}
+                  required
+                />
+              </div>
+              <div>
+                <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>{t("students.fieldPhone")}</div>
+                <input
+                  className="field-input"
+                  placeholder="+998901234567"
+                  value={newPhone}
+                  onChange={(e) => setNewPhone(e.target.value)}
+                />
+              </div>
+            </>
+          )}
+
           <button
             className="btn"
             type="submit"
             disabled={saving}
             style={{ background: ACCENT, color: "#fff", fontSize: 14, fontWeight: 700, padding: 12, borderRadius: 10, marginTop: 6 }}
           >
-            {saving ? t("groupDetail.savingAttendance") : t("common.add")}
+            {saving ? t("groupDetail.savingAttendance") : enrollMode === "new" ? "+ Yangi o'quvchini qo'shish" : t("common.add")}
           </button>
         </form>
       </Modal>

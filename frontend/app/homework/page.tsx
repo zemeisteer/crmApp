@@ -8,7 +8,7 @@ import BarChart from "@/components/BarChart";
 import Pagination, { usePagedSlice } from "@/components/Pagination";
 import Select from "@/components/Select";
 import DatePicker from "@/components/DatePicker";
-import { homeworkApi, groupsApi, Homework, Group, ApiError, fileUrl } from "@/lib/api";
+import { homeworkApi, groupsApi, aiApi, Homework, Group, ApiError, fileUrl } from "@/lib/api";
 import { useLanguage } from "@/lib/i18n-context";
 
 const ACCENT = "#4F46E5";
@@ -80,6 +80,9 @@ function HomeworkContent() {
   const [dueDate, setDueDate] = useState("");
   const [file, setFile] = useState<File | null>(null);
 
+  const [aiSuggesting, setAiSuggesting] = useState(false);
+  const [aiSuggestion, setAiSuggestion] = useState<{ title: string; description: string; dueDate?: string } | null>(null);
+
   const [filterDirection, setFilterDirection] = useState("");
   const [filterGroupId, setFilterGroupId] = useState("");
   const [search, setSearch] = useState("");
@@ -108,8 +111,50 @@ function HomeworkContent() {
     setDescription("");
     setDueDate("");
     setFile(null);
+    setAiSuggestion(null);
+    setAiSuggesting(false);
     setError(null);
   }
+
+  async function onGetAiSuggestion() {
+    setAiSuggesting(true);
+    setError(null);
+    try {
+      const selectedGroup = groupIds.length > 0 ? groups.find((g) => g.id === groupIds[0]) : undefined;
+      const effectiveSubject = selectedGroup?.subject || formDirection || "Ingliz tili";
+      const res = await aiApi.suggestHomework({
+        subject: effectiveSubject,
+        groupName: selectedGroup?.name,
+        topic: title || undefined,
+      });
+
+      let calculatedDue = dueDate;
+      if (!calculatedDue && res.dueDays) {
+        const d = new Date();
+        d.setDate(d.getDate() + res.dueDays);
+        calculatedDue = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      }
+
+      setAiSuggestion({
+        title: res.title,
+        description: res.description,
+        dueDate: calculatedDue,
+      });
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "AI tavsiya olishda xatolik yuz berdi");
+    } finally {
+      setAiSuggesting(false);
+    }
+  }
+
+  function applyAiSuggestion() {
+    if (!aiSuggestion) return;
+    setTitle(aiSuggestion.title);
+    setDescription(aiSuggestion.description);
+    if (aiSuggestion.dueDate) setDueDate(aiSuggestion.dueDate);
+    setAiSuggestion(null);
+  }
+
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -345,14 +390,94 @@ function HomeworkContent() {
             <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>{t("homework.fieldAttachment")}</div>
             <input className="field-input" type="file" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
           </div>
-          <button
-            className="btn"
-            type="submit"
-            disabled={saving}
-            style={{ background: ACCENT, color: "#fff", fontSize: 14, fontWeight: 700, padding: 12, borderRadius: 10, marginTop: 6 }}
-          >
-            {saving ? t("homework.adding") : t("homework.assign")}
-          </button>
+          {aiSuggestion && (
+            <div
+              style={{
+                background: "#F7F6FF",
+                border: "1px solid #D7D3F8",
+                borderRadius: 12,
+                padding: 14,
+                display: "flex",
+                flexDirection: "column",
+                gap: 8,
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 700, color: ACCENT }}>
+                  <span>✨ AI Tavsiya:</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setAiSuggestion(null)}
+                  style={{ background: "none", border: "none", color: "#8A8D96", cursor: "pointer", fontSize: 16, lineHeight: 1 }}
+                >
+                  ✕
+                </button>
+              </div>
+              <div style={{ fontSize: 13.5, fontWeight: 700, color: "#181A1F" }}>{aiSuggestion.title}</div>
+              <div style={{ fontSize: 12.5, color: "#4A4E58", whiteSpace: "pre-line", lineHeight: 1.5 }}>
+                {aiSuggestion.description}
+              </div>
+              {aiSuggestion.dueDate && (
+                <div style={{ fontSize: 11.5, color: "#8A8D96" }}>Tavsiya muddati: {aiSuggestion.dueDate}</div>
+              )}
+              <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
+                <button
+                  type="button"
+                  className="btn"
+                  onClick={applyAiSuggestion}
+                  style={{ background: ACCENT, color: "#fff", border: "none", fontSize: 12, fontWeight: 700, padding: "8px 14px", borderRadius: 8 }}
+                >
+                  ✅ Ushbu tavsiyani to&apos;ldirish
+                </button>
+                <button
+                  type="button"
+                  className="btn"
+                  onClick={onGetAiSuggestion}
+                  disabled={aiSuggesting}
+                  style={{ background: "#fff", color: ACCENT, border: `1px solid ${ACCENT}`, fontSize: 12, fontWeight: 700, padding: "8px 14px", borderRadius: 8 }}
+                >
+                  🔄 Boshqa tavsiya
+                </button>
+              </div>
+            </div>
+          )}
+
+          <div style={{ display: "flex", gap: 10, marginTop: 6 }}>
+            <button
+              className="btn"
+              type="button"
+              onClick={onGetAiSuggestion}
+              disabled={aiSuggesting || saving}
+              style={{
+                background: "linear-gradient(135deg, #7C3AED, #4F46E5)",
+                color: "#fff",
+                fontSize: 13.5,
+                fontWeight: 700,
+                padding: "12px 16px",
+                borderRadius: 10,
+                border: "none",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 6,
+                cursor: "pointer",
+                whiteSpace: "nowrap",
+              }}
+            >
+              <span>✨</span>
+              <span>{aiSuggesting ? "Olinmoqda..." : "AI Suggestions"}</span>
+            </button>
+            <button
+              className="btn"
+              type="submit"
+              disabled={saving}
+              style={{ flex: 1, background: ACCENT, color: "#fff", fontSize: 14, fontWeight: 700, padding: 12, borderRadius: 10 }}
+            >
+              {saving ? t("homework.adding") : t("homework.assign")}
+            </button>
+          </div>
+
         </form>
       </Modal>
 

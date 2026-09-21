@@ -112,26 +112,72 @@ function DashboardContent() {
     }).length;
   }, [students, payments, currentMonth]);
 
-  const activityChart = useMemo(() => {
+  const { chartData, defaultActiveIdx } = useMemo(() => {
+    const now = new Date();
     if (activityPeriod === "week") {
-      const now = new Date();
       const start = new Date(now);
-      start.setDate(now.getDate() - now.getDay() + 1);
-      return Array.from({ length: 7 }, (_, i) => {
+      const dayOffset = (now.getDay() + 6) % 7; // Monday-first
+      start.setDate(now.getDate() - dayOffset);
+      const items = Array.from({ length: 7 }, (_, i) => {
         const d = new Date(start);
         d.setDate(start.getDate() + i);
         const dayStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-        return { label: t(WEEKDAY_SHORT_KEYS[d.getDay()]), value: attendance.filter((a) => a.date === dayStr).length };
+        return {
+          label: t(WEEKDAY_SHORT_KEYS[d.getDay()]),
+          value: attendance.filter((a) => a.date === dayStr).length,
+          isCurrent: d.toDateString() === now.toDateString(),
+        };
       });
+      const currIdx = items.findIndex((it) => it.isCurrent);
+      return { chartData: items, defaultActiveIdx: currIdx >= 0 ? currIdx : 0 };
     }
+
     if (activityPeriod === "day") {
-      const dayStr = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}-${String(new Date().getDate()).padStart(2, "0")}`;
-      const hours = ["06-12", "12-15", "15-18", "18-21", "21-24"];
-      return hours.map((h) => ({ label: h, value: attendance.filter((a) => a.date === dayStr).length / hours.length }));
+      const dayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+      const dayRecords = attendance.filter((a) => a.date === dayStr);
+      // Realistic study hours in educational centers
+      const slots = [
+        { label: "08:00 - 10:00", startH: 8, endH: 10 },
+        { label: "10:00 - 12:00", startH: 10, endH: 12 },
+        { label: "14:00 - 16:00", startH: 14, endH: 16 },
+        { label: "16:00 - 18:00", startH: 16, endH: 18 },
+        { label: "18:00 - 20:00", startH: 18, endH: 20 },
+      ];
+
+      const currentHour = now.getHours();
+      let currIdx = 0;
+      if (currentHour < 10) currIdx = 0;
+      else if (currentHour < 12) currIdx = 1;
+      else if (currentHour < 16) currIdx = 2;
+      else if (currentHour < 18) currIdx = 3;
+      else currIdx = 4;
+
+      const items = slots.map((s, idx) => {
+        const count = dayRecords.length > 0 ? Math.round(dayRecords.length / slots.length) : 0;
+        return {
+          label: s.label,
+          value: count,
+          isCurrent: idx === currIdx,
+        };
+      });
+
+      return { chartData: items, defaultActiveIdx: currIdx };
     }
-    const months = Array.from({ length: 6 }, (_, i) => localMonthStr(new Date(new Date().getFullYear(), new Date().getMonth() - (5 - i), 1)));
-    return months.map((m) => ({ label: m.slice(5), value: attendance.filter((a) => a.date.startsWith(m)).length }));
+
+    // Month
+    const months = Array.from({ length: 6 }, (_, i) =>
+      localMonthStr(new Date(now.getFullYear(), now.getMonth() - (5 - i), 1)),
+    );
+    const currMonthStr = localMonthStr(now);
+    const items = months.map((m) => ({
+      label: m.slice(5),
+      value: attendance.filter((a) => a.date.startsWith(m)).length,
+      isCurrent: m === currMonthStr,
+    }));
+    const currIdx = items.findIndex((it) => it.isCurrent);
+    return { chartData: items, defaultActiveIdx: currIdx >= 0 ? currIdx : items.length - 1 };
   }, [attendance, activityPeriod, t]);
+
 
   const attendanceRate = useMemo(() => {
     const scoped =
@@ -237,7 +283,7 @@ function DashboardContent() {
                     options={[{ key: "day", label: t("dashboard.periodDay") }, { key: "week", label: t("dashboard.periodWeek") }, { key: "month", label: t("dashboard.periodMonth") }]}
                   />
                 </div>
-                <BarChartInline data={activityChart} />
+                <BarChartInline data={chartData} defaultActiveIdx={defaultActiveIdx} />
               </div>
               <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 20, display: "flex", flexDirection: "column" }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
@@ -289,27 +335,150 @@ function DashboardContent() {
   );
 }
 
-function BarChartInline({ data }: { data: { label: string; value: number }[] }) {
+function BarChartInline({
+  data,
+  defaultActiveIdx = 0,
+}: {
+  data: { label: string; value: number }[];
+  defaultActiveIdx?: number;
+}) {
+  const { t } = useLanguage();
+  const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
+  const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
+
+  // If user cleared or haven't clicked, activeIdx defaults to current day/hour
+  const activeIdx = selectedIdx !== null ? selectedIdx : defaultActiveIdx;
   const max = Math.max(1, ...data.map((d) => d.value));
-  const highestIdx = data.reduce((best, d, i) => (d.value > data[best].value ? i : best), 0);
+  const activeItem = data[activeIdx] || data[0];
+
   return (
-    <div style={{ display: "flex", alignItems: "flex-end", gap: 10, height: 160 }}>
-      {data.map((d, i) => (
-        <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+      {/* Corner badge for active bar */}
+      <div style={{ minHeight: 26, display: "flex", alignItems: "center", justifyContent: "flex-end" }}>
+        {activeItem ? (
           <div
             style={{
-              width: "100%",
-              height: Math.max(4, (d.value / max) * 110),
-              background: i === highestIdx && d.value > 0 ? ACCENT : "#ECEBFB",
-              borderRadius: 6,
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 8,
+              background: "#EEF0FF",
+              color: ACCENT,
+              border: "1px solid rgba(79, 70, 229, 0.25)",
+              borderRadius: 8,
+              padding: "4px 10px",
+              fontSize: 12,
+              fontWeight: 700,
             }}
-          />
-          <div style={{ fontSize: 11.5, color: "#8A8D96", fontWeight: 600 }}>{d.label}</div>
-        </div>
-      ))}
+          >
+            <span>
+              {activeItem.label}: <strong>{activeItem.value}</strong> {t("groupDetail.colAttendance").toLowerCase()}
+              {selectedIdx === null && (
+                <span style={{ fontSize: 11, opacity: 0.8, marginLeft: 4 }}>
+                  (hozirgi)
+                </span>
+              )}
+            </span>
+            {selectedIdx !== null && (
+              <button
+                type="button"
+                onClick={() => setSelectedIdx(null)}
+                style={{
+                  background: "transparent",
+                  border: "none",
+                  color: ACCENT,
+                  cursor: "pointer",
+                  padding: "0 2px",
+                  fontSize: 13,
+                  fontWeight: 800,
+                  lineHeight: 1,
+                }}
+                title={t("common.clear")}
+              >
+                ✕
+              </button>
+            )}
+          </div>
+        ) : (
+          <span style={{ fontSize: 11, color: "#A0A3AB" }}>&nbsp;</span>
+        )}
+      </div>
+
+      <div style={{ display: "flex", alignItems: "flex-end", gap: 10, height: 135, position: "relative" }}>
+        {data.map((d, i) => {
+          const isActive = activeIdx === i;
+          const isHovered = hoveredIdx === i;
+          const barHeight = Math.max(6, (d.value / max) * 95);
+
+          return (
+            <div
+              key={i}
+              onClick={() => setSelectedIdx(i)}
+              onMouseEnter={() => setHoveredIdx(i)}
+              onMouseLeave={() => setHoveredIdx(null)}
+              style={{
+                flex: 1,
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                gap: 8,
+                cursor: "pointer",
+                position: "relative",
+                userSelect: "none",
+              }}
+            >
+              {/* Floating tooltip on hover */}
+              {isHovered && !isActive && (
+                <div
+                  style={{
+                    position: "absolute",
+                    bottom: barHeight + 32,
+                    background: "#181A1F",
+                    color: "#fff",
+                    fontSize: 11,
+                    fontWeight: 700,
+                    padding: "4px 8px",
+                    borderRadius: 6,
+                    whiteSpace: "nowrap",
+                    zIndex: 20,
+                    boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+                    pointerEvents: "none",
+                  }}
+                >
+                  {d.label}: {d.value}
+                </div>
+              )}
+
+              <div
+                style={{
+                  width: "100%",
+                  height: barHeight,
+                  background: isActive ? ACCENT : isHovered ? "#D7D5FA" : "#ECEBFB",
+                  borderRadius: 6,
+                  transition: "background 0.18s ease, transform 0.18s ease",
+                  transform: isHovered || isActive ? "scaleY(1.03)" : "scaleY(1)",
+                  transformOrigin: "bottom",
+                }}
+              />
+              <div
+                style={{
+                  fontSize: 11,
+                  color: isActive ? ACCENT : "#8A8D96",
+                  fontWeight: isActive ? 800 : 600,
+                  transition: "color 0.18s",
+                  textAlign: "center",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {d.label}
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
+
 
 function StatCard({ label, value, danger }: { label: string; value: string; danger?: boolean }) {
   return (

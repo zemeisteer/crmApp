@@ -164,7 +164,7 @@ function StudentsContent() {
           </div>
         )}
         {!loading && students.length > 0 && (
-          <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
+          <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap", alignItems: "center" }}>
             <input
               className="field-input"
               placeholder={t("students.searchPlaceholder")}

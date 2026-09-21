@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { useAuth } from "./auth-context";
 import { Lang, TranslationKey, translate } from "./i18n";
 
@@ -26,10 +26,14 @@ function readStoredLang(): Lang | null {
 
 export function LanguageProvider({ children }: { children: ReactNode }) {
   const { tenant } = useAuth();
-  // Local, per-browser choice (e.g. picked on the login page before any
-  // tenant is known) always wins over the tenant's saved preference — once
-  // set, manualLang short-circuits the tenant-derived fallback below.
-  const [manualLang, setManualLang] = useState<Lang | null>(() => readStoredLang());
+  // Initialize to null so initial client render matches SSR ("UZ" fallback)
+  // preventing hydration mismatch, then load localStorage in useEffect.
+  const [manualLang, setManualLang] = useState<Lang | null>(null);
+
+  useEffect(() => {
+    const stored = readStoredLang();
+    if (stored) setManualLang(stored);
+  }, []);
 
   const lang = manualLang ?? tenant?.language ?? "UZ";
 

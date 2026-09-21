@@ -53,7 +53,21 @@ export default function TimePicker({
         </svg>
       </button>
       {open && (
-        <div style={{ marginTop: 6, background: "#fff", border: "1px solid #EAE8E2", borderRadius: 12, boxShadow: "0 8px 24px rgba(18,19,26,0.1)", display: "flex", overflow: "hidden" }}>
+        <div
+          style={{
+            position: "absolute",
+            top: "calc(100% + 6px)",
+            left: 0,
+            width: 200,
+            zIndex: 50,
+            background: "#fff",
+            border: "1px solid #EAE8E2",
+            borderRadius: 12,
+            boxShadow: "0 12px 32px rgba(18,19,26,0.14)",
+            display: "flex",
+            overflow: "hidden",
+          }}
+        >
           <div style={{ flex: 1, maxHeight: 200, overflow: "auto", borderRight: "1px solid #F1F0EC" }}>
             {HOURS.map((hour) => (
               <button

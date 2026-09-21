@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import DashboardShell from "@/components/DashboardShell";
 import Modal from "@/components/Modal";
 import Select from "@/components/Select";
+import DatePicker from "@/components/DatePicker";
 import { teachersApi, groupsApi, paymentsApi, salaryApi, Teacher, Group, Student, Payment, SalaryPayment, ApiError } from "@/lib/api";
 import { localMonthStr } from "@/lib/date";
 import { useLanguage } from "@/lib/i18n-context";
@@ -50,6 +51,7 @@ function TeacherDetailContent() {
   const [subject, setSubject] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
+  const [birthDate, setBirthDate] = useState("");
   const [salaryType, setSalaryType] = useState("FIXED");
   const [salaryValue, setSalaryValue] = useState("");
   const [editError, setEditError] = useState<string | null>(null);
@@ -79,6 +81,103 @@ function TeacherDetailContent() {
 
   useEffect(load, [id]);
 
+  const month = currentMonth();
+
+  function groupRevenue(g: FullGroup) {
+    const enrolled = g.enrollments || [];
+    return enrolled.reduce((sum, e) => {
+      const paid = payments.some((p) => p.studentId === e.student.id && p.forMonth === month && p.status === "PAID");
+      return paid ? sum + (g.monthlyPrice || 0) : sum;
+    }, 0);
+  }
+
+  const totalRevenue = fullGroups.reduce((sum, g) => sum + groupRevenue(g), 0);
+  const totalStudents = fullGroups.reduce((sum, g) => sum + (g.enrollments?.length || 0), 0);
+
+  const calculatedSalary =
+    teacher?.salaryType === "PERCENT"
+      ? Math.round((totalRevenue * (teacher?.salaryValue || 0)) / 100)
+      : teacher?.salaryValue || 0;
+
+  const daysOfWeekUz = ["Yakshanba", "Dushanba", "Seshanba", "Chorshanba", "Payshanba", "Juma", "Shanba"];
+  const todayWeekdayIndex = new Date().getDay();
+  const todayWeekday = daysOfWeekUz[todayWeekdayIndex];
+
+  const lessonsStats = useMemo(() => {
+    let daily = 0;
+    let weekly = 0;
+
+    const weekdayShort = [
+      ["yak", "sun"],
+      ["dush", "mon"],
+      ["sesh", "tue"],
+      ["chor", "wed"],
+      ["pay", "thu"],
+      ["jum", "fri"],
+      ["shan", "sat"],
+    ];
+
+    const todayTokens = weekdayShort[todayWeekdayIndex];
+
+    for (const g of fullGroups) {
+      const sch = (g.schedule || "").toLowerCase();
+      let groupWeekly = 0;
+      if (sch.includes("har kuni") || sch.includes("every day")) {
+        groupWeekly = 6;
+      } else if (sch.includes("toq") || sch.includes("juft")) {
+        groupWeekly = 3;
+      } else {
+        for (const [uz, en] of weekdayShort) {
+          if (sch.includes(uz) || sch.includes(en)) groupWeekly++;
+        }
+        if (groupWeekly === 0) groupWeekly = 3;
+      }
+
+      weekly += groupWeekly;
+
+      if (sch.includes("har kuni") || todayTokens.some((t) => sch.includes(t))) {
+        daily += 1;
+      } else if ((sch.includes("toq") && [1, 3, 5].includes(todayWeekdayIndex)) || (sch.includes("juft") && [2, 4, 6].includes(todayWeekdayIndex))) {
+        daily += 1;
+      }
+    }
+
+    return {
+      daily,
+      weekly,
+      monthly: weekly * 4,
+    };
+  }, [fullGroups, todayWeekdayIndex]);
+
+  const teacherAge = useMemo(() => {
+    if (!teacher?.birthDate) return null;
+    const b = new Date(teacher.birthDate);
+    if (isNaN(b.getTime())) return null;
+    const now = new Date();
+    let age = now.getFullYear() - b.getFullYear();
+    const m = now.getMonth() - b.getMonth();
+    if (m < 0 || (m === 0 && now.getDate() < b.getDate())) {
+      age--;
+    }
+    const formatted = b.toLocaleDateString(lang === "UZ" ? "uz-UZ" : lang === "RU" ? "ru-RU" : "en-US", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
+    return { age, formatted, year: b.getFullYear() };
+  }, [teacher?.birthDate, lang]);
+
+  const startedDateFormatted = useMemo(() => {
+    if (!teacher?.createdAt) return "—";
+    const d = new Date(teacher.createdAt);
+    if (isNaN(d.getTime())) return "—";
+    return d.toLocaleDateString(lang === "UZ" ? "uz-UZ" : lang === "RU" ? "ru-RU" : "en-US", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
+  }, [teacher?.createdAt, lang]);
+
   if (loading) {
     return <div style={{ padding: 32, color: "#8A8D96", fontSize: 14 }}>{t("common.loading")}</div>;
   }
@@ -96,29 +195,14 @@ function TeacherDetailContent() {
     );
   }
 
-  const month = currentMonth();
 
-  function groupRevenue(g: FullGroup) {
-    const enrolled = g.enrollments || [];
-    return enrolled.reduce((sum, e) => {
-      const paid = payments.some((p) => p.studentId === e.student.id && p.forMonth === month && p.status === "PAID");
-      return paid ? sum + (g.monthlyPrice || 0) : sum;
-    }, 0);
-  }
-
-  const totalRevenue = fullGroups.reduce((sum, g) => sum + groupRevenue(g), 0);
-  const totalStudents = fullGroups.reduce((sum, g) => sum + (g.enrollments?.length || 0), 0);
-
-  const calculatedSalary =
-    teacher.salaryType === "PERCENT"
-      ? Math.round((totalRevenue * (teacher.salaryValue || 0)) / 100)
-      : teacher.salaryValue || 0;
 
   function openEdit() {
     setFullName(teacher!.fullName);
     setSubject(teacher!.subject || "");
     setPhone(teacher!.phone || "");
     setEmail(teacher!.email || "");
+    setBirthDate(teacher!.birthDate ? String(teacher!.birthDate).slice(0, 10) : "");
     setSalaryType(teacher!.salaryType || "FIXED");
     setSalaryValue(teacher!.salaryValue != null ? String(teacher!.salaryValue) : "");
     setEditError(null);
@@ -135,6 +219,7 @@ function TeacherDetailContent() {
         subject: subject || undefined,
         phone: phone || undefined,
         email: email || undefined,
+        birthDate: birthDate || undefined,
         salaryType: salaryValue ? salaryType : undefined,
         salaryValue: salaryValue ? Number(salaryValue) : undefined,
       });
@@ -259,11 +344,47 @@ function TeacherDetailContent() {
           </div>
         </div>
 
+        {/* Dars yuklamasi statistikasi */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0,1fr))", gap: 16 }}>
+          <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 14, padding: "16px 18px", display: "flex", alignItems: "center", gap: 14 }}>
+            <div style={{ width: 44, height: 44, borderRadius: 10, background: "#EEF0FF", color: ACCENT, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20 }}>
+              📅
+            </div>
+            <div>
+              <div style={{ fontSize: 12, color: "#8A8D96", fontWeight: 600 }}>Bugungi darslar ({todayWeekday})</div>
+              <div style={{ fontSize: 20, fontWeight: 800, fontFamily: "'Manrope', sans-serif", color: "#181A1F" }}>{lessonsStats.daily} ta dars</div>
+            </div>
+          </div>
+          <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 14, padding: "16px 18px", display: "flex", alignItems: "center", gap: 14 }}>
+            <div style={{ width: 44, height: 44, borderRadius: 10, background: "#EBF8F2", color: "#1FA463", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20 }}>
+              🗓️
+            </div>
+            <div>
+              <div style={{ fontSize: 12, color: "#8A8D96", fontWeight: 600 }}>Haftalik darslar soni</div>
+              <div style={{ fontSize: 20, fontWeight: 800, fontFamily: "'Manrope', sans-serif", color: "#181A1F" }}>{lessonsStats.weekly} ta dars</div>
+            </div>
+          </div>
+          <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 14, padding: "16px 18px", display: "flex", alignItems: "center", gap: 14 }}>
+            <div style={{ width: 44, height: 44, borderRadius: 10, background: "#FFF6E5", color: "#F59E0B", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20 }}>
+              ⏳
+            </div>
+            <div>
+              <div style={{ fontSize: 12, color: "#8A8D96", fontWeight: 600 }}>Oylik darslar (taxminiy)</div>
+              <div style={{ fontSize: 20, fontWeight: 800, fontFamily: "'Manrope', sans-serif", color: "#181A1F" }}>{lessonsStats.monthly} ta dars</div>
+            </div>
+          </div>
+        </div>
+
         <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 20 }}>
           <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 700, fontSize: 15, marginBottom: 14 }}>{t("teacherDetail.aboutTeacher")}</div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0,1fr))", gap: "18px 16px" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0,1fr))", gap: "18px 16px" }}>
             <InfoField label={t("teacherDetail.email")} value={teacher.email || "—"} />
             <InfoField label={t("teacherDetail.phone")} value={teacher.phone || "—"} />
+            <InfoField
+              label="Tug'ilgan sana va yoshi"
+              value={teacherAge ? `${teacherAge.formatted} (${teacherAge.age} yosh)` : "—"}
+            />
+            <InfoField label="Ish boshlagan sana" value={startedDateFormatted} />
             <InfoField
               label={t("teacherDetail.salaryTypeField")}
               value={teacher.salaryType === "PERCENT" ? t("teachers.salaryPercent") : t("teachers.salaryFixed")}
@@ -357,6 +478,9 @@ function TeacherDetailContent() {
           </Field>
           <Field label={t("teacherDetail.fieldEmail")}>
             <input className="field-input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+          </Field>
+          <Field label="Tug'ilgan sana">
+            <DatePicker value={birthDate} onChange={setBirthDate} />
           </Field>
           <Field label={t("teachers.fieldSalaryType")}>
             <Select
