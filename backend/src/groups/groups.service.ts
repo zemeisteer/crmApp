@@ -106,4 +106,38 @@ export class GroupsService {
     this.audit.log({ tenantId, userId, action: 'restore', entityType: 'group', entityId: id });
     return group;
   }
+
+  // Advisory-only: a teacher can't physically teach two groups at the same
+  // day+time, but groups don't carry a lesson duration, so this can only
+  // compare exact day/time matches — it's surfaced to the admin as a
+  // warning, never blocks saving.
+  async findScheduleConflicts(
+    tenantId: string,
+    teacherId: string,
+    scheduleDays: string,
+    startTime: string,
+    excludeGroupId?: string,
+  ) {
+    const days = new Set(
+      scheduleDays
+        .split(',')
+        .map((d) => d.trim())
+        .filter(Boolean),
+    );
+    if (days.size === 0 || !startTime) return [];
+
+    const candidates = await this.db.query.groups.findMany({
+      where: and(
+        eq(groups.tenantId, tenantId),
+        eq(groups.teacherId, teacherId),
+        eq(groups.startTime, startTime),
+        isNull(groups.deletedAt),
+      ),
+    });
+
+    return candidates
+      .filter((g) => g.id !== excludeGroupId)
+      .filter((g) => (g.scheduleDays ?? '').split(',').some((d) => days.has(d.trim())))
+      .map((g) => ({ id: g.id, name: g.name, scheduleDays: g.scheduleDays, startTime: g.startTime }));
+  }
 }

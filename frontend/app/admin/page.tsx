@@ -91,6 +91,15 @@ function AdminContent() {
     }
   }
 
+  function resetCreateForm() {
+    setName("");
+    setSubdomain("");
+    setAdminEmail("");
+    setAdminPassword("");
+    setAdminFullName("");
+    setCreateError(null);
+  }
+
   async function onCreate(e: React.FormEvent) {
     e.preventDefault();
     setCreateError(null);
@@ -98,11 +107,7 @@ function AdminContent() {
     try {
       await tenantsApi.create({ name, subdomain, adminEmail, adminPassword, adminFullName });
       setCreateOpen(false);
-      setName("");
-      setSubdomain("");
-      setAdminEmail("");
-      setAdminPassword("");
-      setAdminFullName("");
+      resetCreateForm();
       load();
     } catch (err) {
       setCreateError(err instanceof ApiError ? err.message : "Xatolik yuz berdi");
@@ -218,7 +223,7 @@ function AdminContent() {
         )}
       </div>
 
-      <Modal open={createOpen} onClose={() => setCreateOpen(false)} title={t("admin.modalTitle")}>
+      <Modal open={createOpen} onClose={() => { setCreateOpen(false); resetCreateForm(); }} title={t("admin.modalTitle")}>
         <form onSubmit={onCreate} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           {createError && (
             <div style={{ background: "#FDEBEC", color: "#B23A47", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: 10 }}>{createError}</div>

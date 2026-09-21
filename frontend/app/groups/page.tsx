@@ -49,6 +49,22 @@ function GroupsContent() {
   const [maxStudents, setMaxStudents] = useState("");
   const [durationMonths, setDurationMonths] = useState("");
   const [description, setDescription] = useState("");
+  const [scheduleConflicts, setScheduleConflicts] = useState<{ id: string; name: string }[]>([]);
+
+  useEffect(() => {
+    if (!teacherId || days.length === 0 || !startTime) {
+      setScheduleConflicts([]);
+      return;
+    }
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      groupsApi
+        .scheduleConflicts({ teacherId, days: days.join(","), startTime })
+        .then((res) => { if (!cancelled) setScheduleConflicts(res); })
+        .catch(() => { if (!cancelled) setScheduleConflicts([]); });
+    }, 300);
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, [teacherId, days, startTime]);
 
   const usedSubjects = useMemo(() => Array.from(new Set(groups.map((g) => g.subject))), [groups]);
   const subjectSuggestions = tenant ? CATEGORY_SUBJECT_SUGGESTIONS[tenant.category] || [] : [];
@@ -84,6 +100,7 @@ function GroupsContent() {
     setMaxStudents("");
     setDurationMonths("");
     setDescription("");
+    setScheduleConflicts([]);
     setError(null);
   }
 
@@ -225,7 +242,7 @@ function GroupsContent() {
         )}
       </div>
 
-      <Modal open={modalOpen} onClose={() => setModalOpen(false)} title={t("groups.modalTitle")}>
+      <Modal open={modalOpen} onClose={() => { setModalOpen(false); resetForm(); }} title={t("groups.modalTitle")}>
         <form onSubmit={onSubmit} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           {error && (
             <div style={{ background: "#FDEBEC", color: "#B23A47", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: 10 }}>{error}</div>
@@ -297,6 +314,11 @@ function GroupsContent() {
           <Field label={t("groups.fieldStartTime")}>
             <TimePicker value={startTime} onChange={setStartTime} />
           </Field>
+          {scheduleConflicts.length > 0 && (
+            <div style={{ background: "#FFF7E6", color: "#A15C00", fontSize: 12.5, fontWeight: 600, padding: "10px 14px", borderRadius: 10, lineHeight: 1.5 }}>
+              {t("groups.scheduleConflictWarning")} {scheduleConflicts.map((c) => c.name).join(", ")}
+            </div>
+          )}
           <Field label={t("groups.fieldStartDate")}>
             <DatePicker value={startDate} onChange={setStartDate} />
           </Field>

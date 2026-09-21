@@ -1096,6 +1096,12 @@ export const dict = {
   "shell.menuAriaLabel": { UZ: "Menyu", RU: "Меню", EN: "Menu" },
   "common.sumUnit": { UZ: "so'm", RU: "сум", EN: "sum" },
 
+  "groups.scheduleConflictWarning": {
+    UZ: "Diqqat: bu o'qituvchi shu kun/vaqtda boshqa guruh(lar)da ham band:",
+    RU: "Внимание: этот учитель уже занят в это время в других группах:",
+    EN: "Warning: this teacher is already busy at this day/time in other groups:",
+  },
+
   "settings.languageNote": {
     UZ: "Eslatma: hozircha tanlangan til faqat saqlanadi — butun boshqaruv paneli interfeysi hali faqat o'zbek tilida ishlaydi.",
     RU: "Примечание: выбранный язык пока только сохраняется — интерфейс всей панели управления пока работает только на узбекском.",

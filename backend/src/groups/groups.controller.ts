@@ -6,6 +6,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../common/jwt-auth.guard';
@@ -34,6 +35,18 @@ export class GroupsController {
   @Get('trash')
   trash(@CurrentUser('tenantId') tenantId: string) {
     return this.service.trash(tenantId);
+  }
+
+  @Roles('ADMIN')
+  @Get('schedule-conflicts')
+  scheduleConflicts(
+    @CurrentUser('tenantId') tenantId: string,
+    @Query('teacherId') teacherId: string,
+    @Query('days') days: string,
+    @Query('startTime') startTime: string,
+    @Query('excludeId') excludeId?: string,
+  ) {
+    return this.service.findScheduleConflicts(tenantId, teacherId, days ?? '', startTime ?? '', excludeId);
   }
 
   @Get(':id')

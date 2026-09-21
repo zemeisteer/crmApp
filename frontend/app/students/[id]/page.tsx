@@ -405,7 +405,7 @@ function StudentDetailContent() {
         </div>
       </div>
 
-      <Modal open={enrollOpen} onClose={() => setEnrollOpen(false)} title={t("studentDetail.modalAddToGroup")}>
+      <Modal open={enrollOpen} onClose={() => { setEnrollOpen(false); setEnrollGroupId(""); setEnrollError(null); }} title={t("studentDetail.modalAddToGroup")}>
         <form onSubmit={onEnroll} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           {enrollError && (
             <div style={{ background: "#FDEBEC", color: "#B23A47", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: 10 }}>{enrollError}</div>
@@ -429,7 +429,7 @@ function StudentDetailContent() {
         </form>
       </Modal>
 
-      <Modal open={paymentOpen} onClose={() => setPaymentOpen(false)} title={t("studentDetail.modalNewPayment")}>
+      <Modal open={paymentOpen} onClose={() => { setPaymentOpen(false); setAmount(""); setForMonth(localMonthStr()); setPaymentError(null); }} title={t("studentDetail.modalNewPayment")}>
         <form onSubmit={onAddPayment} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           {paymentError && (
             <div style={{ background: "#FDEBEC", color: "#B23A47", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: 10 }}>{paymentError}</div>

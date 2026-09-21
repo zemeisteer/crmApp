@@ -300,7 +300,7 @@ function HomeworkContent() {
         )}
       </div>
 
-      <Modal open={modalOpen} onClose={() => setModalOpen(false)} title={t("homework.modalTitle")}>
+      <Modal open={modalOpen} onClose={() => { setModalOpen(false); resetForm(); }} title={t("homework.modalTitle")}>
         <form onSubmit={onSubmit} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           {error && (
             <div style={{ background: "#FDEBEC", color: "#B23A47", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: 10 }}>{error}</div>
