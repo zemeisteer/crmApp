@@ -1,4 +1,4 @@
-import { IsIn, IsOptional, IsString, IsUrl } from 'class-validator';
+import { IsIn, IsOptional, IsUrl } from 'class-validator';
 
 const EVENTS = ['*', 'payment.created', 'attendance.marked', 'student.created'] as const;
 

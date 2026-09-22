@@ -11,8 +11,23 @@ import DatePicker from "@/components/DatePicker";
 import { studentsApi, groupsApi, exportApi, Student, Group, Gender, ApiError } from "@/lib/api";
 import { PHONE_PATTERN, PHONE_TITLE, NAME_PATTERN, NAME_TITLE } from "@/lib/validation";
 import { useLanguage } from "@/lib/i18n-context";
+import { matchesSubject, extractUniqueSubjects } from "@/lib/subject";
 
 const ACCENT = "#4F46E5";
+
+function formatPhoneInput(val: string) {
+  const digits = val.replace(/\D/g, "");
+  if (!digits) return "";
+  let d = digits;
+  if (d.startsWith("998")) d = d.slice(3);
+  d = d.slice(0, 9);
+  let res = "+998";
+  if (d.length > 0) res += ` ${d.slice(0, 2)}`;
+  if (d.length > 2) res += ` ${d.slice(2, 5)}`;
+  if (d.length > 5) res += ` ${d.slice(5, 7)}`;
+  if (d.length > 7) res += ` ${d.slice(7, 9)}`;
+  return res;
+}
 
 function StudentsContent() {
   const { t } = useLanguage();
@@ -38,9 +53,9 @@ function StudentsContent() {
   const [direction, setDirection] = useState("");
   const [groupIds, setGroupIds] = useState<string[]>([]);
 
-  const subjects = useMemo(() => Array.from(new Set(groups.map((g) => g.subject).filter(Boolean))) as string[], [groups]);
-  const groupsInDirection = direction ? groups.filter((g) => g.subject === direction) : groups;
-  const filterGroupsInDirection = filterDirection ? groups.filter((g) => g.subject === filterDirection) : groups;
+  const subjects = useMemo(() => extractUniqueSubjects(groups), [groups]);
+  const groupsInDirection = direction ? groups.filter((g) => matchesSubject(g.subject, direction)) : groups;
+  const filterGroupsInDirection = filterDirection ? groups.filter((g) => matchesSubject(g.subject, filterDirection)) : groups;
 
   function load() {
     setLoading(true);
@@ -70,11 +85,13 @@ function StudentsContent() {
     setError(null);
     setSaving(true);
     try {
+      const cleanPhone = phone.replace(/\D/g, "").length >= 9 ? phone : undefined;
+      const cleanParentPhone = parentPhone.replace(/\D/g, "").length >= 9 ? parentPhone : undefined;
       await studentsApi.create({
-        fullName,
+        fullName: fullName.trim(),
         gender: gender || undefined,
-        phone: phone || undefined,
-        parentPhone: parentPhone || undefined,
+        phone: cleanPhone,
+        parentPhone: cleanParentPhone,
         birthDate: birthDate || undefined,
         groupIds: groupIds.length > 0 ? groupIds : undefined,
       });
@@ -107,7 +124,7 @@ function StudentsContent() {
     return students.filter((s) => {
       if (filterGender && s.gender !== filterGender) return false;
       if (filterGroupId && !(s.enrollments || []).some((e) => e.groupId === filterGroupId)) return false;
-      if (filterDirection && !(s.enrollments || []).some((e) => e.group.subject === filterDirection)) return false;
+      if (filterDirection && !(s.enrollments || []).some((e) => matchesSubject(e.group.subject, filterDirection))) return false;
       const q = search.trim().toLowerCase();
       if (!q) return true;
       return (
@@ -170,7 +187,7 @@ function StudentsContent() {
               placeholder={t("students.searchPlaceholder")}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              style={{ maxWidth: 260 }}
+              style={{ width: 260, maxWidth: "100%", flexShrink: 0 }}
             />
             <Select
               options={[{ value: "", label: t("students.allDirections") }, ...subjects.map((s) => ({ value: s, label: s }))]}
@@ -267,10 +284,8 @@ function StudentsContent() {
               className="field-input"
               type="tel"
               value={phone}
-              onChange={(e) => setPhone(e.target.value)}
+              onChange={(e) => setPhone(formatPhoneInput(e.target.value))}
               placeholder="+998 90 123 45 67"
-              pattern={PHONE_PATTERN}
-              title={PHONE_TITLE}
             />
           </Field>
           <Field label={t("students.fieldParentPhone")}>
@@ -278,10 +293,8 @@ function StudentsContent() {
               className="field-input"
               type="tel"
               value={parentPhone}
-              onChange={(e) => setParentPhone(e.target.value)}
+              onChange={(e) => setParentPhone(formatPhoneInput(e.target.value))}
               placeholder="+998 90 123 45 67"
-              pattern={PHONE_PATTERN}
-              title={PHONE_TITLE}
             />
           </Field>
           <Field label={t("students.fieldBirthDate")}>

@@ -41,7 +41,7 @@ export default function Select({
   const selectedLabel = options.find((o) => o.value === value)?.label;
 
   return (
-    <div ref={ref} style={{ position: "relative", ...style }}>
+    <div ref={ref} style={{ position: "relative", flexShrink: 0, ...style }}>
       <button
         type="button"
         onClick={() => !disabled && setOpen((v) => !v)}
@@ -81,8 +81,8 @@ export default function Select({
             position: "absolute",
             top: "calc(100% + 5px)",
             left: 0,
-            right: 0,
-            minWidth: 170,
+            minWidth: "100%",
+            maxWidth: 340,
             zIndex: 100,
             background: "#fff",
             border: "1px solid #EAE8E2",
@@ -90,7 +90,7 @@ export default function Select({
             maxHeight: 240,
             overflowY: "auto",
             padding: 5,
-            boxShadow: "0 12px 36px rgba(18,19,26,0.12), 0 2px 6px rgba(18,19,26,0.06)",
+            boxShadow: "0 12px 36px rgba(18,19,26,0.14), 0 2px 6px rgba(18,19,26,0.06)",
           }}
         >
           {options.length === 0 ? (

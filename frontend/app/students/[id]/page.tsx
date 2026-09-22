@@ -89,6 +89,31 @@ function StudentDetailContent() {
     telegramApi.status().then((s) => setBotUsername(s.botUsername)).catch(() => setBotUsername(null));
   }, []);
 
+  const [linkTokenData, setLinkTokenData] = useState<{ linkUrl: string | null; token: string; expiresAt: string } | null>(null);
+  const [generatingLink, setGeneratingLink] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
+
+  async function onGenerateLink() {
+    if (!student) return;
+    setGeneratingLink(true);
+    try {
+      const res = await telegramApi.generateLinkToken(student.id);
+      setLinkTokenData(res);
+      setCopiedLink(false);
+    } catch {
+      alert("Havola yaratishda xatolik yuz berdi");
+    } finally {
+      setGeneratingLink(false);
+    }
+  }
+
+  function onCopyLink() {
+    if (!linkTokenData?.linkUrl) return;
+    navigator.clipboard.writeText(linkTokenData.linkUrl);
+    setCopiedLink(true);
+    setTimeout(() => setCopiedLink(false), 2500);
+  }
+
   function load() {
     setLoading(true);
     Promise.all([studentsApi.get(id), groupsApi.list(), attendanceApi.list({ studentId: id })])
@@ -327,13 +352,62 @@ function StudentDetailContent() {
                 <span className="badge badge-success">{t("studentDetail.telegramLinked")}</span>
               ) : botUsername ? (
                 <div style={{ fontSize: 12.5 }}>
-                  <span className="badge badge-neutral">{t("studentDetail.telegramNotLinked")}</span>
-                  <div style={{ marginTop: 8, color: "#4A4E58" }}>
-                    {t("studentDetail.telegramLinkHint")}
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+                    <span className="badge badge-neutral">{t("studentDetail.telegramNotLinked")}</span>
+                    <button
+                      type="button"
+                      className="btn"
+                      onClick={onGenerateLink}
+                      disabled={generatingLink}
+                      style={{
+                        background: "#EEF0FF",
+                        color: ACCENT,
+                        border: "1px solid rgba(79, 70, 229, 0.25)",
+                        fontSize: 12,
+                        fontWeight: 700,
+                        padding: "6px 12px",
+                        borderRadius: 8,
+                      }}
+                    >
+                      {generatingLink ? "Yaratilmoqda..." : "🔗 Xavfsiz havola olish (15 daqiqa)"}
+                    </button>
                   </div>
-                  <code style={{ display: "block", marginTop: 4, background: "#F7F7F5", padding: "8px 10px", borderRadius: 8, fontSize: 11.5, wordBreak: "break-all" }}>
-                    {`https://t.me/${botUsername}?start=${student.id}`}
-                  </code>
+                  {linkTokenData?.linkUrl ? (
+                    <div style={{ marginTop: 10, background: "#F7F6FF", border: "1px solid #D7D3F8", borderRadius: 10, padding: 12 }}>
+                      <div style={{ fontSize: 12, color: "#4A4E58", marginBottom: 6, fontWeight: 600 }}>
+                        Ushbu bir martalik xavfsiz havolani ota-onaga yoki o&apos;quvchiga yuboring:
+                      </div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <code style={{ flex: 1, background: "#fff", padding: "8px 10px", borderRadius: 8, fontSize: 11.5, wordBreak: "break-all", border: "1px solid #EAE8E2" }}>
+                          {linkTokenData.linkUrl}
+                        </code>
+                        <button
+                          type="button"
+                          className="btn"
+                          onClick={onCopyLink}
+                          style={{
+                            background: copiedLink ? "#1FA463" : ACCENT,
+                            color: "#fff",
+                            border: "none",
+                            fontSize: 12,
+                            fontWeight: 700,
+                            padding: "8px 14px",
+                            borderRadius: 8,
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          {copiedLink ? "✓ Nusxalandi" : "Nusxalash"}
+                        </button>
+                      </div>
+                      <div style={{ fontSize: 11, color: "#8A8D96", marginTop: 6 }}>
+                        ⏳ Amal qilish muddati: 15 daqiqa (bir martalik)
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{ marginTop: 8, color: "#8A8D96", fontSize: 12 }}>
+                      O&apos;quvchini Telegram botga xavfsiz ulash uchun yuqoridagi tugmani bosing.
+                    </div>
+                  )}
                 </div>
               ) : (
                 <span style={{ fontSize: 12, color: "#8A8D96" }}>{t("studentDetail.telegramNotConfigured")}</span>

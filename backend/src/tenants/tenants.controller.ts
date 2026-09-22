@@ -7,7 +7,7 @@ import { Roles } from '../common/roles.decorator';
 import { CurrentUser } from '../common/current-user.decorator';
 import { attachmentStorage, ATTACHMENT_MAX_SIZE } from '../common/upload.util';
 import { TenantsService } from './tenants.service';
-import { CreateTenantDto, UpdateTenantDto, UpdateTenantStatusDto } from './dto/tenant.dto';
+import { CreateTenantDto, UpdateTenantDto, UpdateTenantStatusDto, PublicApplyDto } from './dto/tenant.dto';
 
 class DeleteMyTenantDto {
   @IsString()
@@ -22,6 +22,16 @@ export class TenantsController {
   @Get('by-subdomain/:subdomain')
   findBySubdomain(@Param('subdomain') subdomain: string) {
     return this.service.findBySubdomain(subdomain);
+  }
+
+  @Get('by-subdomain/:subdomain/public-showcase')
+  getPublicShowcase(@Param('subdomain') subdomain: string) {
+    return this.service.getPublicShowcase(subdomain);
+  }
+
+  @Post('by-subdomain/:subdomain/apply')
+  publicApply(@Param('subdomain') subdomain: string, @Body() dto: PublicApplyDto) {
+    return this.service.publicApply(subdomain, dto);
   }
 
   // Platform superadmin only

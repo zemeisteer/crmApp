@@ -219,5 +219,135 @@ Javobni FAQAT quyidagi JSON formatida ber (boshqa hech qanday so'z qo'shma):
       };
     }
   }
+
+  async generateExamQuestions(topic: string, subject?: string, count: number = 5): Promise<Array<{
+    prompt: string;
+    questionType: 'MCQ' | 'TRUE_FALSE';
+    options: Array<{ id: string; text: string }>;
+    correctAnswer: string;
+    explanation?: string;
+    points: number;
+  }>> {
+    try {
+      const apiKey = this.config.get<string>('ANTHROPIC_API_KEY');
+      if (apiKey) {
+        const client = this.client();
+        const prompt = `Sen o'quv markazi uchun professional test tuzuvchisisan.
+Quyidagi fan va mavzu bo'yicha ${count} ta sifatli, qiziqarli test savolini o'zbek tilida tuz:
+Fan: ${subject || 'Umumiy'}
+Mavzu: ${topic}
+
+Javobni FAQAT valid JSON array ko'rinishida ber (hech qanday markdown yoki tushuntirishsiz, faqat xom JSON array):
+[
+  {
+    "prompt": "Savol matni?",
+    "questionType": "MCQ",
+    "options": [
+      { "id": "A", "text": "Variant 1" },
+      { "id": "B", "text": "Variant 2" },
+      { "id": "C", "text": "Variant 3" },
+      { "id": "D", "text": "Variant 4" }
+    ],
+    "correctAnswer": "A",
+    "explanation": "Nima sababdan ushbu javob to'g'riligi haqida qisqa izoh",
+    "points": 1
+  }
+]`;
+        const res = await client.messages.create({
+          model: MODEL,
+          max_tokens: 1500,
+          messages: [{ role: 'user', content: prompt }],
+        });
+        const text = res.content.find((b) => b.type === 'text')?.text ?? '';
+        const match = text.match(/\[[\s\S]*\]/);
+        if (match) {
+          const parsed = JSON.parse(match[0]);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            return parsed.map((q: any) => ({
+              prompt: String(q.prompt || 'Savol matni'),
+              questionType: (q.questionType === 'TRUE_FALSE' ? 'TRUE_FALSE' : 'MCQ') as 'MCQ' | 'TRUE_FALSE',
+              options: Array.isArray(q.options) ? q.options : [
+                { id: 'A', text: 'Variant A' },
+                { id: 'B', text: 'Variant B' },
+                { id: 'C', text: 'Variant C' },
+                { id: 'D', text: 'Variant D' },
+              ],
+              correctAnswer: String(q.correctAnswer || 'A'),
+              explanation: q.explanation ? String(q.explanation) : undefined,
+              points: Number(q.points) || 1,
+            }));
+          }
+        }
+      }
+    } catch {
+      // Fallback
+    }
+
+    return [
+      {
+        prompt: `"${topic}" mavzusi bo'yicha eng muhim asosiy tushuncha yoki qoida qaysi javobda to'g'ri ifodalangan?`,
+        questionType: 'MCQ',
+        options: [
+          { id: 'A', text: `${topic} ning asosiy nazariy ta'rifi va amaliy qo'llanilishi` },
+          { id: 'B', text: 'Mavzuga to\'g\'ri kelmaydigan chalg\'ituvchi variant' },
+          { id: 'C', text: 'Faqat ikkinchi darajali xususiyatlar' },
+          { id: 'D', text: 'Teskari ma\'nodagi noto\'g\'ri tushuncha' },
+        ],
+        correctAnswer: 'A',
+        explanation: `${topic} bo'yicha asosiy ta'rif qoidaga to'liq mos keladi.`,
+        points: 1,
+      },
+      {
+        prompt: `Amaliyotda "${topic}" bilan ishlashda qaysi qoidaga qat'iy amal qilish lozim?`,
+        questionType: 'MCQ',
+        options: [
+          { id: 'A', text: 'Shartlarni e\'tiborga olmasdan tezkor ishlash' },
+          { id: 'B', text: 'Ketma-ketlik va tekshirish bosqichlariga rioya qilish' },
+          { id: 'C', text: 'Hech qanday qo\'shimcha qoidaga hojat yo\'q' },
+          { id: 'D', text: 'Faqat oxirgi natijani tekshirish' },
+        ],
+        correctAnswer: 'B',
+        explanation: 'Ketma-ketlik va tekshiruv har doim to\'g\'ri natijani kafolatlaydi.',
+        points: 1,
+      },
+      {
+        prompt: `Tasdiqlang: "${topic}" tushunchasi o'rganilayotgan fanning muhim amaliy bo'limlaridan biri hisoblanadi.`,
+        questionType: 'TRUE_FALSE',
+        options: [
+          { id: 'true', text: 'To\'g\'ri (Rost)' },
+          { id: 'false', text: 'Noto\'g\'ri (Yolg\'on)' },
+        ],
+        correctAnswer: 'true',
+        explanation: 'Ushbu tasdiq fan dasturida to\'liq tasdiqlangan.',
+        points: 1,
+      },
+      {
+        prompt: `Quyidagi misollardan qaysi biri "${topic}" ga to'g'ridan-to'g'ri misol bo'la oladi?`,
+        questionType: 'MCQ',
+        options: [
+          { id: 'A', text: 'Standart amaliy misol va holat' },
+          { id: 'B', text: 'Tegishli bo\'lmagan holat' },
+          { id: 'C', text: 'Qarama-qarshi holat' },
+          { id: 'D', text: 'Barcha javoblar noto\'g\'ri' },
+        ],
+        correctAnswer: 'A',
+        explanation: 'Standart misol ushbu mavzuni to\'liq yoritadi.',
+        points: 1,
+      },
+      {
+        prompt: `"${topic}" mavzusida eng ko'p uchraydigan tipik xatolik nimada?`,
+        questionType: 'MCQ',
+        options: [
+          { id: 'A', text: 'Nazariy qoidalarni e\'tibordan chetda qoldirish' },
+          { id: 'B', text: 'Keragidan ortiq to\'g\'ri ishlash' },
+          { id: 'C', text: 'Barcha qoidalarga qat\'iy bo\'ysunish' },
+          { id: 'D', text: 'Xatolik umuman bo\'lmaydi' },
+        ],
+        correctAnswer: 'A',
+        explanation: 'Nazariy qoidalarni e\'tibordan chetda qoldirish ko\'pincha xatolarga sabab bo\'ladi.',
+        points: 1,
+      },
+    ];
+  }
 }
 

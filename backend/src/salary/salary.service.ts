@@ -1,7 +1,7 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { and, eq } from 'drizzle-orm';
 import { DB, Database } from '../db/db.module';
-import { salaryPayments } from '../db/schema';
+import { salaryPayments, teachers } from '../db/schema';
 import { CreateSalaryPaymentDto } from './dto/salary.dto';
 
 @Injectable()
@@ -18,6 +18,13 @@ export class SalaryService {
   }
 
   async create(tenantId: string, dto: CreateSalaryPaymentDto) {
+    const teacher = await this.db.query.teachers.findFirst({
+      where: and(eq(teachers.id, dto.teacherId), eq(teachers.tenantId, tenantId)),
+    });
+    if (!teacher) {
+      throw new BadRequestException("O'qituvchi topilmadi yoki boshqa markazga tegishli");
+    }
+
     const [row] = await this.db
       .insert(salaryPayments)
       .values({
@@ -35,3 +42,4 @@ export class SalaryService {
     return row;
   }
 }
+

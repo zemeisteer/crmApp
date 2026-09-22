@@ -6,7 +6,7 @@ import DashboardShell from "@/components/DashboardShell";
 import { DonutChart } from "@/components/BarChart";
 import { useAuth } from "@/lib/auth-context";
 import { useLanguage } from "@/lib/i18n-context";
-import { groupsApi, studentsApi, teachersApi, paymentsApi, attendanceApi, aiApi, Group, Student, Teacher, Payment, AttendanceRecord } from "@/lib/api";
+import { groupsApi, studentsApi, teachersApi, paymentsApi, attendanceApi, announcementsApi, aiApi, Group, Student, Teacher, Payment, AttendanceRecord, Announcement } from "@/lib/api";
 import { localMonthStr } from "@/lib/date";
 import type { TranslationKey } from "@/lib/i18n";
 
@@ -66,6 +66,7 @@ function DashboardContent() {
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
   const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [activityPeriod, setActivityPeriod] = useState<"day" | "week" | "month">("week");
@@ -75,13 +76,21 @@ function DashboardContent() {
   const [aiLoading, setAiLoading] = useState(false);
 
   useEffect(() => {
-    Promise.all([groupsApi.list(), studentsApi.list(), teachersApi.list(), paymentsApi.list(), attendanceApi.list()])
-      .then(([g, s, t, p, a]) => {
+    Promise.all([
+      groupsApi.list(),
+      studentsApi.list(),
+      teachersApi.list(),
+      paymentsApi.list(),
+      attendanceApi.list(),
+      announcementsApi.list().catch(() => []),
+    ])
+      .then(([g, s, t, p, a, ann]) => {
         setGroups(g);
         setStudents(s);
         setTeachers(t);
         setPayments(p);
         setAttendance(a);
+        setAnnouncements(ann);
       })
       .finally(() => setLoading(false));
   }, []);
@@ -135,22 +144,51 @@ function DashboardContent() {
     if (activityPeriod === "day") {
       const dayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
       const dayRecords = attendance.filter((a) => a.date === dayStr);
-      // Realistic study hours in educational centers
-      const slots = [
-        { label: "08:00 - 10:00", startH: 8, endH: 10 },
-        { label: "10:00 - 12:00", startH: 10, endH: 12 },
-        { label: "14:00 - 16:00", startH: 14, endH: 16 },
-        { label: "16:00 - 18:00", startH: 16, endH: 18 },
-        { label: "18:00 - 20:00", startH: 18, endH: 20 },
-      ];
+
+      // Extract unique lesson start times from groups scheduled for today
+      const todaysGroups = groups.filter((g) => (g.scheduleDays || "").split(",").map((s) => s.trim()).includes(todayWeekday));
+      const groupTimes = Array.from(
+        new Set(
+          todaysGroups
+            .map((g) => g.startTime?.trim())
+            .filter((t): t is string => Boolean(t && t.length >= 4))
+        )
+      ).sort();
+
+      let slots: { label: string; startH: number; endH: number }[] = [];
+      if (groupTimes.length > 0) {
+        slots = groupTimes.map((timeStr) => {
+          const parts = timeStr.split(":");
+          const h = parseInt(parts[0], 10) || 9;
+          const m = parseInt(parts[1], 10) || 0;
+          const endMinTotal = h * 60 + m + 90; // Standard 90 min lessons
+          const endH = Math.floor(endMinTotal / 60);
+          const endM = endMinTotal % 60;
+          const endStr = `${String(endH).padStart(2, "0")}:${String(endM).padStart(2, "0")}`;
+          return {
+            label: `${timeStr} - ${endStr}`,
+            startH: h,
+            endH,
+          };
+        });
+      } else {
+        // Active educational center lesson schedule (not 24 hours)
+        slots = [
+          { label: "09:00 - 10:30", startH: 9, endH: 11 },
+          { label: "11:00 - 12:30", startH: 11, endH: 13 },
+          { label: "14:00 - 15:30", startH: 14, endH: 16 },
+          { label: "16:00 - 17:30", startH: 16, endH: 18 },
+          { label: "18:00 - 19:30", startH: 18, endH: 20 },
+        ];
+      }
 
       const currentHour = now.getHours();
-      let currIdx = 0;
-      if (currentHour < 10) currIdx = 0;
-      else if (currentHour < 12) currIdx = 1;
-      else if (currentHour < 16) currIdx = 2;
-      else if (currentHour < 18) currIdx = 3;
-      else currIdx = 4;
+      let currIdx = slots.findIndex((s) => currentHour >= s.startH && currentHour < s.endH);
+      if (currIdx === -1) {
+        currIdx = slots.findIndex((s) => s.startH > currentHour);
+        if (currIdx === -1) currIdx = slots.length - 1;
+      }
+      if (currIdx < 0) currIdx = 0;
 
       const items = slots.map((s, idx) => {
         const count = dayRecords.length > 0 ? Math.round(dayRecords.length / slots.length) : 0;
@@ -209,6 +247,10 @@ function DashboardContent() {
     };
   }, [payments, currentMonth]);
 
+  const activeBroadcasts = useMemo(() => {
+    return announcements.filter((a) => a.priority === "URGENT" || a.priority === "HIGH").slice(0, 2);
+  }, [announcements]);
+
   return (
     <>
       <div style={{ padding: "22px 32px", borderBottom: "1px solid #EAE8E2", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
@@ -228,6 +270,64 @@ function DashboardContent() {
           <div style={{ color: "#8A8D96", fontSize: 14 }}>{t("dashboard.loading")}</div>
         ) : (
           <>
+            {activeBroadcasts.length > 0 && (
+              <div className="flex flex-col gap-2.5">
+                {activeBroadcasts.map((b) => (
+                  <div
+                    key={b.id}
+                    className={`rounded-2xl p-4 flex items-center justify-between gap-4 border transition ${
+                      b.priority === "URGENT"
+                        ? "bg-rose-500/10 border-rose-500/30 text-rose-300"
+                        : "bg-amber-500/10 border-amber-500/30 text-amber-300"
+                    }`}
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div
+                        className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
+                          b.priority === "URGENT"
+                            ? "bg-rose-500/20 text-rose-400"
+                            : "bg-amber-500/20 text-amber-400"
+                        }`}
+                      >
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="m3 11 18-5v12L3 14v-3z" />
+                          <path d="M11.6 16.8a3 3 0 1 1-5.8-1.6" />
+                        </svg>
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${
+                              b.priority === "URGENT" ? "bg-rose-500 text-white" : "bg-amber-500 text-slate-900"
+                            }`}
+                          >
+                            {b.priority === "URGENT" ? "Shoshilinch" : "Muhim"}
+                          </span>
+                          <span className="text-sm font-semibold text-slate-100 truncate">
+                            {b.title}
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-400 truncate mt-0.5 max-w-xl">
+                          {b.content}
+                        </p>
+                      </div>
+                    </div>
+
+                    <Link
+                      href="/announcements"
+                      className={`shrink-0 text-xs font-semibold px-3 py-1.5 rounded-xl border transition ${
+                        b.priority === "URGENT"
+                          ? "bg-rose-500/20 border-rose-500/40 text-rose-200 hover:bg-rose-500/30"
+                          : "bg-amber-500/20 border-amber-500/40 text-amber-200 hover:bg-amber-500/30"
+                      }`}
+                    >
+                      Batafsil →
+                    </Link>
+                  </div>
+                ))}
+              </div>
+            )}
+
             {groups.length > 0 && (
               <div
                 style={{
@@ -339,22 +439,29 @@ function BarChartInline({
   data,
   defaultActiveIdx = 0,
 }: {
-  data: { label: string; value: number }[];
+  data: { label: string; value: number; isCurrent?: boolean }[];
   defaultActiveIdx?: number;
 }) {
   const { t } = useLanguage();
   const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
 
-  // If user cleared or haven't clicked, activeIdx defaults to current day/hour
-  const activeIdx = selectedIdx !== null ? selectedIdx : defaultActiveIdx;
+  // Find the index that is current, or fallback to defaultActiveIdx
+  const currentIdx = useMemo(() => {
+    const found = data.findIndex((d) => d.isCurrent);
+    return found >= 0 ? found : (defaultActiveIdx >= 0 && defaultActiveIdx < data.length ? defaultActiveIdx : 0);
+  }, [data, defaultActiveIdx]);
+
+  // When user hasn't explicitly clicked another bar, or when X is clicked, activeIdx is always currentIdx
+  const isCustomSelected = selectedIdx !== null && selectedIdx !== currentIdx;
+  const activeIdx = selectedIdx !== null ? selectedIdx : currentIdx;
   const max = Math.max(1, ...data.map((d) => d.value));
-  const activeItem = data[activeIdx] || data[0];
+  const activeItem = data[activeIdx] || data[currentIdx] || data[0];
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
       {/* Corner badge for active bar */}
-      <div style={{ minHeight: 26, display: "flex", alignItems: "center", justifyContent: "flex-end" }}>
+      <div style={{ minHeight: 28, display: "flex", alignItems: "center", justifyContent: "flex-end" }}>
         {activeItem ? (
           <div
             style={{
@@ -372,13 +479,13 @@ function BarChartInline({
           >
             <span>
               {activeItem.label}: <strong>{activeItem.value}</strong> {t("groupDetail.colAttendance").toLowerCase()}
-              {selectedIdx === null && (
-                <span style={{ fontSize: 11, opacity: 0.8, marginLeft: 4 }}>
-                  (hozirgi)
+              {!isCustomSelected && (
+                <span style={{ fontSize: 11, opacity: 0.85, marginLeft: 4, fontWeight: 500 }}>
+                  (bugun/hozirgi)
                 </span>
               )}
             </span>
-            {selectedIdx !== null && (
+            {isCustomSelected && (
               <button
                 type="button"
                 onClick={() => setSelectedIdx(null)}
@@ -405,14 +512,14 @@ function BarChartInline({
 
       <div style={{ display: "flex", alignItems: "flex-end", gap: 10, height: 135, position: "relative" }}>
         {data.map((d, i) => {
-          const isActive = activeIdx === i;
+          const isSelected = activeIdx === i;
           const isHovered = hoveredIdx === i;
           const barHeight = Math.max(6, (d.value / max) * 95);
 
           return (
             <div
               key={i}
-              onClick={() => setSelectedIdx(i)}
+              onClick={() => setSelectedIdx(isSelected && isCustomSelected ? null : i)}
               onMouseEnter={() => setHoveredIdx(i)}
               onMouseLeave={() => setHoveredIdx(null)}
               style={{
@@ -426,8 +533,8 @@ function BarChartInline({
                 userSelect: "none",
               }}
             >
-              {/* Floating tooltip on hover */}
-              {isHovered && !isActive && (
+              {/* Floating tooltip on hover (without darkening bar) */}
+              {isHovered && !isSelected && (
                 <div
                   style={{
                     position: "absolute",
@@ -439,12 +546,12 @@ function BarChartInline({
                     padding: "4px 8px",
                     borderRadius: 6,
                     whiteSpace: "nowrap",
-                    zIndex: 20,
-                    boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+                    zIndex: 30,
+                    boxShadow: "0 4px 12px rgba(0,0,0,0.18)",
                     pointerEvents: "none",
                   }}
                 >
-                  {d.label}: {d.value}
+                  {d.label}: {d.value} {t("groupDetail.colAttendance").toLowerCase()}
                 </div>
               )}
 
@@ -452,18 +559,19 @@ function BarChartInline({
                 style={{
                   width: "100%",
                   height: barHeight,
-                  background: isActive ? ACCENT : isHovered ? "#D7D5FA" : "#ECEBFB",
+                  background: isSelected ? ACCENT : isHovered ? "#CBD5E1" : "#EEF2F6",
+                  border: isSelected ? `2px solid ${ACCENT}` : "1px solid transparent",
                   borderRadius: 6,
-                  transition: "background 0.18s ease, transform 0.18s ease",
-                  transform: isHovered || isActive ? "scaleY(1.03)" : "scaleY(1)",
+                  transition: "background 0.15s ease, transform 0.15s ease",
+                  transform: isHovered || isSelected ? "scaleY(1.04)" : "scaleY(1)",
                   transformOrigin: "bottom",
                 }}
               />
               <div
                 style={{
                   fontSize: 11,
-                  color: isActive ? ACCENT : "#8A8D96",
-                  fontWeight: isActive ? 800 : 600,
+                  color: isSelected ? ACCENT : "#8A8D96",
+                  fontWeight: isSelected ? 800 : 600,
                   transition: "color 0.18s",
                   textAlign: "center",
                   whiteSpace: "nowrap",

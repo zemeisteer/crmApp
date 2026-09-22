@@ -12,6 +12,7 @@ import { useAuth } from "@/lib/auth-context";
 import { useLanguage } from "@/lib/i18n-context";
 import type { TranslationKey } from "@/lib/i18n";
 import { groupsApi, branchesApi, teachersApi, Group, Branch, Teacher, ApiError, CATEGORY_SUBJECT_SUGGESTIONS } from "@/lib/api";
+import { matchesSubject } from "@/lib/subject";
 
 const ACCENT = "#4F46E5";
 // Actual values stored on groups.scheduleDays (always Uzbek) — WEEKDAY_LABEL_KEYS below is the parallel display-only translation.
@@ -141,7 +142,7 @@ function GroupsContent() {
   }
 
   const filtered = groups.filter((g) => {
-    if (filterDirection && g.subject !== filterDirection) return false;
+    if (filterDirection && !matchesSubject(g.subject, filterDirection)) return false;
     const q = search.trim().toLowerCase();
     if (!q) return true;
     return (
@@ -181,7 +182,7 @@ function GroupsContent() {
               placeholder={t("groups.searchPlaceholder")}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              style={{ maxWidth: 300 }}
+              style={{ width: 280, maxWidth: "100%", flexShrink: 0 }}
             />
             <Select
               options={[{ value: "", label: t("groups.allDirections") }, ...usedSubjects.map((s) => ({ value: s, label: s }))]}

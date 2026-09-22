@@ -176,6 +176,77 @@ export interface Tenant {
   updatedAt: string;
 }
 
+export interface PublicShowcaseGroup {
+  id: string;
+  name: string;
+  subject: string;
+  level?: string | null;
+  schedule?: string | null;
+  scheduleDays?: string | null;
+  startTime?: string | null;
+  monthlyPrice: number;
+  teacherName?: string | null;
+  branchName?: string | null;
+}
+
+export interface PublicShowcaseTeacher {
+  id: string;
+  fullName: string;
+  subject?: string | null;
+  startDate?: string | null;
+}
+
+export interface PublicShowcaseBranch {
+  id: string;
+  name: string;
+  address?: string | null;
+}
+
+export interface PublicShowcaseAnnouncement {
+  id: string;
+  title: string;
+  content: string;
+  priority: string;
+  publishedAt: string;
+}
+
+export interface PublicShowcaseData {
+  tenant: {
+    id: string;
+    name: string;
+    subdomain: string;
+    category: TenantCategory;
+    accentColor: string;
+    logoUrl?: string | null;
+    phone?: string | null;
+    address?: string | null;
+    email?: string | null;
+    telegramUsername?: string | null;
+    website?: string | null;
+    websiteLabel?: string | null;
+    language?: string;
+  };
+  stats: {
+    coursesCount: number;
+    teachersCount: number;
+    branchesCount: number;
+  };
+  subjects: { subject: string; courses: string[]; groupCount: number }[];
+  groups: PublicShowcaseGroup[];
+  teachers: PublicShowcaseTeacher[];
+  branches: PublicShowcaseBranch[];
+  announcements: PublicShowcaseAnnouncement[];
+}
+
+export interface PublicApplyDto {
+  fullName: string;
+  phone: string;
+  parentPhone?: string;
+  subject?: string;
+  branchId?: string;
+  notes?: string;
+}
+
 export interface StaffMember {
   id: string;
   email: string;
@@ -241,6 +312,37 @@ export interface Group {
   branch?: Branch | null;
 }
 
+export type LeadStatus = 'NEW' | 'CONTACTED' | 'TRIAL_BOOKED' | 'TRIAL_ATTENDED' | 'QUALIFIED' | 'ENROLLED' | 'LOST';
+export type LeadSource = 'INSTAGRAM' | 'TELEGRAM' | 'WEBSITE' | 'RECOMMENDATION' | 'BANNER' | 'WALK_IN' | 'OTHER';
+
+export interface Lead {
+  id: string;
+  tenantId: string;
+  fullName: string;
+  phone: string;
+  parentPhone?: string | null;
+  status: LeadStatus;
+  source: LeadSource;
+  subject?: string | null;
+  branchId?: string | null;
+  branch?: Branch | null;
+  trialDate?: string | null;
+  trialGroupId?: string | null;
+  trialGroup?: Group | null;
+  convertedStudentId?: string | null;
+  convertedStudent?: Student | null;
+  lostReason?: string | null;
+  notes?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface FunnelStats {
+  total: number;
+  counts: Record<LeadStatus, number>;
+  conversionRate: number;
+}
+
 export type Gender = "MALE" | "FEMALE";
 
 export interface Student {
@@ -270,6 +372,7 @@ export interface Teacher {
   phone: string | null;
   email: string | null;
   birthDate: string | null;
+  startDate?: string | null;
   salaryType: string | null;
   salaryValue: number | null;
   deletedAt?: string | null;
@@ -374,6 +477,67 @@ export interface AuditLog {
   user?: { id: string; fullName: string; email: string } | null;
 }
 
+export interface ExamQuestionOption {
+  id: string;
+  text: string;
+}
+
+export type ExamQuestionType = 'MCQ' | 'TRUE_FALSE' | 'SHORT_ANSWER';
+
+export interface ExamQuestion {
+  id: string;
+  tenantId: string;
+  examId: string;
+  prompt: string;
+  questionType: ExamQuestionType;
+  options: ExamQuestionOption[] | string | null;
+  correctAnswer: string;
+  explanation?: string | null;
+  points: number;
+  order: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ExamAttempt {
+  id: string;
+  tenantId: string;
+  examId: string;
+  studentId: string;
+  startedAt: string;
+  completedAt?: string | null;
+  score: number;
+  maxScore: number;
+  passed: boolean;
+  answers: string;
+  createdAt: string;
+  student?: Student;
+}
+
+export interface ExamAttemptBreakdown {
+  questionId: string;
+  prompt: string;
+  questionType: ExamQuestionType;
+  options: ExamQuestionOption[];
+  studentAnswer: string;
+  correctAnswer: string;
+  isCorrect: boolean;
+  points: number;
+  earned: number;
+  explanation?: string;
+}
+
+export interface SubmitAttemptResult {
+  attempt: ExamAttempt;
+  score: number;
+  maxScore: number;
+  earnedPoints: number;
+  totalPoints: number;
+  passed: boolean;
+  percentage: number;
+  breakdown: ExamAttemptBreakdown[];
+}
+
 export interface Exam {
   id: string;
   tenantId: string;
@@ -389,6 +553,8 @@ export interface Exam {
   createdAt: string;
   group?: Group;
   results?: { id: string; studentId: string; score: number; note: string | null; student: Student }[];
+  questions?: ExamQuestion[];
+  attempts?: ExamAttempt[];
 }
 
 export interface Webhook {
@@ -399,6 +565,59 @@ export interface Webhook {
   secret: string;
   active: boolean;
   createdAt: string;
+}
+
+export interface Certificate {
+  id: string;
+  tenantId: string;
+  studentId: string;
+  groupId?: string | null;
+  code: string;
+  title: string;
+  grade?: string | null;
+  issueDate: string;
+  signatoryName: string;
+  signatoryTitle?: string | null;
+  description?: string | null;
+  createdAt: string;
+  student?: { id: string; fullName: string; phone?: string };
+  group?: { id: string; name: string; subject?: string };
+}
+
+export interface PublicCertificate {
+  valid: boolean;
+  message?: string;
+  code?: string;
+  studentName?: string;
+  title?: string;
+  grade?: string | null;
+  issueDate?: string;
+  organizationName?: string;
+  courseName?: string | null;
+  subject?: string | null;
+  signatoryName?: string;
+  signatoryTitle?: string | null;
+  description?: string | null;
+}
+
+export type AnnouncementPriority = 'NORMAL' | 'HIGH' | 'URGENT';
+export type AnnouncementAudience = 'ALL' | 'STUDENTS' | 'TEACHERS' | 'GROUP';
+
+export interface Announcement {
+  id: string;
+  tenantId: string;
+  authorId?: string | null;
+  title: string;
+  content: string;
+  targetAudience: AnnouncementAudience;
+  targetGroupId?: string | null;
+  priority: AnnouncementPriority;
+  sendTelegram: boolean;
+  publishedAt: string;
+  createdAt: string;
+  updatedAt: string;
+  author?: { id: string; fullName: string; email: string };
+  targetGroup?: { id: string; name: string; subject: string };
 }
 
 // ---- Auth ----
@@ -547,6 +766,13 @@ export const tenantsApi = {
     request<Tenant>(`/tenants/${id}/status`, { method: "PATCH", body: JSON.stringify(data) }),
   bySubdomain: (subdomain: string) =>
     request<Pick<Tenant, "id" | "name" | "subdomain" | "accentColor" | "plan">>(`/tenants/by-subdomain/${subdomain}`),
+  getPublicShowcase: (subdomain: string) =>
+    request<PublicShowcaseData>(`/tenants/by-subdomain/${encodeURIComponent(subdomain)}/public-showcase`),
+  publicApply: (subdomain: string, data: PublicApplyDto) =>
+    request<{ success: boolean; leadId: string; message: string }>(
+      `/tenants/by-subdomain/${encodeURIComponent(subdomain)}/apply`,
+      { method: "POST", body: JSON.stringify(data) },
+    ),
   create: (data: { name: string; subdomain: string; adminEmail: string; adminPassword: string; adminFullName: string }) =>
     request<{ tenant: Tenant; admin: { id: string; email: string; fullName: string } }>("/tenants", {
       method: "POST",
@@ -589,6 +815,11 @@ export const platformBillingApi = {
 
 export const telegramApi = {
   status: () => request<{ configured: boolean; botUsername: string | null }>("/telegram/status"),
+  generateLinkToken: (studentId: string) =>
+    request<{ token: string; linkUrl: string | null; expiresAt: string; studentName: string }>("/telegram/link-token", {
+      method: "POST",
+      body: JSON.stringify({ studentId }),
+    }),
 };
 
 // ---- AI ----
@@ -670,6 +901,29 @@ export const examsApi = {
     request<unknown>(`/exams/${examId}/results`, { method: "POST", body: JSON.stringify({ results }) }),
   remove: (id: string) => request<{ success: boolean }>(`/exams/${id}`, { method: "DELETE" }),
   uploadMaterial: (id: string, file: File) => uploadFile<Exam>(`/exams/${id}/material`, file),
+  getQuestions: (id: string) => request<ExamQuestion[]>(`/exams/${id}/questions`),
+  createQuestion: (id: string, data: {
+    prompt: string;
+    questionType?: ExamQuestionType;
+    options?: ExamQuestionOption[];
+    correctAnswer: string;
+    explanation?: string;
+    points?: number;
+    order?: number;
+  }) => request<ExamQuestion>(`/exams/${id}/questions`, { method: "POST", body: JSON.stringify(data) }),
+  removeQuestion: (id: string, questionId: string) =>
+    request<{ success: boolean }>(`/exams/${id}/questions/${questionId}`, { method: "DELETE" }),
+  generateQuestions: (id: string) =>
+    request<ExamQuestion[]>(`/exams/${id}/generate-questions`, { method: "POST" }),
+  startAttempt: (id: string, studentId: string) =>
+    request<{
+      exam: { id: string; title: string; description: string | null; durationMinutes: number | null; maxScore: number; passingScore: number | null; questionCount: number };
+      student: { id: string; fullName: string };
+      questions: { id: string; prompt: string; questionType: ExamQuestionType; options: ExamQuestionOption[]; points: number; order: number }[];
+    }>(`/exams/${id}/start-attempt?studentId=${studentId}`),
+  submitAttempt: (id: string, data: { studentId: string; answers: Record<string, string> }) =>
+    request<SubmitAttemptResult>(`/exams/${id}/submit-attempt`, { method: "POST", body: JSON.stringify(data) }),
+  getAttempts: (id: string) => request<ExamAttempt[]>(`/exams/${id}/attempts`),
 };
 
 // ---- Plans (superadmin plan management; public listing for landing/register) ----
@@ -721,3 +975,94 @@ export const exportApi = {
     return body as { imported: number; errors: string[] };
   },
 };
+
+// ---- Admissions / Leads CRM ----
+
+export const leadsApi = {
+  list: (query?: { status?: string; source?: string; search?: string }) => {
+    const q = new URLSearchParams();
+    if (query?.status) q.set("status", query.status);
+    if (query?.source) q.set("source", query.source);
+    if (query?.search) q.set("search", query.search);
+    const qs = q.toString();
+    return request<Lead[]>(`/leads${qs ? `?${qs}` : ""}`);
+  },
+  funnel: () => request<FunnelStats>("/leads/funnel"),
+  get: (id: string) => request<Lead>(`/leads/${id}`),
+  create: (data: {
+    fullName: string;
+    phone: string;
+    parentPhone?: string;
+    status?: LeadStatus;
+    source?: LeadSource;
+    subject?: string;
+    branchId?: string;
+    trialDate?: string;
+    trialGroupId?: string;
+    notes?: string;
+  }) => request<Lead>("/leads", { method: "POST", body: JSON.stringify(data) }),
+  update: (id: string, data: Partial<Lead>) =>
+    request<Lead>(`/leads/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
+  convert: (
+    id: string,
+    data: { groupIds?: string[]; gender?: Gender; birthDate?: string; address?: string },
+  ) =>
+    request<{ student: Student; lead: Lead }>(`/leads/${id}/convert`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+  remove: (id: string) => request<{ success: boolean }>(`/leads/${id}`, { method: "DELETE" }),
+};
+
+// ---- Certificates (Spec Section 23) ----
+
+export const certificatesApi = {
+  list: (query?: { studentId?: string; groupId?: string; search?: string }) => {
+    const q = new URLSearchParams();
+    if (query?.studentId) q.set("studentId", query.studentId);
+    if (query?.groupId) q.set("groupId", query.groupId);
+    if (query?.search) q.set("search", query.search);
+    const qs = q.toString();
+    return request<Certificate[]>(`/certificates${qs ? `?${qs}` : ""}`);
+  },
+  get: (id: string) => request<Certificate>(`/certificates/${id}`),
+  create: (data: {
+    studentId: string;
+    groupId?: string;
+    title: string;
+    grade?: string;
+    issueDate?: string;
+    signatoryName?: string;
+    signatoryTitle?: string;
+    description?: string;
+  }) => request<Certificate>("/certificates", { method: "POST", body: JSON.stringify(data) }),
+  remove: (id: string) => request<{ success: boolean }>(`/certificates/${id}`, { method: "DELETE" }),
+  verifyPublic: (code: string) =>
+    request<PublicCertificate>(`/certificates/verify/${encodeURIComponent(code)}`),
+};
+
+// ---- Announcements & News (Spec Section 33) ----
+
+export const announcementsApi = {
+  list: (query?: { targetAudience?: string; priority?: string; targetGroupId?: string; search?: string }) => {
+    const q = new URLSearchParams();
+    if (query?.targetAudience) q.set("targetAudience", query.targetAudience);
+    if (query?.priority) q.set("priority", query.priority);
+    if (query?.targetGroupId) q.set("targetGroupId", query.targetGroupId);
+    if (query?.search) q.set("search", query.search);
+    const qs = q.toString();
+    return request<Announcement[]>(`/announcements${qs ? `?${qs}` : ""}`);
+  },
+  get: (id: string) => request<Announcement>(`/announcements/${id}`),
+  create: (data: {
+    title: string;
+    content: string;
+    targetAudience?: string;
+    targetGroupId?: string;
+    priority?: string;
+    sendTelegram?: boolean;
+  }) => request<Announcement>("/announcements", { method: "POST", body: JSON.stringify(data) }),
+  remove: (id: string) => request<{ success: boolean }>(`/announcements/${id}`, { method: "DELETE" }),
+};
+
+

@@ -1,7 +1,7 @@
-import { Inject, Injectable } from '@nestjs/common';
-import { eq } from 'drizzle-orm';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { and, eq } from 'drizzle-orm';
 import { DB, Database } from '../db/db.module';
-import { payments } from '../db/schema';
+import { payments, students } from '../db/schema';
 import { CreatePaymentDto } from './dto/payment.dto';
 import { TelegramService } from '../telegram/telegram.service';
 import { WebhooksService } from '../webhooks/webhooks.service';
@@ -23,6 +23,13 @@ export class PaymentsService {
   }
 
   async create(tenantId: string, dto: CreatePaymentDto) {
+    const student = await this.db.query.students.findFirst({
+      where: and(eq(students.id, dto.studentId), eq(students.tenantId, tenantId)),
+    });
+    if (!student) {
+      throw new NotFoundException('O\'quvchi topilmadi');
+    }
+
     const [payment] = await this.db
       .insert(payments)
       .values({

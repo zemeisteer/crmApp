@@ -52,6 +52,7 @@ function TeacherDetailContent() {
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [birthDate, setBirthDate] = useState("");
+  const [startDate, setStartDate] = useState("");
   const [salaryType, setSalaryType] = useState("FIXED");
   const [salaryValue, setSalaryValue] = useState("");
   const [editError, setEditError] = useState<string | null>(null);
@@ -93,11 +94,6 @@ function TeacherDetailContent() {
 
   const totalRevenue = fullGroups.reduce((sum, g) => sum + groupRevenue(g), 0);
   const totalStudents = fullGroups.reduce((sum, g) => sum + (g.enrollments?.length || 0), 0);
-
-  const calculatedSalary =
-    teacher?.salaryType === "PERCENT"
-      ? Math.round((totalRevenue * (teacher?.salaryValue || 0)) / 100)
-      : teacher?.salaryValue || 0;
 
   const daysOfWeekUz = ["Yakshanba", "Dushanba", "Seshanba", "Chorshanba", "Payshanba", "Juma", "Shanba"];
   const todayWeekdayIndex = new Date().getDay();
@@ -149,6 +145,20 @@ function TeacherDetailContent() {
     };
   }, [fullGroups, todayWeekdayIndex]);
 
+  const calculatedSalary = useMemo(() => {
+    if (!teacher?.salaryValue) return 0;
+    if (teacher.salaryType === "PERCENT") {
+      return Math.round((totalRevenue * teacher.salaryValue) / 100);
+    }
+    if (teacher.salaryType === "PER_STUDENT") {
+      return totalStudents * teacher.salaryValue;
+    }
+    if (teacher.salaryType === "PER_LESSON") {
+      return (lessonsStats.monthly || 12) * teacher.salaryValue;
+    }
+    return teacher.salaryValue;
+  }, [teacher?.salaryType, teacher?.salaryValue, totalRevenue, totalStudents, lessonsStats.monthly]);
+
   const teacherAge = useMemo(() => {
     if (!teacher?.birthDate) return null;
     const b = new Date(teacher.birthDate);
@@ -168,15 +178,16 @@ function TeacherDetailContent() {
   }, [teacher?.birthDate, lang]);
 
   const startedDateFormatted = useMemo(() => {
-    if (!teacher?.createdAt) return "—";
-    const d = new Date(teacher.createdAt);
+    const raw = teacher?.startDate || teacher?.createdAt;
+    if (!raw) return "—";
+    const d = new Date(raw);
     if (isNaN(d.getTime())) return "—";
     return d.toLocaleDateString(lang === "UZ" ? "uz-UZ" : lang === "RU" ? "ru-RU" : "en-US", {
       day: "numeric",
       month: "long",
       year: "numeric",
     });
-  }, [teacher?.createdAt, lang]);
+  }, [teacher?.startDate, teacher?.createdAt, lang]);
 
   if (loading) {
     return <div style={{ padding: 32, color: "#8A8D96", fontSize: 14 }}>{t("common.loading")}</div>;
@@ -195,14 +206,13 @@ function TeacherDetailContent() {
     );
   }
 
-
-
   function openEdit() {
     setFullName(teacher!.fullName);
     setSubject(teacher!.subject || "");
     setPhone(teacher!.phone || "");
     setEmail(teacher!.email || "");
     setBirthDate(teacher!.birthDate ? String(teacher!.birthDate).slice(0, 10) : "");
+    setStartDate(teacher!.startDate ? String(teacher!.startDate).slice(0, 10) : "");
     setSalaryType(teacher!.salaryType || "FIXED");
     setSalaryValue(teacher!.salaryValue != null ? String(teacher!.salaryValue) : "");
     setEditError(null);
@@ -220,6 +230,7 @@ function TeacherDetailContent() {
         phone: phone || undefined,
         email: email || undefined,
         birthDate: birthDate || undefined,
+        startDate: startDate || undefined,
         salaryType: salaryValue ? salaryType : undefined,
         salaryValue: salaryValue ? Number(salaryValue) : undefined,
       });
@@ -482,14 +493,32 @@ function TeacherDetailContent() {
           <Field label="Tug'ilgan sana">
             <DatePicker value={birthDate} onChange={setBirthDate} />
           </Field>
+          <Field label="Ish boshlagan sana">
+            <DatePicker value={startDate} onChange={setStartDate} />
+          </Field>
           <Field label={t("teachers.fieldSalaryType")}>
             <Select
-              options={[{ value: "FIXED", label: t("teachers.salaryFixed") }, { value: "PERCENT", label: t("teachers.salaryPercent") }]}
+              options={[
+                { value: "FIXED", label: "Oylik belgilangan maosh (Fixed)" },
+                { value: "PERCENT", label: "Guruh tushumidan foiz (%)" },
+                { value: "PER_STUDENT", label: "Har bir o'quvchi uchun (Per Student)" },
+                { value: "PER_LESSON", label: "Har bir dars uchun (Per Lesson)" },
+              ]}
               value={salaryType}
               onChange={setSalaryType}
             />
           </Field>
-          <Field label={salaryType === "PERCENT" ? t("teacherDetail.fieldPercent") : t("teacherDetail.fieldMonthlySalary")}>
+          <Field
+            label={
+              salaryType === "PERCENT"
+                ? "Foiz miqdori (%)"
+                : salaryType === "PER_STUDENT"
+                  ? "Bir o'quvchi uchun summa (so'm)"
+                  : salaryType === "PER_LESSON"
+                    ? "Bir dars uchun summa (so'm)"
+                    : "Oylik maosh summasi (so'm)"
+            }
+          >
             <input
               className="field-input"
               type="number"

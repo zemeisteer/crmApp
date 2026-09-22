@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { and, eq } from 'drizzle-orm';
 import { DB, Database } from '../db/db.module';
 import { attendance, groups } from '../db/schema';
@@ -15,6 +15,13 @@ export class AttendanceService {
   ) {}
 
   async mark(tenantId: string, dto: MarkAttendanceDto) {
+    const group = await this.db.query.groups.findFirst({
+      where: and(eq(groups.id, dto.groupId), eq(groups.tenantId, tenantId)),
+    });
+    if (!group) {
+      throw new NotFoundException('Guruh topilmadi');
+    }
+
     const rows = await Promise.all(
       dto.entries.map((entry) =>
         this.db

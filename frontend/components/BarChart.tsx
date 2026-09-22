@@ -5,11 +5,12 @@
 // reports, AI insights) renders one of these instead of pulling in recharts
 // just for a handful of bars.
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 export interface BarDatum {
   label: string;
   value: number;
+  isCurrent?: boolean;
 }
 
 export default function BarChart({
@@ -17,22 +18,35 @@ export default function BarChart({
   color = "#4F46E5",
   height = 160,
   formatValue,
+  defaultActiveIdx,
 }: {
   data: BarDatum[];
   color?: string;
   height?: number;
   formatValue?: (v: number) => string;
+  defaultActiveIdx?: number;
 }) {
+  const currentIdx = useMemo(() => {
+    const found = data.findIndex((d) => d.isCurrent);
+    if (found >= 0) return found;
+    if (defaultActiveIdx !== undefined && defaultActiveIdx >= 0 && defaultActiveIdx < data.length) {
+      return defaultActiveIdx;
+    }
+    return data.length > 0 ? 0 : null;
+  }, [data, defaultActiveIdx]);
+
   const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
   const max = Math.max(1, ...data.map((d) => d.value));
 
-  const selectedItem = selectedIdx !== null ? data[selectedIdx] : null;
+  const activeIdx = selectedIdx !== null ? selectedIdx : currentIdx;
+  const selectedItem = activeIdx !== null && activeIdx >= 0 && activeIdx < data.length ? data[activeIdx] : null;
+  const isCustomSelected = selectedIdx !== null && selectedIdx !== currentIdx;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 6, width: "100%" }}>
       {selectedItem && (
-        <div style={{ display: "flex", justifyContent: "flex-end" }}>
+        <div style={{ display: "flex", justifyContent: "flex-end", minHeight: 28 }}>
           <div
             style={{
               display: "inline-flex",
@@ -42,28 +56,47 @@ export default function BarChart({
               color,
               border: "1px solid rgba(79, 70, 229, 0.25)",
               borderRadius: 8,
-              padding: "3px 9px",
-              fontSize: 11.5,
+              padding: "4px 10px",
+              fontSize: 12,
               fontWeight: 700,
             }}
           >
-            <span>{selectedItem.label}: <strong>{formatValue ? formatValue(selectedItem.value) : selectedItem.value}</strong></span>
-            <button
-              type="button"
-              onClick={() => setSelectedIdx(null)}
-              style={{ background: "none", border: "none", color, cursor: "pointer", fontSize: 12, fontWeight: 800, padding: 0 }}
-            >
-              ✕
-            </button>
+            <span>
+              {selectedItem.label}: <strong>{formatValue ? formatValue(selectedItem.value) : selectedItem.value}</strong>
+              {!isCustomSelected && (
+                <span style={{ fontSize: 11, opacity: 0.85, marginLeft: 4, fontWeight: 500 }}>
+                  (joriy)
+                </span>
+              )}
+            </span>
+            {isCustomSelected && (
+              <button
+                type="button"
+                onClick={() => setSelectedIdx(currentIdx)}
+                style={{
+                  background: "none",
+                  border: "none",
+                  color,
+                  cursor: "pointer",
+                  fontSize: 13,
+                  fontWeight: 800,
+                  padding: "0 2px",
+                  lineHeight: 1,
+                }}
+                title="Qaytish"
+              >
+                ✕
+              </button>
+            )}
           </div>
         </div>
       )}
-      <div style={{ display: "flex", alignItems: "flex-end", gap: 10, height, width: "100%", overflowX: "auto", position: "relative" }}>
+      <div style={{ display: "flex", alignItems: "flex-end", gap: 10, height, width: "100%", overflowX: "auto", position: "relative", paddingBottom: 4 }}>
         {data.length === 0 ? (
           <div style={{ color: "#8A8D96", fontSize: 13, margin: "auto" }}>Ma&apos;lumot yo&apos;q</div>
         ) : (
           data.map((d, i) => {
-            const isSelected = selectedIdx === i;
+            const isSelected = activeIdx === i;
             const isHovered = hoveredIdx === i;
             const barHeight = Math.max(6, (d.value / max) * (height - 46));
             const formatted = formatValue ? formatValue(d.value) : d.value;
@@ -71,7 +104,7 @@ export default function BarChart({
             return (
               <div
                 key={i}
-                onClick={() => setSelectedIdx(isSelected ? null : i)}
+                onClick={() => setSelectedIdx(isSelected && isCustomSelected ? currentIdx : i)}
                 onMouseEnter={() => setHoveredIdx(i)}
                 onMouseLeave={() => setHoveredIdx(null)}
                 style={{
@@ -86,7 +119,7 @@ export default function BarChart({
                   userSelect: "none",
                 }}
               >
-                {/* Hover tooltip */}
+                {/* Hover tooltip near mouse/bar */}
                 {isHovered && !isSelected && (
                   <div
                     style={{
@@ -99,27 +132,41 @@ export default function BarChart({
                       padding: "4px 8px",
                       borderRadius: 6,
                       whiteSpace: "nowrap",
-                      zIndex: 20,
-                      boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+                      zIndex: 30,
+                      boxShadow: "0 4px 12px rgba(0,0,0,0.2)",
                       pointerEvents: "none",
                     }}
                   >
                     {d.label}: {formatted}
                   </div>
                 )}
-                <div style={{ fontSize: 11, fontWeight: 700, color: isSelected ? color : "#4A4E58" }}>{formatted}</div>
+                <div style={{ fontSize: 11, fontWeight: isSelected ? 800 : 600, color: isSelected ? color : "#4A4E58" }}>
+                  {formatted}
+                </div>
                 <div
                   style={{
                     width: 28,
                     height: barHeight,
-                    background: isSelected ? color : isHovered ? "#D7D5FA" : "#ECEBFB",
+                    background: isSelected ? color : isHovered ? "#CBD5E1" : "#EEF2F6",
+                    border: isSelected ? `2px solid ${color}` : "1px solid transparent",
                     borderRadius: 6,
-                    transition: "background 0.18s ease, transform 0.18s ease",
-                    transform: isHovered || isSelected ? "scaleY(1.03)" : "scaleY(1)",
+                    transition: "background 0.15s ease, transform 0.15s ease",
+                    transform: isHovered || isSelected ? "scaleY(1.04)" : "scaleY(1)",
                     transformOrigin: "bottom",
                   }}
                 />
-                <div style={{ fontSize: 10.5, color: isSelected ? color : "#8A8D96", fontWeight: isSelected ? 700 : 500, textAlign: "center", maxWidth: 56, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                <div
+                  style={{
+                    fontSize: 10.5,
+                    color: isSelected ? color : "#8A8D96",
+                    fontWeight: isSelected ? 700 : 500,
+                    textAlign: "center",
+                    maxWidth: 56,
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                  }}
+                >
                   {d.label}
                 </div>
               </div>

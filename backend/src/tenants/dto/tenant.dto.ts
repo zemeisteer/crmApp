@@ -75,3 +75,27 @@ export class UpdateTenantStatusDto {
   @IsString()
   plan?: string;
 }
+
+export class PublicApplyDto {
+  @IsString()
+  fullName: string;
+
+  @IsString()
+  phone: string;
+
+  @IsOptional()
+  @IsString()
+  parentPhone?: string;
+
+  @IsOptional()
+  @IsString()
+  subject?: string;
+
+  @IsOptional()
+  @IsString()
+  branchId?: string;
+
+  @IsOptional()
+  @IsString()
+  notes?: string;
+}

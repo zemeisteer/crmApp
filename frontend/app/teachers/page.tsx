@@ -13,6 +13,7 @@ import { useLanguage } from "@/lib/i18n-context";
 import { teachersApi, groupsApi, studentsApi, paymentsApi, Teacher, Group, Student, Payment, ApiError } from "@/lib/api";
 import { localMonthStr } from "@/lib/date";
 import { PHONE_PATTERN, PHONE_TITLE, NAME_PATTERN, NAME_TITLE } from "@/lib/validation";
+import { matchesSubject } from "@/lib/subject";
 
 const ACCENT = "#4F46E5";
 const OTHER_SUBJECT = "__OTHER__";
@@ -62,6 +63,7 @@ function TeachersContent() {
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState("");
+  const [filterDirection, setFilterDirection] = useState("");
   const [page, setPage] = useState(1);
 
   const [fullName, setFullName] = useState("");
@@ -71,6 +73,7 @@ function TeachersContent() {
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [birthDate, setBirthDate] = useState("");
+  const [startDate, setStartDate] = useState("");
   const [salaryType, setSalaryType] = useState("FIXED");
   const [salaryValue, setSalaryValue] = useState("");
 
@@ -127,6 +130,7 @@ function TeachersContent() {
     setEmail("");
     setPhone("");
     setBirthDate("");
+    setStartDate("");
     setSalaryType("FIXED");
     setSalaryValue("");
     setError(null);
@@ -148,6 +152,7 @@ function TeachersContent() {
         subject: effectiveSubject || undefined,
         phone: phone || undefined,
         birthDate: birthDate || undefined,
+        startDate: startDate || undefined,
         salaryType: salaryValue ? salaryType : undefined,
         salaryValue: salaryValue ? Number(salaryValue) : undefined,
       });
@@ -180,6 +185,10 @@ function TeachersContent() {
           0,
         );
         monthSalary = Math.round((groupRevenue * t.salaryValue) / 100);
+      } else if (t.salaryType === "PER_STUDENT" && t.salaryValue) {
+        monthSalary = enrolledStudentIds.size * t.salaryValue;
+      } else if (t.salaryType === "PER_LESSON" && t.salaryValue) {
+        monthSalary = teacherGroups.length * 12 * t.salaryValue;
       } else if (t.salaryType === "FIXED" && t.salaryValue) {
         monthSalary = t.salaryValue;
       }
@@ -191,12 +200,13 @@ function TeachersContent() {
   const activeGroupsCount = groups.filter((g) => g.teacherId).length;
 
   const filtered = teacherStats.filter(({ teacher: t }) => {
+    if (filterDirection && !matchesSubject(t.subject, filterDirection)) return false;
     const q = search.trim().toLowerCase();
     if (!q) return true;
     return t.fullName.toLowerCase().includes(q) || (t.subject || "").toLowerCase().includes(q);
   });
 
-  useEffect(() => setPage(1), [search]);
+  useEffect(() => setPage(1), [search, filterDirection]);
   const pageItems = usePagedSlice(filtered, page);
 
   return (
@@ -246,13 +256,21 @@ function TeachersContent() {
               </div>
             )}
 
-            <input
-              className="field-input"
-              placeholder={tr("teachers.searchPlaceholder")}
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              style={{ marginBottom: 16, maxWidth: 320 }}
-            />
+            <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap", alignItems: "center" }}>
+              <input
+                className="field-input"
+                placeholder={tr("teachers.searchPlaceholder")}
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                style={{ width: 280, maxWidth: "100%", flexShrink: 0 }}
+              />
+              <Select
+                options={[{ value: "", label: tr("groups.allDirections") }, ...usedSubjects.map((s) => ({ value: s, label: s }))]}
+                value={filterDirection}
+                onChange={setFilterDirection}
+                style={{ width: 200 }}
+              />
+            </div>
           </>
         )}
         {loading ? (
@@ -434,14 +452,32 @@ function TeachersContent() {
           <Field label={tr("teachers.fieldBirthDate")}>
             <DatePicker value={birthDate} onChange={setBirthDate} />
           </Field>
+          <Field label="Ish boshlagan sana">
+            <DatePicker value={startDate} onChange={setStartDate} />
+          </Field>
           <Field label={tr("teachers.fieldSalaryType")}>
             <Select
-              options={[{ value: "FIXED", label: tr("teachers.salaryFixed") }, { value: "PERCENT", label: tr("teachers.salaryPercent") }]}
+              options={[
+                { value: "FIXED", label: "Oylik belgilangan maosh (Fixed)" },
+                { value: "PERCENT", label: "Guruh tushumidan foiz (%)" },
+                { value: "PER_STUDENT", label: "Har bir o'quvchi uchun (Per Student)" },
+                { value: "PER_LESSON", label: "Har bir dars uchun (Per Lesson)" },
+              ]}
               value={salaryType}
               onChange={setSalaryType}
             />
           </Field>
-          <Field label={salaryType === "PERCENT" ? tr("teachers.fieldPercent") : tr("teachers.fieldMonthlySalary")}>
+          <Field
+            label={
+              salaryType === "PERCENT"
+                ? "Foiz miqdori (%)"
+                : salaryType === "PER_STUDENT"
+                  ? "Bir o'quvchi uchun summa (so'm)"
+                  : salaryType === "PER_LESSON"
+                    ? "Bir dars uchun summa (so'm)"
+                    : "Oylik maosh summasi (so'm)"
+            }
+          >
             <input
               className="field-input"
               type="number"

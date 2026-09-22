@@ -1,14 +1,18 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { and, eq } from 'drizzle-orm';
+import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { and, eq, inArray } from 'drizzle-orm';
 import { unlink } from 'fs/promises';
 import { join } from 'path';
 import { DB, Database } from '../db/db.module';
-import { homework, homeworkCompletions, enrollments } from '../db/schema';
+import { homework, homeworkCompletions, enrollments, groups, students } from '../db/schema';
 import { CreateHomeworkDto, UpdateHomeworkDto, SetCompletionDto } from './dto/homework.dto';
+import { TelegramService } from '../telegram/telegram.service';
 
 @Injectable()
 export class HomeworkService {
-  constructor(@Inject(DB) private readonly db: Database) {}
+  constructor(
+    @Inject(DB) private readonly db: Database,
+    private readonly telegram: TelegramService,
+  ) {}
 
   findAll(tenantId: string, groupId?: string) {
     const conditions = [eq(homework.tenantId, tenantId)];
@@ -43,6 +47,13 @@ export class HomeworkService {
 
   async setCompletion(tenantId: string, id: string, dto: SetCompletionDto) {
     await this.findOne(tenantId, id);
+    const student = await this.db.query.students.findFirst({
+      where: and(eq(students.id, dto.studentId), eq(students.tenantId, tenantId)),
+    });
+    if (!student) {
+      throw new NotFoundException('O\'quvchi topilmadi');
+    }
+
     const existing = await this.db.query.homeworkCompletions.findFirst({
       where: and(eq(homeworkCompletions.homeworkId, id), eq(homeworkCompletions.studentId, dto.studentId)),
     });
@@ -58,6 +69,15 @@ export class HomeworkService {
   }
 
   async create(tenantId: string, dto: CreateHomeworkDto) {
+    if (dto.groupIds.length > 0) {
+      const validGroups = await this.db.query.groups.findMany({
+        where: and(inArray(groups.id, dto.groupIds), eq(groups.tenantId, tenantId)),
+      });
+      if (validGroups.length !== dto.groupIds.length) {
+        throw new BadRequestException('Ayrim guruhlar sizning markazingizga tegishli emas');
+      }
+    }
+
     const rows = await Promise.all(
       dto.groupIds.map((groupId) =>
         this.db
@@ -72,7 +92,17 @@ export class HomeworkService {
           .returning(),
       ),
     );
-    return rows.flat();
+    const flat = rows.flat();
+
+    // Trigger Telegram notification to students in assigned groups
+    for (const hw of flat) {
+      const group = await this.db.query.groups.findFirst({ where: eq(groups.id, hw.groupId) });
+      const dueStr = hw.dueDate ? new Date(hw.dueDate).toLocaleDateString('uz-UZ') : 'Muddatsiz';
+      const notificationText = `📚 <b>Yangi uy vazifasi!</b>\n\n📌 <b>Guruh:</b> ${group?.name || 'Guruh'}\n📝 <b>Vazifa:</b> ${hw.title}\n⏰ <b>Topshirish muddati:</b> ${dueStr}${hw.description ? `\n\n📖 ${hw.description}` : ''}`;
+      void this.telegram.notifyGroup(tenantId, hw.groupId, notificationText);
+    }
+
+    return flat;
   }
 
   async update(tenantId: string, id: string, dto: UpdateHomeworkDto) {

@@ -18,7 +18,13 @@ import { Roles } from '../common/roles.decorator';
 import { CurrentUser } from '../common/current-user.decorator';
 import { attachmentStorage, ATTACHMENT_MAX_SIZE } from '../common/upload.util';
 import { ExamsService } from './exams.service';
-import { CreateExamDto, SubmitResultsDto } from './dto/exam.dto';
+import {
+  CreateExamDto,
+  CreateExamQuestionDto,
+  BatchCreateQuestionsDto,
+  SubmitAttemptDto,
+  SubmitResultsDto,
+} from './dto/exam.dto';
 
 @UseGuards(JwtAuthGuard, RolesGuard, TrialGuard)
 @Controller('exams')
@@ -62,5 +68,75 @@ export class ExamsController {
   @Delete(':id')
   remove(@CurrentUser('tenantId') tenantId: string, @Param('id') id: string) {
     return this.service.remove(tenantId, id);
+  }
+
+  // ---- Questions & Question Bank Endpoints ----
+
+  @Roles('ADMIN', 'TEACHER')
+  @Get(':id/questions')
+  getQuestions(@CurrentUser('tenantId') tenantId: string, @Param('id') id: string) {
+    return this.service.getQuestions(tenantId, id);
+  }
+
+  @Roles('ADMIN', 'TEACHER')
+  @Post(':id/questions')
+  createQuestion(
+    @CurrentUser('tenantId') tenantId: string,
+    @Param('id') id: string,
+    @Body() dto: CreateExamQuestionDto,
+  ) {
+    return this.service.createQuestion(tenantId, id, dto);
+  }
+
+  @Roles('ADMIN', 'TEACHER')
+  @Post(':id/questions/batch')
+  batchCreateQuestions(
+    @CurrentUser('tenantId') tenantId: string,
+    @Param('id') id: string,
+    @Body() dto: BatchCreateQuestionsDto,
+  ) {
+    return this.service.batchCreateQuestions(tenantId, id, dto);
+  }
+
+  @Roles('ADMIN', 'TEACHER')
+  @Delete(':id/questions/:questionId')
+  removeQuestion(
+    @CurrentUser('tenantId') tenantId: string,
+    @Param('id') id: string,
+    @Param('questionId') questionId: string,
+  ) {
+    return this.service.removeQuestion(tenantId, id, questionId);
+  }
+
+  @Roles('ADMIN', 'TEACHER')
+  @Post(':id/generate-questions')
+  generateQuestions(@CurrentUser('tenantId') tenantId: string, @Param('id') id: string) {
+    return this.service.generateQuestionsWithAi(tenantId, id);
+  }
+
+  // ---- Interactive Test Taking Endpoints ----
+
+  @Get(':id/start-attempt')
+  startAttempt(
+    @CurrentUser('tenantId') tenantId: string,
+    @Param('id') id: string,
+    @Query('studentId') studentId: string,
+  ) {
+    return this.service.startAttempt(tenantId, id, studentId);
+  }
+
+  @Post(':id/submit-attempt')
+  submitAttempt(
+    @CurrentUser('tenantId') tenantId: string,
+    @Param('id') id: string,
+    @Body() dto: SubmitAttemptDto,
+  ) {
+    return this.service.submitAttempt(tenantId, id, dto);
+  }
+
+  @Roles('ADMIN', 'TEACHER')
+  @Get(':id/attempts')
+  getAttempts(@CurrentUser('tenantId') tenantId: string, @Param('id') id: string) {
+    return this.service.getAttempts(tenantId, id);
   }
 }

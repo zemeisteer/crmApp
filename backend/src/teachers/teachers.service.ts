@@ -39,7 +39,12 @@ export class TeachersService {
   async create(tenantId: string, userId: string, dto: CreateTeacherDto) {
     const [teacher] = await this.db
       .insert(teachers)
-      .values({ tenantId, ...dto, birthDate: dto.birthDate ? new Date(dto.birthDate) : undefined })
+      .values({
+        tenantId,
+        ...dto,
+        birthDate: dto.birthDate ? new Date(dto.birthDate) : undefined,
+        startDate: dto.startDate ? new Date(dto.startDate) : undefined,
+      })
       .returning();
     this.audit.log({ tenantId, userId, action: 'create', entityType: 'teacher', entityId: teacher.id, meta: { fullName: teacher.fullName } });
     return teacher;
@@ -49,7 +54,12 @@ export class TeachersService {
     await this.findOne(tenantId, id);
     const [teacher] = await this.db
       .update(teachers)
-      .set({ ...dto, birthDate: dto.birthDate ? new Date(dto.birthDate) : undefined, updatedAt: new Date() })
+      .set({
+        ...dto,
+        birthDate: dto.birthDate ? new Date(dto.birthDate) : undefined,
+        startDate: dto.startDate ? new Date(dto.startDate) : undefined,
+        updatedAt: new Date(),
+      })
       .where(and(eq(teachers.id, id), eq(teachers.tenantId, tenantId)))
       .returning();
     this.audit.log({ tenantId, userId, action: 'update', entityType: 'teacher', entityId: id, meta: dto });

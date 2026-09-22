@@ -1,7 +1,7 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { and, eq, isNotNull, isNull } from 'drizzle-orm';
+import { and, eq, isNotNull, isNull, inArray } from 'drizzle-orm';
 import { DB, Database } from '../db/db.module';
-import { students, enrollments } from '../db/schema';
+import { students, enrollments, groups } from '../db/schema';
 import { CreateStudentDto, UpdateStudentDto } from './dto/student.dto';
 import { AuditService } from '../audit/audit.service';
 import { WebhooksService } from '../webhooks/webhooks.service';
@@ -56,10 +56,16 @@ export class StudentsService {
 
     const groupIds = dto.groupIds && dto.groupIds.length > 0 ? dto.groupIds : dto.groupId ? [dto.groupId] : [];
     if (groupIds.length > 0) {
-      await this.db
-        .insert(enrollments)
-        .values(groupIds.map((groupId) => ({ studentId: student.id, groupId })))
-        .onConflictDoNothing();
+      const validGroups = await this.db.query.groups.findMany({
+        where: and(eq(groups.tenantId, tenantId), inArray(groups.id, groupIds), isNull(groups.deletedAt)),
+      });
+      const validGroupIds = validGroups.map((g) => g.id);
+      if (validGroupIds.length > 0) {
+        await this.db
+          .insert(enrollments)
+          .values(validGroupIds.map((groupId) => ({ studentId: student.id, groupId })))
+          .onConflictDoNothing();
+      }
     }
     this.audit.log({ tenantId, userId, action: 'create', entityType: 'student', entityId: student.id, meta: { fullName: student.fullName } });
     void this.webhooks.dispatch(tenantId, 'student.created', student);
@@ -106,6 +112,11 @@ export class StudentsService {
 
   async enroll(tenantId: string, studentId: string, groupId: string) {
     await this.findOne(tenantId, studentId);
+    const group = await this.db.query.groups.findFirst({
+      where: and(eq(groups.id, groupId), eq(groups.tenantId, tenantId), isNull(groups.deletedAt)),
+    });
+    if (!group) throw new NotFoundException('Guruh topilmadi');
+
     await this.db.insert(enrollments).values({ studentId, groupId }).onConflictDoNothing();
     return { success: true };
   }

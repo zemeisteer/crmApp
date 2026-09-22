@@ -27,6 +27,9 @@ import { ExamsModule } from './exams/exams.module';
 import { HealthModule } from './health/health.module';
 import { PlansModule } from './plans/plans.module';
 import { StaffModule } from './staff/staff.module';
+import { LeadsModule } from './leads/leads.module';
+import { CertificatesModule } from './certificates/certificates.module';
+import { AnnouncementsModule } from './announcements/announcements.module';
 
 @Module({
   imports: [
@@ -57,6 +60,9 @@ import { StaffModule } from './staff/staff.module';
     HealthModule,
     PlansModule,
     StaffModule,
+    LeadsModule,
+    CertificatesModule,
+    AnnouncementsModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })

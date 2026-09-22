@@ -49,6 +49,26 @@ export const billingTxStatusEnum = pgEnum('billing_tx_status', [
   'CANCELLED',
 ]);
 
+export const leadStatusEnum = pgEnum('lead_status', [
+  'NEW',
+  'CONTACTED',
+  'TRIAL_BOOKED',
+  'TRIAL_ATTENDED',
+  'QUALIFIED',
+  'ENROLLED',
+  'LOST',
+]);
+
+export const leadSourceEnum = pgEnum('lead_source', [
+  'INSTAGRAM',
+  'TELEGRAM',
+  'WEBSITE',
+  'RECOMMENDATION',
+  'BANNER',
+  'WALK_IN',
+  'OTHER',
+]);
+
 // The center's vertical — drives subject suggestions and (later) which
 // dashboard widgets make sense for it. Free-ish text on purpose (an admin
 // can still type anything in "boshqa"), but the known set gets curated
@@ -58,6 +78,12 @@ export const tenantCategoryEnum = pgEnum('tenant_category', [
   'MATEMATIKA',
   'IT',
   'BOSHQA',
+]);
+
+export const examQuestionTypeEnum = pgEnum('exam_question_type', [
+  'MCQ',
+  'TRUE_FALSE',
+  'SHORT_ANSWER',
 ]);
 
 export const tenants = pgTable('tenants', {
@@ -140,6 +166,7 @@ export const teachers = pgTable('teachers', {
   phone: text('phone'),
   email: text('email'),
   birthDate: timestamp('birth_date'),
+  startDate: timestamp('start_date'),
   salaryType: text('salary_type'),
   salaryValue: integer('salary_value'),
   deletedAt: timestamp('deleted_at'),
@@ -364,6 +391,41 @@ export const examResults = pgTable('exam_results', {
   uniq: uniqueIndex('exam_results_exam_student_idx').on(t.examId, t.studentId),
 }));
 
+export const examQuestions = pgTable('exam_questions', {
+  id: text('id').primaryKey().$defaultFn(() => createId()),
+  tenantId: text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  examId: text('exam_id').notNull().references(() => exams.id, { onDelete: 'cascade' }),
+  prompt: text('prompt').notNull(),
+  questionType: examQuestionTypeEnum('question_type').notNull().default('MCQ'),
+  options: text('options'), // JSON string: [{ "id": "A", "text": "..." }, ...]
+  correctAnswer: text('correct_answer').notNull(), // "A", "true", keyword, etc.
+  explanation: text('explanation'),
+  points: integer('points').notNull().default(1),
+  order: integer('order').notNull().default(0),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+}, (t) => ({
+  tenantIdx: index('exam_questions_tenant_idx').on(t.tenantId),
+  examIdx: index('exam_questions_exam_idx').on(t.examId),
+}));
+
+export const examAttempts = pgTable('exam_attempts', {
+  id: text('id').primaryKey().$defaultFn(() => createId()),
+  tenantId: text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  examId: text('exam_id').notNull().references(() => exams.id, { onDelete: 'cascade' }),
+  studentId: text('student_id').notNull().references(() => students.id, { onDelete: 'cascade' }),
+  startedAt: timestamp('started_at').notNull().defaultNow(),
+  completedAt: timestamp('completed_at'),
+  score: integer('score').notNull().default(0),
+  maxScore: integer('max_score').notNull().default(0),
+  passed: boolean('passed').notNull().default(false),
+  answers: text('answers'), // JSON string: { [questionId]: string }
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+}, (t) => ({
+  tenantIdx: index('exam_attempts_tenant_idx').on(t.tenantId),
+  examStudentIdx: index('exam_attempts_exam_student_idx').on(t.examId, t.studentId),
+}));
+
 // Outgoing event notifications to a tenant's own systems (Zapier-style).
 export const webhooks = pgTable('webhooks', {
   id: text('id').primaryKey().$defaultFn(() => createId()),
@@ -388,6 +450,83 @@ export const featureFlags = pgTable('feature_flags', {
   uniq: uniqueIndex('feature_flags_tenant_key_idx').on(t.tenantId, t.key),
 }));
 
+// Secure, time-limited, single-use linking token for Telegram bot account attachment
+export const telegramLinkTokens = pgTable('telegram_link_tokens', {
+  id: text('id').primaryKey().$defaultFn(() => createId()),
+  tenantId: text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  studentId: text('student_id').references(() => students.id, { onDelete: 'cascade' }),
+  token: text('token').notNull(),
+  expiresAt: timestamp('expires_at').notNull(),
+  usedAt: timestamp('used_at'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+}, (t) => ({
+  tokenIdx: uniqueIndex('telegram_link_tokens_token_idx').on(t.token),
+  tenantIdx: index('telegram_link_tokens_tenant_idx').on(t.tenantId),
+}));
+
+// Admissions & Sales CRM — Leads management
+export const leads = pgTable('leads', {
+  id: text('id').primaryKey().$defaultFn(() => createId()),
+  tenantId: text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  fullName: text('full_name').notNull(),
+  phone: text('phone').notNull(),
+  parentPhone: text('parent_phone'),
+  status: leadStatusEnum('status').notNull().default('NEW'),
+  source: leadSourceEnum('source').notNull().default('OTHER'),
+  subject: text('subject'),
+  branchId: text('branch_id').references(() => branches.id),
+  trialDate: timestamp('trial_date'),
+  trialGroupId: text('trial_group_id').references(() => groups.id),
+  convertedStudentId: text('converted_student_id').references(() => students.id),
+  lostReason: text('lost_reason'),
+  notes: text('notes'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+}, (t) => ({
+  tenantIdx: index('leads_tenant_idx').on(t.tenantId),
+  statusIdx: index('leads_status_idx').on(t.status),
+}));
+
+// Verifiable Digital Certificates (CRMAPP Master Spec Section 23)
+export const certificates = pgTable('certificates', {
+  id: text('id').primaryKey().$defaultFn(() => createId()),
+  tenantId: text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  studentId: text('student_id').notNull().references(() => students.id, { onDelete: 'cascade' }),
+  groupId: text('group_id').references(() => groups.id, { onDelete: 'set null' }),
+  code: text('code').notNull(), // Unique public verification code, e.g. "CERT-2026-9A8B"
+  title: text('title').notNull(), // e.g. "General English (B2) Bitiruv Sertifikati"
+  grade: text('grade'), // e.g. "A+", "IELTS 7.5", "A'lo"
+  issueDate: timestamp('issue_date').notNull().defaultNow(),
+  signatoryName: text('signatory_name').notNull().default("O'quv bo'limi"),
+  signatoryTitle: text('signatory_title'),
+  description: text('description'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+}, (t) => ({
+  tenantIdx: index('certificates_tenant_idx').on(t.tenantId),
+  codeIdx: uniqueIndex('certificates_code_idx').on(t.code),
+  studentIdx: index('certificates_student_idx').on(t.studentId),
+}));
+
+// Announcements & News (CRMAPP Master Spec Section 33)
+export const announcements = pgTable('announcements', {
+  id: text('id').primaryKey().$defaultFn(() => createId()),
+  tenantId: text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  authorId: text('author_id').references(() => users.id, { onDelete: 'set null' }),
+  title: text('title').notNull(),
+  content: text('content').notNull(),
+  targetAudience: text('target_audience').notNull().default('ALL'), // 'ALL' | 'STUDENTS' | 'TEACHERS' | 'GROUP'
+  targetGroupId: text('target_group_id').references(() => groups.id, { onDelete: 'cascade' }),
+  priority: text('priority').notNull().default('NORMAL'), // 'NORMAL' | 'HIGH' | 'URGENT'
+  sendTelegram: boolean('send_telegram').notNull().default(false),
+  publishedAt: timestamp('published_at').notNull().defaultNow(),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+}, (t) => ({
+  tenantIdx: index('announcements_tenant_idx').on(t.tenantId),
+  publishedAtIdx: index('announcements_published_at_idx').on(t.publishedAt),
+}));
+
 // ---- relations ----
 export const tenantsRelations = relations(tenants, ({ many }) => ({
   users: many(users),
@@ -400,11 +539,24 @@ export const tenantsRelations = relations(tenants, ({ many }) => ({
   homework: many(homework),
   auditLogs: many(auditLogs),
   platformSubscriptions: many(platformSubscriptions),
+  leads: many(leads),
+  certificates: many(certificates),
+  announcements: many(announcements),
+  examQuestions: many(examQuestions),
+  examAttempts: many(examAttempts),
+}));
+
+export const leadsRelations = relations(leads, ({ one }) => ({
+  tenant: one(tenants, { fields: [leads.tenantId], references: [tenants.id] }),
+  branch: one(branches, { fields: [leads.branchId], references: [branches.id] }),
+  trialGroup: one(groups, { fields: [leads.trialGroupId], references: [groups.id] }),
+  convertedStudent: one(students, { fields: [leads.convertedStudentId], references: [students.id] }),
 }));
 
 export const usersRelations = relations(users, ({ one, many }) => ({
   tenant: one(tenants, { fields: [users.tenantId], references: [tenants.id] }),
   sessions: many(sessions),
+  announcements: many(announcements),
 }));
 
 export const sessionsRelations = relations(sessions, ({ one }) => ({
@@ -415,11 +567,24 @@ export const examsRelations = relations(exams, ({ one, many }) => ({
   tenant: one(tenants, { fields: [exams.tenantId], references: [tenants.id] }),
   group: one(groups, { fields: [exams.groupId], references: [groups.id] }),
   results: many(examResults),
+  questions: many(examQuestions),
+  attempts: many(examAttempts),
 }));
 
 export const examResultsRelations = relations(examResults, ({ one }) => ({
   exam: one(exams, { fields: [examResults.examId], references: [exams.id] }),
   student: one(students, { fields: [examResults.studentId], references: [students.id] }),
+}));
+
+export const examQuestionsRelations = relations(examQuestions, ({ one }) => ({
+  tenant: one(tenants, { fields: [examQuestions.tenantId], references: [tenants.id] }),
+  exam: one(exams, { fields: [examQuestions.examId], references: [exams.id] }),
+}));
+
+export const examAttemptsRelations = relations(examAttempts, ({ one }) => ({
+  tenant: one(tenants, { fields: [examAttempts.tenantId], references: [tenants.id] }),
+  exam: one(exams, { fields: [examAttempts.examId], references: [exams.id] }),
+  student: one(students, { fields: [examAttempts.studentId], references: [students.id] }),
 }));
 
 export const webhooksRelations = relations(webhooks, ({ one }) => ({
@@ -444,6 +609,8 @@ export const groupsRelations = relations(groups, ({ one, many }) => ({
   enrollments: many(enrollments),
   attendance: many(attendance),
   homework: many(homework),
+  certificates: many(certificates),
+  announcements: many(announcements),
 }));
 
 export const branchesRelations = relations(branches, ({ one, many }) => ({
@@ -476,6 +643,8 @@ export const studentsRelations = relations(students, ({ one, many }) => ({
   enrollments: many(enrollments),
   payments: many(payments),
   attendance: many(attendance),
+  certificates: many(certificates),
+  attempts: many(examAttempts),
 }));
 
 export const enrollmentsRelations = relations(enrollments, ({ one }) => ({
@@ -504,3 +673,22 @@ export const billingTransactionsRelations = relations(billingTransactions, ({ on
   student: one(students, { fields: [billingTransactions.studentId], references: [students.id] }),
   payment: one(payments, { fields: [billingTransactions.paymentId], references: [payments.id] }),
 }));
+
+export const telegramLinkTokensRelations = relations(telegramLinkTokens, ({ one }) => ({
+  tenant: one(tenants, { fields: [telegramLinkTokens.tenantId], references: [tenants.id] }),
+  student: one(students, { fields: [telegramLinkTokens.studentId], references: [students.id] }),
+}));
+
+export const certificatesRelations = relations(certificates, ({ one }) => ({
+  tenant: one(tenants, { fields: [certificates.tenantId], references: [tenants.id] }),
+  student: one(students, { fields: [certificates.studentId], references: [students.id] }),
+  group: one(groups, { fields: [certificates.groupId], references: [groups.id] }),
+}));
+
+export const announcementsRelations = relations(announcements, ({ one }) => ({
+  tenant: one(tenants, { fields: [announcements.tenantId], references: [tenants.id] }),
+  author: one(users, { fields: [announcements.authorId], references: [users.id] }),
+  targetGroup: one(groups, { fields: [announcements.targetGroupId], references: [groups.id] }),
+}));
+
+

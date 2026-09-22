@@ -87,7 +87,7 @@ export default function DatePicker({
     : "";
 
   return (
-    <div ref={ref} style={{ position: "relative", ...style }}>
+    <div ref={ref} style={{ position: "relative", flexShrink: 0, ...style }}>
       <button
         type="button"
         onClick={() => {
@@ -95,7 +95,7 @@ export default function DatePicker({
           setViewMode("days");
         }}
         className="field-input"
-        style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, cursor: "pointer", textAlign: "left", width: "100%" }}
+        style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, cursor: "pointer", textAlign: "left", width: "100%", minHeight: 44 }}
       >
         <span style={{ color: displayLabel ? "#181A1F" : "#8A8D96" }}>{displayLabel || effectivePlaceholder}</span>
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#8A8D96" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
@@ -107,9 +107,10 @@ export default function DatePicker({
           style={{
             position: "absolute",
             top: "calc(100% + 6px)",
-            right: 0,
-            width: 300,
-            zIndex: 100,
+            left: 0,
+            width: 290,
+            maxWidth: "calc(100vw - 32px)",
+            zIndex: 110,
             background: "#fff",
             border: "1px solid #EAE8E2",
             borderRadius: 14,

@@ -10,6 +10,7 @@ import Select from "@/components/Select";
 import DatePicker from "@/components/DatePicker";
 import { homeworkApi, groupsApi, aiApi, Homework, Group, ApiError, fileUrl } from "@/lib/api";
 import { useLanguage } from "@/lib/i18n-context";
+import { matchesSubject, extractUniqueSubjects } from "@/lib/subject";
 
 const ACCENT = "#4F46E5";
 
@@ -88,9 +89,9 @@ function HomeworkContent() {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
 
-  const subjects = useMemo(() => Array.from(new Set(groups.map((g) => g.subject).filter(Boolean))) as string[], [groups]);
-  const groupsInFilterDirection = filterDirection ? groups.filter((g) => g.subject === filterDirection) : groups;
-  const groupsInFormDirection = formDirection ? groups.filter((g) => g.subject === formDirection) : groups;
+  const subjects = useMemo(() => extractUniqueSubjects(groups), [groups]);
+  const groupsInFilterDirection = filterDirection ? groups.filter((g) => matchesSubject(g.subject, filterDirection)) : groups;
+  const groupsInFormDirection = formDirection ? groups.filter((g) => matchesSubject(g.subject, formDirection)) : groups;
 
   function load() {
     setLoading(true);
@@ -187,7 +188,7 @@ function HomeworkContent() {
 
   const filtered = useMemo(() => {
     return items.filter((h) => {
-      if (filterDirection && h.group?.subject !== filterDirection) return false;
+      if (filterDirection && !matchesSubject(h.group?.subject, filterDirection)) return false;
       if (filterGroupId && h.groupId !== filterGroupId) return false;
       if (search) {
         const q = search.toLowerCase();

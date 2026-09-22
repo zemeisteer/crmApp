@@ -15,11 +15,13 @@ export default function MultiSelect({
   selected,
   onChange,
   placeholder,
+  style,
 }: {
   options: MultiSelectOption[];
   selected: string[];
   onChange: (values: string[]) => void;
   placeholder?: string;
+  style?: React.CSSProperties;
 }) {
   const { t } = useLanguage();
   const effectivePlaceholder = placeholder ?? t("picker.select");
@@ -41,7 +43,7 @@ export default function MultiSelect({
   const selectedLabels = options.filter((o) => selected.includes(o.value)).map((o) => o.label);
 
   return (
-    <div ref={ref} style={{ position: "relative" }}>
+    <div ref={ref} style={{ position: "relative", flexShrink: 0, ...style }}>
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -101,8 +103,8 @@ export default function MultiSelect({
             position: "absolute",
             top: "calc(100% + 5px)",
             left: 0,
-            right: 0,
-            minWidth: 190,
+            minWidth: "100%",
+            maxWidth: 360,
             zIndex: 100,
             background: "#fff",
             border: "1px solid #EAE8E2",
@@ -110,7 +112,7 @@ export default function MultiSelect({
             maxHeight: 240,
             overflowY: "auto",
             padding: 5,
-            boxShadow: "0 12px 36px rgba(18,19,26,0.12), 0 2px 6px rgba(18,19,26,0.06)",
+            boxShadow: "0 12px 36px rgba(18,19,26,0.14), 0 2px 6px rgba(18,19,26,0.06)",
           }}
         >
           {options.length === 0 ? (

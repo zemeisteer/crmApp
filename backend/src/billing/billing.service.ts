@@ -1,9 +1,9 @@
-import { Inject, Injectable, ServiceUnavailableException } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createHash } from 'crypto';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { DB, Database } from '../db/db.module';
-import { billingTransactions, payments } from '../db/schema';
+import { billingTransactions, payments, students } from '../db/schema';
 import { GeneratePaymentLinkDto } from './dto/billing.dto';
 import { TelegramService } from '../telegram/telegram.service';
 
@@ -36,6 +36,13 @@ export class BillingService {
   ) {}
 
   private async createPendingTx(tenantId: string, dto: GeneratePaymentLinkDto, provider: 'CLICK' | 'PAYME') {
+    const student = await this.db.query.students.findFirst({
+      where: and(eq(students.id, dto.studentId), eq(students.tenantId, tenantId)),
+    });
+    if (!student) {
+      throw new NotFoundException('O\'quvchi topilmadi');
+    }
+
     const [tx] = await this.db
       .insert(billingTransactions)
       .values({
