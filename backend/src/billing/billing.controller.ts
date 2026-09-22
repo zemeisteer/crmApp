@@ -1,4 +1,4 @@
-import { Body, Controller, Headers, HttpCode, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Headers, HttpCode, Post, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../common/jwt-auth.guard';
 import { RolesGuard } from '../common/roles.guard';
 import { Roles } from '../common/roles.decorator';
@@ -10,15 +10,20 @@ import { GeneratePaymentLinkDto } from './dto/billing.dto';
 export class BillingController {
   constructor(private readonly service: BillingService) {}
 
+  @Get('config')
+  getConfig() {
+    return this.service.getConfig();
+  }
+
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('ADMIN', 'ACCOUNTANT')
+  @Roles('ADMIN', 'ACCOUNTANT', 'MANAGER', 'RECEPTIONIST')
   @Post('click/link')
   clickLink(@CurrentUser('tenantId') tenantId: string, @Body() dto: GeneratePaymentLinkDto) {
     return this.service.generateClickLink(tenantId, dto);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('ADMIN', 'ACCOUNTANT')
+  @Roles('ADMIN', 'ACCOUNTANT', 'MANAGER', 'RECEPTIONIST')
   @Post('payme/link')
   paymeLink(@CurrentUser('tenantId') tenantId: string, @Body() dto: GeneratePaymentLinkDto) {
     return this.service.generatePaymeLink(tenantId, dto);

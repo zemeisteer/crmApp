@@ -30,6 +30,10 @@ import { StaffModule } from './staff/staff.module';
 import { LeadsModule } from './leads/leads.module';
 import { CertificatesModule } from './certificates/certificates.module';
 import { AnnouncementsModule } from './announcements/announcements.module';
+import { ScheduleModule } from './schedule/schedule.module';
+import { ExpensesModule } from './expenses/expenses.module';
+import { PortalModule } from './portal/portal.module';
+import { NotificationsModule } from './notifications/notifications.module';
 
 @Module({
   imports: [
@@ -63,6 +67,10 @@ import { AnnouncementsModule } from './announcements/announcements.module';
     LeadsModule,
     CertificatesModule,
     AnnouncementsModule,
+    ScheduleModule,
+    ExpensesModule,
+    PortalModule,
+    NotificationsModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })

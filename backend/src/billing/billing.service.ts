@@ -5,7 +5,7 @@ import { and, eq } from 'drizzle-orm';
 import { DB, Database } from '../db/db.module';
 import { billingTransactions, payments, students } from '../db/schema';
 import { GeneratePaymentLinkDto } from './dto/billing.dto';
-import { TelegramService } from '../telegram/telegram.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 // NOTE: Click and Payme's exact field names / error codes have shifted
 // across their API versions over the years. This module implements the
@@ -33,7 +33,17 @@ export class BillingService {
     @Inject(DB) private readonly db: Database,
     private readonly config: ConfigService,
     private readonly telegram: TelegramService,
+    private readonly notifications: NotificationsService,
   ) {}
+
+  getConfig() {
+    return {
+      clickEnabled: Boolean(
+        this.config.get<string>('CLICK_MERCHANT_ID') && this.config.get<string>('CLICK_SERVICE_ID'),
+      ),
+      paymeEnabled: Boolean(this.config.get<string>('PAYME_MERCHANT_ID')),
+    };
+  }
 
   private async createPendingTx(tenantId: string, dto: GeneratePaymentLinkDto, provider: 'CLICK' | 'PAYME') {
     const student = await this.db.query.students.findFirst({
@@ -107,6 +117,13 @@ export class BillingService {
     void this.telegram.notifyStudent(
       tx.studentId,
       `To'lov qabul qilindi: ${new Intl.NumberFormat('uz-UZ').format(tx.amount)} so'm (${tx.forMonth} oyi uchun, ${tx.provider}).`,
+    );
+
+    void this.notifications.notifyPaymentReceived(
+      tx.tenantId,
+      tx.studentId,
+      tx.amount,
+      tx.forMonth,
     );
 
     return updated;

@@ -47,12 +47,14 @@ export class AuthService {
     email: string;
     role: string;
     tenantId: string | null;
+    permissions?: string[] | null;
   }) {
     return this.jwt.signAsync({
       sub: user.id,
       email: user.email,
       role: user.role,
       tenantId: user.tenantId,
+      permissions: user.permissions || [],
     });
   }
 
@@ -76,7 +78,7 @@ export class AuthService {
   }
 
   private async issueFullSession(
-    user: { id: string; email: string; role: string; tenantId: string | null },
+    user: { id: string; email: string; role: string; tenantId: string | null; permissions?: string[] | null },
     meta: { userAgent?: string; ip?: string },
   ) {
     const accessToken = await this.signAccessToken(user);
@@ -137,14 +139,14 @@ export class AuthService {
     );
 
     const { accessToken, refreshToken } = await this.issueFullSession(
-      { id: user.id, email: user.email, role: user.role, tenantId: tenant.id },
+      { id: user.id, email: user.email, role: user.role, tenantId: tenant.id, permissions: user.permissions || [] },
       {},
     );
 
     return {
       accessToken,
       refreshToken,
-      user: { id: user.id, email: user.email, fullName: user.fullName, role: user.role },
+      user: { id: user.id, email: user.email, fullName: user.fullName, role: user.role, permissions: user.permissions || [] },
       tenant,
     };
   }
@@ -169,7 +171,7 @@ export class AuthService {
     }
 
     const { accessToken, refreshToken } = await this.issueFullSession(
-      { id: user.id, email: user.email, role: user.role, tenantId: user.tenantId },
+      { id: user.id, email: user.email, role: user.role, tenantId: user.tenantId, permissions: user.permissions || [] },
       meta,
     );
 
@@ -177,7 +179,7 @@ export class AuthService {
       twoFactorRequired: false as const,
       accessToken,
       refreshToken,
-      user: { id: user.id, email: user.email, fullName: user.fullName, role: user.role },
+      user: { id: user.id, email: user.email, fullName: user.fullName, role: user.role, permissions: user.permissions || [] },
       tenant,
     };
   }
@@ -202,13 +204,13 @@ export class AuthService {
       tenant = (await this.db.query.tenants.findFirst({ where: eq(tenants.id, user.tenantId) })) ?? null;
     }
     const { accessToken, refreshToken } = await this.issueFullSession(
-      { id: user.id, email: user.email, role: user.role, tenantId: user.tenantId },
+      { id: user.id, email: user.email, role: user.role, tenantId: user.tenantId, permissions: user.permissions || [] },
       meta,
     );
     return {
       accessToken,
       refreshToken,
-      user: { id: user.id, email: user.email, fullName: user.fullName, role: user.role },
+      user: { id: user.id, email: user.email, fullName: user.fullName, role: user.role, permissions: user.permissions || [] },
       tenant,
     };
   }
@@ -356,6 +358,7 @@ export class AuthService {
         email: user.email,
         fullName: user.fullName,
         role: user.role,
+        permissions: user.permissions || [],
         emailVerified: user.emailVerified,
         twoFactorEnabled: user.twoFactorEnabled,
       },

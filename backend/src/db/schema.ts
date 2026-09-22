@@ -14,9 +14,38 @@ import { createId } from '@paralleldrive/cuid2';
 export const roleEnum = pgEnum('role', [
   'SUPERADMIN',
   'ADMIN',
+  'MANAGER',
+  'RECEPTIONIST',
   'TEACHER',
   'ACCOUNTANT',
 ]);
+
+export const notificationChannelEnum = pgEnum('notification_channel', [
+  'TELEGRAM',
+  'SMS',
+  'EMAIL',
+  'PUSH',
+  'IN_APP',
+]);
+
+export const notificationStatusEnum = pgEnum('notification_status', [
+  'QUEUED',
+  'SENT',
+  'FAILED',
+]);
+
+export const notificationEventEnum = pgEnum('notification_event', [
+  'ATTENDANCE_ABSENT',
+  'ATTENDANCE_LATE',
+  'PAYMENT_DUE',
+  'PAYMENT_RECEIVED',
+  'HOMEWORK_ASSIGNED',
+  'HOMEWORK_GRADED',
+  'EXAM_RESULT',
+  'ANNOUNCEMENT',
+  'MANUAL',
+]);
+
 export const tenantStatusEnum = pgEnum('tenant_status', [
   'TRIAL',
   'ACTIVE',
@@ -47,6 +76,16 @@ export const billingTxStatusEnum = pgEnum('billing_tx_status', [
   'CREATED',
   'PAID',
   'CANCELLED',
+]);
+
+export const expenseCategoryEnum = pgEnum('expense_category', [
+  'RENT',
+  'UTILITIES',
+  'SALARY',
+  'MARKETING',
+  'SUPPLIES',
+  'TAX',
+  'OTHER',
 ]);
 
 export const leadStatusEnum = pgEnum('lead_status', [
@@ -106,6 +145,12 @@ export const tenants = pgTable('tenants', {
   plan: text('plan').notNull().default('STARTER'),
   status: tenantStatusEnum('status').notNull().default('TRIAL'),
   trialEndsAt: timestamp('trial_ends_at'),
+  smsProvider: text('sms_provider').notNull().default('eskiz'),
+  smsApiToken: text('sms_api_token'),
+  smsSender: text('sms_sender').notNull().default('4546'),
+  notifyOnAttendance: boolean('notify_on_attendance').notNull().default(true),
+  notifyOnPayment: boolean('notify_on_payment').notNull().default(true),
+  notifyOnHomework: boolean('notify_on_homework').notNull().default(true),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 }, (t) => ({
@@ -119,6 +164,7 @@ export const users = pgTable('users', {
   passwordHash: text('password_hash').notNull(),
   fullName: text('full_name').notNull(),
   role: roleEnum('role').notNull().default('ADMIN'),
+  permissions: text('permissions').array(),
   emailVerified: boolean('email_verified').notNull().default(false),
   resetTokenHash: text('reset_token_hash'),
   resetTokenExpiresAt: timestamp('reset_token_expires_at'),
@@ -296,6 +342,7 @@ export const homework = pgTable('homework', {
   dueDate: timestamp('due_date'),
   attachmentPath: text('attachment_path'),
   attachmentName: text('attachment_name'),
+  maxScore: integer('max_score').notNull().default(100),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 }, (t) => ({
@@ -304,13 +351,18 @@ export const homework = pgTable('homework', {
 }));
 
 // Per-student completion status for a homework assignment — lets a teacher
-// mark who has turned work in, and lets group-level "who's falling behind"
-// charts be computed from real data instead of guessed.
+// mark who has turned work in, score submissions, and provide feedback.
 export const homeworkCompletions = pgTable('homework_completions', {
   id: text('id').primaryKey().$defaultFn(() => createId()),
   homeworkId: text('homework_id').notNull().references(() => homework.id, { onDelete: 'cascade' }),
   studentId: text('student_id').notNull().references(() => students.id, { onDelete: 'cascade' }),
   completed: boolean('completed').notNull().default(false),
+  submissionText: text('submission_text'),
+  submissionAttachmentUrl: text('submission_attachment_url'),
+  submittedAt: timestamp('submitted_at'),
+  score: integer('score'),
+  feedback: text('feedback'),
+  status: text('status').notNull().default('PENDING'), // PENDING | SUBMITTED | GRADED
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 }, (t) => ({
   uniq: uniqueIndex('homework_completions_hw_student_idx').on(t.homeworkId, t.studentId),
@@ -527,6 +579,88 @@ export const announcements = pgTable('announcements', {
   publishedAtIdx: index('announcements_published_at_idx').on(t.publishedAt),
 }));
 
+// Rooms / Classrooms (CRMAPP Master Spec Section 17)
+export const rooms = pgTable('rooms', {
+  id: text('id').primaryKey().$defaultFn(() => createId()),
+  tenantId: text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  branchId: text('branch_id').references(() => branches.id, { onDelete: 'set null' }),
+  name: text('name').notNull(),
+  capacity: integer('capacity').notNull().default(20),
+  color: text('color').notNull().default('#4F46E5'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+}, (t) => ({
+  tenantIdx: index('rooms_tenant_idx').on(t.tenantId),
+}));
+
+// Schedules / Lessons (CRMAPP Master Spec Section 17)
+export const schedules = pgTable('schedules', {
+  id: text('id').primaryKey().$defaultFn(() => createId()),
+  tenantId: text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  groupId: text('group_id').notNull().references(() => groups.id, { onDelete: 'cascade' }),
+  teacherId: text('teacher_id').references(() => teachers.id, { onDelete: 'set null' }),
+  roomId: text('room_id').references(() => rooms.id, { onDelete: 'set null' }),
+  branchId: text('branch_id').references(() => branches.id, { onDelete: 'set null' }),
+  dayOfWeek: integer('day_of_week'), // 1 (Mon) to 7 (Sun)
+  date: text('date'), // YYYY-MM-DD for one-time lessons
+  startTime: text('start_time').notNull(), // "09:00"
+  endTime: text('end_time').notNull(), // "10:30"
+  isRecurring: boolean('is_recurring').notNull().default(true),
+  onlineMeetingUrl: text('online_meeting_url'),
+  status: text('status').notNull().default('SCHEDULED'), // 'SCHEDULED' | 'CANCELLED' | 'COMPLETED'
+  topic: text('topic'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+}, (t) => ({
+  tenantIdx: index('schedules_tenant_idx').on(t.tenantId),
+  groupIdx: index('schedules_group_idx').on(t.groupId),
+  teacherIdx: index('schedules_teacher_idx').on(t.teacherId),
+  roomIdx: index('schedules_room_idx').on(t.roomId),
+}));
+
+// Expenses (CRMAPP Master Spec Section 24)
+export const expenses = pgTable('expenses', {
+  id: text('id').primaryKey().$defaultFn(() => createId()),
+  tenantId: text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  branchId: text('branch_id').references(() => branches.id, { onDelete: 'set null' }),
+  title: text('title').notNull(),
+  category: expenseCategoryEnum('category').notNull().default('OTHER'),
+  amount: integer('amount').notNull(),
+  paymentMethod: paymentMethodEnum('payment_method').notNull().default('CASH'),
+  date: text('date').notNull(), // "YYYY-MM-DD"
+  notes: text('notes'),
+  recordedById: text('recorded_by_id').references(() => users.id, { onDelete: 'set null' }),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+}, (t) => ({
+  tenantIdx: index('expenses_tenant_idx').on(t.tenantId),
+  dateIdx: index('expenses_date_idx').on(t.date),
+}));
+
+// Multi-Channel Notifications (CRMAPP Master Spec Section 30)
+export const notifications = pgTable('notifications', {
+  id: text('id').primaryKey().$defaultFn(() => createId()),
+  tenantId: text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  userId: text('user_id').references(() => users.id, { onDelete: 'set null' }),
+  studentId: text('student_id').references(() => students.id, { onDelete: 'set null' }),
+  channel: notificationChannelEnum('channel').notNull(),
+  event: notificationEventEnum('event').notNull().default('MANUAL'),
+  status: notificationStatusEnum('status').notNull().default('QUEUED'),
+  recipient: text('recipient').notNull(),
+  title: text('title'),
+  content: text('content').notNull(),
+  errorMessage: text('error_message'),
+  provider: text('provider'),
+  providerMessageId: text('provider_message_id'),
+  sentAt: timestamp('sent_at'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+}, (t) => ({
+  tenantIdx: index('notifications_tenant_idx').on(t.tenantId),
+  recipientIdx: index('notifications_recipient_idx').on(t.recipient),
+  createdAtIdx: index('notifications_created_at_idx').on(t.createdAt),
+  eventIdx: index('notifications_event_idx').on(t.event),
+}));
+
 // ---- relations ----
 export const tenantsRelations = relations(tenants, ({ many }) => ({
   users: many(users),
@@ -544,6 +678,10 @@ export const tenantsRelations = relations(tenants, ({ many }) => ({
   announcements: many(announcements),
   examQuestions: many(examQuestions),
   examAttempts: many(examAttempts),
+  notifications: many(notifications),
+  rooms: many(rooms),
+  schedules: many(schedules),
+  expenses: many(expenses),
 }));
 
 export const leadsRelations = relations(leads, ({ one }) => ({
@@ -557,6 +695,7 @@ export const usersRelations = relations(users, ({ one, many }) => ({
   tenant: one(tenants, { fields: [users.tenantId], references: [tenants.id] }),
   sessions: many(sessions),
   announcements: many(announcements),
+  expenses: many(expenses),
 }));
 
 export const sessionsRelations = relations(sessions, ({ one }) => ({
@@ -600,6 +739,7 @@ export const teachersRelations = relations(teachers, ({ one, many }) => ({
   user: one(users, { fields: [teachers.userId], references: [users.id] }),
   groups: many(groups),
   salaryPayments: many(salaryPayments),
+  schedules: many(schedules),
 }));
 
 export const groupsRelations = relations(groups, ({ one, many }) => ({
@@ -611,11 +751,15 @@ export const groupsRelations = relations(groups, ({ one, many }) => ({
   homework: many(homework),
   certificates: many(certificates),
   announcements: many(announcements),
+  schedules: many(schedules),
 }));
 
 export const branchesRelations = relations(branches, ({ one, many }) => ({
   tenant: one(tenants, { fields: [branches.tenantId], references: [tenants.id] }),
   groups: many(groups),
+  rooms: many(rooms),
+  schedules: many(schedules),
+  expenses: many(expenses),
 }));
 
 export const homeworkRelations = relations(homework, ({ one, many }) => ({
@@ -690,5 +834,33 @@ export const announcementsRelations = relations(announcements, ({ one }) => ({
   author: one(users, { fields: [announcements.authorId], references: [users.id] }),
   targetGroup: one(groups, { fields: [announcements.targetGroupId], references: [groups.id] }),
 }));
+
+export const roomsRelations = relations(rooms, ({ one, many }) => ({
+  tenant: one(tenants, { fields: [rooms.tenantId], references: [tenants.id] }),
+  branch: one(branches, { fields: [rooms.branchId], references: [branches.id] }),
+  schedules: many(schedules),
+}));
+
+export const schedulesRelations = relations(schedules, ({ one }) => ({
+  tenant: one(tenants, { fields: [schedules.tenantId], references: [tenants.id] }),
+  group: one(groups, { fields: [schedules.groupId], references: [groups.id] }),
+  teacher: one(teachers, { fields: [schedules.teacherId], references: [teachers.id] }),
+  room: one(rooms, { fields: [schedules.roomId], references: [rooms.id] }),
+  branch: one(branches, { fields: [schedules.branchId], references: [branches.id] }),
+}));
+
+export const expensesRelations = relations(expenses, ({ one }) => ({
+  tenant: one(tenants, { fields: [expenses.tenantId], references: [tenants.id] }),
+  branch: one(branches, { fields: [expenses.branchId], references: [branches.id] }),
+  recordedBy: one(users, { fields: [expenses.recordedById], references: [users.id] }),
+}));
+
+export const notificationsRelations = relations(notifications, ({ one }) => ({
+  tenant: one(tenants, { fields: [notifications.tenantId], references: [tenants.id] }),
+  student: one(students, { fields: [notifications.studentId], references: [students.id] }),
+  user: one(users, { fields: [notifications.userId], references: [users.id] }),
+}));
+
+
 
 

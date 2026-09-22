@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../common/jwt-auth.guard';
 import { RolesGuard } from '../common/roles.guard';
 import { TrialGuard } from '../common/trial.guard';
@@ -20,6 +20,31 @@ export class PaymentsController {
   @Get('summary')
   summary(@CurrentUser('tenantId') tenantId: string) {
     return this.service.summary(tenantId);
+  }
+
+  @Get('debtors')
+  getDebtors(
+    @CurrentUser('tenantId') tenantId: string,
+    @Query('forMonth') forMonth?: string,
+    @Query('onlyDebtors') onlyDebtors?: string,
+  ) {
+    return this.service.getDebtors(tenantId, forMonth, onlyDebtors === 'true');
+  }
+
+  @Get('finance-summary')
+  getFinanceSummary(
+    @CurrentUser('tenantId') tenantId: string,
+    @Query('forMonth') forMonth?: string,
+  ) {
+    return this.service.getFinanceSummary(tenantId, forMonth);
+  }
+
+  @Get(':id')
+  findOne(
+    @CurrentUser('tenantId') tenantId: string,
+    @Param('id') id: string,
+  ) {
+    return this.service.findOne(tenantId, id);
   }
 
   @Roles('ADMIN', 'ACCOUNTANT')

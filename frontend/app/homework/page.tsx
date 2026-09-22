@@ -16,12 +16,73 @@ const ACCENT = "#4F46E5";
 
 function RosterModal({ homeworkItem, onClose }: { homeworkItem: Homework; onClose: () => void }) {
   const { t } = useLanguage();
-  const [roster, setRoster] = useState<{ student: { id: string; fullName: string }; completed: boolean }[] | null>(null);
+  const [roster, setRoster] = useState<
+    | {
+        student: { id: string; fullName: string };
+        completed: boolean;
+        score?: number | null;
+        feedback?: string | null;
+        status: string;
+        submissionText?: string | null;
+        submissionAttachmentUrl?: string | null;
+        submittedAt?: string | null;
+      }[]
+    | null
+  >(null);
+  const [scores, setScores] = useState<Record<string, string>>({});
+  const [feedbacks, setFeedbacks] = useState<Record<string, string>>({});
   const [busyId, setBusyId] = useState<string | null>(null);
 
   useEffect(() => {
-    homeworkApi.roster(homeworkItem.id).then(setRoster);
+    homeworkApi.roster(homeworkItem.id).then((data) => {
+      setRoster(data);
+      const initScores: Record<string, string> = {};
+      const initFeedbacks: Record<string, string> = {};
+      for (const item of data) {
+        if (item.score !== null && item.score !== undefined) {
+          initScores[item.student.id] = String(item.score);
+        }
+        if (item.feedback) {
+          initFeedbacks[item.student.id] = item.feedback;
+        }
+      }
+      setScores(initScores);
+      setFeedbacks(initFeedbacks);
+    });
   }, [homeworkItem.id]);
+
+  async function handleGrade(studentId: string) {
+    const rawScore = scores[studentId];
+    if (rawScore === undefined || rawScore === "") return;
+    setBusyId(studentId);
+    try {
+      await homeworkApi.grade(homeworkItem.id, {
+        studentId,
+        score: Number(rawScore),
+        feedback: feedbacks[studentId]?.trim() || undefined,
+      });
+      setRoster((prev) =>
+        prev
+          ? prev.map((r) =>
+              r.student.id === studentId
+                ? {
+                    ...r,
+                    completed: true,
+                    status: "GRADED",
+                    score: Number(rawScore),
+                    feedback: feedbacks[studentId],
+                  }
+                : r,
+            )
+          : null,
+      );
+      alert("Baho va izoh saqlandi hamda o'quvchiga yuborildi!");
+    } catch (err) {
+      alert(err instanceof ApiError ? err.message : "Saqlashda xatolik");
+    } finally {
+      setBusyId(null);
+    }
+  }
 
   async function toggle(studentId: string, completed: boolean) {
     setBusyId(studentId);
@@ -40,17 +101,216 @@ function RosterModal({ homeworkItem, onClose }: { homeworkItem: Homework; onClos
       ) : roster.length === 0 ? (
         <div style={{ color: "#8A8D96", fontSize: 13.5 }}>{t("homework.noStudentsInGroup")}</div>
       ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <div style={{ fontSize: 12, color: "#64748B" }}>
+            Maksimal ball: <b>{homeworkItem.maxScore || 100} ball</b>. Har bir o'quvchi uchun ball va izoh kiritib saqlashingiz mumkin.
+          </div>
           {roster.map((r) => (
-            <label key={r.student.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 4px", cursor: "pointer" }}>
-              <span style={{ fontSize: 13.5, fontWeight: 600 }}>{r.student.fullName}</span>
-              <input
-                type="checkbox"
-                checked={r.completed}
-                disabled={busyId === r.student.id}
-                onChange={(e) => toggle(r.student.id, e.target.checked)}
-              />
-            </label>
+            <div
+              key={r.student.id}
+              style={{
+                background: "#F8FAFC",
+                border: "1px solid #E2E8F0",
+                borderRadius: 12,
+                padding: "12px 14px",
+                display: "flex",
+                flexDirection: "column",
+                gap: 8,
+              }}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span style={{ fontSize: 14, fontWeight: 700 }}>{r.student.fullName}</span>
+                <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "#64748B", cursor: "pointer" }}>
+                  <span>Bajarildi</span>
+                  <input
+                    type="checkbox"
+                    checked={r.completed}
+                    disabled={busyId === r.student.id}
+                    onChange={(e) => toggle(r.student.id, e.target.checked)}
+                  />
+                </label>
+              </div>
+
+              {r.submissionText && (
+                <div
+                  style={{
+                    background: "#EFF6FF",
+                    border: "1px solid #DBEAFE",
+                    borderRadius: 8,
+                    padding: 8,
+                    fontSize: 12,
+                    color: "#1E40AF",
+                  }}
+                >
+                  <span style={{ fontWeight: 600 }}>O'quvchi javobi:</span> {r.submissionText}
+                </div>
+              )}
+
+              <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 2 }}>
+                <input
+                  type="number"
+                  min={0}
+                  max={homeworkItem.maxScore || 100}
+                  placeholder={`Ball (0-${homeworkItem.maxScore || 100})`}
+                  value={scores[r.student.id] ?? ""}
+                  onChange={(e) =>
+                    setScores((prev) => ({ ...prev, [r.student.id]: e.target.value }))
+                  }
+                  style={{
+                    width: 90,
+                    padding: "6px 10px",
+                    borderRadius: 8,
+                    border: "1px solid #CBD5E1",
+                    fontSize: 12.5,
+                  }}
+                />
+                <input
+                  type="text"
+                  placeholder="Izoh (masalan: Barakalla!)"
+                  value={feedbacks[r.student.id] ?? ""}
+                  onChange={(e) =>
+                    setFeedbacks((prev) => ({ ...prev, [r.student.id]: e.target.value }))
+                  }
+                  style={{
+                    flex: 1,
+                    padding: "6px 10px",
+                    borderRadius: 8,
+                    border: "1px solid #CBD5E1",
+                    fontSize: 12.5,
+                  }}
+                />
+                <button
+                  type="button"
+                  disabled={busyId === r.student.id || !scores[r.student.id]}
+                  onClick={() => handleGrade(r.student.id)}
+                  style={{
+                    background: ACCENT,
+                    color: "#fff",
+                    border: "none",
+                    padding: "6px 12px",
+                    borderRadius: 8,
+                    fontSize: 12,
+                    fontWeight: 700,
+                    cursor: "pointer",
+                  }}
+                >
+                  Saqlash
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </Modal>
+  );
+}
+
+function LeaderboardModal({
+  groupId,
+  groupName,
+  onClose,
+}: {
+  groupId?: string;
+  groupName?: string;
+  onClose: () => void;
+}) {
+  const [list, setList] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    homeworkApi
+      .leaderboard(groupId)
+      .then(setList)
+      .finally(() => setLoading(false));
+  }, [groupId]);
+
+  return (
+    <Modal
+      open
+      onClose={onClose}
+      title={`🏆 Reyting (Leaderboard) — ${groupName || "O'quv markazi"}`}
+    >
+      {loading ? (
+        <div style={{ color: "#8A8D96", fontSize: 13.5 }}>Yuklanmoqda...</div>
+      ) : list.length === 0 ? (
+        <div style={{ color: "#8A8D96", fontSize: 13.5 }}>Reyting ma'lumotlari mavjud emas.</div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {list.map((item) => (
+            <div
+              key={item.studentId}
+              style={{
+                background:
+                  item.rank === 1
+                    ? "#FEF9C3"
+                    : item.rank === 2
+                      ? "#F1F5F9"
+                      : item.rank === 3
+                        ? "#FFEDD5"
+                        : "#fff",
+                border: `1px solid ${
+                  item.rank === 1
+                    ? "#FDE047"
+                    : item.rank === 2
+                      ? "#CBD5E1"
+                      : item.rank === 3
+                        ? "#FDBA74"
+                        : "#E2E8F0"
+                }`,
+                borderRadius: 14,
+                padding: "12px 16px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <div
+                  style={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: 999,
+                    background:
+                      item.rank === 1
+                        ? "#EAB308"
+                        : item.rank === 2
+                          ? "#94A3B8"
+                          : item.rank === 3
+                            ? "#F97316"
+                            : "#E2E8F0",
+                    color: item.rank <= 3 ? "#fff" : "#475569",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: 14,
+                    fontWeight: 800,
+                  }}
+                >
+                  {item.rank === 1 ? "🥇" : item.rank === 2 ? "🥈" : item.rank === 3 ? "🥉" : item.rank}
+                </div>
+                <div>
+                  <div style={{ fontSize: 14, fontWeight: 700 }}>{item.studentName}</div>
+                  <div style={{ fontSize: 11.5, color: "#64748B" }}>
+                    Vazifalar: {item.completedHomeworkCount} ta | Imtihonlar: {item.examScore} ball
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ textAlign: "right" }}>
+                <div style={{ fontSize: 18, fontWeight: 900, color: ACCENT }}>
+                  {item.totalScore} ball
+                </div>
+                {item.badge === "GOLD" && (
+                  <span style={{ fontSize: 10.5, fontWeight: 800, color: "#A16207" }}>TOP 1</span>
+                )}
+                {item.badge === "SILVER" && (
+                  <span style={{ fontSize: 10.5, fontWeight: 800, color: "#475569" }}>TOP 2</span>
+                )}
+                {item.badge === "BRONZE" && (
+                  <span style={{ fontSize: 10.5, fontWeight: 800, color: "#C2410C" }}>TOP 3</span>
+                )}
+              </div>
+            </div>
           ))}
         </div>
       )}
@@ -70,6 +330,7 @@ function HomeworkContent() {
   const [groups, setGroups] = useState<Group[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
+  const [leaderboardOpen, setLeaderboardOpen] = useState(false);
   const [rosterHomework, setRosterHomework] = useState<Homework | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -79,6 +340,7 @@ function HomeworkContent() {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [dueDate, setDueDate] = useState("");
+  const [maxScore, setMaxScore] = useState<number>(100);
   const [file, setFile] = useState<File | null>(null);
 
   const [aiSuggesting, setAiSuggesting] = useState(false);
@@ -111,6 +373,7 @@ function HomeworkContent() {
     setTitle("");
     setDescription("");
     setDueDate("");
+    setMaxScore(100);
     setFile(null);
     setAiSuggestion(null);
     setAiSuggesting(false);
@@ -166,7 +429,13 @@ function HomeworkContent() {
     }
     setSaving(true);
     try {
-      const created = await homeworkApi.create({ groupIds, title, description: description || undefined, dueDate: dueDate || undefined });
+      const created = await homeworkApi.create({
+        groupIds,
+        title,
+        description: description || undefined,
+        dueDate: dueDate || undefined,
+        maxScore: Number(maxScore) || 100,
+      });
       if (file && created[0]) {
         await homeworkApi.uploadAttachment(created[0].id, file);
       }
@@ -251,6 +520,27 @@ function HomeworkContent() {
             onChange={setFilterGroupId}
             style={{ width: 170 }}
           />
+          <button
+            className="btn"
+            type="button"
+            onClick={() => setLeaderboardOpen(true)}
+            style={{
+              background: "#FEF3C7",
+              color: "#B45309",
+              border: "1px solid #FCD34D",
+              fontSize: 13.5,
+              fontWeight: 700,
+              padding: "10px 18px",
+              borderRadius: 9,
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              cursor: "pointer",
+            }}
+          >
+            <span>🏆</span>
+            <span>Reyting</span>
+          </button>
           <button
             className="btn"
             onClick={() => setModalOpen(true)}
@@ -383,9 +673,23 @@ function HomeworkContent() {
               style={{ resize: "vertical" }}
             />
           </div>
-          <div>
-            <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>{t("homework.fieldDueDate")}</div>
-            <DatePicker value={dueDate} onChange={setDueDate} />
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            <div>
+              <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>{t("homework.fieldDueDate")}</div>
+              <DatePicker value={dueDate} onChange={setDueDate} />
+            </div>
+            <div>
+              <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>Maksimal ball</div>
+              <input
+                className="field-input"
+                type="number"
+                min={1}
+                max={1000}
+                value={maxScore}
+                onChange={(e) => setMaxScore(Number(e.target.value) || 100)}
+                placeholder="100"
+              />
+            </div>
           </div>
           <div>
             <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>{t("homework.fieldAttachment")}</div>
@@ -489,6 +793,14 @@ function HomeworkContent() {
             setRosterHomework(null);
             load();
           }}
+        />
+      )}
+
+      {leaderboardOpen && (
+        <LeaderboardModal
+          groupId={filterGroupId || undefined}
+          groupName={groups.find((g) => g.id === filterGroupId)?.name}
+          onClose={() => setLeaderboardOpen(false)}
         />
       )}
     </>

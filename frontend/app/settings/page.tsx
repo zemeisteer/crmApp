@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Modal from "@/components/Modal";
 import DashboardShell from "@/components/DashboardShell";
 import Select from "@/components/Select";
 import TagListInput from "@/components/TagListInput";
@@ -8,8 +9,9 @@ import { useAuth } from "@/lib/auth-context";
 import { useLanguage } from "@/lib/i18n-context";
 import type { TranslationKey } from "@/lib/i18n";
 import {
-  tenantsApi, telegramApi, branchesApi, authApi, webhooksApi, staffApi,
+  tenantsApi, telegramApi, branchesApi, authApi, webhooksApi, staffApi, notificationsApi,
   Branch, Session, Webhook, StaffMember, ApiError, Role, TenantCategory, fileUrl,
+  NotificationLog, NotificationSettings, NotificationStats,
 } from "@/lib/api";
 import { PHONE_PATTERN, PHONE_TITLE, NAME_PATTERN, NAME_TITLE } from "@/lib/validation";
 
@@ -21,8 +23,13 @@ const CATEGORY_LABEL_KEYS: Record<TenantCategory, TranslationKey> = {
   IT: "category.it",
   BOSHQA: "category.boshqa",
 };
-const ROLE_LABEL_KEYS: Record<Role, TranslationKey> = {
-  SUPERADMIN: "role.superadmin", ADMIN: "role.admin", TEACHER: "role.teacher", ACCOUNTANT: "role.accountant",
+const ROLE_LABEL_KEYS: Record<Role, string> = {
+  SUPERADMIN: "Superadmin",
+  ADMIN: "Administrator",
+  MANAGER: "Menejer",
+  RECEPTIONIST: "Qabulxona",
+  TEACHER: "O'qituvchi",
+  ACCOUNTANT: "Buxgalter",
 };
 
 function splitList(s: string | null | undefined): string[] {
@@ -32,7 +39,7 @@ function joinList(arr: string[]): string {
   return arr.map((v) => v.trim()).filter(Boolean).join(",");
 }
 
-type Tab = "profile" | "branches" | "staff" | "security" | "integrations" | "data";
+type Tab = "profile" | "branches" | "staff" | "security" | "notifications" | "integrations" | "data";
 
 const TAB_DEFS: { key: Tab; labelKey: TranslationKey; icon: React.ReactNode }[] = [
   {
@@ -52,6 +59,10 @@ const TAB_DEFS: { key: Tab; labelKey: TranslationKey; icon: React.ReactNode }[] 
     icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z" /></svg>,
   },
   {
+    key: "notifications", labelKey: "settings.tabNotifications",
+    icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.73 21a2 2 0 0 1-3.46 0" /></svg>,
+  },
+  {
     key: "integrations", labelKey: "settings.tabIntegrations",
     icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="9" height="9" rx="2" /><rect x="13" y="2" width="9" height="9" rx="2" /><rect x="2" y="13" width="9" height="9" rx="2" /><rect x="13" y="13" width="9" height="9" rx="2" /></svg>,
   },
@@ -67,9 +78,11 @@ function SettingsContent() {
   const [tab, setTab] = useState<Tab>("profile");
 
   const ROLE_OPTIONS = [
-    { value: "ADMIN", label: t("role.admin") },
-    { value: "TEACHER", label: t("role.teacher") },
-    { value: "ACCOUNTANT", label: t("role.accountant") },
+    { value: "ADMIN", label: "Administrator" },
+    { value: "MANAGER", label: "Menejer" },
+    { value: "RECEPTIONIST", label: "Qabulxona (Receptionist)" },
+    { value: "TEACHER", label: "O'qituvchi" },
+    { value: "ACCOUNTANT", label: "Buxgalter" },
   ];
   const LANGUAGE_OPTIONS = [
     { value: "UZ", label: "O'zbek tili" },
@@ -142,6 +155,7 @@ function SettingsContent() {
   const [staffRole, setStaffRole] = useState<Role>("TEACHER");
   const [staffError, setStaffError] = useState<string | null>(null);
   const [savingStaff, setSavingStaff] = useState(false);
+  const [editingPermissionsStaff, setEditingPermissionsStaff] = useState<StaffMember | null>(null);
 
   const [gdprPassword, setGdprPassword] = useState("");
   const [gdprError, setGdprError] = useState<string | null>(null);
@@ -573,14 +587,32 @@ function SettingsContent() {
                         <div style={{ fontSize: 11.5, color: "#8A8D96" }}>{s.email}</div>
                       </div>
                       <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+                        <button
+                          type="button"
+                          className="btn"
+                          onClick={() => setEditingPermissionsStaff(s)}
+                          style={{
+                            background: "#EEF2FF",
+                            color: ACCENT,
+                            border: "1px solid #C7D2FE",
+                            fontSize: 11.5,
+                            fontWeight: 700,
+                            padding: "5px 10px",
+                            borderRadius: 8,
+                            cursor: "pointer",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          🔑 Huquqlar {s.permissions && s.permissions.length > 0 ? `(${s.permissions.length})` : ""}
+                        </button>
                         {s.id === user?.id || s.role === "SUPERADMIN" ? (
-                          <span className="badge badge-neutral">{t(ROLE_LABEL_KEYS[s.role])}</span>
+                          <span className="badge badge-neutral">{ROLE_LABEL_KEYS[s.role] || s.role}</span>
                         ) : (
                           <Select
                             options={ROLE_OPTIONS}
                             value={s.role}
                             onChange={(v) => onChangeStaffRole(s.id, v as Role)}
-                            style={{ width: 150 }}
+                            style={{ width: 170 }}
                           />
                         )}
                         {s.id !== user?.id && s.role !== "SUPERADMIN" && (
@@ -616,6 +648,17 @@ function SettingsContent() {
                   {savingStaff ? t("settings.addingStaff") : t("settings.addStaffBtn")}
                 </button>
               </form>
+
+              {editingPermissionsStaff && (
+                <PermissionsModal
+                  staff={editingPermissionsStaff}
+                  onClose={() => setEditingPermissionsStaff(null)}
+                  onSave={async (perms) => {
+                    await staffApi.update(editingPermissionsStaff.id, { permissions: perms });
+                    loadStaff();
+                  }}
+                />
+              )}
             </div>
           )}
 
@@ -725,6 +768,8 @@ function SettingsContent() {
             </div>
           )}
 
+          {tab === "notifications" && <NotificationsSettingsTab />}
+
           {tab === "integrations" && (
             <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 22, maxWidth: 640 }}>
               <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 700, fontSize: 15, marginBottom: 4 }}>{t("settings.integrations")}</div>
@@ -805,6 +850,451 @@ function IntegrationRow({ label, active, hint, activeLabel, inactiveLabel }: { l
         <div style={{ fontSize: 11.5, color: "#8A8D96", marginTop: 2 }}>{hint}</div>
       </div>
       <span className={`badge ${active ? "badge-success" : "badge-neutral"}`}>{active ? activeLabel : inactiveLabel}</span>
+    </div>
+  );
+}
+
+const ALL_CAPABILITIES = [
+  { key: "students.read", label: "O'quvchilar ro'yxatini ko'rish" },
+  { key: "students.create", label: "Yangi o'quvchi qo'shish" },
+  { key: "students.update", label: "O'quvchi ma'lumotlarini tahrirlash" },
+  { key: "students.delete", label: "O'quvchini arxivlash / o'chirish" },
+  { key: "attendance.read", label: "Davomatni ko'rish" },
+  { key: "attendance.mark", label: "Davomat belgilash" },
+  { key: "groups.manage", label: "Guruhlar va jadvallarni boshqarish" },
+  { key: "homework.manage", label: "Uy vazifalar va baholash" },
+  { key: "exams.manage", label: "Imtihonlar va testlar" },
+  { key: "certificates.manage", label: "Sertifikatlar generatsiya qilish" },
+  { key: "payments.read", label: "To'lovlar va qarzdorlarni ko'rish" },
+  { key: "payments.create", label: "To'lov qabul qilish va kvitansiya" },
+  { key: "expenses.manage", label: "Markaz xarajatlari va kassa" },
+  { key: "reports.export", label: "Moliya va hisobotlarni eksport qilish" },
+  { key: "notifications.send", label: "SMS va Telegram xabar yuborish" },
+];
+
+function PermissionsModal({
+  staff,
+  onClose,
+  onSave,
+}: {
+  staff: StaffMember;
+  onClose: () => void;
+  onSave: (perms: string[]) => Promise<void>;
+}) {
+  const [selected, setSelected] = useState<string[]>(staff.permissions || []);
+  const [saving, setSaving] = useState(false);
+
+  function toggle(k: string) {
+    setSelected((prev) =>
+      prev.includes(k) ? prev.filter((x) => x !== k) : [...prev, k]
+    );
+  }
+
+  async function handleSave() {
+    setSaving(true);
+    try {
+      await onSave(selected);
+      onClose();
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Modal open onClose={onClose} title={`Huquqlar — ${staff.fullName} (${staff.role})`}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        <div style={{ fontSize: 12.5, color: "#64748B", marginBottom: 6 }}>
+          Ushbu xodimga markaz bo&apos;yicha quyidagi alohida ruxsatlarni biriktirishingiz mumkin:
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+          {ALL_CAPABILITIES.map((cap) => {
+            const isChecked = selected.includes(cap.key);
+            return (
+              <label
+                key={cap.key}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                  padding: "8px 10px",
+                  borderRadius: 8,
+                  background: isChecked ? "#EEF2FF" : "#F8FAFC",
+                  border: `1px solid ${isChecked ? "#C7D2FE" : "#E2E8F0"}`,
+                  cursor: "pointer",
+                  fontSize: 12.5,
+                  fontWeight: isChecked ? 600 : 500,
+                  color: isChecked ? "#3730A3" : "#334155",
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={isChecked}
+                  onChange={() => toggle(cap.key)}
+                  style={{ accentColor: ACCENT }}
+                />
+                <span>{cap.label}</span>
+              </label>
+            );
+          })}
+        </div>
+        <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 12 }}>
+          <button
+            type="button"
+            className="btn"
+            onClick={onClose}
+            style={{ background: "#F1F5F9", color: "#475569", padding: "8px 16px", borderRadius: 8, fontSize: 13 }}
+          >
+            Bekor qilish
+          </button>
+          <button
+            type="button"
+            className="btn"
+            disabled={saving}
+            onClick={handleSave}
+            style={{ background: ACCENT, color: "#fff", padding: "8px 18px", borderRadius: 8, fontSize: 13, fontWeight: 700 }}
+          >
+            {saving ? "Saqlanmoqda..." : "Saqlash"}
+          </button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+function NotificationsSettingsTab() {
+  const [settings, setSettings] = useState<NotificationSettings | null>(null);
+  const [stats, setStats] = useState<NotificationStats | null>(null);
+  const [logs, setLogs] = useState<NotificationLog[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+  const [testRecipient, setTestRecipient] = useState("");
+  const [testChannel, setTestChannel] = useState<"SMS" | "TELEGRAM">("SMS");
+  const [testContent, setTestContent] = useState("");
+  const [sendingTest, setSendingTest] = useState(false);
+  const [tokenInput, setTokenInput] = useState("");
+
+  function load() {
+    setLoading(true);
+    Promise.all([
+      notificationsApi.getSettings(),
+      notificationsApi.getStats(),
+      notificationsApi.getLogs({ limit: 20 }),
+    ])
+      .then(([s, st, l]) => {
+        setSettings(s);
+        setStats(st);
+        setLogs(l);
+      })
+      .finally(() => setLoading(false));
+  }
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  async function handleSaveSettings(e: React.FormEvent) {
+    e.preventDefault();
+    if (!settings) return;
+    setSaving(true);
+    setMsg(null);
+    try {
+      const payload: Partial<NotificationSettings> = {
+        smsProvider: settings.smsProvider,
+        smsSender: settings.smsSender,
+        notifyOnAttendance: settings.notifyOnAttendance,
+        notifyOnPayment: settings.notifyOnPayment,
+        notifyOnHomework: settings.notifyOnHomework,
+      };
+      if (tokenInput.trim()) {
+        payload.smsApiToken = tokenInput.trim();
+      }
+      const updated = await notificationsApi.updateSettings(payload);
+      setSettings(updated);
+      setTokenInput("");
+      setMsg("Xabarnoma sozlamalari muvaffaqiyatli saqlandi!");
+      setTimeout(() => setMsg(null), 4000);
+    } catch (err) {
+      alert(err instanceof ApiError ? err.message : "Saqlashda xatolik");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleSendTest(e: React.FormEvent) {
+    e.preventDefault();
+    if (!testRecipient.trim() || !testContent.trim()) return;
+    setSendingTest(true);
+    try {
+      const res = await notificationsApi.sendTest({
+        recipient: testRecipient.trim(),
+        channel: testChannel,
+        content: testContent.trim(),
+      });
+      if (res.status === "SENT") {
+        alert("Sinov xabari muvaffaqiyatli yetkazildi!");
+        setTestContent("");
+      } else {
+        alert(`Xatolik: ${res.errorMessage || "Xabar yuborilmadi"}`);
+      }
+      load();
+    } catch (err) {
+      alert(err instanceof ApiError ? err.message : "Yuborishda xatolik");
+    } finally {
+      setSendingTest(false);
+    }
+  }
+
+  if (loading) {
+    return <div style={{ color: "#8A8D96", fontSize: 13.5 }}>Yuklanmoqda...</div>;
+  }
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 20, maxWidth: 840 }}>
+      {/* Stat Cards */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 14 }}>
+        <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 14, padding: 16 }}>
+          <div style={{ fontSize: 12, color: "#8A8D96" }}>Jami xabarlar</div>
+          <div style={{ fontSize: 22, fontWeight: 800, marginTop: 4 }}>{stats?.total || 0}</div>
+        </div>
+        <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 14, padding: 16 }}>
+          <div style={{ fontSize: 12, color: "#8A8D96" }}>Muvaffaqiyatli SMS</div>
+          <div style={{ fontSize: 22, fontWeight: 800, color: "#10B981", marginTop: 4 }}>{stats?.smsCount || 0}</div>
+        </div>
+        <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 14, padding: 16 }}>
+          <div style={{ fontSize: 12, color: "#8A8D96" }}>Telegram xabarlar</div>
+          <div style={{ fontSize: 22, fontWeight: 800, color: ACCENT, marginTop: 4 }}>{stats?.telegramCount || 0}</div>
+        </div>
+        <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 14, padding: 16 }}>
+          <div style={{ fontSize: 12, color: "#8A8D96" }}>Yetkazish ko&apos;rsatkichi</div>
+          <div style={{ fontSize: 22, fontWeight: 800, color: "#3B82F6", marginTop: 4 }}>{stats?.successRate || 100}%</div>
+        </div>
+      </div>
+
+      {/* Provider and Trigger Settings */}
+      <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 22 }}>
+        <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 700, fontSize: 15, marginBottom: 4 }}>
+          SMS Provayder & Integratsiya
+        </div>
+        <div style={{ fontSize: 12.5, color: "#8A8D96", marginBottom: 16 }}>
+          O&apos;zbekiston bo&apos;ylab SMS xabarnomalar yuborish uchun Eskiz.uz yoki PlayMobile sozlamalari
+        </div>
+
+        {msg && (
+          <div style={{ background: "#E9F8EF", color: "#1FA463", fontSize: 12.5, fontWeight: 600, padding: "8px 12px", borderRadius: 8, marginBottom: 14 }}>
+            {msg}
+          </div>
+        )}
+
+        {settings && (
+          <form onSubmit={handleSaveSettings} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <div>
+                <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>Provayder</div>
+                <Select
+                  options={[
+                    { value: "eskiz", label: "Eskiz.uz (SMS Gateway)" },
+                    { value: "playmobile", label: "PlayMobile.uz (SMS Broker)" },
+                  ]}
+                  value={settings.smsProvider}
+                  onChange={(v) => setSettings({ ...settings, smsProvider: v as any })}
+                />
+              </div>
+              <div>
+                <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>Yuboruvchi nomi (Sender ID)</div>
+                <input
+                  className="field-input"
+                  placeholder="4546"
+                  value={settings.smsSender}
+                  onChange={(e) => setSettings({ ...settings, smsSender: e.target.value })}
+                />
+              </div>
+            </div>
+
+            <div>
+              <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>
+                API Token / Kalit {settings.hasSmsApiToken && <span style={{ color: "#10B981" }}>(Ulangan: {settings.smsApiToken})</span>}
+              </div>
+              <input
+                className="field-input"
+                type="password"
+                placeholder={settings.hasSmsApiToken ? "Yangi token kiritish yoki bo'sh qoldirish" : "Eskiz / PlayMobile API tokenini kiriting"}
+                value={tokenInput}
+                onChange={(e) => setTokenInput(e.target.value)}
+              />
+            </div>
+
+            <div style={{ borderTop: "1px solid #F1F5F9", paddingTop: 14, marginTop: 4 }}>
+              <div style={{ fontSize: 13.5, fontWeight: 700, marginBottom: 10 }}>Avtomatik hodisalar (Triggers):</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <label style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13, cursor: "pointer" }}>
+                  <input
+                    type="checkbox"
+                    checked={settings.notifyOnAttendance}
+                    onChange={(e) => setSettings({ ...settings, notifyOnAttendance: e.target.checked })}
+                    style={{ accentColor: ACCENT }}
+                  />
+                  <span><b>Davomat:</b> O&apos;quvchi darsga kelmaganda yoki kechikib kelganda ota-onasiga SMS & Telegram</span>
+                </label>
+                <label style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13, cursor: "pointer" }}>
+                  <input
+                    type="checkbox"
+                    checked={settings.notifyOnPayment}
+                    onChange={(e) => setSettings({ ...settings, notifyOnPayment: e.target.checked })}
+                    style={{ accentColor: ACCENT }}
+                  />
+                  <span><b>To&apos;lov:</b> To&apos;lov qabul qilinganda kvitansiya xabari</span>
+                </label>
+                <label style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13, cursor: "pointer" }}>
+                  <input
+                    type="checkbox"
+                    checked={settings.notifyOnHomework}
+                    onChange={(e) => setSettings({ ...settings, notifyOnHomework: e.target.checked })}
+                    style={{ accentColor: ACCENT }}
+                  />
+                  <span><b>Uy vazifalari:</b> O&apos;qituvchi vazifani baholaganda o&apos;quvchiga ball va izoh</span>
+                </label>
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={saving}
+              className="btn"
+              style={{ background: ACCENT, color: "#fff", alignSelf: "flex-start", padding: "10px 22px", borderRadius: 9, fontSize: 13, fontWeight: 700, marginTop: 4 }}
+            >
+              {saving ? "Saqlanmoqda..." : "Sozlamalarni saqlash"}
+            </button>
+          </form>
+        )}
+      </div>
+
+      {/* Test Sender Form */}
+      <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 22 }}>
+        <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 700, fontSize: 15, marginBottom: 4 }}>
+          Sinov xabari yuborish (Test ping)
+        </div>
+        <div style={{ fontSize: 12.5, color: "#8A8D96", marginBottom: 14 }}>
+          Provayder ulanishini yoki Telegram bot sozlamalarini sinab ko&apos;rish
+        </div>
+        <form onSubmit={handleSendTest} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: 10 }}>
+            <Select
+              options={[
+                { value: "SMS", label: "SMS (Telefon raqamga)" },
+                { value: "TELEGRAM", label: "Telegram (Chat ID ga)" },
+              ]}
+              value={testChannel}
+              onChange={(v) => setTestChannel(v as any)}
+            />
+            <input
+              className="field-input"
+              placeholder={testChannel === "SMS" ? "+998901234567" : "Telegram Chat ID (masalan: 12345678)"}
+              value={testRecipient}
+              onChange={(e) => setTestRecipient(e.target.value)}
+              required
+            />
+          </div>
+          <input
+            className="field-input"
+            placeholder="Sinov xabari matni..."
+            value={testContent}
+            onChange={(e) => setTestContent(e.target.value)}
+            required
+          />
+          <button
+            type="submit"
+            disabled={sendingTest}
+            className="btn"
+            style={{ background: "#F1F5F9", color: "#1E293B", border: "1px solid #CBD5E1", alignSelf: "flex-start", padding: "8px 18px", borderRadius: 8, fontSize: 13, fontWeight: 700 }}
+          >
+            {sendingTest ? "Yuborilmoqda..." : "📨 Sinov xabarini yuborish"}
+          </button>
+        </form>
+      </div>
+
+      {/* Recent Notification Logs */}
+      <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 22 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+          <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 700, fontSize: 15 }}>
+            So&apos;nggi xabarnomalar tarixi ({logs.length} ta)
+          </div>
+          <button
+            type="button"
+            className="btn"
+            onClick={load}
+            style={{ background: "transparent", color: ACCENT, fontSize: 12.5, fontWeight: 700, border: "none", cursor: "pointer" }}
+          >
+            🔄 Yangilash
+          </button>
+        </div>
+
+        {logs.length === 0 ? (
+          <div style={{ color: "#8A8D96", fontSize: 13 }}>Hozircha yuborilgan xabarnomalar mavjud emas.</div>
+        ) : (
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12.5 }}>
+              <thead>
+                <tr style={{ borderBottom: "1px solid #EAE8E2", color: "#64748B", textAlign: "left" }}>
+                  <th style={{ padding: "8px 10px" }}>Sana</th>
+                  <th style={{ padding: "8px 10px" }}>Kanal</th>
+                  <th style={{ padding: "8px 10px" }}>Qabul qiluvchi</th>
+                  <th style={{ padding: "8px 10px" }}>Tadbir</th>
+                  <th style={{ padding: "8px 10px" }}>Holat</th>
+                  <th style={{ padding: "8px 10px" }}>Matn</th>
+                </tr>
+              </thead>
+              <tbody>
+                {logs.map((log) => (
+                  <tr key={log.id} style={{ borderBottom: "1px solid #F1F5F9" }}>
+                    <td style={{ padding: "10px 10px", color: "#64748B", whiteSpace: "nowrap" }}>
+                      {new Date(log.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}{" "}
+                      {new Date(log.createdAt).toLocaleDateString()}
+                    </td>
+                    <td style={{ padding: "10px 10px" }}>
+                      <span
+                        style={{
+                          padding: "2px 7px",
+                          borderRadius: 6,
+                          fontSize: 11,
+                          fontWeight: 700,
+                          background: log.channel === "SMS" ? "#FEF3C7" : "#EEF2FF",
+                          color: log.channel === "SMS" ? "#B45309" : "#4338CA",
+                        }}
+                      >
+                        {log.channel}
+                      </span>
+                    </td>
+                    <td style={{ padding: "10px 10px", fontWeight: 600 }}>
+                      {log.student?.fullName || log.recipient}
+                    </td>
+                    <td style={{ padding: "10px 10px", color: "#475569" }}>
+                      {log.event}
+                    </td>
+                    <td style={{ padding: "10px 10px" }}>
+                      <span
+                        style={{
+                          padding: "2px 8px",
+                          borderRadius: 6,
+                          fontSize: 11,
+                          fontWeight: 700,
+                          background: log.status === "SENT" ? "#DEF7EC" : "#FDE8E8",
+                          color: log.status === "SENT" ? "#03543F" : "#9B1C1C",
+                        }}
+                      >
+                        {log.status === "SENT" ? "Yuborildi" : "Xatolik"}
+                      </span>
+                    </td>
+                    <td style={{ padding: "10px 10px", color: "#64748B", maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {log.content}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

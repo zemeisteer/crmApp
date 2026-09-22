@@ -8,6 +8,7 @@ interface AuthContextValue {
   user: User | null;
   tenant: Tenant | null;
   loading: boolean;
+  can: (permission: string) => boolean;
   login: (email: string, password: string) => Promise<LoginResponse>;
   completeTwoFactorLogin: (pendingToken: string, code: string) => Promise<void>;
   register: (data: {
@@ -21,6 +22,26 @@ interface AuthContextValue {
   logout: () => void;
   refreshMe: () => Promise<void>;
 }
+
+const DEFAULT_ROLE_PERMISSIONS: Record<string, string[]> = {
+  SUPERADMIN: ["*"],
+  ADMIN: ["*"],
+  MANAGER: [
+    "students.read", "students.create", "students.update",
+    "attendance.read", "attendance.mark",
+    "groups.manage", "homework.manage", "exams.manage", "certificates.manage", "reports.export",
+  ],
+  RECEPTIONIST: [
+    "students.read", "students.create", "students.update",
+    "attendance.read", "payments.read", "payments.create", "notifications.send",
+  ],
+  ACCOUNTANT: [
+    "payments.read", "payments.create", "expenses.manage", "reports.export", "notifications.send",
+  ],
+  TEACHER: [
+    "students.read", "attendance.read", "attendance.mark", "homework.manage", "exams.manage",
+  ],
+};
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
@@ -90,6 +111,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     router.push("/dashboard");
   }
 
+  function can(permission: string): boolean {
+    if (!user) return false;
+    if (user.role === "SUPERADMIN" || user.role === "ADMIN") return true;
+    const custom = user.permissions || [];
+    if (custom.includes(permission)) return true;
+    const defaults = DEFAULT_ROLE_PERMISSIONS[user.role] || [];
+    return defaults.includes(permission) || defaults.includes("*");
+  }
+
   function logout() {
     authApi.logout().catch(() => undefined);
     clearToken();
@@ -99,7 +129,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, tenant, loading, login, completeTwoFactorLogin, register, logout, refreshMe: loadMe }}>
+    <AuthContext.Provider value={{ user, tenant, loading, can, login, completeTwoFactorLogin, register, logout, refreshMe: loadMe }}>
       {children}
     </AuthContext.Provider>
   );

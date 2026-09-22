@@ -157,7 +157,7 @@ function TeacherDetailContent() {
       return (lessonsStats.monthly || 12) * teacher.salaryValue;
     }
     return teacher.salaryValue;
-  }, [teacher?.salaryType, teacher?.salaryValue, totalRevenue, totalStudents, lessonsStats.monthly]);
+  }, [teacher, totalRevenue, totalStudents, lessonsStats.monthly]);
 
   const teacherAge = useMemo(() => {
     if (!teacher?.birthDate) return null;
@@ -175,7 +175,7 @@ function TeacherDetailContent() {
       year: "numeric",
     });
     return { age, formatted, year: b.getFullYear() };
-  }, [teacher?.birthDate, lang]);
+  }, [teacher, lang]);
 
   const startedDateFormatted = useMemo(() => {
     const raw = teacher?.startDate || teacher?.createdAt;

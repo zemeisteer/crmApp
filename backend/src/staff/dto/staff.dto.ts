@@ -1,4 +1,4 @@
-import { IsEmail, IsIn, IsOptional, IsString, MinLength } from 'class-validator';
+import { IsArray, IsEmail, IsIn, IsOptional, IsString, MinLength } from 'class-validator';
 
 export class CreateStaffDto {
   @IsString()
@@ -11,12 +11,22 @@ export class CreateStaffDto {
   @MinLength(6)
   password: string;
 
-  @IsIn(['ADMIN', 'TEACHER', 'ACCOUNTANT'])
+  @IsIn(['ADMIN', 'MANAGER', 'RECEPTIONIST', 'TEACHER', 'ACCOUNTANT'])
   role: string;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  permissions?: string[];
 }
 
 export class UpdateStaffDto {
   @IsOptional()
-  @IsIn(['ADMIN', 'TEACHER', 'ACCOUNTANT'])
+  @IsIn(['ADMIN', 'MANAGER', 'RECEPTIONIST', 'TEACHER', 'ACCOUNTANT'])
   role?: string;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  permissions?: string[];
 }

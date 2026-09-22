@@ -19,7 +19,13 @@ import { Roles } from '../common/roles.decorator';
 import { CurrentUser } from '../common/current-user.decorator';
 import { attachmentStorage, ATTACHMENT_MAX_SIZE } from '../common/upload.util';
 import { HomeworkService } from './homework.service';
-import { CreateHomeworkDto, UpdateHomeworkDto, SetCompletionDto } from './dto/homework.dto';
+import {
+  CreateHomeworkDto,
+  UpdateHomeworkDto,
+  SetCompletionDto,
+  SubmitHomeworkDto,
+  GradeHomeworkDto,
+} from './dto/homework.dto';
 
 @UseGuards(JwtAuthGuard, RolesGuard, TrialGuard)
 @Controller('homework')
@@ -29,6 +35,12 @@ export class HomeworkController {
   @Get()
   findAll(@CurrentUser('tenantId') tenantId: string, @Query('groupId') groupId?: string) {
     return this.service.findAll(tenantId, groupId);
+  }
+
+  // Must precede ':id'
+  @Get('leaderboard')
+  getLeaderboard(@CurrentUser('tenantId') tenantId: string, @Query('groupId') groupId?: string) {
+    return this.service.getLeaderboard(tenantId, groupId);
   }
 
   @Get(':id')
@@ -43,8 +55,31 @@ export class HomeworkController {
 
   @Roles('ADMIN', 'TEACHER')
   @Post(':id/completions')
-  setCompletion(@CurrentUser('tenantId') tenantId: string, @Param('id') id: string, @Body() dto: SetCompletionDto) {
+  setCompletion(
+    @CurrentUser('tenantId') tenantId: string,
+    @Param('id') id: string,
+    @Body() dto: SetCompletionDto,
+  ) {
     return this.service.setCompletion(tenantId, id, dto);
+  }
+
+  @Post(':id/submit')
+  submit(
+    @CurrentUser('tenantId') tenantId: string,
+    @Param('id') id: string,
+    @Body() dto: SubmitHomeworkDto,
+  ) {
+    return this.service.submit(tenantId, id, dto);
+  }
+
+  @Roles('ADMIN', 'TEACHER')
+  @Post(':id/grade')
+  grade(
+    @CurrentUser('tenantId') tenantId: string,
+    @Param('id') id: string,
+    @Body() dto: GradeHomeworkDto,
+  ) {
+    return this.service.grade(tenantId, id, dto);
   }
 
   @Roles('ADMIN', 'TEACHER')
@@ -55,13 +90,19 @@ export class HomeworkController {
 
   @Roles('ADMIN', 'TEACHER')
   @Patch(':id')
-  update(@CurrentUser('tenantId') tenantId: string, @Param('id') id: string, @Body() dto: UpdateHomeworkDto) {
+  update(
+    @CurrentUser('tenantId') tenantId: string,
+    @Param('id') id: string,
+    @Body() dto: UpdateHomeworkDto,
+  ) {
     return this.service.update(tenantId, id, dto);
   }
 
   @Roles('ADMIN', 'TEACHER')
   @Post(':id/attachment')
-  @UseInterceptors(FileInterceptor('file', { storage: attachmentStorage, limits: { fileSize: ATTACHMENT_MAX_SIZE } }))
+  @UseInterceptors(
+    FileInterceptor('file', { storage: attachmentStorage, limits: { fileSize: ATTACHMENT_MAX_SIZE } }),
+  )
   attach(
     @CurrentUser('tenantId') tenantId: string,
     @Param('id') id: string,

@@ -63,10 +63,25 @@ export class LeadsService {
       LOST: 0,
     };
 
+    const bySource: Record<string, { total: number; enrolled: number; conversionRate: number }> = {};
+
     for (const l of all) {
       if (counts[l.status as keyof typeof counts] !== undefined) {
         counts[l.status as keyof typeof counts]++;
       }
+      const src = l.source || 'OTHER';
+      if (!bySource[src]) {
+        bySource[src] = { total: 0, enrolled: 0, conversionRate: 0 };
+      }
+      bySource[src].total++;
+      if (l.status === 'ENROLLED') {
+        bySource[src].enrolled++;
+      }
+    }
+
+    for (const src of Object.keys(bySource)) {
+      const item = bySource[src];
+      item.conversionRate = item.total > 0 ? Math.round((item.enrolled / item.total) * 100) : 0;
     }
 
     const total = all.length;
@@ -77,6 +92,7 @@ export class LeadsService {
       total,
       counts,
       conversionRate,
+      bySource,
     };
   }
 

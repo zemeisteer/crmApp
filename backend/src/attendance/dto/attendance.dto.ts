@@ -36,3 +36,17 @@ export class QueryAttendanceDto {
   @IsString()
   studentId?: string;
 }
+
+export class QrCheckInDto {
+  @IsString()
+  code: string;
+
+  @IsOptional()
+  @IsString()
+  date?: string;
+
+  @IsOptional()
+  @IsString()
+  groupId?: string;
+}
+

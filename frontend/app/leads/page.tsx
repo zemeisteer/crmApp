@@ -12,6 +12,7 @@ import {
   leadsApi,
   groupsApi,
   branchesApi,
+  notificationsApi,
   Lead,
   LeadStatus,
   LeadSource,
@@ -114,6 +115,46 @@ function LeadsContent() {
   const [convertAddress, setConvertAddress] = useState("");
   const [converting, setConverting] = useState(false);
   const [convertSuccessMsg, setConvertSuccessMsg] = useState<string | null>(null);
+
+  // SMS Follow-up states
+  const [smsModalOpen, setSmsModalOpen] = useState(false);
+  const [smsLead, setSmsLead] = useState<Lead | null>(null);
+  const [smsText, setSmsText] = useState("");
+  const [sendingSms, setSendingSms] = useState(false);
+
+  function openSmsModal(lead: Lead) {
+    setSmsLead(lead);
+    setSmsText(`Assalomu alaykum ${lead.fullName}! Bizning o'quv markazimiz darslari haqida ma'lumot olishni istaysizmi?`);
+    setSmsModalOpen(true);
+  }
+
+  async function handleSendSms(e: React.FormEvent) {
+    e.preventDefault();
+    if (!smsLead || !smsText.trim()) return;
+    setSendingSms(true);
+    try {
+      await notificationsApi.sendTest({
+        recipient: smsLead.phone,
+        channel: "SMS",
+        content: smsText.trim(),
+        title: "Lidga murojaat",
+      });
+      alert("SMS xabar muvaffaqiyatli yuborildi!");
+      setSmsModalOpen(false);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "SMS yuborishda xatolik yuz berdi");
+    } finally {
+      setSendingSms(false);
+    }
+  }
+
+  function getNextStatus(curr: LeadStatus): LeadStatus | null {
+    if (curr === "NEW") return "CONTACTED";
+    if (curr === "CONTACTED") return "TRIAL_BOOKED";
+    if (curr === "TRIAL_BOOKED") return "TRIAL_ATTENDED";
+    if (curr === "TRIAL_ATTENDED") return "QUALIFIED";
+    return null;
+  }
 
   function loadData() {
     setLoading(true);
@@ -427,6 +468,67 @@ function LeadsContent() {
           </div>
         )}
 
+        {/* Source ROI Breakdown */}
+        {funnel?.bySource && Object.keys(funnel.bySource).length > 0 && (
+          <div
+            style={{
+              background: "#fff",
+              border: "1px solid #EAE8E2",
+              borderRadius: 14,
+              padding: "12px 18px",
+              marginBottom: 20,
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+              flexWrap: "wrap",
+            }}
+          >
+            <span
+              style={{
+                fontSize: 12,
+                fontWeight: 800,
+                color: "#8A8D96",
+                textTransform: "uppercase",
+                letterSpacing: "0.05em",
+              }}
+            >
+              Manbalar ROI & Konversiya:
+            </span>
+            {Object.entries(funnel.bySource).map(([src, stat]) => (
+              <div
+                key={src}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                  background: "#F8F8F6",
+                  border: "1px solid #EAE8E2",
+                  padding: "4px 10px",
+                  borderRadius: 8,
+                  fontSize: 12,
+                }}
+              >
+                <span style={{ fontWeight: 700, color: "#181A1F" }}>
+                  {SOURCE_LABELS[src as LeadSource] || src}:
+                </span>
+                <span style={{ color: "#4A4E58" }}>{stat.total} lid</span>
+                <span
+                  style={{
+                    background: stat.conversionRate > 0 ? "#DCFCE7" : "#F2F1EC",
+                    color: stat.conversionRate > 0 ? "#16A34A" : "#8A8D96",
+                    padding: "2px 6px",
+                    borderRadius: 5,
+                    fontWeight: 800,
+                    fontSize: 11,
+                  }}
+                >
+                  {stat.conversionRate}% ({stat.enrolled})
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+
         {/* Filters bar */}
         <div style={{ display: "flex", gap: 10, marginBottom: 20, flexWrap: "wrap", alignItems: "center" }}>
           <input
@@ -646,23 +748,59 @@ function LeadsContent() {
                             </span>
                           )}
 
-                          <div style={{ display: "flex", gap: 4, marginLeft: "auto" }}>
-                            {lead.status === "NEW" && (
+                          <div style={{ display: "flex", alignItems: "center", gap: 4, marginLeft: "auto" }}>
+                            <button
+                              type="button"
+                              onClick={() => openSmsModal(lead)}
+                              title="SMS yuborish"
+                              style={{
+                                background: "#F2F1EC",
+                                border: "none",
+                                borderRadius: 6,
+                                padding: "4px 7px",
+                                cursor: "pointer",
+                                fontSize: 11,
+                                fontWeight: 700,
+                                color: "#4A4E58",
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 3,
+                              }}
+                            >
+                              <span>💬</span>
+                              <span>SMS</span>
+                            </button>
+
+                            {getNextStatus(lead.status) && (
                               <button
                                 type="button"
-                                onClick={() => onQuickStatusChange(lead.id, "CONTACTED")}
-                                title="Bog'lanildi"
-                                style={{ background: "#E0F2FE", border: "none", borderRadius: 6, padding: "3px 6px", cursor: "pointer", fontSize: 11, color: "#0284C7", fontWeight: 700 }}
+                                onClick={() => onQuickStatusChange(lead.id, getNextStatus(lead.status)!)}
+                                title="Keyingi bosqichga o'tkazish"
+                                style={{
+                                  background: "#EEF0FF",
+                                  border: "1px solid #C7D2FE",
+                                  borderRadius: 6,
+                                  padding: "4px 8px",
+                                  cursor: "pointer",
+                                  fontSize: 11,
+                                  color: ACCENT,
+                                  fontWeight: 800,
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: 2,
+                                }}
                               >
-                                📞
+                                <span>Keyingi</span>
+                                <span>➔</span>
                               </button>
                             )}
+
                             {lead.status !== "LOST" && lead.status !== "ENROLLED" && (
                               <button
                                 type="button"
                                 onClick={() => onQuickStatusChange(lead.id, "LOST")}
                                 title="Rad etildi"
-                                style={{ background: "#FEE2E2", border: "none", borderRadius: 6, padding: "3px 6px", cursor: "pointer", fontSize: 11, color: "#DC2626", fontWeight: 700 }}
+                                style={{ background: "#FEE2E2", border: "none", borderRadius: 6, padding: "4px 7px", cursor: "pointer", fontSize: 11, color: "#DC2626", fontWeight: 700 }}
                               >
                                 ✕
                               </button>
@@ -671,7 +809,7 @@ function LeadsContent() {
                               type="button"
                               onClick={() => openEditModal(lead)}
                               title="Tahrirlash"
-                              style={{ background: "#F2F1EC", border: "none", borderRadius: 6, padding: "3px 6px", cursor: "pointer", fontSize: 11 }}
+                              style={{ background: "#F2F1EC", border: "none", borderRadius: 6, padding: "4px 7px", cursor: "pointer", fontSize: 11 }}
                             >
                               ✏️
                             </button>
@@ -1043,6 +1181,55 @@ function LeadsContent() {
           >
             <span>🎓</span>
             <span>{converting ? "Ro'yxatga olinmoqda..." : t("leads.confirmConvert")}</span>
+          </button>
+        </form>
+      </Modal>
+
+      {/* SMS Follow-up Modal */}
+      <Modal
+        open={smsModalOpen}
+        onClose={() => setSmsModalOpen(false)}
+        title="Lidga SMS xabar yuborish"
+      >
+        <form onSubmit={handleSendSms} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          <div style={{ background: "#F8F8F6", borderRadius: 10, padding: 12, border: "1px solid #EAE8E2" }}>
+            <div style={{ fontSize: 14, fontWeight: 700, color: "#181A1F" }}>{smsLead?.fullName}</div>
+            <div style={{ fontSize: 13, color: ACCENT, fontWeight: 600, marginTop: 2 }}>📞 {smsLead?.phone}</div>
+          </div>
+
+          <div>
+            <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>SMS matni</div>
+            <textarea
+              className="field-input"
+              rows={4}
+              value={smsText}
+              onChange={(e) => setSmsText(e.target.value)}
+              placeholder="SMS xabar matnini kiriting..."
+              style={{ resize: "vertical" }}
+              required
+            />
+          </div>
+
+          <button
+            className="btn"
+            type="submit"
+            disabled={sendingSms || !smsText.trim()}
+            style={{
+              background: ACCENT,
+              color: "#fff",
+              fontSize: 14,
+              fontWeight: 700,
+              padding: 12,
+              borderRadius: 10,
+              marginTop: 4,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 8,
+            }}
+          >
+            <span>💬</span>
+            <span>{sendingSms ? "Yuborilmoqda..." : "SMS yuborish"}</span>
           </button>
         </form>
       </Modal>

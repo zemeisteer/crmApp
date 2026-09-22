@@ -2,6 +2,7 @@ import { Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { and, desc, eq, gt, inArray, isNotNull, isNull, or } from 'drizzle-orm';
 import { randomBytes } from 'crypto';
+import * as qrcode from 'qrcode';
 import { DB, Database } from '../db/db.module';
 import {
   announcements,
@@ -20,10 +21,11 @@ const MAIN_KEYBOARD = {
     [{ text: '📅 Dars jadvali' }, { text: '📝 Uy vazifalar' }],
     [{ text: "💳 Balans va to'lov" }, { text: '📊 Davomat' }],
     [{ text: '🎯 Imtihonlar' }, { text: "📢 E'lonlar" }],
-    [{ text: 'ℹ️ Markaz haqida' }],
+    [{ text: '🪪 Mening QR-kodim' }, { text: 'ℹ️ Markaz haqida' }],
   ],
   resize_keyboard: true,
 };
+
 
 @Injectable()
 export class TelegramService {
@@ -110,6 +112,34 @@ export class TelegramService {
       this.logger.error(`Telegram sendMessage error: ${(err as Error).message}`);
     }
   }
+
+  async sendPhoto(chatId: string, photoBuffer: Buffer, caption?: string) {
+    if (!this.token) {
+      this.logger.warn('TELEGRAM_BOT_TOKEN not set — skipping sendPhoto');
+      return;
+    }
+    try {
+      const formData = new FormData();
+      formData.append('chat_id', chatId);
+      const blob = new Blob([new Uint8Array(photoBuffer)], { type: 'image/png' });
+      formData.append('photo', blob, 'qrcode.png');
+      if (caption) {
+        formData.append('caption', caption);
+        formData.append('parse_mode', 'HTML');
+      }
+
+      const res = await fetch(`https://api.telegram.org/bot${this.token}/sendPhoto`, {
+        method: 'POST',
+        body: formData,
+      });
+      if (!res.ok) {
+        this.logger.error(`Telegram sendPhoto failed: ${res.status} ${await res.text()}`);
+      }
+    } catch (err) {
+      this.logger.error(`Telegram sendPhoto error: ${(err as Error).message}`);
+    }
+  }
+
 
   async notifyStudent(studentId: string, text: string) {
     const student = await this.db.query.students.findFirst({ where: eq(students.id, studentId) });
@@ -553,6 +583,27 @@ export class TelegramService {
       return;
     }
 
+    // 3H: QR Code & Student Digital Card
+    if (lower.includes('qr') || lower.includes('guvohnoma') || lower === '/qr') {
+      try {
+        const qrBuffer = await qrcode.toBuffer(`TALIMCRM:STUDENT:${student.id}`, {
+          width: 450,
+          margin: 2,
+          color: { dark: '#111827', light: '#FFFFFF' },
+        });
+
+        await this.sendPhoto(
+          chatId,
+          qrBuffer,
+          `🪪 <b>O'quvchi Guvohnomasi (QR-Kod)</b>\n\n👤 <b>Ism:</b> ${student.fullName}\n🆔 <b>O'quvchi ID:</b> <code>${student.id}</code>\n🏫 <b>Markaz:</b> ${student.tenant?.name || 'TalimCRM'}\n\n<i>Ushbu QR-kodni o'quv markaziga kirishda administratorga ko'rsatib, davomatni 1 soniyada tasdiqlang.</i>`,
+        );
+      } catch (err) {
+        this.logger.error(`Failed to generate QR code for student ${student.id}: ${err}`);
+        await this.sendMessage(chatId, `QR-kod generatsiya qilishda xatolik yuz berdi. ID: ${student.id}`, MAIN_KEYBOARD);
+      }
+      return;
+    }
+
     // Default response for unhandled text
     await this.sendMessage(
       chatId,
@@ -561,3 +612,4 @@ export class TelegramService {
     );
   }
 }
+
