@@ -54,9 +54,37 @@ Nosozlik yuz berganda nima qilish kerakligi bo'yicha qisqa qo'llanma.
   UPDATE users SET role = 'SUPERADMIN' WHERE email = 'sizning-email@domen.uz';
   ```
 
-## 10. Umumiy tekshiruv tartibi (istalgan nosozlikda birinchi qadamlar)
+## 10. Workspace / Tashkilot a'zoligi muammosi ("Foydalanuvchida faol tashkilot a'zoligi topilmadi")
+
+- Agar eski foydalanuvchi tizimga kirganda "Foydalanuvchida faol tashkilot a'zoligi topilmadi" xatosi chiqsa:
+  Migratsiya skriptini ishga tushiring:
+  ```bash
+  cd backend && npx tsx scripts/migrate-memberships.ts
+  ```
+  Yoki alohida foydalanuvchini bazada a'zo qilib qo'shing:
+  ```sql
+  INSERT INTO organization_memberships (id, user_id, tenant_id, role, status)
+  VALUES ('mem_' || substr(md5(random()::text), 1, 16), '<USER_ID>', '<TENANT_ID>', 'ADMIN', 'ACTIVE');
+  ```
+
+## 11. Taklifnoma xatolari ("Ushbu taklifnoma yaroqsiz yoki muddati tugagan")
+
+- Taklifnomalar 7 kun muddatga ega va faqat 1 marta ishlatiladi (`invitation_status` = `PENDING`).
+- Token bazada SHA-256 hash ko'rinishida (`token_hash`) saqlanadi.
+- Agar foydalanuvchi taklifnomani yo'qotgan yoki muddati o'tgan bo'lsa, markaz administratori settings yoki onboarding orqali yangi taklifnoma yuborishi kerak (eski taklifnoma `REVOKED` yoki `EXPIRED` bo'ladi).
+
+## 12. Onboarding bosqichida qolib ketish ("Onboarding reset")
+
+- Agar markaz administratori onboarding bosqichini qayta o'tmoqchi bo'lsa yoki qolib ketgan bo'lsa:
+  ```sql
+  UPDATE tenants SET onboarding_step = 'PROFILE' WHERE id = '<TENANT_ID>';
+  ```
+  Onboarding yakunlanganda `onboarding_step = 'COMPLETED'` bo'ladi.
+
+## 13. Umumiy tekshiruv tartibi (istalgan nosozlikda birinchi qadamlar)
 
 1. `GET /api/health`
 2. Backend va frontend loglarini oxirgi 5 daqiqa uchun ko'rish
 3. `npm run test && npm run test:e2e` (backend) — asosiy funksiyalar buzilmaganini tasdiqlash
-4. So'nggi deploy/commit nima o'zgartirganini `git log` orqali ko'rish
+4. `npx tsx scripts/e2e-verification.ts` (backend) — auth, workspace va onboarding E2E tekshiruvi
+5. So'nggi deploy/commit nima o'zgartirganini `git log` orqali ko'rish

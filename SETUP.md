@@ -51,18 +51,28 @@ npm run db:backup   # backups/talimcrm_<sana>.sql.gz yaratadi
 
 Buni cron/Task Scheduler orqali kunlik ishga tushiring va nusxalarni bazadan alohida joyda (S3 va h.k.) saqlang — tafsilotlar `scripts/backup.sh` ichida.
 
-### Testlar
+### Testlar va tekshiruv
 
 ```bash
-npm run test      # unit testlar (guard'lar)
-npm run test:e2e  # to'liq HTTP orqali multi-tenant izolyatsiyani tekshiradi (haqiqiy DB kerak)
+npm run test                   # unit testlar (18 test fayli, barcha guard va servicelar)
+npm run test:e2e               # to'liq HTTP orqali multi-tenant izolyatsiyani tekshiradi
+npx tsx scripts/e2e-verification.ts  # yangi auth, onboarding, taklifnoma va multi-membership E2E tekshiruvi
+npx tsx scripts/migrate-memberships.ts # mavjud userlarni organization_memberships ga o'tkazish migratsiya skripti
 ```
 
-### API tuzilishi (qisqacha)
+### API va Arxitektura tuzilishi (qisqacha)
 
-Auth, tenant, guruh/o'quvchi/o'qituvchi CRUD (soft-delete + tiklash bilan), to'lov, davomat, maosh, uy vazifasi, filial, Excel export/import, PDF kvitansiya, faoliyat jurnali (audit log), AI tahlil/materiallar, Telegram bot, Click/Payme (markaz ↔ o'quvchi va markaz ↔ platforma), platform (superadmin) boshqaruvi. To'liq ro'yxat uchun `src/*/​*.controller.ts` fayllariga qarang.
+- **Auth & Onboarding:**
+  - "Start for free" (qisqa ro'yxatdan o'tish) yangi markaz va OWNER foydalanuvchi yaratadi.
+  - 8 bosqichli Onboarding (`/onboarding`, `OnboardingModule`): profil, yo'nalishlar, Workspace URL (subdomain), fanlar, kurslar, birinchi filial, jamoani taklif qilish.
+  - Ko'p markazlilik: `organization_memberships` orqali bitta foydalanuvchi bir nechta ta'lim markaziga a'zo bo'lishi va kirishda ishchi maydonni tanlashi mumkin (`/api/auth/select-workspace`).
+  - Xavfsiz taklifnomalar: `invitations` orqali o'qituvchi, talaba va xodimlar uchun bir martalik, muddati cheklangan (7 kun), 32-baytli kriptografik token bilan hisobni faollashtirish (`/invite/[token]`).
+- **Fanlar va Kurslar:**
+  - Qat'iy markaz yo'nalishidan voz kechilgan: fanlar (`subjects`) va kurslar (`courses`) to'liq moslashuvchan iyerarxiyada ishlaydi.
+- **Asosiy CRM modullari:**
+  - Tenant, guruh/o'quvchi/o'qituvchi CRUD (soft-delete + tiklash bilan), to'lov, davomat, maosh, uy vazifasi, filial, Excel export/import, PDF kvitansiya, faoliyat jurnali (audit log), AI tahlil/materiallar, Telegram bot, Click/Payme (markaz ↔ o'quvchi va markaz ↔ platforma), platform (superadmin) boshqaruvi. To'liq ro'yxat uchun `src/*/*.controller.ts` fayllariga qarang.
 
-Barcha tenant-scoped so'rovlar JWT'dagi `tenantId` bo'yicha avtomatik filtrlaydi (multi-tenancy izolyatsiyasi) — bu backendning eng muhim xavfsizlik qatlami, o'zgartirganda ehtiyot bo'ling. Bu `test:e2e` bilan avtomatik tekshiriladi.
+Barcha tenant-scoped so'rovlar JWT'dagi `tenantId` bo'yicha avtomatik filtrlaydi (multi-tenancy izolyatsiyasi) — bu backendning eng muhim xavfsizlik qatlami, o'zgartirganda ehtiyot bo'ling. Bu `test:e2e` va `scripts/e2e-verification.ts` bilan avtomatik tekshiriladi.
 
 ### Nima uchun Prisma emas, Drizzle?
 
