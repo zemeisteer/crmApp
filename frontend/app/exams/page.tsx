@@ -206,7 +206,8 @@ function ExamsContent() {
       const fullGroup = (await groupsApi.get(exam.groupId)) as Group & {
         enrollments?: { student: { id: string; fullName: string } }[];
       };
-      setGradeStudents((fullGroup.enrollments || []).map((e) => e.student));
+      const studs = (fullGroup.enrollments || []).map((e) => e.student).filter((s): s is NonNullable<typeof s> => Boolean(s));
+      setGradeStudents(studs);
     } finally {
       setGradeLoading(false);
     }
@@ -335,9 +336,9 @@ function ExamsContent() {
       const fullGroup = (await groupsApi.get(exam.groupId)) as Group & {
         enrollments?: { student: { id: string; fullName: string } }[];
       };
-      const studs = (fullGroup.enrollments || []).map((e) => e.student);
+      const studs = (fullGroup.enrollments || []).map((e) => e.student).filter((s): s is NonNullable<typeof s> => Boolean(s));
       setSimulatorStudents(studs);
-      if (studs.length > 0) {
+      if (studs.length > 0 && studs[0]) {
         setSimulatorStudentId(studs[0].id);
       }
     } catch {

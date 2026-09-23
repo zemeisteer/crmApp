@@ -19,6 +19,7 @@ import {
   GradeHomeworkDto,
 } from './dto/homework.dto';
 import { TelegramService } from '../telegram/telegram.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 export interface LeaderboardEntry {
   rank: number;

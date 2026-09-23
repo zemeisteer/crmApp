@@ -42,10 +42,18 @@ export default function DatePicker({
   const { t, lang } = useLanguage();
   const effectivePlaceholder = placeholder ?? t("picker.selectDate");
   const [open, setOpen] = useState(false);
+  const [alignRight, setAlignRight] = useState(false);
   const [viewMode, setViewMode] = useState<"days" | "months" | "years">("days");
   const selected = parseLocalStr(value);
   const [viewDate, setViewDate] = useState(() => selected || new Date());
   const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (open && ref.current) {
+      const rect = ref.current.getBoundingClientRect();
+      setAlignRight(rect.left + 300 > window.innerWidth);
+    }
+  }, [open]);
 
   useEffect(() => {
     function onClickOutside(e: MouseEvent) {
@@ -107,7 +115,8 @@ export default function DatePicker({
           style={{
             position: "absolute",
             top: "calc(100% + 6px)",
-            left: 0,
+            left: alignRight ? "auto" : 0,
+            right: alignRight ? 0 : "auto",
             width: 290,
             maxWidth: "calc(100vw - 32px)",
             zIndex: 110,

@@ -147,21 +147,21 @@ export function AnnouncementsContent() {
     switch (p) {
       case "URGENT":
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-500/10 text-rose-400 border border-rose-500/20">
-            <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-50 text-rose-700 border border-rose-200">
+            <span className="w-1.5 h-1.5 rounded-full bg-rose-600 animate-pulse" />
             Shoshilinch
           </span>
         );
       case "HIGH":
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20">
-            <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200">
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
             Muhim
           </span>
         );
       default:
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-500/10 text-slate-300 border border-slate-500/20">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-200">
             Oddiy
           </span>
         );
@@ -172,25 +172,25 @@ export function AnnouncementsContent() {
     switch (audience) {
       case "ALL":
         return (
-          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">
             👥 Barchaga
           </span>
         );
       case "STUDENTS":
         return (
-          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
             🎓 O&apos;quvchilarga
           </span>
         );
       case "TEACHERS":
         return (
-          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium bg-sky-500/10 text-sky-400 border border-sky-500/20">
+          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-sky-50 text-sky-800 border border-sky-200">
             👨‍🏫 O&apos;qituvchilarga
           </span>
         );
       case "GROUP":
         return (
-          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium bg-purple-500/10 text-purple-400 border border-purple-500/20">
+          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-purple-50 text-purple-800 border border-purple-200">
             🏫 Guruh: {groupName || "Tanlangan guruh"}
           </span>
         );
@@ -202,8 +202,8 @@ export function AnnouncementsContent() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-100 tracking-tight flex items-center gap-2.5">
-            <span className="p-2 rounded-xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+          <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2.5">
+            <span className="p-2 rounded-xl bg-indigo-50 text-indigo-600 border border-indigo-100">
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="m3 11 18-5v12L3 14v-3z" />
                 <path d="M11.6 16.8a3 3 0 1 1-5.8-1.6" />
@@ -211,14 +211,14 @@ export function AnnouncementsContent() {
             </span>
             E&apos;lonlar va Xabarnomalar
           </h1>
-          <p className="text-xs text-slate-400 mt-1">
+          <p className="text-xs sm:text-sm text-slate-600 mt-1">
             O&apos;quv markazining barcha talaba, o&apos;qituvchi va guruhlariga e&apos;lonlar berish va Telegram orqali broadcast qilish
           </p>
         </div>
 
         <button
           onClick={openCreateModal}
-          className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold transition shadow-lg shadow-indigo-600/25 cursor-pointer"
+          className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition shadow-sm cursor-pointer"
         >
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <line x1="12" y1="5" x2="12" y2="19" />
@@ -230,26 +230,26 @@ export function AnnouncementsContent() {
 
       {/* KPI Stats cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <div className="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-4 backdrop-blur">
-          <span className="text-xs text-slate-400 font-medium">Jami e&apos;lonlar</span>
-          <div className="text-2xl font-bold text-slate-100 mt-1">{stats.total}</div>
+        <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
+          <span className="text-xs text-slate-500 font-bold">Jami e&apos;lonlar</span>
+          <div className="text-2xl font-black text-slate-900 mt-1">{stats.total}</div>
         </div>
-        <div className="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-4 backdrop-blur">
-          <span className="text-xs text-rose-400 font-medium">Shoshilinch (Urgent)</span>
-          <div className="text-2xl font-bold text-rose-400 mt-1">{stats.urgent}</div>
+        <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
+          <span className="text-xs text-rose-600 font-bold">Shoshilinch (Urgent)</span>
+          <div className="text-2xl font-black text-rose-600 mt-1">{stats.urgent}</div>
         </div>
-        <div className="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-4 backdrop-blur">
-          <span className="text-xs text-amber-400 font-medium">Muhim (High)</span>
-          <div className="text-2xl font-bold text-amber-400 mt-1">{stats.high}</div>
+        <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
+          <span className="text-xs text-amber-600 font-bold">Muhim (High)</span>
+          <div className="text-2xl font-black text-amber-600 mt-1">{stats.high}</div>
         </div>
-        <div className="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-4 backdrop-blur">
-          <span className="text-xs text-sky-400 font-medium">Telegram tarqatilgan</span>
-          <div className="text-2xl font-bold text-sky-400 mt-1">{stats.telegramSent}</div>
+        <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
+          <span className="text-xs text-sky-600 font-bold">Telegram tarqatilgan</span>
+          <div className="text-2xl font-black text-sky-600 mt-1">{stats.telegramSent}</div>
         </div>
       </div>
 
       {/* Filter toolbar */}
-      <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-sm">
+      <div className="bg-white border border-slate-200 rounded-2xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-sm">
         {/* Priority Tabs */}
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0">
           {[
@@ -264,10 +264,10 @@ export function AnnouncementsContent() {
                 setPriorityFilter(tab.id);
                 setPage(1);
               }}
-              className={`px-3 py-1.5 rounded-xl text-xs font-medium transition cursor-pointer whitespace-nowrap ${
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer whitespace-nowrap ${
                 priorityFilter === tab.id
-                  ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/20"
-                  : "bg-slate-800/60 text-slate-400 hover:text-slate-200 hover:bg-slate-800"
+                  ? "bg-indigo-600 text-white shadow-sm"
+                  : "bg-slate-100 text-slate-700 hover:text-slate-900 hover:bg-slate-200 border border-slate-200"
               }`}
             >
               {tab.label}
@@ -295,7 +295,7 @@ export function AnnouncementsContent() {
 
           <div className="relative w-full md:w-64">
             <svg
-              className="absolute left-3 top-2.5 text-slate-500"
+              className="absolute left-3 top-2.5 text-slate-400"
               width="15"
               height="15"
               viewBox="0 0 24 24"
@@ -316,7 +316,7 @@ export function AnnouncementsContent() {
                 setSearch(e.target.value);
                 setPage(1);
               }}
-              className="w-full bg-slate-900 border border-slate-800 rounded-xl pl-9 pr-3 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+              className="w-full bg-white border border-slate-300 rounded-xl pl-9 pr-3 py-1.5 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 shadow-sm"
             />
           </div>
         </div>
@@ -324,22 +324,22 @@ export function AnnouncementsContent() {
 
       {/* Announcements List */}
       {loading ? (
-        <div className="py-20 text-center text-xs text-slate-400">Yuklanmoqda...</div>
+        <div className="py-20 text-center text-xs text-slate-500 font-medium">Yuklanmoqda...</div>
       ) : filtered.length === 0 ? (
-        <div className="bg-slate-900/40 border border-slate-800/80 rounded-2xl p-12 text-center">
-          <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 flex items-center justify-center mx-auto mb-3">
+        <div className="bg-white border border-slate-200 rounded-2xl p-12 text-center shadow-sm">
+          <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 border border-indigo-100 flex items-center justify-center mx-auto mb-3">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="m3 11 18-5v12L3 14v-3z" />
               <path d="M11.6 16.8a3 3 0 1 1-5.8-1.6" />
             </svg>
           </div>
-          <h3 className="text-sm font-semibold text-slate-200">E&apos;lonlar mavjud emas</h3>
-          <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
+          <h3 className="text-sm font-bold text-slate-900">E&apos;lonlar mavjud emas</h3>
+          <p className="text-xs text-slate-600 mt-1 max-w-sm mx-auto">
             Hozircha hech qanday e&apos;lon berilmagan. Markaz o&apos;quvchilari yoki xodimlariga yangilik yuborish uchun yangi e&apos;lon e&apos;lon qiling.
           </p>
           <button
             onClick={openCreateModal}
-            className="mt-4 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium cursor-pointer"
+            className="mt-4 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold cursor-pointer shadow-sm"
           >
             Yangi e&apos;lon yaratish
           </button>
@@ -349,12 +349,12 @@ export function AnnouncementsContent() {
           {paged.map((item) => (
             <div
               key={item.id}
-              className={`relative bg-slate-900/80 border rounded-2xl p-5 transition hover:border-slate-700 shadow-sm ${
+              className={`relative bg-white border rounded-2xl p-5 transition hover:shadow-md shadow-sm ${
                 item.priority === "URGENT"
-                  ? "border-rose-500/30 bg-gradient-to-r from-rose-950/10 to-slate-900/80"
+                  ? "border-rose-300 bg-rose-50/40"
                   : item.priority === "HIGH"
-                  ? "border-amber-500/30 bg-gradient-to-r from-amber-950/10 to-slate-900/80"
-                  : "border-slate-800"
+                  ? "border-amber-300 bg-amber-50/40"
+                  : "border-slate-200"
               }`}
             >
               <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
@@ -363,7 +363,7 @@ export function AnnouncementsContent() {
                     {priorityBadge(item.priority)}
                     {audienceBadge(item.targetAudience, item.targetGroup?.name)}
                     {item.sendTelegram && (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium bg-sky-500/10 text-sky-400 border border-sky-500/20">
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold bg-sky-50 text-sky-700 border border-sky-200">
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                           <line x1="22" y1="2" x2="11" y2="13" />
                           <polygon points="22 2 15 22 11 13 2 9 22 2" />
@@ -373,17 +373,17 @@ export function AnnouncementsContent() {
                     )}
                   </div>
 
-                  <h3 className="text-base font-semibold text-slate-100 tracking-tight">
+                  <h3 className="text-base font-bold text-slate-900 tracking-tight">
                     {item.title}
                   </h3>
 
-                  <p className="text-xs text-slate-300 whitespace-pre-wrap leading-relaxed">
+                  <p className="text-xs text-slate-700 whitespace-pre-wrap leading-relaxed">
                     {item.content}
                   </p>
                 </div>
 
                 <div className="flex sm:flex-col items-end justify-between sm:justify-start gap-2 shrink-0">
-                  <span className="text-[11px] text-slate-500">
+                  <span className="text-[11px] text-slate-500 font-medium">
                     {new Date(item.publishedAt).toLocaleString("uz-UZ", {
                       day: "2-digit",
                       month: "short",
@@ -397,7 +397,7 @@ export function AnnouncementsContent() {
                     onClick={() => handleDelete(item.id)}
                     disabled={deletingId === item.id}
                     title="O'chirish"
-                    className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition cursor-pointer"
+                    className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer"
                   >
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M3 6h18" />
@@ -409,11 +409,11 @@ export function AnnouncementsContent() {
               </div>
 
               {item.author && (
-                <div className="mt-4 pt-3 border-t border-slate-800/80 flex items-center gap-2 text-[11px] text-slate-400">
-                  <div className="w-5 h-5 rounded-full bg-indigo-500/20 text-indigo-300 flex items-center justify-center font-bold text-[10px]">
+                <div className="mt-4 pt-3 border-t border-slate-100 flex items-center gap-2 text-[11px] text-slate-600">
+                  <div className="w-5 h-5 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-[10px]">
                     {item.author.fullName.charAt(0)}
                   </div>
-                  <span>Muallif: <strong className="text-slate-300 font-medium">{item.author.fullName}</strong></span>
+                  <span>Muallif: <strong className="text-slate-900 font-bold">{item.author.fullName}</strong></span>
                 </div>
               )}
             </div>
@@ -431,14 +431,14 @@ export function AnnouncementsContent() {
       <Modal open={modalOpen} onClose={() => setModalOpen(false)} title="Yangi E'lon Berish">
         <form onSubmit={handleSubmit} className="space-y-4">
           {error && (
-            <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs">
+            <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold">
               {error}
             </div>
           )}
 
           <div>
-            <label className="block text-xs font-medium text-slate-300 mb-1">
-              Sarlavha <span className="text-rose-400">*</span>
+            <label className="block text-xs font-bold text-slate-700 mb-1">
+              Sarlavha <span className="text-rose-500">*</span>
             </label>
             <input
               type="text"
@@ -446,13 +446,13 @@ export function AnnouncementsContent() {
               placeholder="Masalan: Ertaga markazda bayram tadbiri o'tkaziladi"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+              className="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 shadow-sm"
             />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1">
+              <label className="block text-xs font-bold text-slate-700 mb-1">
                 Auditoriya
               </label>
               <Select
@@ -468,7 +468,7 @@ export function AnnouncementsContent() {
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1">
+              <label className="block text-xs font-bold text-slate-700 mb-1">
                 Muhimlik darajasi
               </label>
               <Select
@@ -485,8 +485,8 @@ export function AnnouncementsContent() {
 
           {targetAudience === "GROUP" && (
             <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1">
-                Guruhni tanlang <span className="text-rose-400">*</span>
+              <label className="block text-xs font-bold text-slate-700 mb-1">
+                Guruhni tanlang <span className="text-rose-500">*</span>
               </label>
               <Select
                 value={targetGroupId}
@@ -503,8 +503,8 @@ export function AnnouncementsContent() {
           )}
 
           <div>
-            <label className="block text-xs font-medium text-slate-300 mb-1">
-              E&apos;lon matni <span className="text-rose-400">*</span>
+            <label className="block text-xs font-bold text-slate-700 mb-1">
+              E&apos;lon matni <span className="text-rose-500">*</span>
             </label>
             <textarea
               required
@@ -512,22 +512,22 @@ export function AnnouncementsContent() {
               placeholder="E'lonning to'liq tafsilotlari, sanasi, vaqti va talablari..."
               value={content}
               onChange={(e) => setContent(e.target.value)}
-              className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500 resize-none"
+              className="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 shadow-sm resize-none"
             />
           </div>
 
           {/* Telegram broadcast switch */}
-          <div className="flex items-center justify-between p-3 rounded-xl bg-slate-900 border border-slate-800">
+          <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-200">
             <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-sky-500/10 text-sky-400 flex items-center justify-center">
+              <div className="w-8 h-8 rounded-lg bg-sky-50 text-sky-600 border border-sky-200 flex items-center justify-center">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <line x1="22" y1="2" x2="11" y2="13" />
                   <polygon points="22 2 15 22 11 13 2 9 22 2" />
                 </svg>
               </div>
               <div>
-                <span className="text-xs font-medium text-slate-200 block">Telegram orqali tarqatish</span>
-                <span className="text-[11px] text-slate-400">Ulangan o&apos;quvchi va ota-onalar botiga tezkor xabar yuborish</span>
+                <span className="text-xs font-bold text-slate-900 block">Telegram orqali tarqatish</span>
+                <span className="text-[11px] text-slate-600">Ulangan o&apos;quvchi va ota-onalar botiga tezkor xabar yuborish</span>
               </div>
             </div>
             <input
@@ -538,18 +538,18 @@ export function AnnouncementsContent() {
             />
           </div>
 
-          <div className="pt-3 flex justify-end gap-2 border-t border-slate-800">
+          <div className="pt-3 flex justify-end gap-2 border-t border-slate-100">
             <button
               type="button"
               onClick={() => setModalOpen(false)}
-              className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium cursor-pointer"
+              className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold cursor-pointer border border-slate-200"
             >
               Bekor qilish
             </button>
             <button
               type="submit"
               disabled={saving}
-              className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-xs font-semibold cursor-pointer"
+              className="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-xs font-bold cursor-pointer shadow-sm"
             >
               {saving ? "Yuborilmoqda..." : "E'lonni Chop Qilish"}
             </button>
@@ -563,7 +563,9 @@ export function AnnouncementsContent() {
 export default function AnnouncementsPage() {
   return (
     <DashboardShell>
-      <AnnouncementsContent />
+      <div style={{ padding: "24px 32px", width: "100%", maxWidth: 1400, margin: "0 auto", boxSizing: "border-box" }}>
+        <AnnouncementsContent />
+      </div>
     </DashboardShell>
   );
 }

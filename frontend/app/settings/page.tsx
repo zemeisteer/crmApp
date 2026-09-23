@@ -25,11 +25,14 @@ const CATEGORY_LABEL_KEYS: Record<TenantCategory, TranslationKey> = {
 };
 const ROLE_LABEL_KEYS: Record<Role, string> = {
   SUPERADMIN: "Superadmin",
+  OWNER: "Markaz rahbari",
   ADMIN: "Administrator",
   MANAGER: "Menejer",
   RECEPTIONIST: "Qabulxona",
   TEACHER: "O'qituvchi",
   ACCOUNTANT: "Buxgalter",
+  STUDENT: "O'quvchi",
+  PARENT: "Ota-ona",
 };
 
 function splitList(s: string | null | undefined): string[] {

@@ -26,6 +26,7 @@ export const ALL_PERMISSIONS = Object.values(Permission);
 
 export const DEFAULT_ROLE_PERMISSIONS: Record<string, Permission[]> = {
   SUPERADMIN: ALL_PERMISSIONS,
+  OWNER: ALL_PERMISSIONS,
   ADMIN: ALL_PERMISSIONS,
   MANAGER: [
     Permission.STUDENTS_READ,
@@ -62,13 +63,23 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<string, Permission[]> = {
     Permission.HOMEWORK_MANAGE,
     Permission.EXAMS_MANAGE,
   ],
+  STUDENT: [
+    Permission.STUDENTS_READ,
+    Permission.ATTENDANCE_READ,
+    Permission.PAYMENTS_READ,
+  ],
+  PARENT: [
+    Permission.STUDENTS_READ,
+    Permission.ATTENDANCE_READ,
+    Permission.PAYMENTS_READ,
+  ],
 };
 
 export function getEffectivePermissions(
   role: string,
   customPermissions?: string[] | null,
 ): string[] {
-  if (role === 'SUPERADMIN' || role === 'ADMIN') {
+  if (role === 'SUPERADMIN' || role === 'ADMIN' || role === 'OWNER') {
     return ALL_PERMISSIONS;
   }
   const base = DEFAULT_ROLE_PERMISSIONS[role] || [];

@@ -13,11 +13,27 @@ import { createId } from '@paralleldrive/cuid2';
 
 export const roleEnum = pgEnum('role', [
   'SUPERADMIN',
+  'OWNER',
   'ADMIN',
   'MANAGER',
   'RECEPTIONIST',
   'TEACHER',
   'ACCOUNTANT',
+  'STUDENT',
+  'PARENT',
+]);
+
+export const membershipStatusEnum = pgEnum('membership_status', [
+  'ACTIVE',
+  'INVITED',
+  'SUSPENDED',
+]);
+
+export const invitationStatusEnum = pgEnum('invitation_status', [
+  'PENDING',
+  'ACCEPTED',
+  'EXPIRED',
+  'REVOKED',
 ]);
 
 export const notificationChannelEnum = pgEnum('notification_channel', [
@@ -151,6 +167,10 @@ export const tenants = pgTable('tenants', {
   notifyOnAttendance: boolean('notify_on_attendance').notNull().default(true),
   notifyOnPayment: boolean('notify_on_payment').notNull().default(true),
   notifyOnHomework: boolean('notify_on_homework').notNull().default(true),
+  onboardingStep: text('onboarding_step').notNull().default('COMPLETED'),
+  teachingCategories: text('teaching_categories').array(),
+  country: text('country').notNull().default('UZ'),
+  timezone: text('timezone').notNull().default('Asia/Tashkent'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 }, (t) => ({
@@ -161,6 +181,7 @@ export const users = pgTable('users', {
   id: text('id').primaryKey().$defaultFn(() => createId()),
   tenantId: text('tenant_id').references(() => tenants.id, { onDelete: 'cascade' }),
   email: text('email').notNull(),
+  phone: text('phone'),
   passwordHash: text('password_hash').notNull(),
   fullName: text('full_name').notNull(),
   role: roleEnum('role').notNull().default('ADMIN'),
@@ -193,11 +214,76 @@ export const sessions = pgTable('sessions', {
   tokenIdx: uniqueIndex('sessions_token_idx').on(t.refreshTokenHash),
 }));
 
+export const organizationMemberships = pgTable('organization_memberships', {
+  id: text('id').primaryKey().$defaultFn(() => createId()),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  tenantId: text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  role: roleEnum('role').notNull().default('ADMIN'),
+  status: membershipStatusEnum('status').notNull().default('ACTIVE'),
+  permissions: text('permissions').array(),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+}, (t) => ({
+  userTenantIdx: uniqueIndex('org_memberships_user_tenant_idx').on(t.userId, t.tenantId),
+  tenantIdx: index('org_memberships_tenant_idx').on(t.tenantId),
+  userIdx: index('org_memberships_user_idx').on(t.userId),
+}));
+
+export const invitations = pgTable('invitations', {
+  id: text('id').primaryKey().$defaultFn(() => createId()),
+  tenantId: text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  email: text('email'),
+  phone: text('phone'),
+  role: roleEnum('role').notNull(),
+  tokenHash: text('token_hash').notNull(),
+  invitedByUserId: text('invited_by_user_id').references(() => users.id, { onDelete: 'set null' }),
+  status: invitationStatusEnum('status').notNull().default('PENDING'),
+  targetEntityId: text('target_entity_id'),
+  expiresAt: timestamp('expires_at').notNull(),
+  acceptedAt: timestamp('accepted_at'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+}, (t) => ({
+  tokenIdx: uniqueIndex('invitations_token_idx').on(t.tokenHash),
+  tenantIdx: index('invitations_tenant_idx').on(t.tenantId),
+}));
+
+export const subjects = pgTable('subjects', {
+  id: text('id').primaryKey().$defaultFn(() => createId()),
+  tenantId: text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  name: text('name').notNull(),
+  category: text('category'),
+  code: text('code'),
+  color: text('color').default('#3B82F6'),
+  description: text('description'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+}, (t) => ({
+  tenantNameIdx: uniqueIndex('subjects_tenant_name_idx').on(t.tenantId, t.name),
+  tenantIdx: index('subjects_tenant_idx').on(t.tenantId),
+}));
+
+export const courses = pgTable('courses', {
+  id: text('id').primaryKey().$defaultFn(() => createId()),
+  tenantId: text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  subjectId: text('subject_id').references(() => subjects.id, { onDelete: 'cascade' }),
+  name: text('name').notNull(),
+  description: text('description'),
+  durationMonths: integer('duration_months').default(3),
+  price: text('price').default('0'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+}, (t) => ({
+  tenantIdx: index('courses_tenant_idx').on(t.tenantId),
+  subjectIdx: index('courses_subject_idx').on(t.subjectId),
+}));
+
 export const branches = pgTable('branches', {
   id: text('id').primaryKey().$defaultFn(() => createId()),
   tenantId: text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
   name: text('name').notNull(),
   address: text('address'),
+  phone: text('phone'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
 }, (t) => ({
   tenantIdx: index('branches_tenant_idx').on(t.tenantId),
@@ -664,6 +750,10 @@ export const notifications = pgTable('notifications', {
 // ---- relations ----
 export const tenantsRelations = relations(tenants, ({ many }) => ({
   users: many(users),
+  organizationMemberships: many(organizationMemberships),
+  invitations: many(invitations),
+  subjects: many(subjects),
+  courses: many(courses),
   groups: many(groups),
   students: many(students),
   teachers: many(teachers),
@@ -693,9 +783,30 @@ export const leadsRelations = relations(leads, ({ one }) => ({
 
 export const usersRelations = relations(users, ({ one, many }) => ({
   tenant: one(tenants, { fields: [users.tenantId], references: [tenants.id] }),
+  organizationMemberships: many(organizationMemberships),
   sessions: many(sessions),
   announcements: many(announcements),
   expenses: many(expenses),
+}));
+
+export const organizationMembershipsRelations = relations(organizationMemberships, ({ one }) => ({
+  user: one(users, { fields: [organizationMemberships.userId], references: [users.id] }),
+  tenant: one(tenants, { fields: [organizationMemberships.tenantId], references: [tenants.id] }),
+}));
+
+export const invitationsRelations = relations(invitations, ({ one }) => ({
+  tenant: one(tenants, { fields: [invitations.tenantId], references: [tenants.id] }),
+  invitedBy: one(users, { fields: [invitations.invitedByUserId], references: [users.id] }),
+}));
+
+export const subjectsRelations = relations(subjects, ({ one, many }) => ({
+  tenant: one(tenants, { fields: [subjects.tenantId], references: [tenants.id] }),
+  courses: many(courses),
+}));
+
+export const coursesRelations = relations(courses, ({ one }) => ({
+  tenant: one(tenants, { fields: [courses.tenantId], references: [tenants.id] }),
+  subject: one(subjects, { fields: [courses.subjectId], references: [subjects.id] }),
 }));
 
 export const sessionsRelations = relations(sessions, ({ one }) => ({

@@ -6,8 +6,9 @@ import { ConfigService } from '@nestjs/config';
 export interface JwtPayload {
   sub: string; // userId
   email: string;
-  role: 'SUPERADMIN' | 'ADMIN' | 'TEACHER' | 'ACCOUNTANT';
+  role: 'SUPERADMIN' | 'OWNER' | 'ADMIN' | 'MANAGER' | 'RECEPTIONIST' | 'TEACHER' | 'ACCOUNTANT' | 'STUDENT' | 'PARENT';
   tenantId: string | null;
+  permissions?: string[] | null;
 }
 
 @Injectable()

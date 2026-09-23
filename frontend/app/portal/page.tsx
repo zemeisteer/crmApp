@@ -37,7 +37,7 @@ export default function StudentPortalPage() {
   const [token, setTokenState] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<
-    "home" | "schedule" | "attendance" | "homework" | "exams" | "payments"
+    "home" | "schedule" | "attendance" | "homework" | "exams" | "payments" | "notifications"
   >("home");
 
   // Auth form state
@@ -418,6 +418,43 @@ export default function StudentPortalPage() {
 
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <button
+              onClick={() => setActiveTab("notifications")}
+              style={{
+                position: "relative",
+                background: activeTab === "notifications" ? "#EEF2FF" : "#F8FAFC",
+                color: activeTab === "notifications" ? ACCENT : "#475569",
+                border: activeTab === "notifications" ? `1.5px solid ${ACCENT}` : "1px solid #E2E8F0",
+                fontSize: 12.5,
+                fontWeight: 700,
+                padding: "6px 12px",
+                borderRadius: 8,
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+              }}
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+              </svg>
+              <span>Xabarlar</span>
+              {(announcements.length + (payments && payments.debtAmount > 0 ? 1 : 0)) > 0 && (
+                <span
+                  style={{
+                    background: "#EF4444",
+                    color: "#fff",
+                    fontSize: 10,
+                    fontWeight: 800,
+                    padding: "1px 6px",
+                    borderRadius: 100,
+                  }}
+                >
+                  {announcements.length + (payments && payments.debtAmount > 0 ? 1 : 0)}
+                </span>
+              )}
+            </button>
+            <button
               onClick={handleLogout}
               style={{
                 background: "#F1F5F9",
@@ -460,6 +497,10 @@ export default function StudentPortalPage() {
             { id: "homework", label: "📝 Vazifalar" },
             { id: "exams", label: "🎯 Natijalar" },
             { id: "payments", label: "💳 To'lovlar" },
+            {
+              id: "notifications",
+              label: `🔔 Xabarlar ${(announcements.length + (payments && payments.debtAmount > 0 ? 1 : 0)) > 0 ? `(${announcements.length + (payments && payments.debtAmount > 0 ? 1 : 0)})` : ""}`,
+            },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -1242,6 +1283,205 @@ export default function StudentPortalPage() {
                 </table>
               )}
             </div>
+          </div>
+        )}
+
+        {/* ========================================================================= */}
+        {/* TAB: NOTIFICATIONS                                                        */}
+        {/* ========================================================================= */}
+        {activeTab === "notifications" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+            {/* Header Banner */}
+            <div
+              style={{
+                background: "#fff",
+                border: "1px solid #E2E8F0",
+                borderRadius: 18,
+                padding: "20px 24px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 16,
+                boxShadow: "0 1px 3px rgba(0,0,0,0.03)",
+              }}
+            >
+              <div>
+                <h2 style={{ fontSize: 18, fontWeight: 800, color: "#0F172A", margin: "0 0 4px" }}>
+                  🔔 Bildirishnomalar va E&apos;lonlar
+                </h2>
+                <p style={{ margin: 0, fontSize: 13, color: "#64748B" }}>
+                  O&apos;quv markazingiz tomonidan yuborilgan barcha muhim yangiliklar, dars eslatmalari va to&apos;lov holatlari
+                </p>
+              </div>
+              <span
+                style={{
+                  background: "#EEF2FF",
+                  color: ACCENT,
+                  padding: "6px 14px",
+                  borderRadius: 100,
+                  fontSize: 12,
+                  fontWeight: 800,
+                  whiteSpace: "nowrap",
+                }}
+              >
+                Jami: {announcements.length + (payments && payments.debtAmount > 0 ? 1 : 0)} ta
+              </span>
+            </div>
+
+            {/* Debt Reminder (if applicable) */}
+            {payments && payments.debtAmount > 0 && (
+              <div
+                style={{
+                  background: "#FFFBEB",
+                  border: "1.5px solid #FDE68A",
+                  borderRadius: 16,
+                  padding: "18px 22px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 16,
+                  boxShadow: "0 2px 6px rgba(245,158,11,0.08)",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "flex-start", gap: 14 }}>
+                  <div
+                    style={{
+                      width: 40,
+                      height: 40,
+                      borderRadius: 12,
+                      background: "#FEF3C7",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontSize: 20,
+                      flexShrink: 0,
+                    }}
+                  >
+                    💳
+                  </div>
+                  <div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                      <span
+                        style={{
+                          background: "#F59E0B",
+                          color: "#fff",
+                          fontSize: 10,
+                          fontWeight: 800,
+                          padding: "2px 8px",
+                          borderRadius: 100,
+                        }}
+                      >
+                        TO&apos;LOV ESLATMASI
+                      </span>
+                      <span style={{ fontSize: 13, fontWeight: 800, color: "#92400E" }}>
+                        Oylik to&apos;lov muddati yetib keldi
+                      </span>
+                    </div>
+                    <p style={{ margin: 0, fontSize: 12.5, color: "#78350F", lineHeight: 1.5 }}>
+                      Hurmatli o&apos;quvchi, joriy oy ({payments.forMonth}) uchun <strong>{formatMoney(payments.debtAmount)} so&apos;m</strong> qarzdorligingiz mavjud.
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("payments")}
+                  style={{
+                    background: "#D97706",
+                    color: "#fff",
+                    border: "none",
+                    borderRadius: 10,
+                    padding: "9px 18px",
+                    fontSize: 12.5,
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    whiteSpace: "nowrap",
+                    flexShrink: 0,
+                  }}
+                >
+                  To&apos;lash ➔
+                </button>
+              </div>
+            )}
+
+            {/* Announcements List */}
+            {announcements.length === 0 && (!payments || payments.debtAmount <= 0) ? (
+              <div
+                style={{
+                  background: "#fff",
+                  border: "1px solid #E2E8F0",
+                  borderRadius: 16,
+                  padding: "48px 24px",
+                  textAlign: "center",
+                  boxShadow: "0 1px 3px rgba(0,0,0,0.03)",
+                }}
+              >
+                <div style={{ fontSize: 36, marginBottom: 12 }}>🎉</div>
+                <h3 style={{ fontSize: 16, fontWeight: 700, color: "#1E293B", margin: "0 0 6px" }}>
+                  Yangi bildirishnomalar yo&apos;q
+                </h3>
+                <p style={{ fontSize: 13, color: "#64748B", margin: 0 }}>
+                  Markazdan barcha e&apos;lonlar va yangiliklar o&apos;qilgan.
+                </p>
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                {announcements.map((item) => {
+                  const isUrgent = item.priority === "URGENT";
+                  const isHigh = item.priority === "HIGH";
+
+                  return (
+                    <div
+                      key={item.id}
+                      style={{
+                        background: "#fff",
+                        border: isUrgent ? "1.5px solid #FECDD3" : isHigh ? "1.5px solid #FDE68A" : "1px solid #E2E8F0",
+                        borderRadius: 16,
+                        padding: "18px 22px",
+                        boxShadow: "0 1px 3px rgba(0,0,0,0.03)",
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 10,
+                      }}
+                    >
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          <span
+                            style={{
+                              background: isUrgent ? "#F43F5E" : isHigh ? "#F59E0B" : "#EEF2FF",
+                              color: isUrgent || isHigh ? "#fff" : ACCENT,
+                              fontSize: 10.5,
+                              fontWeight: 800,
+                              padding: "3px 9px",
+                              borderRadius: 100,
+                            }}
+                          >
+                            {isUrgent ? "🚨 Shoshilinch" : isHigh ? "⚡ Muhim" : "ℹ️ E'lon"}
+                          </span>
+                          <span style={{ fontSize: 11.5, color: "#94A3B8", fontWeight: 600 }}>
+                            {new Date(item.createdAt).toLocaleString("uz-UZ", {
+                              day: "2-digit",
+                              month: "short",
+                              year: "numeric",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </span>
+                        </div>
+                      </div>
+
+                      <h3 style={{ fontSize: 15.5, fontWeight: 800, color: "#0F172A", margin: 0 }}>
+                        {item.title}
+                      </h3>
+
+                      <p style={{ fontSize: 13, color: "#334155", margin: 0, lineHeight: 1.6, whiteSpace: "pre-wrap" }}>
+                        {item.content}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
       </main>

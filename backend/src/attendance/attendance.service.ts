@@ -90,7 +90,7 @@ export class AttendanceService {
     }
 
     const activeEnrollments = await this.db.query.enrollments.findMany({
-      where: and(eq(enrollments.studentId, student.id), eq(enrollments.status, 'ACTIVE')),
+      where: eq(enrollments.studentId, student.id),
       with: {
         group: true,
       },

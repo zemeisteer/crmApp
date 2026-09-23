@@ -3,6 +3,7 @@ import {
   ConflictException,
   Inject,
   Injectable,
+  NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
@@ -13,7 +14,7 @@ import * as qrcode from 'qrcode';
 import { randomBytes, createHash } from 'crypto';
 import { eq, and, gt } from 'drizzle-orm';
 import { DB, Database } from '../db/db.module';
-import { tenants, users, sessions } from '../db/schema';
+import { tenants, users, sessions, organizationMemberships } from '../db/schema';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { EmailService } from '../email/email.service';
@@ -77,9 +78,9 @@ export class AuthService {
     return this.config.get<string>('FRONTEND_URL') || 'http://localhost:3000';
   }
 
-  private async issueFullSession(
+  async issueFullSession(
     user: { id: string; email: string; role: string; tenantId: string | null; permissions?: string[] | null },
-    meta: { userAgent?: string; ip?: string },
+    meta: { userAgent?: string; ip?: string } = {},
   ) {
     const accessToken = await this.signAccessToken(user);
     const refreshToken = await this.issueSession(user.id, meta);
@@ -90,17 +91,36 @@ export class AuthService {
     const passwordIssue = isPasswordStrongEnough(dto.password);
     if (passwordIssue) throw new BadRequestException(passwordIssue);
 
-    const existingSubdomain = await this.db.query.tenants.findFirst({
-      where: eq(tenants.subdomain, dto.subdomain),
-    });
-    if (existingSubdomain) {
-      throw new ConflictException('Bu sub-domen band, boshqasini tanlang');
-    }
+    const email = dto.email.trim().toLowerCase();
     const existingEmail = await this.db.query.users.findFirst({
-      where: eq(users.email, dto.email),
+      where: eq(users.email, email),
     });
     if (existingEmail) {
-      throw new ConflictException('Bu email allaqachon ro\'yxatdan o\'tgan');
+      throw new ConflictException("Bu email allaqachon ro'yxatdan o'tgan");
+    }
+
+    let subdomain = dto.subdomain?.trim().toLowerCase();
+    if (subdomain) {
+      const existingSubdomain = await this.db.query.tenants.findFirst({
+        where: eq(tenants.subdomain, subdomain),
+      });
+      if (existingSubdomain) {
+        throw new ConflictException('Bu sub-domen band, boshqasini tanlang');
+      }
+    } else {
+      const baseSlug = dto.centerName
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, '-')
+        .replace(/-+/g, '-')
+        .replace(/^-|-$/g, '')
+        .slice(0, 20) || 'center';
+      subdomain = baseSlug;
+      const exists = await this.db.query.tenants.findFirst({
+        where: eq(tenants.subdomain, subdomain),
+      });
+      if (exists) {
+        subdomain = `${baseSlug}-${randomBytes(3).toString('hex')}`;
+      }
     }
 
     const trialEndsAt = new Date();
@@ -109,12 +129,13 @@ export class AuthService {
     const [tenant] = await this.db
       .insert(tenants)
       .values({
-        name: dto.centerName,
-        subdomain: dto.subdomain,
+        name: dto.centerName.trim(),
+        subdomain,
         category: (dto.category as any) ?? 'BOSHQA',
         status: 'TRIAL',
         plan: 'STARTER',
         trialEndsAt,
+        onboardingStep: 'PROFILE',
       })
       .returning();
 
@@ -124,36 +145,48 @@ export class AuthService {
       .insert(users)
       .values({
         tenantId: tenant.id,
-        email: dto.email,
+        email,
         passwordHash,
-        fullName: dto.fullName,
-        role: 'ADMIN',
+        fullName: dto.fullName.trim(),
+        role: 'OWNER',
         verifyTokenHash: hashToken(verifyToken),
       })
       .returning();
 
+    // Create organization membership
+    await this.db.insert(organizationMemberships).values({
+      userId: user.id,
+      tenantId: tenant.id,
+      role: 'OWNER',
+      status: 'ACTIVE',
+    });
+
     void this.email.send(
       user.email,
-      "TalimCRM — emailingizni tasdiqlang",
+      "CRMAPP — emailingizni tasdiqlang",
       `Assalomu alaykum, ${user.fullName}!\n\nEmailingizni tasdiqlash uchun havolani oching:\n${this.frontendUrl()}/verify-email?token=${verifyToken}\n\nAgar ro'yxatdan o'tmagan bo'lsangiz, bu xabarni e'tiborsiz qoldiring.`,
     );
 
     const { accessToken, refreshToken } = await this.issueFullSession(
-      { id: user.id, email: user.email, role: user.role, tenantId: tenant.id, permissions: user.permissions || [] },
+      { id: user.id, email: user.email, role: 'OWNER', tenantId: tenant.id, permissions: user.permissions || [] },
       {},
     );
 
     return {
       accessToken,
       refreshToken,
-      user: { id: user.id, email: user.email, fullName: user.fullName, role: user.role, permissions: user.permissions || [] },
+      user: { id: user.id, email: user.email, fullName: user.fullName, role: 'OWNER', permissions: user.permissions || [] },
       tenant,
+      onboardingStep: 'PROFILE',
     };
   }
 
   async login(dto: LoginDto, meta: { userAgent?: string; ip?: string }) {
+    const identifier = (dto.login || dto.email || '').trim().toLowerCase();
+    if (!identifier) throw new BadRequestException('Email yoki telefon kiritilmadi');
+
     const user = await this.db.query.users.findFirst({
-      where: eq(users.email, dto.email),
+      where: eq(users.email, identifier),
     });
     if (!user) throw new UnauthorizedException('Email yoki parol noto\'g\'ri');
 
@@ -163,6 +196,75 @@ export class AuthService {
     if (user.twoFactorEnabled) {
       const pendingToken = await this.signPendingToken(user.id);
       return { twoFactorRequired: true, pendingToken };
+    }
+
+    const memberships = await this.db.query.organizationMemberships.findMany({
+      where: and(
+        eq(organizationMemberships.userId, user.id),
+        eq(organizationMemberships.status, 'ACTIVE'),
+      ),
+      with: {
+        tenant: true,
+      },
+    });
+
+    const workspaces = memberships.map((m) => ({
+      tenantId: m.tenant.id,
+      name: m.tenant.name,
+      subdomain: m.tenant.subdomain,
+      role: m.role,
+      logoUrl: m.tenant.logoUrl,
+      onboardingStep: m.tenant.onboardingStep,
+    }));
+
+    if (workspaces.length === 0 && user.role === 'SUPERADMIN') {
+      const { accessToken, refreshToken } = await this.issueFullSession(
+        { id: user.id, email: user.email, role: 'SUPERADMIN', tenantId: null, permissions: ['*'] },
+        meta,
+      );
+      return {
+        twoFactorRequired: false as const,
+        requiresWorkspaceSelection: false as const,
+        accessToken,
+        refreshToken,
+        user: { id: user.id, email: user.email, fullName: user.fullName, role: 'SUPERADMIN', permissions: ['*'] },
+        tenant: null,
+        workspaces: [],
+      };
+    }
+
+    if (memberships.length === 1) {
+      const m = memberships[0];
+      const { accessToken, refreshToken } = await this.issueFullSession(
+        { id: user.id, email: user.email, role: m.role, tenantId: m.tenant.id, permissions: m.permissions || [] },
+        meta,
+      );
+      return {
+        twoFactorRequired: false as const,
+        requiresWorkspaceSelection: false as const,
+        accessToken,
+        refreshToken,
+        user: { id: user.id, email: user.email, fullName: user.fullName, role: m.role, permissions: m.permissions || [] },
+        tenant: m.tenant,
+        workspaces,
+      };
+    }
+
+    if (memberships.length > 1) {
+      const first = memberships[0];
+      const { accessToken, refreshToken } = await this.issueFullSession(
+        { id: user.id, email: user.email, role: first.role, tenantId: first.tenant.id, permissions: first.permissions || [] },
+        meta,
+      );
+      return {
+        twoFactorRequired: false as const,
+        requiresWorkspaceSelection: true as const,
+        workspaces,
+        accessToken,
+        refreshToken,
+        user: { id: user.id, email: user.email, fullName: user.fullName, role: first.role, permissions: first.permissions || [] },
+        tenant: first.tenant,
+      };
     }
 
     let tenant: typeof tenants.$inferSelect | null = null;
@@ -177,11 +279,96 @@ export class AuthService {
 
     return {
       twoFactorRequired: false as const,
+      requiresWorkspaceSelection: false as const,
       accessToken,
       refreshToken,
       user: { id: user.id, email: user.email, fullName: user.fullName, role: user.role, permissions: user.permissions || [] },
       tenant,
+      workspaces: tenant
+        ? [{ tenantId: tenant.id, name: tenant.name, subdomain: tenant.subdomain, role: user.role, logoUrl: tenant.logoUrl, onboardingStep: tenant.onboardingStep }]
+        : [],
     };
+  }
+
+  async selectWorkspace(userId: string, targetTenantId: string, meta: { userAgent?: string; ip?: string }) {
+    const user = await this.db.query.users.findFirst({ where: eq(users.id, userId) });
+    if (!user) throw new UnauthorizedException('Foydalanuvchi topilmadi');
+
+    let membershipRole: string = user.role;
+    let membershipPermissions: string[] | null = user.permissions || [];
+
+    if (user.role !== 'SUPERADMIN') {
+      const membership = await this.db.query.organizationMemberships.findFirst({
+        where: and(
+          eq(organizationMemberships.userId, userId),
+          eq(organizationMemberships.tenantId, targetTenantId),
+          eq(organizationMemberships.status, 'ACTIVE'),
+        ),
+      });
+      if (!membership) {
+        throw new UnauthorizedException("Siz ushbu markazga a'zo emassiz");
+      }
+      membershipRole = membership.role;
+      membershipPermissions = membership.permissions || [];
+    }
+
+    const tenant = await this.db.query.tenants.findFirst({ where: eq(tenants.id, targetTenantId) });
+    if (!tenant) throw new NotFoundException('Markaz topilmadi');
+
+    const accessToken = await this.signAccessToken({
+      id: user.id,
+      email: user.email,
+      role: membershipRole,
+      tenantId: tenant.id,
+      permissions: membershipPermissions,
+    });
+
+    return {
+      accessToken,
+      tenant,
+      role: membershipRole,
+      permissions: membershipPermissions || [],
+      user: { id: user.id, email: user.email, fullName: user.fullName, role: membershipRole, permissions: membershipPermissions || [] },
+    };
+  }
+
+  async listWorkspaces(userId: string) {
+    const user = await this.db.query.users.findFirst({ where: eq(users.id, userId) });
+    if (!user) throw new UnauthorizedException();
+
+    if (user.role === 'SUPERADMIN') {
+      const allTenants = await this.db.query.tenants.findMany({
+        columns: { id: true, name: true, subdomain: true, logoUrl: true, status: true, onboardingStep: true },
+        limit: 50,
+      });
+      return allTenants.map((t) => ({
+        tenantId: t.id,
+        name: t.name,
+        subdomain: t.subdomain,
+        role: 'SUPERADMIN',
+        logoUrl: t.logoUrl,
+        onboardingStep: t.onboardingStep,
+      }));
+    }
+
+    const memberships = await this.db.query.organizationMemberships.findMany({
+      where: and(
+        eq(organizationMemberships.userId, userId),
+        eq(organizationMemberships.status, 'ACTIVE'),
+      ),
+      with: {
+        tenant: true,
+      },
+    });
+
+    return memberships.map((m) => ({
+      tenantId: m.tenant.id,
+      name: m.tenant.name,
+      subdomain: m.tenant.subdomain,
+      role: m.role,
+      logoUrl: m.tenant.logoUrl,
+      onboardingStep: m.tenant.onboardingStep,
+    }));
   }
 
   async verifyTwoFactorLogin(pendingToken: string, code: string, meta: { userAgent?: string; ip?: string }) {

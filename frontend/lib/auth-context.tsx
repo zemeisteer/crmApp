@@ -2,18 +2,31 @@
 
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { authApi, getToken, setToken, setRefreshToken, clearToken, Tenant, User, LoginResponse, TenantCategory } from "./api";
+import {
+  authApi,
+  getToken,
+  setToken,
+  setRefreshToken,
+  clearToken,
+  Tenant,
+  User,
+  LoginResponse,
+  AuthResponse,
+  TenantCategory,
+} from "./api";
 
 interface AuthContextValue {
   user: User | null;
   tenant: Tenant | null;
   loading: boolean;
   can: (permission: string) => boolean;
-  login: (email: string, password: string) => Promise<LoginResponse>;
+  login: (emailOrPhone: string, password: string) => Promise<LoginResponse>;
+  selectWorkspace: (tenantId: string) => Promise<void>;
   completeTwoFactorLogin: (pendingToken: string, code: string) => Promise<void>;
+  setAuthSession: (res: AuthResponse, redirectUrl?: string) => void;
   register: (data: {
     centerName: string;
-    subdomain: string;
+    subdomain?: string;
     email: string;
     password: string;
     fullName: string;
@@ -25,6 +38,7 @@ interface AuthContextValue {
 
 const DEFAULT_ROLE_PERMISSIONS: Record<string, string[]> = {
   SUPERADMIN: ["*"],
+  OWNER: ["*"],
   ADMIN: ["*"],
   MANAGER: [
     "students.read", "students.create", "students.update",
@@ -41,6 +55,8 @@ const DEFAULT_ROLE_PERMISSIONS: Record<string, string[]> = {
   TEACHER: [
     "students.read", "attendance.read", "attendance.mark", "homework.manage", "exams.manage",
   ],
+  STUDENT: ["portal.access"],
+  PARENT: ["portal.access"],
 };
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -72,32 +88,47 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     loadMe().finally(() => setLoading(false));
   }, []);
 
-  async function login(email: string, password: string): Promise<LoginResponse> {
-    const res = await authApi.login({ email, password });
-    // Both response shapes carry `twoFactorRequired` (false on a normal
-    // login too) — `pendingToken` only exists on the 2FA-pending shape,
-    // so that's the real discriminator.
-    if ("pendingToken" in res) return res;
+  function setAuthSession(res: AuthResponse, redirectUrl?: string) {
     setToken(res.accessToken);
     setRefreshToken(res.refreshToken);
     setUser(res.user);
     setTenant(res.tenant);
-    router.push("/dashboard");
+
+    const destination =
+      redirectUrl ||
+      (res.user.role === "STUDENT" || res.user.role === "PARENT"
+        ? "/portal"
+        : "/dashboard");
+    router.push(destination);
+  }
+
+  async function login(emailOrPhone: string, password: string): Promise<LoginResponse> {
+    const res = await authApi.login({ login: emailOrPhone, password });
+    
+    // Check if 2FA is required
+    if ("pendingToken" in res) return res;
+
+    // Check if workspace selection is required (user has multiple centers)
+    if ("requiresWorkspaceSelection" in res) return res;
+
+    // Single active membership: log straight into that workspace
+    setAuthSession(res);
     return res;
+  }
+
+  async function selectWorkspace(tenantId: string) {
+    const res = await authApi.selectWorkspace(tenantId);
+    setAuthSession(res);
   }
 
   async function completeTwoFactorLogin(pendingToken: string, code: string) {
     const res = await authApi.verifyTwoFactorLogin(pendingToken, code);
-    setToken(res.accessToken);
-    setRefreshToken(res.refreshToken);
-    setUser(res.user);
-    setTenant(res.tenant);
-    router.push("/dashboard");
+    setAuthSession(res);
   }
 
   async function register(data: {
     centerName: string;
-    subdomain: string;
+    subdomain?: string;
     email: string;
     password: string;
     fullName: string;
@@ -108,12 +139,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setRefreshToken(res.refreshToken);
     setUser(res.user);
     setTenant(res.tenant);
-    router.push("/dashboard");
+    // Directly start center onboarding wizard
+    router.push("/onboarding");
   }
 
   function can(permission: string): boolean {
     if (!user) return false;
-    if (user.role === "SUPERADMIN" || user.role === "ADMIN") return true;
+    if (user.role === "SUPERADMIN" || user.role === "OWNER" || user.role === "ADMIN") return true;
     const custom = user.permissions || [];
     if (custom.includes(permission)) return true;
     const defaults = DEFAULT_ROLE_PERMISSIONS[user.role] || [];
@@ -129,7 +161,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, tenant, loading, can, login, completeTwoFactorLogin, register, logout, refreshMe: loadMe }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        tenant,
+        loading,
+        can,
+        login,
+        selectWorkspace,
+        completeTwoFactorLogin,
+        setAuthSession,
+        register,
+        logout,
+        refreshMe: loadMe,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

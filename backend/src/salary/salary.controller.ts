@@ -30,7 +30,7 @@ export class SalaryController {
   @Post('disburse')
   disburse(
     @CurrentUser('tenantId') tenantId: string,
-    @CurrentUser('id') userId: string,
+    @CurrentUser('sub') userId: string,
     @Body() dto: DisburseSalaryDto,
   ) {
     return this.service.disburse(tenantId, dto, userId);

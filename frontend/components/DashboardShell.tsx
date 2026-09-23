@@ -18,7 +18,7 @@ function TrialBanner() {
     return (
       <div style={{ background: "#FDEBEC", color: "#B23A47", padding: "10px 24px", fontSize: 13, fontWeight: 600, textAlign: "center" }}>
         {t("shell.accountSuspended")}{" "}
-        <Link href="/pricing" style={{ textDecoration: "underline" }}>
+        <Link href="/settings" style={{ textDecoration: "underline" }}>
           {t("shell.activatePlan")}
         </Link>
         .
@@ -42,7 +42,7 @@ function TrialBanner() {
           }}
         >
           {expired ? t("shell.trialExpired") : t("shell.trialEndsIn").replace("{n}", String(daysLeft))}{" "}
-          <Link href="/pricing" style={{ textDecoration: "underline" }}>
+          <Link href="/settings" style={{ textDecoration: "underline" }}>
             {t("shell.choosePlan")}
           </Link>
         </div>

@@ -328,7 +328,7 @@ export class NotificationsService {
         continue;
       }
 
-      const activeEnrollments = (student.enrollments || []).filter((e) => e.status === 'ACTIVE' && e.group);
+      const activeEnrollments = (student.enrollments || []).filter((e) => e.group);
       const expectedAmount = activeEnrollments.reduce((sum, e) => sum + (e.group?.monthlyPrice || 0), 0);
       const paidAmount = paidByStudent[student.id] || 0;
       const debt = expectedAmount - paidAmount;

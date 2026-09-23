@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
   --accent: #4f46e5;
   --bg: #f7f7f5;
@@ -19,11 +21,100 @@
   box-sizing: border-box;
 }
 
+/* ========================================================================= */
+/* Modern Sleek Scrollbars                                                   */
+/* ========================================================================= */
+
+/* Global custom scrollbar for webkit browsers (Chrome, Edge, Safari) */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(100, 116, 139, 0.25);
+  border-radius: 9999px;
+  transition: background 0.2s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 116, 139, 0.45);
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+::-webkit-scrollbar-button {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+/* Firefox standard scrollbars */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(100, 116, 139, 0.25) transparent;
+}
+
+/* Ultra-sleek scrollbar specifically for dark areas like Sidebar */
+.sidebar,
+.sidebar-nav-scroll,
+.dark-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.16) transparent;
+}
+
+.sidebar::-webkit-scrollbar,
+.sidebar-nav-scroll::-webkit-scrollbar,
+.dark-scroll::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+.sidebar::-webkit-scrollbar-track,
+.sidebar-nav-scroll::-webkit-scrollbar-track,
+.dark-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sidebar::-webkit-scrollbar-thumb,
+.sidebar-nav-scroll::-webkit-scrollbar-thumb,
+.dark-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.14);
+  border-radius: 9999px;
+}
+
+.sidebar:hover::-webkit-scrollbar-thumb,
+.sidebar-nav-scroll:hover::-webkit-scrollbar-thumb,
+.dark-scroll:hover::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.sidebar::-webkit-scrollbar-thumb:hover,
+.sidebar-nav-scroll::-webkit-scrollbar-thumb:hover,
+.dark-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.42);
+}
+
+.sidebar::-webkit-scrollbar-button,
+.sidebar-nav-scroll::-webkit-scrollbar-button,
+.dark-scroll::-webkit-scrollbar-button {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
 html,
 body {
   margin: 0;
   padding: 0;
-  background: var(--bg);
+  min-height: 100vh;
+  background-color: var(--bg);
   color: var(--text);
   font-family: "Inter", system-ui, sans-serif;
 }

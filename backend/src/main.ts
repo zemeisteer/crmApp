@@ -1,8 +1,11 @@
 import 'reflect-metadata';
+import * as dotenv from 'dotenv';
+import { join } from 'path';
+dotenv.config();
+dotenv.config({ path: join(__dirname, '..', '.env') });
 import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { ValidationPipe } from '@nestjs/common';
-import { join } from 'path';
 import * as Sentry from '@sentry/node';
 import pinoHttp from 'pino-http';
 import { AppModule } from './app.module';

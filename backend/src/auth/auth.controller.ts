@@ -93,6 +93,23 @@ export class AuthController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @Get('workspaces')
+  listWorkspaces(@CurrentUser('sub') userId: string) {
+    return this.authService.listWorkspaces(userId);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('select-workspace')
+  selectWorkspace(
+    @CurrentUser('sub') userId: string,
+    @Body('tenantId') tenantId: string,
+    @Req() req: Request,
+    @Headers('user-agent') ua?: string,
+  ) {
+    return this.authService.selectWorkspace(userId, tenantId, meta(req, ua));
+  }
+
+  @UseGuards(JwtAuthGuard)
   @Get('me')
   me(@CurrentUser('sub') userId: string) {
     return this.authService.me(userId);

@@ -7,12 +7,27 @@ import DashboardShell from "@/components/DashboardShell";
 import Modal from "@/components/Modal";
 import Select from "@/components/Select";
 import DatePicker from "@/components/DatePicker";
-import { groupsApi, studentsApi, paymentsApi, attendanceApi, Group, Student, Payment, AttendanceRecord, AttendanceStatus, ApiError } from "@/lib/api";
+import { groupsApi, studentsApi, paymentsApi, attendanceApi, Group, Student, Gender, Payment, AttendanceRecord, AttendanceStatus, ApiError } from "@/lib/api";
+import { PHONE_PATTERN, PHONE_TITLE, NAME_PATTERN, NAME_TITLE } from "@/lib/validation";
 import { localDateStr, localMonthStr } from "@/lib/date";
 import { useLanguage } from "@/lib/i18n-context";
 import type { TranslationKey } from "@/lib/i18n";
 
 const ACCENT = "#4F46E5";
+
+function formatPhoneInput(val: string) {
+  const digits = val.replace(/\D/g, "");
+  if (!digits) return "";
+  let d = digits;
+  if (d.startsWith("998")) d = d.slice(3);
+  d = d.slice(0, 9);
+  let res = "+998";
+  if (d.length > 0) res += ` ${d.slice(0, 2)}`;
+  if (d.length > 2) res += ` ${d.slice(2, 5)}`;
+  if (d.length > 5) res += ` ${d.slice(5, 7)}`;
+  if (d.length > 7) res += ` ${d.slice(7, 9)}`;
+  return res;
+}
 
 function formatMoney(n: number) {
   return new Intl.NumberFormat("uz-UZ").format(n);
@@ -60,9 +75,22 @@ function GroupDetailContent() {
   const [enrollMode, setEnrollMode] = useState<"existing" | "new">("existing");
   const [enrollStudentId, setEnrollStudentId] = useState("");
   const [newFullName, setNewFullName] = useState("");
+  const [newGender, setNewGender] = useState<Gender | "">("");
   const [newPhone, setNewPhone] = useState("");
+  const [newParentPhone, setNewParentPhone] = useState("");
+  const [newBirthDate, setNewBirthDate] = useState("");
   const [enrollError, setEnrollError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+
+  function resetEnrollForm() {
+    setEnrollStudentId("");
+    setNewFullName("");
+    setNewGender("");
+    setNewPhone("");
+    setNewParentPhone("");
+    setNewBirthDate("");
+    setEnrollError(null);
+  }
 
   const [attendanceDate, setAttendanceDate] = useState(today);
   const [draft, setDraft] = useState<Record<string, AttendanceStatus>>({});
@@ -174,14 +202,15 @@ function GroupDetailContent() {
         }
         await studentsApi.create({
           fullName: newFullName.trim(),
+          gender: newGender ? (newGender as Gender) : null,
           phone: newPhone.trim() || undefined,
+          parentPhone: newParentPhone.trim() || undefined,
+          birthDate: newBirthDate || undefined,
           groupId: id,
         });
       }
       setEnrollOpen(false);
-      setEnrollStudentId("");
-      setNewFullName("");
-      setNewPhone("");
+      resetEnrollForm();
       load();
     } catch (err) {
       setEnrollError(err instanceof ApiError ? err.message : "Xatolik yuz berdi");
@@ -404,30 +433,29 @@ function GroupDetailContent() {
         open={enrollOpen}
         onClose={() => {
           setEnrollOpen(false);
-          setEnrollStudentId("");
-          setNewFullName("");
-          setNewPhone("");
-          setEnrollError(null);
+          resetEnrollForm();
         }}
         title={t("groupDetail.modalTitle")}
+        width={520}
       >
-        <div style={{ display: "flex", background: "#F2F1EC", borderRadius: 9, padding: 3, marginBottom: 16 }}>
+        <div style={{ display: "flex", background: "#F2F1EC", borderRadius: 10, padding: 4, marginBottom: 18 }}>
           <button
             type="button"
             onClick={() => setEnrollMode("existing")}
             disabled={availableStudents.length === 0}
             style={{
               flex: 1,
-              fontSize: 12,
+              fontSize: 12.5,
               fontWeight: 700,
-              padding: "7px 10px",
-              borderRadius: 7,
+              padding: "8px 12px",
+              borderRadius: 8,
               cursor: availableStudents.length === 0 ? "not-allowed" : "pointer",
               border: "none",
               opacity: availableStudents.length === 0 ? 0.45 : 1,
               background: enrollMode === "existing" ? "#fff" : "transparent",
               color: enrollMode === "existing" ? "#181A1F" : "#8A8D96",
               boxShadow: enrollMode === "existing" ? "0 1px 3px rgba(18,19,26,0.08)" : "none",
+              transition: "all 0.15s ease",
             }}
           >
             Mavjud o&apos;quvchi ({availableStudents.length})
@@ -437,15 +465,16 @@ function GroupDetailContent() {
             onClick={() => setEnrollMode("new")}
             style={{
               flex: 1,
-              fontSize: 12,
+              fontSize: 12.5,
               fontWeight: 700,
-              padding: "7px 10px",
-              borderRadius: 7,
+              padding: "8px 12px",
+              borderRadius: 8,
               cursor: "pointer",
               border: "none",
               background: enrollMode === "new" ? "#fff" : "transparent",
               color: enrollMode === "new" ? "#181A1F" : "#8A8D96",
               boxShadow: enrollMode === "new" ? "0 1px 3px rgba(18,19,26,0.08)" : "none",
+              transition: "all 0.15s ease",
             }}
           >
             + Yangi o&apos;quvchi
@@ -458,51 +487,101 @@ function GroupDetailContent() {
           )}
 
           {enrollMode === "existing" ? (
-            <div>
-              <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>{t("groupDetail.studentField")}</div>
-              <Select
-                options={[{ value: "", label: t("groups.selectPlaceholder") }, ...availableStudents.map((s) => ({ value: s.id, label: s.fullName }))]}
-                value={enrollStudentId}
-                onChange={setEnrollStudentId}
-              />
+            <div style={{ minHeight: 220, display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+              <div>
+                <Field label={t("groupDetail.studentField")}>
+                  <Select
+                    options={[{ value: "", label: t("groups.selectPlaceholder") }, ...availableStudents.map((s) => ({ value: s.id, label: s.fullName }))]}
+                    value={enrollStudentId}
+                    onChange={setEnrollStudentId}
+                  />
+                </Field>
+                {availableStudents.length === 0 && (
+                  <div style={{ marginTop: 14, fontSize: 13, color: "#8A8D96", textAlign: "center", lineHeight: 1.5 }}>
+                    Markazdagi barcha o&apos;quvchilar bu guruhga allaqachon biriktirilgan. Yangi o&apos;quvchi qo&apos;shish uchun yuqoridagi <b>+ Yangi o&apos;quvchi</b> tugmasini bosing.
+                  </div>
+                )}
+              </div>
+              <button
+                className="btn"
+                type="submit"
+                disabled={saving || !enrollStudentId}
+                style={{ background: ACCENT, color: "#fff", fontSize: 14, fontWeight: 700, padding: "12px 16px", borderRadius: 10, marginTop: 16 }}
+              >
+                {saving ? t("groupDetail.savingAttendance") : t("common.add")}
+              </button>
             </div>
           ) : (
-            <>
-              {availableStudents.length === 0 && (
-                <div style={{ background: "#EEF0FF", color: ACCENT, fontSize: 12.5, fontWeight: 600, padding: "10px 12px", borderRadius: 10, lineHeight: 1.4 }}>
-                  Markazdagi barcha o&apos;quvchilar bu guruhga allaqachon biriktirilgan. Quyida yangi o&apos;quvchi kiritsangiz, u avtomatik shu guruhga qo&apos;shiladi:
-                </div>
-              )}
-              <div>
-                <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>{t("students.fieldFullName")} *</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              <div style={{ background: "#F8FAFC", border: "1px solid #E2E8F0", padding: "10px 14px", borderRadius: 10, fontSize: 12.5, color: "#475569", display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ fontWeight: 700, color: ACCENT }}>Guruh:</span>
+                <span>{group.name} ({group.subject})</span>
+              </div>
+
+              <Field label={`${t("students.fieldFullName")} *`}>
                 <input
                   className="field-input"
                   placeholder="Masalan: Dilshod Alimov"
                   value={newFullName}
                   onChange={(e) => setNewFullName(e.target.value)}
+                  pattern={NAME_PATTERN}
+                  title={NAME_TITLE}
                   required
                 />
-              </div>
-              <div>
-                <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>{t("students.fieldPhone")}</div>
-                <input
-                  className="field-input"
-                  placeholder="+998901234567"
-                  value={newPhone}
-                  onChange={(e) => setNewPhone(e.target.value)}
-                />
-              </div>
-            </>
-          )}
+              </Field>
 
-          <button
-            className="btn"
-            type="submit"
-            disabled={saving}
-            style={{ background: ACCENT, color: "#fff", fontSize: 14, fontWeight: 700, padding: 12, borderRadius: 10, marginTop: 6 }}
-          >
-            {saving ? t("groupDetail.savingAttendance") : enrollMode === "new" ? "+ Yangi o'quvchini qo'shish" : t("common.add")}
-          </button>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                <Field label={t("students.fieldGender")}>
+                  <Select
+                    options={[
+                      { value: "", label: t("groups.notSelected") },
+                      { value: "MALE", label: t("students.male") },
+                      { value: "FEMALE", label: t("students.female") }
+                    ]}
+                    value={newGender}
+                    onChange={(v) => setNewGender(v as Gender | "")}
+                  />
+                </Field>
+                <Field label={t("students.fieldBirthDate")}>
+                  <DatePicker value={newBirthDate} onChange={setNewBirthDate} />
+                </Field>
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                <Field label={t("students.fieldPhone")}>
+                  <input
+                    className="field-input"
+                    type="tel"
+                    placeholder="+998 90 123 45 67"
+                    value={newPhone}
+                    onChange={(e) => setNewPhone(formatPhoneInput(e.target.value))}
+                    pattern={PHONE_PATTERN}
+                    title={PHONE_TITLE}
+                  />
+                </Field>
+                <Field label={t("students.fieldParentPhone")}>
+                  <input
+                    className="field-input"
+                    type="tel"
+                    placeholder="+998 90 123 45 67"
+                    value={newParentPhone}
+                    onChange={(e) => setNewParentPhone(formatPhoneInput(e.target.value))}
+                    pattern={PHONE_PATTERN}
+                    title={PHONE_TITLE}
+                  />
+                </Field>
+              </div>
+
+              <button
+                className="btn"
+                type="submit"
+                disabled={saving}
+                style={{ background: ACCENT, color: "#fff", fontSize: 14, fontWeight: 700, padding: "12px 16px", borderRadius: 10, marginTop: 4 }}
+              >
+                {saving ? t("students.adding") : "+ Yangi o'quvchini qo'shish"}
+              </button>
+            </div>
+          )}
         </form>
       </Modal>
     </>
@@ -514,6 +593,15 @@ function InfoField({ label, value }: { label: string; value: string }) {
     <div>
       <div style={{ fontSize: 11.5, color: "#8A8D96" }}>{label}</div>
       <div style={{ fontSize: 13.5, fontWeight: 600, marginTop: 3 }}>{value}</div>
+    </div>
+  );
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>{label}</div>
+      {children}
     </div>
   );
 }

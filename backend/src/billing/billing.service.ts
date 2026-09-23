@@ -5,6 +5,7 @@ import { and, eq } from 'drizzle-orm';
 import { DB, Database } from '../db/db.module';
 import { billingTransactions, payments, students } from '../db/schema';
 import { GeneratePaymentLinkDto } from './dto/billing.dto';
+import { TelegramService } from '../telegram/telegram.service';
 import { NotificationsService } from '../notifications/notifications.service';
 
 // NOTE: Click and Payme's exact field names / error codes have shifted

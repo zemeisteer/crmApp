@@ -58,18 +58,85 @@ export const dict = {
   "auth.login": { UZ: "Kirish", RU: "Войти", EN: "Log in" },
   "auth.register": { UZ: "Ro'yxatdan o'tish", RU: "Регистрация", EN: "Register" },
   "auth.email": { UZ: "Email", RU: "Email", EN: "Email" },
+  "auth.emailOrPhone": { UZ: "Email yoki telefon raqami", RU: "Email или номер телефона", EN: "Email or phone" },
   "auth.password": { UZ: "Parol", RU: "Пароль", EN: "Password" },
-  "auth.forgotPassword": { UZ: "Unutdingizmi?", RU: "Забыли?", EN: "Forgot?" },
-  "auth.noAccount": { UZ: "Hisobingiz yo'qmi?", RU: "Нет аккаунта?", EN: "Don't have an account?" },
+  "auth.confirmPassword": { UZ: "Parolni tasdiqlang", RU: "Подтвердите пароль", EN: "Confirm password" },
+  "auth.forgotPassword": { UZ: "Parolni unutdingizmi?", RU: "Забыли пароль?", EN: "Forgot password?" },
+  "auth.noAccount": { UZ: "O'quv markazingiz yo'qmi?", RU: "Нет учебного центра?", EN: "Don't have an education center?" },
   "auth.haveAccount": { UZ: "Hisobingiz bormi?", RU: "Уже есть аккаунт?", EN: "Already have an account?" },
-  "auth.tryFree": { UZ: "7 kun bepul sinab ko'ring", RU: "Бесплатно 7 дней", EN: "Try free for 7 days" },
-  "auth.welcomeBack": { UZ: "Xush kelibsiz", RU: "С возвращением", EN: "Welcome back" },
+  "auth.tryFree": { UZ: "Bepul boshlash", RU: "Начать бесплатно", EN: "Start for free" },
+  "auth.welcomeBack": { UZ: "Tizimga kirish", RU: "Вход в систему", EN: "Log in" },
   "auth.loginSubtitle": {
-    UZ: "Admin panelga kirish uchun ma'lumotlaringizni kiriting.",
-    RU: "Введите данные для входа в панель управления.",
-    EN: "Enter your details to access the admin panel.",
+    UZ: "CRMAPP hisobingizga kiring.",
+    RU: "Войдите в свой аккаунт CRMAPP.",
+    EN: "Log in to your CRMAPP account.",
   },
   "auth.loggingIn": { UZ: "Kirilmoqda...", RU: "Вход...", EN: "Logging in..." },
+  "auth.welcomeHero": {
+    UZ: "O'quv markazingiz tizimiga xush kelibsiz",
+    RU: "Добро пожаловать в систему вашего учебного центра",
+    EN: "Welcome to your learning center platform",
+  },
+  "auth.welcomeHeroSubtitle": {
+    UZ: "Adminlar, o'qituvchilar, talabalar va ota-onalar uchun yagona qulay kirish oynasi.",
+    RU: "Единый удобный портал для администраторов, преподавателей, студентов и родителей.",
+    EN: "A unified portal for administrators, teachers, students, and parents.",
+  },
+  "auth.chooseWorkspace": {
+    UZ: "Ish joyini tanlang",
+    RU: "Выберите рабочее пространство",
+    EN: "Choose a workspace",
+  },
+  "auth.chooseWorkspaceSubtitle": {
+    UZ: "Siz bir nechta o'quv markazlariga biriktirilgansiz. Davom etish uchun markazni tanlang.",
+    RU: "Вы состоите в нескольких учебных центрах. Выберите нужный центр для продолжения.",
+    EN: "You belong to multiple education centers. Select one to proceed.",
+  },
+  "auth.signInDifferentUser": {
+    UZ: "Boshqa hisob bilan kirish",
+    RU: "Войти под другим аккаунтом",
+    EN: "Sign in with a different account",
+  },
+  "auth.termsAgreement": {
+    UZ: "Men CRMAPP foydalanish shartlari va maxfiylik siyosatiga rozilik bildiraman.",
+    RU: "Я согласен с условиями использования и политикой конфиденциальности CRMAPP.",
+    EN: "I agree to the CRMAPP Terms of Service and Privacy Policy.",
+  },
+  "auth.allRightsReserved": {
+    UZ: "Barcha huquqlar himoyalangan.",
+    RU: "Все права защищены.",
+    EN: "All rights reserved.",
+  },
+  "register.createCenterTitle": {
+    UZ: "O'quv markazingizni yarating",
+    RU: "Создайте ваш учебный центр",
+    EN: "Create your learning center",
+  },
+  "register.createCenterSubtitle": {
+    UZ: "Markazingizni bir necha daqiqada sozlang va boshqarishni boshlang.",
+    RU: "Настройте рабочее пространство и начните управлять центром за пару минут.",
+    EN: "Set up your workspace and start managing your center.",
+  },
+  "register.heroFeature1": {
+    UZ: "Har qanday yo'nalish: tillar, matematika, IT, maktab fanlari",
+    RU: "Любые направления: языки, математика, IT, школьные предметы",
+    EN: "Any direction: languages, math, IT, school subjects",
+  },
+  "register.heroFeature2": {
+    UZ: "O'quvchi va ota-onalar uchun alohida shaxsiy kabinetlar",
+    RU: "Отдельные личные кабинеты для студентов и родителей",
+    EN: "Dedicated personal portals for students and parents",
+  },
+  "register.heroFeature3": {
+    UZ: "Avtomatlashtirilgan SMS va Telegram xabarnomalar",
+    RU: "Автоматические SMS и Telegram уведомления",
+    EN: "Automated SMS and Telegram notifications",
+  },
+  "register.preparing": {
+    UZ: "Tayyorlanmoqda...",
+    RU: "Подготовка...",
+    EN: "Preparing...",
+  },
 
   // Landing
   "landing.heroTitle": {
@@ -82,7 +149,7 @@ export const dict = {
     RU: "Расписание, посещаемость, платежи, ИИ-помощник и отчёты — всё в одной панели.",
     EN: "Schedule, attendance, payments, AI assistant and reports — all in one panel.",
   },
-  "landing.getStarted": { UZ: "Bepul boshlash", RU: "Начать бесплатно", EN: "Get started free" },
+  "landing.getStarted": { UZ: "Bepul boshlash", RU: "Начать бесплатно", EN: "Start for free" },
   "landing.badge": {
     UZ: "O'zbekiston o'quv markazlari uchun",
     RU: "Для учебных центров Узбекистана",

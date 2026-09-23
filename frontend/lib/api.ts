@@ -156,7 +156,16 @@ async function download(path: string, filename: string) {
 
 // ---- Types ----
 
-export type Role = "SUPERADMIN" | "ADMIN" | "MANAGER" | "RECEPTIONIST" | "TEACHER" | "ACCOUNTANT";
+export type Role =
+  | "SUPERADMIN"
+  | "OWNER"
+  | "ADMIN"
+  | "MANAGER"
+  | "RECEPTIONIST"
+  | "TEACHER"
+  | "ACCOUNTANT"
+  | "STUDENT"
+  | "PARENT";
 
 export type TenantCategory = "TIL_MARKAZI" | "MATEMATIKA" | "IT" | "BOSHQA";
 
@@ -194,6 +203,10 @@ export interface Tenant {
   plan: string;
   status: string;
   trialEndsAt: string | null;
+  onboardingStep?: string;
+  teachingCategories?: string[];
+  country?: string;
+  timezone?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -295,7 +308,19 @@ export interface AuthResponse {
   tenant: Tenant;
 }
 
-export type LoginResponse = AuthResponse | { twoFactorRequired: true; pendingToken: string };
+export interface WorkspaceItem {
+  tenantId: string;
+  name: string;
+  subdomain: string;
+  role: Role;
+  logoUrl?: string | null;
+  status: string;
+}
+
+export type LoginResponse =
+  | AuthResponse
+  | { twoFactorRequired: true; pendingToken: string }
+  | { requiresWorkspaceSelection: true; userId: string; workspaces: WorkspaceItem[] };
 
 export interface Session {
   id: string;
@@ -334,6 +359,7 @@ export interface Group {
   updatedAt: string;
   teacher?: Teacher | null;
   branch?: Branch | null;
+  enrollments?: Array<{ id: string; studentId: string; student: Student }>;
 }
 
 export type LeadStatus = 'NEW' | 'CONTACTED' | 'TRIAL_BOOKED' | 'TRIAL_ATTENDED' | 'QUALIFIED' | 'ENROLLED' | 'LOST';
@@ -755,15 +781,23 @@ export interface Announcement {
 export const authApi = {
   register: (data: {
     centerName: string;
-    subdomain: string;
+    subdomain?: string;
     email: string;
     password: string;
     fullName: string;
     category?: TenantCategory;
   }) => request<AuthResponse>("/auth/register", { method: "POST", body: JSON.stringify(data) }),
 
-  login: (data: { email: string; password: string }) =>
+  login: (data: { email?: string; login?: string; password: string }) =>
     request<LoginResponse>("/auth/login", { method: "POST", body: JSON.stringify(data) }),
+
+  workspaces: () => request<WorkspaceItem[]>("/auth/workspaces"),
+
+  selectWorkspace: (tenantId: string) =>
+    request<AuthResponse>("/auth/select-workspace", {
+      method: "POST",
+      body: JSON.stringify({ tenantId }),
+    }),
 
   verifyTwoFactorLogin: (pendingToken: string, code: string) =>
     request<AuthResponse>("/auth/2fa/verify-login", { method: "POST", body: JSON.stringify({ pendingToken, code }) }),
@@ -1679,3 +1713,164 @@ export const notificationsApi = {
       body: JSON.stringify(data || {}),
     }),
 };
+
+// ---- Onboarding ----
+export const onboardingApi = {
+  getState: () =>
+    request<{
+      tenant: {
+        id: string;
+        name: string;
+        subdomain: string;
+        phone: string | null;
+        country: string;
+        timezone: string;
+        currency: string;
+        logoUrl: string | null;
+        teachingCategories: string[];
+        onboardingStep: string;
+      };
+      counts: {
+        subjects: number;
+        branches: number;
+        team: number;
+        students: number;
+      };
+    }>("/onboarding/state"),
+
+  checkSubdomain: (subdomain: string) =>
+    request<{ available: boolean; reason?: string; slug?: string }>("/onboarding/check-subdomain", {
+      method: "POST",
+      body: JSON.stringify({ subdomain }),
+    }),
+
+  updateProfile: (data: {
+    name: string;
+    phone?: string;
+    country?: string;
+    timezone?: string;
+    currency?: string;
+    logoUrl?: string;
+  }) =>
+    request<{ success: boolean; nextStep: string; tenant: any }>("/onboarding/profile", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  updateCategories: (categories: string[]) =>
+    request<{ success: boolean; nextStep: string; tenant: any }>("/onboarding/categories", {
+      method: "POST",
+      body: JSON.stringify({ categories }),
+    }),
+
+  updateWorkspace: (subdomain: string) =>
+    request<{ success: boolean; nextStep: string; tenant: any }>("/onboarding/workspace", {
+      method: "POST",
+      body: JSON.stringify({ subdomain }),
+    }),
+
+  addBranch: (data: { name: string; address?: string; phone?: string }) =>
+    request<{ success: boolean; nextStep: string; branch: any }>("/onboarding/branch", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  advance: (step: string) =>
+    request<{ success: boolean; step: string }>(`/onboarding/advance/${step}`, { method: "POST" }),
+
+  skip: (step: string) =>
+    request<{ success: boolean; nextStep: string; tenant: any }>(`/onboarding/skip/${step}`, { method: "POST" }),
+
+  complete: () =>
+    request<{ success: boolean; ready: boolean; workspaceUrl: string; redirectUrl: string }>(
+      "/onboarding/complete",
+      { method: "POST" },
+    ),
+};
+
+// ---- Subjects & Courses ----
+export interface Subject {
+  id: string;
+  tenantId: string;
+  name: string;
+  code?: string | null;
+  description?: string | null;
+  color?: string | null;
+  courses?: Course[];
+  createdAt: string;
+}
+
+export interface Course {
+  id: string;
+  tenantId: string;
+  subjectId: string | null;
+  name: string;
+  description?: string | null;
+  durationMonths?: number;
+  price?: string;
+  createdAt: string;
+}
+
+export const subjectsApi = {
+  list: () => request<Subject[]>("/subjects"),
+  get: (id: string) => request<Subject>(`/subjects/${id}`),
+  create: (data: { name: string; code?: string; description?: string; color?: string }) =>
+    request<Subject>("/subjects", { method: "POST", body: JSON.stringify(data) }),
+  update: (id: string, data: Partial<Subject>) =>
+    request<Subject>(`/subjects/${id}`, { method: "PUT", body: JSON.stringify(data) }),
+  remove: (id: string) => request<{ success: boolean }>(`/subjects/${id}`, { method: "DELETE" }),
+  bulk: (subjects: { name: string; courses?: string[] }[]) =>
+    request<Subject[]>("/subjects/bulk", { method: "POST", body: JSON.stringify({ subjects }) }),
+  listCourses: (subjectId?: string) =>
+    request<Course[]>(`/subjects/courses${subjectId ? `?subjectId=${encodeURIComponent(subjectId)}` : ""}`),
+  createCourse: (data: { name: string; subjectId?: string; description?: string; durationMonths?: number; price?: string }) =>
+    request<Course>("/subjects/courses", { method: "POST", body: JSON.stringify(data) }),
+  updateCourse: (id: string, data: Partial<Course>) =>
+    request<Course>(`/subjects/courses/${id}`, { method: "PUT", body: JSON.stringify(data) }),
+  removeCourse: (id: string) => request<{ success: boolean }>(`/subjects/courses/${id}`, { method: "DELETE" }),
+};
+
+// ---- Invitations ----
+export interface Invitation {
+  id: string;
+  role: Role;
+  email: string | null;
+  phone: string | null;
+  status: "PENDING" | "ACCEPTED" | "EXPIRED" | "REVOKED";
+  expiresAt: string;
+  createdAt: string;
+}
+
+export const invitationsApi = {
+  list: () => request<Invitation[]>("/invitations"),
+  create: (data: { role: Role; email?: string; phone?: string }) =>
+    request<{ id: string; role: Role; email: string | null; phone: string | null; expiresAt: string; inviteUrl: string; token: string }>("/invitations", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+  revoke: (id: string) => request<{ success: boolean }>(`/invitations/${id}`, { method: "DELETE" }),
+  validate: (token: string) =>
+    request<{
+      valid: boolean;
+      role: Role;
+      email: string | null;
+      phone: string | null;
+      tenantName: string;
+      tenantSubdomain: string;
+      existingUser: boolean;
+      existingUserName: string | null;
+      expiresAt: string;
+    }>(`/invitations/${encodeURIComponent(token)}/validate`),
+  accept: (token: string, data: { fullName?: string; password?: string }) =>
+    request<{
+      accessToken: string;
+      refreshToken: string;
+      user: User;
+      tenant: { id: string; name: string; subdomain: string };
+      redirectUrl: string;
+    }>(`/invitations/${encodeURIComponent(token)}/accept`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+};
+

@@ -7,11 +7,15 @@ export default function Modal({
   onClose,
   title,
   children,
+  width = 480,
+  style,
 }: {
   open: boolean;
   onClose: () => void;
   title: string;
   children: ReactNode;
+  width?: number | string;
+  style?: React.CSSProperties;
 }) {
   if (!open) return null;
   return (
@@ -25,27 +29,41 @@ export default function Modal({
         alignItems: "center",
         justifyContent: "center",
         zIndex: 50,
+        backdropFilter: "blur(2px)",
       }}
     >
       <div
         onClick={(e) => e.stopPropagation()}
         style={{
           background: "#fff",
-          borderRadius: 16,
-          padding: 24,
-          width: 420,
-          maxWidth: "90vw",
-          maxHeight: "85vh",
-          overflow: "auto",
-          boxShadow: "0 20px 60px rgba(18,19,26,0.25)",
+          borderRadius: 18,
+          padding: "24px 26px",
+          width,
+          maxWidth: "92vw",
+          maxHeight: "88vh",
+          overflowY: "auto",
+          overflowX: "hidden",
+          boxShadow: "0 24px 64px rgba(18,19,26,0.22)",
+          ...style,
         }}
       >
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
-          <h2 style={{ fontSize: 18, fontWeight: 800 }}>{title}</h2>
+          <h2 style={{ fontSize: 18.5, fontWeight: 800, color: "#181A1F" }}>{title}</h2>
           <button
             onClick={onClose}
             className="btn"
-            style={{ background: "transparent", color: "#8A8D96", fontSize: 20, lineHeight: 1, padding: 4 }}
+            style={{
+              background: "#F2F1EC",
+              color: "#8A8D96",
+              fontSize: 18,
+              width: 30,
+              height: 30,
+              borderRadius: "50%",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: 0,
+            }}
           >
             ×
           </button>

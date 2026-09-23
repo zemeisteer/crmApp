@@ -178,18 +178,6 @@ const NAV_ITEMS: NavItem[] = [
     ),
   },
   {
-    href: "/pricing",
-    labelKey: "nav.pricing" as TranslationKey,
-    roles: ["SUPERADMIN", "ADMIN"],
-    icon: (
-      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <rect x="2" y="7" width="20" height="14" rx="2" />
-        <path d="M2 11h20" />
-        <path d="M6 15h4" />
-      </svg>
-    ),
-  },
-  {
     href: "/reports",
     labelKey: "nav.reports" as TranslationKey,
     roles: ["SUPERADMIN", "ADMIN", "MANAGER", "ACCOUNTANT"],
@@ -277,53 +265,66 @@ export default function Sidebar({ open, onClose }: { open?: boolean; onClose?: (
         <span style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 800, fontSize: 16.5, color: "#fff" }}>TalimCRM</span>
       </Link>
 
-      {NAV_ITEMS.filter((item) => !item.roles || (user?.role && item.roles.includes(user.role))).map((item) => {
-        const active = pathname === item.href || pathname.startsWith(item.href + "/");
-        return (
+      <div
+        className="sidebar-nav-scroll"
+        style={{
+          flex: 1,
+          overflowY: "auto",
+          overflowX: "hidden",
+          minHeight: 0,
+          display: "flex",
+          flexDirection: "column",
+          gap: 2,
+          paddingRight: 4,
+          marginBottom: 10,
+        }}
+      >
+        {NAV_ITEMS.filter((item) => !item.roles || (user?.role && item.roles.includes(user.role))).map((item) => {
+          const active = pathname === item.href || pathname.startsWith(item.href + "/");
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className="nav-item"
+              style={active ? { background: ACCENT, color: "#fff" } : { color: "#C7C9D1" }}
+            >
+              {item.icon}
+              {t(item.labelKey)}
+              {"badge" in item && item.badge && (
+                <span
+                  style={{
+                    marginLeft: "auto",
+                    fontSize: 9.5,
+                    fontWeight: 800,
+                    background: "linear-gradient(135deg,#8B7CF6,#4F46E5)",
+                    color: "#fff",
+                    padding: "2px 6px",
+                    borderRadius: 5,
+                    letterSpacing: "0.02em",
+                  }}
+                >
+                  {item.badge}
+                </span>
+              )}
+            </Link>
+          );
+        })}
+
+        {user?.role === "SUPERADMIN" && (
           <Link
-            key={item.href}
-            href={item.href}
+            href={SUPERADMIN_ITEM.href}
             className="nav-item"
-            style={active ? { background: ACCENT, color: "#fff" } : { color: "#C7C9D1" }}
+            style={
+              pathname === SUPERADMIN_ITEM.href || pathname.startsWith(SUPERADMIN_ITEM.href + "/")
+                ? { background: ACCENT, color: "#fff" }
+                : { color: "#C7C9D1" }
+            }
           >
-            {item.icon}
-            {t(item.labelKey)}
-            {"badge" in item && item.badge && (
-              <span
-                style={{
-                  marginLeft: "auto",
-                  fontSize: 9.5,
-                  fontWeight: 800,
-                  background: "linear-gradient(135deg,#8B7CF6,#4F46E5)",
-                  color: "#fff",
-                  padding: "2px 6px",
-                  borderRadius: 5,
-                  letterSpacing: "0.02em",
-                }}
-              >
-                {item.badge}
-              </span>
-            )}
+            {SUPERADMIN_ITEM.icon}
+            {t(SUPERADMIN_ITEM.labelKey)}
           </Link>
-        );
-      })}
-
-      {user?.role === "SUPERADMIN" && (
-        <Link
-          href={SUPERADMIN_ITEM.href}
-          className="nav-item"
-          style={
-            pathname === SUPERADMIN_ITEM.href || pathname.startsWith(SUPERADMIN_ITEM.href + "/")
-              ? { background: ACCENT, color: "#fff" }
-              : { color: "#C7C9D1" }
-          }
-        >
-          {SUPERADMIN_ITEM.icon}
-          {t(SUPERADMIN_ITEM.labelKey)}
-        </Link>
-      )}
-
-      <div style={{ flex: 1 }} />
+        )}
+      </div>
 
       <div style={{ display: "flex", gap: 4, padding: "0 8px 10px" }}>
         {(["UZ", "RU", "EN"] as const).map((l) => (

@@ -297,8 +297,18 @@ export default function SchedulePage() {
 
   return (
     <DashboardShell>
-      {/* Header */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16, marginBottom: 24, flexWrap: "wrap" }}>
+      <div
+        style={{
+          padding: "24px 32px",
+          width: "100%",
+          maxWidth: 1600,
+          margin: "0 auto",
+          boxSizing: "border-box",
+          minHeight: "calc(100vh - 60px)",
+        }}
+      >
+        {/* Header */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16, marginBottom: 24, flexWrap: "wrap" }}>
         <div>
           <h1 style={{ fontSize: 24, fontWeight: 800, color: "#111827", margin: "0 0 6px" }}>{t("schedule.title")}</h1>
           <p style={{ color: "#6B7280", margin: 0, fontSize: 13.5 }}>{t("schedule.subtitle")}</p>
@@ -934,6 +944,7 @@ export default function SchedulePage() {
           </div>
         </div>
       )}
+      </div>
     </DashboardShell>
   );
 }

@@ -34,6 +34,9 @@ import { ScheduleModule } from './schedule/schedule.module';
 import { ExpensesModule } from './expenses/expenses.module';
 import { PortalModule } from './portal/portal.module';
 import { NotificationsModule } from './notifications/notifications.module';
+import { InvitationsModule } from './invitations/invitations.module';
+import { SubjectsModule } from './subjects/subjects.module';
+import { OnboardingModule } from './onboarding/onboarding.module';
 
 @Module({
   imports: [
@@ -71,6 +74,9 @@ import { NotificationsModule } from './notifications/notifications.module';
     ExpensesModule,
     PortalModule,
     NotificationsModule,
+    InvitationsModule,
+    SubjectsModule,
+    OnboardingModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })
