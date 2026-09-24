@@ -1,5 +1,5 @@
-import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { and, eq, isNotNull, isNull, inArray, or } from 'drizzle-orm';
+import { BadRequestException, ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { and, eq, isNotNull, isNull, inArray, or, sql } from 'drizzle-orm';
 import { DB, Database } from '../db/db.module';
 import { branches, enrollments, groups, organizationMemberships, studentGuardians, students, users } from '../db/schema';
 import { CreateStudentDto, LinkGuardianDto, UpdateStudentDto } from './dto/student.dto';
@@ -59,46 +59,51 @@ export class StudentsService {
       if (!branch) throw new NotFoundException('Filial topilmadi');
     }
 
-    const [student] = await this.db
-      .insert(students)
-      .values({
-        tenantId,
-        branchId: dto.branchId || null,
-        fullName: dto.fullName,
-        gender: dto.gender as any,
-        phone: dto.phone,
-        parentPhone: dto.parentPhone,
-        birthDate: dto.birthDate ? new Date(dto.birthDate) : undefined,
-        address: dto.address,
-        telegramUsername: dto.telegramUsername,
-        startDate: dto.startDate ? new Date(dto.startDate) : undefined,
-        status: dto.status || 'ACTIVE',
-        notes: dto.notes || null,
-        avatarUrl: dto.avatarUrl || null,
-      })
-      .returning();
-
     const groupIds = dto.groupIds && dto.groupIds.length > 0 ? dto.groupIds : dto.groupId ? [dto.groupId] : [];
-    if (groupIds.length > 0) {
-      const validGroups = await this.db.query.groups.findMany({
-        where: and(eq(groups.tenantId, tenantId), inArray(groups.id, groupIds), isNull(groups.deletedAt)),
-      });
-      const validGroupIds = validGroups.map((g) => g.id);
-      if (validGroupIds.length > 0) {
-        await this.db
-          .insert(enrollments)
-          .values(
-            validGroupIds.map((groupId) => ({
-              tenantId,
-              studentId: student.id,
-              groupId,
-              status: 'ACTIVE' as const,
-              joinedAt: new Date(),
-            })),
-          )
-          .onConflictDoNothing();
+    const student = await this.db.transaction(async (tx) => {
+      const [student] = await tx
+        .insert(students)
+        .values({
+          tenantId,
+          branchId: dto.branchId || null,
+          fullName: dto.fullName,
+          gender: dto.gender as any,
+          phone: dto.phone,
+          parentPhone: dto.parentPhone,
+          birthDate: dto.birthDate ? new Date(dto.birthDate) : undefined,
+          address: dto.address,
+          telegramUsername: dto.telegramUsername,
+          startDate: dto.startDate ? new Date(dto.startDate) : undefined,
+          status: dto.status || 'ACTIVE',
+          notes: dto.notes || null,
+          avatarUrl: dto.avatarUrl || null,
+        })
+        .returning();
+
+      if (groupIds.length > 0) {
+        const validGroups = await tx.query.groups.findMany({
+          where: and(eq(groups.tenantId, tenantId), inArray(groups.id, groupIds), isNull(groups.deletedAt)),
+        });
+        const validGroupIds = validGroups.map((g) => g.id);
+        // A full group rolls back the whole create, student included.
+        for (const groupId of validGroupIds) await this.lockGroupWithCapacity(tx, tenantId, groupId);
+        if (validGroupIds.length > 0) {
+          await tx
+            .insert(enrollments)
+            .values(
+              validGroupIds.map((groupId) => ({
+                tenantId,
+                studentId: student.id,
+                groupId,
+                status: 'ACTIVE' as const,
+                joinedAt: new Date(),
+              })),
+            )
+            .onConflictDoNothing();
+        }
       }
-    }
+      return student;
+    });
     this.audit.log({ tenantId, userId, action: 'create', entityType: 'student', entityId: student.id, meta: { fullName: student.fullName } });
     void this.webhooks.dispatch(tenantId, 'student.created', student);
     return student;
@@ -160,48 +165,78 @@ export class StudentsService {
 
   async enroll(tenantId: string, studentId: string, groupId: string) {
     await this.findOne(tenantId, studentId);
-    const group = await this.db.query.groups.findFirst({
-      where: and(eq(groups.id, groupId), eq(groups.tenantId, tenantId), isNull(groups.deletedAt)),
-    });
-    if (!group) throw new NotFoundException('Guruh topilmadi');
+    return this.db.transaction(async (tx) => {
+      const existing = await tx.query.enrollments.findFirst({
+        where: and(
+          eq(enrollments.studentId, studentId),
+          eq(enrollments.groupId, groupId),
+        ),
+      });
 
-    const existing = await this.db.query.enrollments.findFirst({
-      where: and(
-        eq(enrollments.studentId, studentId),
-        eq(enrollments.groupId, groupId),
-      ),
-    });
+      if (existing && existing.status === 'ACTIVE') {
+        // Checked before the capacity lock so a full group still reports
+        // "already enrolled" for a student who is in it.
+        await this.lockGroupWithCapacity(tx, tenantId, groupId, { skipCapacity: true });
+        throw new BadRequestException("O'quvchi allaqachon ushbu guruhda faol ro'yxatdan o'tgan");
+      }
+      await this.lockGroupWithCapacity(tx, tenantId, groupId);
 
-    if (existing && existing.status === 'ACTIVE') {
-      throw new BadRequestException("O'quvchi allaqachon ushbu guruhda faol ro'yxatdan o'tgan");
-    }
+      if (existing) {
+        const [reactivated] = await tx
+          .update(enrollments)
+          .set({
+            tenantId,
+            status: 'ACTIVE',
+            joinedAt: new Date(),
+            leftAt: null,
+          })
+          .where(eq(enrollments.id, existing.id))
+          .returning();
+        return { success: true, enrollment: reactivated };
+      }
 
-    if (existing) {
-      const [reactivated] = await this.db
-        .update(enrollments)
-        .set({
+      const [created] = await tx
+        .insert(enrollments)
+        .values({
           tenantId,
+          studentId,
+          groupId,
           status: 'ACTIVE',
           joinedAt: new Date(),
-          leftAt: null,
         })
-        .where(eq(enrollments.id, existing.id))
         .returning();
-      return { success: true, enrollment: reactivated };
+
+      return { success: true, enrollment: created };
+    });
+  }
+
+  // Locks the group row for the rest of the transaction, so concurrent
+  // enrollments into the same group are serialized, then enforces
+  // groups.maxStudents against the ACTIVE enrollments.
+  private async lockGroupWithCapacity(
+    tx: Parameters<Parameters<Database['transaction']>[0]>[0],
+    tenantId: string,
+    groupId: string,
+    opts: { skipCapacity?: boolean } = {},
+  ) {
+    const [group] = await tx
+      .select()
+      .from(groups)
+      .where(and(eq(groups.id, groupId), eq(groups.tenantId, tenantId), isNull(groups.deletedAt)))
+      .for('update');
+    if (!group) throw new NotFoundException('Guruh topilmadi');
+    if (opts.skipCapacity) return group;
+    const [{ active }] = await tx
+      .select({ active: sql<number>`count(*)::int` })
+      .from(enrollments)
+      .where(and(eq(enrollments.groupId, groupId), eq(enrollments.status, 'ACTIVE')));
+    if (active >= group.maxStudents) {
+      throw new ConflictException({
+        code: 'GROUP_FULL',
+        message: `"${group.name}" guruhida bo'sh joy yo'q (${active}/${group.maxStudents})`,
+      });
     }
-
-    const [created] = await this.db
-      .insert(enrollments)
-      .values({
-        tenantId,
-        studentId,
-        groupId,
-        status: 'ACTIVE',
-        joinedAt: new Date(),
-      })
-      .returning();
-
-    return { success: true, enrollment: created };
+    return group;
   }
 
   async unenroll(tenantId: string, studentId: string, groupId: string) {

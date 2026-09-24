@@ -1,15 +1,27 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { NotFoundException } from '@nestjs/common';
+import { ConflictException, NotFoundException } from '@nestjs/common';
 import { StudentsService } from './students.service';
+
+// Awaitable stand-in for a drizzle select builder (select().from().where().for()).
+function selectChain(result: unknown) {
+  const c: Record<string, unknown> = {};
+  for (const m of ['from', 'where', 'for']) c[m] = vi.fn(() => c);
+  // oxlint-disable-next-line unicorn/no-thenable -- deliberately awaitable, like a drizzle builder
+  c.then = (res: (v: unknown) => unknown, rej: (e: unknown) => unknown) => Promise.resolve(result).then(res, rej);
+  return c;
+}
 
 describe('StudentsService', () => {
   let service: StudentsService;
   let mockDb: any;
+  let selectResults: unknown[];
   let mockAudit: any;
   let mockWebhooks: any;
 
   beforeEach(() => {
+    selectResults = [];
     mockDb = {
+      select: vi.fn(() => selectChain(selectResults.shift() ?? [])),
       query: {
         students: {
           findMany: vi.fn(),
@@ -40,6 +52,8 @@ describe('StudentsService', () => {
         where: vi.fn().mockResolvedValue({}),
       }),
     };
+
+    mockDb.transaction = vi.fn(async (cb: (tx: unknown) => unknown) => cb(mockDb));
 
     mockAudit = {
       log: vi.fn().mockResolvedValue(undefined),
@@ -115,6 +129,7 @@ describe('StudentsService', () => {
       const createdStudent = { id: 'st-new', fullName: 'Yangi Oquvchi' };
       mockDb.insert().values().returning.mockResolvedValue([createdStudent]);
       mockDb.query.groups.findMany.mockResolvedValue([{ id: 'grp-1' }]);
+      selectResults.push([{ id: 'grp-1', name: 'G1', maxStudents: 20 }], [{ active: 3 }]);
 
       const result = await service.create('tenant-1', 'user-1', {
         fullName: 'Yangi Oquvchi',
@@ -182,6 +197,7 @@ describe('StudentsService', () => {
     it('enrolls student into group', async () => {
       mockDb.query.students.findFirst.mockResolvedValue({ id: 'st-1' });
       mockDb.query.groups.findFirst.mockResolvedValue({ id: 'grp-1' });
+      selectResults.push([{ id: 'grp-1', name: 'G1', maxStudents: 20 }], [{ active: 3 }]);
       mockDb.query.enrollments.findFirst.mockResolvedValue(null);
       mockDb.insert().values().returning.mockResolvedValue([{ id: 'enr-1', status: 'ACTIVE' }]);
 
@@ -195,6 +211,26 @@ describe('StudentsService', () => {
       mockDb.query.groups.findFirst.mockResolvedValue(null);
 
       await expect(service.enroll('tenant-1', 'st-1', 'invalid-group')).rejects.toThrow(NotFoundException);
+    });
+
+    it('rejects enrollment into a full group with 409 and writes nothing', async () => {
+      mockDb.query.students.findFirst.mockResolvedValue({ id: 'st-1' });
+      mockDb.query.enrollments.findFirst.mockResolvedValue(null);
+      selectResults.push([{ id: 'grp-1', name: 'G1', maxStudents: 2 }], [{ active: 2 }]);
+
+      await expect(service.enroll('tenant-1', 'st-1', 'grp-1')).rejects.toThrow(ConflictException);
+      expect(mockDb.insert).not.toHaveBeenCalled();
+    });
+
+    it('rolls back student creation when a chosen group is full', async () => {
+      mockDb.insert().values().returning.mockResolvedValue([{ id: 'st-new', fullName: 'X' }]);
+      mockDb.insert.mockClear();
+      mockDb.query.groups.findMany.mockResolvedValue([{ id: 'grp-1' }]);
+      selectResults.push([{ id: 'grp-1', name: 'G1', maxStudents: 1 }], [{ active: 1 }]);
+
+      await expect(service.create('tenant-1', 'user-1', { fullName: 'X', groupIds: ['grp-1'] })).rejects.toThrow(ConflictException);
+      expect(mockAudit.log).not.toHaveBeenCalled();
+      expect(mockWebhooks.dispatch).not.toHaveBeenCalled();
     });
 
     it('unenrolls student from group', async () => {

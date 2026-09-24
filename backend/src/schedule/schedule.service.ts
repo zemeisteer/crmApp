@@ -31,6 +31,28 @@ export function isOverlapping(startA: string, endA: string, startB: string, endB
   return Math.max(aStart, bStart) < Math.min(aEnd, bEnd);
 }
 
+// ISO weekday (1 = Monday … 7 = Sunday) of a "YYYY-MM-DD" calendar date.
+export function isoWeekday(date: string): number {
+  const [y, m, d] = date.split('-').map(Number);
+  const day = new Date(Date.UTC(y, m - 1, d)).getUTCDay();
+  return day === 0 ? 7 : day;
+}
+
+// Whether two lessons can fall on the same day. A lesson with a `date` is a
+// one-off on that date; otherwise it recurs weekly on `dayOfWeek`.
+//  - one-off vs one-off: same date;
+//  - anything involving a recurring lesson: same weekday, taking a one-off
+//    lesson's weekday from its date.
+export function occursOnSameDay(
+  a: { dayOfWeek?: number | null; date?: string | null },
+  b: { dayOfWeek?: number | null; date?: string | null },
+): boolean {
+  if (a.date && b.date) return a.date === b.date;
+  const dowA = a.date ? isoWeekday(a.date) : a.dayOfWeek;
+  const dowB = b.date ? isoWeekday(b.date) : b.dayOfWeek;
+  return !!dowA && dowA === dowB;
+}
+
 @Injectable()
 export class ScheduleService {
   constructor(@Inject(DB) private readonly db: Database) {}
@@ -125,13 +147,7 @@ export class ScheduleService {
     for (const c of candidates) {
       if (excludeScheduleId && c.id === excludeScheduleId) continue;
 
-      // Check day/date alignment
-      const sameDay =
-        (dayOfWeek && c.dayOfWeek === dayOfWeek) ||
-        (date && c.date === date) ||
-        (dayOfWeek && !c.dayOfWeek && c.date); // recurring vs specific date
-
-      if (!sameDay) continue;
+      if (!occursOnSameDay({ dayOfWeek, date }, c)) continue;
 
       // Check time overlap
       if (!isOverlapping(startTime, endTime, c.startTime, c.endTime)) continue;

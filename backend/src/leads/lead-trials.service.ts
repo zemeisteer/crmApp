@@ -114,8 +114,8 @@ export class LeadTrialsService {
   // scheduling (documented in the report):
   //  - a trial *in* a group's own lesson is the normal case, so that group's
   //    lessons never count as conflicts;
-  //  - the engine's recurring-vs-one-off rule is narrowed to lessons that
-  //    actually fall on the trial's weekday or date.
+  //  - a trial is a one-off: the engine checks it against lessons on its
+  //    date and against weekly lessons on its weekday.
   async findConflicts(
     exec: Tx | Database,
     tenantId: string,
@@ -141,7 +141,6 @@ export class LeadTrialsService {
       ownGroupLessonIds = new Set(own.map((s) => s.id));
     }
     const conflicts: TrialConflict[] = lessonConflicts
-      .filter((c) => (c.date ? c.date === local.date : c.dayOfWeek === local.dayOfWeek))
       .filter((c) => !ownGroupLessonIds.has(c.conflictingScheduleId))
       .map((c) => ({ type: c.type === 'ROOM' ? 'ROOM' : 'TEACHER', message: c.message, conflictingScheduleId: c.conflictingScheduleId }));
 
