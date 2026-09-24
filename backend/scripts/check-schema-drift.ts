@@ -5,7 +5,8 @@
 // instead of surfacing on the first production deploy.
 //
 //   npx tsx scripts/check-schema-drift.ts
-import 'dotenv/config';
+import * as dotenv from 'dotenv';
+dotenv.config();
 import { Client } from 'pg';
 import { generateDrizzleJson } from 'drizzle-kit/api';
 import * as schema from '../src/db/schema';
