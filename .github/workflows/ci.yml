@@ -36,10 +36,22 @@ jobs:
       - name: Security audit (high/critical only — don't fail CI on low-severity noise)
         run: npm audit --audit-level=critical || true
       - run: npx tsc --noEmit
-      - name: Push schema to test database
-        run: npx drizzle-kit push --force
+      # Build the test database exactly as production is built: from the
+      # versioned migrations, never `db:push`. Then fail if schema.ts declares
+      # anything the migrations don't create, and if db:generate would still
+      # produce a new migration.
+      - name: Apply versioned migrations to an empty database
+        run: npm run db:migrate
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/talimcrm_test
+      - name: Check schema drift (schema.ts vs migrated database)
+        run: npm run db:check-drift
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/talimcrm_test
+      - name: Check every schema change has a migration
+        run: |
+          npx drizzle-kit generate --name ci-check | tee generate.log
+          grep -q "No schema changes" generate.log
       - run: npm run test
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/talimcrm_test

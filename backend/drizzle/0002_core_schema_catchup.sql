@@ -10,6 +10,11 @@
 -- Billing foreign keys are left out on purpose: 0001 already creates them
 -- inline under Postgres' default constraint names.
 
+-- Role values added to schema.ts after the 0000 baseline (registration
+-- creates OWNER members; the portal uses STUDENT and PARENT).
+ALTER TYPE "public"."role" ADD VALUE IF NOT EXISTS 'OWNER';--> statement-breakpoint
+ALTER TYPE "public"."role" ADD VALUE IF NOT EXISTS 'STUDENT';--> statement-breakpoint
+ALTER TYPE "public"."role" ADD VALUE IF NOT EXISTS 'PARENT';--> statement-breakpoint
 DO $$ BEGIN
   CREATE TYPE "public"."invitation_status" AS ENUM('PENDING', 'ACCEPTED', 'EXPIRED', 'REVOKED');
 EXCEPTION WHEN duplicate_object THEN null;

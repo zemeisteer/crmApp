@@ -14,7 +14,15 @@ export const DB = 'DB';
       provide: DB,
       inject: [ConfigService],
       useFactory: (config: ConfigService) => {
-        const pool = new Pool({ connectionString: config.get<string>('DATABASE_URL') });
+        // Columns are `timestamp without time zone`, and drizzle writes and
+        // reads them as UTC. Pinning the session to UTC makes defaultNow()
+        // store UTC too; otherwise a server whose timezone is e.g.
+        // Asia/Tashkent stored local wall-clock time, 5 h off from every
+        // app-written timestamp.
+        const pool = new Pool({
+          connectionString: config.get<string>('DATABASE_URL'),
+          options: '-c TimeZone=UTC',
+        });
         return drizzle(pool, { schema });
       },
     },

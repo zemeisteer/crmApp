@@ -23,6 +23,7 @@
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push --force",
     "db:apply-sql": "node scripts/apply-sql-migration.cjs",
+    "db:check-drift": "tsx scripts/check-schema-drift.ts",
     "db:backup": "bash scripts/backup.sh"
   },
   "dependencies": {
