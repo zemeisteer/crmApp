@@ -49,6 +49,14 @@ Versiyalangan migratsiyalar: `0000` (boshlang'ich), `0001` (hisob-fakturalar), `
 npm run db:apply-sql -- drizzle/0003_admissions_crm.sql
 ```
 
+Sxema va migratsiyalar mosligini tekshirish (CI ham shuni ishlatadi): `npm run db:check-drift`.
+
+Agar baza serveri ilgari UTC bo'lmagan vaqt zonasida ishlagan bo'lsa (masalan `Asia/Tashkent`), eski `created_at` qiymatlari 5 soat oldinga siljigan bo'ladi. Avval dry-run bilan ko'ring, keyin `--apply` bilan qo'llang (`--before` — UTC tuzatishli versiya deploy qilingan vaqt):
+
+```bash
+node scripts/fix-local-timestamps.cjs --offset-minutes=300 --before=2026-09-24T17:00:00Z
+```
+
 ### Zaxira nusxalash
 
 ```bash

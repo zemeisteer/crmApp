@@ -569,3 +569,32 @@ All existing suites still pass unchanged: `app`, `security`, `core-education`, `
 - The versioned migration chain builds the complete schema from scratch.
 
 Before this is merged or released, one item remains: the manual browser walkthrough of the new frontend (§28). Its logic is covered by the E2E-verified API, but the UI itself has not been exercised by a person. S7 is contained for admissions and scheduled as the next sprint's first engineering item.
+
+---
+
+## Addendum — follow-up work (same day, commits `90633f3`…`c879f81`)
+
+The §29 recommendations 2–6 were implemented after the sprint report. Item 1 (manual UI walkthrough) is still open. It needs someone to sign in to the browser, which I don't do.
+
+| Item | Change | Verification |
+|---|---|---|
+| S7 timezone | The DB pool pins sessions to `TimeZone=UTC`, so `defaultNow()` agrees with drizzle's UTC convention. `scripts/fix-local-timestamps.cjs` is an opt-in, dry-run-first repair of historical `created_at` values. **It has not been run on any database.** | `test/timestamps.e2e-spec.ts` fails without the fix and passes with it |
+| Migrations | 0002 also adds role values `OWNER`, `STUDENT`, `PARENT`, which the versioned chain lacked (registration would fail on a migrated DB). There is now a real snapshot `drizzle/meta/0003_snapshot.json`, so `db:generate` reports "No schema changes". `npm run db:check-drift` added. | Fresh DB via `drizzle-kit migrate` → zero drift → **the full E2E suite passed on the migrated DB** |
+| CI | `drizzle-kit push` replaced by `db:migrate` + drift check + a "no pending migration" check | Workflow edited; not yet run on GitHub (nothing pushed) |
+| Reminders | `AdmissionsRemindersSubscriber` emails the active assigned manager on `LeadFollowUpDue` and `TrialBooked`, with no prospect contact data. `ADMISSIONS_EMAIL_REMINDERS=false` disables it. Staff have no Telegram link, so email is the only channel. | 4 unit tests |
+| S11 capacity | `StudentsService.enroll` and `create(groupIds)` lock the group and enforce `maxStudents` (409 `GROUP_FULL`); a full group rolls back the whole create | Unit tests + E2E, including a 4-way concurrent enroll into a 2-seat group (exactly 2 succeed) |
+| S12 conflicts | One-off vs weekly lessons are aligned by weekday in both directions | Unit + E2E regression tests |
+| Timezone | Follow-up buckets, trial slot conversion and reminder texts use `tenants.timezone` (DST-correct helpers) | Helper unit tests + E2E with a UTC+14 center |
+
+**Totals now:**
+- backend unit **157/157** (25 files);
+- backend E2E **78/78** (8 files);
+- backend lint 0 errors;
+- `nest build` clean;
+- drift check clean.
+
+The frontend was unchanged in this round.
+
+**Remaining limitations:**
+- Trial times entered in the UI are interpreted in the *browser's* timezone. That is correct for staff working at the center, but not for remote staff in another zone.
+- Historical `updated_at`, `paid_at` and similar columns written in a non-UTC database cannot be repaired row by row, because app-written and DB-written values can't be told apart.
