@@ -13,7 +13,7 @@ function chain(result: unknown) {
 describe('AdmissionsRemindersSubscriber', () => {
   let selectResults: unknown[];
   let email: { send: ReturnType<typeof vi.fn> };
-  let leadsService: { activeAssignableMembership: ReturnType<typeof vi.fn> };
+  let leadsService: { activeAssignableMembership: ReturnType<typeof vi.fn>; tenantTimezone: ReturnType<typeof vi.fn> };
   let sub: AdmissionsRemindersSubscriber;
   const event = (name: AdmissionsEvent['name'], data = {}): AdmissionsEvent => ({
     name, tenantId: 't1', leadId: 'l1', actorUserId: null, data, occurredAt: new Date().toISOString(),
@@ -23,7 +23,10 @@ describe('AdmissionsRemindersSubscriber', () => {
     selectResults = [];
     const db = { select: vi.fn(() => chain(selectResults.shift() ?? [])) };
     email = { send: vi.fn() };
-    leadsService = { activeAssignableMembership: vi.fn().mockResolvedValue({ id: 'm1' }) };
+    leadsService = {
+      activeAssignableMembership: vi.fn().mockResolvedValue({ id: 'm1' }),
+      tenantTimezone: vi.fn().mockResolvedValue('Asia/Tashkent'),
+    };
     const config = { get: vi.fn(() => undefined) };
     sub = new AdmissionsRemindersSubscriber(db as any, {} as any, email as any, leadsService as any, config as any);
   });
@@ -35,10 +38,15 @@ describe('AdmissionsRemindersSubscriber', () => {
     expect(email.send.mock.calls[0][2]).not.toMatch(/\+998/);
   });
 
-  it('includes the trial time in Tashkent time', async () => {
+  it("shows the trial time in the center's own timezone", async () => {
     selectResults.push([{ id: 'l1', fullName: 'Aziza', managerUserId: 'u1' }], [{ email: 'm@x.uz', fullName: 'Manager' }]);
     await sub.remind(event('TrialBooked', { scheduledAt: '2026-10-01T05:00:00.000Z' }));
-    expect(email.send.mock.calls[0][2]).toContain('2026-10-01 10:00');
+    expect(email.send.mock.calls[0][2]).toContain('2026-10-01 10:00 (Asia/Tashkent)');
+
+    leadsService.tenantTimezone.mockResolvedValue('Europe/Moscow');
+    selectResults.push([{ id: 'l1', fullName: 'Aziza', managerUserId: 'u1' }], [{ email: 'm@x.uz', fullName: 'Manager' }]);
+    await sub.remind(event('TrialBooked', { scheduledAt: '2026-10-01T05:00:00.000Z' }));
+    expect(email.send.mock.calls[1][2]).toContain('2026-10-01 08:00 (Europe/Moscow)');
   });
 
   it('skips unassigned leads', async () => {

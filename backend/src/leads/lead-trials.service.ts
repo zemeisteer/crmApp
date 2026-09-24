@@ -3,21 +3,20 @@ import { and, asc, eq, gte, isNull, lt, ne, sql } from 'drizzle-orm';
 import { DB, Database } from '../db/db.module';
 import { branches, courses, groups, leadTrials, rooms, schedules, subjects, teachers } from '../db/schema';
 import { AuditService } from '../audit/audit.service';
+import { zonedParts } from '../common/timezone';
 import { ScheduleService, type ScheduleConflict } from '../schedule/schedule.service';
 import { AdmissionsEventsService } from './admissions-events.service';
 import { Actor, appTimestamps, isUniqueViolation, LeadRow, LeadsService, Tx } from './leads.service';
 import { BookTrialDto, RescheduleTrialDto } from './dto/lead.dto';
 
-const TENANT_UTC_OFFSET_MIN = 5 * 60;
-
-// Converts an instant to the Tashkent wall-clock values the schedule engine
+// Converts an instant to the center's wall-clock values the schedule engine
 // works with (lessons are stored as local "HH:MM" + weekday/date).
-export function toLocalSlot(start: Date, durationMinutes: number) {
-  const local = new Date(start.getTime() + TENANT_UTC_OFFSET_MIN * 60_000);
+export function toLocalSlot(start: Date, durationMinutes: number, tz: string) {
+  const local = zonedParts(start, tz);
   const pad = (n: number) => String(n).padStart(2, '0');
-  const date = `${local.getUTCFullYear()}-${pad(local.getUTCMonth() + 1)}-${pad(local.getUTCDate())}`;
-  const dayOfWeek = local.getUTCDay() === 0 ? 7 : local.getUTCDay();
-  const startMin = local.getUTCHours() * 60 + local.getUTCMinutes();
+  const date = `${local.year}-${pad(local.month)}-${pad(local.day)}`;
+  const dayOfWeek = local.weekday;
+  const startMin = local.hour * 60 + local.minute;
   // A trial that would run past midnight is checked up to 23:59.
   const endMin = Math.min(startMin + durationMinutes, 24 * 60 - 1);
   const hhmm = (m: number) => `${pad(Math.floor(m / 60))}:${pad(m % 60)}`;
@@ -123,7 +122,7 @@ export class LeadTrialsService {
     excludeTrialId?: string,
   ): Promise<TrialConflict[]> {
     if (!slot.teacherId && !slot.roomId) return [];
-    const local = toLocalSlot(slot.start, slot.durationMinutes);
+    const local = toLocalSlot(slot.start, slot.durationMinutes, await this.leadsService.tenantTimezone(tenantId));
 
     const lessonConflicts: ScheduleConflict[] = await this.schedule.findConflicts(tenantId, {
       groupId: '',

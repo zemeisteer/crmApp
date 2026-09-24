@@ -4,10 +4,9 @@ import { and, eq } from 'drizzle-orm';
 import { DB, Database } from '../db/db.module';
 import { leads, users } from '../db/schema';
 import { EmailService } from '../email/email.service';
+import { formatZoned } from '../common/timezone';
 import { AdmissionsEventsService, type AdmissionsEvent } from './admissions-events.service';
 import { LeadsService } from './leads.service';
-
-const TENANT_UTC_OFFSET_MIN = 5 * 60;
 
 // Emails the assigned manager when a follow-up falls due or a trial lesson
 // is booked on their lead. It only subscribes to the admissions event
@@ -58,14 +57,19 @@ export class AdmissionsRemindersSubscriber implements OnModuleInit, OnModuleDest
     const [subject, body] =
       e.name === 'LeadFollowUpDue'
         ? [`Qayta aloqa vaqti: ${lead.fullName}`, `"${lead.fullName}" bilan qayta bog'lanish vaqti keldi.`]
-        : [`Sinov darsi belgilandi: ${lead.fullName}`, `"${lead.fullName}" uchun sinov darsi belgilandi: ${formatTashkent(e.data?.scheduledAt)}.`];
+        : [
+            `Sinov darsi belgilandi: ${lead.fullName}`,
+            `"${lead.fullName}" uchun sinov darsi belgilandi: ${await this.formatForTenant(e.tenantId, e.data?.scheduledAt)}.`,
+          ];
     await this.email.send(manager.email, subject, `Assalomu alaykum, ${manager.fullName}!\n\n${body}\n\nLidni ochish: ${link}`);
     return true;
   }
+
+  // Trial time in the center's own timezone, e.g. "2026-10-01 10:00 (Asia/Tashkent)".
+  private async formatForTenant(tenantId: string, iso: unknown) {
+    if (typeof iso !== 'string') return '';
+    const tz = await this.leadsService.tenantTimezone(tenantId);
+    return `${formatZoned(new Date(iso), tz)} (${tz})`;
+  }
 }
 
-function formatTashkent(iso: unknown) {
-  if (typeof iso !== 'string') return '';
-  const local = new Date(new Date(iso).getTime() + TENANT_UTC_OFFSET_MIN * 60_000);
-  return `${local.toISOString().slice(0, 16).replace('T', ' ')} (Toshkent)`;
-}

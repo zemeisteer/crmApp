@@ -17,9 +17,11 @@ import {
   leadTrials,
   organizationMemberships,
   subjects,
+  tenants,
   users,
 } from '../db/schema';
 import { AuditService } from '../audit/audit.service';
+import { DEFAULT_TIMEZONE, isValidTimeZone, zonedDayBounds } from '../common/timezone';
 import { AdmissionsEventsService } from './admissions-events.service';
 import {
   allowedTransitions,
@@ -56,18 +58,9 @@ export const ASSIGNABLE_ROLES = ['OWNER', 'ADMIN', 'MANAGER', 'RECEPTIONIST'] as
 // Statuses a lead can still be worked in; follow-up queues only show these.
 export const OPEN_STATUSES: LeadStatus[] = ['NEW', 'CONTACTED', 'TRIAL_BOOKED', 'TRIAL_ATTENDED', 'QUALIFIED'];
 
-// "Today" for follow-up queues is the Uzbekistan calendar day (UTC+5, no DST).
-const TENANT_UTC_OFFSET_MIN = 5 * 60;
-
 export interface Actor {
   userId: string | null;
   permissions: string[];
-}
-
-export function tashkentDayBounds(now: Date) {
-  const shifted = new Date(now.getTime() + TENANT_UTC_OFFSET_MIN * 60_000);
-  const start = Date.UTC(shifted.getUTCFullYear(), shifted.getUTCMonth(), shifted.getUTCDate()) - TENANT_UTC_OFFSET_MIN * 60_000;
-  return { startOfToday: new Date(start), endOfToday: new Date(start + 24 * 60 * 60_000) };
 }
 
 // Admissions rows always carry app-written timestamps instead of relying on
@@ -114,7 +107,8 @@ export class LeadsService {
   async findAll(tenantId: string, userId: string | null, query: QueryLeadDto = {}) {
     const page = query.page ?? 1;
     const pageSize = query.pageSize ?? 25;
-    const where = and(...this.buildFilters(tenantId, userId, query));
+    const tz = query.followUp ? await this.tenantTimezone(tenantId) : DEFAULT_TIMEZONE;
+    const where = and(...this.buildFilters(tenantId, userId, query, tz));
 
     const [{ total }] = await this.db
       .select({ total: sql<number>`count(*)::int` })
@@ -137,7 +131,7 @@ export class LeadsService {
     return { items, total, page, pageSize };
   }
 
-  private buildFilters(tenantId: string, userId: string | null, q: QueryLeadDto): SQL[] {
+  private buildFilters(tenantId: string, userId: string | null, q: QueryLeadDto, tz: string): SQL[] {
     const c: SQL[] = [eq(leads.tenantId, tenantId)];
     if (q.includeArchived !== 'true') c.push(isNull(leads.archivedAt));
     if (q.status) c.push(inArray(leads.status, q.status.split(',') as LeadStatus[]));
@@ -155,7 +149,7 @@ export class LeadsService {
     if (q.createdTo) c.push(lt(leads.createdAt, new Date(q.createdTo)));
     if (q.followUpFrom) c.push(gte(leads.followUpAt, new Date(q.followUpFrom)));
     if (q.followUpTo) c.push(lt(leads.followUpAt, new Date(q.followUpTo)));
-    if (q.followUp) c.push(...this.followUpBucket(q.followUp, new Date()));
+    if (q.followUp) c.push(...this.followUpBucket(q.followUp, new Date(), tz));
 
     const search = q.search?.trim();
     if (search) {
@@ -168,11 +162,19 @@ export class LeadsService {
     return c;
   }
 
+  // The center's own timezone (tenants.timezone), falling back to Tashkent
+  // when unset or not a valid IANA zone name.
+  async tenantTimezone(tenantId: string): Promise<string> {
+    const [row] = await this.db.select({ timezone: tenants.timezone }).from(tenants).where(eq(tenants.id, tenantId));
+    return isValidTimeZone(row?.timezone) ? row.timezone : DEFAULT_TIMEZONE;
+  }
+
   // Buckets are disjoint: overdue is before now, today is from now until
-  // the end of the local day, upcoming is after that. Only open leads count.
-  private followUpBucket(bucket: 'overdue' | 'today' | 'upcoming' | 'none', now: Date): SQL[] {
+  // the end of the center's local day, upcoming is after that. Only open
+  // leads count.
+  private followUpBucket(bucket: 'overdue' | 'today' | 'upcoming' | 'none', now: Date, tz: string): SQL[] {
     if (bucket === 'none') return [isNull(leads.followUpAt), inArray(leads.status, OPEN_STATUSES)];
-    const { endOfToday } = tashkentDayBounds(now);
+    const { endOfToday } = zonedDayBounds(now, tz);
     const open = inArray(leads.status, OPEN_STATUSES);
     if (bucket === 'overdue') return [open, lt(leads.followUpAt, now)];
     if (bucket === 'today') return [open, gte(leads.followUpAt, now), lt(leads.followUpAt, endOfToday)];
@@ -772,15 +774,16 @@ export class LeadsService {
 
   async followUpSummary(tenantId: string, userId: string | null, mine: boolean) {
     const now = new Date();
+    const tz = await this.tenantTimezone(tenantId);
     const base: SQL[] = [eq(leads.tenantId, tenantId), isNull(leads.archivedAt)];
     if (mine) base.push(eq(leads.assignedManagerUserId, userId ?? '__none__'));
     const count = async (bucket: 'overdue' | 'today' | 'upcoming') => {
       const [{ n }] = await this.db.select({ n: sql<number>`count(*)::int` }).from(leads)
-        .where(and(...base, ...this.followUpBucket(bucket, now)));
+        .where(and(...base, ...this.followUpBucket(bucket, now, tz)));
       return n;
     };
     const [overdue, today, upcoming] = await Promise.all([count('overdue'), count('today'), count('upcoming')]);
-    return { overdue, today, upcoming, asOf: now.toISOString(), timezone: 'Asia/Tashkent' };
+    return { overdue, today, upcoming, asOf: now.toISOString(), timezone: tz };
   }
 
   // Emits LeadFollowUpDue once per scheduled follow-up. The claim is a single
@@ -978,8 +981,9 @@ export class LeadsService {
   // ==================== EXPORT ====================
 
   async exportCsv(tenantId: string, actor: Actor, query: QueryLeadDto) {
+    const tz = query.followUp ? await this.tenantTimezone(tenantId) : DEFAULT_TIMEZONE;
     const rows = await this.db.query.leads.findMany({
-      where: and(...this.buildFilters(tenantId, actor.userId, query)),
+      where: and(...this.buildFilters(tenantId, actor.userId, query, tz)),
       with: {
         desiredSubject: { columns: { name: true } },
         desiredCourse: { columns: { name: true } },
