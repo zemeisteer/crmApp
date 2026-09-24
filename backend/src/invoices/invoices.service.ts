@@ -10,6 +10,8 @@ import { enrollments, invoices, students } from '../db/schema';
 import { AuditService } from '../audit/audit.service';
 import { CreateInvoiceDto, QueryInvoicesDto } from './dto/invoice.dto';
 
+type InvoiceExecutor = Database | Parameters<Parameters<Database['transaction']>[0]>[0];
+
 @Injectable()
 export class InvoicesService {
   constructor(
@@ -93,8 +95,12 @@ export class InvoicesService {
     return invoice;
   }
 
-  async create(tenantId: string, dto: CreateInvoiceDto, userId?: string) {
-    const student = await this.db.query.students.findFirst({
+  // `tx` lets another domain (admissions conversion) create the invoice inside
+  // its own transaction so a later failure rolls the invoice back too. In
+  // that case the caller writes the audit entry after its commit.
+  async create(tenantId: string, dto: CreateInvoiceDto, userId?: string, tx?: InvoiceExecutor) {
+    const db = tx ?? this.db;
+    const student = await db.query.students.findFirst({
       where: and(
         eq(students.id, dto.studentId),
         eq(students.tenantId, tenantId),
@@ -106,7 +112,7 @@ export class InvoicesService {
     }
 
     if (dto.enrollmentId) {
-      const enrollment = await this.db.query.enrollments.findFirst({
+      const enrollment = await db.query.enrollments.findFirst({
         where: and(
           eq(enrollments.id, dto.enrollmentId),
           eq(enrollments.studentId, dto.studentId),
@@ -118,7 +124,7 @@ export class InvoicesService {
       }
     }
 
-    const [invoice] = await this.db
+    const [invoice] = await db
       .insert(invoices)
       .values({
         tenantId,
@@ -135,7 +141,7 @@ export class InvoicesService {
       })
       .returning();
 
-    this.audit.log({
+    if (!tx) this.audit.log({
       tenantId,
       userId: userId || null,
       action: 'create',

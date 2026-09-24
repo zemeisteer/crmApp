@@ -274,3 +274,32 @@ tbody tr:hover {
     padding-left: 0 !important;
   }
 }
+
+/* ---- Admissions CRM ---- */
+.adm-page { padding: 22px 32px; }
+.adm-grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 14px; }
+.adm-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.adm-toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.adm-toolbar > * { min-width: 150px; }
+.adm-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.adm-table th { text-align: left; font-size: 11.5px; color: #8A8D96; font-weight: 600; padding: 10px 12px; border-bottom: 1px solid #EAE8E2; }
+.adm-table td { padding: 11px 12px; border-bottom: 1px solid #F2F1EC; vertical-align: middle; }
+.adm-table tr:hover td { background: #FAFAF7; }
+.adm-cards { display: none; }
+.adm-pipeline { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(240px, 1fr); gap: 12px; overflow-x: auto; padding-bottom: 8px; }
+.adm-profile { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); gap: 16px; align-items: start; }
+.adm-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.adm-steps { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 16px; }
+
+@media (max-width: 900px) {
+  .adm-profile { grid-template-columns: minmax(0, 1fr); }
+  .adm-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 768px) {
+  .adm-page { padding: 16px; }
+  .adm-grid2 { grid-template-columns: minmax(0, 1fr); }
+  .adm-toolbar > * { flex: 1 1 100%; min-width: 0; }
+  .adm-table-wrap { display: none; }
+  .adm-cards { display: grid; gap: 10px; }
+}

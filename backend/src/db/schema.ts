@@ -7,8 +7,10 @@ import {
   boolean,
   uniqueIndex,
   index,
+  jsonb,
+  type AnyPgColumn,
 } from 'drizzle-orm/pg-core';
-import { relations } from 'drizzle-orm';
+import { relations, sql } from 'drizzle-orm';
 import { createId } from '@paralleldrive/cuid2';
 
 export const roleEnum = pgEnum('role', [
@@ -125,14 +127,50 @@ export const leadStatusEnum = pgEnum('lead_status', [
   'LOST',
 ]);
 
+// Value order mirrors the database after migration 0003, which renamed
+// RECOMMENDATION -> REFERRAL and BANNER -> ADVERTISEMENT in place and
+// appended PHONE (Postgres appends new enum values at the end).
 export const leadSourceEnum = pgEnum('lead_source', [
   'INSTAGRAM',
   'TELEGRAM',
   'WEBSITE',
-  'RECOMMENDATION',
-  'BANNER',
+  'REFERRAL',
+  'ADVERTISEMENT',
   'WALK_IN',
   'OTHER',
+  'PHONE',
+]);
+
+export const leadLostReasonEnum = pgEnum('lead_lost_reason', [
+  'TOO_EXPENSIVE',
+  'NO_RESPONSE',
+  'CHOSE_COMPETITOR',
+  'SCHEDULE_MISMATCH',
+  'LOCATION',
+  'NOT_INTERESTED',
+  'OTHER',
+]);
+
+export const leadActivityTypeEnum = pgEnum('lead_activity_type', [
+  'NOTE',
+  'CALL',
+  'MESSAGE',
+  'MEETING',
+  'STATUS_CHANGE',
+  'FOLLOW_UP_SCHEDULED',
+  'TRIAL_BOOKED',
+  'TRIAL_ATTENDED',
+  'CONVERTED',
+  'LOST',
+  'REOPENED',
+]);
+
+export const leadTrialStatusEnum = pgEnum('lead_trial_status', [
+  'BOOKED',
+  'ATTENDED',
+  'MISSED',
+  'CANCELLED',
+  'RESCHEDULED',
 ]);
 
 // The center's vertical — drives subject suggestions and (later) which
@@ -686,26 +724,110 @@ export const telegramLinkTokens = pgTable('telegram_link_tokens', {
 }));
 
 // Admissions & Sales CRM — Leads management
+// A lead is a prospect, never a student: a student row only appears through
+// the explicit conversion flow, and the lead row is kept (never deleted)
+// afterwards as the admissions history. See migration 0003.
 export const leads = pgTable('leads', {
   id: text('id').primaryKey().$defaultFn(() => createId()),
   tenantId: text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
   fullName: text('full_name').notNull(),
   phone: text('phone').notNull(),
-  parentPhone: text('parent_phone'),
+  // Canonical form used for duplicate detection (+998XXXXXXXXX for Uzbek
+  // numbers, +<digits> otherwise). Always derived server-side from `phone`.
+  phoneNormalized: text('phone_normalized'),
+  secondaryPhone: text('secondary_phone'),
+  email: text('email'),
+  emailNormalized: text('email_normalized'),
   status: leadStatusEnum('status').notNull().default('NEW'),
   source: leadSourceEnum('source').notNull().default('OTHER'),
-  subject: text('subject'),
-  branchId: text('branch_id').references(() => branches.id),
-  trialDate: timestamp('trial_date'),
-  trialGroupId: text('trial_group_id').references(() => groups.id),
-  convertedStudentId: text('converted_student_id').references(() => students.id),
-  lostReason: text('lost_reason'),
+  desiredSubjectId: text('desired_subject_id').references(() => subjects.id, { onDelete: 'set null' }),
+  desiredCourseId: text('desired_course_id').references(() => courses.id, { onDelete: 'set null' }),
+  preferredBranchId: text('preferred_branch_id').references(() => branches.id, { onDelete: 'set null' }),
+  assignedManagerUserId: text('assigned_manager_user_id').references(() => users.id, { onDelete: 'set null' }),
+  followUpAt: timestamp('follow_up_at'),
+  // Set when LeadFollowUpDue was emitted for the current followUpAt; cleared
+  // whenever followUpAt changes so each scheduled follow-up fires once.
+  followUpNotifiedAt: timestamp('follow_up_notified_at'),
   notes: text('notes'),
+  lostReason: leadLostReasonEnum('lost_reason'),
+  lostNote: text('lost_note'),
+  lostAt: timestamp('lost_at'),
+  convertedAt: timestamp('converted_at'),
+  convertedStudentId: text('converted_student_id').references(() => students.id),
+  // Set only by an audited duplicate override; such rows are exempt from the
+  // per-tenant uniqueness indexes below.
+  duplicateOfLeadId: text('duplicate_of_lead_id').references((): AnyPgColumn => leads.id, { onDelete: 'set null' }),
+  archivedAt: timestamp('archived_at'),
+  createdByUserId: text('created_by_user_id').references(() => users.id, { onDelete: 'set null' }),
+  // Legacy, non-authoritative: free-text interest from before desiredSubjectId
+  // existed (and from public forms whose text matched no subject).
+  legacySubject: text('subject'),
+  // Legacy trial columns, superseded by lead_trials (backfilled in 0003).
+  legacyTrialDate: timestamp('trial_date'),
+  legacyTrialGroupId: text('trial_group_id').references(() => groups.id),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 }, (t) => ({
   tenantIdx: index('leads_tenant_idx').on(t.tenantId),
   statusIdx: index('leads_status_idx').on(t.status),
+  tenantStatusIdx: index('leads_tenant_status_idx').on(t.tenantId, t.status),
+  tenantFollowUpIdx: index('leads_tenant_follow_up_idx').on(t.tenantId, t.followUpAt),
+  tenantManagerIdx: index('leads_tenant_manager_idx').on(t.tenantId, t.assignedManagerUserId),
+  tenantCreatedIdx: index('leads_tenant_created_idx').on(t.tenantId, t.createdAt),
+  phoneUniq: uniqueIndex('leads_tenant_phone_active_uniq')
+    .on(t.tenantId, t.phoneNormalized)
+    .where(sql`${t.archivedAt} IS NULL AND ${t.duplicateOfLeadId} IS NULL AND ${t.phoneNormalized} IS NOT NULL`),
+  emailUniq: uniqueIndex('leads_tenant_email_active_uniq')
+    .on(t.tenantId, t.emailNormalized)
+    .where(sql`${t.archivedAt} IS NULL AND ${t.duplicateOfLeadId} IS NULL AND ${t.emailNormalized} IS NOT NULL`),
+}));
+
+// Append-only admissions timeline. Distinct from audit_logs: activities are
+// the sales conversation (calls, notes, stage moves) shown to staff, while
+// audit_logs record security-relevant actions.
+export const leadActivities = pgTable('lead_activities', {
+  id: text('id').primaryKey().$defaultFn(() => createId()),
+  tenantId: text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  leadId: text('lead_id').notNull().references(() => leads.id, { onDelete: 'cascade' }),
+  actorUserId: text('actor_user_id').references(() => users.id, { onDelete: 'set null' }),
+  type: leadActivityTypeEnum('type').notNull(),
+  body: text('body'),
+  fromStatus: leadStatusEnum('from_status'),
+  toStatus: leadStatusEnum('to_status'),
+  metadata: jsonb('metadata'),
+  occurredAt: timestamp('occurred_at').notNull().defaultNow(),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+}, (t) => ({
+  tenantLeadIdx: index('lead_activities_tenant_lead_idx').on(t.tenantId, t.leadId, t.occurredAt),
+  tenantTypeIdx: index('lead_activities_tenant_type_idx').on(t.tenantId, t.type),
+}));
+
+// Trial lessons are a first-class record rather than attendance rows, so a
+// prospect never appears in (or corrupts) student attendance.
+export const leadTrials = pgTable('lead_trials', {
+  id: text('id').primaryKey().$defaultFn(() => createId()),
+  tenantId: text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  leadId: text('lead_id').notNull().references(() => leads.id, { onDelete: 'cascade' }),
+  branchId: text('branch_id').references(() => branches.id, { onDelete: 'set null' }),
+  subjectId: text('subject_id').references(() => subjects.id, { onDelete: 'set null' }),
+  courseId: text('course_id').references(() => courses.id, { onDelete: 'set null' }),
+  teacherId: text('teacher_id').references(() => teachers.id, { onDelete: 'set null' }),
+  groupId: text('group_id').references(() => groups.id, { onDelete: 'set null' }),
+  roomId: text('room_id').references(() => rooms.id, { onDelete: 'set null' }),
+  scheduledAt: timestamp('scheduled_at').notNull(),
+  durationMinutes: integer('duration_minutes').notNull().default(60),
+  status: leadTrialStatusEnum('status').notNull().default('BOOKED'),
+  outcomeNote: text('outcome_note'),
+  rescheduledFromTrialId: text('rescheduled_from_trial_id').references((): AnyPgColumn => leadTrials.id, { onDelete: 'set null' }),
+  createdByUserId: text('created_by_user_id').references(() => users.id, { onDelete: 'set null' }),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+}, (t) => ({
+  tenantLeadIdx: index('lead_trials_tenant_lead_idx').on(t.tenantId, t.leadId),
+  tenantScheduledIdx: index('lead_trials_tenant_scheduled_idx').on(t.tenantId, t.scheduledAt),
+  oneBookedPerLead: uniqueIndex('lead_trials_one_booked_per_lead')
+    .on(t.leadId)
+    .where(sql`${t.status} = 'BOOKED'`),
 }));
 
 // Verifiable Digital Certificates (CRMAPP Master Spec Section 23)
@@ -861,11 +983,30 @@ export const tenantsRelations = relations(tenants, ({ many }) => ({
   paymentAllocations: many(paymentAllocations),
 }));
 
-export const leadsRelations = relations(leads, ({ one }) => ({
+export const leadsRelations = relations(leads, ({ one, many }) => ({
   tenant: one(tenants, { fields: [leads.tenantId], references: [tenants.id] }),
-  branch: one(branches, { fields: [leads.branchId], references: [branches.id] }),
-  trialGroup: one(groups, { fields: [leads.trialGroupId], references: [groups.id] }),
+  preferredBranch: one(branches, { fields: [leads.preferredBranchId], references: [branches.id] }),
+  desiredSubject: one(subjects, { fields: [leads.desiredSubjectId], references: [subjects.id] }),
+  desiredCourse: one(courses, { fields: [leads.desiredCourseId], references: [courses.id] }),
+  assignedManager: one(users, { fields: [leads.assignedManagerUserId], references: [users.id] }),
   convertedStudent: one(students, { fields: [leads.convertedStudentId], references: [students.id] }),
+  activities: many(leadActivities),
+  trials: many(leadTrials),
+}));
+
+export const leadActivitiesRelations = relations(leadActivities, ({ one }) => ({
+  lead: one(leads, { fields: [leadActivities.leadId], references: [leads.id] }),
+  actor: one(users, { fields: [leadActivities.actorUserId], references: [users.id] }),
+}));
+
+export const leadTrialsRelations = relations(leadTrials, ({ one }) => ({
+  lead: one(leads, { fields: [leadTrials.leadId], references: [leads.id] }),
+  branch: one(branches, { fields: [leadTrials.branchId], references: [branches.id] }),
+  subject: one(subjects, { fields: [leadTrials.subjectId], references: [subjects.id] }),
+  course: one(courses, { fields: [leadTrials.courseId], references: [courses.id] }),
+  teacher: one(teachers, { fields: [leadTrials.teacherId], references: [teachers.id] }),
+  group: one(groups, { fields: [leadTrials.groupId], references: [groups.id] }),
+  room: one(rooms, { fields: [leadTrials.roomId], references: [rooms.id] }),
 }));
 
 export const usersRelations = relations(users, ({ one, many }) => ({

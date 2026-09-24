@@ -49,9 +49,13 @@ export function clearToken() {
 
 export class ApiError extends Error {
   status: number;
-  constructor(message: string, status: number) {
+  // Parsed JSON error body, for structured errors such as
+  // { code: "DUPLICATE_LEAD", duplicates: [...] }.
+  body?: Record<string, unknown> | null;
+  constructor(message: string, status: number, body?: Record<string, unknown> | null) {
     super(message);
     this.status = status;
+    this.body = body;
   }
 }
 
@@ -126,7 +130,7 @@ async function request<T>(
     const message = Array.isArray(body?.message)
       ? body.message.join(", ")
       : body?.message || "Xatolik yuz berdi";
-    throw new ApiError(message, res.status);
+    throw new ApiError(message, res.status, body);
   }
 
   return body as T;
@@ -366,35 +370,178 @@ export interface Group {
 }
 
 export type LeadStatus = 'NEW' | 'CONTACTED' | 'TRIAL_BOOKED' | 'TRIAL_ATTENDED' | 'QUALIFIED' | 'ENROLLED' | 'LOST';
-export type LeadSource = 'INSTAGRAM' | 'TELEGRAM' | 'WEBSITE' | 'RECOMMENDATION' | 'BANNER' | 'WALK_IN' | 'OTHER';
+export type LeadSource = 'INSTAGRAM' | 'TELEGRAM' | 'WEBSITE' | 'REFERRAL' | 'WALK_IN' | 'PHONE' | 'ADVERTISEMENT' | 'OTHER';
+export type LeadLostReason = 'TOO_EXPENSIVE' | 'NO_RESPONSE' | 'CHOSE_COMPETITOR' | 'SCHEDULE_MISMATCH' | 'LOCATION' | 'NOT_INTERESTED' | 'OTHER';
+export type LeadActivityType =
+  | 'NOTE' | 'CALL' | 'MESSAGE' | 'MEETING' | 'STATUS_CHANGE' | 'FOLLOW_UP_SCHEDULED'
+  | 'TRIAL_BOOKED' | 'TRIAL_ATTENDED' | 'CONVERTED' | 'LOST' | 'REOPENED';
+export type LeadTrialStatus = 'BOOKED' | 'ATTENDED' | 'MISSED' | 'CANCELLED' | 'RESCHEDULED';
+
+export interface LeadTrial {
+  id: string;
+  leadId: string;
+  scheduledAt: string;
+  durationMinutes: number;
+  status: LeadTrialStatus;
+  outcomeNote?: string | null;
+  groupId?: string | null;
+  teacherId?: string | null;
+  roomId?: string | null;
+  group?: { id: string; name: string } | null;
+  teacher?: { id: string; fullName: string } | null;
+  room?: { id: string; name: string } | null;
+  lead?: { id: string; fullName: string; status: LeadStatus };
+}
 
 export interface Lead {
   id: string;
   tenantId: string;
   fullName: string;
   phone: string;
-  parentPhone?: string | null;
+  phoneNormalized?: string | null;
+  secondaryPhone?: string | null;
+  email?: string | null;
   status: LeadStatus;
   source: LeadSource;
-  subject?: string | null;
-  branchId?: string | null;
-  branch?: Branch | null;
-  trialDate?: string | null;
-  trialGroupId?: string | null;
-  trialGroup?: Group | null;
-  convertedStudentId?: string | null;
-  convertedStudent?: Student | null;
-  lostReason?: string | null;
+  desiredSubjectId?: string | null;
+  desiredCourseId?: string | null;
+  preferredBranchId?: string | null;
+  assignedManagerUserId?: string | null;
+  desiredSubject?: { id: string; name: string; status?: string } | null;
+  desiredCourse?: { id: string; name: string; status?: string } | null;
+  preferredBranch?: { id: string; name: string } | null;
+  assignedManager?: { id: string; fullName: string } | null;
+  assignedManagerActive?: boolean | null;
+  followUpAt?: string | null;
   notes?: string | null;
+  lostReason?: LeadLostReason | null;
+  lostNote?: string | null;
+  lostAt?: string | null;
+  convertedAt?: string | null;
+  convertedStudentId?: string | null;
+  convertedStudent?: { id: string; fullName: string } | null;
+  duplicateOfLeadId?: string | null;
+  archivedAt?: string | null;
+  legacySubject?: string | null;
+  trials?: LeadTrial[];
+  allowedTransitions?: LeadStatus[];
   createdAt: string;
   updatedAt: string;
 }
 
+export interface LeadActivity {
+  id: string;
+  type: LeadActivityType;
+  body?: string | null;
+  fromStatus?: LeadStatus | null;
+  toStatus?: LeadStatus | null;
+  metadata?: Record<string, unknown> | null;
+  occurredAt: string;
+  actor?: { id: string; fullName: string } | null;
+}
+
+export interface LeadDuplicate {
+  id: string;
+  fullName: string;
+  status: LeadStatus;
+  matchedOn: 'phone' | 'email';
+}
+
+export interface LeadListResponse {
+  items: Lead[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+export interface LeadQuery {
+  page?: number;
+  pageSize?: number;
+  search?: string;
+  status?: string;
+  source?: string;
+  preferredBranchId?: string;
+  desiredSubjectId?: string;
+  assignedManagerUserId?: string;
+  followUp?: 'overdue' | 'today' | 'upcoming' | 'none';
+  converted?: 'true' | 'false';
+  lostReason?: string;
+  includeArchived?: 'true' | 'false';
+  sort?: 'newest' | 'oldest' | 'next_follow_up' | 'recently_updated';
+}
+
+export interface RateValue {
+  numerator: number;
+  denominator: number;
+  rate: number | null;
+}
+
+export interface FollowUpSummary {
+  overdue: number;
+  today: number;
+  upcoming: number;
+  asOf: string;
+}
+
+export interface LeadAnalytics {
+  window: { from: string; to: string };
+  snapshot: { total: number; byStatus: Record<LeadStatus, number> };
+  cohort: {
+    total: number;
+    reached: Record<LeadStatus, number>;
+    lost: number;
+    rates: Record<'contacted' | 'trialBooked' | 'trialAttended' | 'qualified' | 'conversion' | 'lost', RateValue>;
+    bySource: Array<{ source: LeadSource } & RateValue>;
+    lostReasons: Array<{ reason: LeadLostReason; count: number }>;
+    managers: Array<{ managerUserId: string | null; fullName: string | null; assigned: number; enrolled: number; lost: number; open: number }>;
+  };
+  followUps: FollowUpSummary;
+}
+
+// Legacy snapshot shape of GET /leads/funnel.
 export interface FunnelStats {
   total: number;
   counts: Record<LeadStatus, number>;
   conversionRate: number;
   bySource?: Record<string, { total: number; enrolled: number; conversionRate: number }>;
+}
+
+export interface AssignableManager {
+  userId: string;
+  fullName: string;
+  role: string;
+}
+
+export interface StudentMatchCandidate {
+  id: string;
+  fullName: string;
+  matchedOn: 'phone' | 'parentPhone';
+  exact?: boolean;
+}
+
+export interface ConvertLeadInput {
+  studentResolution?: 'AUTO' | 'CREATE_NEW' | 'LINK_EXISTING';
+  existingStudentId?: string;
+  fullName?: string;
+  gender?: Gender;
+  birthDate?: string;
+  address?: string;
+  branchId?: string;
+  guardianPhone?: string;
+  groupIds?: string[];
+  createInvoice?: boolean;
+  invoiceForMonth?: string;
+  invoiceDueDate?: string;
+  invoiceAmount?: number;
+}
+
+export interface ConvertLeadResult {
+  alreadyConverted: boolean;
+  studentCreated: boolean;
+  lead: Lead;
+  student: Student;
+  enrollments: Array<{ id: string; groupId: string; status: string }>;
+  invoice: { id: string; amount: number; status: string } | null;
 }
 
 export type Gender = "MALE" | "FEMALE";
@@ -1382,40 +1529,74 @@ export const exportApi = {
 
 // ---- Admissions / Leads CRM ----
 
+function leadQueryString(query: object = {}) {
+  const q = new URLSearchParams();
+  for (const [k, v] of Object.entries(query)) {
+    if (v !== undefined && v !== null && v !== "") q.set(k, String(v));
+  }
+  const qs = q.toString();
+  return qs ? `?${qs}` : "";
+}
+
+function postJson<T>(path: string, data: unknown = {}) {
+  return request<T>(path, { method: "POST", body: JSON.stringify(data) });
+}
+
 export const leadsApi = {
-  list: (query?: { status?: string; source?: string; search?: string }) => {
-    const q = new URLSearchParams();
-    if (query?.status) q.set("status", query.status);
-    if (query?.source) q.set("source", query.source);
-    if (query?.search) q.set("search", query.search);
-    const qs = q.toString();
-    return request<Lead[]>(`/leads${qs ? `?${qs}` : ""}`);
-  },
+  list: (query?: LeadQuery) => request<LeadListResponse>(`/leads${leadQueryString(query)}`),
   funnel: () => request<FunnelStats>("/leads/funnel"),
+  analytics: (query?: { from?: string; to?: string }) => request<LeadAnalytics>(`/leads/analytics${leadQueryString(query)}`),
+  followUpSummary: (mine = false) => request<FollowUpSummary>(`/leads/follow-ups/summary${mine ? "?mine=true" : ""}`),
+  duplicates: (phone?: string, email?: string) =>
+    request<{ duplicates: LeadDuplicate[] }>(`/leads/duplicates${leadQueryString({ phone, email })}`),
+  managers: () => request<AssignableManager[]>("/leads/assignable-managers"),
   get: (id: string) => request<Lead>(`/leads/${id}`),
+  timeline: (id: string) => request<LeadActivity[]>(`/leads/${id}/timeline`),
   create: (data: {
     fullName: string;
     phone: string;
-    parentPhone?: string;
-    status?: LeadStatus;
+    secondaryPhone?: string;
+    email?: string;
     source?: LeadSource;
-    subject?: string;
-    branchId?: string;
-    trialDate?: string;
-    trialGroupId?: string;
+    desiredSubjectId?: string;
+    desiredCourseId?: string;
+    preferredBranchId?: string;
+    assignedManagerUserId?: string;
+    followUpAt?: string;
     notes?: string;
-  }) => request<Lead>("/leads", { method: "POST", body: JSON.stringify(data) }),
-  update: (id: string, data: Partial<Lead>) =>
-    request<Lead>(`/leads/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
-  convert: (
-    id: string,
-    data: { groupIds?: string[]; gender?: Gender; birthDate?: string; address?: string },
-  ) =>
-    request<{ student: Student; lead: Lead }>(`/leads/${id}/convert`, {
-      method: "POST",
-      body: JSON.stringify(data),
-    }),
-  remove: (id: string) => request<{ success: boolean }>(`/leads/${id}`, { method: "DELETE" }),
+    allowDuplicate?: boolean;
+    duplicateReason?: string;
+  }) => postJson<Lead>("/leads", data),
+  update: (id: string, data: {
+    fullName?: string;
+    phone?: string;
+    secondaryPhone?: string | null;
+    email?: string | null;
+    source?: LeadSource;
+    desiredSubjectId?: string | null;
+    desiredCourseId?: string | null;
+    preferredBranchId?: string | null;
+    notes?: string | null;
+  }) => request<Lead>(`/leads/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
+  transition: (id: string, toStatus: LeadStatus, note?: string) => postJson<Lead>(`/leads/${id}/transition`, { toStatus, note }),
+  lose: (id: string, reason: LeadLostReason, note?: string) => postJson<Lead>(`/leads/${id}/lose`, { reason, note: note || undefined }),
+  reopen: (id: string, note: string) => postJson<Lead>(`/leads/${id}/reopen`, { note }),
+  assign: (id: string, managerUserId: string | null) => postJson<Lead>(`/leads/${id}/assign`, { managerUserId }),
+  followUp: (id: string, followUpAt: string | null, note?: string) => postJson<Lead>(`/leads/${id}/follow-up`, { followUpAt, note }),
+  addActivity: (id: string, type: "NOTE" | "CALL" | "MESSAGE" | "MEETING", body: string) =>
+    postJson<LeadActivity>(`/leads/${id}/activities`, { type, body }),
+  bookTrial: (id: string, data: { scheduledAt: string; durationMinutes?: number; groupId?: string; teacherId?: string; note?: string }) =>
+    postJson<LeadTrial>(`/leads/${id}/trials`, data),
+  rescheduleTrial: (id: string, trialId: string, data: { scheduledAt: string; note?: string }) =>
+    postJson<LeadTrial>(`/leads/${id}/trials/${trialId}/reschedule`, data),
+  attendTrial: (id: string, trialId: string, note?: string) => postJson<LeadTrial>(`/leads/${id}/trials/${trialId}/attend`, { note }),
+  missTrial: (id: string, trialId: string, note?: string) => postJson<LeadTrial>(`/leads/${id}/trials/${trialId}/miss`, { note }),
+  cancelTrial: (id: string, trialId: string, note?: string) => postJson<LeadTrial>(`/leads/${id}/trials/${trialId}/cancel`, { note }),
+  studentMatch: (id: string) => request<{ candidates: StudentMatchCandidate[] }>(`/leads/${id}/student-match`),
+  convert: (id: string, data: ConvertLeadInput) => postJson<ConvertLeadResult>(`/leads/${id}/convert`, data),
+  archive: (id: string, reason?: string) => postJson<Lead>(`/leads/${id}/archive`, { reason }),
+  restore: (id: string) => postJson<Lead>(`/leads/${id}/restore`),
+  exportCsv: (query?: LeadQuery) => download(`/leads/export${leadQueryString(query)}`, "leads.csv"),
 };
 
 // ---- Certificates (Spec Section 23) ----

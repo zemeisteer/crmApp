@@ -2,12 +2,16 @@ import { BadRequestException, ConflictException, Inject, Injectable, NotFoundExc
 import { and, eq, isNull } from 'drizzle-orm';
 import * as bcrypt from 'bcryptjs';
 import { DB, Database } from '../db/db.module';
-import { tenants, users, groups, students, teachers, payments, attendance, leads, branches, announcements } from '../db/schema';
+import { tenants, users, groups, students, teachers, payments, attendance, branches, announcements } from '../db/schema';
+import { LeadsService } from '../leads/leads.service';
 import { CreateTenantDto, UpdateTenantDto, UpdateTenantStatusDto, PublicApplyDto } from './dto/tenant.dto';
 
 @Injectable()
 export class TenantsService {
-  constructor(@Inject(DB) private readonly db: Database) {}
+  constructor(
+    @Inject(DB) private readonly db: Database,
+    private readonly leads: LeadsService,
+  ) {}
 
   // Superadmin: list every tenant on the platform
   findAll() {
@@ -136,30 +140,17 @@ export class TenantsService {
       throw new BadRequestException("Ism va telefon raqami to'ldirilishi shart");
     }
 
-    // If branchId is provided, verify it belongs to this tenant
-    if (dto.branchId) {
-      const branch = await this.db.query.branches.findFirst({
-        where: and(eq(branches.id, dto.branchId), eq(branches.tenantId, tenant.id)),
-      });
-      if (!branch) {
-        dto.branchId = undefined;
-      }
-    }
-
-    const [lead] = await this.db
-      .insert(leads)
-      .values({
-        tenantId: tenant.id,
-        fullName: dto.fullName.trim(),
-        phone: dto.phone.trim(),
-        parentPhone: dto.parentPhone?.trim() || null,
-        status: 'NEW',
-        source: 'WEBSITE',
-        subject: dto.subject?.trim() || null,
-        branchId: dto.branchId || null,
-        notes: dto.notes?.trim() ? `Saytdan onlayn ariza: ${dto.notes.trim()}` : "Markaz veb-saytidan onlayn ariza topshirildi",
-      })
-      .returning();
+    // Goes through the admissions service so public applications get the
+    // same phone normalization, duplicate handling and timeline as staff-
+    // created leads.
+    const lead = await this.leads.createFromPublicForm(tenant.id, {
+      fullName: dto.fullName,
+      phone: dto.phone,
+      secondaryPhone: dto.parentPhone,
+      subjectText: dto.subject,
+      branchId: dto.branchId,
+      notes: dto.notes,
+    });
 
     return {
       success: true,

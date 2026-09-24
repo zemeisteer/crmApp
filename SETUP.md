@@ -43,6 +43,12 @@ npm run db:migrate
 
 Kelgusi sxema o'zgarishlari uchun: `schema.ts`ni tahrirlang → `npm run db:generate` (yangi migratsiya fayli yaratadi) → `npm run db:migrate` (production'ga qo'llaydi). Dev muhitda tezlik uchun hali ham `npm run db:push` ishlatishingiz mumkin.
 
+Versiyalangan migratsiyalar: `0000` (boshlang'ich), `0001` (hisob-fakturalar), `0002` (ilgari faqat `db:push` orqali qo'shilgan jadval/ustunlar), `0003` (Qabul CRM). Ular idempotent — qayta ishga tushirish xavfsiz. **`db:push` bilan yaratilgan mavjud bazaga** `db:migrate` ishlatmang (u 0000 ni qayta qo'llashga urinadi); o'rniga yangi faylni to'g'ridan-to'g'ri qo'llang:
+
+```bash
+npm run db:apply-sql -- drizzle/0003_admissions_crm.sql
+```
+
 ### Zaxira nusxalash
 
 ```bash

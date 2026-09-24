@@ -20,6 +20,17 @@ export enum Permission {
   SETTINGS_MANAGE = 'settings.manage',
   REPORTS_EXPORT = 'reports.export',
   NOTIFICATIONS_SEND = 'notifications.send',
+
+  // Admissions & Sales CRM. `admissions.manage` covers supervisory actions:
+  // duplicate override, reopening LOST leads and archiving.
+  ADMISSIONS_READ = 'admissions.read',
+  ADMISSIONS_CREATE = 'admissions.create',
+  ADMISSIONS_UPDATE = 'admissions.update',
+  ADMISSIONS_ASSIGN = 'admissions.assign',
+  ADMISSIONS_CONVERT = 'admissions.convert',
+  ADMISSIONS_ANALYTICS = 'admissions.analytics',
+  ADMISSIONS_EXPORT = 'admissions.export',
+  ADMISSIONS_MANAGE = 'admissions.manage',
 }
 
 export const ALL_PERMISSIONS = Object.values(Permission);
@@ -39,6 +50,14 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<string, Permission[]> = {
     Permission.EXAMS_MANAGE,
     Permission.CERTIFICATES_MANAGE,
     Permission.REPORTS_EXPORT,
+    Permission.ADMISSIONS_READ,
+    Permission.ADMISSIONS_CREATE,
+    Permission.ADMISSIONS_UPDATE,
+    Permission.ADMISSIONS_ASSIGN,
+    Permission.ADMISSIONS_CONVERT,
+    Permission.ADMISSIONS_ANALYTICS,
+    Permission.ADMISSIONS_EXPORT,
+    Permission.ADMISSIONS_MANAGE,
   ],
   RECEPTIONIST: [
     Permission.STUDENTS_READ,
@@ -48,6 +67,9 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<string, Permission[]> = {
     Permission.PAYMENTS_READ,
     Permission.PAYMENTS_CREATE,
     Permission.NOTIFICATIONS_SEND,
+    Permission.ADMISSIONS_READ,
+    Permission.ADMISSIONS_CREATE,
+    Permission.ADMISSIONS_UPDATE,
   ],
   ACCOUNTANT: [
     Permission.PAYMENTS_READ,

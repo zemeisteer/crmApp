@@ -44,10 +44,13 @@ const DEFAULT_ROLE_PERMISSIONS: Record<string, string[]> = {
     "students.read", "students.create", "students.update",
     "attendance.read", "attendance.mark",
     "groups.manage", "homework.manage", "exams.manage", "certificates.manage", "reports.export",
+    "admissions.read", "admissions.create", "admissions.update", "admissions.assign",
+    "admissions.convert", "admissions.analytics", "admissions.export", "admissions.manage",
   ],
   RECEPTIONIST: [
     "students.read", "students.create", "students.update",
     "attendance.read", "payments.read", "payments.create", "notifications.send",
+    "admissions.read", "admissions.create", "admissions.update",
   ],
   ACCOUNTANT: [
     "payments.read", "payments.create", "expenses.manage", "reports.export", "notifications.send",
