@@ -27,8 +27,11 @@ export class SubjectsController {
   constructor(private readonly subjectsService: SubjectsService) {}
 
   @Get()
-  findAll(@CurrentUser('tenantId') tenantId: string) {
-    return this.subjectsService.findAll(tenantId);
+  findAll(
+    @CurrentUser('tenantId') tenantId: string,
+    @Query('status') status?: 'ACTIVE' | 'ARCHIVED',
+  ) {
+    return this.subjectsService.findAll(tenantId, status);
   }
 
   @Post()
@@ -45,8 +48,9 @@ export class SubjectsController {
   findAllCourses(
     @CurrentUser('tenantId') tenantId: string,
     @Query('subjectId') subjectId?: string,
+    @Query('status') status?: 'ACTIVE' | 'ARCHIVED',
   ) {
-    return this.subjectsService.findAllCourses(tenantId, subjectId);
+    return this.subjectsService.findAllCourses(tenantId, subjectId, status);
   }
 
   @Post('courses')
@@ -61,6 +65,11 @@ export class SubjectsController {
     @Body() dto: UpdateCourseDto,
   ) {
     return this.subjectsService.updateCourse(tenantId, id, dto);
+  }
+
+  @Post('courses/:id/archive')
+  archiveCourse(@CurrentUser('tenantId') tenantId: string, @Param('id') id: string) {
+    return this.subjectsService.archiveCourse(tenantId, id);
   }
 
   @Delete('courses/:id')
@@ -80,6 +89,11 @@ export class SubjectsController {
     @Body() dto: UpdateSubjectDto,
   ) {
     return this.subjectsService.update(tenantId, id, dto);
+  }
+
+  @Post(':id/archive')
+  archive(@CurrentUser('tenantId') tenantId: string, @Param('id') id: string) {
+    return this.subjectsService.archive(tenantId, id);
   }
 
   @Delete(':id')

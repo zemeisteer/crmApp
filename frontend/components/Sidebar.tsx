@@ -262,7 +262,7 @@ export default function Sidebar({ open, onClose }: { open?: boolean; onClose?: (
             <path d="M6 12v5c0 1.5 2.7 3 6 3s6-1.5 6-3v-5" />
           </svg>
         </div>
-        <span style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 800, fontSize: 16.5, color: "#fff" }}>TalimCRM</span>
+        <span style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 800, fontSize: 16.5, color: "#fff" }}>CRMAPP</span>
       </Link>
 
       <div
@@ -376,7 +376,7 @@ export default function Sidebar({ open, onClose }: { open?: boolean; onClose?: (
         </div>
         <div>
           <div style={{ fontSize: 13, fontWeight: 600, color: "#fff" }}>{user?.fullName ?? "..."}</div>
-          <div style={{ fontSize: 11, color: "#71737C" }}>{tenant?.subdomain ? `${tenant.subdomain}.talimcrm.uz` : ""}</div>
+          <div style={{ fontSize: 11, color: "#71737C" }}>{tenant?.subdomain ? `${tenant.subdomain}.crmapp.com` : ""}</div>
         </div>
       </div>
       </div>

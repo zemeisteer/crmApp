@@ -1,4 +1,4 @@
-import { IsArray, IsNumber, IsOptional, IsString, ValidateNested } from 'class-validator';
+import { IsArray, IsIn, IsNumber, IsOptional, IsString, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class CreateSubjectDto {
@@ -16,6 +16,10 @@ export class CreateSubjectDto {
   @IsOptional()
   @IsString()
   color?: string;
+
+  @IsOptional()
+  @IsIn(['ACTIVE', 'ARCHIVED'])
+  status?: 'ACTIVE' | 'ARCHIVED';
 }
 
 export class UpdateSubjectDto {
@@ -34,6 +38,10 @@ export class UpdateSubjectDto {
   @IsOptional()
   @IsString()
   color?: string;
+
+  @IsOptional()
+  @IsIn(['ACTIVE', 'ARCHIVED'])
+  status?: 'ACTIVE' | 'ARCHIVED';
 }
 
 export class CreateCourseDto {
@@ -55,6 +63,10 @@ export class CreateCourseDto {
   @IsOptional()
   @IsString()
   price?: string;
+
+  @IsOptional()
+  @IsIn(['ACTIVE', 'ARCHIVED'])
+  status?: 'ACTIVE' | 'ARCHIVED';
 }
 
 export class UpdateCourseDto {
@@ -77,6 +89,10 @@ export class UpdateCourseDto {
   @IsOptional()
   @IsString()
   price?: string;
+
+  @IsOptional()
+  @IsIn(['ACTIVE', 'ARCHIVED'])
+  status?: 'ACTIVE' | 'ARCHIVED';
 }
 
 export class BulkSubjectItemDto {

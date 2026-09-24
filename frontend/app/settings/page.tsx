@@ -301,7 +301,7 @@ function SettingsContent() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `talimcrm-export-${new Date().toISOString().slice(0, 10)}.json`;
+    a.download = `crmapp-export-${new Date().toISOString().slice(0, 10)}.json`;
     document.body.appendChild(a);
     a.click();
     a.remove();
@@ -439,7 +439,7 @@ function SettingsContent() {
                     </div>
                     <div>
                       <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>{t("settings.subdomain")}</div>
-                      <input className="field-input" value={tenant?.subdomain ? `${tenant.subdomain}.talimcrm.uz` : ""} disabled style={{ opacity: 0.6 }} />
+                      <input className="field-input" value={tenant?.subdomain ? `${tenant.subdomain}.crmapp.com` : ""} disabled style={{ opacity: 0.6 }} />
                     </div>
                   </div>
                   <div>

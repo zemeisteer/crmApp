@@ -1,8 +1,8 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { and, eq, isNotNull, isNull, inArray } from 'drizzle-orm';
+import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { and, eq, isNotNull, isNull, inArray, or } from 'drizzle-orm';
 import { DB, Database } from '../db/db.module';
-import { students, enrollments, groups } from '../db/schema';
-import { CreateStudentDto, UpdateStudentDto } from './dto/student.dto';
+import { branches, enrollments, groups, organizationMemberships, studentGuardians, students, users } from '../db/schema';
+import { CreateStudentDto, LinkGuardianDto, UpdateStudentDto } from './dto/student.dto';
 import { AuditService } from '../audit/audit.service';
 import { WebhooksService } from '../webhooks/webhooks.service';
 
@@ -14,10 +14,18 @@ export class StudentsService {
     private readonly webhooks: WebhooksService,
   ) {}
 
-  findAll(tenantId: string) {
+  findAll(tenantId: string, filters?: { status?: string; branchId?: string }) {
+    const conditions = [eq(students.tenantId, tenantId), isNull(students.deletedAt)];
+    if (filters?.status) conditions.push(eq(students.status, filters.status as any));
+    if (filters?.branchId) conditions.push(eq(students.branchId, filters.branchId));
+
     return this.db.query.students.findMany({
-      where: and(eq(students.tenantId, tenantId), isNull(students.deletedAt)),
-      with: { enrollments: { with: { group: true } } },
+      where: and(...conditions),
+      with: {
+        enrollments: { with: { group: true } },
+        guardians: { with: { user: true } },
+        branch: true,
+      },
       orderBy: (s, { desc }) => desc(s.createdAt),
     });
   }
@@ -32,17 +40,30 @@ export class StudentsService {
   async findOne(tenantId: string, id: string) {
     const student = await this.db.query.students.findFirst({
       where: and(eq(students.id, id), eq(students.tenantId, tenantId), isNull(students.deletedAt)),
-      with: { enrollments: { with: { group: true } }, payments: true },
+      with: {
+        enrollments: { with: { group: true } },
+        guardians: { with: { user: true } },
+        branch: true,
+        payments: true,
+      },
     });
     if (!student) throw new NotFoundException("O'quvchi topilmadi");
     return student;
   }
 
   async create(tenantId: string, userId: string, dto: CreateStudentDto) {
+    if (dto.branchId) {
+      const branch = await this.db.query.branches.findFirst({
+        where: and(eq(branches.id, dto.branchId), eq(branches.tenantId, tenantId)),
+      });
+      if (!branch) throw new NotFoundException('Filial topilmadi');
+    }
+
     const [student] = await this.db
       .insert(students)
       .values({
         tenantId,
+        branchId: dto.branchId || null,
         fullName: dto.fullName,
         gender: dto.gender as any,
         phone: dto.phone,
@@ -51,6 +72,9 @@ export class StudentsService {
         address: dto.address,
         telegramUsername: dto.telegramUsername,
         startDate: dto.startDate ? new Date(dto.startDate) : undefined,
+        status: dto.status || 'ACTIVE',
+        notes: dto.notes || null,
+        avatarUrl: dto.avatarUrl || null,
       })
       .returning();
 
@@ -63,7 +87,15 @@ export class StudentsService {
       if (validGroupIds.length > 0) {
         await this.db
           .insert(enrollments)
-          .values(validGroupIds.map((groupId) => ({ studentId: student.id, groupId })))
+          .values(
+            validGroupIds.map((groupId) => ({
+              tenantId,
+              studentId: student.id,
+              groupId,
+              status: 'ACTIVE' as const,
+              joinedAt: new Date(),
+            })),
+          )
           .onConflictDoNothing();
       }
     }
@@ -74,13 +106,29 @@ export class StudentsService {
 
   async update(tenantId: string, userId: string, id: string, dto: UpdateStudentDto) {
     await this.findOne(tenantId, id);
+
+    if (dto.branchId) {
+      const branch = await this.db.query.branches.findFirst({
+        where: and(eq(branches.id, dto.branchId), eq(branches.tenantId, tenantId)),
+      });
+      if (!branch) throw new NotFoundException('Filial topilmadi');
+    }
+
     const [student] = await this.db
       .update(students)
       .set({
-        ...dto,
-        gender: dto.gender as any,
-        birthDate: dto.birthDate ? new Date(dto.birthDate) : undefined,
-        startDate: dto.startDate ? new Date(dto.startDate) : undefined,
+        ...(dto.fullName ? { fullName: dto.fullName } : {}),
+        ...(dto.gender !== undefined ? { gender: dto.gender as any } : {}),
+        ...(dto.phone !== undefined ? { phone: dto.phone } : {}),
+        ...(dto.parentPhone !== undefined ? { parentPhone: dto.parentPhone } : {}),
+        ...(dto.birthDate !== undefined ? { birthDate: dto.birthDate ? new Date(dto.birthDate) : undefined } : {}),
+        ...(dto.address !== undefined ? { address: dto.address } : {}),
+        ...(dto.telegramUsername !== undefined ? { telegramUsername: dto.telegramUsername } : {}),
+        ...(dto.startDate !== undefined ? { startDate: dto.startDate ? new Date(dto.startDate) : undefined } : {}),
+        ...(dto.branchId !== undefined ? { branchId: dto.branchId || null } : {}),
+        ...(dto.status !== undefined ? { status: dto.status } : {}),
+        ...(dto.notes !== undefined ? { notes: dto.notes || null } : {}),
+        ...(dto.avatarUrl !== undefined ? { avatarUrl: dto.avatarUrl || null } : {}),
         updatedAt: new Date(),
       })
       .where(and(eq(students.id, id), eq(students.tenantId, tenantId)))
@@ -117,15 +165,172 @@ export class StudentsService {
     });
     if (!group) throw new NotFoundException('Guruh topilmadi');
 
-    await this.db.insert(enrollments).values({ studentId, groupId }).onConflictDoNothing();
-    return { success: true };
+    const existing = await this.db.query.enrollments.findFirst({
+      where: and(
+        eq(enrollments.studentId, studentId),
+        eq(enrollments.groupId, groupId),
+      ),
+    });
+
+    if (existing && existing.status === 'ACTIVE') {
+      throw new BadRequestException("O'quvchi allaqachon ushbu guruhda faol ro'yxatdan o'tgan");
+    }
+
+    if (existing) {
+      const [reactivated] = await this.db
+        .update(enrollments)
+        .set({
+          tenantId,
+          status: 'ACTIVE',
+          joinedAt: new Date(),
+          leftAt: null,
+        })
+        .where(eq(enrollments.id, existing.id))
+        .returning();
+      return { success: true, enrollment: reactivated };
+    }
+
+    const [created] = await this.db
+      .insert(enrollments)
+      .values({
+        tenantId,
+        studentId,
+        groupId,
+        status: 'ACTIVE',
+        joinedAt: new Date(),
+      })
+      .returning();
+
+    return { success: true, enrollment: created };
   }
 
   async unenroll(tenantId: string, studentId: string, groupId: string) {
     await this.findOne(tenantId, studentId);
+    const existing = await this.db.query.enrollments.findFirst({
+      where: and(
+        eq(enrollments.studentId, studentId),
+        eq(enrollments.groupId, groupId),
+      ),
+    });
+
+    if (!existing) {
+      throw new NotFoundException("Guruhda a'zolik topilmadi");
+    }
+
+    const [updated] = await this.db
+      .update(enrollments)
+      .set({
+        status: 'CANCELLED',
+        leftAt: new Date(),
+      })
+      .where(eq(enrollments.id, existing.id))
+      .returning();
+
+    return { success: true, enrollment: updated };
+  }
+
+  // Guardians management
+  async getGuardians(tenantId: string, studentId: string) {
+    await this.findOne(tenantId, studentId);
+    return this.db.query.studentGuardians.findMany({
+      where: and(
+        eq(studentGuardians.tenantId, tenantId),
+        eq(studentGuardians.studentId, studentId),
+      ),
+      with: { user: true },
+    });
+  }
+
+  async linkGuardian(tenantId: string, studentId: string, dto: LinkGuardianDto) {
+    await this.findOne(tenantId, studentId);
+
+    let targetUserId = dto.userId;
+    if (!targetUserId && dto.phone) {
+      const cleanPhone = dto.phone.trim();
+      const user = await this.db.query.users.findFirst({
+        where: eq(users.phone, cleanPhone),
+      });
+
+      if (!user) {
+        throw new NotFoundException(`Ushbu telefon raqamli (${cleanPhone}) foydalanuvchi tizimda topilmadi`);
+      }
+      targetUserId = user.id;
+    }
+
+    if (!targetUserId) {
+      throw new BadRequestException("Ota-ona foydalanuvchi IDsi yoki telefon raqami ko'rsatilishi shart");
+    }
+
+    const guardianUser = await this.db.query.users.findFirst({
+      where: eq(users.id, targetUserId),
+    });
+    if (!guardianUser) {
+      throw new NotFoundException('Foydalanuvchi topilmadi');
+    }
+
+    const membership = await this.db.query.organizationMemberships.findFirst({
+      where: and(
+        eq(organizationMemberships.tenantId, tenantId),
+        eq(organizationMemberships.userId, targetUserId),
+      ),
+    });
+    if (!membership) {
+      await this.db.insert(organizationMemberships).values({
+        tenantId,
+        userId: targetUserId,
+        role: 'PARENT',
+        status: 'ACTIVE',
+      });
+    }
+
+    const existingLink = await this.db.query.studentGuardians.findFirst({
+      where: and(
+        eq(studentGuardians.tenantId, tenantId),
+        eq(studentGuardians.studentId, studentId),
+        eq(studentGuardians.userId, targetUserId),
+      ),
+    });
+
+    if (existingLink) {
+      const [updated] = await this.db
+        .update(studentGuardians)
+        .set({
+          relationship: dto.relationship || existingLink.relationship,
+          isPrimary: dto.isPrimary !== undefined ? dto.isPrimary : existingLink.isPrimary,
+        })
+        .where(eq(studentGuardians.id, existingLink.id))
+        .returning();
+      return updated;
+    }
+
+    const [created] = await this.db
+      .insert(studentGuardians)
+      .values({
+        tenantId,
+        studentId,
+        userId: targetUserId,
+        relationship: dto.relationship || 'Guardian',
+        isPrimary: dto.isPrimary ?? false,
+      })
+      .returning();
+
+    return created;
+  }
+
+  async unlinkGuardian(tenantId: string, studentId: string, guardianIdOrUserId: string) {
+    await this.findOne(tenantId, studentId);
     await this.db
-      .delete(enrollments)
-      .where(and(eq(enrollments.studentId, studentId), eq(enrollments.groupId, groupId)));
+      .delete(studentGuardians)
+      .where(
+        and(
+          eq(studentGuardians.tenantId, tenantId),
+          eq(studentGuardians.studentId, studentId),
+          or(
+            eq(studentGuardians.id, guardianIdOrUserId),
+            eq(studentGuardians.userId, guardianIdOrUserId),
+          ),
+        ),
+      );
     return { success: true };
   }
 }

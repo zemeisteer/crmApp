@@ -1,11 +1,12 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { and, desc, eq, isNull, like } from 'drizzle-orm';
 import { DB, Database } from '../db/db.module';
-import { expenses, payments, salaryPayments, students } from '../db/schema';
+import { expenses, invoices, paymentAllocations, payments, salaryPayments, students } from '../db/schema';
 import { CreatePaymentDto } from './dto/payment.dto';
 import { TelegramService } from '../telegram/telegram.service';
 import { WebhooksService } from '../webhooks/webhooks.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { AuditService } from '../audit/audit.service';
 
 export interface DebtorItem {
   studentId: string;
@@ -55,12 +56,13 @@ export class PaymentsService {
     private readonly telegram: TelegramService,
     private readonly webhooks: WebhooksService,
     private readonly notifications: NotificationsService,
+    private readonly audit: AuditService,
   ) {}
 
   findAll(tenantId: string) {
     return this.db.query.payments.findMany({
       where: eq(payments.tenantId, tenantId),
-      with: { student: true },
+      with: { student: true, invoice: true, allocations: true },
       orderBy: (p, { desc }) => desc(p.paidAt),
     });
   }
@@ -78,6 +80,12 @@ export class PaymentsService {
             },
           },
         },
+        invoice: true,
+        allocations: {
+          with: {
+            invoice: true,
+          },
+        },
       },
     });
     if (!payment) {
@@ -86,27 +94,110 @@ export class PaymentsService {
     return payment;
   }
 
-  async create(tenantId: string, dto: CreatePaymentDto) {
+  async create(tenantId: string, dto: CreatePaymentDto, userId?: string) {
     const student = await this.db.query.students.findFirst({
-      where: and(eq(students.id, dto.studentId), eq(students.tenantId, tenantId)),
+      where: and(
+        eq(students.id, dto.studentId),
+        eq(students.tenantId, tenantId),
+        isNull(students.deletedAt),
+      ),
     });
     if (!student) {
       throw new NotFoundException("O'quvchi topilmadi");
     }
+
+    let targetInvoice: typeof invoices.$inferSelect | undefined;
+
+    if (dto.invoiceId) {
+      const inv = await this.db.query.invoices.findFirst({
+        where: and(
+          eq(invoices.id, dto.invoiceId),
+          eq(invoices.tenantId, tenantId),
+          eq(invoices.studentId, dto.studentId),
+        ),
+      });
+      if (!inv) {
+        throw new NotFoundException("Hisob-faktura topilmadi");
+      }
+      if (inv.status === 'CANCELLED') {
+        throw new BadRequestException("Bekor qilingan hisob-faktura uchun to'lov qabul qilib bo'lmaydi");
+      }
+      if (dto.amount > inv.remainingAmount) {
+        throw new BadRequestException(
+          `To'lov summasi (${dto.amount}) hisob-fakturaning qoldiq summasidan (${inv.remainingAmount}) oshib ketishi mumkin emas`,
+        );
+      }
+      targetInvoice = inv;
+    } else {
+      const openInv = await this.db.query.invoices.findFirst({
+        where: and(
+          eq(invoices.tenantId, tenantId),
+          eq(invoices.studentId, dto.studentId),
+          eq(invoices.forMonth, dto.forMonth),
+        ),
+      });
+      if (openInv && openInv.status !== 'CANCELLED' && openInv.remainingAmount > 0) {
+        targetInvoice = openInv;
+      }
+    }
+
+    const receiptNumber = `RCP-${new Date().toISOString().slice(0, 7).replace('-', '')}-${Math.floor(100000 + Math.random() * 900000)}`;
 
     const [payment] = await this.db
       .insert(payments)
       .values({
         tenantId,
         studentId: dto.studentId,
+        invoiceId: targetInvoice?.id || dto.invoiceId || null,
         amount: dto.amount,
         discount: dto.discount ?? 0,
         method: (dto.method as any) ?? 'CASH',
         status: (dto.status as any) ?? 'PAID',
         forMonth: dto.forMonth,
+        receiptNumber,
         paidAt: dto.paidAt ? new Date(dto.paidAt) : new Date(),
       })
       .returning();
+
+    if (targetInvoice && payment.status === 'PAID') {
+      const allocAmount = Math.min(dto.amount, targetInvoice.remainingAmount);
+      await this.db.insert(paymentAllocations).values({
+        tenantId,
+        paymentId: payment.id,
+        invoiceId: targetInvoice.id,
+        amount: allocAmount,
+      });
+
+      const newPaid = targetInvoice.amountPaid + allocAmount;
+      const newRemaining = Math.max(0, targetInvoice.remainingAmount - allocAmount);
+      const newStatus = newRemaining === 0 ? 'PAID' : 'PARTIALLY_PAID';
+
+      await this.db
+        .update(invoices)
+        .set({
+          amountPaid: newPaid,
+          remainingAmount: newRemaining,
+          status: newStatus,
+          paidAt: newRemaining === 0 ? new Date() : targetInvoice.paidAt,
+          updatedAt: new Date(),
+        })
+        .where(eq(invoices.id, targetInvoice.id));
+    }
+
+    this.audit.log({
+      tenantId,
+      userId: userId || null,
+      action: 'create',
+      entityType: 'payment',
+      entityId: payment.id,
+      meta: {
+        amount: payment.amount,
+        method: payment.method,
+        studentId: payment.studentId,
+        invoiceId: targetInvoice?.id || dto.invoiceId,
+        receiptNumber: payment.receiptNumber,
+      },
+    });
 
     if (payment.status === 'PAID') {
       void this.notifications.notifyPaymentReceived(

@@ -8,7 +8,7 @@ import { StaffService } from './staff.service';
 import { CreateStaffDto, UpdateStaffDto } from './dto/staff.dto';
 
 @UseGuards(JwtAuthGuard, RolesGuard, TrialGuard)
-@Roles('ADMIN')
+@Roles('ADMIN', 'OWNER')
 @Controller('staff')
 export class StaffController {
   constructor(private readonly service: StaffService) {}

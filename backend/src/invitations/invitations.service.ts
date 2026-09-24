@@ -1,8 +1,10 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Inject,
   Injectable,
   NotFoundException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import * as crypto from 'crypto';
 import * as bcrypt from 'bcryptjs';
@@ -110,24 +112,7 @@ export class InvitationsService {
       where: eq(tenants.id, invitation.tenantId),
     });
 
-    let existingUser = false;
-    let existingUserName: string | null = null;
-
-    if (invitation.email || invitation.phone) {
-      const conditions = [];
-      if (invitation.email) conditions.push(eq(users.email, invitation.email));
-      if (invitation.phone) conditions.push(eq(users.phone, invitation.phone));
-
-      const foundUser = await this.db.query.users.findFirst({
-        where: or(...conditions),
-      });
-
-      if (foundUser) {
-        existingUser = true;
-        existingUserName = foundUser.fullName;
-      }
-    }
-
+    // Security: Do NOT disclose whether this identity has an existing account to unauthenticated requests
     return {
       valid: true,
       role: invitation.role,
@@ -135,13 +120,11 @@ export class InvitationsService {
       phone: invitation.phone,
       tenantName: tenant?.name || 'Talim markazi',
       tenantSubdomain: tenant?.subdomain,
-      existingUser,
-      existingUserName,
       expiresAt: invitation.expiresAt,
     };
   }
 
-  async accept(rawToken: string, dto: AcceptInvitationDto) {
+  async accept(rawToken: string, dto: AcceptInvitationDto, authenticatedUserId?: string) {
     const tokenHash = this.hashToken(rawToken);
     const invitation = await this.db.query.invitations.findFirst({
       where: eq(invitations.tokenHash, tokenHash),
@@ -165,14 +148,38 @@ export class InvitationsService {
 
     // Check if user exists by email or phone
     const conditions = [];
-    if (invitation.email) conditions.push(eq(users.email, invitation.email));
-    if (invitation.phone) conditions.push(eq(users.phone, invitation.phone));
+    if (invitation.email) conditions.push(eq(users.email, invitation.email.toLowerCase().trim()));
+    if (invitation.phone) conditions.push(eq(users.phone, invitation.phone.trim()));
 
     let user = conditions.length > 0
       ? await this.db.query.users.findFirst({ where: or(...conditions) })
       : null;
 
     if (user) {
+      // SECURITY HARDENING:
+      // An invitation token alone MUST NOT authenticate an existing user.
+      // Require either:
+      // A. An authenticated session matching this user
+      // OR
+      // B. Explicit re-authentication using their existing password.
+      if (authenticatedUserId) {
+        if (authenticatedUserId !== user.id) {
+          throw new ForbiddenException(
+            "Ushbu taklifnoma boshqa hisob uchun mo'ljallangan. Iltimos, tegishli profil orqali kiring.",
+          );
+        }
+      } else {
+        if (!dto.password) {
+          throw new BadRequestException(
+            "Sizning profilingiz allaqachon mavjud. Taklifnomani qabul qilish uchun parolingizni kiriting.",
+          );
+        }
+        const isPasswordCorrect = await bcrypt.compare(dto.password, user.passwordHash);
+        if (!isPasswordCorrect) {
+          throw new UnauthorizedException("Parol noto'g'ri kiritildi");
+        }
+      }
+
       // Existing user joining a new organization
       // Check existing membership
       const existingMembership = await this.db.query.organizationMemberships.findFirst({
@@ -201,9 +208,9 @@ export class InvitationsService {
       }
     } else {
       // New user registering via invitation
-      if (!dto.fullName || !dto.password) {
+      if (!dto.fullName?.trim() || !dto.password || dto.password.length < 6) {
         throw new BadRequestException(
-          'Yangi foydalanuvchi uchun ism va parol kiritilishi shart',
+          'Yangi foydalanuvchi uchun ism va parol (kamida 6 ta belgi) kiritilishi shart',
         );
       }
 

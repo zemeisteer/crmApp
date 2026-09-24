@@ -1,4 +1,4 @@
-import { IsInt, IsOptional, IsString, Min } from 'class-validator';
+import { IsIn, IsInt, IsOptional, IsString, Min } from 'class-validator';
 
 export class CreateGroupDto {
   @IsString()
@@ -6,6 +6,14 @@ export class CreateGroupDto {
 
   @IsString()
   subject: string;
+
+  @IsOptional()
+  @IsString()
+  courseId?: string;
+
+  @IsOptional()
+  @IsIn(['PLANNED', 'ACTIVE', 'COMPLETED', 'ARCHIVED'])
+  status?: 'PLANNED' | 'ACTIVE' | 'COMPLETED' | 'ARCHIVED';
 
   @IsOptional()
   @IsString()
@@ -58,6 +66,8 @@ export class CreateGroupDto {
 export class UpdateGroupDto {
   @IsOptional() @IsString() name?: string;
   @IsOptional() @IsString() subject?: string;
+  @IsOptional() @IsString() courseId?: string;
+  @IsOptional() @IsIn(['PLANNED', 'ACTIVE', 'COMPLETED', 'ARCHIVED']) status?: 'PLANNED' | 'ACTIVE' | 'COMPLETED' | 'ARCHIVED';
   @IsOptional() @IsString() level?: string;
   @IsOptional() @IsString() teacherId?: string;
   @IsOptional() @IsString() branchId?: string;

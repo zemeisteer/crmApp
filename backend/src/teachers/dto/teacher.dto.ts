@@ -4,6 +4,7 @@ export class CreateTeacherDto {
   @IsString()
   fullName: string;
 
+  @IsOptional() @IsString() userId?: string;
   @IsOptional() @IsString() subject?: string;
   @IsOptional() @IsString() phone?: string;
   @IsOptional() @IsString() email?: string;
@@ -15,6 +16,7 @@ export class CreateTeacherDto {
 
 export class UpdateTeacherDto {
   @IsOptional() @IsString() fullName?: string;
+  @IsOptional() @IsString() userId?: string;
   @IsOptional() @IsString() subject?: string;
   @IsOptional() @IsString() phone?: string;
   @IsOptional() @IsString() email?: string;

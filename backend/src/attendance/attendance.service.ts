@@ -1,7 +1,7 @@
-import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { and, eq } from 'drizzle-orm';
+import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { and, eq, inArray, isNull } from 'drizzle-orm';
 import { DB, Database } from '../db/db.module';
-import { attendance, enrollments, groups, payments, students } from '../db/schema';
+import { attendance, enrollments, groups, payments, students, teachers } from '../db/schema';
 import { MarkAttendanceDto, QrCheckInDto, QueryAttendanceDto } from './dto/attendance.dto';
 import { TelegramService } from '../telegram/telegram.service';
 import { WebhooksService } from '../webhooks/webhooks.service';
@@ -16,12 +16,43 @@ export class AttendanceService {
     private readonly notifications: NotificationsService,
   ) {}
 
-  async mark(tenantId: string, dto: MarkAttendanceDto) {
+  async mark(tenantId: string, dto: MarkAttendanceDto, role?: string, userId?: string) {
     const group = await this.db.query.groups.findFirst({
-      where: and(eq(groups.id, dto.groupId), eq(groups.tenantId, tenantId)),
+      where: and(eq(groups.id, dto.groupId), eq(groups.tenantId, tenantId), isNull(groups.deletedAt)),
     });
     if (!group) {
       throw new NotFoundException('Guruh topilmadi');
+    }
+
+    if (role === 'TEACHER' && userId) {
+      const teacher = await this.db.query.teachers.findFirst({
+        where: and(eq(teachers.userId, userId), eq(teachers.tenantId, tenantId), isNull(teachers.deletedAt)),
+      });
+      if (!teacher || group.teacherId !== teacher.id) {
+        throw new ForbiddenException("Siz faqat o'zingizga biriktirilgan guruhlar uchun davomat kiritishingiz mumkin");
+      }
+    }
+
+    const studentIds = dto.entries.map((e) => e.studentId);
+    const activeEnrollments = await this.db.query.enrollments.findMany({
+      where: and(
+        eq(enrollments.groupId, dto.groupId),
+        inArray(enrollments.studentId, studentIds),
+        eq(enrollments.status, 'ACTIVE'),
+      ),
+      with: { student: true },
+    });
+
+    const validStudentIds = new Set(
+      activeEnrollments
+        .filter((e) => e.student && e.student.tenantId === tenantId && !e.student.deletedAt)
+        .map((e) => e.studentId),
+    );
+
+    for (const entry of dto.entries) {
+      if (!validStudentIds.has(entry.studentId)) {
+        throw new BadRequestException(`O'quvchi ${entry.studentId} ushbu guruhda faol emas yoki boshqa tenantga tegishli`);
+      }
     }
 
     const rows = await Promise.all(
@@ -76,21 +107,23 @@ export class AttendanceService {
 
   async qrCheckIn(tenantId: string, dto: QrCheckInDto) {
     let studentId = (dto.code || '').trim();
-    if (studentId.startsWith('TALIMCRM:STUDENT:')) {
+    if (studentId.startsWith('CRMAPP:STUDENT:')) {
+      studentId = studentId.replace('CRMAPP:STUDENT:', '');
+    } else if (studentId.startsWith('TALIMCRM:STUDENT:')) {
       studentId = studentId.replace('TALIMCRM:STUDENT:', '');
     } else if (studentId.startsWith('STUDENT_')) {
       studentId = studentId.replace('STUDENT_', '');
     }
 
     const student = await this.db.query.students.findFirst({
-      where: and(eq(students.id, studentId), eq(students.tenantId, tenantId)),
+      where: and(eq(students.id, studentId), eq(students.tenantId, tenantId), isNull(students.deletedAt)),
     });
     if (!student) {
       throw new NotFoundException("O'quvchi topilmadi");
     }
 
     const activeEnrollments = await this.db.query.enrollments.findMany({
-      where: eq(enrollments.studentId, student.id),
+      where: and(eq(enrollments.studentId, student.id), eq(enrollments.status, 'ACTIVE')),
       with: {
         group: true,
       },

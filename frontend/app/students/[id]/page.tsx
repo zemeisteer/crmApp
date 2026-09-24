@@ -627,7 +627,7 @@ function StudentDetailContent() {
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <span style={{ fontSize: 20 }}>🎓</span>
                 <div>
-                  <div style={{ fontWeight: 800, fontSize: 13, letterSpacing: "0.5px", textTransform: "uppercase" }}>TalimCRM Education</div>
+                  <div style={{ fontWeight: 800, fontSize: 13, letterSpacing: "0.5px", textTransform: "uppercase" }}>CRMAPP Education</div>
                   <div style={{ fontSize: 10, opacity: 0.75 }}>O&apos;quvchi Guvohnomasi</div>
                 </div>
               </div>
@@ -649,7 +649,7 @@ function StudentDetailContent() {
               <div style={{ background: "#fff", padding: 6, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 4px 6px -1px rgba(0,0,0,0.1)" }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={`https://api.qrserver.com/v1/create-qr-code/?size=120x120&margin=2&data=${encodeURIComponent(`TALIMCRM:STUDENT:${student.id}`)}`}
+                  src={`https://api.qrserver.com/v1/create-qr-code/?size=120x120&margin=2&data=${encodeURIComponent(`CRMAPP:STUDENT:${student.id}`)}`}
                   alt="Student QR Code"
                   width={110}
                   height={110}
@@ -660,7 +660,7 @@ function StudentDetailContent() {
 
             <div style={{ marginTop: 16, paddingTop: 10, borderTop: "1px solid rgba(255,255,255,0.15)", display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 10, opacity: 0.8 }}>
               <span>Darsga kirishda skaner qiling</span>
-              <span>talimcrm.uz</span>
+              <span>crmapp.com</span>
             </div>
           </div>
 

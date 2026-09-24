@@ -15,6 +15,8 @@ import {
   exportApi,
   notificationsApi,
   billingApi,
+  invoicesApi,
+  Invoice,
   Payment,
   Student,
   Branch,
@@ -104,7 +106,7 @@ const EXPENSE_CATEGORIES: { value: ExpenseCategory; labelKey: TranslationKey; co
   { value: "OTHER", labelKey: "payments.expenses.catOther", color: "#64748B" },
 ];
 
-type TabType = "history" | "debtors" | "expenses";
+type TabType = "history" | "debtors" | "invoices" | "expenses";
 type Period = "day" | "week" | "month" | "year";
 
 function localDayStr(d: Date) {
@@ -466,6 +468,12 @@ function PaymentsContent() {
   const [debtorSearch, setDebtorSearch] = useState("");
   const [debtorStatusFilter, setDebtorStatusFilter] = useState<string>("ALL");
 
+  // Invoices state
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [invoiceSearch, setInvoiceSearch] = useState("");
+  const [invoiceStatusFilter, setInvoiceStatusFilter] = useState("ALL");
+  const [generatingInvoices, setGeneratingInvoices] = useState(false);
+
   // Expenses & P&L state
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [financeSummary, setFinanceSummary] = useState<FinanceSummary | null>(null);
@@ -521,14 +529,16 @@ function PaymentsContent() {
       paymentsApi.debtors({ forMonth: selectedMonth }),
       paymentsApi.financeSummary(selectedMonth),
       expensesApi.list({ forMonth: selectedMonth }),
+      invoicesApi.list({ forMonth: selectedMonth }).catch(() => [] as Invoice[]),
     ])
-      .then(([p, s, b, d, fs, exp]) => {
+      .then(([p, s, b, d, fs, exp, invs]) => {
         setPayments(p);
         setStudents(s);
         setBranches(b);
         setDebtorsData(d);
         setFinanceSummary(fs);
         setExpenses(exp);
+        setInvoices(invs);
       })
       .finally(() => setLoading(false));
   }
@@ -673,6 +683,18 @@ function PaymentsContent() {
       return true;
     });
   }, [debtorsData, debtorStatusFilter, debtorSearch]);
+
+  const filteredInvoices = useMemo(() => {
+    return invoices.filter((inv) => {
+      if (invoiceStatusFilter !== "ALL" && inv.status !== invoiceStatusFilter) return false;
+      if (invoiceSearch) {
+        const q = invoiceSearch.toLowerCase();
+        const sName = studentName(inv.studentId).toLowerCase();
+        if (!sName.includes(q) && !(inv.forMonth || "").includes(q)) return false;
+      }
+      return true;
+    });
+  }, [invoices, invoiceStatusFilter, invoiceSearch, students]);
 
   // Filtered expenses
   const filteredExpenses = useMemo(() => {
@@ -879,6 +901,23 @@ function PaymentsContent() {
               )}
             </button>
             <button
+              onClick={() => setActiveTab("invoices")}
+              style={{
+                fontSize: 13,
+                fontWeight: 700,
+                padding: "7px 16px",
+                borderRadius: 8,
+                cursor: "pointer",
+                border: "none",
+                background: activeTab === "invoices" ? "#fff" : "transparent",
+                color: activeTab === "invoices" ? "#181A1F" : "#71737C",
+                boxShadow: activeTab === "invoices" ? "0 1px 3px rgba(18,19,26,0.08)" : "none",
+                transition: "all 0.15s ease",
+              }}
+            >
+              Hisob-fakturalar
+            </button>
+            <button
               onClick={() => setActiveTab("expenses")}
               style={{
                 fontSize: 13,
@@ -900,11 +939,47 @@ function PaymentsContent() {
 
         {/* Header Right Actions */}
         <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-          {(activeTab === "debtors" || activeTab === "expenses") && (
+          {(activeTab === "debtors" || activeTab === "expenses" || activeTab === "invoices") && (
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <span style={{ fontSize: 12, color: "#8A8D96", fontWeight: 600 }}>Oy:</span>
               <MonthPicker value={selectedMonth} onChange={setSelectedMonth} />
             </div>
+          )}
+
+          {activeTab === "invoices" && (
+            <button
+              className="btn"
+              onClick={async () => {
+                if (!confirm(`${selectedMonth} oyi uchun barcha o'quvchilarga hisob-fakturalar shakllantirilsinmi?`)) return;
+                setGeneratingInvoices(true);
+                try {
+                  const res = await invoicesApi.generateMonthly(selectedMonth);
+                  alert(`${res.generatedCount} ta hisob-faktura shakllantirildi!`);
+                  loadAll();
+                } catch (err) {
+                  alert(err instanceof ApiError ? err.message : "Xatolik");
+                } finally {
+                  setGeneratingInvoices(false);
+                }
+              }}
+              disabled={generatingInvoices}
+              style={{
+                background: ACCENT,
+                color: "#fff",
+                border: "none",
+                fontSize: 13,
+                fontWeight: 700,
+                padding: "8px 16px",
+                borderRadius: 9,
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                cursor: "pointer",
+              }}
+            >
+              <span>⚡</span>
+              <span>{generatingInvoices ? "Shakllantirilmoqda..." : "Oylik hisob-fakturalar"}</span>
+            </button>
           )}
 
           {activeTab === "history" && (
@@ -1574,7 +1649,130 @@ function PaymentsContent() {
         )}
 
         {/* ========================================================================= */}
-        {/* TAB 3: EXPENSES & CASH FLOW (P&L) (Master Spec Section 24)                 */}
+        {/* TAB 3: INVOICES (Billing & Tuition Ledger)                                */}
+        {/* ========================================================================= */}
+        {activeTab === "invoices" && (
+          <>
+            {/* Top Invoices Cards */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0,1fr))", gap: 16 }}>
+              <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 14, padding: 18 }}>
+                <div style={{ fontSize: 12, color: "#8A8D96" }}>Jami hisob-fakturalar</div>
+                <div style={{ fontSize: 22, fontWeight: 800, fontFamily: "'Manrope', sans-serif", marginTop: 4 }}>
+                  {formatMoney(invoices.reduce((s, inv) => s + inv.amount, 0))} {t("common.sumUnit")}
+                </div>
+              </div>
+              <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 14, padding: 18 }}>
+                <div style={{ fontSize: 12, color: "#8A8D96" }}>To'langan summa</div>
+                <div style={{ fontSize: 22, fontWeight: 800, fontFamily: "'Manrope', sans-serif", marginTop: 4, color: "#10B981" }}>
+                  {formatMoney(invoices.reduce((s, inv) => s + inv.amountPaid, 0))} {t("common.sumUnit")}
+                </div>
+              </div>
+              <div style={{ background: invoices.some((i) => i.remainingAmount > 0) ? "#FEF2F2" : "#fff", border: `1px solid ${invoices.some((i) => i.remainingAmount > 0) ? "#FCA5A5" : "#EAE8E2"}`, borderRadius: 14, padding: 18 }}>
+                <div style={{ fontSize: 12, color: invoices.some((i) => i.remainingAmount > 0) ? "#B91C1C" : "#8A8D96" }}>Qoldiq qarzdorlik</div>
+                <div style={{ fontSize: 22, fontWeight: 800, fontFamily: "'Manrope', sans-serif", marginTop: 4, color: "#DC2626" }}>
+                  {formatMoney(invoices.reduce((s, inv) => s + (inv.status !== "CANCELLED" ? inv.remainingAmount : 0), 0))} {t("common.sumUnit")}
+                </div>
+              </div>
+              <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 14, padding: 18 }}>
+                <div style={{ fontSize: 12, color: "#8A8D96" }}>Muddati o'tganlar</div>
+                <div style={{ fontSize: 22, fontWeight: 800, fontFamily: "'Manrope', sans-serif", marginTop: 4, color: "#F59E0B" }}>
+                  {invoices.filter((i) => i.status === "OVERDUE").length} ta
+                </div>
+              </div>
+            </div>
+
+            {/* Filter Bar */}
+            <div style={{ display: "flex", gap: 12, alignItems: "center", marginTop: 20, marginBottom: 16 }}>
+              <input
+                type="text"
+                placeholder="O'quvchi ismi yoki oy bo'yicha qidirish..."
+                className="field-input"
+                value={invoiceSearch}
+                onChange={(e) => setInvoiceSearch(e.target.value)}
+                style={{ maxWidth: 300 }}
+              />
+              <Select
+                options={[
+                  { value: "ALL", label: "Barcha holatlar" },
+                  { value: "OPEN", label: "Kutilmoqda (Ochiq)" },
+                  { value: "PARTIALLY_PAID", label: "Qisman to'langan" },
+                  { value: "PAID", label: "To'langan" },
+                  { value: "OVERDUE", label: "Muddati o'tgan" },
+                  { value: "CANCELLED", label: "Bekor qilingan" },
+                ]}
+                value={invoiceStatusFilter}
+                onChange={setInvoiceStatusFilter}
+                style={{ width: 190 }}
+              />
+            </div>
+
+            {/* Invoices Table */}
+            {filteredInvoices.length === 0 ? (
+              <div style={{ color: "#8A8D96", fontSize: 14, background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 32, textAlign: "center" }}>
+                Hisob-fakturalar topilmadi. Yuqoridagi "Oylik hisob-fakturalar" tugmasi orqali avtomatik shakllantirishingiz mumkin.
+              </div>
+            ) : (
+              <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, overflow: "hidden" }}>
+                <table>
+                  <thead>
+                    <tr>
+                      <th style={{ paddingTop: 16 }}>O'quvchi</th>
+                      <th style={{ paddingTop: 16 }}>Guruh / Tavsif</th>
+                      <th style={{ paddingTop: 16 }}>Oy</th>
+                      <th style={{ paddingTop: 16 }}>Umumiy summa</th>
+                      <th style={{ paddingTop: 16 }}>To'langan</th>
+                      <th style={{ paddingTop: 16 }}>Qoldiq</th>
+                      <th style={{ paddingTop: 16 }}>Muddati</th>
+                      <th style={{ paddingTop: 16 }}>Holat</th>
+                      <th style={{ paddingTop: 16, textAlign: "right" }}>Amal</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredInvoices.map((inv) => (
+                      <tr key={inv.id}>
+                        <td style={{ fontWeight: 700 }}>{studentName(inv.studentId)}</td>
+                        <td>{inv.enrollment?.group?.name || inv.description || "—"}</td>
+                        <td>{inv.forMonth}</td>
+                        <td style={{ fontWeight: 700 }}>{formatMoney(inv.amount)} {t("common.sumUnit")}</td>
+                        <td style={{ fontWeight: 600, color: inv.amountPaid > 0 ? "#10B981" : "#8A8D96" }}>
+                          {formatMoney(inv.amountPaid)} {t("common.sumUnit")}
+                        </td>
+                        <td style={{ fontWeight: 800, color: inv.remainingAmount > 0 ? "#DC2626" : "#8A8D96" }}>
+                          {formatMoney(inv.remainingAmount)} {t("common.sumUnit")}
+                        </td>
+                        <td>{new Date(inv.dueDate).toLocaleDateString(lang === "UZ" ? "uz-UZ" : "ru-RU", { day: "numeric", month: "short" })}</td>
+                        <td>
+                          <span className={`badge ${inv.status === "PAID" ? "badge-success" : inv.status === "OVERDUE" ? "badge-danger" : inv.status === "PARTIALLY_PAID" ? "badge-warning" : "badge-neutral"}`}>
+                            {inv.status === "PAID" ? "To'langan" : inv.status === "PARTIALLY_PAID" ? "Qisman to'langan" : inv.status === "OVERDUE" ? "Muddati o'tgan" : inv.status === "CANCELLED" ? "Bekor qilingan" : "Ochiq"}
+                          </span>
+                        </td>
+                        <td style={{ textAlign: "right" }}>
+                          {inv.status !== "PAID" && inv.status !== "CANCELLED" && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setStudentId(inv.studentId);
+                                setAmount(String(inv.remainingAmount));
+                                setForMonth(inv.forMonth);
+                                setModalOpen(true);
+                              }}
+                              style={{ background: "#10B981", color: "#fff", border: "none", padding: "6px 12px", borderRadius: 7, fontSize: 12, fontWeight: 700, cursor: "pointer" }}
+                            >
+                              To'lash
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </>
+        )}
+
+        {/* ========================================================================= */}
+        {/* TAB 4: EXPENSES & CASH FLOW (P&L) (Master Spec Section 24)                 */}
         {/* ========================================================================= */}
         {activeTab === "expenses" && (
           <>

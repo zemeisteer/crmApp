@@ -12,7 +12,7 @@ export class AuditService {
   log(entry: {
     tenantId: string | null;
     userId: string | null;
-    action: 'create' | 'update' | 'delete' | 'restore';
+    action: 'create' | 'update' | 'delete' | 'restore' | 'switch_workspace' | string;
     entityType: string;
     entityId: string;
     meta?: unknown;

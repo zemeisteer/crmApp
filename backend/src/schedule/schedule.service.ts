@@ -1,7 +1,7 @@
 import { ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { and, eq, ne, isNull } from 'drizzle-orm';
 import { DB, Database } from '../db/db.module';
-import { groups, rooms, schedules } from '../db/schema';
+import { groups, rooms, schedules, teachers } from '../db/schema';
 import { CreateRoomDto, UpdateRoomDto } from './dto/room.dto';
 import { CheckConflictDto, CreateScheduleDto, UpdateScheduleDto } from './dto/schedule.dto';
 
@@ -252,6 +252,20 @@ export class ScheduleService {
     });
     if (!group) throw new NotFoundException('Guruh topilmadi');
 
+    if (dto.teacherId) {
+      const teacher = await this.db.query.teachers.findFirst({
+        where: and(eq(teachers.id, dto.teacherId), eq(teachers.tenantId, tenantId), isNull(teachers.deletedAt)),
+      });
+      if (!teacher) throw new NotFoundException("O'qituvchi topilmadi");
+    }
+
+    if (dto.roomId) {
+      const room = await this.db.query.rooms.findFirst({
+        where: and(eq(rooms.id, dto.roomId), eq(rooms.tenantId, tenantId)),
+      });
+      if (!room) throw new NotFoundException('Xona topilmadi');
+    }
+
     const teacherId = dto.teacherId || group.teacherId || null;
     const branchId = dto.branchId || group.branchId || null;
 
@@ -299,6 +313,27 @@ export class ScheduleService {
 
   async updateSchedule(tenantId: string, id: string, dto: UpdateScheduleDto) {
     const current = await this.findOneSchedule(tenantId, id);
+
+    if (dto.groupId) {
+      const group = await this.db.query.groups.findFirst({
+        where: and(eq(groups.id, dto.groupId), eq(groups.tenantId, tenantId), isNull(groups.deletedAt)),
+      });
+      if (!group) throw new NotFoundException('Guruh topilmadi');
+    }
+
+    if (dto.teacherId) {
+      const teacher = await this.db.query.teachers.findFirst({
+        where: and(eq(teachers.id, dto.teacherId), eq(teachers.tenantId, tenantId), isNull(teachers.deletedAt)),
+      });
+      if (!teacher) throw new NotFoundException("O'qituvchi topilmadi");
+    }
+
+    if (dto.roomId) {
+      const room = await this.db.query.rooms.findFirst({
+        where: and(eq(rooms.id, dto.roomId), eq(rooms.tenantId, tenantId)),
+      });
+      if (!room) throw new NotFoundException('Xona topilmadi');
+    }
 
     const groupId = dto.groupId ?? current.groupId;
     const teacherId = dto.teacherId !== undefined ? dto.teacherId : current.teacherId;

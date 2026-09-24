@@ -1,4 +1,4 @@
-import { IsArray, IsIn, IsOptional, IsString } from 'class-validator';
+import { IsArray, IsBoolean, IsIn, IsOptional, IsString } from 'class-validator';
 
 export class CreateStudentDto {
   @IsString()
@@ -11,6 +11,10 @@ export class CreateStudentDto {
   @IsOptional() @IsString() address?: string;
   @IsOptional() @IsString() telegramUsername?: string;
   @IsOptional() @IsString() startDate?: string;
+  @IsOptional() @IsString() branchId?: string;
+  @IsOptional() @IsIn(['ACTIVE', 'PAUSED', 'GRADUATED', 'LEFT']) status?: 'ACTIVE' | 'PAUSED' | 'GRADUATED' | 'LEFT';
+  @IsOptional() @IsString() notes?: string;
+  @IsOptional() @IsString() avatarUrl?: string;
   @IsOptional() @IsString() groupId?: string;
   @IsOptional() @IsArray() @IsString({ each: true }) groupIds?: string[];
 }
@@ -24,4 +28,17 @@ export class UpdateStudentDto {
   @IsOptional() @IsString() address?: string;
   @IsOptional() @IsString() telegramUsername?: string;
   @IsOptional() @IsString() startDate?: string;
+  @IsOptional() @IsString() branchId?: string;
+  @IsOptional() @IsIn(['ACTIVE', 'PAUSED', 'GRADUATED', 'LEFT']) status?: 'ACTIVE' | 'PAUSED' | 'GRADUATED' | 'LEFT';
+  @IsOptional() @IsString() notes?: string;
+  @IsOptional() @IsString() avatarUrl?: string;
 }
+
+export class LinkGuardianDto {
+  @IsOptional() @IsString() userId?: string;
+  @IsOptional() @IsString() phone?: string;
+  @IsOptional() @IsString() fullName?: string;
+  @IsOptional() @IsString() relationship?: string;
+  @IsOptional() @IsBoolean() isPrimary?: boolean;
+}
+

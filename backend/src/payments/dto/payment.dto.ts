@@ -26,5 +26,9 @@ export class CreatePaymentDto {
 
   @IsOptional()
   @IsString()
+  invoiceId?: string;
+
+  @IsOptional()
+  @IsString()
   paidAt?: string;
 }

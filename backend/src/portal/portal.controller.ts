@@ -9,6 +9,10 @@ import {
 import { PortalService } from './portal.service';
 import { PortalAuthGuard } from './portal-auth.guard';
 import { PortalUser, PortalUserPayload } from './portal-user.decorator';
+import { JwtAuthGuard } from '../common/jwt-auth.guard';
+import { RolesGuard } from '../common/roles.guard';
+import { CurrentUser } from '../common/current-user.decorator';
+import { Roles } from '../common/roles.decorator';
 
 @Controller('portal')
 export class PortalController {
@@ -74,6 +78,12 @@ export class PortalController {
   }
 
   @UseGuards(PortalAuthGuard)
+  @Get('invoices')
+  getInvoices(@PortalUser() user: PortalUserPayload) {
+    return this.service.getInvoices(user.studentId, user.tenantId);
+  }
+
+  @UseGuards(PortalAuthGuard)
   @Get('payments')
   getPayments(@PortalUser() user: PortalUserPayload) {
     return this.service.getPayments(user.studentId, user.tenantId);
@@ -83,7 +93,7 @@ export class PortalController {
   @Post('payments/checkout-link')
   createCheckoutLink(
     @PortalUser() user: PortalUserPayload,
-    @Body() body: { provider: 'CLICK' | 'PAYME'; amount?: number; forMonth?: string },
+    @Body() body: { provider: 'CLICK' | 'PAYME'; amount?: number; forMonth?: string; invoiceId?: string },
   ) {
     return this.service.createCheckoutLink(user.studentId, user.tenantId, body);
   }
@@ -92,5 +102,84 @@ export class PortalController {
   @Get('announcements')
   getAnnouncements(@PortalUser() user: PortalUserPayload) {
     return this.service.getAnnouncements(user.studentId, user.tenantId);
+  }
+
+  // ==================== PARENT PORTAL ====================
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('PARENT', 'ADMIN', 'OWNER')
+  @Get('parent/students')
+  getParentStudents(
+    @CurrentUser('tenantId') tenantId: string,
+    @CurrentUser('sub') userId: string,
+  ) {
+    return this.service.getParentStudents(tenantId, userId);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('PARENT', 'ADMIN', 'OWNER')
+  @Get('parent/students/:studentId/overview')
+  getParentStudentOverview(
+    @CurrentUser('tenantId') tenantId: string,
+    @CurrentUser('sub') userId: string,
+    @Param('studentId') studentId: string,
+  ) {
+    return this.service.getParentStudentOverview(tenantId, userId, studentId);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('PARENT', 'ADMIN', 'OWNER')
+  @Get('parent/students/:studentId/schedule')
+  getParentStudentSchedule(
+    @CurrentUser('tenantId') tenantId: string,
+    @CurrentUser('sub') userId: string,
+    @Param('studentId') studentId: string,
+  ) {
+    return this.service.getParentStudentSchedule(tenantId, userId, studentId);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('PARENT', 'ADMIN', 'OWNER')
+  @Get('parent/students/:studentId/attendance')
+  getParentStudentAttendance(
+    @CurrentUser('tenantId') tenantId: string,
+    @CurrentUser('sub') userId: string,
+    @Param('studentId') studentId: string,
+  ) {
+    return this.service.getParentStudentAttendance(tenantId, userId, studentId);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('PARENT', 'ADMIN', 'OWNER')
+  @Get('parent/students/:studentId/payments')
+  getParentStudentPayments(
+    @CurrentUser('tenantId') tenantId: string,
+    @CurrentUser('sub') userId: string,
+    @Param('studentId') studentId: string,
+  ) {
+    return this.service.getParentStudentPayments(tenantId, userId, studentId);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('PARENT', 'ADMIN', 'OWNER')
+  @Get('parent/students/:studentId/invoices')
+  getParentStudentInvoices(
+    @CurrentUser('tenantId') tenantId: string,
+    @CurrentUser('sub') userId: string,
+    @Param('studentId') studentId: string,
+  ) {
+    return this.service.getParentStudentInvoices(tenantId, userId, studentId);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('PARENT', 'ADMIN', 'OWNER')
+  @Post('parent/students/:studentId/checkout-link')
+  createParentCheckoutLink(
+    @CurrentUser('tenantId') tenantId: string,
+    @CurrentUser('sub') userId: string,
+    @Param('studentId') studentId: string,
+    @Body() body: { provider: 'CLICK' | 'PAYME'; amount?: number; forMonth?: string; invoiceId?: string },
+  ) {
+    return this.service.createParentCheckoutLink(tenantId, userId, studentId, body);
   }
 }

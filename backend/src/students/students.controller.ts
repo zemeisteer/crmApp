@@ -6,6 +6,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../common/jwt-auth.guard';
@@ -14,7 +15,7 @@ import { TrialGuard } from '../common/trial.guard';
 import { Roles } from '../common/roles.decorator';
 import { CurrentUser } from '../common/current-user.decorator';
 import { StudentsService } from './students.service';
-import { CreateStudentDto, UpdateStudentDto } from './dto/student.dto';
+import { CreateStudentDto, LinkGuardianDto, UpdateStudentDto } from './dto/student.dto';
 
 @UseGuards(JwtAuthGuard, RolesGuard, TrialGuard)
 @Controller('students')
@@ -22,8 +23,12 @@ export class StudentsController {
   constructor(private readonly service: StudentsService) {}
 
   @Get()
-  findAll(@CurrentUser('tenantId') tenantId: string) {
-    return this.service.findAll(tenantId);
+  findAll(
+    @CurrentUser('tenantId') tenantId: string,
+    @Query('status') status?: string,
+    @Query('branchId') branchId?: string,
+  ) {
+    return this.service.findAll(tenantId, { status, branchId });
   }
 
   @Roles('ADMIN')
@@ -96,5 +101,33 @@ export class StudentsController {
     @Param('groupId') groupId: string,
   ) {
     return this.service.unenroll(tenantId, id, groupId);
+  }
+
+  @Get(':id/guardians')
+  getGuardians(
+    @CurrentUser('tenantId') tenantId: string,
+    @Param('id') id: string,
+  ) {
+    return this.service.getGuardians(tenantId, id);
+  }
+
+  @Roles('ADMIN')
+  @Post(':id/guardians')
+  linkGuardian(
+    @CurrentUser('tenantId') tenantId: string,
+    @Param('id') id: string,
+    @Body() dto: LinkGuardianDto,
+  ) {
+    return this.service.linkGuardian(tenantId, id, dto);
+  }
+
+  @Roles('ADMIN')
+  @Delete(':id/guardians/:guardianId')
+  unlinkGuardian(
+    @CurrentUser('tenantId') tenantId: string,
+    @Param('id') id: string,
+    @Param('guardianId') guardianId: string,
+  ) {
+    return this.service.unlinkGuardian(tenantId, id, guardianId);
   }
 }

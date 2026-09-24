@@ -171,7 +171,7 @@ function AdminContent() {
                 {pageItems.map((tn) => (
                   <tr key={tn.id}>
                     <td style={{ fontWeight: 600 }}>{tn.name}</td>
-                    <td>{tn.subdomain}.talimcrm.uz</td>
+                    <td>{tn.subdomain}.crmapp.com</td>
                     <td>
                       <select
                         className="field-input"

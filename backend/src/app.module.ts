@@ -37,6 +37,7 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { InvitationsModule } from './invitations/invitations.module';
 import { SubjectsModule } from './subjects/subjects.module';
 import { OnboardingModule } from './onboarding/onboarding.module';
+import { InvoicesModule } from './invoices/invoices.module';
 
 @Module({
   imports: [
@@ -77,6 +78,7 @@ import { OnboardingModule } from './onboarding/onboarding.module';
     InvitationsModule,
     SubjectsModule,
     OnboardingModule,
+    InvoicesModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })

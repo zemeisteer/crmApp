@@ -27,7 +27,7 @@ export default function InviteAcceptPage({
   const resolvedParams = use(params);
   const token = resolvedParams.token;
   const router = useRouter();
-  const { setAuthSession } = useAuth();
+  const { user: activeUser, setAuthSession } = useAuth();
 
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -41,11 +41,10 @@ export default function InviteAcceptPage({
     phone: string | null;
     tenantName: string;
     tenantSubdomain: string;
-    existingUser: boolean;
-    existingUserName: string | null;
+    expiresAt: string;
   } | null>(null);
 
-  // Form for new users
+  // Form for users
   const [fullName, setFullName] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -55,9 +54,6 @@ export default function InviteAcceptPage({
       try {
         const res = await invitationsApi.validate(token);
         setInviteData(res);
-        if (res.existingUserName) {
-          setFullName(res.existingUserName);
-        }
       } catch (err) {
         setError(err instanceof ApiError ? err.message : "Taklifnoma yaroqsiz yoki muddati tugagan");
       } finally {
@@ -69,16 +65,16 @@ export default function InviteAcceptPage({
 
   async function handleAccept(e: React.FormEvent) {
     e.preventDefault();
-    if (!inviteData?.existingUser) {
+    if (!activeUser) {
       if (!fullName.trim()) {
         setError("Iltimos, to'liq ism-familiyangizni kiriting");
         return;
       }
-      if (password.length < 8) {
-        setError("Parol kamida 8 ta belgidan iborat bo'lishi kerak");
+      if (password.length < 6) {
+        setError("Parol kamida 6 ta belgidan iborat bo'lishi kerak");
         return;
       }
-      if (password !== confirmPassword) {
+      if (confirmPassword && password !== confirmPassword) {
         setError("Kiritilgan parollar bir-biriga mos kelmadi");
         return;
       }
@@ -88,8 +84,8 @@ export default function InviteAcceptPage({
     setSubmitting(true);
     try {
       const res = await invitationsApi.accept(token, {
-        fullName: inviteData?.existingUser ? undefined : fullName.trim(),
-        password: inviteData?.existingUser ? undefined : password,
+        fullName: fullName.trim() || undefined,
+        password: password || undefined,
       });
 
       // Session established with correct tenant context and role!
@@ -233,8 +229,8 @@ export default function InviteAcceptPage({
         )}
 
         <form onSubmit={handleAccept} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          {inviteData?.existingUser ? (
-            /* Existing user join flow */
+          {activeUser ? (
+            /* Active user join flow */
             <div
               style={{
                 background: "#F8FAFC",
@@ -247,10 +243,10 @@ export default function InviteAcceptPage({
               }}
             >
               <div style={{ fontSize: 14.5, fontWeight: 700, color: "#1E293B" }}>
-                Xush kelibsiz, {inviteData.existingUserName || inviteData.email || inviteData.phone}!
+                Xush kelibsiz, {activeUser.fullName || activeUser.email}!
               </div>
               <div style={{ fontSize: 13, color: "#64748B", lineHeight: 1.5 }}>
-                Sizning CRMAPP hisobingiz allaqachon mavjud. Yangi profil yaratilmaydi — markaz sizning mavjud profilingizga bog&apos;lanadi.
+                Siz tizimga {activeUser.email} sifatida kirdingiz. Yangi profil yaratilmaydi — markaz sizning mavjud profilingizga bog&apos;lanadi.
               </div>
             </div>
           ) : (

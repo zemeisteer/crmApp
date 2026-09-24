@@ -182,9 +182,11 @@ describe('StudentsService', () => {
     it('enrolls student into group', async () => {
       mockDb.query.students.findFirst.mockResolvedValue({ id: 'st-1' });
       mockDb.query.groups.findFirst.mockResolvedValue({ id: 'grp-1' });
+      mockDb.query.enrollments.findFirst.mockResolvedValue(null);
+      mockDb.insert().values().returning.mockResolvedValue([{ id: 'enr-1', status: 'ACTIVE' }]);
 
       const result = await service.enroll('tenant-1', 'st-1', 'grp-1');
-      expect(result).toEqual({ success: true });
+      expect(result.success).toBe(true);
       expect(mockDb.insert).toHaveBeenCalled();
     });
 
@@ -197,10 +199,12 @@ describe('StudentsService', () => {
 
     it('unenrolls student from group', async () => {
       mockDb.query.students.findFirst.mockResolvedValue({ id: 'st-1' });
+      mockDb.query.enrollments.findFirst.mockResolvedValue({ id: 'enr-1', status: 'ACTIVE' });
+      mockDb.update().set().where().returning.mockResolvedValue([{ id: 'enr-1', status: 'CANCELLED' }]);
 
       const result = await service.unenroll('tenant-1', 'st-1', 'grp-1');
-      expect(result).toEqual({ success: true });
-      expect(mockDb.delete).toHaveBeenCalled();
+      expect(result.success).toBe(true);
+      expect(mockDb.update).toHaveBeenCalled();
     });
   });
 });

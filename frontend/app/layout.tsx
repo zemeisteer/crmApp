@@ -4,7 +4,7 @@ import { AuthProvider } from "@/lib/auth-context";
 import { LanguageProvider } from "@/lib/i18n-context";
 
 export const metadata: Metadata = {
-  title: "TalimCRM",
+  title: "CRMAPP",
   description: "O'quv markazlar uchun boshqaruv tizimi",
 };
 

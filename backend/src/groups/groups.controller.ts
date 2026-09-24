@@ -27,8 +27,11 @@ export class GroupsController {
     @CurrentUser('tenantId') tenantId: string,
     @CurrentUser('role') role: string,
     @CurrentUser('sub') userId: string,
+    @Query('courseId') courseId?: string,
+    @Query('status') status?: string,
+    @Query('branchId') branchId?: string,
   ) {
-    return this.service.findAll(tenantId, role, userId);
+    return this.service.findAll(tenantId, role, userId, { courseId, status, branchId });
   }
 
   @Roles('ADMIN')
@@ -50,8 +53,13 @@ export class GroupsController {
   }
 
   @Get(':id')
-  findOne(@CurrentUser('tenantId') tenantId: string, @Param('id') id: string) {
-    return this.service.findOne(tenantId, id);
+  findOne(
+    @CurrentUser('tenantId') tenantId: string,
+    @CurrentUser('role') role: string,
+    @CurrentUser('sub') userId: string,
+    @Param('id') id: string,
+  ) {
+    return this.service.findOne(tenantId, id, role, userId);
   }
 
   @Roles('ADMIN')

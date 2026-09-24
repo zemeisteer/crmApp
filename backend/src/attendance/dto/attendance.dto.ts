@@ -5,7 +5,7 @@ export class AttendanceEntryDto {
   @IsString()
   studentId: string;
 
-  @IsIn(['PRESENT', 'ABSENT', 'LATE'])
+  @IsIn(['PRESENT', 'ABSENT', 'LATE', 'EXCUSED'])
   status: string;
 }
 

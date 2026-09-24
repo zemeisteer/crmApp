@@ -90,9 +90,20 @@ export const attendanceStatusEnum = pgEnum('attendance_status', [
 export const billingProviderEnum = pgEnum('billing_provider', ['CLICK', 'PAYME']);
 export const billingTxStatusEnum = pgEnum('billing_tx_status', [
   'CREATED',
+  'PENDING',
   'PAID',
+  'FAILED',
   'CANCELLED',
 ]);
+export const invoiceStatusEnum = pgEnum('invoice_status', [
+  'DRAFT',
+  'OPEN',
+  'PARTIALLY_PAID',
+  'PAID',
+  'OVERDUE',
+  'CANCELLED',
+]);
+
 
 export const expenseCategoryEnum = pgEnum('expense_category', [
   'RENT',
@@ -256,6 +267,7 @@ export const subjects = pgTable('subjects', {
   code: text('code'),
   color: text('color').default('#3B82F6'),
   description: text('description'),
+  status: text('status').notNull().default('ACTIVE'), // 'ACTIVE' | 'ARCHIVED'
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 }, (t) => ({
@@ -271,6 +283,7 @@ export const courses = pgTable('courses', {
   description: text('description'),
   durationMonths: integer('duration_months').default(3),
   price: text('price').default('0'),
+  status: text('status').notNull().default('ACTIVE'), // 'ACTIVE' | 'ARCHIVED'
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 }, (t) => ({
@@ -312,10 +325,12 @@ export const groups = pgTable('groups', {
   id: text('id').primaryKey().$defaultFn(() => createId()),
   tenantId: text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
   branchId: text('branch_id').references(() => branches.id),
+  courseId: text('course_id').references(() => courses.id, { onDelete: 'set null' }),
   name: text('name').notNull(),
   subject: text('subject').notNull(),
   level: text('level'),
   teacherId: text('teacher_id').references(() => teachers.id),
+  status: text('status').notNull().default('ACTIVE'), // 'PLANNED' | 'ACTIVE' | 'COMPLETED' | 'ARCHIVED'
   startDate: timestamp('start_date'),
   maxStudents: integer('max_students').notNull().default(20),
   schedule: text('schedule'),
@@ -329,11 +344,13 @@ export const groups = pgTable('groups', {
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 }, (t) => ({
   tenantIdx: index('groups_tenant_idx').on(t.tenantId),
+  courseIdx: index('groups_course_idx').on(t.courseId),
 }));
 
 export const students = pgTable('students', {
   id: text('id').primaryKey().$defaultFn(() => createId()),
   tenantId: text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  branchId: text('branch_id').references(() => branches.id, { onDelete: 'set null' }),
   fullName: text('full_name').notNull(),
   gender: genderEnum('gender'),
   phone: text('phone'),
@@ -342,36 +359,100 @@ export const students = pgTable('students', {
   address: text('address'),
   telegramUsername: text('telegram_username'),
   telegramChatId: text('telegram_chat_id'),
+  status: text('status').notNull().default('ACTIVE'), // 'ACTIVE' | 'PAUSED' | 'GRADUATED' | 'LEFT'
+  notes: text('notes'),
+  avatarUrl: text('avatar_url'),
   startDate: timestamp('start_date').notNull().defaultNow(),
   deletedAt: timestamp('deleted_at'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 }, (t) => ({
   tenantIdx: index('students_tenant_idx').on(t.tenantId),
+  branchIdx: index('students_branch_idx').on(t.branchId),
 }));
 
 export const enrollments = pgTable('enrollments', {
   id: text('id').primaryKey().$defaultFn(() => createId()),
+  tenantId: text('tenant_id').references(() => tenants.id, { onDelete: 'cascade' }),
   studentId: text('student_id').notNull().references(() => students.id, { onDelete: 'cascade' }),
   groupId: text('group_id').notNull().references(() => groups.id, { onDelete: 'cascade' }),
+  status: text('status').notNull().default('ACTIVE'), // 'ACTIVE' | 'PAUSED' | 'COMPLETED' | 'CANCELLED'
   joinedAt: timestamp('joined_at').notNull().defaultNow(),
+  leftAt: timestamp('left_at'),
 }, (t) => ({
+  tenantIdx: index('enrollments_tenant_idx').on(t.tenantId),
   uniq: uniqueIndex('enrollments_student_group_idx').on(t.studentId, t.groupId),
+}));
+
+export const studentGuardians = pgTable('student_guardians', {
+  id: text('id').primaryKey().$defaultFn(() => createId()),
+  tenantId: text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  studentId: text('student_id').notNull().references(() => students.id, { onDelete: 'cascade' }),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  relationship: text('relationship').notNull().default('PARENT'), // 'PARENT' | 'FATHER' | 'MOTHER' | 'GUARDIAN'
+  isPrimary: boolean('is_primary').notNull().default(false),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+}, (t) => ({
+  tenantIdx: index('student_guardians_tenant_idx').on(t.tenantId),
+  studentIdx: index('student_guardians_student_idx').on(t.studentId),
+  userIdx: index('student_guardians_user_idx').on(t.userId),
+  uniq: uniqueIndex('student_guardians_student_user_idx').on(t.studentId, t.userId),
+}));
+
+export const invoices = pgTable('invoices', {
+  id: text('id').primaryKey().$defaultFn(() => createId()),
+  tenantId: text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  studentId: text('student_id').notNull().references(() => students.id, { onDelete: 'cascade' }),
+  enrollmentId: text('enrollment_id').references(() => enrollments.id, { onDelete: 'set null' }),
+  amount: integer('amount').notNull(),
+  amountPaid: integer('amount_paid').notNull().default(0),
+  remainingAmount: integer('remaining_amount').notNull(),
+  currency: currencyEnum('currency').notNull().default('UZS'),
+  dueDate: timestamp('due_date').notNull(),
+  forMonth: text('for_month').notNull(),
+  description: text('description'),
+  status: invoiceStatusEnum('status').notNull().default('OPEN'),
+  paidAt: timestamp('paid_at'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+}, (t) => ({
+  tenantIdx: index('invoices_tenant_idx').on(t.tenantId),
+  studentIdx: index('invoices_student_idx').on(t.studentId),
+  statusIdx: index('invoices_status_idx').on(t.status),
+  monthIdx: index('invoices_month_idx').on(t.forMonth),
+}));
+
+export const paymentAllocations = pgTable('payment_allocations', {
+  id: text('id').primaryKey().$defaultFn(() => createId()),
+  tenantId: text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  paymentId: text('payment_id').notNull().references(() => payments.id, { onDelete: 'cascade' }),
+  invoiceId: text('invoice_id').notNull().references(() => invoices.id, { onDelete: 'cascade' }),
+  amount: integer('amount').notNull(),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+}, (t) => ({
+  tenantIdx: index('payment_allocations_tenant_idx').on(t.tenantId),
+  paymentIdx: index('payment_allocations_payment_idx').on(t.paymentId),
+  invoiceIdx: index('payment_allocations_invoice_idx').on(t.invoiceId),
+  uniq: uniqueIndex('payment_allocations_payment_invoice_uniq').on(t.paymentId, t.invoiceId),
 }));
 
 export const payments = pgTable('payments', {
   id: text('id').primaryKey().$defaultFn(() => createId()),
   tenantId: text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
   studentId: text('student_id').notNull().references(() => students.id, { onDelete: 'cascade' }),
+  invoiceId: text('invoice_id').references(() => invoices.id, { onDelete: 'set null' }),
   amount: integer('amount').notNull(),
   discount: integer('discount').notNull().default(0),
   method: paymentMethodEnum('method').notNull().default('CASH'),
   status: paymentStatusEnum('status').notNull().default('PAID'),
   forMonth: text('for_month').notNull(),
+  providerTxId: text('provider_tx_id'),
+  receiptNumber: text('receipt_number'),
   paidAt: timestamp('paid_at').notNull().defaultNow(),
   createdAt: timestamp('created_at').notNull().defaultNow(),
 }, (t) => ({
   tenantIdx: index('payments_tenant_idx').on(t.tenantId),
+  invoiceIdx: index('payments_invoice_idx').on(t.invoiceId),
 }));
 
 export const attendance = pgTable('attendance', {
@@ -406,6 +487,7 @@ export const billingTransactions = pgTable('billing_transactions', {
   id: text('id').primaryKey().$defaultFn(() => createId()),
   tenantId: text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
   studentId: text('student_id').notNull().references(() => students.id, { onDelete: 'cascade' }),
+  invoiceId: text('invoice_id').references(() => invoices.id, { onDelete: 'set null' }),
   provider: billingProviderEnum('provider').notNull(),
   providerTxId: text('provider_tx_id'),
   amount: integer('amount').notNull(),
@@ -417,6 +499,7 @@ export const billingTransactions = pgTable('billing_transactions', {
 }, (t) => ({
   tenantIdx: index('billing_tx_tenant_idx').on(t.tenantId),
   providerTxIdx: index('billing_tx_provider_tx_idx').on(t.provider, t.providerTxId),
+  invoiceIdx: index('billing_tx_invoice_idx').on(t.invoiceId),
 }));
 
 export const homework = pgTable('homework', {
@@ -772,6 +855,10 @@ export const tenantsRelations = relations(tenants, ({ many }) => ({
   rooms: many(rooms),
   schedules: many(schedules),
   expenses: many(expenses),
+  studentGuardians: many(studentGuardians),
+  enrollments: many(enrollments),
+  invoices: many(invoices),
+  paymentAllocations: many(paymentAllocations),
 }));
 
 export const leadsRelations = relations(leads, ({ one }) => ({
@@ -787,6 +874,7 @@ export const usersRelations = relations(users, ({ one, many }) => ({
   sessions: many(sessions),
   announcements: many(announcements),
   expenses: many(expenses),
+  guardianships: many(studentGuardians),
 }));
 
 export const organizationMembershipsRelations = relations(organizationMemberships, ({ one }) => ({
@@ -804,9 +892,10 @@ export const subjectsRelations = relations(subjects, ({ one, many }) => ({
   courses: many(courses),
 }));
 
-export const coursesRelations = relations(courses, ({ one }) => ({
+export const coursesRelations = relations(courses, ({ one, many }) => ({
   tenant: one(tenants, { fields: [courses.tenantId], references: [tenants.id] }),
   subject: one(subjects, { fields: [courses.subjectId], references: [subjects.id] }),
+  groups: many(groups),
 }));
 
 export const sessionsRelations = relations(sessions, ({ one }) => ({
@@ -857,6 +946,7 @@ export const groupsRelations = relations(groups, ({ one, many }) => ({
   tenant: one(tenants, { fields: [groups.tenantId], references: [tenants.id] }),
   teacher: one(teachers, { fields: [groups.teacherId], references: [teachers.id] }),
   branch: one(branches, { fields: [groups.branchId], references: [branches.id] }),
+  course: one(courses, { fields: [groups.courseId], references: [courses.id] }),
   enrollments: many(enrollments),
   attendance: many(attendance),
   homework: many(homework),
@@ -895,21 +985,50 @@ export const platformSubscriptionsRelations = relations(platformSubscriptions, (
 
 export const studentsRelations = relations(students, ({ one, many }) => ({
   tenant: one(tenants, { fields: [students.tenantId], references: [tenants.id] }),
+  branch: one(branches, { fields: [students.branchId], references: [branches.id] }),
   enrollments: many(enrollments),
   payments: many(payments),
+  invoices: many(invoices),
   attendance: many(attendance),
   certificates: many(certificates),
   attempts: many(examAttempts),
+  guardians: many(studentGuardians),
 }));
 
-export const enrollmentsRelations = relations(enrollments, ({ one }) => ({
+export const enrollmentsRelations = relations(enrollments, ({ one, many }) => ({
+  tenant: one(tenants, { fields: [enrollments.tenantId], references: [tenants.id] }),
   student: one(students, { fields: [enrollments.studentId], references: [students.id] }),
   group: one(groups, { fields: [enrollments.groupId], references: [groups.id] }),
+  invoices: many(invoices),
 }));
 
-export const paymentsRelations = relations(payments, ({ one }) => ({
+export const studentGuardiansRelations = relations(studentGuardians, ({ one }) => ({
+  tenant: one(tenants, { fields: [studentGuardians.tenantId], references: [tenants.id] }),
+  student: one(students, { fields: [studentGuardians.studentId], references: [students.id] }),
+  user: one(users, { fields: [studentGuardians.userId], references: [users.id] }),
+}));
+
+export const invoicesRelations = relations(invoices, ({ one, many }) => ({
+  tenant: one(tenants, { fields: [invoices.tenantId], references: [tenants.id] }),
+  student: one(students, { fields: [invoices.studentId], references: [students.id] }),
+  enrollment: one(enrollments, { fields: [invoices.enrollmentId], references: [enrollments.id] }),
+  allocations: many(paymentAllocations),
+  payments: many(payments),
+  billingTransactions: many(billingTransactions),
+}));
+
+export const paymentAllocationsRelations = relations(paymentAllocations, ({ one }) => ({
+  tenant: one(tenants, { fields: [paymentAllocations.tenantId], references: [tenants.id] }),
+  payment: one(payments, { fields: [paymentAllocations.paymentId], references: [payments.id] }),
+  invoice: one(invoices, { fields: [paymentAllocations.invoiceId], references: [invoices.id] }),
+}));
+
+export const paymentsRelations = relations(payments, ({ one, many }) => ({
   tenant: one(tenants, { fields: [payments.tenantId], references: [tenants.id] }),
   student: one(students, { fields: [payments.studentId], references: [students.id] }),
+  invoice: one(invoices, { fields: [payments.invoiceId], references: [invoices.id] }),
+  allocations: many(paymentAllocations),
+  billingTransactions: many(billingTransactions),
 }));
 
 export const attendanceRelations = relations(attendance, ({ one }) => ({
@@ -927,6 +1046,7 @@ export const billingTransactionsRelations = relations(billingTransactions, ({ on
   tenant: one(tenants, { fields: [billingTransactions.tenantId], references: [tenants.id] }),
   student: one(students, { fields: [billingTransactions.studentId], references: [students.id] }),
   payment: one(payments, { fields: [billingTransactions.paymentId], references: [payments.id] }),
+  invoice: one(invoices, { fields: [billingTransactions.invoiceId], references: [invoices.id] }),
 }));
 
 export const telegramLinkTokensRelations = relations(telegramLinkTokens, ({ one }) => ({

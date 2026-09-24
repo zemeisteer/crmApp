@@ -19,8 +19,13 @@ export class AttendanceController {
 
   @Roles('ADMIN', 'TEACHER', 'MANAGER', 'RECEPTIONIST')
   @Post()
-  mark(@CurrentUser('tenantId') tenantId: string, @Body() dto: MarkAttendanceDto) {
-    return this.service.mark(tenantId, dto);
+  mark(
+    @CurrentUser('tenantId') tenantId: string,
+    @CurrentUser('role') role: string,
+    @CurrentUser('sub') userId: string,
+    @Body() dto: MarkAttendanceDto,
+  ) {
+    return this.service.mark(tenantId, dto, role, userId);
   }
 
   @Roles('ADMIN', 'TEACHER', 'MANAGER', 'RECEPTIONIST')

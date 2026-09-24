@@ -18,6 +18,7 @@ import { JwtAuthGuard } from '../common/jwt-auth.guard';
 import { RolesGuard } from '../common/roles.guard';
 import { Roles } from '../common/roles.decorator';
 import { CurrentUser } from '../common/current-user.decorator';
+import { Throttle } from '@nestjs/throttler';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles('OWNER', 'ADMIN')
@@ -30,6 +31,7 @@ export class OnboardingController {
     return this.onboardingService.getState(tenantId);
   }
 
+  @Throttle({ default: { limit: 30, ttl: 60_000 } })
   @Post('check-subdomain')
   checkSubdomain(
     @CurrentUser('tenantId') tenantId: string,

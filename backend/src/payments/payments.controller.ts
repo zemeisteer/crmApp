@@ -47,9 +47,13 @@ export class PaymentsController {
     return this.service.findOne(tenantId, id);
   }
 
-  @Roles('ADMIN', 'ACCOUNTANT')
+  @Roles('ADMIN', 'OWNER', 'ACCOUNTANT')
   @Post()
-  create(@CurrentUser('tenantId') tenantId: string, @Body() dto: CreatePaymentDto) {
-    return this.service.create(tenantId, dto);
+  create(
+    @CurrentUser('tenantId') tenantId: string,
+    @CurrentUser('sub') userId: string,
+    @Body() dto: CreatePaymentDto,
+  ) {
+    return this.service.create(tenantId, dto, userId);
   }
 }

@@ -342,6 +342,8 @@ export interface Group {
   id: string;
   tenantId: string;
   branchId: string | null;
+  courseId?: string | null;
+  status?: "PLANNED" | "ACTIVE" | "COMPLETED" | "ARCHIVED";
   name: string;
   subject: string;
   level: string | null;
@@ -359,7 +361,8 @@ export interface Group {
   updatedAt: string;
   teacher?: Teacher | null;
   branch?: Branch | null;
-  enrollments?: Array<{ id: string; studentId: string; student: Student }>;
+  course?: Course | null;
+  enrollments?: Array<{ id: string; studentId: string; status?: string; student: Student }>;
 }
 
 export type LeadStatus = 'NEW' | 'CONTACTED' | 'TRIAL_BOOKED' | 'TRIAL_ATTENDED' | 'QUALIFIED' | 'ENROLLED' | 'LOST';
@@ -396,9 +399,25 @@ export interface FunnelStats {
 
 export type Gender = "MALE" | "FEMALE";
 
+export interface StudentGuardian {
+  id: string;
+  relationship?: string;
+  isPrimary?: boolean;
+  user?: {
+    id: string;
+    fullName: string;
+    phone?: string;
+    email?: string;
+  };
+}
+
 export interface Student {
   id: string;
   tenantId: string;
+  branchId?: string | null;
+  status?: "ACTIVE" | "PAUSED" | "GRADUATED" | "LEFT";
+  notes?: string | null;
+  avatarUrl?: string | null;
   fullName: string;
   gender: Gender | null;
   phone: string | null;
@@ -411,7 +430,9 @@ export interface Student {
   deletedAt?: string | null;
   createdAt: string;
   updatedAt: string;
-  enrollments?: { id: string; groupId: string; joinedAt: string; group: Group }[];
+  branch?: Branch | null;
+  guardians?: StudentGuardian[];
+  enrollments?: { id: string; groupId: string; status?: string; enrolledAt?: string; leftAt?: string | null; group: Group }[];
 }
 
 export interface Teacher {
@@ -431,15 +452,52 @@ export interface Teacher {
   updatedAt: string;
 }
 
+export type InvoiceStatus = 'DRAFT' | 'OPEN' | 'PARTIALLY_PAID' | 'PAID' | 'OVERDUE' | 'CANCELLED';
+
+export interface PaymentAllocation {
+  id: string;
+  tenantId: string;
+  paymentId: string;
+  invoiceId: string;
+  amount: number;
+  createdAt: string;
+  payment?: Payment;
+  invoice?: Invoice;
+}
+
+export interface Invoice {
+  id: string;
+  tenantId: string;
+  studentId: string;
+  enrollmentId?: string | null;
+  amount: number;
+  amountPaid: number;
+  remainingAmount: number;
+  currency: string;
+  dueDate: string;
+  forMonth: string;
+  description?: string | null;
+  status: InvoiceStatus;
+  paidAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  student?: Student;
+  enrollment?: { id: string; group?: { id: string; name: string } };
+  allocations?: PaymentAllocation[];
+}
+
 export interface Payment {
   id: string;
   tenantId: string;
   studentId: string;
+  invoiceId?: string | null;
   amount: number;
   discount: number;
   method: string | null;
   status: string;
   forMonth: string;
+  providerTxId?: string | null;
+  receiptNumber?: string | null;
   paidAt: string | null;
   createdAt: string;
   student?: {
@@ -455,6 +513,8 @@ export interface Payment {
       };
     }>;
   };
+  invoice?: Invoice;
+  allocations?: PaymentAllocation[];
 }
 
 export interface PaymentsSummary {
@@ -828,7 +888,14 @@ export const authApi = {
 // ---- Groups ----
 
 export const groupsApi = {
-  list: () => request<Group[]>("/groups"),
+  list: (params?: { courseId?: string; status?: string; branchId?: string }) => {
+    const qs = new URLSearchParams();
+    if (params?.courseId) qs.set("courseId", params.courseId);
+    if (params?.status) qs.set("status", params.status);
+    if (params?.branchId) qs.set("branchId", params.branchId);
+    const suffix = qs.toString() ? `?${qs.toString()}` : "";
+    return request<Group[]>(`/groups${suffix}`);
+  },
   trash: () => request<Group[]>("/groups/trash"),
   get: (id: string) => request<Group>(`/groups/${id}`),
   create: (data: Partial<Group>) =>
@@ -853,7 +920,13 @@ export const groupsApi = {
 // ---- Students ----
 
 export const studentsApi = {
-  list: () => request<Student[]>("/students"),
+  list: (params?: { status?: string; branchId?: string }) => {
+    const qs = new URLSearchParams();
+    if (params?.status) qs.set("status", params.status);
+    if (params?.branchId) qs.set("branchId", params.branchId);
+    const suffix = qs.toString() ? `?${qs.toString()}` : "";
+    return request<Student[]>(`/students${suffix}`);
+  },
   trash: () => request<Student[]>("/students/trash"),
   get: (id: string) => request<Student>(`/students/${id}`),
   create: (data: Partial<Student> & { groupId?: string; groupIds?: string[] }) =>
@@ -863,9 +936,14 @@ export const studentsApi = {
   remove: (id: string) => request<void>(`/students/${id}`, { method: "DELETE" }),
   restore: (id: string) => request<Student>(`/students/${id}/restore`, { method: "POST" }),
   enroll: (id: string, groupId: string) =>
-    request<{ success: boolean }>(`/students/${id}/enroll/${groupId}`, { method: "POST" }),
+    request<{ success: boolean; enrollment?: any }>(`/students/${id}/enroll/${groupId}`, { method: "POST" }),
   unenroll: (id: string, groupId: string) =>
-    request<{ success: boolean }>(`/students/${id}/enroll/${groupId}`, { method: "DELETE" }),
+    request<{ success: boolean; enrollment?: any }>(`/students/${id}/enroll/${groupId}`, { method: "DELETE" }),
+  getGuardians: (id: string) => request<StudentGuardian[]>(`/students/${id}/guardians`),
+  linkGuardian: (id: string, data: { userId?: string; phone?: string; fullName?: string; relationship?: string; isPrimary?: boolean }) =>
+    request<StudentGuardian>(`/students/${id}/guardians`, { method: "POST", body: JSON.stringify(data) }),
+  unlinkGuardian: (id: string, guardianId: string) =>
+    request<{ success: boolean }>(`/students/${id}/guardians/${guardianId}`, { method: "DELETE" }),
 };
 
 // ---- Teachers ----
@@ -899,6 +977,30 @@ export const paymentsApi = {
     request<FinanceSummary>(`/payments/finance-summary${forMonth ? `?forMonth=${forMonth}` : ""}`),
   create: (data: Partial<Payment>) =>
     request<Payment>("/payments", { method: "POST", body: JSON.stringify(data) }),
+};
+
+// ---- Invoices ----
+
+export const invoicesApi = {
+  list: (params?: { studentId?: string; forMonth?: string; status?: string; overdueOnly?: boolean }) => {
+    const qs = new URLSearchParams();
+    if (params?.studentId) qs.set("studentId", params.studentId);
+    if (params?.forMonth) qs.set("forMonth", params.forMonth);
+    if (params?.status) qs.set("status", params.status);
+    if (params?.overdueOnly !== undefined) qs.set("overdueOnly", String(params.overdueOnly));
+    const suffix = qs.toString() ? `?${qs.toString()}` : "";
+    return request<Invoice[]>(`/invoices${suffix}`);
+  },
+  get: (id: string) => request<Invoice>(`/invoices/${id}`),
+  create: (data: { studentId: string; enrollmentId?: string; amount: number; dueDate: string; forMonth: string; description?: string }) =>
+    request<Invoice>("/invoices", { method: "POST", body: JSON.stringify(data) }),
+  generateMonthly: (forMonth?: string) =>
+    request<{ forMonth: string; generatedCount: number; invoices: Invoice[] }>("/invoices/generate-monthly", {
+      method: "POST",
+      body: JSON.stringify({ forMonth }),
+    }),
+  cancel: (id: string) =>
+    request<Invoice>(`/invoices/${id}/cancel`, { method: "POST" }),
 };
 
 // ---- Expenses ----
@@ -1078,13 +1180,13 @@ export const staffApi = {
 
 export const billingApi = {
   getConfig: () => request<{ clickEnabled: boolean; paymeEnabled: boolean }>("/billing/config"),
-  clickLink: (data: { studentId: string; amount: number; forMonth: string }) =>
+  clickLink: (data: { studentId: string; amount: number; forMonth: string; invoiceId?: string }) =>
     request<BillingLink>("/billing/click/link", { method: "POST", body: JSON.stringify(data) }),
-  paymeLink: (data: { studentId: string; amount: number; forMonth: string }) =>
+  paymeLink: (data: { studentId: string; amount: number; forMonth: string; invoiceId?: string }) =>
     request<BillingLink>("/billing/payme/link", { method: "POST", body: JSON.stringify(data) }),
-  generateClickLink: (data: { studentId: string; amount: number; forMonth: string }) =>
+  generateClickLink: (data: { studentId: string; amount: number; forMonth: string; invoiceId?: string }) =>
     request<BillingLink>("/billing/click/link", { method: "POST", body: JSON.stringify(data) }),
-  generatePaymeLink: (data: { studentId: string; amount: number; forMonth: string }) =>
+  generatePaymeLink: (data: { studentId: string; amount: number; forMonth: string; invoiceId?: string }) =>
     request<BillingLink>("/billing/payme/link", { method: "POST", body: JSON.stringify(data) }),
 };
 
@@ -1639,8 +1741,9 @@ export const portalApi = {
       method: "POST",
     }),
   getExams: () => request<PortalExams>("/portal/exams"),
+  getInvoices: () => request<Invoice[]>("/portal/invoices"),
   getPayments: () => request<PortalPayments>("/portal/payments"),
-  createCheckoutLink: (data: { provider: "CLICK" | "PAYME"; amount?: number; forMonth?: string }) =>
+  createCheckoutLink: (data: { provider: "CLICK" | "PAYME"; amount?: number; forMonth?: string; invoiceId?: string }) =>
     request<BillingLink>("/portal/payments/checkout-link", {
       method: "POST",
       body: JSON.stringify(data),
@@ -1796,6 +1899,7 @@ export interface Subject {
   code?: string | null;
   description?: string | null;
   color?: string | null;
+  status?: "ACTIVE" | "ARCHIVED";
   courses?: Course[];
   createdAt: string;
 }
@@ -1808,26 +1912,52 @@ export interface Course {
   description?: string | null;
   durationMonths?: number;
   price?: string;
+  status?: "ACTIVE" | "ARCHIVED";
   createdAt: string;
 }
 
 export const subjectsApi = {
-  list: () => request<Subject[]>("/subjects"),
+  list: (status?: "ACTIVE" | "ARCHIVED") =>
+    request<Subject[]>(`/subjects${status ? `?status=${status}` : ""}`),
   get: (id: string) => request<Subject>(`/subjects/${id}`),
-  create: (data: { name: string; code?: string; description?: string; color?: string }) =>
+  create: (data: { name: string; code?: string; description?: string; color?: string; status?: "ACTIVE" | "ARCHIVED" }) =>
     request<Subject>("/subjects", { method: "POST", body: JSON.stringify(data) }),
   update: (id: string, data: Partial<Subject>) =>
     request<Subject>(`/subjects/${id}`, { method: "PUT", body: JSON.stringify(data) }),
-  remove: (id: string) => request<{ success: boolean }>(`/subjects/${id}`, { method: "DELETE" }),
+  archive: (id: string) =>
+    request<Subject>(`/subjects/${id}/archive`, { method: "POST" }),
+  remove: (id: string) => request<{ success: boolean; archived?: boolean; message?: string }>(`/subjects/${id}`, { method: "DELETE" }),
   bulk: (subjects: { name: string; courses?: string[] }[]) =>
     request<Subject[]>("/subjects/bulk", { method: "POST", body: JSON.stringify({ subjects }) }),
-  listCourses: (subjectId?: string) =>
-    request<Course[]>(`/subjects/courses${subjectId ? `?subjectId=${encodeURIComponent(subjectId)}` : ""}`),
-  createCourse: (data: { name: string; subjectId?: string; description?: string; durationMonths?: number; price?: string }) =>
+  listCourses: (subjectId?: string, status?: "ACTIVE" | "ARCHIVED") => {
+    const qs = new URLSearchParams();
+    if (subjectId) qs.set("subjectId", subjectId);
+    if (status) qs.set("status", status);
+    const suffix = qs.toString() ? `?${qs.toString()}` : "";
+    return request<Course[]>(`/subjects/courses${suffix}`);
+  },
+  createCourse: (data: { name: string; subjectId?: string; description?: string; durationMonths?: number; price?: string; status?: "ACTIVE" | "ARCHIVED" }) =>
     request<Course>("/subjects/courses", { method: "POST", body: JSON.stringify(data) }),
   updateCourse: (id: string, data: Partial<Course>) =>
     request<Course>(`/subjects/courses/${id}`, { method: "PUT", body: JSON.stringify(data) }),
-  removeCourse: (id: string) => request<{ success: boolean }>(`/subjects/courses/${id}`, { method: "DELETE" }),
+  archiveCourse: (id: string) =>
+    request<Course>(`/subjects/courses/${id}/archive`, { method: "POST" }),
+  removeCourse: (id: string) => request<{ success: boolean; archived?: boolean; message?: string }>(`/subjects/courses/${id}`, { method: "DELETE" }),
+};
+
+// ---- Parent Portal ----
+export const parentPortalApi = {
+  listStudents: () => request<Student[]>("/portal/parent/students"),
+  getStudentOverview: (studentId: string) => request<any>(`/portal/parent/students/${studentId}/overview`),
+  getStudentSchedule: (studentId: string) => request<any>(`/portal/parent/students/${studentId}/schedule`),
+  getStudentAttendance: (studentId: string) => request<any>(`/portal/parent/students/${studentId}/attendance`),
+  getStudentPayments: (studentId: string) => request<any>(`/portal/parent/students/${studentId}/payments`),
+  getStudentInvoices: (studentId: string) => request<Invoice[]>(`/portal/parent/students/${studentId}/invoices`),
+  checkoutLink: (studentId: string, data: { provider: "CLICK" | "PAYME"; amount?: number; forMonth?: string; invoiceId?: string }) =>
+    request<BillingLink>(`/portal/parent/students/${studentId}/checkout-link`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
 };
 
 // ---- Invitations ----
@@ -1857,8 +1987,6 @@ export const invitationsApi = {
       phone: string | null;
       tenantName: string;
       tenantSubdomain: string;
-      existingUser: boolean;
-      existingUserName: string | null;
       expiresAt: string;
     }>(`/invitations/${encodeURIComponent(token)}/validate`),
   accept: (token: string, data: { fullName?: string; password?: string }) =>

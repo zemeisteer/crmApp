@@ -309,7 +309,7 @@ export default function AttendancePage() {
                       type="text"
                       value={manualCode}
                       onChange={(e) => setManualCode(e.target.value)}
-                      placeholder="Masalan: TALIMCRM:STUDENT:cuid... yoki ID"
+                      placeholder="Masalan: CRMAPP:STUDENT:cuid... yoki ID"
                       className="flex-1 px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-sm text-slate-900 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
                       autoFocus
                     />

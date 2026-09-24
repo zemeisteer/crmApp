@@ -31,7 +31,11 @@ export class BranchesService {
   }
 
   async remove(tenantId: string, id: string) {
-    await this.db.delete(branches).where(and(eq(branches.id, id), eq(branches.tenantId, tenantId)));
+    const [deleted] = await this.db
+      .delete(branches)
+      .where(and(eq(branches.id, id), eq(branches.tenantId, tenantId)))
+      .returning();
+    if (!deleted) throw new NotFoundException('Filial topilmadi');
     return { success: true };
   }
 }

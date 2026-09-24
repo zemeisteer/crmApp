@@ -33,7 +33,7 @@ export default function VerifyCertificatePage() {
         <div className="text-center mb-8">
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-900 border border-slate-800 text-xs font-semibold text-indigo-400 mb-3">
             <span className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
-            TalimCRM Rasmiy Tekshiruv Portali
+            CRMAPP Rasmiy Tekshiruv Portali
           </div>
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
             Elektron Sertifikatni Tekshirish
@@ -201,7 +201,7 @@ export default function VerifyCertificatePage() {
 
         {/* Footer info */}
         <div className="text-center mt-6 text-xs text-slate-500">
-          TalimCRM Digital Credentials Engine • Barcha huquqlar himoyalangan
+          CRMAPP Digital Credentials Engine • Barcha huquqlar himoyalangan
         </div>
       </div>
     </div>

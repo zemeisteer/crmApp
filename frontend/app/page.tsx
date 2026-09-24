@@ -55,7 +55,7 @@ function LandingPage() {
               <path d="M6 12v5c0 1.5 2.7 3 6 3s6-1.5 6-3v-5" />
             </svg>
           </div>
-          <span style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 800, fontSize: 19, letterSpacing: "-0.02em" }}>TalimCRM</span>
+          <span style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 800, fontSize: 19, letterSpacing: "-0.02em" }}>CRMAPP</span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
           <div style={{ display: "flex", gap: 4, background: "#F2F1EC", borderRadius: 9, padding: 3 }}>

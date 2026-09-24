@@ -1,8 +1,12 @@
-import { IsInt, IsString, Min } from 'class-validator';
+import { IsInt, IsOptional, IsString, Min } from 'class-validator';
 
 export class GeneratePaymentLinkDto {
   @IsString()
   studentId: string;
+
+  @IsOptional()
+  @IsString()
+  invoiceId?: string;
 
   @IsInt()
   @Min(1000)
@@ -11,3 +15,4 @@ export class GeneratePaymentLinkDto {
   @IsString()
   forMonth: string;
 }
+

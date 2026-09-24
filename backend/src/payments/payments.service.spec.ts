@@ -45,7 +45,11 @@ describe('PaymentsService', () => {
       notifyDebtors: vi.fn(),
     };
 
-    service = new PaymentsService(mockDb, mockTelegram, mockWebhooks, mockNotifications as any);
+    const mockAudit = {
+      log: vi.fn(),
+    };
+
+    service = new PaymentsService(mockDb, mockTelegram, mockWebhooks, mockNotifications as any, mockAudit as any);
   });
 
   describe('getDebtors', () => {

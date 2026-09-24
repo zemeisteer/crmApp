@@ -18,6 +18,7 @@ import { tenants, users, sessions, organizationMemberships } from '../db/schema'
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { EmailService } from '../email/email.service';
+import { AuditService } from '../audit/audit.service';
 
 function hashToken(token: string) {
   return createHash('sha256').update(token).digest('hex');
@@ -41,7 +42,16 @@ export class AuthService {
     private readonly jwt: JwtService,
     private readonly config: ConfigService,
     private readonly email: EmailService,
+    private readonly audit: AuditService,
   ) {}
+
+  verifyAccessToken(token: string) {
+    try {
+      return this.jwt.verify<{ sub: string; email: string; role: string; tenantId: string | null }>(token);
+    } catch {
+      return null;
+    }
+  }
 
   private async signAccessToken(user: {
     id: string;
@@ -314,6 +324,25 @@ export class AuthService {
 
     const tenant = await this.db.query.tenants.findFirst({ where: eq(tenants.id, targetTenantId) });
     if (!tenant) throw new NotFoundException('Markaz topilmadi');
+
+    if (user.role === 'SUPERADMIN') {
+      this.audit.log({
+        tenantId: tenant.id,
+        userId: user.id,
+        action: 'switch_workspace',
+        entityType: 'tenant',
+        entityId: tenant.id,
+        meta: {
+          action: 'SUPERADMIN_SWITCH_WORKSPACE',
+          superAdminEmail: user.email,
+          targetTenantName: tenant.name,
+          targetSubdomain: tenant.subdomain,
+          ip: meta?.ip,
+          userAgent: meta?.userAgent,
+          timestamp: new Date().toISOString(),
+        },
+      });
+    }
 
     const accessToken = await this.signAccessToken({
       id: user.id,

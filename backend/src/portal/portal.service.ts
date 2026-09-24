@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Inject,
   Injectable,
   NotFoundException,
@@ -18,8 +19,10 @@ import {
   examResults,
   homework,
   homeworkCompletions,
+  invoices,
   payments,
   schedules,
+  studentGuardians,
   students,
   telegramLinkTokens,
 } from '../db/schema';
@@ -429,15 +432,56 @@ export class PortalService {
     };
   }
 
+  async getInvoices(studentId: string, tenantId: string) {
+    return this.db.query.invoices.findMany({
+      where: and(
+        eq(invoices.studentId, studentId),
+        eq(invoices.tenantId, tenantId),
+      ),
+      with: {
+        enrollment: {
+          with: {
+            group: true,
+          },
+        },
+        allocations: {
+          with: {
+            payment: true,
+          },
+        },
+      },
+      orderBy: [desc(invoices.createdAt)],
+    });
+  }
+
   async createCheckoutLink(
     studentId: string,
     tenantId: string,
-    body: { provider: 'CLICK' | 'PAYME'; amount?: number; forMonth?: string },
+    body: { provider: 'CLICK' | 'PAYME'; amount?: number; forMonth?: string; invoiceId?: string },
   ) {
-    const currentMonth = body.forMonth || new Date().toISOString().slice(0, 7);
+    let currentMonth = body.forMonth || new Date().toISOString().slice(0, 7);
     let amount = body.amount;
 
-    if (!amount || amount <= 0) {
+    if (body.invoiceId) {
+      const inv = await this.db.query.invoices.findFirst({
+        where: and(
+          eq(invoices.id, body.invoiceId),
+          eq(invoices.tenantId, tenantId),
+          eq(invoices.studentId, studentId),
+        ),
+      });
+      if (!inv) {
+        throw new NotFoundException('Hisob-faktura topilmadi');
+      }
+      if (inv.status === 'CANCELLED') {
+        throw new BadRequestException("Bekor qilingan hisob-faktura uchun to'lov qabul qilib bo'lmaydi");
+      }
+      if (inv.remainingAmount <= 0) {
+        throw new BadRequestException("Ushbu hisob-faktura to'liq to'langan");
+      }
+      amount = amount && amount > 0 ? Math.min(amount, inv.remainingAmount) : inv.remainingAmount;
+      currentMonth = inv.forMonth;
+    } else if (!amount || amount <= 0) {
       const summary = await this.getPayments(studentId, tenantId);
       amount = summary.debtAmount;
       if (amount <= 0) {
@@ -448,12 +492,14 @@ export class PortalService {
     if (body.provider === 'CLICK') {
       return this.billing.generateClickLink(tenantId, {
         studentId,
+        invoiceId: body.invoiceId,
         amount,
         forMonth: currentMonth,
       });
     } else {
       return this.billing.generatePaymeLink(tenantId, {
         studentId,
+        invoiceId: body.invoiceId,
         amount,
         forMonth: currentMonth,
       });
@@ -479,5 +525,104 @@ export class PortalService {
     });
 
     return list;
+  }
+
+  // ==================== PARENT PORTAL ====================
+
+  async getParentStudents(tenantId: string, parentUserId: string) {
+    const links = await this.db.query.studentGuardians.findMany({
+      where: and(
+        eq(studentGuardians.tenantId, tenantId),
+        eq(studentGuardians.userId, parentUserId),
+      ),
+      with: {
+        student: {
+          with: {
+            enrollments: {
+              with: {
+                group: {
+                  with: {
+                    teacher: true,
+                    branch: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    return links
+      .filter((l) => l.student && !l.student.deletedAt)
+      .map((l) => ({
+        guardianshipId: l.id,
+        relationship: l.relationship,
+        isPrimary: l.isPrimary,
+        ...l.student,
+      }));
+  }
+
+  async verifyParentAccess(tenantId: string, parentUserId: string, studentId: string) {
+    const link = await this.db.query.studentGuardians.findFirst({
+      where: and(
+        eq(studentGuardians.tenantId, tenantId),
+        eq(studentGuardians.userId, parentUserId),
+        eq(studentGuardians.studentId, studentId),
+      ),
+      with: {
+        student: true,
+      },
+    });
+
+    if (!link || !link.student || link.student.deletedAt) {
+      throw new ForbiddenException("Siz faqat o'zingizga biriktirilgan farzandingiz ma'lumotlarini ko'rishingiz mumkin");
+    }
+
+    return link;
+  }
+
+  async getParentStudentOverview(tenantId: string, parentUserId: string, studentId: string) {
+    await this.verifyParentAccess(tenantId, parentUserId, studentId);
+    const student = await this.getMe(studentId, tenantId);
+    const schedule = await this.getSchedule(studentId, tenantId);
+    const attendance = await this.getAttendance(studentId, tenantId);
+    const payments = await this.getPayments(studentId, tenantId);
+    return {
+      student,
+      schedule,
+      attendance,
+      payments,
+    };
+  }
+
+  async getParentStudentSchedule(tenantId: string, parentUserId: string, studentId: string) {
+    await this.verifyParentAccess(tenantId, parentUserId, studentId);
+    return this.getSchedule(studentId, tenantId);
+  }
+
+  async getParentStudentAttendance(tenantId: string, parentUserId: string, studentId: string) {
+    await this.verifyParentAccess(tenantId, parentUserId, studentId);
+    return this.getAttendance(studentId, tenantId);
+  }
+
+  async getParentStudentPayments(tenantId: string, parentUserId: string, studentId: string) {
+    await this.verifyParentAccess(tenantId, parentUserId, studentId);
+    return this.getPayments(studentId, tenantId);
+  }
+
+  async getParentStudentInvoices(tenantId: string, parentUserId: string, studentId: string) {
+    await this.verifyParentAccess(tenantId, parentUserId, studentId);
+    return this.getInvoices(studentId, tenantId);
+  }
+
+  async createParentCheckoutLink(
+    tenantId: string,
+    parentUserId: string,
+    studentId: string,
+    body: { provider: 'CLICK' | 'PAYME'; amount?: number; forMonth?: string; invoiceId?: string },
+  ) {
+    await this.verifyParentAccess(tenantId, parentUserId, studentId);
+    return this.createCheckoutLink(studentId, tenantId, body);
   }
 }

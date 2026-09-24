@@ -36,7 +36,7 @@ export class EmailService {
     }
     try {
       await this.transporter.sendMail({
-        from: this.config.get<string>('SMTP_FROM') || 'TalimCRM <no-reply@talimcrm.uz>',
+        from: this.config.get<string>('SMTP_FROM') || 'CRMAPP <no-reply@crmapp.com>',
         to,
         subject,
         text,
