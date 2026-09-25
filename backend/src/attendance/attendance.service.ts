@@ -6,6 +6,7 @@ import { MarkAttendanceDto, QrCheckInDto, QueryAttendanceDto } from './dto/atten
 import { TelegramService } from '../telegram/telegram.service';
 import { WebhooksService } from '../webhooks/webhooks.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { teacherGroupIds } from '../common/teacher-scope';
 
 @Injectable()
 export class AttendanceService {
@@ -93,8 +94,14 @@ export class AttendanceService {
     return flat;
   }
 
-  findAll(tenantId: string, query: QueryAttendanceDto) {
+  async findAll(tenantId: string, query: QueryAttendanceDto, viewer?: { role?: string; userId?: string }) {
     const conditions = [eq(attendance.tenantId, tenantId)];
+    // Teachers see attendance of their own groups only.
+    const scope = await teacherGroupIds(this.db, tenantId, viewer?.role, viewer?.userId);
+    if (scope) {
+      if (scope.length === 0) return [];
+      conditions.push(inArray(attendance.groupId, scope));
+    }
     if (query.groupId) conditions.push(eq(attendance.groupId, query.groupId));
     if (query.date) conditions.push(eq(attendance.date, query.date));
     if (query.studentId) conditions.push(eq(attendance.studentId, query.studentId));
@@ -105,7 +112,7 @@ export class AttendanceService {
     });
   }
 
-  async qrCheckIn(tenantId: string, dto: QrCheckInDto) {
+  async qrCheckIn(tenantId: string, dto: QrCheckInDto, viewer?: { role?: string; userId?: string }) {
     let studentId = (dto.code || '').trim();
     if (studentId.startsWith('CRMAPP:STUDENT:')) {
       studentId = studentId.replace('CRMAPP:STUDENT:', '');
@@ -133,9 +140,16 @@ export class AttendanceService {
       throw new BadRequestException("O'quvchi hech qanday faol guruhga biriktirilmagan");
     }
 
-    let targetGroup = activeEnrollments[0].group;
+    // A teacher can only check a student into one of the teacher's groups.
+    const scope = await teacherGroupIds(this.db, tenantId, viewer?.role, viewer?.userId);
+    const allowed = scope ? activeEnrollments.filter((e) => scope.includes(e.groupId)) : activeEnrollments;
+    if (allowed.length === 0) {
+      throw new ForbiddenException("Bu o'quvchi sizning guruhlaringizda emas");
+    }
+
+    let targetGroup = allowed[0].group;
     if (dto.groupId) {
-      const matched = activeEnrollments.find((e) => e.groupId === dto.groupId);
+      const matched = allowed.find((e) => e.groupId === dto.groupId);
       if (matched) {
         targetGroup = matched.group;
       }

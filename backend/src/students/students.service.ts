@@ -5,6 +5,7 @@ import { branches, enrollments, groups, organizationMemberships, studentGuardian
 import { CreateStudentDto, LinkGuardianDto, UpdateStudentDto } from './dto/student.dto';
 import { AuditService } from '../audit/audit.service';
 import { countOccupiedSeats } from '../common/seats';
+import { studentIdsInGroups, teacherGroupIds } from '../common/teacher-scope';
 import { WebhooksService } from '../webhooks/webhooks.service';
 
 @Injectable()
@@ -15,8 +16,17 @@ export class StudentsService {
     private readonly webhooks: WebhooksService,
   ) {}
 
-  findAll(tenantId: string, filters?: { status?: string; branchId?: string }) {
+  // Guardian user rows are loaded with safe columns only: `user: true` used to
+  // return password/reset-token hashes and the 2FA secret to the client.
+  async findAll(tenantId: string, filters?: { status?: string; branchId?: string }, viewer?: { role?: string; userId?: string }) {
     const conditions = [eq(students.tenantId, tenantId), isNull(students.deletedAt)];
+    // Teachers see only students actively enrolled in their own groups.
+    const scope = await teacherGroupIds(this.db, tenantId, viewer?.role, viewer?.userId);
+    if (scope) {
+      const ids = await studentIdsInGroups(this.db, scope);
+      if (ids.length === 0) return [];
+      conditions.push(inArray(students.id, ids));
+    }
     if (filters?.status) conditions.push(eq(students.status, filters.status as any));
     if (filters?.branchId) conditions.push(eq(students.branchId, filters.branchId));
 
@@ -24,7 +34,7 @@ export class StudentsService {
       where: and(...conditions),
       with: {
         enrollments: { with: { group: true } },
-        guardians: { with: { user: true } },
+        guardians: { with: { user: { columns: { id: true, fullName: true, email: true, phone: true } } } },
         branch: true,
       },
       orderBy: (s, { desc }) => desc(s.createdAt),
@@ -38,17 +48,24 @@ export class StudentsService {
     });
   }
 
-  async findOne(tenantId: string, id: string) {
+  async findOne(tenantId: string, id: string, viewer?: { role?: string; userId?: string }) {
+    const scope = await teacherGroupIds(this.db, tenantId, viewer?.role, viewer?.userId);
+    if (scope && !(await studentIdsInGroups(this.db, scope)).includes(id)) {
+      // Same answer as a missing student: nothing about others leaks.
+      throw new NotFoundException("O'quvchi topilmadi");
+    }
     const student = await this.db.query.students.findFirst({
       where: and(eq(students.id, id), eq(students.tenantId, tenantId), isNull(students.deletedAt)),
       with: {
         enrollments: { with: { group: true } },
-        guardians: { with: { user: true } },
+        guardians: { with: { user: { columns: { id: true, fullName: true, email: true, phone: true } } } },
         branch: true,
         payments: true,
       },
     });
     if (!student) throw new NotFoundException("O'quvchi topilmadi");
+    // Payment history is finance data, not part of a teacher's view.
+    if (scope) return { ...student, payments: [] };
     return student;
   }
 
@@ -263,14 +280,14 @@ export class StudentsService {
   }
 
   // Guardians management
-  async getGuardians(tenantId: string, studentId: string) {
-    await this.findOne(tenantId, studentId);
+  async getGuardians(tenantId: string, studentId: string, viewer?: { role?: string; userId?: string }) {
+    await this.findOne(tenantId, studentId, viewer);
     return this.db.query.studentGuardians.findMany({
       where: and(
         eq(studentGuardians.tenantId, tenantId),
         eq(studentGuardians.studentId, studentId),
       ),
-      with: { user: true },
+      with: { user: { columns: { id: true, fullName: true, email: true, phone: true } } },
     });
   }
 

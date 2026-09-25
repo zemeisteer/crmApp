@@ -47,7 +47,8 @@ export class AnnouncementsService {
     const item = await this.db.query.announcements.findFirst({
       where: and(eq(announcements.id, id), eq(announcements.tenantId, tenantId)),
       with: {
-        author: true,
+        // Safe columns only; the full user row carries password/token hashes.
+        author: { columns: { id: true, fullName: true } },
         targetGroup: true,
       },
     });

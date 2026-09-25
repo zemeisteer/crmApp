@@ -13,8 +13,13 @@ export class AttendanceController {
   constructor(private readonly service: AttendanceService) {}
 
   @Get()
-  findAll(@CurrentUser('tenantId') tenantId: string, @Query() query: QueryAttendanceDto) {
-    return this.service.findAll(tenantId, query);
+  findAll(
+    @CurrentUser('tenantId') tenantId: string,
+    @CurrentUser('role') role: string,
+    @CurrentUser('sub') userId: string,
+    @Query() query: QueryAttendanceDto,
+  ) {
+    return this.service.findAll(tenantId, query, { role, userId });
   }
 
   @Roles('ADMIN', 'TEACHER', 'MANAGER', 'RECEPTIONIST')
@@ -30,8 +35,13 @@ export class AttendanceController {
 
   @Roles('ADMIN', 'TEACHER', 'MANAGER', 'RECEPTIONIST')
   @Post('qr-checkin')
-  qrCheckIn(@CurrentUser('tenantId') tenantId: string, @Body() dto: QrCheckInDto) {
-    return this.service.qrCheckIn(tenantId, dto);
+  qrCheckIn(
+    @CurrentUser('tenantId') tenantId: string,
+    @CurrentUser('role') role: string,
+    @CurrentUser('sub') userId: string,
+    @Body() dto: QrCheckInDto,
+  ) {
+    return this.service.qrCheckIn(tenantId, dto, { role, userId });
   }
 }
 

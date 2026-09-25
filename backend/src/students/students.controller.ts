@@ -25,10 +25,12 @@ export class StudentsController {
   @Get()
   findAll(
     @CurrentUser('tenantId') tenantId: string,
+    @CurrentUser('role') role: string,
+    @CurrentUser('sub') userId: string,
     @Query('status') status?: string,
     @Query('branchId') branchId?: string,
   ) {
-    return this.service.findAll(tenantId, { status, branchId });
+    return this.service.findAll(tenantId, { status, branchId }, { role, userId });
   }
 
   @Roles('ADMIN')
@@ -38,8 +40,13 @@ export class StudentsController {
   }
 
   @Get(':id')
-  findOne(@CurrentUser('tenantId') tenantId: string, @Param('id') id: string) {
-    return this.service.findOne(tenantId, id);
+  findOne(
+    @CurrentUser('tenantId') tenantId: string,
+    @CurrentUser('role') role: string,
+    @CurrentUser('sub') userId: string,
+    @Param('id') id: string,
+  ) {
+    return this.service.findOne(tenantId, id, { role, userId });
   }
 
   @Roles('ADMIN')
@@ -106,9 +113,11 @@ export class StudentsController {
   @Get(':id/guardians')
   getGuardians(
     @CurrentUser('tenantId') tenantId: string,
+    @CurrentUser('role') role: string,
+    @CurrentUser('sub') userId: string,
     @Param('id') id: string,
   ) {
-    return this.service.getGuardians(tenantId, id);
+    return this.service.getGuardians(tenantId, id, { role, userId });
   }
 
   @Roles('ADMIN')
