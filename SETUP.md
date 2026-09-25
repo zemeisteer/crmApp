@@ -57,6 +57,21 @@ Agar baza serveri ilgari UTC bo'lmagan vaqt zonasida ishlagan bo'lsa (masalan `A
 node scripts/fix-local-timestamps.cjs --offset-minutes=300 --before=2026-09-24T17:00:00Z
 ```
 
+### Email (Resend)
+
+Parolni tiklash, email tasdiqlash va lid eslatmalari xatlari uchun:
+
+1. resend.com'da ro'yxatdan o'ting → **Domains** bo'limida domeningizni qo'shib, u ko'rsatgan DNS yozuvlarini domen sozlamalariga kiriting.
+2. **API Keys** → **Create API Key** (ruxsat: *Sending access*).
+3. `backend/.env`ga yozing va backendni qayta ishga tushiring:
+
+```
+RESEND_API_KEY=re_...
+EMAIL_FROM="CRMAPP <noreply@sizningdomen.uz>"
+```
+
+Domen hali tasdiqlanmagan bo'lsa, sinov uchun `EMAIL_FROM=onboarding@resend.dev` ishlatish mumkin, lekin Resend bunda faqat o'z hisobingiz emailiga yuboradi. `RESEND_API_KEY` bo'sh bo'lsa SMTP sozlamalari ishlatiladi, ikkalasi ham bo'sh bo'lsa xatlar yuborilmaydi (faqat logga yoziladi).
+
 ### Zaxira nusxalash
 
 ```bash
