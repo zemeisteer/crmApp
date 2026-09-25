@@ -64,6 +64,13 @@ const DEFAULT_ROLE_PERMISSIONS: Record<string, string[]> = {
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
+// The flag is present on every login response; only `true` asks for a choice.
+export function isWorkspaceSelection(
+  res: LoginResponse,
+): res is Extract<LoginResponse, { requiresWorkspaceSelection: true }> {
+  return "requiresWorkspaceSelection" in res && res.requiresWorkspaceSelection === true;
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [tenant, setTenant] = useState<Tenant | null>(null);
@@ -111,8 +118,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Check if 2FA is required
     if ("pendingToken" in res) return res;
 
-    // Check if workspace selection is required (user has multiple centers)
-    if ("requiresWorkspaceSelection" in res) return res;
+    // Several centers: keep the provisional session so the choice can be
+    // submitted, but let the login page show the picker before navigating.
+    if (isWorkspaceSelection(res)) {
+      setToken(res.accessToken);
+      setRefreshToken(res.refreshToken);
+      return res;
+    }
 
     // Single active membership: log straight into that workspace
     setAuthSession(res);

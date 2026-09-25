@@ -422,7 +422,7 @@ function LeadProfile() {
         </div>
       </div>
 
-      <LeadFormModal open={editOpen} lead={lead} onClose={() => setEditOpen(false)} onSaved={() => load()} />
+      {editOpen && <LeadFormModal open={editOpen} lead={lead} onClose={() => setEditOpen(false)} onSaved={() => load()} />}
       {convertOpen && <ConvertWizard lead={lead} open={convertOpen} onClose={() => setConvertOpen(false)} />}
 
       <Modal

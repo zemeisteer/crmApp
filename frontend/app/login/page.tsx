@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useAuth } from "@/lib/auth-context";
+import { useAuth, isWorkspaceSelection } from "@/lib/auth-context";
 import { useLanguage } from "@/lib/i18n-context";
 import { ApiError, WorkspaceItem } from "@/lib/api";
 
@@ -54,7 +54,7 @@ export default function LoginPage() {
       const res = await login(emailOrPhone, password);
       if ("pendingToken" in res) {
         setPendingToken(res.pendingToken);
-      } else if ("requiresWorkspaceSelection" in res) {
+      } else if (isWorkspaceSelection(res)) {
         setWorkspaces(res.workspaces);
       }
     } catch (err) {

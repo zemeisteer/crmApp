@@ -37,18 +37,20 @@ export default function LeadFormModal({ open, onClose, onSaved, lead, managers =
   const { can } = useAuth();
   const editing = !!lead;
 
-  const [fullName, setFullName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [secondaryPhone, setSecondaryPhone] = useState("");
-  const [email, setEmail] = useState("");
-  const [source, setSource] = useState<LeadSource>("INSTAGRAM");
-  const [subjectId, setSubjectId] = useState("");
-  const [courseId, setCourseId] = useState("");
-  const [branchId, setBranchId] = useState("");
+  // Initial values come straight from props: parents mount this component
+  // fresh for every opening, so no stale input can survive between uses.
+  const [fullName, setFullName] = useState(lead?.fullName ?? "");
+  const [phone, setPhone] = useState(lead?.phone ?? "");
+  const [secondaryPhone, setSecondaryPhone] = useState(lead?.secondaryPhone ?? "");
+  const [email, setEmail] = useState(lead?.email ?? "");
+  const [source, setSource] = useState<LeadSource>(lead?.source ?? "INSTAGRAM");
+  const [subjectId, setSubjectId] = useState(lead?.desiredSubjectId ?? "");
+  const [courseId, setCourseId] = useState(lead?.desiredCourseId ?? "");
+  const [branchId, setBranchId] = useState(lead?.preferredBranchId ?? "");
   const [managerId, setManagerId] = useState("");
   const [followDate, setFollowDate] = useState("");
   const [followTime, setFollowTime] = useState("10:00");
-  const [notes, setNotes] = useState("");
+  const [notes, setNotes] = useState(lead?.notes ?? "");
   const [duplicates, setDuplicates] = useState<LeadDuplicate[]>([]);
   const [override, setOverride] = useState(false);
   const [overrideReason, setOverrideReason] = useState("");
@@ -65,27 +67,6 @@ export default function LeadFormModal({ open, onClose, onSaved, lead, managers =
     subjectsApi.listCourses(undefined, "ACTIVE").then(setCourses).catch(() => setCourses([]));
     branchesApi.list().then(setBranches).catch(() => setBranches([]));
   }, [open]);
-
-  // Reset every time the modal opens so no stale input leaks between leads.
-  useEffect(() => {
-    if (!open) return;
-    setFullName(lead?.fullName ?? "");
-    setPhone(lead?.phone ?? "");
-    setSecondaryPhone(lead?.secondaryPhone ?? "");
-    setEmail(lead?.email ?? "");
-    setSource(lead?.source ?? "INSTAGRAM");
-    setSubjectId(lead?.desiredSubjectId ?? "");
-    setCourseId(lead?.desiredCourseId ?? "");
-    setBranchId(lead?.preferredBranchId ?? "");
-    setManagerId("");
-    setFollowDate("");
-    setFollowTime("10:00");
-    setNotes(lead?.notes ?? "");
-    setDuplicates([]);
-    setOverride(false);
-    setOverrideReason("");
-    setError(null);
-  }, [open, lead]);
 
   const courseOptions = useMemo(
     () => courses.filter((c) => !subjectId || c.subjectId === subjectId),

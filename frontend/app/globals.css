@@ -272,6 +272,9 @@ tbody tr:hover {
 
   .dashboard-content {
     padding-left: 0 !important;
+    /* Room for the fixed menu button (top 14px + ~38px tall) so it never
+       covers page titles or back links. */
+    padding-top: 56px;
   }
 }
 

@@ -1370,6 +1370,7 @@ export const dict = {
   "adm.trial.CANCELLED": { UZ: "Bekor qilingan", RU: "Отменён", EN: "Cancelled" },
   "adm.trial.RESCHEDULED": { UZ: "Ko'chirilgan", RU: "Перенесён", EN: "Rescheduled" },
 
+  "adm.exportCsv": { UZ: "CSV yuklab olish", RU: "Скачать CSV", EN: "Export CSV" },
   "adm.viewList": { UZ: "Ro'yxat", RU: "Список", EN: "List" },
   "adm.viewPipeline": { UZ: "Voronka", RU: "Воронка", EN: "Pipeline" },
   "adm.searchPlaceholder": { UZ: "Ism, telefon yoki email...", RU: "Имя, телефон или email...", EN: "Name, phone or email..." },

@@ -192,7 +192,7 @@ function LeadsContent() {
           </div>
           {can("admissions.export") && (
             <button type="button" className="btn" style={ghostBtn} onClick={() => leadsApi.exportCsv({ ...query, page: undefined, pageSize: undefined }).catch(() => flash(t("adm.loadError")))}>
-              {t("common.export")}
+              {t("adm.exportCsv")}
             </button>
           )}
           {can("admissions.create") && (
@@ -385,12 +385,12 @@ function LeadsContent() {
         )}
       </div>
 
-      <LeadFormModal
+      {createOpen && <LeadFormModal
         open={createOpen}
         onClose={() => setCreateOpen(false)}
         managers={managers}
         onSaved={() => { load(); loadSummary(); }}
-      />
+      />}
     </>
   );
 }

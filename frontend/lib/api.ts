@@ -310,6 +310,8 @@ export interface AuthResponse {
   refreshToken: string;
   user: User;
   tenant: Tenant;
+  // The backend always sends this flag; only `true` means "let the user choose".
+  requiresWorkspaceSelection?: false;
 }
 
 export interface WorkspaceItem {
@@ -324,7 +326,9 @@ export interface WorkspaceItem {
 export type LoginResponse =
   | AuthResponse
   | { twoFactorRequired: true; pendingToken: string }
-  | { requiresWorkspaceSelection: true; userId: string; workspaces: WorkspaceItem[] };
+  // Several centers: the backend already issued a session for the first one,
+  // which authenticates the follow-up POST /auth/select-workspace.
+  | { requiresWorkspaceSelection: true; workspaces: WorkspaceItem[]; accessToken: string; refreshToken: string };
 
 export interface Session {
   id: string;
