@@ -4,7 +4,7 @@ import type { AdmissionsEvent } from './admissions-events.service';
 
 function chain(result: unknown) {
   const c: Record<string, unknown> = {};
-  for (const m of ['from', 'where']) c[m] = vi.fn(() => c);
+  for (const m of ['from', 'where', 'innerJoin']) c[m] = vi.fn(() => c);
   // oxlint-disable-next-line unicorn/no-thenable -- deliberately awaitable, like a drizzle builder
   c.then = (res: (v: unknown) => unknown, rej: (e: unknown) => unknown) => Promise.resolve(result).then(res, rej);
   return c;
@@ -60,5 +60,16 @@ describe('AdmissionsRemindersSubscriber', () => {
     leadsService.activeAssignableMembership.mockResolvedValue(null);
     expect(await sub.remind(event('LeadFollowUpDue'))).toBe(false);
     expect(email.send).not.toHaveBeenCalled();
+  });
+
+  it('tells every active owner/admin/manager about a new website application', async () => {
+    selectResults.push(
+      [{ id: 'l1', fullName: 'Aziza' }],
+      [{ email: 'owner@x.uz', fullName: 'Owner' }, { email: 'mgr@x.uz', fullName: 'Manager' }],
+    );
+    expect(await sub.notifyNewWebsiteLead(event('LeadCreated', { source: 'WEBSITE', channel: 'public_form' }))).toBe(2);
+    expect(email.send.mock.calls.map((c) => c[0])).toEqual(['owner@x.uz', 'mgr@x.uz']);
+    expect(email.send.mock.calls[0][1]).toContain('Saytdan yangi ariza: Aziza');
+    expect(email.send.mock.calls[0][2]).toContain('/leads/l1');
   });
 });

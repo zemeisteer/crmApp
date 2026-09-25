@@ -284,6 +284,13 @@ export interface PublicApplyDto {
   subject?: string;
   branchId?: string;
   notes?: string;
+  consent: boolean;
+  // Anti-spam: hidden honeypot field and the time the form was rendered.
+  website?: string;
+  formStartedAt?: number;
+  utmSource?: string;
+  utmMedium?: string;
+  utmCampaign?: string;
 }
 
 export interface StaffMember {
@@ -1301,7 +1308,7 @@ export const tenantsApi = {
   getPublicShowcase: (subdomain: string) =>
     request<PublicShowcaseData>(`/tenants/by-subdomain/${encodeURIComponent(subdomain)}/public-showcase`),
   publicApply: (subdomain: string, data: PublicApplyDto) =>
-    request<{ success: boolean; leadId: string; message: string }>(
+    request<{ success: boolean; message: string }>(
       `/tenants/by-subdomain/${encodeURIComponent(subdomain)}/apply`,
       { method: "POST", body: JSON.stringify(data) },
     ),

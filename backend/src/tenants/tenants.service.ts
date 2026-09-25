@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { and, eq, isNull } from 'drizzle-orm';
 import * as bcrypt from 'bcryptjs';
 import { DB, Database } from '../db/db.module';
@@ -6,8 +6,13 @@ import { tenants, users, groups, students, teachers, payments, attendance, branc
 import { LeadsService } from '../leads/leads.service';
 import { CreateTenantDto, UpdateTenantDto, UpdateTenantStatusDto, PublicApplyDto } from './dto/tenant.dto';
 
+// Faster than any human can fill the form in.
+const PUBLIC_FORM_MIN_FILL_MS = 2_000;
+
 @Injectable()
 export class TenantsService {
+  private readonly logger = new Logger(TenantsService.name);
+
   constructor(
     @Inject(DB) private readonly db: Database,
     private readonly leads: LeadsService,
@@ -134,29 +139,40 @@ export class TenantsService {
     const tenant = await this.db.query.tenants.findFirst({
       where: eq(tenants.subdomain, subdomain),
     });
-    if (!tenant) throw new NotFoundException('Markaz topilmadi');
+    // A suspended center's site must not keep collecting applications.
+    if (!tenant || tenant.status === 'SUSPENDED') throw new NotFoundException('Markaz topilmadi');
 
     if (!dto.fullName?.trim() || !dto.phone?.trim()) {
       throw new BadRequestException("Ism va telefon raqami to'ldirilishi shart");
     }
 
+    const accepted = {
+      success: true,
+      message: "Arizangiz muvaffaqiyatli qabul qilindi! Tez orada operatorlarimiz siz bilan bog'lanishadi.",
+    };
+    // Bots get the normal success answer so they learn nothing, but no lead.
+    const tooFast = typeof dto.formStartedAt === 'number' && Date.now() - dto.formStartedAt < PUBLIC_FORM_MIN_FILL_MS;
+    if (dto.website?.trim() || tooFast) {
+      this.logger.warn(JSON.stringify({ op: 'public_apply.rejected', tenantId: tenant.id, reason: dto.website?.trim() ? 'honeypot' : 'too_fast' }));
+      return accepted;
+    }
+
     // Goes through the admissions service so public applications get the
     // same phone normalization, duplicate handling and timeline as staff-
     // created leads.
-    const lead = await this.leads.createFromPublicForm(tenant.id, {
+    await this.leads.createFromPublicForm(tenant.id, {
       fullName: dto.fullName,
       phone: dto.phone,
       secondaryPhone: dto.parentPhone,
       subjectText: dto.subject,
       branchId: dto.branchId,
       notes: dto.notes,
+      utm: { source: dto.utmSource, medium: dto.utmMedium, campaign: dto.utmCampaign },
     });
 
-    return {
-      success: true,
-      leadId: lead.id,
-      message: "Arizangiz muvaffaqiyatli qabul qilindi! Tez orada operatorlarimiz siz bilan bog'lanishadi.",
-    };
+    // The internal lead id is not returned: the applicant has no use for it,
+    // and it would reveal whether the phone was already on file.
+    return accepted;
   }
 
   async findOne(id: string) {

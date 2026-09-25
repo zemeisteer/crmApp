@@ -28,6 +28,10 @@ export default function PublicSitePage() {
   const [submitting, setSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [consent, setConsent] = useState(false);
+  // Anti-spam: a field humans never see, and when the form was first shown.
+  const [honeypot, setHoneypot] = useState("");
+  const formStartedAt = useRef(Date.now());
 
   const applyRef = useRef<HTMLDivElement>(null);
 
@@ -67,9 +71,16 @@ export default function PublicSitePage() {
       return;
     }
 
+    if (!consent) {
+      setSubmitError("Iltimos, shaxsiy ma'lumotlaringizni qayta ishlashga rozilik bering");
+      return;
+    }
+
     setSubmitting(true);
     setSubmitError(null);
 
+    // Carry ad-campaign tags from the landing URL (?utm_source=instagram...).
+    const qs = new URLSearchParams(window.location.search);
     try {
       await tenantsApi.publicApply(params.subdomain, {
         fullName: fullName.trim(),
@@ -78,15 +89,26 @@ export default function PublicSitePage() {
         subject: selectedCourse || undefined,
         branchId: selectedBranch || undefined,
         notes: notes.trim() || undefined,
+        consent,
+        website: honeypot || undefined,
+        formStartedAt: formStartedAt.current,
+        utmSource: qs.get("utm_source") || undefined,
+        utmMedium: qs.get("utm_medium") || undefined,
+        utmCampaign: qs.get("utm_campaign") || undefined,
       });
 
       setSubmitSuccess(true);
+      setConsent(false);
       setFullName("");
       setPhone("+998 ");
       setParentPhone("");
       setNotes("");
     } catch (err) {
-      setSubmitError(err instanceof ApiError ? err.message : "Ariza topshirishda xatolik yuz berdi");
+      if (err instanceof ApiError && err.status === 429) {
+        setSubmitError("Juda ko'p urinish. Iltimos, bir daqiqadan so'ng qayta yuboring.");
+      } else {
+        setSubmitError(err instanceof ApiError ? err.message : "Ariza topshirishda xatolik yuz berdi");
+      }
     } finally {
       setSubmitting(false);
     }
@@ -222,21 +244,29 @@ export default function PublicSitePage() {
             </a>
           </div>
 
-          {/* Stats Bar */}
-          <div className="grid grid-cols-3 gap-3 pt-10 max-w-xl mx-auto">
-            <div className="p-4 rounded-2xl bg-slate-900/60 border border-slate-800/80">
-              <div className="text-2xl font-extrabold text-white">{stats.coursesCount || 10}+</div>
-              <div className="text-xs text-slate-400 mt-0.5">O&apos;quv guruhlari</div>
-            </div>
-            <div className="p-4 rounded-2xl bg-slate-900/60 border border-slate-800/80">
-              <div className="text-2xl font-extrabold text-white">{stats.teachersCount || 5}+</div>
-              <div className="text-xs text-slate-400 mt-0.5">Malakali ustozlar</div>
-            </div>
-            <div className="p-4 rounded-2xl bg-slate-900/60 border border-slate-800/80">
-              <div className="text-2xl font-extrabold text-white">{stats.branchesCount || 1}</div>
-              <div className="text-xs text-slate-400 mt-0.5">Shinam filial</div>
-            </div>
-          </div>
+          {/* Stats Bar: real counts only — a public page must not advertise
+              groups or teachers the center doesn't have. */}
+          {(() => {
+            const items = [
+              { value: stats.coursesCount, label: "O'quv guruhlari" },
+              { value: stats.teachersCount, label: "Malakali ustozlar" },
+              { value: stats.branchesCount, label: "Shinam filial" },
+            ].filter((i) => i.value > 0);
+            if (items.length === 0) return null;
+            return (
+              <div
+                className="grid gap-3 pt-10 max-w-xl mx-auto"
+                style={{ gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))` }}
+              >
+                {items.map((i) => (
+                  <div key={i.label} className="p-4 rounded-2xl bg-slate-900/60 border border-slate-800/80">
+                    <div className="text-2xl font-extrabold text-white">{i.value}</div>
+                    <div className="text-xs text-slate-400 mt-0.5">{i.label}</div>
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
         </div>
       </section>
 
@@ -599,6 +629,30 @@ export default function PublicSitePage() {
                   className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500 resize-none"
                 />
               </div>
+
+              {/* Honeypot: hidden from people and screen readers; bots fill it. */}
+              <div aria-hidden="true" style={{ position: "absolute", left: "-10000px", width: 1, height: 1, overflow: "hidden" }}>
+                <label>
+                  Website
+                  <input type="text" tabIndex={-1} autoComplete="off" value={honeypot} onChange={(e) => setHoneypot(e.target.value)} />
+                </label>
+              </div>
+
+              <label className="flex items-start gap-2.5 text-[11px] text-slate-400 leading-relaxed cursor-pointer">
+                <input
+                  type="checkbox"
+                  required
+                  checked={consent}
+                  onChange={(e) => setConsent(e.target.checked)}
+                  className="mt-0.5 accent-indigo-500"
+                />
+                <span>
+                  Shaxsiy ma&apos;lumotlarim markaz tomonidan men bilan bog&apos;lanish uchun qayta ishlanishiga roziman.{" "}
+                  <a href="/privacy" target="_blank" rel="noreferrer" className="text-indigo-400 underline">
+                    Maxfiylik siyosati
+                  </a>
+                </span>
+              </label>
 
               <button
                 type="submit"

@@ -21,6 +21,9 @@ export const DB = 'DB';
         // app-written timestamp.
         const pool = new Pool({
           connectionString: config.get<string>('DATABASE_URL'),
+          // Per-process pool size; parallel e2e suites lower it (see
+          // vitest.config.e2e.ts) so they stay under Postgres' max_connections.
+          max: Number(config.get<string>('DB_POOL_MAX')) || 10,
           options: '-c TimeZone=UTC',
         });
         return drizzle(pool, { schema });

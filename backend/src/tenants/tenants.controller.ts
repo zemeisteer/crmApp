@@ -1,5 +1,6 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { Throttle } from '@nestjs/throttler';
 import { IsString } from 'class-validator';
 import { JwtAuthGuard } from '../common/jwt-auth.guard';
 import { RolesGuard } from '../common/roles.guard';
@@ -29,6 +30,8 @@ export class TenantsController {
     return this.service.getPublicShowcase(subdomain);
   }
 
+  // Public and anonymous: a tight per-IP limit keeps form spam out of CRMs.
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @Post('by-subdomain/:subdomain/apply')
   publicApply(@Param('subdomain') subdomain: string, @Body() dto: PublicApplyDto) {
     return this.service.publicApply(subdomain, dto);

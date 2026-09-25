@@ -508,9 +508,19 @@ export class LeadsService {
   // timeline instead, and the response does not reveal which case happened.
   async createFromPublicForm(
     tenantId: string,
-    dto: { fullName: string; phone: string; secondaryPhone?: string; subjectText?: string; branchId?: string; notes?: string },
+    dto: {
+      fullName: string;
+      phone: string;
+      secondaryPhone?: string;
+      subjectText?: string;
+      branchId?: string;
+      notes?: string;
+      utm?: { source?: string; medium?: string; campaign?: string };
+    },
   ) {
     const phoneNormalized = this.requirePhone(dto.phone);
+    // Marketing attribution from the landing URL, kept on the timeline.
+    const utm = Object.fromEntries(Object.entries(dto.utm ?? {}).filter(([, v]) => typeof v === 'string' && v.trim()).map(([k, v]) => [k, v!.trim()]));
     const [existing] = await this.findDuplicates(this.db, tenantId, phoneNormalized, null);
     const noteText = dto.notes?.trim()
       ? `Saytdan onlayn ariza: ${dto.notes.trim()}`
@@ -519,7 +529,7 @@ export class LeadsService {
     if (existing) {
       await this.recordActivity(this.db, {
         tenantId, leadId: existing.id, actorUserId: null, type: 'NOTE',
-        body: `Takroriy onlayn ariza. ${noteText}`, metadata: { kind: 'PUBLIC_REAPPLY' },
+        body: `Takroriy onlayn ariza. ${noteText}`, metadata: { kind: 'PUBLIC_REAPPLY', ...(Object.keys(utm).length ? { utm } : {}) },
       });
       return { id: existing.id };
     }
@@ -557,11 +567,11 @@ export class LeadsService {
         }).returning();
         await this.recordActivity(tx, {
           tenantId, leadId: row.id, actorUserId: null, type: 'STATUS_CHANGE', toStatus: 'NEW',
-          metadata: { kind: 'CREATED', source: 'WEBSITE' },
+          metadata: { kind: 'CREATED', source: 'WEBSITE', ...(Object.keys(utm).length ? { utm } : {}) },
         });
         return row;
       });
-      this.events.emit('LeadCreated', { tenantId, leadId: lead.id, actorUserId: null, data: { source: 'WEBSITE' } });
+      this.events.emit('LeadCreated', { tenantId, leadId: lead.id, actorUserId: null, data: { source: 'WEBSITE', channel: 'public_form' } });
       return { id: lead.id };
     } catch (err) {
       if (isUniqueViolation(err)) {
