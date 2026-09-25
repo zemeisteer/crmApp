@@ -98,7 +98,7 @@ function GroupDetailContent() {
 
   function load() {
     setLoading(true);
-    Promise.all([groupsApi.get(id), studentsApi.list(), paymentsApi.list(), attendanceApi.list({ groupId: id })])
+    Promise.all([groupsApi.get(id), studentsApi.list(), paymentsApi.list().catch(() => []), attendanceApi.list({ groupId: id })])
       .then(([g, s, p, a]) => {
         setGroup(g as any);
         setAllStudents(s);

@@ -12,16 +12,21 @@ import { CreatePaymentDto } from './dto/payment.dto';
 export class PaymentsController {
   constructor(private readonly service: PaymentsService) {}
 
+  // Center-wide payment data: management, finance staff and the front desk
+  // (which takes payments) only.
+  @Roles('ADMIN', 'OWNER', 'MANAGER', 'ACCOUNTANT', 'RECEPTIONIST')
   @Get()
   findAll(@CurrentUser('tenantId') tenantId: string) {
     return this.service.findAll(tenantId);
   }
 
+  @Roles('ADMIN', 'OWNER', 'MANAGER', 'ACCOUNTANT', 'RECEPTIONIST')
   @Get('summary')
   summary(@CurrentUser('tenantId') tenantId: string) {
     return this.service.summary(tenantId);
   }
 
+  @Roles('ADMIN', 'OWNER', 'MANAGER', 'ACCOUNTANT', 'RECEPTIONIST')
   @Get('debtors')
   getDebtors(
     @CurrentUser('tenantId') tenantId: string,
@@ -31,6 +36,7 @@ export class PaymentsController {
     return this.service.getDebtors(tenantId, forMonth, onlyDebtors === 'true');
   }
 
+  @Roles('ADMIN', 'OWNER', 'MANAGER', 'ACCOUNTANT', 'RECEPTIONIST')
   @Get('finance-summary')
   getFinanceSummary(
     @CurrentUser('tenantId') tenantId: string,
@@ -39,6 +45,7 @@ export class PaymentsController {
     return this.service.getFinanceSummary(tenantId, forMonth);
   }
 
+  @Roles('ADMIN', 'OWNER', 'MANAGER', 'ACCOUNTANT', 'RECEPTIONIST')
   @Get(':id')
   findOne(
     @CurrentUser('tenantId') tenantId: string,

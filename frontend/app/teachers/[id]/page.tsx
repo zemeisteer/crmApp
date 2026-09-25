@@ -67,8 +67,8 @@ function TeacherDetailContent() {
         const groups = (t as any).groups as Group[] | undefined;
         const [full, p, sp] = await Promise.all([
           Promise.all((groups || []).map((g) => groupsApi.get(g.id))),
-          paymentsApi.list(),
-          salaryApi.list(id),
+          paymentsApi.list().catch(() => []),
+          salaryApi.list(id).catch(() => []),
         ]);
         setFullGroups(full as FullGroup[]);
         setPayments(p);

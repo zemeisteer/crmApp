@@ -71,7 +71,7 @@ function AiInsightsContent() {
   const [updatedAt] = useState(() => new Date());
 
   useEffect(() => {
-    Promise.all([groupsApi.list(), studentsApi.list(), paymentsApi.list(), attendanceApi.list()])
+    Promise.all([groupsApi.list(), studentsApi.list(), paymentsApi.list().catch(() => []), attendanceApi.list()])
       .then(([g, s, p, a]) => {
         setGroups(g);
         setStudents(s);

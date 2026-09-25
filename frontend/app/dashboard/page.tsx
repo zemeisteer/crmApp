@@ -80,7 +80,8 @@ function DashboardContent() {
       groupsApi.list(),
       studentsApi.list(),
       teachersApi.list(),
-      paymentsApi.list(),
+      // Finance data is role-restricted; other staff just see no payments.
+      paymentsApi.list().catch(() => []),
       attendanceApi.list(),
       announcementsApi.list().catch(() => []),
     ])

@@ -110,7 +110,7 @@ function TeachersContent() {
 
   function load() {
     setLoading(true);
-    Promise.all([teachersApi.list(), groupsApi.list(), studentsApi.list(), paymentsApi.list()])
+    Promise.all([teachersApi.list(), groupsApi.list(), studentsApi.list(), paymentsApi.list().catch(() => [])])
       .then(([t, g, s, p]) => {
         setTeachers(t);
         setGroups(g);

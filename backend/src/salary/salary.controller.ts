@@ -12,6 +12,8 @@ import { CreateSalaryPaymentDto, DisburseSalaryDto } from './dto/salary.dto';
 export class SalaryController {
   constructor(private readonly service: SalaryService) {}
 
+  // Every teacher's pay: finance staff only.
+  @Roles('ADMIN', 'OWNER', 'ACCOUNTANT')
   @Get()
   findAll(@CurrentUser('tenantId') tenantId: string, @Query('teacherId') teacherId?: string) {
     return this.service.findAll(tenantId, teacherId);

@@ -22,6 +22,8 @@ import { CreateExpenseDto, UpdateExpenseDto } from './dto/expense.dto';
 export class ExpensesController {
   constructor(private readonly service: ExpensesService) {}
 
+  // Expenses are finance-only data.
+  @Roles('ADMIN', 'OWNER', 'ACCOUNTANT')
   @Get()
   findAll(
     @CurrentUser('tenantId') tenantId: string,
@@ -32,6 +34,7 @@ export class ExpensesController {
     return this.service.findAll(tenantId, { forMonth, category, branchId });
   }
 
+  @Roles('ADMIN', 'OWNER', 'ACCOUNTANT')
   @Get('summary')
   summary(
     @CurrentUser('tenantId') tenantId: string,
@@ -40,6 +43,7 @@ export class ExpensesController {
     return this.service.summary(tenantId, forMonth);
   }
 
+  @Roles('ADMIN', 'OWNER', 'ACCOUNTANT')
   @Get(':id')
   findOne(@CurrentUser('tenantId') tenantId: string, @Param('id') id: string) {
     return this.service.findOne(tenantId, id);
