@@ -61,6 +61,8 @@ export class PlansService {
       { key: 'STARTER', name: 'Starter', price: 0, features: "1 filial\n50 tagacha o'quvchi\nAsosiy CRUD", popular: false },
       { key: 'STANDARD', name: 'Standard', price: 300_000, features: "Cheksiz filial\n500 tagacha o'quvchi\nDavomat, hisobotlar\nTelegram xabarnomalar", popular: true },
       { key: 'PREMIUM', name: 'Premium', price: 600_000, features: "Cheksiz o'quvchi\nAI tahlil va materiallar\nClick/Payme integratsiya\nUstuvor qo'llab-quvvatlash", popular: false },
-    ]);
+    // Several app instances (or parallel test suites) can boot against the
+    // same empty table at once; whoever loses the race just skips.
+    ]).onConflictDoNothing({ target: plans.key });
   }
 }
