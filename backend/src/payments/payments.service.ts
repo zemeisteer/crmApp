@@ -1,7 +1,7 @@
 import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { and, desc, eq, isNull, like } from 'drizzle-orm';
 import { DB, Database } from '../db/db.module';
-import { expenses, invoices, paymentAllocations, payments, salaryPayments, students } from '../db/schema';
+import { enrollments, expenses, invoices, paymentAllocations, payments, salaryPayments, students } from '../db/schema';
 import { CreatePaymentDto } from './dto/payment.dto';
 import { TelegramService } from '../telegram/telegram.service';
 import { WebhooksService } from '../webhooks/webhooks.service';
@@ -222,10 +222,15 @@ export class PaymentsService {
   async getDebtors(tenantId: string, forMonth?: string, onlyDebtors = false): Promise<DebtorsResponse> {
     const month = forMonth || new Date().toISOString().slice(0, 7);
 
+    // Only students who are currently studying, and only their ACTIVE
+    // enrollments, are expected to pay: left, graduated and paused students,
+    // and cancelled/paused enrollments, used to inflate expected revenue and
+    // debt.
     const studentList = await this.db.query.students.findMany({
-      where: and(eq(students.tenantId, tenantId), isNull(students.deletedAt)),
+      where: and(eq(students.tenantId, tenantId), isNull(students.deletedAt), eq(students.status, 'ACTIVE')),
       with: {
         enrollments: {
+          where: eq(enrollments.status, 'ACTIVE'),
           with: {
             group: true,
           },

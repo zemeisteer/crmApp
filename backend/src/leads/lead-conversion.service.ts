@@ -3,6 +3,7 @@ import { and, eq, isNull, or, sql } from 'drizzle-orm';
 import { DB, Database } from '../db/db.module';
 import { branches, enrollments, groups, leadTrials, students } from '../db/schema';
 import { AuditService } from '../audit/audit.service';
+import { countOccupiedSeats } from '../common/seats';
 import { InvoicesService } from '../invoices/invoices.service';
 import { WebhooksService } from '../webhooks/webhooks.service';
 import { AdmissionsEventsService } from './admissions-events.service';
@@ -156,8 +157,7 @@ export class LeadConversionService {
         if (existing?.status === 'ACTIVE') {
           throw new ConflictException({ code: 'ALREADY_ENROLLED', message: `O'quvchi "${group.name}" guruhida allaqachon faol` });
         }
-        const [{ active }] = await tx.select({ active: sql<number>`count(*)::int` }).from(enrollments)
-          .where(and(eq(enrollments.groupId, groupId), eq(enrollments.status, 'ACTIVE')));
+        const active = await countOccupiedSeats(tx, groupId);
         if (active >= group.maxStudents) {
           throw new ConflictException({ code: 'GROUP_FULL', message: `"${group.name}" guruhida bo'sh joy yo'q (${active}/${group.maxStudents})` });
         }

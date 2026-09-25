@@ -1610,6 +1610,47 @@ export const leadsApi = {
   exportCsv: (query?: LeadQuery) => download(`/leads/export${leadQueryString(query)}`, "leads.csv"),
 };
 
+// ---- Reports (server-side monthly overview) ----
+
+export interface ReportsOverview {
+  month: string;
+  timezone: string;
+  definitions: Record<string, string>;
+  students: {
+    active: number;
+    newThisMonth: number;
+    byStatus: Record<string, number>;
+    registrationsByMonth: Array<{ month: string; count: number }>;
+  };
+  groups: {
+    active: number;
+    averageOccupancy: number | null;
+    items: Array<{ id: string; name: string; students: number; maxStudents: number; occupancy: number | null; attendanceRate: number | null; collected: number }>;
+  };
+  attendance: { marks: number; byStatus: Record<string, number>; rate: number | null };
+  atRisk: Array<{ studentId: string; fullName: string; phone: string | null; attendanceRate: number | null; overdueAmount: number; risk: "HIGH" | "MEDIUM" }>;
+  // null when the viewer's role may not see finance.
+  finance: null | {
+    collected: number;
+    expected: number;
+    outstandingDebt: number;
+    debtorCount: number;
+    collectionRate: number | null;
+    revenueByMethod: Record<string, number>;
+    yearToDate: { thisYear: number; lastYear: number; growth: number | null };
+    // Only for finance roles (not managers).
+    expenses?: number;
+    salaries?: number;
+    netProfit?: number;
+    expensesByCategory?: Record<string, number>;
+  };
+  admissions: LeadAnalytics | null;
+}
+
+export const reportsApi = {
+  overview: (month?: string) => request<ReportsOverview>(`/reports/overview${month ? `?month=${month}` : ""}`),
+};
+
 // ---- Certificates (Spec Section 23) ----
 
 export const certificatesApi = {

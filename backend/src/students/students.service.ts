@@ -1,9 +1,10 @@
 import { BadRequestException, ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { and, eq, isNotNull, isNull, inArray, or, sql } from 'drizzle-orm';
+import { and, eq, isNotNull, isNull, inArray, or } from 'drizzle-orm';
 import { DB, Database } from '../db/db.module';
 import { branches, enrollments, groups, organizationMemberships, studentGuardians, students, users } from '../db/schema';
 import { CreateStudentDto, LinkGuardianDto, UpdateStudentDto } from './dto/student.dto';
 import { AuditService } from '../audit/audit.service';
+import { countOccupiedSeats } from '../common/seats';
 import { WebhooksService } from '../webhooks/webhooks.service';
 
 @Injectable()
@@ -226,10 +227,7 @@ export class StudentsService {
       .for('update');
     if (!group) throw new NotFoundException('Guruh topilmadi');
     if (opts.skipCapacity) return group;
-    const [{ active }] = await tx
-      .select({ active: sql<number>`count(*)::int` })
-      .from(enrollments)
-      .where(and(eq(enrollments.groupId, groupId), eq(enrollments.status, 'ACTIVE')));
+    const active = await countOccupiedSeats(tx, groupId);
     if (active >= group.maxStudents) {
       throw new ConflictException({
         code: 'GROUP_FULL',

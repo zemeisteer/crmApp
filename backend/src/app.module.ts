@@ -28,6 +28,7 @@ import { HealthModule } from './health/health.module';
 import { PlansModule } from './plans/plans.module';
 import { StaffModule } from './staff/staff.module';
 import { LeadsModule } from './leads/leads.module';
+import { ReportsModule } from './reports/reports.module';
 import { CertificatesModule } from './certificates/certificates.module';
 import { AnnouncementsModule } from './announcements/announcements.module';
 import { ScheduleModule } from './schedule/schedule.module';
@@ -69,6 +70,7 @@ import { InvoicesModule } from './invoices/invoices.module';
     PlansModule,
     StaffModule,
     LeadsModule,
+    ReportsModule,
     CertificatesModule,
     AnnouncementsModule,
     ScheduleModule,

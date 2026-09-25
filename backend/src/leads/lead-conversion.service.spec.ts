@@ -5,7 +5,7 @@ import { LeadsService } from './leads.service';
 
 function chain(result: unknown) {
   const c: Record<string, unknown> = {};
-  for (const m of ['from', 'where', 'limit', 'returning', 'values', 'set', 'for']) c[m] = vi.fn(() => c);
+  for (const m of ['from', 'where', 'limit', 'returning', 'values', 'set', 'for', 'innerJoin']) c[m] = vi.fn(() => c);
   // oxlint-disable-next-line unicorn/no-thenable -- deliberately awaitable, like a drizzle builder
   c.then = (res: (v: unknown) => unknown, rej: (e: unknown) => unknown) => Promise.resolve(result).then(res, rej);
   return c;
