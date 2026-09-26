@@ -184,11 +184,11 @@ export default function SchedulePage() {
       return;
     }
     if (!startTime || !endTime) {
-      setFormError("Dars vaqtlarini kiriting");
+      setFormError(t("sch.enterTimes"));
       return;
     }
     if (startTime >= endTime) {
-      setFormError("Tugash vaqti boshlanish vaqtidan keyin bo'lishi kerak");
+      setFormError(t("sch.endAfterStart"));
       return;
     }
 
@@ -232,7 +232,7 @@ export default function SchedulePage() {
       setSchedules((prev) => prev.filter((s) => s.id !== id));
     } catch (err) {
       console.error(err);
-      alert("O'chirishda xatolik yuz berdi");
+      alert(t("sch.deleteError"));
     }
   }
 
@@ -259,13 +259,13 @@ export default function SchedulePage() {
   }
 
   async function handleDeleteRoom(id: string) {
-    if (!confirm("Ushbu xonani o'chirmoqchimisiz?")) return;
+    if (!confirm(t("sch.confirmDeleteRoom"))) return;
     try {
       await scheduleApi.deleteRoom(id);
       setRooms((prev) => prev.filter((r) => r.id !== id));
     } catch (err) {
       console.error(err);
-      alert("Xonani o'chirishda xatolik yuz berdi");
+      alert(t("sch.deleteRoomError"));
     }
   }
 
@@ -614,7 +614,7 @@ export default function SchedulePage() {
                               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                 <circle cx="12" cy="12" r="10" /><polygon points="10 8 16 12 10 16 10 8" />
                               </svg>
-                              Onlayn darsga ulanish
+                              {t("sch.joinOnline")}
                             </a>
                           )}
                         </div>
@@ -736,7 +736,7 @@ export default function SchedulePage() {
                   type="text"
                   value={topic}
                   onChange={(e) => setTopic(e.target.value)}
-                  placeholder="Masalan: Present Simple, Trigonometriya..."
+                  placeholder={t("sch.topicPh")}
                   className="field-input"
                   style={{ width: "100%" }}
                 />
@@ -750,7 +750,7 @@ export default function SchedulePage() {
                   type="url"
                   value={onlineMeetingUrl}
                   onChange={(e) => setOnlineMeetingUrl(e.target.value)}
-                  placeholder="https://zoom.us/j/... yoki meet.google.com/..."
+                  placeholder={t("sch.linkPh")}
                   className="field-input"
                   style={{ width: "100%" }}
                 />
@@ -842,7 +842,7 @@ export default function SchedulePage() {
 
             {/* Create Room Form */}
             <form onSubmit={handleCreateRoom} style={{ background: "#F9FAFB", padding: 14, borderRadius: 8, marginBottom: 18, border: "1px solid #E5E7EB" }}>
-              <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 10, color: "#374151" }}>Yangi xona qo'shish</div>
+              <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 10, color: "#374151" }}>{t("sch.newRoom")}</div>
               <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr auto", gap: 10, alignItems: "flex-end" }}>
                 <div>
                   <label style={{ display: "block", fontSize: 11.5, color: "#6B7280", marginBottom: 3 }}>{t("schedule.roomName")}</label>
@@ -850,7 +850,7 @@ export default function SchedulePage() {
                     type="text"
                     value={roomName}
                     onChange={(e) => setRoomName(e.target.value)}
-                    placeholder="101-xona"
+                    placeholder={t("sch.roomPh")}
                     className="field-input"
                     style={{ width: "100%", padding: "6px 10px" }}
                   />
@@ -900,7 +900,7 @@ export default function SchedulePage() {
             {/* Rooms List */}
             <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: 320, overflowY: "auto" }}>
               {rooms.length === 0 ? (
-                <div style={{ textAlign: "center", color: "#9CA3AF", padding: 20 }}>Xonalar mavjud emas</div>
+                <div style={{ textAlign: "center", color: "#9CA3AF", padding: 20 }}>{t("sch.noRooms")}</div>
               ) : (
                 rooms.map((room) => (
                   <div
@@ -931,7 +931,7 @@ export default function SchedulePage() {
                         cursor: "pointer",
                         padding: 6,
                       }}
-                      title="O'chirish"
+                      title={t("common.delete")}
                     >
                       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />

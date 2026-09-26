@@ -184,7 +184,7 @@ function ExamsContent() {
       resetForm();
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Xatolik yuz berdi");
+      setError(err instanceof ApiError ? err.message : t("common.errorGeneric"));
     } finally {
       setSaving(false);
     }
@@ -224,7 +224,7 @@ function ExamsContent() {
       setGradeExam(null);
       load();
     } catch (err) {
-      alert(err instanceof ApiError ? err.message : "Xatolik yuz berdi");
+      alert(err instanceof ApiError ? err.message : t("common.errorGeneric"));
     } finally {
       setGradeSaving(false);
     }
@@ -241,7 +241,7 @@ function ExamsContent() {
       const qList = await examsApi.getQuestions(exam.id);
       setExamQuestionsList(qList);
     } catch (err) {
-      setQuestionError(err instanceof ApiError ? err.message : "Savollarni yuklashda xatolik");
+      setQuestionError(err instanceof ApiError ? err.message : t("ex.loadQError"));
     } finally {
       setLoadingQuestions(false);
     }
@@ -256,7 +256,7 @@ function ExamsContent() {
       setExamQuestionsList((prev) => [...prev, ...newQuestions]);
       load(); // refresh main exam list question counts
     } catch (err) {
-      setQuestionError(err instanceof ApiError ? err.message : "AI savollar yaratishda xatolik yuz berdi");
+      setQuestionError(err instanceof ApiError ? err.message : t("ex.aiError"));
     } finally {
       setAiGeneratingQuestions(false);
     }
@@ -280,8 +280,8 @@ function ExamsContent() {
         ];
       } else if (qType === "TRUE_FALSE") {
         options = [
-          { id: "true", text: "To'g'ri (Rost)" },
-          { id: "false", text: "Noto'g'ri (Yolg'on)" },
+          { id: "true", text: t("ex.true") },
+          { id: "false", text: t("ex.false") },
         ];
       }
 
@@ -304,7 +304,7 @@ function ExamsContent() {
       setShowAddQuestionForm(false);
       load();
     } catch (err) {
-      setQuestionError(err instanceof ApiError ? err.message : "Savolni saqlashda xatolik");
+      setQuestionError(err instanceof ApiError ? err.message : t("ex.saveQError"));
     } finally {
       setSavingQuestion(false);
     }
@@ -312,13 +312,13 @@ function ExamsContent() {
 
   async function handleDeleteQuestion(qId: string) {
     if (!questionsExam) return;
-    if (!confirm("Savolni o'chirishni tasdiqlaysizmi?")) return;
+    if (!confirm(t("ex.confirmDeleteQ"))) return;
     try {
       await examsApi.removeQuestion(questionsExam.id, qId);
       setExamQuestionsList((prev) => prev.filter((q) => q.id !== qId));
       load();
     } catch (err) {
-      alert(err instanceof ApiError ? err.message : "O'chirishda xatolik");
+      alert(err instanceof ApiError ? err.message : t("pay.deleteError"));
     }
   }
 
@@ -355,7 +355,7 @@ function ExamsContent() {
     try {
       const data = await examsApi.startAttempt(simulatorExam.id, simulatorStudentId);
       if (data.questions.length === 0) {
-        alert("Ushbu imtihonga hali savollar kiritilmagan. Avval savollar bankiga savol qo'shing.");
+        alert(t("ex.noQuestions"));
         return;
       }
       setSimulatorQuestions(data.questions);
@@ -365,7 +365,7 @@ function ExamsContent() {
       setSimulatorTimer(totalSeconds);
       setSimulatorStep("TESTING");
     } catch (err) {
-      alert(err instanceof ApiError ? err.message : "Testni boshlashda xatolik");
+      alert(err instanceof ApiError ? err.message : t("ex.startError"));
     }
   }
 
@@ -385,7 +385,7 @@ function ExamsContent() {
       setSimulatorStep("RESULT");
       load(); // refresh results in background
     } catch (err) {
-      alert(err instanceof ApiError ? err.message : "Testni topshirishda xatolik");
+      alert(err instanceof ApiError ? err.message : t("ex.submitError"));
     } finally {
       setSubmittingAttempt(false);
     }
@@ -447,7 +447,7 @@ function ExamsContent() {
         <div>
           <h1 style={{ fontSize: 24, fontWeight: 800 }}>{t("exams.title")}</h1>
           <p style={{ fontSize: 13, color: "#8A8D96", marginTop: 2 }}>
-            Imtihonlar, savollar banki va avtomatik tekshiruvchi interaktiv onlayn testlar
+            {t("ex.subtitle")}
           </p>
         </div>
         <button
@@ -549,7 +549,7 @@ function ExamsContent() {
                             onClick={() => openQuestionManager(ex)}
                             style={{ background: "#EEF2FF", color: "#4F46E5", border: "1px solid #C7D2FE", fontSize: 12, fontWeight: 700, padding: "6px 12px", borderRadius: 8 }}
                           >
-                            📝 Savollar banki ({ex.questions?.length || 0})
+                            📝 {t("ex.bank")} ({ex.questions?.length || 0})
                           </button>
 
                           {/* Take Exam Simulator */}
@@ -558,7 +558,7 @@ function ExamsContent() {
                             onClick={() => openTestSimulator(ex)}
                             style={{ background: "#ECFDF5", color: "#059669", border: "1px solid #A7F3D0", fontSize: 12, fontWeight: 700, padding: "6px 12px", borderRadius: 8 }}
                           >
-                            🎯 Test topshirish
+                            {t("ex.takeTest")}
                           </button>
 
                           {/* Manual Grading */}
@@ -762,7 +762,7 @@ function ExamsContent() {
       <Modal
         open={!!questionsExam}
         onClose={() => setQuestionsExam(null)}
-        title={questionsExam ? `Savollar Banki: ${questionsExam.title}` : "Savollar Banki"}
+        title={questionsExam ? `${t("ex.bank")}: ${questionsExam.title}` : t("ex.bank")}
       >
         {questionsExam && (
           <div className="space-y-4">
@@ -793,14 +793,14 @@ function ExamsContent() {
                     <path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8L12 3Z" />
                     <path d="M19 15l.7 2 2 .7-2 .7-.7 2-.7-2-2-.7 2-.7.7-2Z" />
                   </svg>
-                  {aiGeneratingQuestions ? "AI yaratmoqda..." : "✨ AI bilan 5 ta savol yaratish"}
+                  {aiGeneratingQuestions ? t("ex.aiGenerating") : t("ex.aiGenerate5")}
                 </button>
 
                 <button
                   onClick={() => setShowAddQuestionForm(!showAddQuestionForm)}
                   className="px-3 py-1.5 rounded-lg bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-semibold transition cursor-pointer"
                 >
-                  {showAddQuestionForm ? "✕ Bekor qilish" : "+ Yangi savol qo'shish"}
+                  {showAddQuestionForm ? t("ex.cancelX") : t("ex.addQ")}
                 </button>
               </div>
             </div>
@@ -808,14 +808,14 @@ function ExamsContent() {
             {/* Add Question Inline Form */}
             {showAddQuestionForm && (
               <form onSubmit={handleAddQuestion} className="p-4 rounded-xl border border-indigo-100 bg-indigo-50/40 space-y-3">
-                <h4 className="text-xs font-bold text-indigo-950 uppercase tracking-wide">Yangi Savol Kiritish</h4>
+                <h4 className="text-xs font-bold text-indigo-950 uppercase tracking-wide">{t("ex.newQ")}</h4>
 
                 <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1">Savol matni *</label>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">{t("ex.qText")}</label>
                   <textarea
                     required
                     rows={2}
-                    placeholder="Savol matnini bu yerga yozing..."
+                    placeholder={t("ex.qTextPh")}
                     value={qPrompt}
                     onChange={(e) => setQPrompt(e.target.value)}
                     className="w-full bg-white border border-slate-300 rounded-lg p-2.5 text-xs text-slate-800 focus:outline-none focus:border-indigo-500"
@@ -824,19 +824,19 @@ function ExamsContent() {
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-medium text-slate-700 mb-1">Savol turi</label>
+                    <label className="block text-xs font-medium text-slate-700 mb-1">{t("ex.qType")}</label>
                     <select
                       value={qType}
                       onChange={(e) => setQType(e.target.value as ExamQuestionType)}
                       className="w-full bg-white border border-slate-300 rounded-lg p-2 text-xs text-slate-800 focus:outline-none focus:border-indigo-500"
                     >
-                      <option value="MCQ">Variantli (A, B, C, D)</option>
-                      <option value="TRUE_FALSE">To&apos;g&apos;ri / Noto&apos;g&apos;ri (True/False)</option>
+                      <option value="MCQ">{t("ex.mcq")}</option>
+                      <option value="TRUE_FALSE">{t("ex.tf")}</option>
                     </select>
                   </div>
 
                   <div>
-                    <label className="block text-xs font-medium text-slate-700 mb-1">Ball (points)</label>
+                    <label className="block text-xs font-medium text-slate-700 mb-1">{t("ex.points")}</label>
                     <input
                       type="number"
                       min={1}
@@ -849,7 +849,7 @@ function ExamsContent() {
 
                 {qType === "MCQ" ? (
                   <div className="space-y-2 pt-1">
-                    <span className="text-[11px] font-bold text-slate-700 block">Javob variantlari va to&apos;g&apos;ri kalit:</span>
+                    <span className="text-[11px] font-bold text-slate-700 block">{t("ex.options")}</span>
                     {[
                       { key: "A", val: qOptA, set: setQOptA },
                       { key: "B", val: qOptB, set: setQOptB },
@@ -878,7 +878,7 @@ function ExamsContent() {
                   </div>
                 ) : (
                   <div className="space-y-2 pt-1">
-                    <span className="text-[11px] font-bold text-slate-700 block">To&apos;g&apos;ri javob:</span>
+                    <span className="text-[11px] font-bold text-slate-700 block">{t("ex.correctAnswer")}</span>
                     <div className="flex items-center gap-4">
                       <label className="flex items-center gap-1.5 text-xs text-slate-800 cursor-pointer">
                         <input
@@ -888,7 +888,7 @@ function ExamsContent() {
                           onChange={() => setQCorrectAnswer("true")}
                           className="w-4 h-4 accent-indigo-600"
                         />
-                        To&apos;g&apos;ri (Rost)
+                        {t("ex.true")}
                       </label>
                       <label className="flex items-center gap-1.5 text-xs text-slate-800 cursor-pointer">
                         <input
@@ -898,17 +898,17 @@ function ExamsContent() {
                           onChange={() => setQCorrectAnswer("false")}
                           className="w-4 h-4 accent-indigo-600"
                         />
-                        Noto&apos;g&apos;ri (Yolg&apos;on)
+                        {t("ex.false")}
                       </label>
                     </div>
                   </div>
                 )}
 
                 <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1">To&apos;g&apos;ri javob izohi / tushuntirish (ixtiyoriy)</label>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">{t("ex.explanation")}</label>
                   <input
                     type="text"
-                    placeholder="Talaba testni topshirgach ko'rsatiladigan izoh"
+                    placeholder={t("ex.explanationPh")}
                     value={qExplanation}
                     onChange={(e) => setQExplanation(e.target.value)}
                     className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 focus:outline-none focus:border-indigo-500"
@@ -921,7 +921,7 @@ function ExamsContent() {
                     disabled={savingQuestion}
                     className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition cursor-pointer"
                   >
-                    {savingQuestion ? "Saqlanmoqda..." : "Savolni Saqlash"}
+                    {savingQuestion ? t("common.saving") : t("ex.saveQ")}
                   </button>
                 </div>
               </form>
@@ -929,12 +929,12 @@ function ExamsContent() {
 
             {/* Questions List */}
             {loadingQuestions ? (
-              <div className="py-12 text-center text-xs text-slate-500">Savollar yuklanmoqda...</div>
+              <div className="py-12 text-center text-xs text-slate-500">{t("ex.loadingQ")}</div>
             ) : examQuestionsList.length === 0 ? (
               <div className="p-8 text-center rounded-xl bg-slate-50 border border-slate-200">
-                <p className="text-xs text-slate-600">Hozircha savollar mavjud emas.</p>
+                <p className="text-xs text-slate-600">{t("ex.emptyQ")}</p>
                 <p className="text-[11px] text-slate-400 mt-1">
-                  Yangi savol kiriting yoki &quot;✨ AI bilan 5 ta savol yaratish&quot; tugmasini bosing.
+                  {t("ex.emptyQHint")}
                 </p>
               </div>
             ) : (
@@ -956,7 +956,7 @@ function ExamsContent() {
                               {idx + 1}
                             </span>
                             <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 uppercase">
-                              {q.questionType === "TRUE_FALSE" ? "True / False" : "Variantli (MCQ)"}
+                              {q.questionType === "TRUE_FALSE" ? t("ex.tf") : t("ex.mcqShort")}
                             </span>
                             <span className="text-[10px] font-semibold text-slate-500">
                               {q.points || 1} ball
@@ -986,7 +986,7 @@ function ExamsContent() {
                                     {opt.id}
                                   </span>
                                   <span className="truncate">{opt.text}</span>
-                                  {isCorrect && <span className="ml-auto text-[10px] text-emerald-700">✓ To&apos;g&apos;ri</span>}
+                                  {isCorrect && <span className="ml-auto text-[10px] text-emerald-700">{t("ex.correctMark")}</span>}
                                 </div>
                               );
                             })}
@@ -994,14 +994,14 @@ function ExamsContent() {
 
                           {q.explanation && (
                             <p className="text-[11px] text-slate-500 italic pt-1">
-                              💡 Izoh: {q.explanation}
+                              💡 {t("ex.note")}: {q.explanation}
                             </p>
                           )}
                         </div>
 
                         <button
                           onClick={() => handleDeleteQuestion(q.id)}
-                          title="Savolni o'chirish"
+                          title={t("ex.deleteQ")}
                           className="p-1 rounded text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer"
                         >
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -1049,9 +1049,9 @@ function ExamsContent() {
                 </div>
 
                 <div className="max-w-xs mx-auto text-left">
-                  <label className="block text-xs font-medium text-slate-700 mb-1">Test topshiruvchi talabani tanlang:</label>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">{t("ex.pickStudent")}</label>
                   {simulatorStudents.length === 0 ? (
-                    <p className="text-xs text-rose-500">Guruhda hali talabalar ro&apos;yxatga olinmagan.</p>
+                    <p className="text-xs text-rose-500">{t("ex.noStudents")}</p>
                   ) : (
                     <select
                       value={simulatorStudentId}
@@ -1070,7 +1070,7 @@ function ExamsContent() {
                   disabled={simulatorStudents.length === 0}
                   className="px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-xs font-bold transition shadow-sm cursor-pointer"
                 >
-                  Testni Boshlash →
+                  {t("ex.startTest")}
                 </button>
               </div>
             )}
@@ -1162,7 +1162,7 @@ function ExamsContent() {
                     onClick={() => setCurrentQIdx((prev) => prev - 1)}
                     className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 disabled:opacity-40 text-slate-700 text-xs font-medium cursor-pointer"
                   >
-                    ← Oldingi
+                    {t("ex.prev")}
                   </button>
 
                   <div className="flex items-center gap-2">
@@ -1172,7 +1172,7 @@ function ExamsContent() {
                         onClick={() => setCurrentQIdx((prev) => prev + 1)}
                         className="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold cursor-pointer"
                       >
-                        Keyingi →
+                        {t("ex.next")}
                       </button>
                     ) : (
                       <button
@@ -1206,23 +1206,23 @@ function ExamsContent() {
                   </div>
 
                   <h3 className="text-base font-bold text-slate-900 mt-3">
-                    {simulatorResult.passed ? "Tabriklaymiz! Imtihondan o'tdingiz 🎉" : "Imtihon natijasi qayd etildi"}
+                    {simulatorResult.passed ? t("ex.passed") : t("ex.recorded")}
                   </h3>
 
                   <div className="flex items-center justify-center gap-4 text-xs mt-2 text-slate-600 font-medium">
                     <span>To&apos;plangan ball: <strong className="text-slate-900 font-bold">{simulatorResult.score} / {simulatorResult.maxScore}</strong></span>
-                    <span>To&apos;g&apos;ri javoblar: <strong className="text-slate-900 font-bold">{simulatorResult.earnedPoints} / {simulatorResult.totalPoints}</strong></span>
+                    <span>{t("ex.correctAnswers")} <strong className="text-slate-900 font-bold">{simulatorResult.earnedPoints} / {simulatorResult.totalPoints}</strong></span>
                   </div>
 
                   <p className="text-[11px] text-slate-500 mt-2">
-                    Natija avtomatik tarzda markaz jurnaliga saqlanadi va Telegram orqali xabar beriladi.
+                    {t("ex.savedNote")}
                   </p>
                 </div>
 
                 {/* Question Breakdown List */}
                 <div className="space-y-2">
                   <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wide">
-                    Savollar tahlili va xatolar ustida ishlash:
+                    {t("ex.review")}
                   </h4>
 
                   <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1">
@@ -1242,7 +1242,7 @@ function ExamsContent() {
                           <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
                             b.isCorrect ? "bg-emerald-600 text-white" : "bg-rose-600 text-white"
                           }`}>
-                            {b.isCorrect ? "To'g'ri (+1)" : "Noto'g'ri (0)"}
+                            {b.isCorrect ? t("ex.right1") : t("ex.wrong0")}
                           </span>
                         </div>
 
@@ -1259,7 +1259,7 @@ function ExamsContent() {
 
                         {b.explanation && (
                           <p className="text-[11px] text-slate-600 italic mt-1.5 pt-1 border-t border-slate-200/60">
-                            💡 Izoh: {b.explanation}
+                            💡 {t("ex.note")}: {b.explanation}
                           </p>
                         )}
                       </div>
@@ -1272,7 +1272,7 @@ function ExamsContent() {
                     onClick={() => setSimulatorExam(null)}
                     className="px-5 py-2 rounded-xl bg-slate-900 text-white text-xs font-semibold hover:bg-slate-800 cursor-pointer"
                   >
-                    Yopish
+                    {t("common.close")}
                   </button>
                 </div>
               </div>

@@ -1,6 +1,9 @@
 "use client";
 
+import { formatDateTime } from "@/lib/format-date";
 import { useEffect, useState } from "react";
+import { useLanguage } from "@/lib/i18n-context";
+import type { Lang, TranslationKey } from "@/lib/i18n";
 import {
   portalApi,
   getPortalToken,
@@ -22,18 +25,41 @@ function formatMoney(n: number) {
   return new Intl.NumberFormat("uz-UZ").format(n);
 }
 
-const DAY_NAMES = [
-  "",
-  "Dushanba",
-  "Seshanba",
-  "Chorshanba",
-  "Payshanba",
-  "Juma",
-  "Shanba",
-  "Yakshanba",
+const DAY_KEYS: TranslationKey[] = [
+  "weekday.monday",
+  "weekday.tuesday",
+  "weekday.wednesday",
+  "weekday.thursday",
+  "weekday.friday",
+  "weekday.saturday",
+  "weekday.sunday",
 ];
 
+// Portal users (students, parents) pick their own language here.
+function LangSwitch({ lang, setLang, dark }: { lang: Lang; setLang: (l: Lang) => void; dark?: boolean }) {
+  return (
+    <div style={{ display: "inline-flex", gap: 4 }}>
+      {(["UZ", "RU", "EN"] as Lang[]).map((l) => (
+        <button
+          key={l}
+          type="button"
+          onClick={() => setLang(l)}
+          style={{
+            fontSize: 11, fontWeight: 700, padding: "5px 8px", borderRadius: 7, cursor: "pointer",
+            border: "none",
+            background: lang === l ? ACCENT : dark ? "rgba(255,255,255,0.1)" : "#F1F5F9",
+            color: lang === l ? "#fff" : dark ? "#CBD5E1" : "#64748B",
+          }}
+        >
+          {l}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 export default function StudentPortalPage() {
+  const { t, lang, setLang } = useLanguage();
   const [token, setTokenState] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<
@@ -69,7 +95,7 @@ export default function StudentPortalPage() {
         window.open(res.url, "_blank");
       }
     } catch (err) {
-      alert(err instanceof Error ? err.message : "To'lov havolasini yaratishda xatolik yuz berdi");
+      alert(err instanceof Error ? err.message : t("ptl.linkError"));
     } finally {
       setCheckoutLoading(null);
     }
@@ -98,7 +124,7 @@ export default function StudentPortalPage() {
           window.history.replaceState({}, document.title, window.location.pathname);
         })
         .catch((err) => {
-          setAuthError(err instanceof ApiError ? err.message : "Havola yaroqsiz");
+          setAuthError(err instanceof ApiError ? err.message : t("ptl.badLink"));
         })
         .finally(() => {
           setAuthLoading(false);
@@ -153,7 +179,7 @@ export default function StudentPortalPage() {
       setPortalToken(res.accessToken);
       setTokenState(res.accessToken);
     } catch (err) {
-      setAuthError(err instanceof ApiError ? err.message : "Kirishda xatolik yuz berdi");
+      setAuthError(err instanceof ApiError ? err.message : t("ptl.loginError"));
     } finally {
       setAuthLoading(false);
     }
@@ -173,7 +199,7 @@ export default function StudentPortalPage() {
         prev.map((hw) => (hw.id === id ? { ...hw, completed: true } : hw)),
       );
     } catch (err) {
-      alert(err instanceof ApiError ? err.message : "Topshirishda xatolik");
+      alert(err instanceof ApiError ? err.message : t("ptl.submitError"));
     }
   }
 
@@ -223,11 +249,12 @@ export default function StudentPortalPage() {
             >
               🎓
             </div>
+            <div style={{ display: "flex", justifyContent: "center", marginBottom: 10 }}><LangSwitch lang={lang} setLang={setLang} dark /></div>
             <h1 style={{ fontSize: 22, fontWeight: 800, margin: "0 0 6px 0" }}>
-              Shaxsiy Kabinet
+              {t("ptl.cabinet")}
             </h1>
             <p style={{ fontSize: 13, color: "#94A3B8", margin: 0 }}>
-              O'quvchi va ota-onalar portali
+              {t("ptl.subtitle")}
             </p>
           </div>
 
@@ -251,7 +278,7 @@ export default function StudentPortalPage() {
           <form onSubmit={handlePhoneLogin} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
             <div>
               <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#CBD5E1", marginBottom: 6 }}>
-                Telefon raqam
+                {t("ptl.phone")}
               </label>
               <input
                 type="tel"
@@ -275,13 +302,13 @@ export default function StudentPortalPage() {
 
             <div>
               <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#CBD5E1", marginBottom: 6 }}>
-                O'quvchi kodi / ID (ixtiyoriy)
+                {t("ptl.studentCode")}
               </label>
               <input
                 type="text"
                 value={studentCode}
                 onChange={(e) => setStudentCode(e.target.value)}
-                placeholder="Bir nechta o'quvchi bo'lsa kiriting"
+                placeholder={t("ptl.studentCodePh")}
                 style={{
                   width: "100%",
                   padding: "12px 14px",
@@ -313,7 +340,7 @@ export default function StudentPortalPage() {
                 marginTop: 6,
               }}
             >
-              {authLoading ? "Kirilmoqda..." : "Kabinetga kirish"}
+              {authLoading ? t("ptl.signingIn") : t("ptl.signIn")}
             </button>
           </form>
 
@@ -327,7 +354,7 @@ export default function StudentPortalPage() {
               color: "#94A3B8",
             }}
           >
-            Telegram bot orqali 1-klikda kirish uchun botdagi <b>📱 Shaxsiy Kabinet</b> tugmasini bosing.
+            {t("ptl.telegramHint")}
           </div>
         </div>
       </div>
@@ -351,7 +378,7 @@ export default function StudentPortalPage() {
           fontSize: 14,
         }}
       >
-        Yuklanmoqda...
+        {t("common.loading")}
       </div>
     );
   }
@@ -408,10 +435,10 @@ export default function StudentPortalPage() {
             </div>
             <div>
               <div style={{ fontSize: 14, fontWeight: 800, color: "#1E293B" }}>
-                {me?.tenant?.name || "O'quv Markazi"}
+                {me?.tenant?.name || t("ptl.center")}
               </div>
               <div style={{ fontSize: 11.5, color: "#64748B" }}>
-                {me?.fullName || "O'quvchi"}
+                {me?.fullName || t("ptl.student")}
               </div>
             </div>
           </div>
@@ -438,7 +465,7 @@ export default function StudentPortalPage() {
                 <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
                 <path d="M13.73 21a2 2 0 0 1-3.46 0" />
               </svg>
-              <span>Xabarlar</span>
+              <span>{t("ptl.messages")}</span>
               {(announcements.length + (payments && payments.debtAmount > 0 ? 1 : 0)) > 0 && (
                 <span
                   style={{
@@ -454,6 +481,7 @@ export default function StudentPortalPage() {
                 </span>
               )}
             </button>
+            <LangSwitch lang={lang} setLang={setLang} />
             <button
               onClick={handleLogout}
               style={{
@@ -467,7 +495,7 @@ export default function StudentPortalPage() {
                 cursor: "pointer",
               }}
             >
-              Chiqish
+              {t("ptl.logout")}
             </button>
           </div>
         </div>
@@ -491,15 +519,15 @@ export default function StudentPortalPage() {
           }}
         >
           {[
-            { id: "home", label: "🏠 Bosh sahifa" },
-            { id: "schedule", label: "📅 Dars jadvali" },
-            { id: "attendance", label: "📊 Davomat" },
-            { id: "homework", label: "📝 Vazifalar" },
-            { id: "exams", label: "🎯 Natijalar" },
-            { id: "payments", label: "💳 To'lovlar" },
+            { id: "home", label: t("ptl.tabHome") },
+            { id: "schedule", label: t("ptl.tabSchedule") },
+            { id: "attendance", label: t("ptl.tabAttendance") },
+            { id: "homework", label: t("ptl.tabHomework") },
+            { id: "exams", label: t("ptl.tabExams") },
+            { id: "payments", label: t("ptl.tabPayments") },
             {
               id: "notifications",
-              label: `🔔 Xabarlar ${(announcements.length + (payments && payments.debtAmount > 0 ? 1 : 0)) > 0 ? `(${announcements.length + (payments && payments.debtAmount > 0 ? 1 : 0)})` : ""}`,
+              label: `${t("ptl.tabNotifications")} ${(announcements.length + (payments && payments.debtAmount > 0 ? 1 : 0)) > 0 ? `(${announcements.length + (payments && payments.debtAmount > 0 ? 1 : 0)})` : ""}`,
             },
           ].map((tab) => (
             <button
@@ -551,7 +579,7 @@ export default function StudentPortalPage() {
               }}
             >
               <div style={{ fontSize: 13, color: "#C7D2FE", marginBottom: 4 }}>
-                Xush kelibsiz! 👋
+                {t("ptl.welcome")}
               </div>
               <h2 style={{ fontSize: 22, fontWeight: 900, margin: "0 0 12px 0" }}>
                 {me?.fullName}
@@ -591,7 +619,7 @@ export default function StudentPortalPage() {
                   padding: 18,
                 }}
               >
-                <div style={{ fontSize: 12, color: "#64748B" }}>Davomat ko'rsatkichi</div>
+                <div style={{ fontSize: 12, color: "#64748B" }}>{t("ptl.attendanceRate")}</div>
                 <div
                   style={{
                     fontSize: 24,
@@ -612,7 +640,7 @@ export default function StudentPortalPage() {
                   padding: 18,
                 }}
               >
-                <div style={{ fontSize: 12, color: "#64748B" }}>Oylik to'lov holati</div>
+                <div style={{ fontSize: 12, color: "#64748B" }}>{t("ptl.monthPayment")}</div>
                 <div style={{ marginTop: 6 }}>
                   {payments?.status === "PAID" && (
                     <span
@@ -625,7 +653,7 @@ export default function StudentPortalPage() {
                         borderRadius: 8,
                       }}
                     >
-                      ✓ To'langan
+                      {t("ptl.paid")}
                     </span>
                   )}
                   {payments?.status === "PARTIAL" && (
@@ -639,7 +667,7 @@ export default function StudentPortalPage() {
                         borderRadius: 8,
                       }}
                     >
-                      ⚠️ Qisman ({formatMoney(payments.debtAmount)} qarz)
+                      {t("ptl.partial")} ({formatMoney(payments.debtAmount)} {t("ptl.debt")})
                     </span>
                   )}
                   {payments?.status === "UNPAID" && (
@@ -653,7 +681,7 @@ export default function StudentPortalPage() {
                         borderRadius: 8,
                       }}
                     >
-                      ❌ To'lanmagan ({formatMoney(payments?.debtAmount || 0)} qarz)
+                      {t("ptl.unpaid")} ({formatMoney(payments?.debtAmount || 0)} {t("ptl.debt")})
                     </span>
                   )}
                 </div>
@@ -667,7 +695,7 @@ export default function StudentPortalPage() {
                   padding: 18,
                 }}
               >
-                <div style={{ fontSize: 12, color: "#64748B" }}>Uy vazifalari</div>
+                <div style={{ fontSize: 12, color: "#64748B" }}>{t("ptl.homework")}</div>
                 <div
                   style={{
                     fontSize: 24,
@@ -692,7 +720,7 @@ export default function StudentPortalPage() {
                 }}
               >
                 <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 12 }}>
-                  📢 So'nggi e'lonlar
+                  {t("ptl.latestNews")}
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                   {announcements.slice(0, 3).map((a) => (
@@ -725,7 +753,7 @@ export default function StudentPortalPage() {
         {activeTab === "schedule" && (
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
             <h2 style={{ fontSize: 18, fontWeight: 800, margin: 0 }}>
-              Dars jadvali
+              {t("ptl.schedule")}
             </h2>
 
             {schedule?.timetable.length === 0 && schedule?.fallbackGroups.length === 0 ? (
@@ -739,7 +767,7 @@ export default function StudentPortalPage() {
                   color: "#64748B",
                 }}
               >
-                Hozircha sizga biriktirilgan dars jadvali yo'q.
+                {t("ptl.noSchedule")}
               </div>
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -763,7 +791,7 @@ export default function StudentPortalPage() {
                         {item.group?.name}
                       </div>
                       <div style={{ fontSize: 12, color: "#64748B", marginTop: 2 }}>
-                        {item.dayOfWeek ? DAY_NAMES[item.dayOfWeek] : "Haftalik"} |{" "}
+                        {item.dayOfWeek ? t(DAY_KEYS[item.dayOfWeek - 1]) : t("ptl.weekly")} |{" "}
                         {item.startTime} - {item.endTime}
                       </div>
                       <div style={{ fontSize: 12, color: "#475569", marginTop: 4 }}>
@@ -791,7 +819,7 @@ export default function StudentPortalPage() {
                           gap: 6,
                         }}
                       >
-                        🎥 Onlayn darsga kirish
+                        {t("ptl.joinOnline")}
                       </a>
                     )}
                   </div>
@@ -810,10 +838,10 @@ export default function StudentPortalPage() {
                   >
                     <div style={{ fontSize: 14.5, fontWeight: 700 }}>{g.name}</div>
                     <div style={{ fontSize: 12, color: "#64748B", marginTop: 2 }}>
-                      🗓 Kunlari: {g.scheduleDays || g.schedule || "Dushanba, Chorshanba, Juma"}
+                      {t("ptl.days")}: {g.scheduleDays || g.schedule || "—"}
                     </div>
                     <div style={{ fontSize: 12, color: "#475569", marginTop: 4 }}>
-                      🕒 Vaqti: {g.startTime || "16:00"} {g.teacher ? `• 👨‍🏫 ${g.teacher}` : ""}
+                      {t("ptl.time")}: {g.startTime || "—"} {g.teacher ? `• 👨‍🏫 ${g.teacher}` : ""}
                     </div>
                   </div>
                 ))}
@@ -827,7 +855,7 @@ export default function StudentPortalPage() {
         {/* ========================================================================= */}
         {activeTab === "attendance" && (
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-            <h2 style={{ fontSize: 18, fontWeight: 800, margin: 0 }}>Davomat tarixi</h2>
+            <h2 style={{ fontSize: 18, fontWeight: 800, margin: 0 }}>{t("ptl.attHistory")}</h2>
 
             <div
               style={{
@@ -845,7 +873,7 @@ export default function StudentPortalPage() {
                   textAlign: "center",
                 }}
               >
-                <div style={{ fontSize: 11.5, color: "#166534" }}>Qatnashdi</div>
+                <div style={{ fontSize: 11.5, color: "#166534" }}>{t("ptl.present")}</div>
                 <div style={{ fontSize: 22, fontWeight: 900, color: "#15803D" }}>
                   {attendance?.present || 0} ta
                 </div>
@@ -859,7 +887,7 @@ export default function StudentPortalPage() {
                   textAlign: "center",
                 }}
               >
-                <div style={{ fontSize: 11.5, color: "#92400E" }}>Kechikdi</div>
+                <div style={{ fontSize: 11.5, color: "#92400E" }}>{t("ptl.late")}</div>
                 <div style={{ fontSize: 22, fontWeight: 900, color: "#B45309" }}>
                   {attendance?.late || 0} ta
                 </div>
@@ -873,7 +901,7 @@ export default function StudentPortalPage() {
                   textAlign: "center",
                 }}
               >
-                <div style={{ fontSize: 11.5, color: "#991B1B" }}>Kelmadi</div>
+                <div style={{ fontSize: 11.5, color: "#991B1B" }}>{t("ptl.absent")}</div>
                 <div style={{ fontSize: 22, fontWeight: 900, color: "#DC2626" }}>
                   {attendance?.absent || 0} ta
                 </div>
@@ -890,14 +918,14 @@ export default function StudentPortalPage() {
             >
               {attendance?.records.length === 0 ? (
                 <div style={{ padding: 24, textAlign: "center", color: "#64748B", fontSize: 13 }}>
-                  Davomat yozuvlari hali kiritilmagan.
+                  {t("ptl.noAtt")}
                 </div>
               ) : (
                 <table style={{ width: "100%", borderCollapse: "collapse" }}>
                   <thead>
                     <tr style={{ background: "#F8FAFC", borderBottom: "1px solid #E2E8F0", textAlign: "left" }}>
-                      <th style={{ padding: "12px 16px", fontSize: 12, color: "#64748B" }}>Sana</th>
-                      <th style={{ padding: "12px 16px", fontSize: 12, color: "#64748B", textAlign: "right" }}>Holat</th>
+                      <th style={{ padding: "12px 16px", fontSize: 12, color: "#64748B" }}>{t("ptl.date")}</th>
+                      <th style={{ padding: "12px 16px", fontSize: 12, color: "#64748B", textAlign: "right" }}>{t("ptl.status")}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -907,17 +935,17 @@ export default function StudentPortalPage() {
                         <td style={{ padding: "12px 16px", textAlign: "right" }}>
                           {r.status === "PRESENT" && (
                             <span style={{ background: "#DCFCE7", color: "#15803D", fontSize: 11.5, fontWeight: 700, padding: "3px 8px", borderRadius: 6 }}>
-                              ✓ Qatnashdi
+                              {t("ptl.present")}
                             </span>
                           )}
                           {r.status === "LATE" && (
                             <span style={{ background: "#FEF3C7", color: "#B45309", fontSize: 11.5, fontWeight: 700, padding: "3px 8px", borderRadius: 6 }}>
-                              ⚠️ Kechikdi
+                              {t("ptl.late")}
                             </span>
                           )}
                           {r.status === "ABSENT" && (
                             <span style={{ background: "#FEE2E2", color: "#DC2626", fontSize: 11.5, fontWeight: 700, padding: "3px 8px", borderRadius: 6 }}>
-                              ❌ Kelmadi
+                              {t("ptl.absent")}
                             </span>
                           )}
                         </td>
@@ -935,7 +963,7 @@ export default function StudentPortalPage() {
         {/* ========================================================================= */}
         {activeTab === "homework" && (
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-            <h2 style={{ fontSize: 18, fontWeight: 800, margin: 0 }}>Uy vazifalari</h2>
+            <h2 style={{ fontSize: 18, fontWeight: 800, margin: 0 }}>{t("ptl.homework")}</h2>
 
             {homework.length === 0 ? (
               <div
@@ -948,7 +976,7 @@ export default function StudentPortalPage() {
                   color: "#64748B",
                 }}
               >
-                Hozircha biriktirilgan vazifalar yo'q.
+                {t("ptl.noHomework")}
               </div>
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -966,7 +994,7 @@ export default function StudentPortalPage() {
                       <div>
                         <div style={{ fontSize: 14.5, fontWeight: 700 }}>{hw.title}</div>
                         <div style={{ fontSize: 12, color: "#64748B", marginTop: 2 }}>
-                          Guruh: {hw.groupName || "Umumiy"} {hw.dueDate ? `• Muddat: ${hw.dueDate.slice(0, 10)}` : ""}
+                          {t("ptl.group")}: {hw.groupName || t("ptl.general")} {hw.dueDate ? `• ${t("ptl.deadline")}: ${hw.dueDate.slice(0, 10)}` : ""}
                         </div>
                       </div>
                       <div>
@@ -981,7 +1009,7 @@ export default function StudentPortalPage() {
                               borderRadius: 6,
                             }}
                           >
-                            ✓ Topshirilgan
+                            {t("ptl.submitted")}
                           </span>
                         ) : (
                           <button
@@ -998,7 +1026,7 @@ export default function StudentPortalPage() {
                               cursor: "pointer",
                             }}
                           >
-                            Topshirish
+                            {t("ptl.submit")}
                           </button>
                         )}
                       </div>
@@ -1032,14 +1060,14 @@ export default function StudentPortalPage() {
         {activeTab === "exams" && (
           <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
             <h2 style={{ fontSize: 18, fontWeight: 800, margin: 0 }}>
-              Imtihonlar & Sertifikatlar
+              {t("ptl.examsCerts")}
             </h2>
 
             {/* Certificates */}
             {exams?.certificates && exams.certificates.length > 0 && (
               <div>
                 <div style={{ fontSize: 14, fontWeight: 700, color: "#334155", marginBottom: 10 }}>
-                  🏅 Qo'lga kiritilgan sertifikatlar
+                  {t("ptl.certs")}
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                   {exams.certificates.map((c) => (
@@ -1077,7 +1105,7 @@ export default function StudentPortalPage() {
                           borderRadius: 8,
                         }}
                       >
-                        Tekshirish
+                        {t("ptl.verify")}
                       </a>
                     </div>
                   ))}
@@ -1088,7 +1116,7 @@ export default function StudentPortalPage() {
             {/* Exam Results */}
             <div>
               <div style={{ fontSize: 14, fontWeight: 700, color: "#334155", marginBottom: 10 }}>
-                Imtihon natijalari
+                {t("ptl.examResults")}
               </div>
               {exams?.results.length === 0 && exams?.attempts.length === 0 ? (
                 <div
@@ -1101,7 +1129,7 @@ export default function StudentPortalPage() {
                     color: "#64748B",
                   }}
                 >
-                  Hozircha e'lon qilingan imtihon natijalari yo'q.
+                  {t("ptl.noResults")}
                 </div>
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -1120,7 +1148,7 @@ export default function StudentPortalPage() {
                     >
                       <div>
                         <div style={{ fontSize: 14, fontWeight: 700 }}>
-                          {r.examTitle || "Imtihon"}
+                          {r.examTitle || t("ptl.exam")}
                         </div>
                         {r.note && (
                           <div style={{ fontSize: 12, color: "#64748B", marginTop: 2 }}>
@@ -1129,7 +1157,7 @@ export default function StudentPortalPage() {
                         )}
                       </div>
                       <div style={{ fontSize: 18, fontWeight: 900, color: ACCENT }}>
-                        {r.score} ball
+                        {r.score} {t("ptl.points")}
                       </div>
                     </div>
                   ))}
@@ -1145,7 +1173,7 @@ export default function StudentPortalPage() {
         {activeTab === "payments" && (
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
             <h2 style={{ fontSize: 18, fontWeight: 800, margin: 0 }}>
-              To'lovlar va Balans
+              {t("ptl.paymentsBalance")}
             </h2>
 
             {/* Balance Card */}
@@ -1158,7 +1186,7 @@ export default function StudentPortalPage() {
               }}
             >
               <div style={{ fontSize: 12, color: "#64748B" }}>
-                Joriy oy uchun to'lov holati ({payments?.forMonth})
+                {t("ptl.monthStatus")} ({payments?.forMonth})
               </div>
               <div
                 style={{
@@ -1169,12 +1197,12 @@ export default function StudentPortalPage() {
                 }}
               >
                 {(payments?.debtAmount || 0) > 0
-                  ? `Qarz: ${formatMoney(payments?.debtAmount || 0)} so'm`
-                  : "Barcha to'lovlar qilingan (Qarz yo'q)"}
+                  ? `${t("ptl.debtLabel")}: ${formatMoney(payments?.debtAmount || 0)} ${t("common.sumUnit")}`
+                  : t("ptl.allPaid")}
               </div>
               <div style={{ fontSize: 12, color: "#64748B", marginTop: 4 }}>
-                Oylik kurs narxi: {formatMoney(payments?.expectedTuition || 0)} so'm | To'landi:{" "}
-                {formatMoney(payments?.monthPaid || 0)} so'm
+                {t("ptl.coursePrice")}: {formatMoney(payments?.expectedTuition || 0)} {t("common.sumUnit")} | {t("ptl.paidSoFar")}:{" "}
+                {formatMoney(payments?.monthPaid || 0)} {t("common.sumUnit")}
               </div>
 
               {(payments?.debtAmount || 0) > 0 && (
@@ -1198,7 +1226,7 @@ export default function StudentPortalPage() {
                     }}
                   >
                     <span>💳</span>
-                    <span>{checkoutLoading === "CLICK" ? "Yuklanmoqda..." : "Click orqali to'lash"}</span>
+                    <span>{checkoutLoading === "CLICK" ? t("common.loading") : t("ptl.payClick")}</span>
                   </button>
                   <button
                     type="button"
@@ -1219,7 +1247,7 @@ export default function StudentPortalPage() {
                     }}
                   >
                     <span>💳</span>
-                    <span>{checkoutLoading === "PAYME" ? "Yuklanmoqda..." : "Payme orqali to'lash"}</span>
+                    <span>{checkoutLoading === "PAYME" ? t("common.loading") : t("ptl.payPayme")}</span>
                   </button>
                 </div>
               )}
@@ -1235,20 +1263,20 @@ export default function StudentPortalPage() {
               }}
             >
               <div style={{ padding: "14px 18px", fontSize: 14, fontWeight: 700, borderBottom: "1px solid #E2E8F0" }}>
-                To'lovlar tarixi
+                {t("ptl.history")}
               </div>
               {payments?.history.length === 0 ? (
                 <div style={{ padding: 24, textAlign: "center", color: "#64748B", fontSize: 13 }}>
-                  To'lovlar tarixi mavjud emas.
+                  {t("ptl.noHistory")}
                 </div>
               ) : (
                 <table style={{ width: "100%", borderCollapse: "collapse" }}>
                   <thead>
                     <tr style={{ background: "#F8FAFC", borderBottom: "1px solid #E2E8F0", textAlign: "left" }}>
-                      <th style={{ padding: "12px 16px", fontSize: 12, color: "#64748B" }}>Sana</th>
-                      <th style={{ padding: "12px 16px", fontSize: 12, color: "#64748B" }}>Oy</th>
-                      <th style={{ padding: "12px 16px", fontSize: 12, color: "#64748B" }}>Summa</th>
-                      <th style={{ padding: "12px 16px", fontSize: 12, color: "#64748B", textAlign: "right" }}>Holat</th>
+                      <th style={{ padding: "12px 16px", fontSize: 12, color: "#64748B" }}>{t("ptl.date")}</th>
+                      <th style={{ padding: "12px 16px", fontSize: 12, color: "#64748B" }}>{t("ptl.month")}</th>
+                      <th style={{ padding: "12px 16px", fontSize: 12, color: "#64748B" }}>{t("ptl.amount")}</th>
+                      <th style={{ padding: "12px 16px", fontSize: 12, color: "#64748B", textAlign: "right" }}>{t("ptl.status")}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1261,7 +1289,7 @@ export default function StudentPortalPage() {
                           {p.forMonth}
                         </td>
                         <td style={{ padding: "12px 16px", fontSize: 13, fontWeight: 800 }}>
-                          {formatMoney(p.amount)} so'm
+                          {formatMoney(p.amount)} {t("common.sumUnit")}
                         </td>
                         <td style={{ padding: "12px 16px", textAlign: "right" }}>
                           <span
@@ -1274,7 +1302,7 @@ export default function StudentPortalPage() {
                               borderRadius: 6,
                             }}
                           >
-                            {p.status === "PAID" ? "To'langan" : p.status}
+                            {p.status === "PAID" ? t("ptl.paidStatus") : p.status}
                           </span>
                         </td>
                       </tr>
@@ -1307,10 +1335,10 @@ export default function StudentPortalPage() {
             >
               <div>
                 <h2 style={{ fontSize: 18, fontWeight: 800, color: "#0F172A", margin: "0 0 4px" }}>
-                  🔔 Bildirishnomalar va E&apos;lonlar
+                  {t("ptl.notifTitle")}
                 </h2>
                 <p style={{ margin: 0, fontSize: 13, color: "#64748B" }}>
-                  O&apos;quv markazingiz tomonidan yuborilgan barcha muhim yangiliklar, dars eslatmalari va to&apos;lov holatlari
+                  {t("ptl.notifHint")}
                 </p>
               </div>
               <span
@@ -1324,7 +1352,7 @@ export default function StudentPortalPage() {
                   whiteSpace: "nowrap",
                 }}
               >
-                Jami: {announcements.length + (payments && payments.debtAmount > 0 ? 1 : 0)} ta
+                {t("ptl.total")}: {announcements.length + (payments && payments.debtAmount > 0 ? 1 : 0)}
               </span>
             </div>
 
@@ -1371,14 +1399,14 @@ export default function StudentPortalPage() {
                           borderRadius: 100,
                         }}
                       >
-                        TO&apos;LOV ESLATMASI
+                        {t("ptl.payReminder")}
                       </span>
                       <span style={{ fontSize: 13, fontWeight: 800, color: "#92400E" }}>
-                        Oylik to&apos;lov muddati yetib keldi
+                        {t("ptl.payDue")}
                       </span>
                     </div>
                     <p style={{ margin: 0, fontSize: 12.5, color: "#78350F", lineHeight: 1.5 }}>
-                      Hurmatli o&apos;quvchi, joriy oy ({payments.forMonth}) uchun <strong>{formatMoney(payments.debtAmount)} so&apos;m</strong> qarzdorligingiz mavjud.
+                      {t("ptl.debtNotice")} <strong>{formatMoney(payments.debtAmount)} {t("common.sumUnit")}</strong> ({payments.forMonth})
                     </p>
                   </div>
                 </div>
@@ -1399,7 +1427,7 @@ export default function StudentPortalPage() {
                     flexShrink: 0,
                   }}
                 >
-                  To&apos;lash ➔
+                  {t("ptl.pay")}
                 </button>
               </div>
             )}
@@ -1418,10 +1446,10 @@ export default function StudentPortalPage() {
               >
                 <div style={{ fontSize: 36, marginBottom: 12 }}>🎉</div>
                 <h3 style={{ fontSize: 16, fontWeight: 700, color: "#1E293B", margin: "0 0 6px" }}>
-                  Yangi bildirishnomalar yo&apos;q
+                  {t("ptl.noNotifs")}
                 </h3>
                 <p style={{ fontSize: 13, color: "#64748B", margin: 0 }}>
-                  Markazdan barcha e&apos;lonlar va yangiliklar o&apos;qilgan.
+                  {t("ptl.allRead")}
                 </p>
               </div>
             ) : (
@@ -1456,16 +1484,10 @@ export default function StudentPortalPage() {
                               borderRadius: 100,
                             }}
                           >
-                            {isUrgent ? "🚨 Shoshilinch" : isHigh ? "⚡ Muhim" : "ℹ️ E'lon"}
+                            {isUrgent ? t("ptl.urgent") : isHigh ? t("ptl.important") : t("ptl.announcement")}
                           </span>
                           <span style={{ fontSize: 11.5, color: "#94A3B8", fontWeight: 600 }}>
-                            {new Date(item.createdAt).toLocaleString("uz-UZ", {
-                              day: "2-digit",
-                              month: "short",
-                              year: "numeric",
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })}
+                            {formatDateTime(item.createdAt, lang)}
                           </span>
                         </div>
                       </div>

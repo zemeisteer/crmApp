@@ -13,6 +13,7 @@ import { PHONE_PATTERN, PHONE_TITLE, NAME_PATTERN, NAME_TITLE } from "@/lib/vali
 import { localDateStr, localMonthStr } from "@/lib/date";
 import { useLanguage } from "@/lib/i18n-context";
 import type { TranslationKey } from "@/lib/i18n";
+import { formatDate as fmtDate } from "@/lib/format-date";
 
 const ACCENT = "#4F46E5";
 
@@ -62,7 +63,7 @@ function GroupDetailContent() {
 
   function formatDate(iso: string | null) {
     if (!iso) return "—";
-    return new Date(iso).toLocaleDateString(lang === "UZ" ? "uz-UZ" : lang === "RU" ? "ru-RU" : "en-US", { day: "numeric", month: "long", year: "numeric" });
+    return fmtDate(iso, lang, "long");
   }
 
   const [group, setGroup] = useState<Group & { enrollments?: { id: string; student: Student }[] } | null>(null);
@@ -190,14 +191,14 @@ function GroupDetailContent() {
     try {
       if (enrollMode === "existing") {
         if (!enrollStudentId) {
-          setEnrollError("Iltimos, o'quvchini tanlang");
+          setEnrollError(t("grp.pickStudent"));
           setSaving(false);
           return;
         }
         await studentsApi.enroll(enrollStudentId, id);
       } else {
         if (!newFullName.trim()) {
-          setEnrollError("Iltimos, o'quvchi ism-familiyasini kiriting");
+          setEnrollError(t("grp.enterName"));
           setSaving(false);
           return;
         }
@@ -214,7 +215,7 @@ function GroupDetailContent() {
       resetEnrollForm();
       load();
     } catch (err) {
-      setEnrollError(err instanceof ApiError ? err.message : "Xatolik yuz berdi");
+      setEnrollError(err instanceof ApiError ? err.message : t("common.errorGeneric"));
     } finally {
       setSaving(false);
     }
@@ -461,7 +462,7 @@ function GroupDetailContent() {
               transition: "all 0.15s ease",
             }}
           >
-            Mavjud o&apos;quvchi ({availableStudents.length})
+            {t("grp.existing")} ({availableStudents.length})
           </button>
           <button
             type="button"
@@ -480,7 +481,7 @@ function GroupDetailContent() {
               transition: "all 0.15s ease",
             }}
           >
-            + Yangi o&apos;quvchi
+            {t("grp.newStudent")}
           </button>
         </div>
 
@@ -501,7 +502,7 @@ function GroupDetailContent() {
                 </Field>
                 {availableStudents.length === 0 && (
                   <div style={{ marginTop: 14, fontSize: 13, color: "#8A8D96", textAlign: "center", lineHeight: 1.5 }}>
-                    Markazdagi barcha o&apos;quvchilar bu guruhga allaqachon biriktirilgan. Yangi o&apos;quvchi qo&apos;shish uchun yuqoridagi <b>+ Yangi o&apos;quvchi</b> tugmasini bosing.
+                    {t("grp.allEnrolled")}
                   </div>
                 )}
               </div>
@@ -517,14 +518,14 @@ function GroupDetailContent() {
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
               <div style={{ background: "#F8FAFC", border: "1px solid #E2E8F0", padding: "10px 14px", borderRadius: 10, fontSize: 12.5, color: "#475569", display: "flex", alignItems: "center", gap: 8 }}>
-                <span style={{ fontWeight: 700, color: ACCENT }}>Guruh:</span>
+                <span style={{ fontWeight: 700, color: ACCENT }}>{t("grp.group")}</span>
                 <span>{group.name} ({group.subject})</span>
               </div>
 
               <Field label={`${t("students.fieldFullName")} *`}>
                 <input
                   className="field-input"
-                  placeholder="Masalan: Dilshod Alimov"
+                  placeholder={t("grp.namePh")}
                   value={newFullName}
                   onChange={(e) => setNewFullName(e.target.value)}
                   pattern={NAME_PATTERN}
@@ -581,7 +582,7 @@ function GroupDetailContent() {
                 disabled={saving}
                 style={{ background: ACCENT, color: "#fff", fontSize: 14, fontWeight: 700, padding: "12px 16px", borderRadius: 10, marginTop: 4 }}
               >
-                {saving ? t("students.adding") : "+ Yangi o'quvchini qo'shish"}
+                {saving ? t("students.adding") : t("grp.addNew")}
               </button>
             </div>
           )}

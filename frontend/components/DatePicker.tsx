@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useLanguage } from "@/lib/i18n-context";
 import type { TranslationKey } from "@/lib/i18n";
+import { formatDate } from "@/lib/format-date";
 
 const ACCENT = "#4F46E5";
 const MONTH_KEYS: TranslationKey[] = [
@@ -91,7 +92,7 @@ export default function DatePicker({
   }
 
   const displayLabel = selected
-    ? selected.toLocaleDateString(lang === "UZ" ? "uz-UZ" : lang === "RU" ? "ru-RU" : "en-US", { day: "numeric", month: "long", year: "numeric" })
+    ? formatDate(selected, lang, "long")
     : "";
 
   return (

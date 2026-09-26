@@ -125,7 +125,7 @@ function StudentsContent() {
       resetForm();
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Xatolik yuz berdi");
+      setError(err instanceof ApiError ? err.message : t("common.errorGeneric"));
     } finally {
       setSaving(false);
     }
@@ -140,7 +140,7 @@ function StudentsContent() {
       setImportMsg(`${res.imported} ta o'quvchi import qilindi${res.errors.length ? `, ${res.errors.length} ta xato` : ""}.`);
       load();
     } catch (err) {
-      setImportMsg(err instanceof ApiError ? err.message : "Import xato");
+      setImportMsg(err instanceof ApiError ? err.message : t("std.importError"));
     } finally {
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
@@ -303,7 +303,7 @@ function StudentsContent() {
               required
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
-              placeholder="Madina Yusupova"
+              placeholder={t("std.namePh")}
               pattern={NAME_PATTERN}
               title={NAME_TITLE}
             />

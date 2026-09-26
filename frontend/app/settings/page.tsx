@@ -14,6 +14,7 @@ import {
   NotificationLog, NotificationSettings, NotificationStats,
 } from "@/lib/api";
 import { PHONE_PATTERN, PHONE_TITLE, NAME_PATTERN, NAME_TITLE } from "@/lib/validation";
+import { formatDate, formatDateTime, formatTime } from "@/lib/format-date";
 
 const ACCENT = "#4F46E5";
 const CATEGORY_OPTIONS: TenantCategory[] = ["TIL_MARKAZI", "MATEMATIKA", "IT", "BOSHQA"];
@@ -23,16 +24,16 @@ const CATEGORY_LABEL_KEYS: Record<TenantCategory, TranslationKey> = {
   IT: "category.it",
   BOSHQA: "category.boshqa",
 };
-const ROLE_LABEL_KEYS: Record<Role, string> = {
-  SUPERADMIN: "Superadmin",
-  OWNER: "Markaz rahbari",
-  ADMIN: "Administrator",
-  MANAGER: "Menejer",
-  RECEPTIONIST: "Qabulxona",
-  TEACHER: "O'qituvchi",
-  ACCOUNTANT: "Buxgalter",
-  STUDENT: "O'quvchi",
-  PARENT: "Ota-ona",
+const ROLE_LABEL_KEYS: Record<Role, TranslationKey> = {
+  SUPERADMIN: "role.superadmin",
+  OWNER: "role.owner",
+  ADMIN: "role.admin",
+  MANAGER: "role.manager",
+  RECEPTIONIST: "role.receptionist",
+  TEACHER: "role.teacher",
+  ACCOUNTANT: "role.accountant",
+  STUDENT: "role.student",
+  PARENT: "role.parent",
 };
 
 function splitList(s: string | null | undefined): string[] {
@@ -81,11 +82,11 @@ function SettingsContent() {
   const [tab, setTab] = useState<Tab>("profile");
 
   const ROLE_OPTIONS = [
-    { value: "ADMIN", label: "Administrator" },
-    { value: "MANAGER", label: "Menejer" },
-    { value: "RECEPTIONIST", label: "Qabulxona (Receptionist)" },
-    { value: "TEACHER", label: "O'qituvchi" },
-    { value: "ACCOUNTANT", label: "Buxgalter" },
+    { value: "ADMIN", label: t("role.admin") },
+    { value: "MANAGER", label: t("role.manager") },
+    { value: "RECEPTIONIST", label: t("role.receptionist") },
+    { value: "TEACHER", label: t("role.teacher") },
+    { value: "ACCOUNTANT", label: t("role.accountant") },
   ];
   const LANGUAGE_OPTIONS = [
     { value: "UZ", label: "O'zbek tili" },
@@ -93,9 +94,9 @@ function SettingsContent() {
     { value: "EN", label: "English" },
   ];
   const CURRENCY_OPTIONS = [
-    { value: "UZS", label: "UZS — so'm" },
-    { value: "USD", label: "USD — dollar" },
-    { value: "RUB", label: "RUB — рубль" },
+    { value: "UZS", label: t("set.currencyUzs") },
+    { value: "USD", label: t("set.currencyUsd") },
+    { value: "RUB", label: t("set.currencyRub") },
   ];
 
   // Profile tab
@@ -209,7 +210,7 @@ function SettingsContent() {
       setTwoFaCode("");
       await refreshMe();
     } catch (err) {
-      setTwoFaError(err instanceof ApiError ? err.message : "Xatolik yuz berdi");
+      setTwoFaError(err instanceof ApiError ? err.message : t("common.errorGeneric"));
     } finally {
       setTwoFaBusy(false);
     }
@@ -225,7 +226,7 @@ function SettingsContent() {
       setTwoFaCode("");
       await refreshMe();
     } catch (err) {
-      setTwoFaError(err instanceof ApiError ? err.message : "Xatolik yuz berdi");
+      setTwoFaError(err instanceof ApiError ? err.message : t("common.errorGeneric"));
     } finally {
       setTwoFaBusy(false);
     }
@@ -261,7 +262,7 @@ function SettingsContent() {
       setStaffRole("TEACHER");
       loadStaff();
     } catch (err) {
-      setStaffError(err instanceof ApiError ? err.message : "Xatolik yuz berdi");
+      setStaffError(err instanceof ApiError ? err.message : t("common.errorGeneric"));
     } finally {
       setSavingStaff(false);
     }
@@ -278,7 +279,7 @@ function SettingsContent() {
       await staffApi.remove(id);
       loadStaff();
     } catch (err) {
-      alert(err instanceof ApiError ? err.message : "Xatolik yuz berdi");
+      alert(err instanceof ApiError ? err.message : t("common.errorGeneric"));
     }
   }
 
@@ -316,7 +317,7 @@ function SettingsContent() {
       await tenantsApi.deleteMe(gdprPassword);
       logout();
     } catch (err) {
-      setGdprError(err instanceof ApiError ? err.message : "Xatolik yuz berdi");
+      setGdprError(err instanceof ApiError ? err.message : t("common.errorGeneric"));
       setGdprBusy(false);
     }
   }
@@ -361,7 +362,7 @@ function SettingsContent() {
       setSaved(true);
       await refreshMe();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Xatolik yuz berdi");
+      setError(err instanceof ApiError ? err.message : t("common.errorGeneric"));
     } finally {
       setSaving(false);
     }
@@ -460,7 +461,7 @@ function SettingsContent() {
                   </div>
                   <div>
                     <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>{t("settings.address")}</div>
-                    <input className="field-input" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Toshkent sh., Chilonzor tumani..." />
+                    <input className="field-input" value={address} onChange={(e) => setAddress(e.target.value)} placeholder={t("set.addressPh")} />
                   </div>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
                     <div>
@@ -606,10 +607,10 @@ function SettingsContent() {
                             whiteSpace: "nowrap",
                           }}
                         >
-                          🔑 Huquqlar {s.permissions && s.permissions.length > 0 ? `(${s.permissions.length})` : ""}
+                          🔑 {t("set.permissions")} {s.permissions && s.permissions.length > 0 ? `(${s.permissions.length})` : ""}
                         </button>
                         {s.id === user?.id || s.role === "SUPERADMIN" ? (
-                          <span className="badge badge-neutral">{ROLE_LABEL_KEYS[s.role] || s.role}</span>
+                          <span className="badge badge-neutral">{ROLE_LABEL_KEYS[s.role] ? t(ROLE_LABEL_KEYS[s.role]) : s.role}</span>
                         ) : (
                           <Select
                             options={ROLE_OPTIONS}
@@ -719,7 +720,7 @@ function SettingsContent() {
                     <div key={s.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", border: "1px solid #EAE8E2", borderRadius: 10, padding: "8px 12px" }}>
                       <div>
                         <div style={{ fontSize: 12.5, fontWeight: 600 }}>{s.userAgent || t("settings.unknownDevice")}</div>
-                        <div style={{ fontSize: 11, color: "#8A8D96" }}>{s.ip} · {new Date(s.lastUsedAt).toLocaleString(lang === "UZ" ? "uz-UZ" : lang === "RU" ? "ru-RU" : "en-US")}</div>
+                        <div style={{ fontSize: 11, color: "#8A8D96" }}>{s.ip} · {formatDateTime(s.lastUsedAt, lang)}</div>
                       </div>
                       <button className="btn" onClick={() => onRevokeSession(s.id)} style={{ background: "transparent", color: "#B23A47", fontSize: 11.5, fontWeight: 600, padding: "4px 8px", borderRadius: 8 }}>
                         {t("settings.revoke")}
@@ -857,22 +858,22 @@ function IntegrationRow({ label, active, hint, activeLabel, inactiveLabel }: { l
   );
 }
 
-const ALL_CAPABILITIES = [
-  { key: "students.read", label: "O'quvchilar ro'yxatini ko'rish" },
-  { key: "students.create", label: "Yangi o'quvchi qo'shish" },
-  { key: "students.update", label: "O'quvchi ma'lumotlarini tahrirlash" },
-  { key: "students.delete", label: "O'quvchini arxivlash / o'chirish" },
-  { key: "attendance.read", label: "Davomatni ko'rish" },
-  { key: "attendance.mark", label: "Davomat belgilash" },
-  { key: "groups.manage", label: "Guruhlar va jadvallarni boshqarish" },
-  { key: "homework.manage", label: "Uy vazifalar va baholash" },
-  { key: "exams.manage", label: "Imtihonlar va testlar" },
-  { key: "certificates.manage", label: "Sertifikatlar generatsiya qilish" },
-  { key: "payments.read", label: "To'lovlar va qarzdorlarni ko'rish" },
-  { key: "payments.create", label: "To'lov qabul qilish va kvitansiya" },
-  { key: "expenses.manage", label: "Markaz xarajatlari va kassa" },
-  { key: "reports.export", label: "Moliya va hisobotlarni eksport qilish" },
-  { key: "notifications.send", label: "SMS va Telegram xabar yuborish" },
+const ALL_CAPABILITIES: { key: string; label: TranslationKey }[] = [
+  { key: "students.read", label: "cap.studentsRead" },
+  { key: "students.create", label: "cap.studentsCreate" },
+  { key: "students.update", label: "cap.studentsUpdate" },
+  { key: "students.delete", label: "cap.studentsDelete" },
+  { key: "attendance.read", label: "cap.attendanceRead" },
+  { key: "attendance.mark", label: "cap.attendanceMark" },
+  { key: "groups.manage", label: "cap.groupsManage" },
+  { key: "homework.manage", label: "cap.homeworkManage" },
+  { key: "exams.manage", label: "cap.examsManage" },
+  { key: "certificates.manage", label: "cap.certificatesManage" },
+  { key: "payments.read", label: "cap.paymentsRead" },
+  { key: "payments.create", label: "cap.paymentsCreate" },
+  { key: "expenses.manage", label: "cap.expensesManage" },
+  { key: "reports.export", label: "cap.reportsExport" },
+  { key: "notifications.send", label: "cap.notificationsSend" },
 ];
 
 function PermissionsModal({
@@ -884,6 +885,7 @@ function PermissionsModal({
   onClose: () => void;
   onSave: (perms: string[]) => Promise<void>;
 }) {
+  const { t } = useLanguage();
   const [selected, setSelected] = useState<string[]>(staff.permissions || []);
   const [saving, setSaving] = useState(false);
 
@@ -904,10 +906,10 @@ function PermissionsModal({
   }
 
   return (
-    <Modal open onClose={onClose} title={`Huquqlar — ${staff.fullName} (${staff.role})`}>
+    <Modal open onClose={onClose} title={`${t("set.permissions")} — ${staff.fullName} (${staff.role})`}>
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         <div style={{ fontSize: 12.5, color: "#64748B", marginBottom: 6 }}>
-          Ushbu xodimga markaz bo&apos;yicha quyidagi alohida ruxsatlarni biriktirishingiz mumkin:
+          {t("set.permIntro")}
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
           {ALL_CAPABILITIES.map((cap) => {
@@ -935,7 +937,7 @@ function PermissionsModal({
                   onChange={() => toggle(cap.key)}
                   style={{ accentColor: ACCENT }}
                 />
-                <span>{cap.label}</span>
+                <span>{t(cap.label)}</span>
               </label>
             );
           })}
@@ -947,7 +949,7 @@ function PermissionsModal({
             onClick={onClose}
             style={{ background: "#F1F5F9", color: "#475569", padding: "8px 16px", borderRadius: 8, fontSize: 13 }}
           >
-            Bekor qilish
+            {t("common.cancel")}
           </button>
           <button
             type="button"
@@ -965,6 +967,7 @@ function PermissionsModal({
 }
 
 function NotificationsSettingsTab() {
+  const { t, lang } = useLanguage();
   const [settings, setSettings] = useState<NotificationSettings | null>(null);
   const [stats, setStats] = useState<NotificationStats | null>(null);
   const [logs, setLogs] = useState<NotificationLog[]>([]);
@@ -1018,7 +1021,7 @@ function NotificationsSettingsTab() {
       setMsg("Xabarnoma sozlamalari muvaffaqiyatli saqlandi!");
       setTimeout(() => setMsg(null), 4000);
     } catch (err) {
-      alert(err instanceof ApiError ? err.message : "Saqlashda xatolik");
+      alert(err instanceof ApiError ? err.message : t("ntf.saveError"));
     } finally {
       setSaving(false);
     }
@@ -1038,18 +1041,18 @@ function NotificationsSettingsTab() {
         alert("Sinov xabari muvaffaqiyatli yetkazildi!");
         setTestContent("");
       } else {
-        alert(`Xatolik: ${res.errorMessage || "Xabar yuborilmadi"}`);
+        alert(`${t("ntf.errorPrefix")}: ${res.errorMessage || t("ntf.notSent")}`);
       }
       load();
     } catch (err) {
-      alert(err instanceof ApiError ? err.message : "Yuborishda xatolik");
+      alert(err instanceof ApiError ? err.message : t("ntf.sendError"));
     } finally {
       setSendingTest(false);
     }
   }
 
   if (loading) {
-    return <div style={{ color: "#8A8D96", fontSize: 13.5 }}>Yuklanmoqda...</div>;
+    return <div style={{ color: "#8A8D96", fontSize: 13.5 }}>{t("common.loading")}</div>;
   }
 
   return (
@@ -1057,19 +1060,19 @@ function NotificationsSettingsTab() {
       {/* Stat Cards */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 14 }}>
         <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 14, padding: 16 }}>
-          <div style={{ fontSize: 12, color: "#8A8D96" }}>Jami xabarlar</div>
+          <div style={{ fontSize: 12, color: "#8A8D96" }}>{t("ntf.total")}</div>
           <div style={{ fontSize: 22, fontWeight: 800, marginTop: 4 }}>{stats?.total || 0}</div>
         </div>
         <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 14, padding: 16 }}>
-          <div style={{ fontSize: 12, color: "#8A8D96" }}>Muvaffaqiyatli SMS</div>
+          <div style={{ fontSize: 12, color: "#8A8D96" }}>{t("ntf.smsOk")}</div>
           <div style={{ fontSize: 22, fontWeight: 800, color: "#10B981", marginTop: 4 }}>{stats?.smsCount || 0}</div>
         </div>
         <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 14, padding: 16 }}>
-          <div style={{ fontSize: 12, color: "#8A8D96" }}>Telegram xabarlar</div>
+          <div style={{ fontSize: 12, color: "#8A8D96" }}>{t("ntf.telegram")}</div>
           <div style={{ fontSize: 22, fontWeight: 800, color: ACCENT, marginTop: 4 }}>{stats?.telegramCount || 0}</div>
         </div>
         <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 14, padding: 16 }}>
-          <div style={{ fontSize: 12, color: "#8A8D96" }}>Yetkazish ko&apos;rsatkichi</div>
+          <div style={{ fontSize: 12, color: "#8A8D96" }}>{t("ntf.rate")}</div>
           <div style={{ fontSize: 22, fontWeight: 800, color: "#3B82F6", marginTop: 4 }}>{stats?.successRate || 100}%</div>
         </div>
       </div>
@@ -1077,10 +1080,10 @@ function NotificationsSettingsTab() {
       {/* Provider and Trigger Settings */}
       <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 22 }}>
         <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 700, fontSize: 15, marginBottom: 4 }}>
-          SMS Provayder & Integratsiya
+          {t("ntf.smsTitle")}
         </div>
         <div style={{ fontSize: 12.5, color: "#8A8D96", marginBottom: 16 }}>
-          O&apos;zbekiston bo&apos;ylab SMS xabarnomalar yuborish uchun Eskiz.uz yoki PlayMobile sozlamalari
+          {t("ntf.smsHint")}
         </div>
 
         {msg && (
@@ -1093,7 +1096,7 @@ function NotificationsSettingsTab() {
           <form onSubmit={handleSaveSettings} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
               <div>
-                <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>Provayder</div>
+                <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>{t("ntf.provider")}</div>
                 <Select
                   options={[
                     { value: "eskiz", label: "Eskiz.uz (SMS Gateway)" },
@@ -1104,7 +1107,7 @@ function NotificationsSettingsTab() {
                 />
               </div>
               <div>
-                <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>Yuboruvchi nomi (Sender ID)</div>
+                <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>{t("ntf.sender")}</div>
                 <input
                   className="field-input"
                   placeholder="4546"
@@ -1121,14 +1124,14 @@ function NotificationsSettingsTab() {
               <input
                 className="field-input"
                 type="password"
-                placeholder={settings.hasSmsApiToken ? "Yangi token kiritish yoki bo'sh qoldirish" : "Eskiz / PlayMobile API tokenini kiriting"}
+                placeholder={settings.hasSmsApiToken ? t("ntf.tokenNew") : t("ntf.tokenEnter")}
                 value={tokenInput}
                 onChange={(e) => setTokenInput(e.target.value)}
               />
             </div>
 
             <div style={{ borderTop: "1px solid #F1F5F9", paddingTop: 14, marginTop: 4 }}>
-              <div style={{ fontSize: 13.5, fontWeight: 700, marginBottom: 10 }}>Avtomatik hodisalar (Triggers):</div>
+              <div style={{ fontSize: 13.5, fontWeight: 700, marginBottom: 10 }}>{t("ntf.triggers")}</div>
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 <label style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13, cursor: "pointer" }}>
                   <input
@@ -1137,7 +1140,7 @@ function NotificationsSettingsTab() {
                     onChange={(e) => setSettings({ ...settings, notifyOnAttendance: e.target.checked })}
                     style={{ accentColor: ACCENT }}
                   />
-                  <span><b>Davomat:</b> O&apos;quvchi darsga kelmaganda yoki kechikib kelganda ota-onasiga SMS & Telegram</span>
+                  <span><b>{t("ntf.trAttendanceB")}</b> {t("ntf.trAttendance")}</span>
                 </label>
                 <label style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13, cursor: "pointer" }}>
                   <input
@@ -1146,7 +1149,7 @@ function NotificationsSettingsTab() {
                     onChange={(e) => setSettings({ ...settings, notifyOnPayment: e.target.checked })}
                     style={{ accentColor: ACCENT }}
                   />
-                  <span><b>To&apos;lov:</b> To&apos;lov qabul qilinganda kvitansiya xabari</span>
+                  <span><b>{t("ntf.trPaymentB")}</b> {t("ntf.trPayment")}</span>
                 </label>
                 <label style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13, cursor: "pointer" }}>
                   <input
@@ -1155,7 +1158,7 @@ function NotificationsSettingsTab() {
                     onChange={(e) => setSettings({ ...settings, notifyOnHomework: e.target.checked })}
                     style={{ accentColor: ACCENT }}
                   />
-                  <span><b>Uy vazifalari:</b> O&apos;qituvchi vazifani baholaganda o&apos;quvchiga ball va izoh</span>
+                  <span><b>{t("ntf.trHomeworkB")}</b> {t("ntf.trHomework")}</span>
                 </label>
               </div>
             </div>
@@ -1166,7 +1169,7 @@ function NotificationsSettingsTab() {
               className="btn"
               style={{ background: ACCENT, color: "#fff", alignSelf: "flex-start", padding: "10px 22px", borderRadius: 9, fontSize: 13, fontWeight: 700, marginTop: 4 }}
             >
-              {saving ? "Saqlanmoqda..." : "Sozlamalarni saqlash"}
+              {saving ? t("common.saving") : t("ntf.saveSettings")}
             </button>
           </form>
         )}
@@ -1175,17 +1178,17 @@ function NotificationsSettingsTab() {
       {/* Test Sender Form */}
       <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 22 }}>
         <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 700, fontSize: 15, marginBottom: 4 }}>
-          Sinov xabari yuborish (Test ping)
+          {t("ntf.testTitle")}
         </div>
         <div style={{ fontSize: 12.5, color: "#8A8D96", marginBottom: 14 }}>
-          Provayder ulanishini yoki Telegram bot sozlamalarini sinab ko&apos;rish
+          {t("ntf.testHint")}
         </div>
         <form onSubmit={handleSendTest} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: 10 }}>
             <Select
               options={[
-                { value: "SMS", label: "SMS (Telefon raqamga)" },
-                { value: "TELEGRAM", label: "Telegram (Chat ID ga)" },
+                { value: "SMS", label: t("ntf.chSms") },
+                { value: "TELEGRAM", label: t("ntf.chTelegram") },
               ]}
               value={testChannel}
               onChange={(v) => setTestChannel(v as any)}
@@ -1200,7 +1203,7 @@ function NotificationsSettingsTab() {
           </div>
           <input
             className="field-input"
-            placeholder="Sinov xabari matni..."
+            placeholder={t("ntf.testTextPh")}
             value={testContent}
             onChange={(e) => setTestContent(e.target.value)}
             required
@@ -1211,7 +1214,7 @@ function NotificationsSettingsTab() {
             className="btn"
             style={{ background: "#F1F5F9", color: "#1E293B", border: "1px solid #CBD5E1", alignSelf: "flex-start", padding: "8px 18px", borderRadius: 8, fontSize: 13, fontWeight: 700 }}
           >
-            {sendingTest ? "Yuborilmoqda..." : "📨 Sinov xabarini yuborish"}
+            {sendingTest ? t("pay.sending") : t("ntf.sendTest")}
           </button>
         </form>
       </div>
@@ -1220,7 +1223,7 @@ function NotificationsSettingsTab() {
       <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 22 }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
           <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 700, fontSize: 15 }}>
-            So&apos;nggi xabarnomalar tarixi ({logs.length} ta)
+            {t("ntf.history")} ({logs.length})
           </div>
           <button
             type="button"
@@ -1228,31 +1231,31 @@ function NotificationsSettingsTab() {
             onClick={load}
             style={{ background: "transparent", color: ACCENT, fontSize: 12.5, fontWeight: 700, border: "none", cursor: "pointer" }}
           >
-            🔄 Yangilash
+            {t("ntf.refresh")}
           </button>
         </div>
 
         {logs.length === 0 ? (
-          <div style={{ color: "#8A8D96", fontSize: 13 }}>Hozircha yuborilgan xabarnomalar mavjud emas.</div>
+          <div style={{ color: "#8A8D96", fontSize: 13 }}>{t("ntf.empty")}</div>
         ) : (
           <div style={{ overflowX: "auto" }}>
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12.5 }}>
               <thead>
                 <tr style={{ borderBottom: "1px solid #EAE8E2", color: "#64748B", textAlign: "left" }}>
-                  <th style={{ padding: "8px 10px" }}>Sana</th>
-                  <th style={{ padding: "8px 10px" }}>Kanal</th>
-                  <th style={{ padding: "8px 10px" }}>Qabul qiluvchi</th>
-                  <th style={{ padding: "8px 10px" }}>Tadbir</th>
-                  <th style={{ padding: "8px 10px" }}>Holat</th>
-                  <th style={{ padding: "8px 10px" }}>Matn</th>
+                  <th style={{ padding: "8px 10px" }}>{t("ntf.date")}</th>
+                  <th style={{ padding: "8px 10px" }}>{t("ntf.channel")}</th>
+                  <th style={{ padding: "8px 10px" }}>{t("ntf.recipient")}</th>
+                  <th style={{ padding: "8px 10px" }}>{t("ntf.event")}</th>
+                  <th style={{ padding: "8px 10px" }}>{t("ntf.status")}</th>
+                  <th style={{ padding: "8px 10px" }}>{t("ntf.text")}</th>
                 </tr>
               </thead>
               <tbody>
                 {logs.map((log) => (
                   <tr key={log.id} style={{ borderBottom: "1px solid #F1F5F9" }}>
                     <td style={{ padding: "10px 10px", color: "#64748B", whiteSpace: "nowrap" }}>
-                      {new Date(log.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}{" "}
-                      {new Date(log.createdAt).toLocaleDateString()}
+                      {formatTime(log.createdAt, lang)}{" "}
+                      {formatDate(log.createdAt, lang, "numeric")}
                     </td>
                     <td style={{ padding: "10px 10px" }}>
                       <span
@@ -1285,7 +1288,7 @@ function NotificationsSettingsTab() {
                           color: log.status === "SENT" ? "#03543F" : "#9B1C1C",
                         }}
                       >
-                        {log.status === "SENT" ? "Yuborildi" : "Xatolik"}
+                        {log.status === "SENT" ? t("ntf.sent") : t("ntf.failed")}
                       </span>
                     </td>
                     <td style={{ padding: "10px 10px", color: "#64748B", maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>

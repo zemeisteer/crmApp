@@ -75,7 +75,7 @@ function activityTitle(a: LeadActivity, t: (k: TranslationKey) => string) {
 
 function LeadProfile() {
   const { id } = useParams<{ id: string }>();
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const { can } = useAuth();
 
   const [lead, setLead] = useState<Lead | null>(null);
@@ -258,7 +258,7 @@ function LeadProfile() {
         )}
         {lead.convertedStudent && (
           <div style={{ ...card, background: "#F0FDF4", borderColor: "#BBF7D0", display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-            <span>{t("adm.convertedBanner")}: <strong>{lead.convertedStudent.fullName}</strong> · {formatDateTime(lead.convertedAt)}</span>
+            <span>{t("adm.convertedBanner")}: <strong>{lead.convertedStudent.fullName}</strong> · {formatDateTime(lead.convertedAt, lang)}</span>
             <Link href={`/students/${lead.convertedStudent.id}`} style={{ color: "#15803D", fontWeight: 700 }}>{t("adm.viewStudent")} →</Link>
           </div>
         )}
@@ -304,14 +304,14 @@ function LeadProfile() {
               )}
               {lead.status === "LOST" && detail(t("adm.lostReason"), <>{lead.lostReason ? t(lostKey(lead.lostReason)) : "—"}{lead.lostNote ? ` — ${lead.lostNote}` : ""}</>)}
               {detail(t("leads.fieldNotes"), <span style={{ whiteSpace: "pre-wrap", fontWeight: 400 }}>{lead.notes || "—"}</span>)}
-              {detail(t("adm.createdBy"), formatDateTime(lead.createdAt))}
-              {detail(t("adm.lastUpdated"), formatDateTime(lead.updatedAt))}
+              {detail(t("adm.createdBy"), formatDateTime(lead.createdAt, lang))}
+              {detail(t("adm.lastUpdated"), formatDateTime(lead.updatedAt, lang))}
             </section>
 
             <section style={card}>
               <h2 style={{ fontSize: 15, fontWeight: 800, marginBottom: 8 }}>{t("adm.followUp")}</h2>
               <div style={{ fontSize: 13.5, marginBottom: 10, color: isOverdue(lead.followUpAt) && isOpen ? "#B91C1C" : undefined, fontWeight: 600 }}>
-                {lead.followUpAt ? formatDateTime(lead.followUpAt) : t("adm.noFollowUp")}
+                {lead.followUpAt ? formatDateTime(lead.followUpAt, lang) : t("adm.noFollowUp")}
                 {lead.followUpAt && isOverdue(lead.followUpAt) && isOpen ? ` (${t("adm.overdue")})` : ""}
               </div>
               {editable && isOpen && (
@@ -345,7 +345,7 @@ function LeadProfile() {
                   {lead.trials!.map((tr) => (
                     <li key={tr.id} style={{ border: "1px solid #F2F1EC", borderRadius: 10, padding: 10, display: "grid", gap: 6 }}>
                       <div style={{ display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
-                        <strong style={{ fontSize: 13.5 }}>{formatDateTime(tr.scheduledAt)} · {tr.durationMinutes}′</strong>
+                        <strong style={{ fontSize: 13.5 }}>{formatDateTime(tr.scheduledAt, lang)} · {tr.durationMinutes}′</strong>
                         <span style={{ fontSize: 11.5, fontWeight: 700, padding: "2px 8px", borderRadius: 999, ...TRIAL_STYLE[tr.status] }}>{t(trialKey(tr.status))}</span>
                       </div>
                       <div style={{ fontSize: 12.5, color: "#5B5F6A" }}>
@@ -413,7 +413,7 @@ function LeadProfile() {
                   </div>
                   {a.body && <div style={{ fontSize: 13, whiteSpace: "pre-wrap", marginTop: 3 }}>{a.body}</div>}
                   <div style={{ fontSize: 11.5, color: "#8A8D96", marginTop: 3 }}>
-                    {formatDateTime(a.occurredAt)} · {a.actor?.fullName ?? t("adm.system")}
+                    {formatDateTime(a.occurredAt, lang)} · {a.actor?.fullName ?? t("adm.system")}
                   </div>
                 </li>
               ))}

@@ -32,6 +32,7 @@ import { localMonthStr, localDateStr } from "@/lib/date";
 import { useLanguage } from "@/lib/i18n-context";
 import { useAuth } from "@/lib/auth-context";
 import { MONTH_KEYS, MONTH_SHORT_KEYS, type TranslationKey } from "@/lib/i18n";
+import { formatDate } from "@/lib/format-date";
 
 const ACCENT = "#4F46E5";
 
@@ -231,16 +232,7 @@ function PaymentReceiptModal({
   const student = payment.student;
   const groupsList = student?.enrollments?.map((e) => e.group?.name).filter(Boolean).join(", ") || "—";
   const dateFormatted = payment.paidAt
-    ? new Date(payment.paidAt).toLocaleDateString(
-        lang === "UZ" ? "uz-UZ" : lang === "RU" ? "ru-RU" : "en-US",
-        {
-          year: "numeric",
-          month: "long",
-          day: "numeric",
-          hour: "2-digit",
-          minute: "2-digit",
-        },
-      )
+    ? formatDate(payment.paidAt, lang, "long")
     : "—";
 
   function handlePrint() {
@@ -272,7 +264,7 @@ function PaymentReceiptModal({
             }}
           >
             <div style={{ fontSize: 18, fontWeight: 800, color: ACCENT }}>
-              {tenantName || "O'QUV MARKAZI"}
+              {tenantName || t("pay.centerFallback")}
             </div>
             {(tenantAddress || tenantPhone) && (
               <div style={{ fontSize: 11, color: "#64748B", marginTop: 4 }}>
@@ -305,7 +297,7 @@ function PaymentReceiptModal({
             </div>
             {student?.phone && (
               <div style={{ display: "flex", justifyContent: "space-between" }}>
-                <span style={{ color: "#64748B" }}>Telefon:</span>
+                <span style={{ color: "#64748B" }}>{t("pay.phone")}</span>
                 <span>{student.phone}</span>
               </div>
             )}
@@ -382,7 +374,7 @@ function PaymentReceiptModal({
                   marginBottom: 2,
                 }}
               />
-              <div style={{ fontSize: 10, color: "#94A3B8" }}>M.O'. / Imzo</div>
+              <div style={{ fontSize: 10, color: "#94A3B8" }}>{t("pay.stampSign")}</div>
             </div>
           </div>
 
@@ -506,7 +498,7 @@ function PaymentsContent() {
   async function handleSendReminders() {
     const debtorCount = debtorsData?.debtorCount || 0;
     if (debtorCount === 0) {
-      alert("Hozirda qarzdor o'quvchilar mavjud emas");
+      alert(t("pay.noDebtors"));
       return;
     }
     if (!window.confirm(`${debtorCount} ta qarzdor o'quvchiga SMS va Telegram eslatma yuborilsinmi?`)) return;
@@ -515,7 +507,7 @@ function PaymentsContent() {
       const res = await notificationsApi.sendDebtorReminders({ forMonth: selectedMonth });
       alert(`Muvaffaqiyatli: ${res.processedDebtors} ta qarzdorga xabarnoma yuborildi!`);
     } catch (err) {
-      alert(err instanceof ApiError ? err.message : "Xatolik yuz berdi");
+      alert(err instanceof ApiError ? err.message : t("common.errorGeneric"));
     } finally {
       setSendingReminders(false);
     }
@@ -620,7 +612,7 @@ function PaymentsContent() {
       });
       setGeneratedLink({ provider, url: res.url });
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Havola yaratishda xatolik");
+      alert(err instanceof Error ? err.message : t("pay.linkError"));
     } finally {
       setGeneratingLink(false);
     }
@@ -635,11 +627,11 @@ function PaymentsContent() {
         recipient: linkDebtor.phone,
         channel: "SMS",
         content: text,
-        title: "To'lov havolasi",
+        title: t("pay.link"),
       });
-      alert("To'lov havolasi SMS orqali yuborildi!");
+      alert(t("pay.linkSmsSent"));
     } catch (err) {
-      alert(err instanceof Error ? err.message : "SMS yuborishda xatolik");
+      alert(err instanceof Error ? err.message : t("pay.smsError"));
     } finally {
       setSendingLinkSms(false);
     }
@@ -777,7 +769,7 @@ function PaymentsContent() {
       // Optionally open receipt voucher right after payment
       setReceiptPayment(created);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Xatolik yuz berdi");
+      setError(err instanceof ApiError ? err.message : t("common.errorGeneric"));
     } finally {
       setSaving(false);
     }
@@ -787,11 +779,11 @@ function PaymentsContent() {
     e.preventDefault();
     setError(null);
     if (!expenseTitle.trim()) {
-      setError("Xarajat nomini kiriting");
+      setError(t("pay.expenseNameRequired"));
       return;
     }
     if (!expenseAmount || Number(expenseAmount) <= 0) {
-      setError("Summani to'g'ri kiriting");
+      setError(t("pay.amountInvalid"));
       return;
     }
     setSaving(true);
@@ -809,19 +801,19 @@ function PaymentsContent() {
       resetExpenseForm();
       loadAll();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Xatolik yuz berdi");
+      setError(err instanceof ApiError ? err.message : t("common.errorGeneric"));
     } finally {
       setSaving(false);
     }
   }
 
   async function handleDeleteExpense(id: string) {
-    if (!window.confirm("Haqiqatan ham bu xarajatni o'chirmoqchimisiz?")) return;
+    if (!window.confirm(t("pay.confirmDeleteExpense"))) return;
     try {
       await expensesApi.delete(id);
       loadAll();
     } catch (err) {
-      alert(err instanceof ApiError ? err.message : "O'chirishda xatolik");
+      alert(err instanceof ApiError ? err.message : t("pay.deleteError"));
     }
   }
 
@@ -917,7 +909,7 @@ function PaymentsContent() {
                 transition: "all 0.15s ease",
               }}
             >
-              Hisob-fakturalar
+              {t("pay.tabInvoices")}
             </button>
             <button
               onClick={() => setActiveTab("expenses")}
@@ -943,7 +935,7 @@ function PaymentsContent() {
         <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
           {(activeTab === "debtors" || activeTab === "expenses" || activeTab === "invoices") && (
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <span style={{ fontSize: 12, color: "#8A8D96", fontWeight: 600 }}>Oy:</span>
+              <span style={{ fontSize: 12, color: "#8A8D96", fontWeight: 600 }}>{t("pay.month")}</span>
               <MonthPicker value={selectedMonth} onChange={setSelectedMonth} />
             </div>
           )}
@@ -980,7 +972,7 @@ function PaymentsContent() {
               }}
             >
               <span>⚡</span>
-              <span>{generatingInvoices ? "Shakllantirilmoqda..." : "Oylik hisob-fakturalar"}</span>
+              <span>{generatingInvoices ? t("pay.generating") : t("pay.monthlyInvoices")}</span>
             </button>
           )}
 
@@ -1272,7 +1264,7 @@ function PaymentsContent() {
                           <th style={{ paddingTop: 16 }}>{t("payments.colAmount")}</th>
                           <th style={{ paddingTop: 16 }}>{t("payments.colMethod")}</th>
                           <th style={{ paddingTop: 16 }}>{t("payments.colStatus")}</th>
-                          <th style={{ paddingTop: 16, textAlign: "right" }}>Amallar</th>
+                          <th style={{ paddingTop: 16, textAlign: "right" }}>{t("pay.actions")}</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -1280,10 +1272,7 @@ function PaymentsContent() {
                           <tr key={p.id}>
                             <td>
                               {p.paidAt
-                                ? new Date(p.paidAt).toLocaleDateString(
-                                    lang === "UZ" ? "uz-UZ" : lang === "RU" ? "ru-RU" : "en-US",
-                                    { day: "numeric", month: "short" },
-                                  )
+                                ? formatDate(p.paidAt, lang, "dayMonth")
                                 : "—"}
                             </td>
                             <td style={{ fontWeight: 600 }}>{studentName(p.studentId)}</td>
@@ -1449,7 +1438,7 @@ function PaymentsContent() {
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
               <input
                 className="field-input"
-                placeholder="O'quvchi ismi yoki telefon..."
+                placeholder={t("pay.debtorSearch")}
                 value={debtorSearch}
                 onChange={(e) => setDebtorSearch(e.target.value)}
                 style={{ maxWidth: 280 }}
@@ -1486,7 +1475,7 @@ function PaymentsContent() {
                 }}
               >
                 <span>📢</span>
-                <span>{sendingReminders ? "Yuborilmoqda..." : "Qarzdorlarga SMS eslatma"}</span>
+                <span>{sendingReminders ? t("pay.sending") : t("pay.smsDebtors")}</span>
               </button>
             </div>
 
@@ -1520,13 +1509,13 @@ function PaymentsContent() {
                 <table>
                   <thead>
                     <tr>
-                      <th style={{ paddingTop: 16 }}>O'quvchi</th>
-                      <th style={{ paddingTop: 16 }}>Guruh(lar)</th>
+                      <th style={{ paddingTop: 16 }}>{t("pay.student")}</th>
+                      <th style={{ paddingTop: 16 }}>{t("pay.groups")}</th>
                       <th style={{ paddingTop: 16 }}>{t("payments.debtors.expected")}</th>
                       <th style={{ paddingTop: 16 }}>{t("payments.debtors.paid")}</th>
                       <th style={{ paddingTop: 16 }}>{t("payments.debtors.debt")}</th>
-                      <th style={{ paddingTop: 16 }}>Holat</th>
-                      <th style={{ paddingTop: 16, textAlign: "right" }}>Amal</th>
+                      <th style={{ paddingTop: 16 }}>{t("pay.status")}</th>
+                      <th style={{ paddingTop: 16, textAlign: "right" }}>{t("pay.action")}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1618,7 +1607,7 @@ function PaymentsContent() {
                                   fontWeight: 700,
                                   cursor: "pointer",
                                 }}
-                                title="Click yoki Payme to'lov havolasini olish"
+                                title={t("pay.getLinkTitle")}
                               >
                                 🔗 Havola
                               </button>
@@ -1658,25 +1647,25 @@ function PaymentsContent() {
             {/* Top Invoices Cards */}
             <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0,1fr))", gap: 16 }}>
               <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 14, padding: 18 }}>
-                <div style={{ fontSize: 12, color: "#8A8D96" }}>Jami hisob-fakturalar</div>
+                <div style={{ fontSize: 12, color: "#8A8D96" }}>{t("pay.invTotal")}</div>
                 <div style={{ fontSize: 22, fontWeight: 800, fontFamily: "'Manrope', sans-serif", marginTop: 4 }}>
                   {formatMoney(invoices.reduce((s, inv) => s + inv.amount, 0))} {t("common.sumUnit")}
                 </div>
               </div>
               <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 14, padding: 18 }}>
-                <div style={{ fontSize: 12, color: "#8A8D96" }}>To'langan summa</div>
+                <div style={{ fontSize: 12, color: "#8A8D96" }}>{t("pay.invPaid")}</div>
                 <div style={{ fontSize: 22, fontWeight: 800, fontFamily: "'Manrope', sans-serif", marginTop: 4, color: "#10B981" }}>
                   {formatMoney(invoices.reduce((s, inv) => s + inv.amountPaid, 0))} {t("common.sumUnit")}
                 </div>
               </div>
               <div style={{ background: invoices.some((i) => i.remainingAmount > 0) ? "#FEF2F2" : "#fff", border: `1px solid ${invoices.some((i) => i.remainingAmount > 0) ? "#FCA5A5" : "#EAE8E2"}`, borderRadius: 14, padding: 18 }}>
-                <div style={{ fontSize: 12, color: invoices.some((i) => i.remainingAmount > 0) ? "#B91C1C" : "#8A8D96" }}>Qoldiq qarzdorlik</div>
+                <div style={{ fontSize: 12, color: invoices.some((i) => i.remainingAmount > 0) ? "#B91C1C" : "#8A8D96" }}>{t("pay.invRemaining")}</div>
                 <div style={{ fontSize: 22, fontWeight: 800, fontFamily: "'Manrope', sans-serif", marginTop: 4, color: "#DC2626" }}>
                   {formatMoney(invoices.reduce((s, inv) => s + (inv.status !== "CANCELLED" ? inv.remainingAmount : 0), 0))} {t("common.sumUnit")}
                 </div>
               </div>
               <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 14, padding: 18 }}>
-                <div style={{ fontSize: 12, color: "#8A8D96" }}>Muddati o'tganlar</div>
+                <div style={{ fontSize: 12, color: "#8A8D96" }}>{t("pay.invOverdue")}</div>
                 <div style={{ fontSize: 22, fontWeight: 800, fontFamily: "'Manrope', sans-serif", marginTop: 4, color: "#F59E0B" }}>
                   {invoices.filter((i) => i.status === "OVERDUE").length} ta
                 </div>
@@ -1687,7 +1676,7 @@ function PaymentsContent() {
             <div style={{ display: "flex", gap: 12, alignItems: "center", marginTop: 20, marginBottom: 16 }}>
               <input
                 type="text"
-                placeholder="O'quvchi ismi yoki oy bo'yicha qidirish..."
+                placeholder={t("pay.invSearch")}
                 className="field-input"
                 value={invoiceSearch}
                 onChange={(e) => setInvoiceSearch(e.target.value)}
@@ -1695,12 +1684,12 @@ function PaymentsContent() {
               />
               <Select
                 options={[
-                  { value: "ALL", label: "Barcha holatlar" },
-                  { value: "OPEN", label: "Kutilmoqda (Ochiq)" },
-                  { value: "PARTIALLY_PAID", label: "Qisman to'langan" },
-                  { value: "PAID", label: "To'langan" },
-                  { value: "OVERDUE", label: "Muddati o'tgan" },
-                  { value: "CANCELLED", label: "Bekor qilingan" },
+                  { value: "ALL", label: t("pay.allStatuses") },
+                  { value: "OPEN", label: t("pay.stPending") },
+                  { value: "PARTIALLY_PAID", label: t("pay.stPartial") },
+                  { value: "PAID", label: t("pay.stPaid") },
+                  { value: "OVERDUE", label: t("pay.stOverdue") },
+                  { value: "CANCELLED", label: t("pay.stCancelled") },
                 ]}
                 value={invoiceStatusFilter}
                 onChange={setInvoiceStatusFilter}
@@ -1711,22 +1700,22 @@ function PaymentsContent() {
             {/* Invoices Table */}
             {filteredInvoices.length === 0 ? (
               <div style={{ color: "#8A8D96", fontSize: 14, background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 32, textAlign: "center" }}>
-                Hisob-fakturalar topilmadi. Yuqoridagi "Oylik hisob-fakturalar" tugmasi orqali avtomatik shakllantirishingiz mumkin.
+                {t("pay.noInvoices")}
               </div>
             ) : (
               <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, overflow: "hidden" }}>
                 <table>
                   <thead>
                     <tr>
-                      <th style={{ paddingTop: 16 }}>O'quvchi</th>
-                      <th style={{ paddingTop: 16 }}>Guruh / Tavsif</th>
-                      <th style={{ paddingTop: 16 }}>Oy</th>
-                      <th style={{ paddingTop: 16 }}>Umumiy summa</th>
-                      <th style={{ paddingTop: 16 }}>To'langan</th>
-                      <th style={{ paddingTop: 16 }}>Qoldiq</th>
-                      <th style={{ paddingTop: 16 }}>Muddati</th>
-                      <th style={{ paddingTop: 16 }}>Holat</th>
-                      <th style={{ paddingTop: 16, textAlign: "right" }}>Amal</th>
+                      <th style={{ paddingTop: 16 }}>{t("pay.student")}</th>
+                      <th style={{ paddingTop: 16 }}>{t("pay.groupDesc")}</th>
+                      <th style={{ paddingTop: 16 }}>{t("pay.monthCol")}</th>
+                      <th style={{ paddingTop: 16 }}>{t("pay.totalAmount")}</th>
+                      <th style={{ paddingTop: 16 }}>{t("pay.paid")}</th>
+                      <th style={{ paddingTop: 16 }}>{t("pay.remaining")}</th>
+                      <th style={{ paddingTop: 16 }}>{t("pay.due")}</th>
+                      <th style={{ paddingTop: 16 }}>{t("pay.status")}</th>
+                      <th style={{ paddingTop: 16, textAlign: "right" }}>{t("pay.action")}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1742,10 +1731,10 @@ function PaymentsContent() {
                         <td style={{ fontWeight: 800, color: inv.remainingAmount > 0 ? "#DC2626" : "#8A8D96" }}>
                           {formatMoney(inv.remainingAmount)} {t("common.sumUnit")}
                         </td>
-                        <td>{new Date(inv.dueDate).toLocaleDateString(lang === "UZ" ? "uz-UZ" : "ru-RU", { day: "numeric", month: "short" })}</td>
+                        <td>{formatDate(inv.dueDate, lang, "dayMonth")}</td>
                         <td>
                           <span className={`badge ${inv.status === "PAID" ? "badge-success" : inv.status === "OVERDUE" ? "badge-danger" : inv.status === "PARTIALLY_PAID" ? "badge-warning" : "badge-neutral"}`}>
-                            {inv.status === "PAID" ? "To'langan" : inv.status === "PARTIALLY_PAID" ? "Qisman to'langan" : inv.status === "OVERDUE" ? "Muddati o'tgan" : inv.status === "CANCELLED" ? "Bekor qilingan" : "Ochiq"}
+                            {inv.status === "PAID" ? t("pay.stPaid") : inv.status === "PARTIALLY_PAID" ? t("pay.stPartial") : inv.status === "OVERDUE" ? t("pay.stOverdue") : inv.status === "CANCELLED" ? t("pay.stCancelled") : t("pay.stOpen")}
                           </span>
                         </td>
                         <td style={{ textAlign: "right" }}>
@@ -1760,7 +1749,7 @@ function PaymentsContent() {
                               }}
                               style={{ background: "#10B981", color: "#fff", border: "none", padding: "6px 12px", borderRadius: 7, fontSize: 12, fontWeight: 700, cursor: "pointer" }}
                             >
-                              To'lash
+                              {t("pay.pay")}
                             </button>
                           )}
                         </td>
@@ -1907,7 +1896,7 @@ function PaymentsContent() {
                 }}
               >
                 <span style={{ fontSize: 12, fontWeight: 700, color: "#475569" }}>
-                  Xarajatlar taqsimoti:
+                  {t("pay.expenseSplit")}
                 </span>
                 {EXPENSE_CATEGORIES.map((cat) => {
                   const amt = financeSummary.expensesByCategory[cat.value] || 0;
@@ -1936,7 +1925,7 @@ function PaymentsContent() {
             <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
               <Select
                 options={[
-                  { value: "", label: "Barcha kategoriyalar" },
+                  { value: "", label: t("pay.allCategories") },
                   ...EXPENSE_CATEGORIES.map((c) => ({
                     value: c.value,
                     label: t(c.labelKey),
@@ -1982,8 +1971,8 @@ function PaymentsContent() {
                       <th style={{ paddingTop: 16 }}>{t("payments.expenses.fieldCategory")}</th>
                       <th style={{ paddingTop: 16 }}>{t("payments.expenses.fieldBranch")}</th>
                       <th style={{ paddingTop: 16 }}>{t("payments.expenses.fieldAmount")}</th>
-                      <th style={{ paddingTop: 16 }}>Mas'ul</th>
-                      <th style={{ paddingTop: 16, textAlign: "right" }}>Amal</th>
+                      <th style={{ paddingTop: 16 }}>{t("pay.responsible")}</th>
+                      <th style={{ paddingTop: 16, textAlign: "right" }}>{t("pay.action")}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -2034,7 +2023,7 @@ function PaymentsContent() {
                                 cursor: "pointer",
                               }}
                             >
-                              O'chirish
+                              {t("common.delete")}
                             </button>
                           </td>
                         </tr>
@@ -2169,7 +2158,7 @@ function PaymentsContent() {
               required
               value={expenseTitle}
               onChange={(e) => setExpenseTitle(e.target.value)}
-              placeholder="Masalan: Bino ijarasi yoki Target reklama"
+              placeholder={t("pay.expensePlaceholder")}
             />
           </Field>
 
@@ -2234,7 +2223,7 @@ function PaymentsContent() {
               rows={2}
               value={expenseNotes}
               onChange={(e) => setExpenseNotes(e.target.value)}
-              placeholder="Qo'shimcha izoh yoki chek raqami..."
+              placeholder={t("pay.notePlaceholder")}
             />
           </Field>
 
@@ -2275,7 +2264,7 @@ function PaymentsContent() {
       <Modal
         open={linkModalOpen}
         onClose={() => setLinkModalOpen(false)}
-        title="Online To'lov Havolasi (Click / Payme)"
+        title={t("pay.onlineLinkTitle")}
       >
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           <div style={{ background: "#F8F8F6", borderRadius: 10, padding: 12, border: "1px solid #EAE8E2" }}>
@@ -2387,7 +2376,7 @@ function PaymentsContent() {
                       cursor: "pointer",
                     }}
                   >
-                    {sendingLinkSms ? "Yuborilmoqda..." : "💬 SMS yuborish"}
+                    {sendingLinkSms ? t("pay.sending") : t("pay.sendSms")}
                   </button>
                 )}
               </div>

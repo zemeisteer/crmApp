@@ -8,6 +8,7 @@ import Pagination, { usePagedSlice } from "@/components/Pagination";
 import Select from "@/components/Select";
 import { certificatesApi, studentsApi, groupsApi, Certificate, Student, Group, ApiError } from "@/lib/api";
 import { useLanguage } from "@/lib/i18n-context";
+import { formatDate } from "@/lib/format-date";
 
 const ACCENT = "#4F46E5";
 
@@ -49,7 +50,7 @@ function CertificatesContent() {
       setStudents(s);
       setGroups(g);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Ma'lumotlarni yuklashda xatolik");
+      setError(err instanceof ApiError ? err.message : t("cert.loadError"));
     } finally {
       setLoading(false);
     }
@@ -91,7 +92,7 @@ function CertificatesContent() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!studentId || !title.trim()) {
-      setError("O'quvchi va sertifikat nomi kiritilishi shart");
+      setError(t("cert.required"));
       return;
     }
 
@@ -112,19 +113,19 @@ function CertificatesContent() {
       setCerts((prev) => [created, ...prev]);
       setModalOpen(false);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Sertifikat yaratishda xatolik");
+      setError(err instanceof ApiError ? err.message : t("cert.createError"));
     } finally {
       setSaving(false);
     }
   }
 
   async function handleDelete(id: string) {
-    if (!confirm("Haqiqatan ham ushbu sertifikatni bekor qilmoqchimisiz?")) return;
+    if (!confirm(t("cert.confirmRevoke"))) return;
     try {
       await certificatesApi.remove(id);
       setCerts((prev) => prev.filter((c) => c.id !== id));
     } catch (err) {
-      alert(err instanceof ApiError ? err.message : "O'chirishda xatolik");
+      alert(err instanceof ApiError ? err.message : t("pay.deleteError"));
     }
   }
 
@@ -143,11 +144,11 @@ function CertificatesContent() {
           <div className="flex items-center gap-2 mb-1">
             <span className="w-2.5 h-2.5 rounded-full bg-indigo-600" />
             <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">
-              Bitiruv Sertifikatlari
+              {t("cert.title")}
             </h1>
           </div>
           <p className="text-xs sm:text-sm text-slate-600">
-            O'quvchilarga rasmiy elektron sertifikatlar berish va QR orqali ochiq tekshirish
+            {t("cert.subtitle")}
           </p>
         </div>
 
@@ -159,7 +160,7 @@ function CertificatesContent() {
             <line x1="12" y1="5" x2="12" y2="19" />
             <line x1="5" y1="12" x2="19" y2="12" />
           </svg>
-          Yangi Sertifikat Berish
+          {t("cert.new")}
         </button>
       </div>
 
@@ -168,7 +169,7 @@ function CertificatesContent() {
         <div className="sm:col-span-8 relative">
           <input
             type="text"
-            placeholder="O'quvchi ismi, sertifikat nomi yoki kod bo'yicha qidirish..."
+            placeholder={t("cert.searchPh")}
             value={search}
             onChange={(e) => {
               setSearch(e.target.value);
@@ -193,7 +194,7 @@ function CertificatesContent() {
               setFilterGroup(val);
               setPage(1);
             }}
-            placeholder="Barcha guruhlar"
+            placeholder={t("cert.allGroups")}
             options={groups.map((g) => ({ value: g.id, label: `${g.name} (${g.subject})` }))}
           />
         </div>
@@ -201,7 +202,7 @@ function CertificatesContent() {
 
       {/* Main content list */}
       {loading ? (
-        <div className="p-12 text-center text-slate-500 text-sm font-medium">Sertifikatlar yuklanmoqda...</div>
+        <div className="p-12 text-center text-slate-500 text-sm font-medium">{t("cert.loading")}</div>
       ) : filtered.length === 0 ? (
         <div className="p-12 text-center bg-white border border-slate-200 rounded-2xl shadow-sm">
           <div className="w-12 h-12 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center mx-auto mb-3">
@@ -210,9 +211,9 @@ function CertificatesContent() {
               <path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11" />
             </svg>
           </div>
-          <p className="text-slate-900 font-bold text-sm">Hech qanday sertifikat topilmadi</p>
+          <p className="text-slate-900 font-bold text-sm">{t("cert.none")}</p>
           <p className="text-slate-500 text-xs mt-1">
-            {search || filterGroup ? "Qidiruv parametrlarini o'zgartirib ko'ring" : "Birinchi sertifikatni bering"}
+            {search || filterGroup ? t("cert.tryFilters") : t("cert.issueFirst")}
           </p>
         </div>
       ) : (
@@ -241,23 +242,23 @@ function CertificatesContent() {
 
                 <div className="space-y-1.5 text-xs text-slate-600 mb-4">
                   <div className="flex items-center gap-2">
-                    <span className="text-slate-500 font-medium">O'quvchi:</span>
+                    <span className="text-slate-500 font-medium">{t("cert.student")}</span>
                     <span className="font-bold text-slate-900">
                       {cert.student?.fullName || "—"}
                     </span>
                   </div>
                   {cert.group && (
                     <div className="flex items-center gap-2">
-                      <span className="text-slate-500 font-medium">Guruh:</span>
+                      <span className="text-slate-500 font-medium">{t("cert.group")}</span>
                       <span className="text-slate-800 font-semibold">
                         {cert.group.name} ({cert.group.subject})
                       </span>
                     </div>
                   )}
                   <div className="flex items-center gap-2">
-                    <span className="text-slate-500 font-medium">Sana:</span>
+                    <span className="text-slate-500 font-medium">{t("cert.date")}</span>
                     <span className="text-slate-700 font-semibold">
-                      {cert.issueDate ? new Date(cert.issueDate).toLocaleDateString("uz-UZ") : "—"}
+                      {cert.issueDate ? formatDate(cert.issueDate, "UZ", "numeric") : "—"}
                     </span>
                   </div>
                 </div>
@@ -275,7 +276,7 @@ function CertificatesContent() {
                       <polyline points="15 3 21 3 21 9" />
                       <line x1="10" y1="14" x2="21" y2="3" />
                     </svg>
-                    Ko'rish
+                    {t("cert.view")}
                   </Link>
 
                   <button
@@ -293,7 +294,7 @@ function CertificatesContent() {
                 <button
                   onClick={() => handleDelete(cert.id)}
                   className="p-1.5 text-slate-400 hover:text-rose-600 transition-colors cursor-pointer"
-                  title="O'chirish"
+                  title={t("common.delete")}
                 >
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <polyline points="3 6 5 6 21 6" />
@@ -317,7 +318,7 @@ function CertificatesContent() {
       )}
 
       {/* Issue Certificate Modal */}
-      <Modal open={modalOpen} onClose={() => setModalOpen(false)} title="Yangi Sertifikat Berish">
+      <Modal open={modalOpen} onClose={() => setModalOpen(false)} title={t("cert.new")}>
         <form onSubmit={handleSubmit} className="space-y-4">
           {error && (
             <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold">
@@ -327,36 +328,36 @@ function CertificatesContent() {
 
           <div>
             <label className="block text-xs font-bold text-slate-700 mb-1">
-              O'quvchi <span className="text-rose-500">*</span>
+              {t("cert.studentLabel")} <span className="text-rose-500">*</span>
             </label>
             <Select
               value={studentId}
               onChange={setStudentId}
-              placeholder="O'quvchini tanlang"
+              placeholder={t("cert.pickStudent")}
               options={students.map((s) => ({ value: s.id, label: s.fullName }))}
             />
           </div>
 
           <div>
             <label className="block text-xs font-bold text-slate-700 mb-1">
-              Guruh (ixtiyoriy)
+              {t("cert.groupOpt")}
             </label>
             <Select
               value={groupId}
               onChange={setGroupId}
-              placeholder="Guruhni tanlang"
+              placeholder={t("cert.pickGroup")}
               options={groups.map((g) => ({ value: g.id, label: `${g.name} (${g.subject})` }))}
             />
           </div>
 
           <div>
             <label className="block text-xs font-bold text-slate-700 mb-1">
-              Sertifikat Nomi <span className="text-rose-500">*</span>
+              {t("cert.name")} <span className="text-rose-500">*</span>
             </label>
             <input
               type="text"
               required
-              placeholder="Masalan: General English (B2) Bitiruv Sertifikati"
+              placeholder={t("cert.namePh")}
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               className="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2 text-xs text-slate-900 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 shadow-sm"
@@ -366,7 +367,7 @@ function CertificatesContent() {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">
-                Baho / Daraja (ixtiyoriy)
+                {t("cert.grade")}
               </label>
               <input
                 type="text"
@@ -379,7 +380,7 @@ function CertificatesContent() {
 
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">
-                Berilgan Sana
+                {t("cert.issueDate")}
               </label>
               <input
                 type="date"
@@ -393,26 +394,26 @@ function CertificatesContent() {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">
-                Tasdiqlovchi shaxs
+                {t("cert.signer")}
               </label>
               <input
                 type="text"
                 value={signatoryName}
                 onChange={(e) => setSignatoryName(e.target.value)}
-                placeholder="O'quv bo'limi"
+                placeholder={t("cert.signerPh")}
                 className="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2 text-xs text-slate-900 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 shadow-sm"
               />
             </div>
 
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">
-                Lavozimi
+                {t("cert.position")}
               </label>
               <input
                 type="text"
                 value={signatoryTitle}
                 onChange={(e) => setSignatoryTitle(e.target.value)}
-                placeholder="Direktor"
+                placeholder={t("cert.positionPh")}
                 className="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2 text-xs text-slate-900 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 shadow-sm"
               />
             </div>
@@ -420,13 +421,13 @@ function CertificatesContent() {
 
           <div>
             <label className="block text-xs font-bold text-slate-700 mb-1">
-              Qo'shimcha izoh / Tavsif
+              {t("cert.note")}
             </label>
             <textarea
               rows={2}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Bitiruvchiga tilaklar yoki o'zlashtirish tafsilotlari..."
+              placeholder={t("cert.notePh")}
               className="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2 text-xs text-slate-900 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 shadow-sm resize-none"
             />
           </div>
@@ -437,14 +438,14 @@ function CertificatesContent() {
               onClick={() => setModalOpen(false)}
               className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold cursor-pointer border border-slate-200"
             >
-              Bekor qilish
+              {t("common.cancel")}
             </button>
             <button
               type="submit"
               disabled={saving}
               className="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold disabled:opacity-50 cursor-pointer shadow-sm"
             >
-              {saving ? "Saqlanmoqda..." : "Sertifikat Berish"}
+              {saving ? t("common.saving") : t("cert.issue")}
             </button>
           </div>
         </form>

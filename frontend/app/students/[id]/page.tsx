@@ -11,6 +11,7 @@ import { studentsApi, groupsApi, paymentsApi, attendanceApi, billingApi, telegra
 import { localMonthStr } from "@/lib/date";
 import { useLanguage } from "@/lib/i18n-context";
 import type { TranslationKey } from "@/lib/i18n";
+import { formatDate as fmtDate } from "@/lib/format-date";
 
 const ACCENT = "#4F46E5";
 
@@ -54,7 +55,7 @@ function StudentDetailContent() {
 
   function formatDate(iso: string | null) {
     if (!iso) return "—";
-    return new Date(iso).toLocaleDateString(lang === "UZ" ? "uz-UZ" : lang === "RU" ? "ru-RU" : "en-US", { day: "numeric", month: "long", year: "numeric" });
+    return fmtDate(iso, lang, "long");
   }
 
   const [student, setStudent] = useState<(Student & { payments?: Payment[] }) | null>(null);
@@ -168,7 +169,7 @@ function StudentDetailContent() {
       setEnrollGroupId("");
       load();
     } catch (err) {
-      setEnrollError(err instanceof ApiError ? err.message : "Xatolik yuz berdi");
+      setEnrollError(err instanceof ApiError ? err.message : t("common.errorGeneric"));
     } finally {
       setSaving(false);
     }
@@ -197,7 +198,7 @@ function StudentDetailContent() {
       setForMonth(localMonthStr());
       load();
     } catch (err) {
-      setPaymentError(err instanceof ApiError ? err.message : "Xatolik yuz berdi");
+      setPaymentError(err instanceof ApiError ? err.message : t("common.errorGeneric"));
     } finally {
       setSaving(false);
     }
@@ -219,7 +220,7 @@ function StudentDetailContent() {
       const res = await api({ studentId: id, amount: Number(billingAmount), forMonth: billingMonth });
       setBillingResult(res.url);
     } catch (err) {
-      setBillingError(err instanceof ApiError ? err.message : "Xatolik yuz berdi");
+      setBillingError(err instanceof ApiError ? err.message : t("common.errorGeneric"));
     } finally {
       setBillingSaving(false);
     }
@@ -273,7 +274,7 @@ function StudentDetailContent() {
               onClick={() => setQrCardOpen(true)}
               style={{ background: "#EEF2FF", color: ACCENT, border: "1px solid #C7D2FE", fontSize: 13, fontWeight: 700, padding: "9px 16px", borderRadius: 9 }}
             >
-              🪪 QR Guvohnoma
+              {t("std.qrCard")}
             </button>
             <button
               className="btn"
@@ -380,13 +381,13 @@ function StudentDetailContent() {
                         borderRadius: 8,
                       }}
                     >
-                      {generatingLink ? "Yaratilmoqda..." : "🔗 Xavfsiz havola olish (15 daqiqa)"}
+                      {generatingLink ? t("std.creating") : t("std.secureLink")}
                     </button>
                   </div>
                   {linkTokenData?.linkUrl ? (
                     <div style={{ marginTop: 10, background: "#F7F6FF", border: "1px solid #D7D3F8", borderRadius: 10, padding: 12 }}>
                       <div style={{ fontSize: 12, color: "#4A4E58", marginBottom: 6, fontWeight: 600 }}>
-                        Ushbu bir martalik xavfsiz havolani ota-onaga yoki o&apos;quvchiga yuboring:
+                        {t("std.linkIntro")}
                       </div>
                       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                         <code style={{ flex: 1, background: "#fff", padding: "8px 10px", borderRadius: 8, fontSize: 11.5, wordBreak: "break-all", border: "1px solid #EAE8E2" }}>
@@ -411,12 +412,12 @@ function StudentDetailContent() {
                         </button>
                       </div>
                       <div style={{ fontSize: 11, color: "#8A8D96", marginTop: 6 }}>
-                        ⏳ Amal qilish muddati: 15 daqiqa (bir martalik)
+                        {t("std.linkExpiry")}
                       </div>
                     </div>
                   ) : (
                     <div style={{ marginTop: 8, color: "#8A8D96", fontSize: 12 }}>
-                      O&apos;quvchini Telegram botga xavfsiz ulash uchun yuqoridagi tugmani bosing.
+                      {t("std.linkHint")}
                     </div>
                   )}
                 </div>
@@ -606,7 +607,7 @@ function StudentDetailContent() {
       </Modal>
 
       {/* Student QR ID Card Modal */}
-      <Modal open={qrCardOpen} onClose={() => setQrCardOpen(false)} title="🪪 O'quvchi Guvohnomasi (QR Card)">
+      <Modal open={qrCardOpen} onClose={() => setQrCardOpen(false)} title={t("std.idCardTitle")}>
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 16, padding: "10px 0" }}>
           <div
             id="printable-student-card"
@@ -628,7 +629,7 @@ function StudentDetailContent() {
                 <span style={{ fontSize: 20 }}>🎓</span>
                 <div>
                   <div style={{ fontWeight: 800, fontSize: 13, letterSpacing: "0.5px", textTransform: "uppercase" }}>CRMAPP Education</div>
-                  <div style={{ fontSize: 10, opacity: 0.75 }}>O&apos;quvchi Guvohnomasi</div>
+                  <div style={{ fontSize: 10, opacity: 0.75 }}>{t("std.idCard")}</div>
                 </div>
               </div>
               <span style={{ fontSize: 11, background: "rgba(255,255,255,0.2)", padding: "3px 8px", borderRadius: 6, fontWeight: 700 }}>STUDENT</span>
@@ -639,7 +640,7 @@ function StudentDetailContent() {
                 <div style={{ fontSize: 16, fontWeight: 800, lineHeight: 1.2 }}>{student.fullName}</div>
                 <div style={{ fontSize: 11, opacity: 0.8, marginTop: 4, fontFamily: "monospace" }}>ID: {student.id.slice(0, 12)}...</div>
                 <div style={{ marginTop: 10, fontSize: 11 }}>
-                  <div style={{ opacity: 0.7 }}>Guruhlar:</div>
+                  <div style={{ opacity: 0.7 }}>{t("std.groups")}</div>
                   <div style={{ fontWeight: 600, marginTop: 2 }}>
                     {enrollments.length > 0 ? enrollments.map(e => e.group.name).join(", ") : "Guruh yo'q"}
                   </div>
@@ -659,7 +660,7 @@ function StudentDetailContent() {
             </div>
 
             <div style={{ marginTop: 16, paddingTop: 10, borderTop: "1px solid rgba(255,255,255,0.15)", display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 10, opacity: 0.8 }}>
-              <span>Darsga kirishda skaner qiling</span>
+              <span>{t("std.scanHint")}</span>
               <span>crmapp.com</span>
             </div>
           </div>
@@ -671,7 +672,7 @@ function StudentDetailContent() {
               onClick={() => window.print()}
               style={{ flex: 1, background: ACCENT, color: "#fff", border: "none", padding: 12, borderRadius: 10, fontWeight: 700, fontSize: 13 }}
             >
-              🖨️ Chop etish (Print)
+              {t("std.print")}
             </button>
             <button
               type="button"
@@ -679,7 +680,7 @@ function StudentDetailContent() {
               onClick={() => setQrCardOpen(false)}
               style={{ background: "#F2F1EC", color: "#181A1F", border: "none", padding: "12px 18px", borderRadius: 10, fontWeight: 600, fontSize: 13 }}
             >
-              Yopish
+              {t("common.close")}
             </button>
           </div>
         </div>

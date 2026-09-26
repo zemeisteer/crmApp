@@ -8,6 +8,7 @@ import { useAuth } from "@/lib/auth-context";
 import { useLanguage } from "@/lib/i18n-context";
 import { reportsApi, announcementsApi, aiApi, Announcement, type DashboardData } from "@/lib/api";
 import { MONTH_KEYS, MONTH_SHORT_KEYS, type TranslationKey } from "@/lib/i18n";
+import { formatDate } from "@/lib/format-date";
 
 const ACCENT = "#4F46E5";
 const WEEKDAY_SHORT_KEYS: TranslationKey[] = [
@@ -90,7 +91,7 @@ function DashboardContent() {
       .finally(() => setAiLoading(false));
   }, [firstGroupId]);
 
-  const today = new Date().toLocaleDateString(lang === "UZ" ? "uz-UZ" : lang === "RU" ? "ru-RU" : "en-US", { day: "numeric", month: "long", year: "numeric" });
+  const today = formatDate(new Date(), lang, "long");
   const counts = data?.counts;
   const finance = data?.finance ?? null;
 

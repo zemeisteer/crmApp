@@ -5,18 +5,20 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
 import { invitationsApi, Role, ApiError } from "@/lib/api";
+import { useLanguage } from "@/lib/i18n-context";
+import type { TranslationKey } from "@/lib/i18n";
 
 const ACCENT = "#4F46E5";
 
-const ROLE_LABELS: Record<string, string> = {
-  OWNER: "Markaz Rahbari (Owner)",
-  ADMIN: "Administrator",
-  MANAGER: "Menejer",
-  TEACHER: "O'qituvchi (Teacher)",
-  STUDENT: "O'quvchi (Student)",
-  PARENT: "Ota-ona (Parent)",
-  RECEPTIONIST: "Receptionist",
-  ACCOUNTANT: "Hisobchi (Accountant)",
+const ROLE_LABELS: Record<string, TranslationKey> = {
+  OWNER: "role.owner",
+  ADMIN: "role.admin",
+  MANAGER: "role.manager",
+  TEACHER: "role.teacher",
+  STUDENT: "role.student",
+  PARENT: "role.parent",
+  RECEPTIONIST: "role.receptionist",
+  ACCOUNTANT: "role.accountant",
 };
 
 export default function InviteAcceptPage({
@@ -28,6 +30,8 @@ export default function InviteAcceptPage({
   const token = resolvedParams.token;
   const router = useRouter();
   const { user: activeUser, setAuthSession } = useAuth();
+  const { t } = useLanguage();
+  const roleLabel = (r?: string) => (r && ROLE_LABELS[r] ? t(ROLE_LABELS[r]) : r);
 
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -55,7 +59,7 @@ export default function InviteAcceptPage({
         const res = await invitationsApi.validate(token);
         setInviteData(res);
       } catch (err) {
-        setError(err instanceof ApiError ? err.message : "Taklifnoma yaroqsiz yoki muddati tugagan");
+        setError(err instanceof ApiError ? err.message : t("inv.invalidOrExpired"));
       } finally {
         setLoading(false);
       }
@@ -67,15 +71,15 @@ export default function InviteAcceptPage({
     e.preventDefault();
     if (!activeUser) {
       if (!fullName.trim()) {
-        setError("Iltimos, to'liq ism-familiyangizni kiriting");
+        setError(t("inv.nameRequired"));
         return;
       }
       if (password.length < 6) {
-        setError("Parol kamida 6 ta belgidan iborat bo'lishi kerak");
+        setError(t("inv.pwShort"));
         return;
       }
       if (confirmPassword && password !== confirmPassword) {
-        setError("Kiritilgan parollar bir-biriga mos kelmadi");
+        setError(t("inv.pwMismatch"));
         return;
       }
     }
@@ -99,7 +103,7 @@ export default function InviteAcceptPage({
         res.redirectUrl,
       );
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Taklifnomani qabul qilishda xatolik");
+      setError(err instanceof ApiError ? err.message : t("inv.acceptError"));
       setSubmitting(false);
     }
   }
@@ -112,7 +116,7 @@ export default function InviteAcceptPage({
             <circle cx="12" cy="12" r="10" stroke={ACCENT} strokeWidth="4" strokeDasharray="30 60" />
           </svg>
           <div style={{ fontSize: 14, fontWeight: 600, color: "#6B7280" }}>
-            Taklifnoma tekshirilmoqda...
+            {t("inv.checking")}
           </div>
         </div>
       </div>
@@ -138,7 +142,7 @@ export default function InviteAcceptPage({
         >
           <div style={{ fontSize: 42 }}>⚠️</div>
           <h2 style={{ fontSize: 22, fontWeight: 800, color: "#111827" }}>
-            Taklifnoma yaroqsiz
+            {t("inv.invalid")}
           </h2>
           <p style={{ fontSize: 14.5, color: "#6B7280", lineHeight: 1.5 }}>
             {error}
@@ -157,7 +161,7 @@ export default function InviteAcceptPage({
               marginTop: 6,
             }}
           >
-            Tizimga kirish
+            {t("inv.login")}
           </Link>
         </div>
       </div>
@@ -200,7 +204,7 @@ export default function InviteAcceptPage({
           </div>
 
           <span style={{ fontSize: 12, fontWeight: 700, color: ACCENT, background: "#EEF2FF", padding: "4px 12px", borderRadius: 100, marginTop: 4 }}>
-            {ROLE_LABELS[inviteData?.role || ""] || inviteData?.role}
+            {roleLabel(inviteData?.role)}
           </span>
 
           <h2 style={{ fontSize: 24, fontWeight: 800, color: "#111827", letterSpacing: "-0.02em", marginTop: 4 }}>
@@ -208,7 +212,7 @@ export default function InviteAcceptPage({
           </h2>
 
           <p style={{ fontSize: 14, color: "#6B7280" }}>
-            Siz ushbu markazga <strong>{ROLE_LABELS[inviteData?.role || ""] || inviteData?.role}</strong> sifatida taklif qilindingiz.
+            {t("inv.invitedAs1")} <strong>{roleLabel(inviteData?.role)}</strong> {t("inv.invitedAs2")}
           </p>
         </div>
 
@@ -243,10 +247,10 @@ export default function InviteAcceptPage({
               }}
             >
               <div style={{ fontSize: 14.5, fontWeight: 700, color: "#1E293B" }}>
-                Xush kelibsiz, {activeUser.fullName || activeUser.email}!
+                {t("inv.welcome")}, {activeUser.fullName || activeUser.email}!
               </div>
               <div style={{ fontSize: 13, color: "#64748B", lineHeight: 1.5 }}>
-                Siz tizimga {activeUser.email} sifatida kirdingiz. Yangi profil yaratilmaydi — markaz sizning mavjud profilingizga bog&apos;lanadi.
+                {t("inv.loggedInAs")} ({activeUser.email})
               </div>
             </div>
           ) : (
@@ -254,7 +258,7 @@ export default function InviteAcceptPage({
             <>
               <div>
                 <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 6 }}>
-                  To&apos;liq ismingiz
+                  {t("inv.fullName")}
                 </label>
                 <input
                   required
@@ -275,13 +279,13 @@ export default function InviteAcceptPage({
 
               <div>
                 <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 6 }}>
-                  Yangi parol yarating
+                  {t("inv.newPw")}
                 </label>
                 <input
                   type="password"
                   required
                   minLength={8}
-                  placeholder="Kamida 8 ta belgi"
+                  placeholder={t("inv.pwPh")}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   style={{
@@ -298,13 +302,13 @@ export default function InviteAcceptPage({
 
               <div>
                 <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 6 }}>
-                  Parolni tasdiqlang
+                  {t("inv.confirmPw")}
                 </label>
                 <input
                   type="password"
                   required
                   minLength={8}
-                  placeholder="Parolni qayta kiriting"
+                  placeholder={t("inv.confirmPwPh")}
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   style={{
@@ -347,16 +351,16 @@ export default function InviteAcceptPage({
                 <svg className="animate-spin" width="18" height="18" viewBox="0 0 24 24" fill="none">
                   <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" strokeDasharray="30 60" />
                 </svg>
-                <span>Ulanmoqda...</span>
+                <span>{t("inv.connecting")}</span>
               </>
             ) : (
-              <span>Taklifnomani qabul qilish &amp; Kirish</span>
+              <span>{t("inv.accept")}</span>
             )}
           </button>
         </form>
 
         <div style={{ textAlign: "center", fontSize: 13, color: "#9CA3AF" }}>
-          CRMAPP &copy; {new Date().getFullYear()} — Xavfsiz ta&apos;lim platformasi
+          CRMAPP &copy; {new Date().getFullYear()} — {t("inv.footer")}
         </div>
       </div>
     </div>

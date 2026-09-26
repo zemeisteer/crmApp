@@ -41,7 +41,7 @@ import {
 const PAGE_SIZE = 25;
 
 function LeadsContent() {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const { can } = useAuth();
   const canRead = can("admissions.read");
 
@@ -312,9 +312,9 @@ function LeadsContent() {
                       <td>{l.desiredCourse?.name ?? l.desiredSubject?.name ?? l.legacySubject ?? "—"}</td>
                       <td>{l.assignedManager?.fullName ?? <span style={{ color: "#8A8D96" }}>{t("adm.unassigned")}</span>}</td>
                       <td style={{ color: isOverdue(l.followUpAt) && OPEN_STATUSES.includes(l.status) ? "#B91C1C" : undefined, fontWeight: isOverdue(l.followUpAt) ? 700 : 400 }}>
-                        {formatDateTime(l.followUpAt)}
+                        {formatDateTime(l.followUpAt, lang)}
                       </td>
-                      <td>{formatDate(l.createdAt)}</td>
+                      <td>{formatDate(l.createdAt, lang)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -330,7 +330,7 @@ function LeadsContent() {
                   <div style={{ fontSize: 13, color: "#5B5F6A" }}>{l.phone} · {t(sourceKey(l.source))}</div>
                   {l.followUpAt && (
                     <div style={{ fontSize: 12.5, color: isOverdue(l.followUpAt) ? "#B91C1C" : "#5B5F6A" }}>
-                      {t("adm.colFollowUp")}: {formatDateTime(l.followUpAt)}
+                      {t("adm.colFollowUp")}: {formatDateTime(l.followUpAt, lang)}
                     </div>
                   )}
                 </Link>
@@ -364,7 +364,7 @@ function LeadsContent() {
                           </div>
                           {l.followUpAt && (
                             <div style={{ fontSize: 12, color: isOverdue(l.followUpAt) ? "#B91C1C" : "#5B5F6A", fontWeight: isOverdue(l.followUpAt) ? 700 : 400 }}>
-                              ⏰ {formatDateTime(l.followUpAt)}
+                              ⏰ {formatDateTime(l.followUpAt, lang)}
                             </div>
                           )}
                           {can("admissions.update") && !l.archivedAt && (SIMPLE_MOVES[l.status] ?? []).map((to) => (

@@ -6,6 +6,7 @@ import DashboardShell from "@/components/DashboardShell";
 import Pagination, { usePagedSlice } from "@/components/Pagination";
 import { teachersApi, Teacher } from "@/lib/api";
 import { useLanguage } from "@/lib/i18n-context";
+import { formatDate } from "@/lib/format-date";
 
 const ACCENT = "#4F46E5";
 
@@ -70,7 +71,7 @@ function TrashContent() {
                 {pageItems.map((t) => (
                   <tr key={t.id}>
                     <td style={{ fontWeight: 600 }}>{t.fullName}</td>
-                    <td>{t.deletedAt ? new Date(t.deletedAt).toLocaleDateString(lang === "UZ" ? "uz-UZ" : lang === "RU" ? "ru-RU" : "en-US") : "—"}</td>
+                    <td>{t.deletedAt ? formatDate(t.deletedAt, lang, "numeric") : "—"}</td>
                     <td style={{ textAlign: "right" }}>
                       <button
                         className="btn"

@@ -10,6 +10,7 @@ import DatePicker from "@/components/DatePicker";
 import { teachersApi, groupsApi, paymentsApi, salaryApi, Teacher, Group, Student, Payment, SalaryPayment, ApiError } from "@/lib/api";
 import { localMonthStr } from "@/lib/date";
 import { useLanguage } from "@/lib/i18n-context";
+import { formatDate } from "@/lib/format-date";
 
 const ACCENT = "#4F46E5";
 
@@ -169,11 +170,7 @@ function TeacherDetailContent() {
     if (m < 0 || (m === 0 && now.getDate() < b.getDate())) {
       age--;
     }
-    const formatted = b.toLocaleDateString(lang === "UZ" ? "uz-UZ" : lang === "RU" ? "ru-RU" : "en-US", {
-      day: "numeric",
-      month: "long",
-      year: "numeric",
-    });
+    const formatted = formatDate(b, lang, "long");
     return { age, formatted, year: b.getFullYear() };
   }, [teacher, lang]);
 
@@ -182,11 +179,7 @@ function TeacherDetailContent() {
     if (!raw) return "—";
     const d = new Date(raw);
     if (isNaN(d.getTime())) return "—";
-    return d.toLocaleDateString(lang === "UZ" ? "uz-UZ" : lang === "RU" ? "ru-RU" : "en-US", {
-      day: "numeric",
-      month: "long",
-      year: "numeric",
-    });
+    return formatDate(d, lang, "long");
   }, [teacher?.startDate, teacher?.createdAt, lang]);
 
   if (loading) {
@@ -237,7 +230,7 @@ function TeacherDetailContent() {
       setEditOpen(false);
       load();
     } catch (err) {
-      setEditError(err instanceof ApiError ? err.message : "Xatolik yuz berdi");
+      setEditError(err instanceof ApiError ? err.message : t("common.errorGeneric"));
     } finally {
       setSaving(false);
     }
@@ -371,7 +364,7 @@ function TeacherDetailContent() {
               🗓️
             </div>
             <div>
-              <div style={{ fontSize: 12, color: "#8A8D96", fontWeight: 600 }}>Haftalik darslar soni</div>
+              <div style={{ fontSize: 12, color: "#8A8D96", fontWeight: 600 }}>{t("tch.weeklyLessons")}</div>
               <div style={{ fontSize: 20, fontWeight: 800, fontFamily: "'Manrope', sans-serif", color: "#181A1F" }}>{lessonsStats.weekly} ta dars</div>
             </div>
           </div>
@@ -380,7 +373,7 @@ function TeacherDetailContent() {
               ⏳
             </div>
             <div>
-              <div style={{ fontSize: 12, color: "#8A8D96", fontWeight: 600 }}>Oylik darslar (taxminiy)</div>
+              <div style={{ fontSize: 12, color: "#8A8D96", fontWeight: 600 }}>{t("tch.monthlyLessons")}</div>
               <div style={{ fontSize: 20, fontWeight: 800, fontFamily: "'Manrope', sans-serif", color: "#181A1F" }}>{lessonsStats.monthly} ta dars</div>
             </div>
           </div>
@@ -392,10 +385,10 @@ function TeacherDetailContent() {
             <InfoField label={t("teacherDetail.email")} value={teacher.email || "—"} />
             <InfoField label={t("teacherDetail.phone")} value={teacher.phone || "—"} />
             <InfoField
-              label="Tug'ilgan sana va yoshi"
+              label={t("tch.birthAge")}
               value={teacherAge ? `${teacherAge.formatted} (${teacherAge.age} yosh)` : "—"}
             />
-            <InfoField label="Ish boshlagan sana" value={startedDateFormatted} />
+            <InfoField label={t("tch.startDate")} value={startedDateFormatted} />
             <InfoField
               label={t("teacherDetail.salaryTypeField")}
               value={teacher.salaryType === "PERCENT" ? t("teachers.salaryPercent") : t("teachers.salaryFixed")}
@@ -464,7 +457,7 @@ function TeacherDetailContent() {
                   <tr key={s.id}>
                     <td style={{ fontWeight: 600 }}>{s.forMonth}</td>
                     <td>{formatMoney(s.amount)} {t("common.sumUnit")}</td>
-                    <td>{new Date(s.paidAt).toLocaleDateString(lang === "UZ" ? "uz-UZ" : lang === "RU" ? "ru-RU" : "en-US", { day: "numeric", month: "long", year: "numeric" })}</td>
+                    <td>{formatDate(s.paidAt, lang, "long")}</td>
                   </tr>
                 ))}
               </tbody>
@@ -490,19 +483,19 @@ function TeacherDetailContent() {
           <Field label={t("teacherDetail.fieldEmail")}>
             <input className="field-input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
           </Field>
-          <Field label="Tug'ilgan sana">
+          <Field label={t("tch.birthDate")}>
             <DatePicker value={birthDate} onChange={setBirthDate} />
           </Field>
-          <Field label="Ish boshlagan sana">
+          <Field label={t("tch.startDate")}>
             <DatePicker value={startDate} onChange={setStartDate} />
           </Field>
           <Field label={t("teachers.fieldSalaryType")}>
             <Select
               options={[
-                { value: "FIXED", label: "Oylik belgilangan maosh (Fixed)" },
-                { value: "PERCENT", label: "Guruh tushumidan foiz (%)" },
-                { value: "PER_STUDENT", label: "Har bir o'quvchi uchun (Per Student)" },
-                { value: "PER_LESSON", label: "Har bir dars uchun (Per Lesson)" },
+                { value: "FIXED", label: t("tch.salFixed") },
+                { value: "PERCENT", label: t("tch.salPercent") },
+                { value: "PER_STUDENT", label: t("tch.salPerStudent") },
+                { value: "PER_LESSON", label: t("tch.salPerLesson") },
               ]}
               value={salaryType}
               onChange={setSalaryType}
@@ -511,12 +504,12 @@ function TeacherDetailContent() {
           <Field
             label={
               salaryType === "PERCENT"
-                ? "Foiz miqdori (%)"
+                ? t("tch.percentAmount")
                 : salaryType === "PER_STUDENT"
-                  ? "Bir o'quvchi uchun summa (so'm)"
+                  ? t("tch.perStudentAmount")
                   : salaryType === "PER_LESSON"
-                    ? "Bir dars uchun summa (so'm)"
-                    : "Oylik maosh summasi (so'm)"
+                    ? t("tch.perLessonAmount")
+                    : t("tch.fixedAmount")
             }
           >
             <input

@@ -11,6 +11,7 @@ import DatePicker from "@/components/DatePicker";
 import { homeworkApi, groupsApi, aiApi, Homework, Group, ApiError, fileUrl, type LeaderboardEntry } from "@/lib/api";
 import { useLanguage } from "@/lib/i18n-context";
 import { matchesSubject, extractUniqueSubjects } from "@/lib/subject";
+import { formatDate as fmtDate } from "@/lib/format-date";
 
 const ACCENT = "#4F46E5";
 
@@ -76,9 +77,9 @@ function RosterModal({ homeworkItem, onClose }: { homeworkItem: Homework; onClos
             )
           : null,
       );
-      alert("Baho va izoh saqlandi hamda o'quvchiga yuborildi!");
+      alert(t("hw.graded"));
     } catch (err) {
-      alert(err instanceof ApiError ? err.message : "Saqlashda xatolik");
+      alert(err instanceof ApiError ? err.message : t("hw.saveError"));
     } finally {
       setBusyId(null);
     }
@@ -103,7 +104,7 @@ function RosterModal({ homeworkItem, onClose }: { homeworkItem: Homework; onClos
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           <div style={{ fontSize: 12, color: "#64748B" }}>
-            Maksimal ball: <b>{homeworkItem.maxScore || 100} ball</b>. Har bir o'quvchi uchun ball va izoh kiritib saqlashingiz mumkin.
+            {t("hw.maxScoreB")} <b>{homeworkItem.maxScore || 100} {t("hw.pointsUnit")}</b>. {t("hw.rosterHint")}
           </div>
           {roster.map((r) => (
             <div
@@ -121,7 +122,7 @@ function RosterModal({ homeworkItem, onClose }: { homeworkItem: Homework; onClos
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <span style={{ fontSize: 14, fontWeight: 700 }}>{r.student.fullName}</span>
                 <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "#64748B", cursor: "pointer" }}>
-                  <span>Bajarildi</span>
+                  <span>{t("hw.done")}</span>
                   <input
                     type="checkbox"
                     checked={r.completed}
@@ -142,7 +143,7 @@ function RosterModal({ homeworkItem, onClose }: { homeworkItem: Homework; onClos
                     color: "#1E40AF",
                   }}
                 >
-                  <span style={{ fontWeight: 600 }}>O'quvchi javobi:</span> {r.submissionText}
+                  <span style={{ fontWeight: 600 }}>{t("hw.studentAnswer")}</span> {r.submissionText}
                 </div>
               )}
 
@@ -166,7 +167,7 @@ function RosterModal({ homeworkItem, onClose }: { homeworkItem: Homework; onClos
                 />
                 <input
                   type="text"
-                  placeholder="Izoh (masalan: Barakalla!)"
+                  placeholder={t("hw.feedbackPh")}
                   value={feedbacks[r.student.id] ?? ""}
                   onChange={(e) =>
                     setFeedbacks((prev) => ({ ...prev, [r.student.id]: e.target.value }))
@@ -194,7 +195,7 @@ function RosterModal({ homeworkItem, onClose }: { homeworkItem: Homework; onClos
                     cursor: "pointer",
                   }}
                 >
-                  Saqlash
+                  {t("common.save")}
                 </button>
               </div>
             </div>
@@ -325,7 +326,7 @@ function HomeworkContent() {
 
   function formatDate(iso: string | null) {
     if (!iso) return "—";
-    return new Date(iso).toLocaleDateString(lang === "UZ" ? "uz-UZ" : lang === "RU" ? "ru-RU" : "en-US", { day: "numeric", month: "long", year: "numeric" });
+    return fmtDate(iso, lang, "long");
   }
 
   const [items, setItems] = useState<Homework[]>([]);
@@ -454,7 +455,7 @@ function HomeworkContent() {
       resetForm();
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Xatolik yuz berdi");
+      setError(err instanceof ApiError ? err.message : t("common.errorGeneric"));
     } finally {
       setSaving(false);
     }
@@ -550,7 +551,7 @@ function HomeworkContent() {
             }}
           >
             <span>🏆</span>
-            <span>Reyting</span>
+            <span>{t("hw.leaderboard")}</span>
           </button>
           <button
             className="btn"
@@ -680,7 +681,7 @@ function HomeworkContent() {
               rows={3}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Ex 1-5 complete qiling"
+              placeholder={t("hw.descPh")}
               style={{ resize: "vertical" }}
             />
           </div>
@@ -690,7 +691,7 @@ function HomeworkContent() {
               <DatePicker value={dueDate} onChange={setDueDate} />
             </div>
             <div>
-              <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>Maksimal ball</div>
+              <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>{t("hw.maxScore")}</div>
               <input
                 className="field-input"
                 type="number"
@@ -755,7 +756,7 @@ function HomeworkContent() {
             >
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 700, color: ACCENT }}>
-                  <span>✨ AI Tavsiya:</span>
+                  <span>{t("hw.aiSuggestion")}</span>
                 </div>
                 <button
                   type="button"

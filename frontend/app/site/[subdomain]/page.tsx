@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { tenantsApi, PublicShowcaseData, ApiError } from "@/lib/api";
+import { formatDate } from "@/lib/format-date";
 
 function formatMoney(amount: number) {
   return new Intl.NumberFormat("uz-UZ").format(amount);
@@ -480,7 +481,7 @@ export default function PublicSitePage() {
                   <div className="flex items-center justify-between gap-2">
                     <h4 className="text-sm font-bold text-white">{a.title}</h4>
                     <span className="text-[11px] text-slate-500">
-                      {new Date(a.publishedAt).toLocaleDateString("uz-UZ", { day: "numeric", month: "short" })}
+                      {formatDate(a.publishedAt, "UZ", "dayMonth")}
                     </span>
                   </div>
                   <p className="text-xs text-slate-300 leading-relaxed whitespace-pre-wrap">{a.content}</p>

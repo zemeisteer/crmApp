@@ -11,16 +11,19 @@ import {
   ApiError,
 } from "@/lib/api";
 
+import { useLanguage } from "@/lib/i18n-context";
+import type { TranslationKey } from "@/lib/i18n";
+
 const ACCENT = "#4F46E5";
 
 const TEACHING_CATEGORIES = [
-  { id: "languages", label: "Languages", desc: "English, Russian, German, Korean, Arabic, etc.", icon: "🌐" },
-  { id: "mathematics", label: "Mathematics", desc: "General Math, Algebra, Geometry, Mental Math", icon: "📐" },
-  { id: "it", label: "IT & Programming", desc: "Web Development, Python, Robotics, Design", icon: "💻" },
-  { id: "science", label: "Science", desc: "Physics, Chemistry, Biology", icon: "🔬" },
-  { id: "school", label: "School Subjects", desc: "History, Mother Tongue, Literature", icon: "📚" },
-  { id: "test_prep", label: "Test Preparation", desc: "IELTS, SAT, CEFR, DTM", icon: "🎯" },
-  { id: "other", label: "Other", desc: "Arts, Music, Chess, Professional Skills", icon: "✨" },
+  { id: "languages", label: "onb.catLanguages" as TranslationKey, desc: "onb.catLanguagesDesc" as TranslationKey, icon: "🌐" },
+  { id: "mathematics", label: "onb.catMath" as TranslationKey, desc: "onb.catMathDesc" as TranslationKey, icon: "📐" },
+  { id: "it", label: "onb.catIt" as TranslationKey, desc: "onb.catItDesc" as TranslationKey, icon: "💻" },
+  { id: "science", label: "onb.catScience" as TranslationKey, desc: "onb.catScienceDesc" as TranslationKey, icon: "🔬" },
+  { id: "school", label: "onb.catSchool" as TranslationKey, desc: "onb.catSchoolDesc" as TranslationKey, icon: "📚" },
+  { id: "test_prep", label: "onb.catTest" as TranslationKey, desc: "onb.catTestDesc" as TranslationKey, icon: "🎯" },
+  { id: "other", label: "onb.catOther" as TranslationKey, desc: "onb.catOtherDesc" as TranslationKey, icon: "✨" },
 ];
 
 const DEFAULT_CATEGORY_SUBJECTS: Record<string, string[]> = {
@@ -43,17 +46,18 @@ const SUGGESTED_COURSES: Record<string, string[]> = {
 };
 
 const STEPS = [
-  { id: "PROFILE", label: "Center Profile" },
-  { id: "CATEGORIES", label: "What You Teach" },
-  { id: "SUBJECTS", label: "Subjects" },
-  { id: "COURSES", label: "Courses" },
-  { id: "WORKSPACE", label: "Workspace URL" },
-  { id: "BRANCH", label: "First Branch" },
-  { id: "TEAM", label: "Team" },
-  { id: "STUDENTS", label: "Students" },
+  { id: "PROFILE", label: "onb.stProfile" as TranslationKey },
+  { id: "CATEGORIES", label: "onb.stCategories" as TranslationKey },
+  { id: "SUBJECTS", label: "onb.stSubjects" as TranslationKey },
+  { id: "COURSES", label: "onb.stCourses" as TranslationKey },
+  { id: "WORKSPACE", label: "onb.stWorkspace" as TranslationKey },
+  { id: "BRANCH", label: "onb.stBranch" as TranslationKey },
+  { id: "TEAM", label: "onb.stTeam" as TranslationKey },
+  { id: "STUDENTS", label: "onb.stStudents" as TranslationKey },
 ];
 
 export default function OnboardingPage() {
+  const { t } = useLanguage();
   const router = useRouter();
   const { user, refreshMe } = useAuth();
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
@@ -156,7 +160,7 @@ export default function OnboardingPage() {
       try {
         const res = await onboardingApi.checkSubdomain(workspaceSlug);
         setSlugAvailable(res.available);
-        setSlugMessage(res.available ? "Ushbu nom bo'sh va mavjud!" : (res.reason || "Ushbu nom band"));
+        setSlugMessage(res.available ? t("onb.slugFree") : (res.reason || t("onb.slugTaken")));
       } catch {
         setSlugAvailable(false);
         setSlugMessage("Tekshirishda xatolik yuz berdi");
@@ -229,7 +233,7 @@ export default function OnboardingPage() {
       });
       setCurrentStepIndex(1);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Xatolik yuz berdi");
+      setError(err instanceof ApiError ? err.message : t("common.errorGeneric"));
     } finally {
       setSubmitting(false);
     }
@@ -253,7 +257,7 @@ export default function OnboardingPage() {
       }
       setCurrentStepIndex(2);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Xatolik yuz berdi");
+      setError(err instanceof ApiError ? err.message : t("common.errorGeneric"));
     } finally {
       setSubmitting(false);
     }
@@ -261,7 +265,7 @@ export default function OnboardingPage() {
 
   async function handleStep3Subjects() {
     if (subjectsList.length === 0) {
-      setError("Kamida bitta fan qo'shishingiz lozim.");
+      setError(t("onb.needSubject"));
       return;
     }
     setError(null);
@@ -270,7 +274,7 @@ export default function OnboardingPage() {
       await onboardingApi.advance("COURSES");
       setCurrentStepIndex(3);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Xatolik yuz berdi");
+      setError(err instanceof ApiError ? err.message : t("common.errorGeneric"));
     } finally {
       setSubmitting(false);
     }
@@ -289,7 +293,7 @@ export default function OnboardingPage() {
       await onboardingApi.advance("WORKSPACE");
       setCurrentStepIndex(4);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Xatolik yuz berdi");
+      setError(err instanceof ApiError ? err.message : t("common.errorGeneric"));
     } finally {
       setSubmitting(false);
     }
@@ -298,7 +302,7 @@ export default function OnboardingPage() {
   async function handleStep5Workspace(e: React.FormEvent) {
     e.preventDefault();
     if (!slugAvailable) {
-      setError("Iltimos, mavjud va yaroqli Workspace URL tanlang.");
+      setError(t("onb.badSlug"));
       return;
     }
     setError(null);
@@ -307,7 +311,7 @@ export default function OnboardingPage() {
       await onboardingApi.updateWorkspace(workspaceSlug);
       setCurrentStepIndex(5);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Xatolik yuz berdi");
+      setError(err instanceof ApiError ? err.message : t("common.errorGeneric"));
     } finally {
       setSubmitting(false);
     }
@@ -328,7 +332,7 @@ export default function OnboardingPage() {
       }
       setCurrentStepIndex(6);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Xatolik yuz berdi");
+      setError(err instanceof ApiError ? err.message : t("common.errorGeneric"));
     } finally {
       setSubmitting(false);
     }
@@ -349,7 +353,7 @@ export default function OnboardingPage() {
       setInvitedTeam([...invitedTeam, { role: teamRole, target: trimmed }]);
       setTeamInput("");
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Taklifnoma yuborishda xatolik");
+      setError(err instanceof ApiError ? err.message : t("onb.inviteError"));
     } finally {
       setSubmitting(false);
     }
@@ -366,7 +370,7 @@ export default function OnboardingPage() {
       }
       setCurrentStepIndex(7);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Xatolik yuz berdi");
+      setError(err instanceof ApiError ? err.message : t("common.errorGeneric"));
     } finally {
       setSubmitting(false);
     }
@@ -381,7 +385,7 @@ export default function OnboardingPage() {
       setFinalWorkspaceUrl(res.workspaceUrl);
       await refreshMe();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Xatolik yuz berdi");
+      setError(err instanceof ApiError ? err.message : t("common.errorGeneric"));
     } finally {
       setSubmitting(false);
     }
@@ -395,7 +399,7 @@ export default function OnboardingPage() {
             <circle cx="12" cy="12" r="10" stroke={ACCENT} strokeWidth="4" strokeDasharray="30 60" />
           </svg>
           <div style={{ fontSize: 14, fontWeight: 600, color: "#6B7280" }}>
-            Workspace ma&apos;lumotlari yuklanmoqda...
+            {t("onb.loadingWs")}
           </div>
         </div>
       </div>
@@ -438,10 +442,10 @@ export default function OnboardingPage() {
 
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             <h1 style={{ fontSize: 30, fontWeight: 800, color: "#111827", letterSpacing: "-0.03em" }}>
-              Your center is ready
+              {t("onb.ready")}
             </h1>
             <p style={{ fontSize: 15, color: "#6B7280", maxWidth: 400, lineHeight: 1.5 }}>
-              Tabriklaymiz! O&apos;quv markazingiz to&apos;liq sozlandi va faoliyatini boshlashga tayyor.
+              {t("onb.readyBody")}
             </p>
           </div>
 
@@ -459,7 +463,7 @@ export default function OnboardingPage() {
           >
             <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 2 }}>
               <span style={{ fontSize: 11.5, fontWeight: 700, color: "#64748B", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                Workspace URL
+                {t("onb.wsUrl")}
               </span>
               <span style={{ fontSize: 16, fontWeight: 700, color: ACCENT }}>
                 {finalWorkspaceUrl || `${workspaceSlug}.crmapp.com`}
@@ -482,7 +486,7 @@ export default function OnboardingPage() {
                 cursor: "pointer",
               }}
             >
-              Nusxa olish
+              {t("onb.copy")}
             </button>
           </div>
 
@@ -508,7 +512,7 @@ export default function OnboardingPage() {
               marginTop: 8,
             }}
           >
-            <span>Open dashboard</span>
+            <span>{t("onb.openDashboard")}</span>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="9 18 15 12 9 6" />
             </svg>
@@ -555,10 +559,10 @@ export default function OnboardingPage() {
 
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <span style={{ fontSize: 13, fontWeight: 700, color: "#4B5563" }}>
-            Step {currentStepIndex + 1} of {STEPS.length}:
+            {t("onb.step")} {currentStepIndex + 1} {t("onb.of")} {STEPS.length}:
           </span>
           <span style={{ fontSize: 13, fontWeight: 800, color: ACCENT }}>
-            {STEPS[currentStepIndex].label}
+            {t(STEPS[currentStepIndex].label)}
           </span>
         </div>
       </header>
@@ -621,33 +625,33 @@ export default function OnboardingPage() {
             <form onSubmit={handleStep1Profile} style={{ display: "flex", flexDirection: "column", gap: 22 }}>
               <div>
                 <span style={{ fontSize: 12, fontWeight: 700, color: ACCENT, textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                  Step 1
+                  {t("onb.step")} 1
                 </span>
                 <h2 style={{ fontSize: 24, fontWeight: 800, color: "#111827", marginTop: 4 }}>
-                  Welcome to CRMAPP
+                  {t("onb.welcome")}
                 </h2>
                 <p style={{ fontSize: 14.5, color: "#6B7280", marginTop: 2 }}>
-                  Let&apos;s set up your learning center profile and defaults.
+                  {t("onb.welcomeBody")}
                 </p>
               </div>
 
               <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
                 <div>
                   <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 6 }}>
-                    Center name
+                    {t("onb.centerName")}
                   </label>
                   <input
                     required
                     value={tenantName}
                     onChange={(e) => setTenantName(e.target.value)}
-                    placeholder="Bilimdon Learning Center"
+                    placeholder="Bilimdon"
                     style={{ width: "100%", height: 44, padding: "0 14px", borderRadius: 10, border: "1.5px solid #E5E7EB", fontSize: 14.5 }}
                   />
                 </div>
 
                 <div>
                   <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 6 }}>
-                    Phone number
+                    {t("onb.phone")}
                   </label>
                   <input
                     value={phone}
@@ -660,24 +664,24 @@ export default function OnboardingPage() {
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14 }}>
                   <div>
                     <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 6 }}>
-                      Country
+                      {t("onb.country")}
                     </label>
                     <select
                       value={country}
                       onChange={(e) => setCountry(e.target.value)}
                       style={{ width: "100%", height: 44, padding: "0 10px", borderRadius: 10, border: "1.5px solid #E5E7EB", fontSize: 14 }}
                     >
-                      <option value="UZ">Uzbekistan</option>
-                      <option value="KZ">Kazakhstan</option>
-                      <option value="KG">Kyrgyzstan</option>
-                      <option value="TJ">Tajikistan</option>
-                      <option value="OTHER">Other</option>
+                      <option value="UZ">{t("onb.uz")}</option>
+                      <option value="KZ">{t("onb.kz")}</option>
+                      <option value="KG">{t("onb.kg")}</option>
+                      <option value="TJ">{t("onb.tj")}</option>
+                      <option value="OTHER">{t("onb.other")}</option>
                     </select>
                   </div>
 
                   <div>
                     <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 6 }}>
-                      Timezone
+                      {t("onb.timezone")}
                     </label>
                     <select
                       value={timezone}
@@ -693,7 +697,7 @@ export default function OnboardingPage() {
 
                   <div>
                     <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 6 }}>
-                      Currency
+                      {t("onb.currency")}
                     </label>
                     <select
                       value={currency}
@@ -723,7 +727,7 @@ export default function OnboardingPage() {
                   marginTop: 8,
                 }}
               >
-                {submitting ? "Saqlanmoqda..." : "Continue to Categories"}
+                {submitting ? t("onb.saving") : t("onb.toCategories")}
               </button>
             </form>
           )}
@@ -733,13 +737,13 @@ export default function OnboardingPage() {
             <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
               <div>
                 <span style={{ fontSize: 12, fontWeight: 700, color: ACCENT, textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                  Step 2
+                  {t("onb.step")} 2
                 </span>
                 <h2 style={{ fontSize: 24, fontWeight: 800, color: "#111827", marginTop: 4 }}>
-                  What do you teach?
+                  {t("onb.whatTeach")}
                 </h2>
                 <p style={{ fontSize: 14.5, color: "#6B7280", marginTop: 2 }}>
-                  Select all that apply. One center can teach multiple directions simultaneously.
+                  {t("onb.whatTeachBody")}
                 </p>
               </div>
 
@@ -767,10 +771,10 @@ export default function OnboardingPage() {
                       <span style={{ fontSize: 24 }}>{cat.icon}</span>
                       <div style={{ flex: 1 }}>
                         <div style={{ fontSize: 14.5, fontWeight: 700, color: isSelected ? ACCENT : "#111827" }}>
-                          {cat.label}
+                          {t(cat.label)}
                         </div>
                         <div style={{ fontSize: 12, color: "#6B7280", marginTop: 2, lineHeight: 1.35 }}>
-                          {cat.desc}
+                          {t(cat.desc)}
                         </div>
                       </div>
                       <div
@@ -803,7 +807,7 @@ export default function OnboardingPage() {
                   onClick={() => setCurrentStepIndex(0)}
                   style={{ background: "transparent", border: "none", color: "#6B7280", fontSize: 14, fontWeight: 600, cursor: "pointer" }}
                 >
-                  Back
+                  {t("onb.back")}
                 </button>
                 <button
                   type="button"
@@ -821,7 +825,7 @@ export default function OnboardingPage() {
                     cursor: "pointer",
                   }}
                 >
-                  {submitting ? "Saqlanmoqda..." : "Continue to Subjects"}
+                  {submitting ? t("onb.saving") : t("onb.toSubjects")}
                 </button>
               </div>
             </div>
@@ -832,13 +836,13 @@ export default function OnboardingPage() {
             <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
               <div>
                 <span style={{ fontSize: 12, fontWeight: 700, color: ACCENT, textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                  Step 3
+                  {t("onb.step")} 3
                 </span>
                 <h2 style={{ fontSize: 24, fontWeight: 800, color: "#111827", marginTop: 4 }}>
-                  Add your subjects
+                  {t("onb.addSubjects")}
                 </h2>
                 <p style={{ fontSize: 14.5, color: "#6B7280", marginTop: 2 }}>
-                  Create the subjects your teachers teach (e.g. English, Mathematics, Programming).
+                  {t("onb.addSubjectsBody")}
                 </p>
               </div>
 
@@ -853,7 +857,7 @@ export default function OnboardingPage() {
                       addSubject(newSubjectInput);
                     }
                   }}
-                  placeholder="Yangi fan nomi (masalan, Fizika yoki SAT)"
+                  placeholder={t("onb.subjectPh")}
                   style={{ flex: 1, height: 44, padding: "0 14px", borderRadius: 10, border: "1.5px solid #E5E7EB", fontSize: 14.5 }}
                 />
                 <button
@@ -870,14 +874,14 @@ export default function OnboardingPage() {
                     cursor: "pointer",
                   }}
                 >
-                  + Add subject
+                  {t("onb.addSubject")}
                 </button>
               </div>
 
               {/* Active subjects list */}
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 <span style={{ fontSize: 13, fontWeight: 700, color: "#4B5563" }}>
-                  Tanlangan fanlar ({subjectsList.length}):
+                  {t("onb.selectedSubjects")} ({subjectsList.length}):
                 </span>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                   {subjectsList.map((subj) => (
@@ -912,7 +916,7 @@ export default function OnboardingPage() {
               {/* Suggestions */}
               <div>
                 <span style={{ fontSize: 12.5, fontWeight: 600, color: "#6B7280" }}>
-                  Tavsiya etilgan fanlar (bosing va qo&apos;shing):
+                  {t("onb.suggested")}
                 </span>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
                   {["IELTS", "General English", "Matematika", "SAT", "Python", "Frontend", "Fizika", "Kimyo", "Nemis tili"].map((s) => (
@@ -943,7 +947,7 @@ export default function OnboardingPage() {
                   onClick={() => setCurrentStepIndex(1)}
                   style={{ background: "transparent", border: "none", color: "#6B7280", fontSize: 14, fontWeight: 600, cursor: "pointer" }}
                 >
-                  Back
+                  {t("onb.back")}
                 </button>
                 <button
                   type="button"
@@ -961,7 +965,7 @@ export default function OnboardingPage() {
                     cursor: "pointer",
                   }}
                 >
-                  Continue to Courses
+                  {t("onb.toCourses")}
                 </button>
               </div>
             </div>
@@ -972,13 +976,13 @@ export default function OnboardingPage() {
             <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
               <div>
                 <span style={{ fontSize: 12, fontWeight: 700, color: ACCENT, textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                  Step 4
+                  {t("onb.step")} 4
                 </span>
                 <h2 style={{ fontSize: 24, fontWeight: 800, color: "#111827", marginTop: 4 }}>
-                  Configure courses &amp; programs
+                  {t("onb.courses")}
                 </h2>
                 <p style={{ fontSize: 14.5, color: "#6B7280", marginTop: 2 }}>
-                  Har bir fanning o&apos;z kurslarini (masalan, IELTS, General English, SAT Math) belgilang.
+                  {t("onb.coursesBody")}
                 </p>
               </div>
 
@@ -1076,14 +1080,14 @@ export default function OnboardingPage() {
                             cursor: "pointer",
                           }}
                         >
-                          Qo&apos;shish
+                          {t("onb.add")}
                         </button>
                       </div>
 
                       {/* Popular suggestions */}
                       {popular.length > 0 && (
                         <div style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center" }}>
-                          <span style={{ fontSize: 11.5, color: "#64748B" }}>Tavsiya:</span>
+                          <span style={{ fontSize: 11.5, color: "#64748B" }}>{t("onb.suggestion")}</span>
                           {popular.map((p) => (
                             <button
                               key={p}
@@ -1116,7 +1120,7 @@ export default function OnboardingPage() {
                   onClick={() => setCurrentStepIndex(2)}
                   style={{ background: "transparent", border: "none", color: "#6B7280", fontSize: 14, fontWeight: 600, cursor: "pointer" }}
                 >
-                  Back
+                  {t("onb.back")}
                 </button>
                 <button
                   type="button"
@@ -1134,7 +1138,7 @@ export default function OnboardingPage() {
                     cursor: "pointer",
                   }}
                 >
-                  {submitting ? "Saqlanmoqda..." : "Continue to Workspace URL"}
+                  {submitting ? t("onb.saving") : t("onb.toWorkspace")}
                 </button>
               </div>
             </div>
@@ -1145,19 +1149,19 @@ export default function OnboardingPage() {
             <form onSubmit={handleStep5Workspace} style={{ display: "flex", flexDirection: "column", gap: 22 }}>
               <div>
                 <span style={{ fontSize: 12, fontWeight: 700, color: ACCENT, textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                  Step 5
+                  {t("onb.step")} 5
                 </span>
                 <h2 style={{ fontSize: 24, fontWeight: 800, color: "#111827", marginTop: 4 }}>
-                  Choose your Workspace URL
+                  {t("onb.chooseWs")}
                 </h2>
                 <p style={{ fontSize: 14.5, color: "#6B7280", marginTop: 2 }}>
-                  Bu sizning markazingizning tizimdagi doimiy internet manzili bo&apos;ladi.
+                  {t("onb.chooseWsBody")}
                 </p>
               </div>
 
               <div>
                 <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 6 }}>
-                  Center URL / Workspace URL
+                  {t("onb.wsLabel")}
                 </label>
                 <div
                   style={{
@@ -1172,7 +1176,7 @@ export default function OnboardingPage() {
                   <input
                     required
                     pattern="[a-z0-9\-]{3,40}"
-                    title="3 tadan 40 tagacha kichik harf va raqamlar"
+                    title={t("onb.slugRule")}
                     value={workspaceSlug}
                     onChange={(e) => setWorkspaceSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))}
                     placeholder="bilimdon"
@@ -1204,7 +1208,7 @@ export default function OnboardingPage() {
                 {/* Status indicator */}
                 <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
                   {slugChecking && (
-                    <span style={{ color: "#6B7280" }}>Mavjudligi tekshirilmoqda...</span>
+                    <span style={{ color: "#6B7280" }}>{t("onb.checking")}</span>
                   )}
                   {!slugChecking && slugAvailable === true && (
                     <span style={{ color: "#059669", fontWeight: 600 }}>✓ {slugMessage}</span>
@@ -1229,7 +1233,7 @@ export default function OnboardingPage() {
               >
                 <div style={{ fontSize: 20 }}>🌐</div>
                 <div>
-                  <div style={{ fontSize: 12, color: "#64748B" }}>Ko&apos;rinish manzili:</div>
+                  <div style={{ fontSize: 12, color: "#64748B" }}>{t("onb.preview")}</div>
                   <div style={{ fontSize: 14.5, fontWeight: 700, color: ACCENT }}>
                     {workspaceSlug || "bilimdon"}.crmapp.com
                   </div>
@@ -1242,7 +1246,7 @@ export default function OnboardingPage() {
                   onClick={() => setCurrentStepIndex(3)}
                   style={{ background: "transparent", border: "none", color: "#6B7280", fontSize: 14, fontWeight: 600, cursor: "pointer" }}
                 >
-                  Back
+                  {t("onb.back")}
                 </button>
                 <button
                   type="submit"
@@ -1259,7 +1263,7 @@ export default function OnboardingPage() {
                     cursor: "pointer",
                   }}
                 >
-                  {submitting ? "Saqlanmoqda..." : "Continue to First Branch"}
+                  {submitting ? t("onb.saving") : t("onb.toBranch")}
                 </button>
               </div>
             </form>
@@ -1270,44 +1274,44 @@ export default function OnboardingPage() {
             <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
               <div>
                 <span style={{ fontSize: 12, fontWeight: 700, color: ACCENT, textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                  Step 6 (Optional)
+                  {t("onb.step")} 6 {t("onb.optional")}
                 </span>
                 <h2 style={{ fontSize: 24, fontWeight: 800, color: "#111827", marginTop: 4 }}>
-                  Add your first branch
+                  {t("onb.addBranch")}
                 </h2>
                 <p style={{ fontSize: 14.5, color: "#6B7280", marginTop: 2 }}>
-                  Markazingizning jismoniy filiali manzilini kiriting yoki keyinroq qo&apos;shing.
+                  {t("onb.addBranchBody")}
                 </p>
               </div>
 
               <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                 <div>
                   <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 6 }}>
-                    Branch name
+                    {t("onb.branchName")}
                   </label>
                   <input
                     value={branchName}
                     onChange={(e) => setBranchName(e.target.value)}
-                    placeholder="Masalan: Bosh filial, Chilonzor filiali"
+                    placeholder={t("onb.branchNamePh")}
                     style={{ width: "100%", height: 44, padding: "0 14px", borderRadius: 10, border: "1.5px solid #E5E7EB", fontSize: 14.5 }}
                   />
                 </div>
 
                 <div>
                   <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 6 }}>
-                    Physical address
+                    {t("onb.address")}
                   </label>
                   <input
                     value={branchAddress}
                     onChange={(e) => setBranchAddress(e.target.value)}
-                    placeholder="Toshkent sh., Yunusobod t., Amir Temur ko'chasi 45"
+                    placeholder={t("onb.addressPh")}
                     style={{ width: "100%", height: 44, padding: "0 14px", borderRadius: 10, border: "1.5px solid #E5E7EB", fontSize: 14.5 }}
                   />
                 </div>
 
                 <div>
                   <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 6 }}>
-                    Branch phone
+                    {t("onb.branchPhone")}
                   </label>
                   <input
                     value={branchPhone}
@@ -1332,7 +1336,7 @@ export default function OnboardingPage() {
                     textDecoration: "underline",
                   }}
                 >
-                  Do this later
+                  {t("onb.later")}
                 </button>
                 <button
                   type="button"
@@ -1350,7 +1354,7 @@ export default function OnboardingPage() {
                     cursor: "pointer",
                   }}
                 >
-                  {submitting ? "Saqlanmoqda..." : "Add branch & Continue"}
+                  {submitting ? t("onb.saving") : t("onb.addBranchContinue")}
                 </button>
               </div>
             </div>
@@ -1361,13 +1365,13 @@ export default function OnboardingPage() {
             <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
               <div>
                 <span style={{ fontSize: 12, fontWeight: 700, color: ACCENT, textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                  Step 7 (Optional)
+                  {t("onb.step")} 7 {t("onb.optional")}
                 </span>
                 <h2 style={{ fontSize: 24, fontWeight: 800, color: "#111827", marginTop: 4 }}>
-                  Invite your team
+                  {t("onb.inviteTeam")}
                 </h2>
                 <p style={{ fontSize: 14.5, color: "#6B7280", marginTop: 2 }}>
-                  O&apos;qituvchilar, menejerlar va administratorlarni xavfsiz taklifnoma orqali biriktiring.
+                  {t("onb.inviteTeamBody")}
                 </p>
               </div>
 
@@ -1378,17 +1382,17 @@ export default function OnboardingPage() {
                   onChange={(e) => setTeamRole(e.target.value as Role)}
                   style={{ width: 140, height: 44, padding: "0 10px", borderRadius: 10, border: "1.5px solid #E5E7EB", fontSize: 14 }}
                 >
-                  <option value="TEACHER">O&apos;qituvchi</option>
-                  <option value="MANAGER">Menejer</option>
-                  <option value="ADMIN">Administrator</option>
-                  <option value="ACCOUNTANT">Hisobchi</option>
-                  <option value="RECEPTIONIST">Reception</option>
+                  <option value="TEACHER">{t("role.teacher")}</option>
+                  <option value="MANAGER">{t("role.manager")}</option>
+                  <option value="ADMIN">{t("role.admin")}</option>
+                  <option value="ACCOUNTANT">{t("role.accountant")}</option>
+                  <option value="RECEPTIONIST">{t("role.receptionist")}</option>
                 </select>
 
                 <input
                   value={teamInput}
                   onChange={(e) => setTeamInput(e.target.value)}
-                  placeholder="Email yoki telefon raqami"
+                  placeholder={t("onb.contactPh")}
                   style={{ flex: 1, height: 44, padding: "0 14px", borderRadius: 10, border: "1.5px solid #E5E7EB", fontSize: 14.5 }}
                 />
 
@@ -1407,7 +1411,7 @@ export default function OnboardingPage() {
                     cursor: "pointer",
                   }}
                 >
-                  Invite
+                  {t("onb.invite")}
                 </button>
               </div>
 
@@ -1415,7 +1419,7 @@ export default function OnboardingPage() {
               {invitedTeam.length > 0 && (
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   <span style={{ fontSize: 13, fontWeight: 700, color: "#4B5563" }}>
-                    Yuborilgan taklifnomalar:
+                    {t("onb.sentInvites")}
                   </span>
                   {invitedTeam.map((item, idx) => (
                     <div
@@ -1454,7 +1458,7 @@ export default function OnboardingPage() {
                     textDecoration: "underline",
                   }}
                 >
-                  Skip for now
+                  {t("onb.skip")}
                 </button>
                 <button
                   type="button"
@@ -1472,7 +1476,7 @@ export default function OnboardingPage() {
                     cursor: "pointer",
                   }}
                 >
-                  {submitting ? "Saqlanmoqda..." : "Continue to Students"}
+                  {submitting ? t("onb.saving") : t("onb.toStudents")}
                 </button>
               </div>
             </div>
@@ -1483,22 +1487,22 @@ export default function OnboardingPage() {
             <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
               <div>
                 <span style={{ fontSize: 12, fontWeight: 700, color: ACCENT, textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                  Step 8 (Final)
+                  {t("onb.step")} 8 {t("onb.final")}
                 </span>
                 <h2 style={{ fontSize: 24, fontWeight: 800, color: "#111827", marginTop: 4 }}>
-                  Add your students
+                  {t("onb.addStudents")}
                 </h2>
                 <p style={{ fontSize: 14.5, color: "#6B7280", marginTop: 2 }}>
-                  O&apos;quvchilarni hozir qo&apos;shishingiz yoki keyinroq dashboard orqali import qilishingiz mumkin.
+                  {t("onb.addStudentsBody")}
                 </p>
               </div>
 
               {/* 3 Choice options */}
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
                 {[
-                  { id: "MANUAL", title: "Add manually", desc: "Birma-bir qo'lda kiritish", icon: "✍️" },
-                  { id: "EXCEL", title: "Import Excel", desc: "Jadvaldan import qilish", icon: "📊" },
-                  { id: "LATER", title: "Do this later", desc: "Dashboarddan kiritish", icon: "⏭️" },
+                  { id: "MANUAL", title: t("onb.manual"), desc: t("onb.manualDesc"), icon: "✍️" },
+                  { id: "EXCEL", title: t("onb.excel"), desc: t("onb.excelDesc"), icon: "📊" },
+                  { id: "LATER", title: t("onb.later"), desc: t("onb.laterDesc"), icon: "⏭️" },
                 ].map((opt) => {
                   const isSelected = studentMode === opt.id;
                   return (
@@ -1536,7 +1540,7 @@ export default function OnboardingPage() {
                     <input
                       value={manualStudentName}
                       onChange={(e) => setManualStudentName(e.target.value)}
-                      placeholder="O'quvchi F.I.SH."
+                      placeholder={t("onb.studentNamePh")}
                       style={{ flex: 1, height: 40, padding: "0 12px", borderRadius: 8, border: "1px solid #CBD5E1", fontSize: 13.5 }}
                     />
                     <input
@@ -1565,7 +1569,7 @@ export default function OnboardingPage() {
                         cursor: "pointer",
                       }}
                     >
-                      Qo&apos;shish
+                      {t("onb.add")}
                     </button>
                   </div>
 
@@ -1586,10 +1590,10 @@ export default function OnboardingPage() {
                 <div style={{ background: "#F8FAFC", border: "1.5px dashed #CBD5E1", borderRadius: 14, padding: "24px", textAlign: "center" }}>
                   <div style={{ fontSize: 32 }}>📁</div>
                   <div style={{ fontSize: 14, fontWeight: 700, color: "#1E293B", marginTop: 6 }}>
-                    Excel yoki CSV faylni yuklang
+                    {t("onb.upload")}
                   </div>
                   <div style={{ fontSize: 12.5, color: "#64748B", marginTop: 4 }}>
-                    Siz buni keyinroq &quot;O&apos;quvchilar&quot; bo&apos;limidan istalgan vaqtda yuklashingiz mumkin.
+                    {t("onb.uploadLater")}
                   </div>
                 </div>
               )}
@@ -1600,7 +1604,7 @@ export default function OnboardingPage() {
                   onClick={() => setCurrentStepIndex(6)}
                   style={{ background: "transparent", border: "none", color: "#6B7280", fontSize: 14, fontWeight: 600, cursor: "pointer" }}
                 >
-                  Back
+                  {t("onb.back")}
                 </button>
                 <button
                   id="finish-onboarding-btn"
@@ -1620,7 +1624,7 @@ export default function OnboardingPage() {
                     boxShadow: "0 4px 14px rgba(79, 70, 229, 0.3)",
                   }}
                 >
-                  {submitting ? "Tugatilmoqda..." : "Finish Setup 🎉"}
+                  {submitting ? t("onb.finishing") : t("onb.finish")}
                 </button>
               </div>
             </div>

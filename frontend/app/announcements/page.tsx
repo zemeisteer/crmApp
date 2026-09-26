@@ -15,6 +15,7 @@ import {
   ApiError,
 } from "@/lib/api";
 import { useLanguage } from "@/lib/i18n-context";
+import { formatDateTime } from "@/lib/format-date";
 
 const ACCENT = "#4F46E5";
 
@@ -52,7 +53,7 @@ export function AnnouncementsContent() {
       setAnnouncements(aList);
       setGroups(gList);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "E'lonlarni yuklashda xatolik yuz berdi");
+      setError(err instanceof ApiError ? err.message : t("ann.loadError"));
     } finally {
       setLoading(false);
     }
@@ -102,7 +103,7 @@ export function AnnouncementsContent() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!title.trim() || !content.trim()) {
-      setError("Sarlavha va e'lon matni to'ldirilishi shart");
+      setError(t("ann.required"));
       return;
     }
     if (targetAudience === "GROUP" && !targetGroupId) {
@@ -124,20 +125,20 @@ export function AnnouncementsContent() {
       setModalOpen(false);
       await loadData();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "E'lon berishda xatolik yuz berdi");
+      setError(err instanceof ApiError ? err.message : t("ann.postError"));
     } finally {
       setSaving(false);
     }
   }
 
   async function handleDelete(id: string) {
-    if (!confirm("E'lonni o'chirishni tasdiqlaysizmi?")) return;
+    if (!confirm(t("ann.confirmDelete"))) return;
     try {
       setDeletingId(id);
       await announcementsApi.remove(id);
       await loadData();
     } catch (err) {
-      alert(err instanceof ApiError ? err.message : "O'chirishda xatolik");
+      alert(err instanceof ApiError ? err.message : t("pay.deleteError"));
     } finally {
       setDeletingId(null);
     }
@@ -191,7 +192,7 @@ export function AnnouncementsContent() {
       case "GROUP":
         return (
           <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-purple-50 text-purple-800 border border-purple-200">
-            🏫 Guruh: {groupName || "Tanlangan guruh"}
+            🏫 {t("ann.group")}: {groupName || t("ann.selectedGroup")}
           </span>
         );
     }
@@ -231,7 +232,7 @@ export function AnnouncementsContent() {
       {/* KPI Stats cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
-          <span className="text-xs text-slate-500 font-bold">Jami e&apos;lonlar</span>
+          <span className="text-xs text-slate-500 font-bold">{t("ann.total")}</span>
           <div className="text-2xl font-black text-slate-900 mt-1">{stats.total}</div>
         </div>
         <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
@@ -243,7 +244,7 @@ export function AnnouncementsContent() {
           <div className="text-2xl font-black text-amber-600 mt-1">{stats.high}</div>
         </div>
         <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
-          <span className="text-xs text-sky-600 font-bold">Telegram tarqatilgan</span>
+          <span className="text-xs text-sky-600 font-bold">{t("ann.telegramSent")}</span>
           <div className="text-2xl font-black text-sky-600 mt-1">{stats.telegramSent}</div>
         </div>
       </div>
@@ -285,9 +286,9 @@ export function AnnouncementsContent() {
                 setPage(1);
               }}
               options={[
-                { value: "ALL", label: "Barcha auditoriya" },
-                { value: "STUDENTS", label: "O'quvchilar" },
-                { value: "TEACHERS", label: "O'qituvchilar" },
+                { value: "ALL", label: t("ann.allAudience") },
+                { value: "STUDENTS", label: t("ann.students") },
+                { value: "TEACHERS", label: t("ann.teachers") },
                 { value: "GROUP", label: "Guruhlar" },
               ]}
             />
@@ -333,7 +334,7 @@ export function AnnouncementsContent() {
               <path d="M11.6 16.8a3 3 0 1 1-5.8-1.6" />
             </svg>
           </div>
-          <h3 className="text-sm font-bold text-slate-900">E&apos;lonlar mavjud emas</h3>
+          <h3 className="text-sm font-bold text-slate-900">{t("ann.empty")}</h3>
           <p className="text-xs text-slate-600 mt-1 max-w-sm mx-auto">
             Hozircha hech qanday e&apos;lon berilmagan. Markaz o&apos;quvchilari yoki xodimlariga yangilik yuborish uchun yangi e&apos;lon e&apos;lon qiling.
           </p>
@@ -368,7 +369,7 @@ export function AnnouncementsContent() {
                           <line x1="22" y1="2" x2="11" y2="13" />
                           <polygon points="22 2 15 22 11 13 2 9 22 2" />
                         </svg>
-                        Telegram yuborilgan
+                        {t("ann.telegramSentBadge")}
                       </span>
                     )}
                   </div>
@@ -384,19 +385,13 @@ export function AnnouncementsContent() {
 
                 <div className="flex sm:flex-col items-end justify-between sm:justify-start gap-2 shrink-0">
                   <span className="text-[11px] text-slate-500 font-medium">
-                    {new Date(item.publishedAt).toLocaleString("uz-UZ", {
-                      day: "2-digit",
-                      month: "short",
-                      year: "numeric",
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
+                    {formatDateTime(item.publishedAt, "UZ")}
                   </span>
 
                   <button
                     onClick={() => handleDelete(item.id)}
                     disabled={deletingId === item.id}
-                    title="O'chirish"
+                    title={t("common.delete")}
                     className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer"
                   >
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -428,7 +423,7 @@ export function AnnouncementsContent() {
       )}
 
       {/* Create Announcement Modal */}
-      <Modal open={modalOpen} onClose={() => setModalOpen(false)} title="Yangi E'lon Berish">
+      <Modal open={modalOpen} onClose={() => setModalOpen(false)} title={t("ann.newTitle")}>
         <form onSubmit={handleSubmit} className="space-y-4">
           {error && (
             <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold">
@@ -443,7 +438,7 @@ export function AnnouncementsContent() {
             <input
               type="text"
               required
-              placeholder="Masalan: Ertaga markazda bayram tadbiri o'tkaziladi"
+              placeholder={t("ann.titlePh")}
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               className="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 shadow-sm"
@@ -460,8 +455,8 @@ export function AnnouncementsContent() {
                 onChange={(val) => setTargetAudience(val as AnnouncementAudience)}
                 options={[
                   { value: "ALL", label: "👥 Barchaga (Umumiy)" },
-                  { value: "STUDENTS", label: "🎓 Faqat O'quvchilarga" },
-                  { value: "TEACHERS", label: "👨‍🏫 Faqat O'qituvchilarga" },
+                  { value: "STUDENTS", label: t("ann.onlyStudents") },
+                  { value: "TEACHERS", label: t("ann.onlyTeachers") },
                   { value: "GROUP", label: "🏫 Muayyan Guruhga" },
                 ]}
               />
@@ -495,7 +490,7 @@ export function AnnouncementsContent() {
                   { value: "", label: "— Guruhni tanlang —" },
                   ...groups.map((g) => ({
                     value: g.id,
-                    label: `${g.name} (${g.subject || "Fan yo'q"})`,
+                    label: `${g.name} (${g.subject || t("ann.noSubject")})`,
                   })),
                 ]}
               />
@@ -509,7 +504,7 @@ export function AnnouncementsContent() {
             <textarea
               required
               rows={4}
-              placeholder="E'lonning to'liq tafsilotlari, sanasi, vaqti va talablari..."
+              placeholder={t("ann.contentPh")}
               value={content}
               onChange={(e) => setContent(e.target.value)}
               className="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 shadow-sm resize-none"
@@ -526,8 +521,8 @@ export function AnnouncementsContent() {
                 </svg>
               </div>
               <div>
-                <span className="text-xs font-bold text-slate-900 block">Telegram orqali tarqatish</span>
-                <span className="text-[11px] text-slate-600">Ulangan o&apos;quvchi va ota-onalar botiga tezkor xabar yuborish</span>
+                <span className="text-xs font-bold text-slate-900 block">{t("ann.viaTelegram")}</span>
+                <span className="text-[11px] text-slate-600">{t("ann.viaTelegramHint")}</span>
               </div>
             </div>
             <input
@@ -544,14 +539,14 @@ export function AnnouncementsContent() {
               onClick={() => setModalOpen(false)}
               className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold cursor-pointer border border-slate-200"
             >
-              Bekor qilish
+              {t("common.cancel")}
             </button>
             <button
               type="submit"
               disabled={saving}
               className="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-xs font-bold cursor-pointer shadow-sm"
             >
-              {saving ? "Yuborilmoqda..." : "E'lonni Chop Qilish"}
+              {saving ? t("pay.sending") : t("ann.publish")}
             </button>
           </div>
         </form>

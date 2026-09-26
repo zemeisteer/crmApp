@@ -8,6 +8,7 @@ import { auditApi, AuditLog } from "@/lib/api";
 import { useLanguage } from "@/lib/i18n-context";
 import type { TranslationKey } from "@/lib/i18n";
 import { describeAudit } from "@/lib/audit-format";
+import { formatDateTime } from "@/lib/format-date";
 
 const ACTION_LABEL_KEYS: Record<string, TranslationKey> = {
   create: "auditLog.actionCreate",
@@ -154,7 +155,7 @@ function AuditLogContent() {
               <tbody>
                 {pageItems.map((l) => (
                   <tr key={l.id}>
-                    <td>{new Date(l.createdAt).toLocaleString(lang === "UZ" ? "uz-UZ" : lang === "RU" ? "ru-RU" : "en-US")}</td>
+                    <td>{formatDateTime(l.createdAt, lang)}</td>
                     <td style={{ fontWeight: 600 }}>{l.user?.fullName || "—"}</td>
                     <td>
                       <span className={`badge ${ACTION_CLASS[l.action] || "badge-neutral"}`}>

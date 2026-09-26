@@ -8,6 +8,7 @@ import { useAuth } from "@/lib/auth-context";
 import { tenantsApi, plansApi, Tenant, Plan, ApiError } from "@/lib/api";
 import { useLanguage } from "@/lib/i18n-context";
 import type { TranslationKey } from "@/lib/i18n";
+import { formatDate } from "@/lib/format-date";
 
 const ACCENT = "#4F46E5";
 
@@ -203,7 +204,7 @@ function AdminContent() {
                         {STATUS_LABEL_KEYS[tn.status] ? t(STATUS_LABEL_KEYS[tn.status]) : tn.status}
                       </span>
                     </td>
-                    <td>{new Date(tn.createdAt).toLocaleDateString(lang === "UZ" ? "uz-UZ" : lang === "RU" ? "ru-RU" : "en-US", { day: "numeric", month: "short", year: "numeric" })}</td>
+                    <td>{formatDate(tn.createdAt, lang, "short")}</td>
                     <td style={{ textAlign: "right" }}>
                       <button
                         className="btn"

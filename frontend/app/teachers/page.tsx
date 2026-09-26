@@ -163,7 +163,7 @@ function TeachersContent() {
       resetForm();
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Xatolik yuz berdi");
+      setError(err instanceof ApiError ? err.message : tr("common.errorGeneric"));
     } finally {
       setSaving(false);
     }
@@ -385,7 +385,7 @@ function TeachersContent() {
                 className="field-input"
                 value={customDirection}
                 onChange={(e) => setCustomDirection(e.target.value)}
-                placeholder="Boshqa yo'nalish yoki bo'lim (masalan: SAT, SAT Math)..."
+                placeholder={tr("tch.otherSubjectPh")}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
                     e.preventDefault();
@@ -407,12 +407,12 @@ function TeachersContent() {
                 }}
                 style={{ background: "#F2F1EC", color: "#181A1F", fontSize: 12, fontWeight: 700, padding: "0 14px", borderRadius: 8, whiteSpace: "nowrap" }}
               >
-                + Qo&apos;shish
+                {tr("tch.add")}
               </button>
             </div>
           </Field>
           <Field
-            label={`${tr("teachers.fieldAssignedGroups")}${selectedDirections.length > 0 ? ` (${selectedDirections.join(", ")} yo'nalishi)` : ""}`}
+            label={`${tr("teachers.fieldAssignedGroups")}${selectedDirections.length > 0 ? ` (${selectedDirections.join(", ")} ${tr("tch.direction")})` : ""}`}
           >
             <MultiSelect
               options={groupsForTeacherModal.map((g) => ({
@@ -423,9 +423,9 @@ function TeachersContent() {
               onChange={setAssignedGroupIds}
               placeholder={
                 groups.length === 0
-                  ? "Markazda guruhlar mavjud emas"
+                  ? tr("tch.noGroups")
                   : selectedDirections.length > 0 && groupsForTeacherModal.length === 0
-                    ? "Tanlangan yo'nalish bo'yicha guruhlar mavjud emas"
+                    ? tr("tch.noGroupsInDir")
                     : tr("teachers.selectGroups")
               }
             />
@@ -452,16 +452,16 @@ function TeachersContent() {
           <Field label={tr("teachers.fieldBirthDate")}>
             <DatePicker value={birthDate} onChange={setBirthDate} />
           </Field>
-          <Field label="Ish boshlagan sana">
+          <Field label={tr("tch.startDate")}>
             <DatePicker value={startDate} onChange={setStartDate} />
           </Field>
           <Field label={tr("teachers.fieldSalaryType")}>
             <Select
               options={[
-                { value: "FIXED", label: "Oylik belgilangan maosh (Fixed)" },
-                { value: "PERCENT", label: "Guruh tushumidan foiz (%)" },
-                { value: "PER_STUDENT", label: "Har bir o'quvchi uchun (Per Student)" },
-                { value: "PER_LESSON", label: "Har bir dars uchun (Per Lesson)" },
+                { value: "FIXED", label: tr("tch.salFixed") },
+                { value: "PERCENT", label: tr("tch.salPercent") },
+                { value: "PER_STUDENT", label: tr("tch.salPerStudent") },
+                { value: "PER_LESSON", label: tr("tch.salPerLesson") },
               ]}
               value={salaryType}
               onChange={setSalaryType}
@@ -470,12 +470,12 @@ function TeachersContent() {
           <Field
             label={
               salaryType === "PERCENT"
-                ? "Foiz miqdori (%)"
+                ? tr("tch.percentAmount")
                 : salaryType === "PER_STUDENT"
-                  ? "Bir o'quvchi uchun summa (so'm)"
+                  ? tr("tch.perStudentAmount")
                   : salaryType === "PER_LESSON"
-                    ? "Bir dars uchun summa (so'm)"
-                    : "Oylik maosh summasi (so'm)"
+                    ? tr("tch.perLessonAmount")
+                    : tr("tch.fixedAmount")
             }
           >
             <input

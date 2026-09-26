@@ -7,6 +7,7 @@ import BarChart, { DonutChart } from "@/components/BarChart";
 import { reportsApi, type DashboardData, type ReportsOverview } from "@/lib/api";
 import { useLanguage } from "@/lib/i18n-context";
 import { MONTH_KEYS, MONTH_SHORT_KEYS } from "@/lib/i18n";
+import { formatTime } from "@/lib/format-date";
 
 const ACCENT = "#4F46E5";
 const card: React.CSSProperties = { background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 20 };
@@ -205,7 +206,7 @@ function AiInsightsContent() {
           </span>
         </h1>
         <div style={{ fontSize: 12.5, color: "#8A8D96" }}>
-          {t("aiInsights.lastUpdated")} {updatedAt.toLocaleTimeString(lang === "UZ" ? "uz-UZ" : lang === "RU" ? "ru-RU" : "en-US", { hour: "2-digit", minute: "2-digit" })}
+          {t("aiInsights.lastUpdated")} {formatTime(updatedAt, lang)}
         </div>
       </div>
 

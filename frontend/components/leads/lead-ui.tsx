@@ -2,6 +2,8 @@
 
 import type { LeadLostReason, LeadSource, LeadStatus, LeadTrialStatus } from "@/lib/api";
 import type { TranslationKey } from "@/lib/i18n";
+import { formatDate as fmtDate, formatDateTime as fmtDateTime } from "@/lib/format-date";
+import type { Lang } from "@/lib/i18n";
 
 export const ACCENT = "#4F46E5";
 
@@ -65,15 +67,14 @@ export function StatusBadge({ status, label }: { status: LeadStatus; label: stri
 }
 
 // Formats in the viewer's locale; the backend stores instants in UTC.
-export function formatDateTime(iso?: string | null) {
+export function formatDateTime(iso?: string | null, lang: Lang = "UZ") {
   if (!iso) return "—";
-  const d = new Date(iso);
-  return d.toLocaleString(undefined, { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+  return fmtDateTime(iso, lang);
 }
 
-export function formatDate(iso?: string | null) {
+export function formatDate(iso?: string | null, lang: Lang = "UZ") {
   if (!iso) return "—";
-  return new Date(iso).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+  return fmtDate(iso, lang, "short");
 }
 
 // Combines the DatePicker (YYYY-MM-DD) and TimePicker (HH:MM) values, read as

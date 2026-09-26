@@ -103,11 +103,11 @@ function ReportsContent() {
         paymentMethod: disburseMethod,
         notes: disburseNotes.trim() || undefined,
       });
-      alert("Maosh muvaffaqiyatli to'landi va Xarajatlar (SALARY) ro'yxatiga biriktirildi!");
+      alert(t("rep2.salaryPaid"));
       setDisburseModalOpen(false);
       loadPayroll();
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Maosh to'lashda xatolik yuz berdi");
+      alert(err instanceof Error ? err.message : t("rep2.salaryError"));
     } finally {
       setDisbursing(false);
     }
@@ -280,9 +280,9 @@ function ReportsContent() {
             {/* KPI Cards */}
             <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0,1fr))", gap: 16 }}>
               <StatCard label="Hisoblangan jami maosh" value={`${formatMoney(payrollData?.totalCalculated || 0)} so'm`} />
-              <StatCard label="To'langan maosh" value={`${formatMoney(payrollData?.totalPaid || 0)} so'm`} delta={payrollData?.totalPaid ? "To'lov qilingan" : undefined} />
+              <StatCard label={t("rep2.paidSalary")} value={`${formatMoney(payrollData?.totalPaid || 0)} ${t("common.sumUnit")}`} delta={payrollData?.totalPaid ? t("rep2.paidDelta") : undefined} />
               <StatCard label="Kutilayotgan qarzdorlik" value={`${formatMoney(payrollData?.totalPending || 0)} so'm`} danger={(payrollData?.totalPending || 0) > 0} />
-              <StatCard label="Faol o'qituvchilar" value={String(payrollData?.teacherCount || 0)} />
+              <StatCard label={t("rep2.activeTeachers")} value={String(payrollData?.teacherCount || 0)} />
             </div>
 
             {/* Payroll Table */}
@@ -293,7 +293,7 @@ function ReportsContent() {
               {loadingPayroll ? (
                 <div style={{ padding: 32, textAlign: "center", color: "#8A8D96" }}>Hisoblanmoqda...</div>
               ) : !payrollData || payrollData.teachers.length === 0 ? (
-                <div style={{ padding: 32, textAlign: "center", color: "#8A8D96" }}>O&apos;qituvchilar topilmadi</div>
+                <div style={{ padding: 32, textAlign: "center", color: "#8A8D96" }}>{t("rep2.noTeachers")}</div>
               ) : (
                 <table>
                   <thead>
@@ -301,9 +301,9 @@ function ReportsContent() {
                       <th style={{ paddingTop: 16 }}>O&apos;qituvchi</th>
                       <th style={{ paddingTop: 16 }}>Model</th>
                       <th style={{ paddingTop: 16 }}>Hisob tafsiloti</th>
-                      <th style={{ paddingTop: 16 }}>Hisoblangan summa</th>
+                      <th style={{ paddingTop: 16 }}>{t("rep2.calculated")}</th>
                       <th style={{ paddingTop: 16 }}>To&apos;langan</th>
-                      <th style={{ paddingTop: 16 }}>To&apos;lanishi kerak</th>
+                      <th style={{ paddingTop: 16 }}>{t("rep2.toPay")}</th>
                       <th style={{ paddingTop: 16 }}>Holat</th>
                       <th style={{ paddingTop: 16, textAlign: "right" }}>Amal</th>
                     </tr>
@@ -313,7 +313,7 @@ function ReportsContent() {
                       <tr key={item.teacherId}>
                         <td>
                           <div style={{ fontWeight: 700 }}>{item.teacherName}</div>
-                          <div style={{ fontSize: 11.5, color: "#8A8D96" }}>{item.subject || "Fan ko'rsatilmagan"} • {item.phone || "—"}</div>
+                          <div style={{ fontSize: 11.5, color: "#8A8D96" }}>{item.subject || t("rep2.noSubject")} • {item.phone || "—"}</div>
                         </td>
                         <td>
                           <span
@@ -366,7 +366,7 @@ function ReportsContent() {
                               cursor: "pointer",
                             }}
                           >
-                            {item.isPaid ? "Qayta to'lash" : "To'lov qilish"}
+                            {item.isPaid ? t("rep2.payAgain") : t("rep2.pay")}
                           </button>}
                         </td>
                       </tr>
@@ -388,13 +388,13 @@ function ReportsContent() {
       <Modal
         open={disburseModalOpen}
         onClose={() => setDisburseModalOpen(false)}
-        title="O'qituvchi maoshini to'lash (Disbursement)"
+        title={t("rep2.disburseTitle")}
       >
         <form onSubmit={handleDisburseSubmit} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           <div style={{ background: "#F8F8F6", borderRadius: 10, padding: 12, border: "1px solid #EAE8E2" }}>
             <div style={{ fontSize: 14, fontWeight: 700, color: "#181A1F" }}>{disburseTeacher?.teacherName}</div>
             <div style={{ fontSize: 12, color: "#8A8D96", marginTop: 2 }}>
-              Fan: {disburseTeacher?.subject || "Ko'rsatilmagan"} • Model: {disburseTeacher?.salaryType}
+              {t("rep2.subject")}: {disburseTeacher?.subject || t("rep2.notSet")} • Model: {disburseTeacher?.salaryType}
             </div>
             <div style={{ fontSize: 13, color: ACCENT, fontWeight: 700, marginTop: 4 }}>
               Kutilayotgan summa: {formatMoney(disburseTeacher?.netPayable || 0)} so&apos;m
@@ -417,7 +417,7 @@ function ReportsContent() {
             <Select
               options={[
                 { value: "CASH", label: "Naqd pul (CASH)" },
-                { value: "BANK_TRANSFER", label: "Bank o'tkazmasi (BANK_TRANSFER)" },
+                { value: "BANK_TRANSFER", label: t("rep2.bankTransfer") },
                 { value: "CLICK", label: "Click orqali" },
                 { value: "PAYME", label: "Payme orqali" },
               ]}
@@ -432,7 +432,7 @@ function ReportsContent() {
               className="field-input"
               value={disburseNotes}
               onChange={(e) => setDisburseNotes(e.target.value)}
-              placeholder="Qo'shimcha izoh..."
+              placeholder={t("rep2.notePh")}
             />
           </div>
 
@@ -450,7 +450,7 @@ function ReportsContent() {
               marginTop: 4,
             }}
           >
-            {disbursing ? "Saqlanmoqda..." : "Maoshni tasdiqlash va Xarajatlarga yozish"}
+            {disbursing ? t("common.saving") : t("rep2.confirmSalary")}
           </button>
         </form>
       </Modal>
@@ -459,7 +459,7 @@ function ReportsContent() {
       <Modal
         open={smsModalOpen}
         onClose={() => setSmsModalOpen(false)}
-        title="O'quvchiga SMS eslatma yuborish"
+        title={t("rep2.smsTitle")}
       >
         <form onSubmit={handleSendSmsToStudent} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           <div style={{ background: "#F8F8F6", borderRadius: 10, padding: 12, border: "1px solid #EAE8E2" }}>
@@ -489,7 +489,7 @@ function ReportsContent() {
               borderRadius: 10,
             }}
           >
-            {sendingSms ? "Yuborilmoqda..." : "SMS yuborish"}
+            {sendingSms ? t("pay.sending") : t("rep2.sendSms")}
           </button>
         </form>
       </Modal>

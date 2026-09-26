@@ -6,6 +6,7 @@ import Select from "@/components/Select";
 import { aiApi, groupsApi, homeworkApi, Group, Homework, ApiError } from "@/lib/api";
 import { useLanguage } from "@/lib/i18n-context";
 import type { TranslationKey } from "@/lib/i18n";
+import { formatDateTime } from "@/lib/format-date";
 
 const ACCENT = "#4F46E5";
 
@@ -154,7 +155,7 @@ function AiMaterialsContent() {
       setActiveMaterial(newMaterial);
       persistHistory([newMaterial, ...history]);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Xatolik yuz berdi");
+      setError(err instanceof ApiError ? err.message : t("common.errorGeneric"));
     } finally {
       setLoading(false);
     }
@@ -175,12 +176,7 @@ function AiMaterialsContent() {
   }
 
   function formatDate(iso: string) {
-    return new Date(iso).toLocaleString(lang === "UZ" ? "uz-UZ" : lang === "RU" ? "ru-RU" : "en-US", {
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
+    return formatDateTime(iso, lang);
   }
 
   return (
@@ -198,7 +194,7 @@ function AiMaterialsContent() {
               borderRadius: 6,
             }}
           >
-            AI Assistant
+            {t("aim.assistant")}
           </span>
         </h1>
         <div style={{ fontSize: 13, color: "#8A8D96", marginTop: 2 }}>{t("aiMaterials.subtitle")}</div>
@@ -300,7 +296,7 @@ function AiMaterialsContent() {
                     required
                     value={topic}
                     onChange={(e) => setTopic(e.target.value)}
-                    placeholder="Masalan: Present Perfect vs Past Simple yoki Kvadrat tenglamalar"
+                    placeholder={t("aim.topicPh")}
                   />
                 </div>
               )}
@@ -322,14 +318,14 @@ function AiMaterialsContent() {
               {/* Teacher custom prompt / instructions */}
               <div>
                 <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>
-                  O&apos;qituvchi talabi / Tafsif (Prompt)
+                  {t("aim.prompt")}
                 </div>
                 <textarea
                   className="field-input"
                   rows={3}
                   value={customPrompt}
                   onChange={(e) => setCustomPrompt(e.target.value)}
-                  placeholder="Masalan: 10 ta test savoli bo'lsin, javoblar kaliti oxirida berilsin, darajasi murakkabroq bo'lsin..."
+                  placeholder={t("aim.promptPh")}
                   style={{ resize: "vertical" }}
                 />
               </div>
@@ -350,7 +346,7 @@ function AiMaterialsContent() {
                   cursor: "pointer",
                 }}
               >
-                {loading ? "✨ AI material yaratmoqda..." : `✨ ${t("aiMaterials.generate")}`}
+                {loading ? t("aim.generating") : `✨ ${t("aiMaterials.generate")}`}
               </button>
             </form>
 
@@ -474,7 +470,7 @@ function AiMaterialsContent() {
                       gap: 6,
                     }}
                   >
-                    {copiedId === activeMaterial.id ? "✓ Nusxalandi!" : "📋 Nusxa olish"}
+                    {copiedId === activeMaterial.id ? t("aim.copied") : t("aim.copyBtn")}
                   </button>
                 </div>
 
@@ -506,12 +502,11 @@ function AiMaterialsContent() {
               >
                 <div style={{ fontSize: 32, marginBottom: 8 }}>💡</div>
                 <div style={{ fontSize: 15, fontWeight: 700, color: "#181A1F", marginBottom: 6 }}>
-                  Hozircha material tanlanmagan
+                  {t("aim.noneSelected")}
                 </div>
                 <div style={{ fontSize: 13, maxWidth: 360, margin: "0 auto", lineHeight: 1.5 }}>
-                  Chap tarafdagi formani to&apos;ldirib <strong>&quot;Yaratish&quot;</strong> tugmasini bosing yoki quyidagi
-                  avvalgi yaratilgan materiallar ro&apos;yxatidan birini tanlang.
-                </div>
+                  {t("aim.noneHint")}
+                                  </div>
               </div>
             )}
 
@@ -534,27 +529,27 @@ function AiMaterialsContent() {
                 }}
               >
                 <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 800, fontSize: 15, color: "#181A1F" }}>
-                  Avval yaratilgan AI materiallar ({history.length})
+                  {t("aim.history")} ({history.length})
                 </div>
                 {history.length > 0 && (
                   <button
                     type="button"
                     onClick={() => {
-                      if (confirm("Barcha avvalgi materiallar tarixini o'chirmoqchimisiz?")) {
+                      if (confirm(t("aim.confirmClear"))) {
                         persistHistory([]);
                         setActiveMaterial(null);
                       }
                     }}
                     style={{ background: "none", border: "none", color: "#B23A47", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
                   >
-                    Tarixni tozalash
+                    {t("aim.clearHistory")}
                   </button>
                 )}
               </div>
 
               {history.length === 0 ? (
                 <div style={{ fontSize: 13, color: "#8A8D96", textAlign: "center", padding: "16px 0" }}>
-                  Tarix bo&apos;sh. Generatsiya qilingan materiallar avtomatik shu yerda saqlanib boriladi.
+                  {t("aim.emptyHistory")}
                 </div>
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -627,7 +622,7 @@ function AiMaterialsContent() {
                           <button
                             type="button"
                             onClick={() => copyToClipboard(h.content, h.id)}
-                            title="Nusxa olish"
+                            title={t("aim.copy")}
                             style={{
                               background: copiedId === h.id ? "#EBF8F2" : "#fff",
                               color: copiedId === h.id ? "#1FA463" : "#4A4E58",
@@ -644,7 +639,7 @@ function AiMaterialsContent() {
                           <button
                             type="button"
                             onClick={() => deleteHistoryItem(h.id)}
-                            title="O'chirish"
+                            title={t("common.delete")}
                             style={{
                               background: "#fff",
                               color: "#B23A47",

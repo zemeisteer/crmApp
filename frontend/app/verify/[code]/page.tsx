@@ -3,8 +3,11 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { certificatesApi, PublicCertificate } from "@/lib/api";
+import { formatDate } from "@/lib/format-date";
+import { useLanguage } from "@/lib/i18n-context";
 
 export default function VerifyCertificatePage() {
+  const { t, lang } = useLanguage();
   const params = useParams();
   const code = (params?.code as string) || "";
   const [loading, setLoading] = useState(true);
@@ -16,7 +19,7 @@ export default function VerifyCertificatePage() {
     certificatesApi
       .verifyPublic(code)
       .then((data) => setCert(data))
-      .catch(() => setCert({ valid: false, message: "Server bilan bog'lanishda xatolik yuz berdi" }))
+      .catch(() => setCert({ valid: false, message: t("ver.serverError") }))
       .finally(() => setLoading(false));
   }, [code]);
 
@@ -33,20 +36,20 @@ export default function VerifyCertificatePage() {
         <div className="text-center mb-8">
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-900 border border-slate-800 text-xs font-semibold text-indigo-400 mb-3">
             <span className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
-            CRMAPP Rasmiy Tekshiruv Portali
+            {t("ver.portal")}
           </div>
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
-            Elektron Sertifikatni Tekshirish
+            {t("ver.title")}
           </h1>
           <p className="text-sm text-slate-400 mt-1">
-            Yagona davlat va xalqaro standartlarga mos raqamli tekshiruv tizimi
+            {t("ver.subtitle")}
           </p>
         </div>
 
         {loading ? (
           <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-800/80 rounded-2xl p-12 text-center shadow-2xl">
             <div className="w-12 h-12 border-4 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin mx-auto mb-4" />
-            <p className="text-slate-300 font-medium">Sertifikat ma'lumotlari tekshirilmoqda...</p>
+            <p className="text-slate-300 font-medium">{t("ver.checking")}</p>
             <p className="text-xs text-slate-500 mt-1 font-mono">{code}</p>
           </div>
         ) : !cert?.valid ? (
@@ -58,9 +61,9 @@ export default function VerifyCertificatePage() {
                 <line x1="9" y1="9" x2="15" y2="15" />
               </svg>
             </div>
-            <h2 className="text-xl font-bold text-white mb-2">Sertifikat Topilmadi</h2>
+            <h2 className="text-xl font-bold text-white mb-2">{t("ver.notFound")}</h2>
             <p className="text-slate-400 text-sm max-w-md mx-auto mb-6">
-              {cert?.message || "Ushbu kodga mos sertifikat mavjud emas yoki amal qilish muddati bekor qilingan."}
+              {cert?.message || t("ver.notFoundBody")}
             </p>
             <div className="inline-block bg-slate-950/60 border border-slate-800 rounded-lg px-4 py-2 text-xs font-mono text-slate-400">
               Kiritilgan kod: <span className="text-red-400 font-bold">{code}</span>
@@ -85,20 +88,20 @@ export default function VerifyCertificatePage() {
                 <div>
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-bold uppercase tracking-wider text-emerald-400">
-                      Haqiqiy va Tasdiqlangan
+                      {t("ver.valid")}
                     </span>
                     <span className="text-[10px] bg-emerald-500/20 text-emerald-300 font-semibold px-2 py-0.5 rounded-full">
                       VERIFIED
                     </span>
                   </div>
                   <h2 className="text-base font-semibold text-white">
-                    {cert.organizationName || "Ta'lim Markazi"}
+                    {cert.organizationName || t("ver.center")}
                   </h2>
                 </div>
               </div>
 
               <div className="text-left sm:text-right">
-                <span className="text-xs text-slate-400 block">Sertifikat kodi:</span>
+                <span className="text-xs text-slate-400 block">{t("ver.code")}</span>
                 <span className="text-sm font-mono font-bold text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2.5 py-1 rounded-md inline-block mt-0.5">
                   {cert.code}
                 </span>
@@ -108,7 +111,7 @@ export default function VerifyCertificatePage() {
             {/* Certificate Core Information */}
             <div className="py-8 sm:py-10 text-center">
               <span className="text-xs uppercase tracking-widest text-slate-400 font-medium">
-                Ushbu sertifikat tasdiqlaydi:
+                {t("ver.certifies")}
               </span>
               <h3 className="text-3xl sm:text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-white to-amber-100 mt-2 mb-4 tracking-tight">
                 {cert.studentName}
@@ -116,13 +119,13 @@ export default function VerifyCertificatePage() {
 
               <div className="max-w-xl mx-auto">
                 <p className="text-slate-300 text-base leading-relaxed">
-                  quyidagi o'quv dasturini muvaffaqiyatli tamomlaganligi uchun taqdim etiladi:
+                  {t("ver.completed")}
                 </p>
                 <div className="mt-3 p-4 rounded-xl bg-slate-950/60 border border-slate-800">
                   <div className="text-lg font-bold text-white">{cert.title}</div>
                   {cert.courseName && (
                     <div className="text-xs text-indigo-400 mt-1 font-medium">
-                      Guruh / Kurs: {cert.courseName} {cert.subject ? `(${cert.subject})` : ""}
+                      {t("ver.course")}: {cert.courseName} {cert.subject ? `(${cert.subject})` : ""}
                     </div>
                   )}
                 </div>
@@ -130,7 +133,7 @@ export default function VerifyCertificatePage() {
 
               {cert.grade && (
                 <div className="mt-6 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-500/10 border border-indigo-500/30">
-                  <span className="text-xs text-slate-300">O'zlashtirish bahosi:</span>
+                  <span className="text-xs text-slate-300">{t("ver.grade")}</span>
                   <span className="text-sm font-extrabold text-indigo-300">{cert.grade}</span>
                 </div>
               )}
@@ -145,22 +148,18 @@ export default function VerifyCertificatePage() {
             {/* Certificate Footer / Signatories */}
             <div className="pt-6 border-t border-slate-800 flex flex-col sm:flex-row justify-between items-center gap-4 text-xs text-slate-400">
               <div className="text-center sm:text-left">
-                <span className="text-slate-500 block">Berilgan sana:</span>
+                <span className="text-slate-500 block">{t("ver.issued")}</span>
                 <span className="font-medium text-slate-200">
                   {cert.issueDate
-                    ? new Date(cert.issueDate).toLocaleDateString("uz-UZ", {
-                        year: "numeric",
-                        month: "long",
-                        day: "numeric",
-                      })
+                    ? formatDate(cert.issueDate, lang, "long")
                     : "—"}
                 </span>
               </div>
 
               <div className="text-center sm:text-right">
-                <span className="text-slate-500 block">Tasdiqlovchi shaxs:</span>
+                <span className="text-slate-500 block">{t("ver.signer")}</span>
                 <span className="font-semibold text-slate-200">
-                  {cert.signatoryName || "O'quv bo'limi"}
+                  {cert.signatoryName || t("cert.signerPh")}
                 </span>
                 {cert.signatoryTitle && (
                   <span className="text-slate-400 block text-[11px]">{cert.signatoryTitle}</span>
@@ -179,7 +178,7 @@ export default function VerifyCertificatePage() {
                   <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
                   <rect x="6" y="14" width="12" height="8" />
                 </svg>
-                Sertifikatni Chop Etish (Print)
+                {t("ver.print")}
               </button>
 
               <button
@@ -193,7 +192,7 @@ export default function VerifyCertificatePage() {
                   <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
                   <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
                 </svg>
-                Havolani Nusxalash
+                {t("ver.copyLink")}
               </button>
             </div>
           </div>
@@ -201,7 +200,7 @@ export default function VerifyCertificatePage() {
 
         {/* Footer info */}
         <div className="text-center mt-6 text-xs text-slate-500">
-          CRMAPP Digital Credentials Engine • Barcha huquqlar himoyalangan
+          {t("ver.footer")}
         </div>
       </div>
     </div>
