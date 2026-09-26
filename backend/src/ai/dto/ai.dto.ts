@@ -1,4 +1,4 @@
-import { IsIn, IsOptional, IsString } from 'class-validator';
+import { IsIn, IsOptional, IsString, MaxLength } from 'class-validator';
 
 export class GroupInsightsDto {
   @IsString()
@@ -40,5 +40,11 @@ export class SuggestHomeworkDto {
   @IsOptional()
   @IsString()
   topic?: string;
+
+  // What the teacher described they need, in their own words.
+  @IsOptional()
+  @IsString()
+  @MaxLength(1000)
+  request?: string;
 }
 

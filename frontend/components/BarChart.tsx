@@ -52,10 +52,11 @@ export default function BarChart({
   const activeIdx = selectedIdx !== null ? selectedIdx : currentIdx;
   const selectedItem = activeIdx !== null && activeIdx >= 0 && activeIdx < data.length ? data[activeIdx] : null;
   const isCustomSelected = selectedIdx !== null && selectedIdx !== currentIdx;
+  const isEmpty = data.length === 0 || (!!emptyText && data.every((d) => d.value === 0));
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 6, width: "100%" }}>
-      {selectedItem && (
+      {selectedItem && !isEmpty && (
         <div style={{ display: "flex", justifyContent: "flex-end", minHeight: 28 }}>
           <div
             style={{
@@ -103,7 +104,7 @@ export default function BarChart({
         </div>
       )}
       <div style={{ display: "flex", alignItems: "flex-end", gap: 10, height, width: "100%", overflowX: "auto", position: "relative", paddingBottom: 4 }}>
-        {data.length === 0 || (emptyText && data.every((d) => d.value === 0)) ? (
+        {isEmpty ? (
           <div style={{ color: "#8A8D96", fontSize: 13, margin: "auto", textAlign: "center", maxWidth: 320 }}>{emptyText ?? t("chart.noData")}</div>
         ) : (
           data.map((d, i) => {

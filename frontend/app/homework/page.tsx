@@ -8,7 +8,7 @@ import BarChart from "@/components/BarChart";
 import Pagination, { usePagedSlice } from "@/components/Pagination";
 import Select from "@/components/Select";
 import DatePicker from "@/components/DatePicker";
-import { homeworkApi, groupsApi, aiApi, Homework, Group, ApiError, fileUrl } from "@/lib/api";
+import { homeworkApi, groupsApi, aiApi, Homework, Group, ApiError, fileUrl, type LeaderboardEntry } from "@/lib/api";
 import { useLanguage } from "@/lib/i18n-context";
 import { matchesSubject, extractUniqueSubjects } from "@/lib/subject";
 
@@ -205,115 +205,117 @@ function RosterModal({ homeworkItem, onClose }: { homeworkItem: Homework; onClos
   );
 }
 
+type LeaderSort = "total" | "homework" | "exam";
+
+// Ranking of students by homework + exam points, with filters so a big
+// center can find a student quickly: group, name search, what to rank by
+// and how many to show.
 function LeaderboardModal({
-  groupId,
-  groupName,
+  groups,
+  initialGroupId,
   onClose,
 }: {
-  groupId?: string;
-  groupName?: string;
+  groups: Group[];
+  initialGroupId?: string;
   onClose: () => void;
 }) {
-  const [list, setList] = useState<any[]>([]);
+  const { t } = useLanguage();
+  const [groupId, setGroupId] = useState(initialGroupId ?? "");
+  const [list, setList] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [q, setQ] = useState("");
+  const [sortBy, setSortBy] = useState<LeaderSort>("total");
+  const [limit, setLimit] = useState("20");
 
   useEffect(() => {
+    let cancelled = false;
     homeworkApi
-      .leaderboard(groupId)
-      .then(setList)
-      .finally(() => setLoading(false));
+      .leaderboard(groupId || undefined)
+      .then((rows) => { if (!cancelled) setList(rows); })
+      .catch(() => { if (!cancelled) setList([]); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
   }, [groupId]);
 
-  return (
-    <Modal
-      open
-      onClose={onClose}
-      title={`🏆 Reyting (Leaderboard) — ${groupName || "O'quv markazi"}`}
-    >
-      {loading ? (
-        <div style={{ color: "#8A8D96", fontSize: 13.5 }}>Yuklanmoqda...</div>
-      ) : list.length === 0 ? (
-        <div style={{ color: "#8A8D96", fontSize: 13.5 }}>Reyting ma'lumotlari mavjud emas.</div>
-      ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {list.map((item) => (
-            <div
-              key={item.studentId}
-              style={{
-                background:
-                  item.rank === 1
-                    ? "#FEF9C3"
-                    : item.rank === 2
-                      ? "#F1F5F9"
-                      : item.rank === 3
-                        ? "#FFEDD5"
-                        : "#fff",
-                border: `1px solid ${
-                  item.rank === 1
-                    ? "#FDE047"
-                    : item.rank === 2
-                      ? "#CBD5E1"
-                      : item.rank === 3
-                        ? "#FDBA74"
-                        : "#E2E8F0"
-                }`,
-                borderRadius: 14,
-                padding: "12px 16px",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-              }}
-            >
-              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                <div
-                  style={{
-                    width: 32,
-                    height: 32,
-                    borderRadius: 999,
-                    background:
-                      item.rank === 1
-                        ? "#EAB308"
-                        : item.rank === 2
-                          ? "#94A3B8"
-                          : item.rank === 3
-                            ? "#F97316"
-                            : "#E2E8F0",
-                    color: item.rank <= 3 ? "#fff" : "#475569",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontSize: 14,
-                    fontWeight: 800,
-                  }}
-                >
-                  {item.rank === 1 ? "🥇" : item.rank === 2 ? "🥈" : item.rank === 3 ? "🥉" : item.rank}
-                </div>
-                <div>
-                  <div style={{ fontSize: 14, fontWeight: 700 }}>{item.studentName}</div>
-                  <div style={{ fontSize: 11.5, color: "#64748B" }}>
-                    Vazifalar: {item.completedHomeworkCount} ta | Imtihonlar: {item.examScore} ball
-                  </div>
-                </div>
-              </div>
+  const rows = useMemo(() => {
+    const key = (e: LeaderboardEntry) => (sortBy === "homework" ? e.homeworkScore : sortBy === "exam" ? e.examScore : e.totalScore);
+    // Rank by the chosen measure first, then filter by name so a searched
+    // student keeps their real place.
+    const ranked = [...list].sort((x, y) => key(y) - key(x)).map((e, i) => ({ ...e, place: i + 1, value: key(e) }));
+    const needle = q.trim().toLowerCase();
+    const found = needle ? ranked.filter((e) => e.studentName.toLowerCase().includes(needle)) : ranked;
+    return limit === "all" ? found : found.slice(0, Number(limit));
+  }, [list, q, sortBy, limit]);
 
-              <div style={{ textAlign: "right" }}>
-                <div style={{ fontSize: 18, fontWeight: 900, color: ACCENT }}>
-                  {item.totalScore} ball
-                </div>
-                {item.badge === "GOLD" && (
-                  <span style={{ fontSize: 10.5, fontWeight: 800, color: "#A16207" }}>TOP 1</span>
-                )}
-                {item.badge === "SILVER" && (
-                  <span style={{ fontSize: 10.5, fontWeight: 800, color: "#475569" }}>TOP 2</span>
-                )}
-                {item.badge === "BRONZE" && (
-                  <span style={{ fontSize: 10.5, fontWeight: 800, color: "#C2410C" }}>TOP 3</span>
-                )}
-              </div>
-            </div>
-          ))}
+  const medal = (place: number) => (place === 1 ? "🥇" : place === 2 ? "🥈" : place === 3 ? "🥉" : String(place));
+  const tint = (place: number) => (place === 1 ? "#FEF9C3" : place === 2 ? "#F1F5F9" : place === 3 ? "#FFEDD5" : "#fff");
+
+  return (
+    <Modal open onClose={onClose} title={`🏆 ${t("leader.title")}`} width={720}>
+      <div style={{ display: "grid", gridTemplateColumns: "1.3fr 1fr 1fr 0.8fr", gap: 8, marginBottom: 14 }}>
+        <input className="field-input" placeholder={t("leader.search")} value={q} onChange={(e) => setQ(e.target.value)} />
+        <Select
+          value={groupId}
+          onChange={(v) => { setLoading(true); setGroupId(v); }}
+          options={[{ value: "", label: t("leader.allGroups") }, ...groups.map((g) => ({ value: g.id, label: g.name }))]}
+        />
+        <Select
+          value={sortBy}
+          onChange={(v) => setSortBy(v as LeaderSort)}
+          options={[
+            { value: "total", label: t("leader.byTotal") },
+            { value: "homework", label: t("leader.byHomework") },
+            { value: "exam", label: t("leader.byExam") },
+          ]}
+        />
+        <Select
+          value={limit}
+          onChange={setLimit}
+          options={[
+            { value: "10", label: "Top 10" },
+            { value: "20", label: "Top 20" },
+            { value: "50", label: "Top 50" },
+            { value: "all", label: t("leader.all") },
+          ]}
+        />
+      </div>
+
+      {loading ? (
+        <div style={{ color: "#8A8D96", fontSize: 13.5 }}>{t("common.loading")}</div>
+      ) : rows.length === 0 ? (
+        <div style={{ color: "#8A8D96", fontSize: 13.5 }}>{q ? t("leader.notFound") : t("leader.empty")}</div>
+      ) : (
+        <div style={{ maxHeight: 460, overflowY: "auto", border: "1px solid #EAE8E2", borderRadius: 12 }}>
+          <table className="table" style={{ margin: 0 }}>
+            <thead style={{ position: "sticky", top: 0, background: "#fff", zIndex: 1 }}>
+              <tr>
+                <th style={{ width: 56 }}>#</th>
+                <th>{t("leader.student")}</th>
+                <th style={{ textAlign: "right" }}>{t("leader.homework")}</th>
+                <th style={{ textAlign: "right" }}>{t("leader.exams")}</th>
+                <th style={{ textAlign: "right" }}>{t("leader.total")}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((e) => (
+                <tr key={e.studentId} style={{ background: tint(e.place) }}>
+                  <td style={{ fontWeight: 800, fontSize: e.place <= 3 ? 16 : 13 }}>{medal(e.place)}</td>
+                  <td style={{ fontWeight: 600 }}>{e.studentName}</td>
+                  <td style={{ textAlign: "right" }}>
+                    {e.homeworkScore}
+                    <span style={{ color: "#A0A3AB", fontSize: 11 }}> · {e.completedHomeworkCount} {t("leader.tasks")}</span>
+                  </td>
+                  <td style={{ textAlign: "right" }}>{e.examScore}</td>
+                  <td style={{ textAlign: "right", fontWeight: 800, color: sortBy === "total" ? ACCENT : "#181A1F" }}>{e.totalScore}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
+      <div style={{ marginTop: 10, fontSize: 12, color: "#8A8D96" }}>
+        {t("leader.shown")}: {rows.length} / {list.length}
+      </div>
     </Modal>
   );
 }
@@ -345,6 +347,8 @@ function HomeworkContent() {
 
   const [aiSuggesting, setAiSuggesting] = useState(false);
   const [aiSuggestion, setAiSuggestion] = useState<{ title: string; description: string; dueDate?: string } | null>(null);
+  const [aiPromptOpen, setAiPromptOpen] = useState(false);
+  const [aiRequest, setAiRequest] = useState("");
 
   const [filterDirection, setFilterDirection] = useState("");
   const [filterGroupId, setFilterGroupId] = useState("");
@@ -377,10 +381,16 @@ function HomeworkContent() {
     setFile(null);
     setAiSuggestion(null);
     setAiSuggesting(false);
+    setAiPromptOpen(false);
+    setAiRequest("");
     setError(null);
   }
 
   async function onGetAiSuggestion() {
+    if (!aiRequest.trim()) {
+      setError(t("hwAi.describeFirst"));
+      return;
+    }
     setAiSuggesting(true);
     setError(null);
     try {
@@ -390,6 +400,7 @@ function HomeworkContent() {
         subject: effectiveSubject,
         groupName: selectedGroup?.name,
         topic: title || undefined,
+        request: aiRequest.trim(),
       });
 
       let calculatedDue = dueDate;
@@ -405,7 +416,7 @@ function HomeworkContent() {
         dueDate: calculatedDue,
       });
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "AI tavsiya olishda xatolik yuz berdi");
+      setError(err instanceof ApiError ? err.message : t("hwAi.error"));
     } finally {
       setAiSuggesting(false);
     }
@@ -695,6 +706,41 @@ function HomeworkContent() {
             <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>{t("homework.fieldAttachment")}</div>
             <input className="field-input" type="file" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
           </div>
+          {aiPromptOpen && (
+            <div style={{ border: "1px solid #DDD6FE", background: "#F5F3FF", borderRadius: 12, padding: 14, display: "flex", flexDirection: "column", gap: 10 }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <div style={{ fontSize: 13.5, fontWeight: 700, color: "#5B21B6" }}>✨ {t("hwAi.title")}</div>
+                <button type="button" onClick={() => setAiPromptOpen(false)} style={{ background: "none", border: "none", cursor: "pointer", color: "#7C3AED", fontSize: 14, fontWeight: 800 }} aria-label={t("common.cancel")}>✕</button>
+              </div>
+              <textarea
+                className="field-input"
+                rows={3}
+                autoFocus
+                maxLength={1000}
+                value={aiRequest}
+                onChange={(e) => setAiRequest(e.target.value)}
+                placeholder={t("hwAi.placeholder")}
+                style={{ resize: "vertical", background: "#fff" }}
+              />
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                {(["hwAi.example1", "hwAi.example2", "hwAi.example3"] as const).map((k) => (
+                  <button key={k} type="button" onClick={() => setAiRequest(t(k))} style={{ fontSize: 11.5, fontWeight: 600, padding: "5px 10px", borderRadius: 999, border: "1px solid #DDD6FE", background: "#fff", color: "#6D28D9", cursor: "pointer" }}>
+                    {t(k)}
+                  </button>
+                ))}
+              </div>
+              <button
+                type="button"
+                className="btn"
+                onClick={onGetAiSuggestion}
+                disabled={aiSuggesting || !aiRequest.trim()}
+                style={{ alignSelf: "flex-end", background: "linear-gradient(135deg, #7C3AED, #4F46E5)", color: "#fff", border: "none", fontSize: 13, fontWeight: 700, padding: "9px 16px", borderRadius: 9, opacity: aiRequest.trim() ? 1 : 0.6 }}
+              >
+                {aiSuggesting ? t("hwAi.loading") : t("hwAi.get")}
+              </button>
+            </div>
+          )}
+
           {aiSuggestion && (
             <div
               style={{
@@ -733,7 +779,7 @@ function HomeworkContent() {
                   onClick={applyAiSuggestion}
                   style={{ background: ACCENT, color: "#fff", border: "none", fontSize: 12, fontWeight: 700, padding: "8px 14px", borderRadius: 8 }}
                 >
-                  ✅ Ushbu tavsiyani to&apos;ldirish
+                  ✅ {t("hwAi.apply")}
                 </button>
                 <button
                   type="button"
@@ -742,7 +788,7 @@ function HomeworkContent() {
                   disabled={aiSuggesting}
                   style={{ background: "#fff", color: ACCENT, border: `1px solid ${ACCENT}`, fontSize: 12, fontWeight: 700, padding: "8px 14px", borderRadius: 8 }}
                 >
-                  🔄 Boshqa tavsiya
+                  🔄 {t("hwAi.another")}
                 </button>
               </div>
             </div>
@@ -752,7 +798,7 @@ function HomeworkContent() {
             <button
               className="btn"
               type="button"
-              onClick={onGetAiSuggestion}
+              onClick={() => setAiPromptOpen((v) => !v)}
               disabled={aiSuggesting || saving}
               style={{
                 background: "linear-gradient(135deg, #7C3AED, #4F46E5)",
@@ -771,7 +817,7 @@ function HomeworkContent() {
               }}
             >
               <span>✨</span>
-              <span>{aiSuggesting ? "Olinmoqda..." : "AI Suggestions"}</span>
+              <span>{t("hwAi.button")}</span>
             </button>
             <button
               className="btn"
@@ -798,8 +844,8 @@ function HomeworkContent() {
 
       {leaderboardOpen && (
         <LeaderboardModal
-          groupId={filterGroupId || undefined}
-          groupName={groups.find((g) => g.id === filterGroupId)?.name}
+          groups={groups}
+          initialGroupId={filterGroupId || undefined}
           onClose={() => setLeaderboardOpen(false)}
         />
       )}

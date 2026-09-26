@@ -454,7 +454,7 @@ function GroupsContent() {
             disabled={saving}
             style={{ background: ACCENT, color: "#fff", fontSize: 14, fontWeight: 700, padding: 12, borderRadius: 10, marginTop: 6 }}
           >
-            {saving ? t("groups.creating") : t("groups.createGroup")}
+            {saving ? t(editingId ? "common.saving" : "groups.creating") : t(editingId ? "common.save" : "groups.createGroup")}
           </button>
         </form>
       </Modal>

@@ -1382,7 +1382,7 @@ export const aiApi = {
     request<{ insight: string }>("/ai/insights", { method: "POST", body: JSON.stringify({ groupId }) }),
   generateMaterial: (data: { subject: string; level?: string; topic: string; type: string; customInstructions?: string }) =>
     request<{ material: string }>("/ai/materials", { method: "POST", body: JSON.stringify(data) }),
-  suggestHomework: (data: { subject?: string; groupName?: string; topic?: string }) =>
+  suggestHomework: (data: { subject?: string; groupName?: string; topic?: string; level?: string; request?: string }) =>
     request<{ title: string; description: string; dueDays?: number }>("/ai/suggest-homework", {
       method: "POST",
       body: JSON.stringify(data),

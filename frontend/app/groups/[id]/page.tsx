@@ -7,6 +7,7 @@ import DashboardShell from "@/components/DashboardShell";
 import Modal from "@/components/Modal";
 import Select from "@/components/Select";
 import DatePicker from "@/components/DatePicker";
+import GroupExamResults from "@/components/groups/GroupExamResults";
 import { groupsApi, studentsApi, paymentsApi, attendanceApi, Group, Student, Gender, Payment, AttendanceRecord, AttendanceStatus, ApiError } from "@/lib/api";
 import { PHONE_PATTERN, PHONE_TITLE, NAME_PATTERN, NAME_TITLE } from "@/lib/validation";
 import { localDateStr, localMonthStr } from "@/lib/date";
@@ -427,6 +428,8 @@ function GroupDetailContent() {
             </table>
           )}
         </div>
+
+        <GroupExamResults groupId={id} students={(group.enrollments ?? []).map((e) => e.student)} />
       </div>
 
       <Modal

@@ -155,10 +155,11 @@ ${dto.customInstructions ? `O'qituvchi eslatmasi: ${dto.customInstructions}\n` :
 - Keyingi mavzu bo'yicha qisqa tayyorgarlik ko'rish.`;
   }
 
-  async suggestHomework(dto: { subject?: string; groupName?: string; topic?: string }) {
+  async suggestHomework(dto: { subject?: string; groupName?: string; topic?: string; level?: string; request?: string }) {
     const subject = dto.subject || 'Ingliz tili';
     const groupName = dto.groupName || '';
     const topic = dto.topic || '';
+    const request = dto.request?.trim() || '';
 
     try {
       const apiKey = this.config.get<string>('ANTHROPIC_API_KEY');
@@ -169,6 +170,9 @@ Quyidagi guruh va fan uchun aniq, qiziqarli va professional uyga vazifa (homewor
 Fan: ${subject}
 Guruh nomi: ${groupName || "umumiy"}
 Mavzu (agar ko'rsatilgan bo'lsa): ${topic || "navbatdagi mavzu"}
+Daraja: ${dto.level || "ko'rsatilmagan"}
+O'qituvchining talabi (eng muhimi, aynan shunga mos vazifa tuz): ${request || "yo'q"}
+Vazifa matni o'qituvchi talabidagi tilda bo'lsin.
 
 Javobni FAQAT quyidagi JSON formatida ber (boshqa hech qanday so'z qo'shma):
 {
@@ -194,6 +198,15 @@ Javobni FAQAT quyidagi JSON formatida ber (boshqa hech qanday so'z qo'shma):
       }
     } catch {
       // Fallback
+    }
+
+    // Without an AI key: still honour the teacher's own description.
+    if (request) {
+      return {
+        title: topic || request.split(/[.!?\n]/)[0].slice(0, 80),
+        description: `1. ${request}\n2. Bajarilgan ishni daftarga toza yozib, keyingi darsga olib keling.\n3. Tushunmagan joylaringizni belgilab, savol sifatida yozib keling.`,
+        dueDays: 3,
+      };
     }
 
     const isEnglish = /ingliz|ielts|cefr|english/i.test(`${subject} ${groupName} ${topic}`);
