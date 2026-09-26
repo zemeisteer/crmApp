@@ -238,6 +238,8 @@ export class ScheduleService {
     });
 
     return all.filter((s) => {
+      // Lessons of deleted groups stay stored (for restore) but are hidden.
+      if (s.group?.deletedAt) return false;
       if (filters?.branchId && s.branchId !== filters.branchId) return false;
       if (filters?.groupId && s.groupId !== filters.groupId) return false;
       if (filters?.teacherId && s.teacherId !== filters.teacherId) return false;

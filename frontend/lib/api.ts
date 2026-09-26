@@ -223,6 +223,7 @@ export interface PublicShowcaseGroup {
   schedule?: string | null;
   scheduleDays?: string | null;
   startTime?: string | null;
+  endTime?: string | null;
   monthlyPrice: number;
   teacherName?: string | null;
   branchName?: string | null;
@@ -368,6 +369,7 @@ export interface Group {
   schedule: string | null;
   scheduleDays: string | null;
   startTime: string | null;
+  endTime?: string | null;
   monthlyPrice: number;
   description: string | null;
   durationMonths: number | null;
@@ -1062,11 +1064,12 @@ export const groupsApi = {
     request<Group>(`/groups/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
   remove: (id: string) => request<void>(`/groups/${id}`, { method: "DELETE" }),
   restore: (id: string) => request<Group>(`/groups/${id}/restore`, { method: "POST" }),
-  scheduleConflicts: (params: { teacherId: string; days: string; startTime: string; excludeId?: string }) => {
+  scheduleConflicts: (params: { teacherId: string; days: string; startTime: string; endTime?: string; excludeId?: string }) => {
     const qs = new URLSearchParams({
       teacherId: params.teacherId,
       days: params.days,
       startTime: params.startTime,
+      ...(params.endTime ? { endTime: params.endTime } : {}),
       ...(params.excludeId ? { excludeId: params.excludeId } : {}),
     });
     return request<{ id: string; name: string; scheduleDays: string | null; startTime: string | null }[]>(

@@ -84,4 +84,36 @@ describe('Group capacity & schedule day alignment (e2e)', () => {
       .expect(409);
     expect(clash.body.conflicts.some((c: { type: string }) => c.type === 'TEACHER')).toBe(true);
   });
+
+  it('builds weekly timetable lessons from the group form and refuses teacher clashes', async () => {
+    const teacher = (await http().post('/api/teachers').set(auth()).send({ fullName: 'Clash Teacher' }).expect(201)).body.id as string;
+    const lessons = async (groupId: string) =>
+      ((await http().get(`/api/schedule?groupId=${groupId}`).set(auth()).expect(200)).body as Array<{ dayOfWeek: number; startTime: string; endTime: string }>)
+        .map((l) => `${l.dayOfWeek} ${l.startTime}-${l.endTime}`).sort();
+
+    const a = (await http().post('/api/groups').set(auth())
+      .send({ name: 'Weekly A', subject: 'Math', teacherId: teacher, scheduleDays: 'Dushanba,Chorshanba', startTime: '16:00' })
+      .expect(201)).body.id as string;
+    expect(await lessons(a)).toEqual(['1 16:00-17:30', '3 16:00-17:30']);
+
+    // Same teacher, Monday 17:00 overlaps 16:00-17:30.
+    const clash = await http().post('/api/groups').set(auth())
+      .send({ name: 'Weekly B', subject: 'Math', teacherId: teacher, scheduleDays: 'Dushanba', startTime: '17:00' })
+      .expect(409);
+    expect(clash.body.code).toBe('TEACHER_SCHEDULE_CONFLICT');
+    const b = (await http().post('/api/groups').set(auth())
+      .send({ name: 'Weekly B', subject: 'Math', teacherId: teacher, scheduleDays: 'Dushanba', startTime: '17:30', endTime: '19:00' })
+      .expect(201)).body.id as string;
+    expect(await lessons(b)).toEqual(['1 17:30-19:00']);
+
+    // Editing the days rebuilds the rows; renaming alone does not re-check.
+    await http().patch(`/api/groups/${a}`).set(auth()).send({ scheduleDays: 'Seshanba,Payshanba' }).expect(200);
+    expect(await lessons(a)).toEqual(['2 16:00-17:30', '4 16:00-17:30']);
+    await http().patch(`/api/groups/${a}`).set(auth()).send({ name: 'Weekly A2' }).expect(200);
+    await http().patch(`/api/groups/${a}`).set(auth()).send({ startTime: '18:00', endTime: '17:00' }).expect(400);
+
+    // Deleted groups disappear from the timetable.
+    await http().delete(`/api/groups/${b}`).set(auth()).expect(200);
+    expect(await lessons(b)).toEqual([]);
+  });
 });

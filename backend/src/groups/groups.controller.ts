@@ -48,8 +48,9 @@ export class GroupsController {
     @Query('days') days: string,
     @Query('startTime') startTime: string,
     @Query('excludeId') excludeId?: string,
+    @Query('endTime') endTime?: string,
   ) {
-    return this.service.findScheduleConflicts(tenantId, teacherId, days ?? '', startTime ?? '', excludeId);
+    return this.service.findScheduleConflicts(tenantId, teacherId, days ?? '', startTime ?? '', excludeId, endTime);
   }
 
   @Get(':id')

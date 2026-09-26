@@ -378,6 +378,9 @@ export const groups = pgTable('groups', {
   schedule: text('schedule'),
   scheduleDays: text('schedule_days'), // comma-separated: "MON,WED,FRI"
   startTime: text('start_time'), // "16:00"
+  // Lesson end, "17:30". Weekly timetable rows are generated from
+  // scheduleDays + startTime/endTime (see GroupsService.syncWeeklyLessons).
+  endTime: text('end_time'),
   monthlyPrice: integer('monthly_price').notNull().default(0),
   description: text('description'),
   durationMonths: integer('duration_months'),

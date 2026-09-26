@@ -6,6 +6,7 @@ import { PaymentsService } from '../payments/payments.service';
 import { LeadsService } from '../leads/leads.service';
 import { DEFAULT_TIMEZONE, zonedParts, zonedTimeToUtc } from '../common/timezone';
 import { seatHeldWhere } from '../common/seats';
+import { runsOn } from '../common/weekdays';
 import { studentIdsInGroups, teacherGroupIds } from '../common/teacher-scope';
 
 // Who sees which part of the overview. Finance mirrors the payments/expenses
@@ -17,16 +18,6 @@ export interface ReportViewer {
 const FINANCE_ROLES = ['SUPERADMIN', 'OWNER', 'ADMIN', 'MANAGER', 'ACCOUNTANT'];
 // Same audience as the payments read endpoints.
 const PAYMENT_READ_ROLES = ['SUPERADMIN', 'OWNER', 'ADMIN', 'MANAGER', 'ACCOUNTANT', 'RECEPTIONIST'];
-// groups.scheduleDays holds Uzbek day names (the UI writes them); English
-// codes are accepted too. Index = ISO weekday - 1.
-const WEEKDAY_NAMES = [
-  ['dushanba', 'mon'], ['seshanba', 'tue'], ['chorshanba', 'wed'], ['payshanba', 'thu'],
-  ['juma', 'fri'], ['shanba', 'sat'], ['yakshanba', 'sun'],
-];
-function runsOn(scheduleDays: string | null, isoWeekday: number) {
-  const names = WEEKDAY_NAMES[isoWeekday - 1];
-  return (scheduleDays ?? '').split(',').map((d) => d.trim().toLowerCase()).some((d) => names.includes(d));
-}
 function ymd(p: { year: number; month: number; day: number }) {
   return `${p.year}-${String(p.month).padStart(2, '0')}-${String(p.day).padStart(2, '0')}`;
 }

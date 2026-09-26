@@ -49,6 +49,10 @@ export class CreateGroupDto {
   startTime?: string;
 
   @IsOptional()
+  @IsString()
+  endTime?: string;
+
+  @IsOptional()
   @IsInt()
   @Min(0)
   monthlyPrice?: number;
@@ -76,6 +80,7 @@ export class UpdateGroupDto {
   @IsOptional() @IsString() schedule?: string;
   @IsOptional() @IsString() scheduleDays?: string;
   @IsOptional() @IsString() startTime?: string;
+  @IsOptional() @IsString() endTime?: string;
   @IsOptional() @IsInt() @Min(0) monthlyPrice?: number;
   @IsOptional() @IsString() description?: string;
   @IsOptional() @IsInt() @Min(1) durationMonths?: number;

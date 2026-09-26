@@ -22,6 +22,13 @@ const WEEKDAY_LABEL_KEYS: TranslationKey[] = [
   "weekday.short.friday", "weekday.short.saturday", "weekday.short.sunday",
 ];
 const OTHER_SUBJECT = "__OTHER__";
+// Older groups may store English day codes; the form toggles Uzbek names.
+const DAY_CODE_TO_NAME: Record<string, string> = { MON: "Dushanba", TUE: "Seshanba", WED: "Chorshanba", THU: "Payshanba", FRI: "Juma", SAT: "Shanba", SUN: "Yakshanba" };
+function addMinutes(hhmm: string, minutes: number) {
+  const [h, m] = hhmm.split(":").map(Number);
+  const total = Math.min(23 * 60 + 59, h * 60 + m + minutes);
+  return `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
+}
 
 function GroupsContent() {
   const { tenant } = useAuth();
@@ -45,6 +52,8 @@ function GroupsContent() {
   const [branchId, setBranchId] = useState("");
   const [days, setDays] = useState<string[]>([]);
   const [startTime, setStartTime] = useState("");
+  const [endTime, setEndTime] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [startDate, setStartDate] = useState("");
   const [monthlyPrice, setMonthlyPrice] = useState("");
   const [maxStudents, setMaxStudents] = useState("");
@@ -60,12 +69,12 @@ function GroupsContent() {
     let cancelled = false;
     const timer = setTimeout(() => {
       groupsApi
-        .scheduleConflicts({ teacherId, days: days.join(","), startTime })
+        .scheduleConflicts({ teacherId, days: days.join(","), startTime, endTime: endTime || undefined, excludeId: editingId ?? undefined })
         .then((res) => { if (!cancelled) setScheduleConflicts(res); })
         .catch(() => { if (!cancelled) setScheduleConflicts([]); });
     }, 300);
     return () => { cancelled = true; clearTimeout(timer); };
-  }, [teacherId, days, startTime]);
+  }, [teacherId, days, startTime, endTime, editingId]);
 
   // Directions saved in the subjects list (also filled from group subjects).
   const [savedSubjects, setSavedSubjects] = useState<string[]>([]);
@@ -101,6 +110,8 @@ function GroupsContent() {
     setBranchId("");
     setDays([]);
     setStartTime("");
+    setEndTime("");
+    setEditingId(null);
     setStartDate("");
     setMonthlyPrice("");
     setMaxStudents("");
@@ -108,6 +119,25 @@ function GroupsContent() {
     setDescription("");
     setScheduleConflicts([]);
     setError(null);
+  }
+
+  function openEdit(g: Group) {
+    resetForm();
+    setEditingId(g.id);
+    setName(g.name);
+    setSubject(g.subject);
+    setLevel(g.level ?? "");
+    setTeacherId(g.teacherId ?? "");
+    setBranchId(g.branchId ?? "");
+    setDays((g.scheduleDays ?? "").split(",").map((d) => d.trim()).filter(Boolean).map((d) => DAY_CODE_TO_NAME[d.toUpperCase()] ?? d));
+    setStartTime(g.startTime ?? "");
+    setEndTime(g.endTime ?? "");
+    setStartDate(g.startDate ? g.startDate.slice(0, 10) : "");
+    setMonthlyPrice(g.monthlyPrice ? String(g.monthlyPrice) : "");
+    setMaxStudents(g.maxStudents ? String(g.maxStudents) : "");
+    setDurationMonths(g.durationMonths ? String(g.durationMonths) : "");
+    setDescription(g.description ?? "");
+    setModalOpen(true);
   }
 
   function toggleDay(day: string) {
@@ -119,9 +149,15 @@ function GroupsContent() {
     setError(null);
     setSaving(true);
     try {
-      const scheduleDays = days.join(",");
+      // Keep the weekdays in calendar order.
+      const scheduleDays = WEEKDAYS.filter((d) => days.includes(d)).join(",");
       const effectiveSubject = subject === OTHER_SUBJECT ? customSubject : subject;
-      await groupsApi.create({
+      if (endTime && startTime && endTime <= startTime) {
+        setError(t("groups.endBeforeStart"));
+        return;
+      }
+      const lessonEnd = startTime ? endTime || addMinutes(startTime, 90) : "";
+      const payload = {
         name,
         subject: effectiveSubject,
         level: level || undefined,
@@ -129,13 +165,30 @@ function GroupsContent() {
         branchId: branchId || undefined,
         scheduleDays: scheduleDays || undefined,
         startTime: startTime || undefined,
-        schedule: scheduleDays && startTime ? `${scheduleDays}, ${startTime}` : undefined,
+        endTime: lessonEnd || undefined,
+        schedule: scheduleDays && startTime ? `${scheduleDays}, ${startTime}-${lessonEnd}` : undefined,
         startDate: startDate || undefined,
         monthlyPrice: monthlyPrice ? Number(monthlyPrice) : undefined,
         maxStudents: maxStudents ? Number(maxStudents) : undefined,
         durationMonths: durationMonths ? Number(durationMonths) : undefined,
         description: description || undefined,
-      });
+      };
+      if (editingId) {
+        // Empty values clear the field on edit (e.g. removing lesson days).
+        await groupsApi.update(editingId, {
+          ...payload,
+          level: level || null,
+          teacherId: teacherId || null,
+          branchId: branchId || null,
+          scheduleDays: scheduleDays,
+          startTime: startTime,
+          endTime: lessonEnd,
+          schedule: payload.schedule ?? null,
+          description: description || null,
+        });
+      } else {
+        await groupsApi.create(payload);
+      }
       setModalOpen(false);
       resetForm();
       load();
@@ -268,6 +321,14 @@ function GroupsContent() {
                     <td>{g.maxStudents}</td>
 
                     <td style={{ textAlign: "right" }}>
+                      <button
+                        type="button"
+                        className="btn"
+                        onClick={() => openEdit(g)}
+                        style={{ display: "inline-block", background: "#fff", border: "1px solid #EAE8E2", color: "#181A1F", fontSize: 12, fontWeight: 700, padding: "6px 12px", borderRadius: 8, marginRight: 6, cursor: "pointer" }}
+                      >
+                        {t("common.edit")}
+                      </button>
                       <Link
                         href={`/groups/${g.id}`}
                         className="btn"
@@ -285,7 +346,7 @@ function GroupsContent() {
         )}
       </div>
 
-      <Modal open={modalOpen} onClose={() => { setModalOpen(false); resetForm(); }} title={t("groups.modalTitle")}>
+      <Modal open={modalOpen} onClose={() => { setModalOpen(false); resetForm(); }} title={editingId ? t("groups.editTitle") : t("groups.modalTitle")}>
         <form onSubmit={onSubmit} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           {error && (
             <div style={{ background: "#FDEBEC", color: "#B23A47", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: 10 }}>{error}</div>
@@ -354,9 +415,17 @@ function GroupsContent() {
               ))}
             </div>
           </Field>
-          <Field label={t("groups.fieldStartTime")}>
-            <TimePicker value={startTime} onChange={setStartTime} />
-          </Field>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+            <Field label={t("groups.fieldStartTime")}>
+              <TimePicker value={startTime} onChange={setStartTime} />
+            </Field>
+            <Field label={t("groups.fieldEndTime")}>
+              <TimePicker value={endTime} onChange={setEndTime} />
+            </Field>
+          </div>
+          {days.length > 0 && startTime && (
+            <div style={{ fontSize: 12, color: "#8A8D96", marginTop: -6 }}>{t("groups.timetableHint")}</div>
+          )}
           {scheduleConflicts.length > 0 && (
             <div style={{ background: "#FFF7E6", color: "#A15C00", fontSize: 12.5, fontWeight: 600, padding: "10px 14px", borderRadius: 10, lineHeight: 1.5 }}>
               {t("groups.scheduleConflictWarning")} {scheduleConflicts.map((c) => c.name).join(", ")}
