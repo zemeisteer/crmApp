@@ -5,6 +5,7 @@ import Link from "next/link";
 import DashboardShell from "@/components/DashboardShell";
 import Modal from "@/components/Modal";
 import MultiSelect from "@/components/MultiSelect";
+import PlacementTestModal from "@/components/students/PlacementTestModal";
 import Pagination, { usePagedSlice } from "@/components/Pagination";
 import Select from "@/components/Select";
 import DatePicker from "@/components/DatePicker";
@@ -52,9 +53,34 @@ function StudentsContent() {
   const [birthDate, setBirthDate] = useState("");
   const [direction, setDirection] = useState("");
   const [groupIds, setGroupIds] = useState<string[]>([]);
+  const [placementOpen, setPlacementOpen] = useState(false);
 
   const subjects = useMemo(() => extractUniqueSubjects(groups), [groups]);
-  const groupsInDirection = direction ? groups.filter((g) => matchesSubject(g.subject, direction)) : groups;
+  // The direction only filters the list: groups picked under another
+  // direction stay selected, so a student can join several directions.
+  const groupsInDirection = direction ? groups.filter((g) => matchesSubject(g.subject, direction) || groupIds.includes(g.id)) : groups;
+  const selectedGroups = groups.filter((g) => groupIds.includes(g.id));
+  const timeClashes = useMemo(() => {
+    const out: string[] = [];
+    const slot = (g: Group) => {
+      if (!g.startTime || !g.scheduleDays) return null;
+      const [h, m] = g.startTime.split(":").map(Number);
+      const endDefault = `${String(Math.floor((h * 60 + m + 90) / 60) % 24).padStart(2, "0")}:${String((m + 90) % 60).padStart(2, "0")}`;
+      return { days: g.scheduleDays.split(",").map((d) => d.trim().toLowerCase()), start: g.startTime, end: g.endTime || endDefault };
+    };
+    for (let i = 0; i < selectedGroups.length; i++) {
+      for (let j = i + 1; j < selectedGroups.length; j++) {
+        const a = slot(selectedGroups[i]);
+        const b = slot(selectedGroups[j]);
+        if (!a || !b) continue;
+        const sameDay = a.days.some((d) => b.days.includes(d));
+        if (sameDay && a.start < b.end && b.start < a.end) {
+          out.push(`${selectedGroups[i].name} (${a.start}-${a.end}) × ${selectedGroups[j].name} (${b.start}-${b.end})`);
+        }
+      }
+    }
+    return out;
+  }, [selectedGroups]);
   const filterGroupsInDirection = filterDirection ? groups.filter((g) => matchesSubject(g.subject, filterDirection)) : groups;
 
   function load() {
@@ -166,6 +192,14 @@ function StudentsContent() {
           <input ref={fileInputRef} type="file" accept=".xlsx" onChange={onImportFile} style={{ display: "none" }} />
           <button
             className="btn"
+            type="button"
+            onClick={() => setPlacementOpen(true)}
+            style={{ background: "#F5F3FF", color: "#6D28D9", border: "1px solid #DDD6FE", fontSize: 13.5, fontWeight: 700, padding: "10px 16px", borderRadius: 9 }}
+          >
+            🧭 {t("placement.button")}
+          </button>
+          <button
+            className="btn"
             onClick={() => setModalOpen(true)}
             style={{ background: ACCENT, color: "#fff", border: "none", fontSize: 13.5, fontWeight: 700, padding: "10px 18px", borderRadius: 9 }}
           >
@@ -256,6 +290,8 @@ function StudentsContent() {
         )}
       </div>
 
+      {placementOpen && <PlacementTestModal groups={groups} onClose={() => setPlacementOpen(false)} />}
+
       <Modal open={modalOpen} onClose={() => { setModalOpen(false); resetForm(); }} title={t("students.modalTitle")}>
         <form onSubmit={onSubmit} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           {error && (
@@ -304,22 +340,39 @@ function StudentsContent() {
             <Select
               options={[{ value: "", label: t("students.allDirections") }, ...subjects.map((s) => ({ value: s, label: s }))]}
               value={direction}
-              onChange={(v) => { setDirection(v); setGroupIds([]); }}
+              onChange={setDirection}
             />
           </Field>
           <Field label={t("students.fieldGroups")}>
             <MultiSelect
-              options={groupsInDirection.map((g) => ({ value: g.id, label: g.name }))}
+              options={groupsInDirection.map((g) => ({ value: g.id, label: `${g.name} · ${g.subject}${g.startTime ? ` · ${g.startTime}` : ""}` }))}
               selected={groupIds}
               onChange={setGroupIds}
               placeholder={t("students.selectGroups")}
             />
+            <div style={{ fontSize: 12, color: "#8A8D96", marginTop: 6 }}>{t("students.multiDirectionHint")}</div>
+            {selectedGroups.length > 0 && (
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
+                {selectedGroups.map((g) => (
+                  <span key={g.id} style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "#EEF0FF", color: ACCENT, fontSize: 12, fontWeight: 700, padding: "4px 10px", borderRadius: 999 }}>
+                    {g.name} <span style={{ fontWeight: 500, opacity: 0.8 }}>· {g.subject}</span>
+                    <button type="button" onClick={() => setGroupIds((ids) => ids.filter((id) => id !== g.id))} style={{ background: "none", border: "none", color: ACCENT, cursor: "pointer", fontWeight: 800, padding: 0 }} aria-label={t("common.clear")}>✕</button>
+                  </span>
+                ))}
+              </div>
+            )}
+            {timeClashes.length > 0 && (
+              <div role="alert" style={{ marginTop: 8, background: "#FDEBEC", color: "#B23A47", fontSize: 12.5, fontWeight: 600, padding: "8px 12px", borderRadius: 10, lineHeight: 1.5 }}>
+                {t("students.timeClash")}
+                {timeClashes.map((c) => <div key={c}>• {c}</div>)}
+              </div>
+            )}
           </Field>
           <button
             className="btn"
             type="submit"
-            disabled={saving}
-            style={{ background: ACCENT, color: "#fff", fontSize: 14, fontWeight: 700, padding: 12, borderRadius: 10, marginTop: 6 }}
+            disabled={saving || timeClashes.length > 0}
+            style={{ background: ACCENT, color: "#fff", fontSize: 14, fontWeight: 700, padding: 12, borderRadius: 10, marginTop: 6, opacity: timeClashes.length > 0 ? 0.6 : 1 }}
           >
             {saving ? t("students.adding") : t("students.addStudent")}
           </button>

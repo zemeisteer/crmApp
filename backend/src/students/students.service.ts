@@ -5,6 +5,7 @@ import { branches, enrollments, groups, organizationMemberships, studentGuardian
 import { CreateStudentDto, LinkGuardianDto, UpdateStudentDto } from './dto/student.dto';
 import { AuditService } from '../audit/audit.service';
 import { countOccupiedSeats } from '../common/seats';
+import { assertNoStudentTimeClash } from '../common/student-schedule';
 import { studentIdsInGroups, teacherGroupIds } from '../common/teacher-scope';
 import { WebhooksService } from '../webhooks/webhooks.service';
 
@@ -105,6 +106,7 @@ export class StudentsService {
         const validGroupIds = validGroups.map((g) => g.id);
         // A full group rolls back the whole create, student included.
         for (const groupId of validGroupIds) await this.lockGroupWithCapacity(tx, tenantId, groupId);
+        await assertNoStudentTimeClash(tx, tenantId, null, validGroupIds);
         if (validGroupIds.length > 0) {
           await tx
             .insert(enrollments)
@@ -198,6 +200,7 @@ export class StudentsService {
         throw new BadRequestException("O'quvchi allaqachon ushbu guruhda faol ro'yxatdan o'tgan");
       }
       await this.lockGroupWithCapacity(tx, tenantId, groupId);
+      await assertNoStudentTimeClash(tx, tenantId, studentId, [groupId]);
 
       if (existing) {
         const [reactivated] = await tx

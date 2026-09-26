@@ -116,4 +116,33 @@ describe('Group capacity & schedule day alignment (e2e)', () => {
     await http().delete(`/api/groups/${b}`).set(auth()).expect(200);
     expect(await lessons(b)).toEqual([]);
   });
+
+  it('lets a student join two directions but not two lessons at the same time', async () => {
+    const group = async (name: string, subject: string, scheduleDays: string, startTime: string) =>
+      (await http().post('/api/groups').set(auth()).send({ name, subject, scheduleDays, startTime }).expect(201)).body.id as string;
+    const math = await group('Clash Math', 'Matematika', 'Dushanba,Chorshanba', '16:00');
+    const english = await group('Clash English', 'Ingliz tili', 'Dushanba', '17:00');
+    const englishTue = await group('Clash English Tue', 'Ingliz tili', 'Seshanba', '16:00');
+
+    const clash = await mkStudent('Busy Kid', [math, english]).expect(409);
+    expect(clash.body.code).toBe('STUDENT_SCHEDULE_CONFLICT');
+
+    const kid = (await mkStudent('Two Directions', [math, englishTue]).expect(201)).body.id as string;
+    const detail = await http().get(`/api/students/${kid}`).set(auth()).expect(200);
+    expect(detail.body.enrollments.filter((e: { status: string }) => e.status === 'ACTIVE')).toHaveLength(2);
+
+    const late = await http().post(`/api/students/${kid}/enroll/${english}`).set(auth()).expect(409);
+    expect(late.body.code).toBe('STUDENT_SCHEDULE_CONFLICT');
+  });
+
+  it('builds a placement test from the built-in questions when no AI key is set', async () => {
+    const res = await http().post('/api/ai/placement-test').set(auth()).send({ subject: 'Ingliz tili', count: 9 }).expect(201);
+    expect(res.body.questions).toHaveLength(9);
+    for (const q of res.body.questions) {
+      expect(q.options).toHaveLength(4);
+      expect(q.correctIndex).toBeGreaterThanOrEqual(0);
+    }
+    expect(new Set(res.body.questions.map((q: { level: number }) => q.level))).toEqual(new Set([1, 2, 3]));
+    await http().post('/api/ai/placement-test').set(auth()).send({ subject: 'Ingliz tili', count: 100 }).expect(400);
+  });
 });

@@ -816,6 +816,13 @@ export interface Homework {
   completions?: HomeworkCompletion[];
 }
 
+export interface PlacementQuestion {
+  prompt: string;
+  options: string[];
+  correctIndex: number;
+  level: 1 | 2 | 3;
+}
+
 export interface LeaderboardEntry {
   rank: number;
   studentId: string;
@@ -1382,6 +1389,8 @@ export const aiApi = {
     request<{ insight: string }>("/ai/insights", { method: "POST", body: JSON.stringify({ groupId }) }),
   generateMaterial: (data: { subject: string; level?: string; topic: string; type: string; customInstructions?: string }) =>
     request<{ material: string }>("/ai/materials", { method: "POST", body: JSON.stringify(data) }),
+  placementTest: (data: { subject: string; groupId?: string; level?: "BEGINNER" | "INTERMEDIATE" | "ADVANCED"; count?: number; language?: "UZ" | "RU" | "EN" }) =>
+    request<{ subject: string; source: "ai" | "bank"; questions: PlacementQuestion[] }>("/ai/placement-test", { method: "POST", body: JSON.stringify(data) }),
   suggestHomework: (data: { subject?: string; groupName?: string; topic?: string; level?: string; request?: string }) =>
     request<{ title: string; description: string; dueDays?: number }>("/ai/suggest-homework", {
       method: "POST",

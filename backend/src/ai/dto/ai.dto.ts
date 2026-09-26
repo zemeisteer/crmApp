@@ -1,4 +1,4 @@
-import { IsIn, IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsIn, IsInt, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator';
 
 export class GroupInsightsDto {
   @IsString()
@@ -48,3 +48,28 @@ export class SuggestHomeworkDto {
   request?: string;
 }
 
+
+export class PlacementTestDto {
+  @IsString()
+  @MaxLength(100)
+  subject!: string;
+
+  // Expected level the center wants to check around (optional).
+  @IsOptional()
+  @IsIn(['BEGINNER', 'INTERMEDIATE', 'ADVANCED'])
+  level?: 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED';
+
+  @IsOptional()
+  @IsString()
+  groupId?: string;
+
+  @IsOptional()
+  @IsInt()
+  @Min(5)
+  @Max(30)
+  count?: number;
+
+  @IsOptional()
+  @IsIn(['UZ', 'RU', 'EN'])
+  language?: 'UZ' | 'RU' | 'EN';
+}

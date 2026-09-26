@@ -1,10 +1,11 @@
-import { Inject, Injectable, ServiceUnavailableException } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { eq } from 'drizzle-orm';
+import { and, eq, isNull } from 'drizzle-orm';
 import Anthropic from '@anthropic-ai/sdk';
 import { DB, Database } from '../db/db.module';
 import { groups, payments, attendance } from '../db/schema';
-import { GenerateMaterialDto } from './dto/ai.dto';
+import { GenerateMaterialDto, PlacementTestDto } from './dto/ai.dto';
+import { bankFor, pickFromBank, type PlacementQuestion } from './placement-bank';
 
 const MODEL = 'claude-sonnet-5';
 
@@ -361,6 +362,63 @@ Javobni FAQAT valid JSON array ko'rinishida ber (hech qanday markdown yoki tushu
         points: 1,
       },
     ];
+  }
+
+  // Multiple-choice level test. Questions carry a level (1-3) so the page
+  // can suggest a level from the score. Uses Claude when a key is set,
+  // otherwise the built-in English/Math questions.
+  async placementTest(tenantId: string, dto: PlacementTestDto) {
+    let subject = dto.subject.trim();
+    let groupLevel: string | null = null;
+    if (dto.groupId) {
+      const [g] = await this.db.select({ subject: groups.subject, level: groups.level }).from(groups)
+        .where(and(eq(groups.id, dto.groupId), eq(groups.tenantId, tenantId), isNull(groups.deletedAt)));
+      if (!g) throw new NotFoundException('Guruh topilmadi');
+      subject = subject || g.subject;
+      groupLevel = g.level;
+    }
+    const count = dto.count ?? 15;
+    const target = dto.level === 'BEGINNER' ? 1 : dto.level === 'ADVANCED' ? 3 : dto.level === 'INTERMEDIATE' ? 2 : undefined;
+    const language = dto.language ?? 'UZ';
+
+    if (this.config.get<string>('ANTHROPIC_API_KEY')) {
+      try {
+        const questions = await this.aiPlacementQuestions(subject, count, dto.level ?? null, groupLevel, language);
+        if (questions.length >= Math.min(5, count)) return { subject, source: 'ai' as const, questions };
+      } catch {
+        // fall through to the built-in questions
+      }
+    }
+    const bank = bankFor(subject);
+    if (!bank) {
+      throw new ServiceUnavailableException(
+        `"${subject}" uchun tayyor test yo'q. AI bilan yaratish uchun backend/.env fayliga ANTHROPIC_API_KEY qo'shing (hozircha Ingliz tili va Matematika tayyor).`,
+      );
+    }
+    return { subject, source: 'bank' as const, questions: pickFromBank(bank, count, target) };
+  }
+
+  private async aiPlacementQuestions(subject: string, count: number, level: string | null, groupLevel: string | null, language: string) {
+    const lang = language === 'RU' ? 'rus' : language === 'EN' ? 'ingliz' : "o'zbek";
+    const prompt = `Sen o'quv markazi uchun daraja aniqlash (placement) testini tuzasan.
+Fan: ${subject}
+Kutilayotgan daraja: ${level ?? groupLevel ?? "noma'lum — barcha darajalarni teng qamrab ol"}
+Savollar soni: ${count}
+Savollar va variantlar tili: ${lang} (til fanining o'zi bo'lsa, savollar o'sha tilda bo'lsin).
+Har bir savolda 4 ta variant, faqat bittasi to'g'ri. Savollar osondan qiyinga: level 1 (boshlang'ich), 2 (o'rta), 3 (yuqori), taxminan teng taqsimlangan.
+
+Javobni FAQAT JSON massiv ko'rinishida ber, boshqa so'z qo'shma:
+[{"prompt": "...", "options": ["...", "...", "...", "..."], "correctIndex": 0, "level": 1}]`;
+    const res = await this.client().messages.create({ model: MODEL, max_tokens: 4000, messages: [{ role: 'user', content: prompt }] });
+    const text = res.content.find((b) => b.type === 'text')?.text ?? '';
+    const match = text.match(/\[[\s\S]*\]/);
+    if (!match) return [];
+    const raw = JSON.parse(match[0]) as Array<Partial<PlacementQuestion>>;
+    return raw
+      .filter((q) => typeof q.prompt === 'string' && Array.isArray(q.options) && q.options.length === 4
+        && Number.isInteger(q.correctIndex) && q.correctIndex! >= 0 && q.correctIndex! < 4)
+      .slice(0, count)
+      .map((q) => ({ prompt: q.prompt!, options: q.options!.map(String), correctIndex: q.correctIndex!, level: ([1, 2, 3].includes(q.level as number) ? q.level : 2) as 1 | 2 | 3 }));
   }
 }
 

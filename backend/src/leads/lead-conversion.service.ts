@@ -4,6 +4,7 @@ import { DB, Database } from '../db/db.module';
 import { branches, enrollments, groups, leadTrials, students } from '../db/schema';
 import { AuditService } from '../audit/audit.service';
 import { countOccupiedSeats } from '../common/seats';
+import { assertNoStudentTimeClash } from '../common/student-schedule';
 import { InvoicesService } from '../invoices/invoices.service';
 import { WebhooksService } from '../webhooks/webhooks.service';
 import { AdmissionsEventsService } from './admissions-events.service';
@@ -170,6 +171,8 @@ export class LeadConversionService {
         createdEnrollments.push(enrollment);
         lockedGroups.push(group);
       }
+
+      await assertNoStudentTimeClash(tx, tenantId, student.id, lockedGroups.map((g) => g.id));
 
       // ---- 3. optional first invoice, via the billing domain's own service ----
       let invoice: Awaited<ReturnType<InvoicesService['create']>> | null = null;
