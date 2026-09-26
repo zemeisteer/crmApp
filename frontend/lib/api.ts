@@ -867,6 +867,15 @@ export interface ExamQuestionOption {
 
 export type ExamQuestionType = 'MCQ' | 'TRUE_FALSE' | 'SHORT_ANSWER';
 
+// A question read from an uploaded PDF, before it is saved.
+export interface ParsedPdfQuestion {
+  prompt: string;
+  questionType: ExamQuestionType;
+  options: ExamQuestionOption[];
+  correctAnswer: string | null;
+  points: number;
+}
+
 export interface ExamQuestion {
   id: string;
   tenantId: string;
@@ -1493,6 +1502,9 @@ export const examsApi = {
     request<{ success: boolean }>(`/exams/${id}/questions/${questionId}`, { method: "DELETE" }),
   generateQuestions: (id: string) =>
     request<ExamQuestion[]>(`/exams/${id}/generate-questions`, { method: "POST" }),
+  parsePdfQuestions: (id: string, file: File) => uploadFile<{ questions: ParsedPdfQuestion[] }>(`/exams/${id}/questions/parse-pdf`, file),
+  batchQuestions: (id: string, questions: Array<{ prompt: string; questionType: ExamQuestionType; options: ExamQuestionOption[]; correctAnswer: string; points?: number; order?: number }>) =>
+    request<ExamQuestion[]>(`/exams/${id}/questions/batch`, { method: "POST", body: JSON.stringify({ questions }) }),
   startAttempt: (id: string, studentId: string) =>
     request<{
       exam: { id: string; title: string; description: string | null; durationMinutes: number | null; maxScore: number; passingScore: number | null; questionCount: number };

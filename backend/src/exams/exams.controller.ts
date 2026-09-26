@@ -11,6 +11,7 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { memoryStorage } from 'multer';
 import { JwtAuthGuard } from '../common/jwt-auth.guard';
 import { RolesGuard } from '../common/roles.guard';
 import { TrialGuard } from '../common/trial.guard';
@@ -106,6 +107,23 @@ export class ExamsController {
     @Param('questionId') questionId: string,
   ) {
     return this.service.removeQuestion(tenantId, id, questionId);
+  }
+
+  // Reads questions from an uploaded PDF test. Nothing is saved: the page
+  // shows them for review and saves the chosen ones via questions/batch.
+  @Roles('ADMIN', 'TEACHER')
+  @Post(':id/questions/parse-pdf')
+  @UseInterceptors(FileInterceptor('file', {
+    storage: memoryStorage(),
+    limits: { fileSize: ATTACHMENT_MAX_SIZE },
+    fileFilter: (_req, file, cb) => cb(null, file.mimetype === 'application/pdf'),
+  }))
+  parsePdfQuestions(
+    @CurrentUser('tenantId') tenantId: string,
+    @Param('id') id: string,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    return this.service.parsePdfQuestions(tenantId, id, file);
   }
 
   @Roles('ADMIN', 'TEACHER')

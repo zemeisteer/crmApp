@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import DashboardShell from "@/components/DashboardShell";
 import Modal from "@/components/Modal";
 import BarChart from "@/components/BarChart";
+import PdfImportPanel from "@/components/exams/PdfImportPanel";
 import MultiSelect from "@/components/MultiSelect";
 import Pagination, { usePagedSlice } from "@/components/Pagination";
 import Select from "@/components/Select";
@@ -779,11 +780,18 @@ function ExamsContent() {
                   Jami: {examQuestionsList.length} ta savol
                 </span>
                 <span className="text-[11px] text-slate-500 block">
-                  To&apos;plam bali: {examQuestionsList.reduce((sum, q) => sum + (q.points || 1), 0)} ball
+                  {t("ex.totalPoints")}: {examQuestionsList.reduce((sum, q) => sum + (q.points || 1), 0)}
                 </span>
               </div>
 
               <div className="flex items-center gap-2">
+                <PdfImportPanel
+                  examId={questionsExam.id}
+                  onImported={(created) => {
+                    setExamQuestionsList((prev) => [...prev, ...created]);
+                    load();
+                  }}
+                />
                 <button
                   onClick={handleAiGenerateQuestions}
                   disabled={aiGeneratingQuestions}
@@ -956,7 +964,7 @@ function ExamsContent() {
                               {idx + 1}
                             </span>
                             <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 uppercase">
-                              {q.questionType === "TRUE_FALSE" ? t("ex.tf") : t("ex.mcqShort")}
+                              {q.questionType === "TRUE_FALSE" ? t("ex.tf") : q.questionType === "SHORT_ANSWER" ? t("ex.short") : t("ex.mcqShort")}
                             </span>
                             <span className="text-[10px] font-semibold text-slate-500">
                               {q.points || 1} ball
@@ -1125,7 +1133,15 @@ function ExamsContent() {
                     {simulatorQuestions[currentQIdx].prompt}
                   </h4>
 
-                  {/* Options List */}
+                  {/* Options List (a text box for open questions) */}
+                  {simulatorQuestions[currentQIdx].options.length === 0 && (
+                    <input
+                      value={simulatorAnswers[simulatorQuestions[currentQIdx].id] ?? ""}
+                      onChange={(e) => handleSelectAnswer(simulatorQuestions[currentQIdx].id, e.target.value)}
+                      placeholder={t("ex.typeAnswer")}
+                      className="w-full p-3 rounded-xl border border-slate-200 text-sm"
+                    />
+                  )}
                   <div className="space-y-2">
                     {simulatorQuestions[currentQIdx].options.map((opt) => {
                       const selected = simulatorAnswers[simulatorQuestions[currentQIdx].id] === opt.id;

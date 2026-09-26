@@ -193,6 +193,13 @@ export class ExamsService {
     return { success: true };
   }
 
+  async parsePdfQuestions(tenantId: string, examId: string, file?: Express.Multer.File) {
+    await this.findOne(tenantId, examId);
+    if (!file?.buffer?.length) throw new BadRequestException('PDF fayl yuklang');
+    const questions = await this.ai.extractQuestionsFromPdf(file.buffer);
+    return { questions };
+  }
+
   async generateQuestionsWithAi(tenantId: string, examId: string) {
     const exam = await this.findOne(tenantId, examId);
     const generated = await this.ai.generateExamQuestions(

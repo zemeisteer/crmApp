@@ -22,13 +22,23 @@ export class AiService {
     return Boolean(this.config.get<string>('ANTHROPIC_API_KEY') || this.config.get<string>('GEMINI_API_KEY'));
   }
 
-  private async complete(prompt: string, maxTokens: number): Promise<string> {
+  // `pdf` attaches a document the model reads alongside the prompt (both
+  // providers accept PDFs, including scanned pages).
+  private async complete(prompt: string, maxTokens: number, pdf?: Buffer): Promise<string> {
     const anthropicKey = this.config.get<string>('ANTHROPIC_API_KEY');
     if (anthropicKey) {
       const res = await new Anthropic({ apiKey: anthropicKey }).messages.create({
         model: MODEL,
         max_tokens: maxTokens,
-        messages: [{ role: 'user', content: prompt }],
+        messages: [{
+          role: 'user',
+          content: pdf
+            ? [
+                { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: pdf.toString('base64') } },
+                { type: 'text', text: prompt },
+              ]
+            : prompt,
+        }],
       });
       return res.content.find((b) => b.type === 'text')?.text ?? '';
     }
@@ -39,7 +49,7 @@ export class AiService {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-goog-api-key': geminiKey },
         body: JSON.stringify({
-          contents: [{ role: 'user', parts: [{ text: prompt }] }],
+          contents: [{ role: 'user', parts: [...(pdf ? [{ inline_data: { mime_type: 'application/pdf', data: pdf.toString('base64') } }] : []), { text: prompt }] }],
           generationConfig: { maxOutputTokens: Math.max(maxTokens, 2048) },
         }),
       });
@@ -418,6 +428,57 @@ Javobni FAQAT JSON massiv ko'rinishida ber, boshqa so'z qo'shma:
         && Number.isInteger(q.correctIndex) && q.correctIndex! >= 0 && q.correctIndex! < 4)
       .slice(0, count)
       .map((q) => ({ prompt: q.prompt!, options: q.options!.map(String), correctIndex: q.correctIndex!, level: ([1, 2, 3].includes(q.level as number) ? q.level : 2) as 1 | 2 | 3 }));
+  }
+
+  // Reads a test from a PDF and returns its questions in the question-bank
+  // format. Copies questions as written (no new ones); the correct answer is
+  // filled only when the PDF shows it (answer key, marked option).
+  async extractQuestionsFromPdf(pdf: Buffer) {
+    if (!this.aiConfigured()) {
+      throw new ServiceUnavailableException(
+        "PDF'dan savollarni o'qish uchun AI kerak: backend/.env fayliga GEMINI_API_KEY (bepul) qo'shing.",
+      );
+    }
+    const prompt = `Bu PDF faylda test (imtihon) bor. Undagi BARCHA savollarni aynan qanday yozilgan bo'lsa shunday, o'z tilida ko'chirib ol.
+Yangi savol o'ylab topma, matnni tarjima qilma, tuzatma.
+- Variantli savollar: questionType "MCQ", variantlar A, B, C, D ... tartibida.
+- To'g'ri/Noto'g'ri savollar: questionType "TRUE_FALSE", options [{"id":"true","text":"True"},{"id":"false","text":"False"}].
+- Variantsiz (ochiq javobli) savollar: questionType "SHORT_ANSWER", options [].
+- correctAnswer: PDF'da javoblar kaliti yoki belgilangan javob bo'lsa — variant harfi ("A"), "true"/"false" yoki qisqa javob matni. Javob ko'rsatilmagan bo'lsa null.
+- Savoldagi rasm yoki formulani matn bilan iloji boricha ifodalab yoz.
+
+Javobni FAQAT JSON massiv ko'rinishida ber, boshqa so'z qo'shma:
+[{"prompt": "...", "questionType": "MCQ", "options": [{"id": "A", "text": "..."}], "correctAnswer": "A", "points": 1}]`;
+    const text = await this.complete(prompt, 8000, pdf);
+    const match = text.match(/\[[\s\S]*\]/);
+    if (!match) throw new ServiceUnavailableException("PDF'dan savollar topilmadi. Fayl test ekanini tekshiring.");
+    let raw: unknown;
+    try {
+      raw = JSON.parse(match[0]);
+    } catch {
+      throw new ServiceUnavailableException("AI javobini o'qib bo'lmadi, qaytadan urinib ko'ring.");
+    }
+    if (!Array.isArray(raw)) return [];
+    return raw
+      .filter((q) => q && typeof q.prompt === 'string' && q.prompt.trim())
+      .slice(0, 200)
+      .map((q) => {
+        const type: 'MCQ' | 'TRUE_FALSE' | 'SHORT_ANSWER' =
+          q.questionType === 'TRUE_FALSE' ? 'TRUE_FALSE' : q.questionType === 'SHORT_ANSWER' ? 'SHORT_ANSWER' : 'MCQ';
+        const options: Array<{ id: string; text: string }> = Array.isArray(q.options)
+          ? q.options
+              .filter((o: { text?: unknown }) => o && o.text !== undefined)
+              .map((o: { id?: unknown; text: unknown }, i: number) => ({ id: String(o.id ?? String.fromCharCode(65 + i)), text: String(o.text) }))
+          : [];
+        const answer = q.correctAnswer === null || q.correctAnswer === undefined ? null : String(q.correctAnswer).trim();
+        return {
+          prompt: String(q.prompt).trim(),
+          questionType: type,
+          options: type === 'TRUE_FALSE' && options.length === 0 ? [{ id: 'true', text: 'True' }, { id: 'false', text: 'False' }] : options,
+          correctAnswer: answer || null,
+          points: Number.isInteger(q.points) && q.points > 0 ? q.points : 1,
+        };
+      });
   }
 }
 
