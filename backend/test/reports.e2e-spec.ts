@@ -130,8 +130,11 @@ describe('Reports overview (e2e)', () => {
     expect(d.counts).toMatchObject({ activeStudents: 4, activeGroups: 2, attendanceMarks: 4 });
     expect(d.attendance.rates.month).toBe(25);
     expect(d.attendance.week).toHaveLength(7);
-    expect(d.attendance.months).toHaveLength(6);
-    expect(d.attendance.months.at(-1)).toEqual({ month, marks: 4 });
+    expect(d.attendance.months).toHaveLength(12);
+    expect(d.attendance.days).toHaveLength(14);
+    expect(d.finance.revenueByMonth).toHaveLength(12);
+    expect(d.attendance.months[0].month).toBe(`${now.year}-01`);
+    expect(d.attendance.months.find((m: { month: string }) => m.month === month)).toEqual({ month, marks: 4 });
     expect(d.groupFill[0]).toMatchObject({ id: g1, students: 2, maxStudents: 10 });
     expect(d.finance).toMatchObject({ monthRevenue: 500_000, debtorCount: 2, paymentStatus: { paid: 1, total: 1 } });
 

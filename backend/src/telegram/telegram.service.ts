@@ -11,6 +11,7 @@ import {
   examResults,
   homework,
   homeworkCompletions,
+  organizationMemberships,
   payments,
   students,
   telegramLinkTokens,
@@ -264,11 +265,16 @@ export class TelegramService {
     await this.sendMessage(student.telegramChatId, message);
   }
 
+  // Sends an announcement to everyone in its audience who has linked
+  // Telegram: students (student bot link) and staff (CRM reminders link).
+  // ALL reaches both; STUDENTS and TEACHERS only their side; GROUP the
+  // group's students. Returns how many chats it was sent to.
   async broadcastAnnouncement(
     tenantId: string,
     title: string,
     content: string,
     priority: string = 'NORMAL',
+    audience: string = 'ALL',
     targetGroupId?: string,
   ) {
     const priorityIcon =
@@ -280,23 +286,39 @@ export class TelegramService {
           ? "MUHIM E'LON"
           : "YANGILIK / E'LON";
 
-    const formattedMessage = `${priorityIcon} <b>${priorityLabel}: ${title}</b>\n\n${content}\n\n<i>TalimCRM tizimi orqali tarqatildi.</i>`;
+    const formattedMessage = `${priorityIcon} <b>${priorityLabel}: ${escapeHtml(title)}</b>\n\n${escapeHtml(content)}\n\n<i>TalimCRM tizimi orqali tarqatildi.</i>`;
 
-    if (targetGroupId) {
+    if (audience === 'GROUP' && targetGroupId) {
       await this.notifyGroup(tenantId, targetGroupId, formattedMessage);
       return;
     }
 
-    const linkedStudents = await this.db.query.students.findMany({
-      where: and(eq(students.tenantId, tenantId), isNotNull(students.telegramChatId)),
-      columns: { telegramChatId: true },
-    });
-
-    for (const s of linkedStudents) {
-      if (s.telegramChatId) {
-        void this.sendMessage(s.telegramChatId, formattedMessage);
-      }
+    const chats = new Set<string>();
+    if (audience === 'ALL' || audience === 'STUDENTS') {
+      const linkedStudents = await this.db.query.students.findMany({
+        where: and(eq(students.tenantId, tenantId), isNull(students.deletedAt), isNotNull(students.telegramChatId)),
+        columns: { telegramChatId: true },
+      });
+      for (const s of linkedStudents) if (s.telegramChatId) chats.add(s.telegramChatId);
     }
+    if (audience === 'ALL' || audience === 'TEACHERS') {
+      const staff = await this.db
+        .select({ chat: users.telegramChatId })
+        .from(organizationMemberships)
+        .innerJoin(users, eq(users.id, organizationMemberships.userId))
+        .where(and(
+          eq(organizationMemberships.tenantId, tenantId),
+          eq(organizationMemberships.status, 'ACTIVE'),
+          isNotNull(users.telegramChatId),
+          ...(audience === 'TEACHERS' ? [eq(organizationMemberships.role, 'TEACHER')] : []),
+        ));
+      for (const s of staff) if (s.chat) chats.add(s.chat);
+    }
+
+    for (const chat of chats) {
+      await this.sendMessage(chat, formattedMessage);
+    }
+    this.logger.log(`Announcement sent to ${chats.size} Telegram chat(s) (tenant ${tenantId}, audience ${audience})`);
   }
 
   // Handles Telegram webhook payload with interactive commands & account linking

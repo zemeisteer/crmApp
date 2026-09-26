@@ -127,7 +127,10 @@ export class ReportsService {
       .where(and(eq(teachers.tenantId, tenantId), isNull(teachers.deletedAt)));
 
     // Attendance marks per date and group for roughly the last 6 months.
-    const since = ymd(zonedParts(new Date(Date.now() - 190 * 86_400_000), tz));
+    // From January of this year (for the 12-month chart), or 14 days back
+    // in early January so the daily chart is always covered.
+    const fortnightAgo = ymd(zonedParts(new Date(Date.now() - 13 * 86_400_000), tz));
+    const since = [`${now.year}-01-01`, fortnightAgo].sort()[0];
     const attScope = and(
       eq(attendance.tenantId, tenantId),
       ...(scope ? [groupIds.length ? inArray(attendance.groupId, groupIds) : sql`false`] : []),
@@ -147,7 +150,15 @@ export class ReportsService {
       const date = ymd(zonedParts(new Date(Date.now() + (i - (now.weekday - 1)) * 86_400_000), tz));
       return { date, weekday: i + 1, marks: byDate.filter((r) => r.date === date).reduce((s, r) => s + r.total, 0) };
     });
-    const months = Array.from({ length: 6 }, (_, i) => shiftMonth(month, i - 5)).map((m) => ({
+    // Every month of the current calendar year, January to December.
+    const yearMonths = Array.from({ length: 12 }, (_, i) => `${now.year}-${String(i + 1).padStart(2, '0')}`);
+    // The last 14 days, oldest first.
+    const days = Array.from({ length: 14 }, (_, i) => {
+      const date = ymd(zonedParts(new Date(Date.now() - (13 - i) * 86_400_000), tz));
+      const marks = byDate.filter((r) => r.date === date);
+      return { date, marks: marks.reduce((s, r) => s + r.total, 0), present: marks.reduce((s, r) => s + r.present, 0) };
+    });
+    const months = yearMonths.map((m) => ({
       month: m,
       marks: byDate.filter((r) => r.date.startsWith(m)).reduce((s, r) => s + r.total, 0),
     }));
@@ -165,15 +176,20 @@ export class ReportsService {
       .from(enrollments).innerJoin(students, eq(students.id, enrollments.studentId))
       .where(seatHeldWhere(inArray(enrollments.groupId, groupIds))).groupBy(enrollments.groupId);
 
-    let finance: null | { monthRevenue: number; debtorCount: number; paymentStatus: { paid: number; pending: number; failed: number; total: number } } = null;
+    let finance: null | { monthRevenue: number; debtorCount: number; paymentStatus: { paid: number; pending: number; failed: number; total: number }; revenueByMonth: Array<{ month: string; amount: number }> } = null;
     if (!scope && PAYMENT_READ_ROLES.includes(viewer.role)) {
       const rows = await this.db.select({ status: payments.status, n: sql<number>`count(*)::int`, amount: sql<number>`coalesce(sum(${payments.amount}), 0)::int` })
         .from(payments).where(and(eq(payments.tenantId, tenantId), eq(payments.forMonth, month))).groupBy(payments.status);
       const get = (s: string) => rows.find((r) => r.status === s);
       const debtors = await this.paymentsService.getDebtors(tenantId, month, false);
+      const revenue = await this.db.select({ month: payments.forMonth, amount: sql<number>`coalesce(sum(${payments.amount}), 0)::int` })
+        .from(payments)
+        .where(and(eq(payments.tenantId, tenantId), eq(payments.status, 'PAID'), inArray(payments.forMonth, yearMonths)))
+        .groupBy(payments.forMonth);
       finance = {
         monthRevenue: get('PAID')?.amount ?? 0,
         debtorCount: debtors.debtorCount,
+        revenueByMonth: yearMonths.map((m) => ({ month: m, amount: revenue.find((r) => r.month === m)?.amount ?? 0 })),
         paymentStatus: { paid: get('PAID')?.n ?? 0, pending: get('PENDING')?.n ?? 0, failed: get('FAILED')?.n ?? 0, total: rows.reduce((s, r) => s + r.n, 0) },
       };
     }
@@ -192,6 +208,7 @@ export class ReportsService {
       attendance: {
         week,
         months,
+        days,
         todayBySlot: [...slots.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([startTime, marks]) => ({ startTime, marks })),
         rates: {
           day: rateOf(byDate.filter((r) => r.date === today)),
@@ -199,6 +216,11 @@ export class ReportsService {
           month: rateOf(byDate.filter((r) => r.date.startsWith(month))),
         },
       },
+      // Lessons scheduled for today, by start time.
+      todaysLessons: groupRows
+        .filter((g) => runsOn(g.scheduleDays, now.weekday))
+        .map((g) => ({ id: g.id, name: g.name, startTime: g.startTime }))
+        .sort((a, b) => (a.startTime ?? '').localeCompare(b.startTime ?? '')),
       groupFill: groupRows
         .map((g) => ({ id: g.id, name: g.name, students: seats.find((s) => s.groupId === g.id)?.n ?? 0, maxStudents: g.maxStudents }))
         .sort((a, b) => b.students - a.students)

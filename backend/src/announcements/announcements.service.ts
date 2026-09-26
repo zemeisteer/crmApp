@@ -90,8 +90,9 @@ export class AnnouncementsService {
         dto.title,
         dto.content,
         dto.priority || 'NORMAL',
+        dto.targetAudience || 'ALL',
         dto.targetGroupId,
-      );
+      ).catch(() => undefined);
     }
 
     return this.findOne(tenantId, created.id);

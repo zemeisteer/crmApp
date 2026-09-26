@@ -342,14 +342,17 @@ function ReportsContent() {
                           {formatMoney(item.netPayable)} so&apos;m
                         </td>
                         <td>
-                          {item.isPaid ? (
+                          {item.calculatedSalary <= 0 && !item.isPaid ? (
+                            <span style={{ color: "#8A8D96" }}>—</span>
+                          ) : item.isPaid ? (
                             <span className="badge badge-success">✓ To&apos;langan</span>
                           ) : (
                             <span className="badge badge-danger">Kutilmoqda</span>
                           )}
                         </td>
                         <td style={{ textAlign: "right" }}>
-                          <button
+                          {/* Only when something is actually owed. */}
+                          {item.netPayable > 0 && <button
                             type="button"
                             onClick={() => openDisburseModal(item)}
                             style={{
@@ -364,7 +367,7 @@ function ReportsContent() {
                             }}
                           >
                             {item.isPaid ? "Qayta to'lash" : "To'lov qilish"}
-                          </button>
+                          </button>}
                         </td>
                       </tr>
                     ))}

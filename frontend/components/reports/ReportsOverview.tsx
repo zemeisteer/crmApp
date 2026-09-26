@@ -3,7 +3,8 @@
 import Link from "next/link";
 import type { ReportsOverview as Report } from "@/lib/api";
 import { useLanguage } from "@/lib/i18n-context";
-import type { TranslationKey } from "@/lib/i18n";
+import { MONTH_KEYS, MONTH_SHORT_KEYS, type TranslationKey } from "@/lib/i18n";
+import BarChart from "@/components/BarChart";
 
 const ACCENT = "#4F46E5";
 const card: React.CSSProperties = { background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 20 };
@@ -136,7 +137,6 @@ export default function ReportsOverview({
     );
   }
 
-  const maxReg = Math.max(1, ...students.registrationsByMonth.map((r) => r.count));
   const methods = finance ? Object.entries(finance.revenueByMethod).sort((a, b) => b[1] - a[1]) : [];
   const methodTotal = methods.reduce((s, [, v]) => s + v, 0);
 
@@ -165,15 +165,13 @@ export default function ReportsOverview({
       <div className="adm-profile">
         <section style={card}>
           <div style={title}>{t("rep.registrations")}</div>
-          <div style={{ display: "flex", alignItems: "flex-end", gap: 10, height: 140 }}>
-            {students.registrationsByMonth.map((r) => (
-              <div key={r.month} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
-                <span style={{ fontSize: 11.5, fontWeight: 700 }}>{r.count}</span>
-                <div style={{ width: "100%", maxWidth: 36, height: `${Math.max(4, (r.count / maxReg) * 100)}px`, background: r.month === report.month ? ACCENT : "#C7D2FE", borderRadius: 6 }} />
-                <span style={{ fontSize: 11, color: "#8A8D96" }}>{r.month.slice(5)}</span>
-              </div>
-            ))}
-          </div>
+          <BarChart
+            height={170}
+            data={students.registrationsByMonth.map((r) => {
+              const i = Number(r.month.slice(5)) - 1;
+              return { label: t(MONTH_SHORT_KEYS[i]), title: `${t(MONTH_KEYS[i])} ${r.month.slice(0, 4)}`, value: r.count, isCurrent: r.month === report.month };
+            })}
+          />
         </section>
 
         {finance ? (

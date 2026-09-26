@@ -5,6 +5,7 @@ import DashboardShell from "@/components/DashboardShell";
 import Modal from "@/components/Modal";
 import Pagination, { usePagedSlice } from "@/components/Pagination";
 import Select from "@/components/Select";
+import BarChart from "@/components/BarChart";
 import DatePicker from "@/components/DatePicker";
 import MonthPicker from "@/components/MonthPicker";
 import {
@@ -30,7 +31,7 @@ import {
 import { localMonthStr, localDateStr } from "@/lib/date";
 import { useLanguage } from "@/lib/i18n-context";
 import { useAuth } from "@/lib/auth-context";
-import type { TranslationKey } from "@/lib/i18n";
+import { MONTH_KEYS, MONTH_SHORT_KEYS, type TranslationKey } from "@/lib/i18n";
 
 const ACCENT = "#4F46E5";
 
@@ -713,7 +714,9 @@ function PaymentsContent() {
         return localDayStr(d);
       });
       return days.map((d) => ({
-        label: d.slice(5),
+        label: String(Number(d.slice(8))),
+        title: `${Number(d.slice(8))} ${t(MONTH_KEYS[Number(d.slice(5, 7)) - 1])}`,
+        isCurrent: d === localDayStr(new Date()),
         value: paid
           .filter((p) => p.paidAt && localDayStr(new Date(p.paidAt)) === d)
           .reduce((s, p) => s + p.amount, 0),
@@ -739,17 +742,16 @@ function PaymentsContent() {
         value: paid.filter((p) => p.forMonth.startsWith(String(y))).reduce((s, p) => s + p.amount, 0),
       }));
     }
-    const months = Array.from({ length: 7 }, (_, i) =>
-      localMonthStr(new Date(new Date().getFullYear(), new Date().getMonth() - (6 - i), 1)),
-    );
-    return months.map((m) => ({
-      label: new Date(m + "-01").toLocaleDateString(
-        lang === "UZ" ? "uz-UZ" : lang === "RU" ? "ru-RU" : "en-US",
-        { month: "short" },
-      ),
+    // January to December of the current year.
+    const year = new Date().getFullYear();
+    const months = Array.from({ length: 12 }, (_, i) => `${year}-${String(i + 1).padStart(2, "0")}`);
+    return months.map((m, i) => ({
+      label: t(MONTH_SHORT_KEYS[i]),
+      title: t(MONTH_KEYS[i]),
+      isCurrent: m === localMonthStr(),
       value: paid.filter((p) => p.forMonth === m).reduce((s, p) => s + p.amount, 0),
     }));
-  }, [payments, period, lang]);
+  }, [payments, period, t]);
 
   async function onPaymentSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -1202,7 +1204,7 @@ function PaymentsContent() {
                       ))}
                     </div>
                   </div>
-                  <RevenueBars data={chartData} />
+                  <BarChart data={chartData} color={ACCENT} height={190} defaultActiveIdx={chartData.length - 1} formatValue={(v) => new Intl.NumberFormat("uz-UZ").format(v)} unit={t("common.sumUnit")} />
                 </div>
 
                 <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
@@ -2394,42 +2396,6 @@ function PaymentsContent() {
         </div>
       </Modal>
     </>
-  );
-}
-
-function RevenueBars({ data }: { data: { label: string; value: number }[] }) {
-  const max = Math.max(1, ...data.map((d) => d.value));
-  return (
-    <div style={{ display: "flex", alignItems: "flex-end", gap: 14, height: 180 }}>
-      {data.map((d, i) => {
-        const isLast = i === data.length - 1;
-        return (
-          <div
-            key={i}
-            style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}
-          >
-            <div
-              style={{
-                width: "100%",
-                maxWidth: 56,
-                height: Math.max(4, (d.value / max) * 130),
-                background: isLast ? ACCENT : "#DCEEE6",
-                borderRadius: 8,
-              }}
-            />
-            <div
-              style={{
-                fontSize: 11.5,
-                color: isLast ? "#181A1F" : "#8A8D96",
-                fontWeight: isLast ? 700 : 600,
-              }}
-            >
-              {d.label}
-            </div>
-          </div>
-        );
-      })}
-    </div>
   );
 }
 

@@ -435,6 +435,16 @@ export const dict = {
   "dashboard.paid": { UZ: "To'langan", RU: "Оплачено", EN: "Paid" },
   "dashboard.pending": { UZ: "Kutilmoqda", RU: "В ожидании", EN: "Pending" },
   "dashboard.overdue": { UZ: "Kechikkan", RU: "Просрочено", EN: "Overdue" },
+  "chart.current": { UZ: "joriy", RU: "текущий", EN: "current" },
+  "chart.noData": { UZ: "Ma'lumot yo'q", RU: "Нет данных", EN: "No data" },
+  "dashboard.marksUnit": { UZ: "belgi", RU: "отметок", EN: "marks" },
+  "dashboard.noMarksYet": { UZ: "Bu davrda davomat hali belgilanmagan", RU: "За этот период посещаемость ещё не отмечена", EN: "No attendance marked in this period yet" },
+  "dashboard.revenueByMonth": { UZ: "Oylik tushum", RU: "Выручка по месяцам", EN: "Revenue by month" },
+  "dashboard.yearTotal": { UZ: "Yil bo'yicha", RU: "За год", EN: "This year" },
+  "dashboard.noPaymentsYet": { UZ: "Bu yil hali to'lov qabul qilinmagan", RU: "В этом году платежей ещё нет", EN: "No payments received this year yet" },
+  "dashboard.todaysLessonsList": { UZ: "Bugungi darslar", RU: "Уроки сегодня", EN: "Today's lessons" },
+  "dashboard.openTimetable": { UZ: "Dars jadvali", RU: "Расписание", EN: "Timetable" },
+  "dashboard.noLessonsToday": { UZ: "Bugun dars yo'q", RU: "Сегодня уроков нет", EN: "No lessons today" },
   "dashboard.today": { UZ: "Bugun", RU: "Сегодня", EN: "Today" },
 
   // Weekdays
@@ -1558,3 +1568,13 @@ export type TranslationKey = keyof typeof dict;
 export function translate(lang: Lang, key: TranslationKey): string {
   return dict[key]?.[lang] ?? dict[key]?.UZ ?? key;
 }
+
+// Month names by index (0 = January) for charts and date labels.
+export const MONTH_SHORT_KEYS: TranslationKey[] = [
+  "month.short.jan", "month.short.feb", "month.short.mar", "month.short.apr", "month.short.may", "month.short.jun",
+  "month.short.jul", "month.short.aug", "month.short.sep", "month.short.oct", "month.short.nov", "month.short.dec",
+];
+export const MONTH_KEYS: TranslationKey[] = [
+  "month.jan", "month.feb", "month.mar", "month.apr", "month.may", "month.jun",
+  "month.jul", "month.aug", "month.sep", "month.oct", "month.nov", "month.dec",
+];

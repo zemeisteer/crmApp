@@ -6,11 +6,14 @@
 // just for a handful of bars.
 
 import { useMemo, useState } from "react";
+import { useLanguage } from "@/lib/i18n-context";
 
 export interface BarDatum {
   label: string;
   value: number;
   isCurrent?: boolean;
+  // Longer name for the badge and tooltip (e.g. the full month name).
+  title?: string;
 }
 
 export default function BarChart({
@@ -19,13 +22,20 @@ export default function BarChart({
   height = 160,
   formatValue,
   defaultActiveIdx,
+  unit,
+  emptyText,
 }: {
   data: BarDatum[];
   color?: string;
   height?: number;
   formatValue?: (v: number) => string;
   defaultActiveIdx?: number;
+  // Shown after the value, e.g. "so'm" or "belgi".
+  unit?: string;
+  // Replaces the chart when there is nothing (or only zeros) to show.
+  emptyText?: string;
 }) {
+  const { t } = useLanguage();
   const currentIdx = useMemo(() => {
     const found = data.findIndex((d) => d.isCurrent);
     if (found >= 0) return found;
@@ -62,10 +72,11 @@ export default function BarChart({
             }}
           >
             <span>
-              {selectedItem.label}: <strong>{formatValue ? formatValue(selectedItem.value) : selectedItem.value}</strong>
-              {!isCustomSelected && (
+              {selectedItem.title ?? selectedItem.label}: <strong>{formatValue ? formatValue(selectedItem.value) : selectedItem.value}</strong>
+              {unit && ` ${unit}`}
+              {!isCustomSelected && selectedItem.isCurrent && (
                 <span style={{ fontSize: 11, opacity: 0.85, marginLeft: 4, fontWeight: 500 }}>
-                  (joriy)
+                  ({t("chart.current")})
                 </span>
               )}
             </span>
@@ -83,7 +94,7 @@ export default function BarChart({
                   padding: "0 2px",
                   lineHeight: 1,
                 }}
-                title="Qaytish"
+                title={t("common.clear")}
               >
                 ✕
               </button>
@@ -92,8 +103,8 @@ export default function BarChart({
         </div>
       )}
       <div style={{ display: "flex", alignItems: "flex-end", gap: 10, height, width: "100%", overflowX: "auto", position: "relative", paddingBottom: 4 }}>
-        {data.length === 0 ? (
-          <div style={{ color: "#8A8D96", fontSize: 13, margin: "auto" }}>Ma&apos;lumot yo&apos;q</div>
+        {data.length === 0 || (emptyText && data.every((d) => d.value === 0)) ? (
+          <div style={{ color: "#8A8D96", fontSize: 13, margin: "auto", textAlign: "center", maxWidth: 320 }}>{emptyText ?? t("chart.noData")}</div>
         ) : (
           data.map((d, i) => {
             const isSelected = activeIdx === i;
@@ -112,8 +123,8 @@ export default function BarChart({
                   flexDirection: "column",
                   alignItems: "center",
                   gap: 6,
-                  minWidth: 42,
-                  flex: "1 0 auto",
+                  minWidth: 34,
+                  flex: "1 1 0",
                   cursor: "pointer",
                   position: "relative",
                   userSelect: "none",
@@ -137,7 +148,8 @@ export default function BarChart({
                       pointerEvents: "none",
                     }}
                   >
-                    {d.label}: {formatted}
+                    {d.title ?? d.label}: {formatted}
+                    {unit && ` ${unit}`}
                   </div>
                 )}
                 <div style={{ fontSize: 11, fontWeight: isSelected ? 800 : 600, color: isSelected ? color : "#4A4E58" }}>
@@ -145,9 +157,11 @@ export default function BarChart({
                 </div>
                 <div
                   style={{
-                    width: 28,
+                    width: "70%",
+                    maxWidth: 40,
+                    minWidth: 18,
                     height: barHeight,
-                    background: isSelected ? color : isHovered ? "#CBD5E1" : "#EEF2F6",
+                    background: isSelected ? color : isHovered ? `${color}66` : `${color}24`,
                     border: isSelected ? `2px solid ${color}` : "1px solid transparent",
                     borderRadius: 6,
                     transition: "background 0.15s ease, transform 0.15s ease",

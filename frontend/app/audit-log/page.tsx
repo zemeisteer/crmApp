@@ -7,6 +7,7 @@ import Select from "@/components/Select";
 import { auditApi, AuditLog } from "@/lib/api";
 import { useLanguage } from "@/lib/i18n-context";
 import type { TranslationKey } from "@/lib/i18n";
+import { describeAudit } from "@/lib/audit-format";
 
 const ACTION_LABEL_KEYS: Record<string, TranslationKey> = {
   create: "auditLog.actionCreate",
@@ -20,6 +21,35 @@ const ACTION_CLASS: Record<string, string> = {
   update: "badge-neutral",
   delete: "badge-danger",
   restore: "badge-success",
+  complete: "badge-success",
+  convert: "badge-success",
+  cancel: "badge-danger",
+  archive: "badge-neutral",
+};
+
+// Labels for actions/objects beyond the four basic ones, per language.
+const EXTRA_ACTIONS: Record<string, Record<"UZ" | "RU" | "EN", string>> = {
+  convert: { UZ: "O'quvchiga aylantirildi", RU: "Конвертирован", EN: "Converted" },
+  archive: { UZ: "Arxivlandi", RU: "В архив", EN: "Archived" },
+  assign: { UZ: "Biriktirildi", RU: "Назначен", EN: "Assigned" },
+  reassign: { UZ: "Qayta biriktirildi", RU: "Переназначен", EN: "Reassigned" },
+  reopen: { UZ: "Qayta ochildi", RU: "Открыт заново", EN: "Reopened" },
+  duplicate_override: { UZ: "Dublikat", RU: "Дубликат", EN: "Duplicate" },
+  export: { UZ: "Eksport", RU: "Экспорт", EN: "Export" },
+  complete: { UZ: "To'landi", RU: "Оплачено", EN: "Paid" },
+  cancel: { UZ: "Bekor qilindi", RU: "Отменено", EN: "Cancelled" },
+  trial_reschedule: { UZ: "Ko'chirildi", RU: "Перенесён", EN: "Rescheduled" },
+  trial_missed: { UZ: "Kelmadi", RU: "Не пришёл", EN: "Missed" },
+  trial_cancel: { UZ: "Bekor qilindi", RU: "Отменено", EN: "Cancelled" },
+  switch_workspace: { UZ: "Markaz almashtirildi", RU: "Смена центра", EN: "Switched center" },
+};
+const EXTRA_ENTITIES: Record<string, Record<"UZ" | "RU" | "EN", string>> = {
+  payment: { UZ: "To'lov", RU: "Платёж", EN: "Payment" },
+  invoice: { UZ: "Hisob-faktura", RU: "Счёт", EN: "Invoice" },
+  invoices_batch: { UZ: "Hisob-fakturalar", RU: "Счета", EN: "Invoices" },
+  lead: { UZ: "Lid", RU: "Лид", EN: "Lead" },
+  lead_trial: { UZ: "Sinov darsi", RU: "Пробный урок", EN: "Trial lesson" },
+  gateway_transaction: { UZ: "Onlayn to'lov", RU: "Онлайн-платёж", EN: "Online payment" },
 };
 
 const ENTITY_LABEL_KEYS: Record<string, TranslationKey> = {
@@ -50,12 +80,12 @@ function AuditLogContent() {
       if (actionFilter && l.action !== actionFilter) return false;
       if (search) {
         const q = search.toLowerCase();
-        const hay = `${l.user?.fullName || ""} ${l.user?.email || ""} ${l.entityId} ${l.meta || ""}`.toLowerCase();
+        const hay = `${l.user?.fullName || ""} ${l.user?.email || ""} ${l.entityId} ${describeAudit(l, lang)}`.toLowerCase();
         if (!hay.includes(q)) return false;
       }
       return true;
     });
-  }, [logs, actionFilter, search]);
+  }, [logs, actionFilter, search, lang]);
 
   useEffect(() => setPage(1), [entityFilter, actionFilter, search]);
   const pageItems = usePagedSlice(filtered, page);
@@ -127,11 +157,13 @@ function AuditLogContent() {
                     <td>{new Date(l.createdAt).toLocaleString(lang === "UZ" ? "uz-UZ" : lang === "RU" ? "ru-RU" : "en-US")}</td>
                     <td style={{ fontWeight: 600 }}>{l.user?.fullName || "—"}</td>
                     <td>
-                      <span className={`badge ${ACTION_CLASS[l.action] || "badge-neutral"}`}>{ACTION_LABEL_KEYS[l.action] ? t(ACTION_LABEL_KEYS[l.action]) : l.action}</span>
+                      <span className={`badge ${ACTION_CLASS[l.action] || "badge-neutral"}`}>
+                        {ACTION_LABEL_KEYS[l.action] ? t(ACTION_LABEL_KEYS[l.action]) : EXTRA_ACTIONS[l.action]?.[lang] ?? l.action}
+                      </span>
                     </td>
-                    <td>{ENTITY_LABEL_KEYS[l.entityType] ? t(ENTITY_LABEL_KEYS[l.entityType]) : l.entityType}</td>
-                    <td style={{ fontSize: 12, color: "#8A8D96", maxWidth: 320, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                      {l.meta || "—"}
+                    <td>{ENTITY_LABEL_KEYS[l.entityType] ? t(ENTITY_LABEL_KEYS[l.entityType]) : EXTRA_ENTITIES[l.entityType]?.[lang] ?? l.entityType}</td>
+                    <td style={{ fontSize: 12.5, color: "#4A4E58", maxWidth: 360 }}>
+                      {describeAudit(l, lang)}
                     </td>
                   </tr>
                 ))}

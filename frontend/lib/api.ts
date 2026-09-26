@@ -1659,12 +1659,14 @@ export interface DashboardData {
   attendance: {
     week: Array<{ date: string; weekday: number; marks: number }>;
     months: Array<{ month: string; marks: number }>;
+    days: Array<{ date: string; marks: number; present: number }>;
     todayBySlot: Array<{ startTime: string; marks: number }>;
     rates: { day: number | null; week: number | null; month: number | null };
   };
+  todaysLessons: Array<{ id: string; name: string; startTime: string | null }>;
   groupFill: Array<{ id: string; name: string; students: number; maxStudents: number }>;
   // null for roles that may not see payments (and for teachers).
-  finance: null | { monthRevenue: number; debtorCount: number; paymentStatus: { paid: number; pending: number; failed: number; total: number } };
+  finance: null | { monthRevenue: number; debtorCount: number; paymentStatus: { paid: number; pending: number; failed: number; total: number }; revenueByMonth: Array<{ month: string; amount: number }> };
 }
 
 export const reportsApi = {

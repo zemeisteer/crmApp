@@ -3,11 +3,11 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import DashboardShell from "@/components/DashboardShell";
-import { DonutChart } from "@/components/BarChart";
+import BarChart, { DonutChart } from "@/components/BarChart";
 import { useAuth } from "@/lib/auth-context";
 import { useLanguage } from "@/lib/i18n-context";
 import { reportsApi, announcementsApi, aiApi, Announcement, type DashboardData } from "@/lib/api";
-import type { TranslationKey } from "@/lib/i18n";
+import { MONTH_KEYS, MONTH_SHORT_KEYS, type TranslationKey } from "@/lib/i18n";
 
 const ACCENT = "#4F46E5";
 const WEEKDAY_SHORT_KEYS: TranslationKey[] = [
@@ -107,13 +107,29 @@ function DashboardContent() {
       return { chartData: items, defaultActiveIdx: idx >= 0 ? idx : 0 };
     }
     if (activityPeriod === "day") {
-      // Real marks per lesson start time today.
-      const items = att.todayBySlot.map((s) => ({ label: s.startTime, value: s.marks, isCurrent: false }));
-      return { chartData: items, defaultActiveIdx: 0 };
+      // The last 14 days, one bar per day.
+      const items = att.days.map((d) => {
+        const [, m, day] = d.date.split("-").map(Number);
+        return { label: String(day), title: `${day} ${t(MONTH_KEYS[m - 1])}`, value: d.marks, isCurrent: d.date === data.today };
+      });
+      return { chartData: items, defaultActiveIdx: items.length - 1 };
     }
-    const items = att.months.map((m, i) => ({ label: m.month.slice(5), value: m.marks, isCurrent: i === att.months.length - 1 }));
-    return { chartData: items, defaultActiveIdx: items.length - 1 };
+    // January to December of this year.
+    const items = att.months.map((m) => {
+      const idx = Number(m.month.slice(5)) - 1;
+      return { label: t(MONTH_SHORT_KEYS[idx]), title: t(MONTH_KEYS[idx]), value: m.marks, isCurrent: m.month === data.today.slice(0, 7) };
+    });
+    return { chartData: items, defaultActiveIdx: items.findIndex((i) => i.isCurrent) };
   }, [data, activityPeriod, t]);
+
+  const revenueData = useMemo(
+    () =>
+      (finance?.revenueByMonth ?? []).map((m) => {
+        const idx = Number(m.month.slice(5)) - 1;
+        return { label: t(MONTH_SHORT_KEYS[idx]), title: t(MONTH_KEYS[idx]), value: m.amount, isCurrent: m.month === data?.today.slice(0, 7) };
+      }),
+    [finance, data, t],
+  );
 
   const attendanceRate = data?.attendance.rates[attendancePeriod] ?? null;
 
@@ -272,7 +288,7 @@ function DashboardContent() {
                     options={[{ key: "day", label: t("dashboard.periodDay") }, { key: "week", label: t("dashboard.periodWeek") }, { key: "month", label: t("dashboard.periodMonth") }]}
                   />
                 </div>
-                <BarChartInline data={chartData} defaultActiveIdx={defaultActiveIdx} />
+                <BarChart data={chartData} defaultActiveIdx={defaultActiveIdx} unit={t("dashboard.marksUnit")} emptyText={t("dashboard.noMarksYet")} />
               </div>
               <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 20, display: "flex", flexDirection: "column" }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
@@ -317,165 +333,43 @@ function DashboardContent() {
                 </div>
               </div>}
             </div>
+            <div style={{ display: "grid", gridTemplateColumns: finance ? "1.4fr 1fr" : "1fr", gap: 16 }}>
+              {finance && (
+                <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 20 }}>
+                  <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 8 }}>
+                    <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 700, fontSize: 15 }}>{t("dashboard.revenueByMonth")}</div>
+                    <div style={{ fontSize: 12, color: "#8A8D96" }}>
+                      {t("dashboard.yearTotal")}: <strong style={{ color: "#1FA463" }}>{formatMoney(finance.revenueByMonth.reduce((s, m) => s + m.amount, 0))} {t("common.sumUnit")}</strong>
+                    </div>
+                  </div>
+                  <BarChart data={revenueData} color="#1FA463" formatValue={(v) => formatMoney(v)} unit={t("common.sumUnit")} emptyText={t("dashboard.noPaymentsYet")} />
+                </div>
+              )}
+              <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 20 }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+                  <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 700, fontSize: 15 }}>{t("dashboard.todaysLessonsList")}</div>
+                  <Link href="/schedule" style={{ fontSize: 12, color: ACCENT, fontWeight: 600, textDecoration: "none" }}>{t("dashboard.openTimetable")} →</Link>
+                </div>
+                {(data?.todaysLessons.length ?? 0) === 0 ? (
+                  <div style={{ fontSize: 13, color: "#8A8D96" }}>{t("dashboard.noLessonsToday")}</div>
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    {data!.todaysLessons.map((l) => (
+                      <Link key={l.id} href={`/groups/${l.id}`} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 12px", borderRadius: 10, background: "#F7F6F2", textDecoration: "none", color: "#181A1F" }}>
+                        <span style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 800, fontSize: 13, color: ACCENT, minWidth: 44 }}>{l.startTime ?? "—"}</span>
+                        <span style={{ fontSize: 13, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l.name}</span>
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
           </>
         )}
       </div>
     </>
   );
 }
-
-function BarChartInline({
-  data,
-  defaultActiveIdx = 0,
-}: {
-  data: { label: string; value: number; isCurrent?: boolean }[];
-  defaultActiveIdx?: number;
-}) {
-  const { t } = useLanguage();
-  const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
-  const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
-
-  // Find the index that is current, or fallback to defaultActiveIdx
-  const currentIdx = useMemo(() => {
-    const found = data.findIndex((d) => d.isCurrent);
-    return found >= 0 ? found : (defaultActiveIdx >= 0 && defaultActiveIdx < data.length ? defaultActiveIdx : 0);
-  }, [data, defaultActiveIdx]);
-
-  // When user hasn't explicitly clicked another bar, or when X is clicked, activeIdx is always currentIdx
-  const isCustomSelected = selectedIdx !== null && selectedIdx !== currentIdx;
-  const activeIdx = selectedIdx !== null ? selectedIdx : currentIdx;
-  const max = Math.max(1, ...data.map((d) => d.value));
-  const activeItem = data[activeIdx] || data[currentIdx] || data[0];
-
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-      {/* Corner badge for active bar */}
-      <div style={{ minHeight: 28, display: "flex", alignItems: "center", justifyContent: "flex-end" }}>
-        {activeItem ? (
-          <div
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 8,
-              background: "#EEF0FF",
-              color: ACCENT,
-              border: "1px solid rgba(79, 70, 229, 0.25)",
-              borderRadius: 8,
-              padding: "4px 10px",
-              fontSize: 12,
-              fontWeight: 700,
-            }}
-          >
-            <span>
-              {activeItem.label}: <strong>{activeItem.value}</strong> {t("groupDetail.colAttendance").toLowerCase()}
-              {!isCustomSelected && (
-                <span style={{ fontSize: 11, opacity: 0.85, marginLeft: 4, fontWeight: 500 }}>
-                  (bugun/hozirgi)
-                </span>
-              )}
-            </span>
-            {isCustomSelected && (
-              <button
-                type="button"
-                onClick={() => setSelectedIdx(null)}
-                style={{
-                  background: "transparent",
-                  border: "none",
-                  color: ACCENT,
-                  cursor: "pointer",
-                  padding: "0 2px",
-                  fontSize: 13,
-                  fontWeight: 800,
-                  lineHeight: 1,
-                }}
-                title={t("common.clear")}
-              >
-                ✕
-              </button>
-            )}
-          </div>
-        ) : (
-          <span style={{ fontSize: 11, color: "#A0A3AB" }}>&nbsp;</span>
-        )}
-      </div>
-
-      <div style={{ display: "flex", alignItems: "flex-end", gap: 10, height: 135, position: "relative" }}>
-        {data.map((d, i) => {
-          const isSelected = activeIdx === i;
-          const isHovered = hoveredIdx === i;
-          const barHeight = Math.max(6, (d.value / max) * 95);
-
-          return (
-            <div
-              key={i}
-              onClick={() => setSelectedIdx(isSelected && isCustomSelected ? null : i)}
-              onMouseEnter={() => setHoveredIdx(i)}
-              onMouseLeave={() => setHoveredIdx(null)}
-              style={{
-                flex: 1,
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                gap: 8,
-                cursor: "pointer",
-                position: "relative",
-                userSelect: "none",
-              }}
-            >
-              {/* Floating tooltip on hover (without darkening bar) */}
-              {isHovered && !isSelected && (
-                <div
-                  style={{
-                    position: "absolute",
-                    bottom: barHeight + 32,
-                    background: "#181A1F",
-                    color: "#fff",
-                    fontSize: 11,
-                    fontWeight: 700,
-                    padding: "4px 8px",
-                    borderRadius: 6,
-                    whiteSpace: "nowrap",
-                    zIndex: 30,
-                    boxShadow: "0 4px 12px rgba(0,0,0,0.18)",
-                    pointerEvents: "none",
-                  }}
-                >
-                  {d.label}: {d.value} {t("groupDetail.colAttendance").toLowerCase()}
-                </div>
-              )}
-
-              <div
-                style={{
-                  width: "100%",
-                  height: barHeight,
-                  background: isSelected ? ACCENT : isHovered ? "#CBD5E1" : "#EEF2F6",
-                  border: isSelected ? `2px solid ${ACCENT}` : "1px solid transparent",
-                  borderRadius: 6,
-                  transition: "background 0.15s ease, transform 0.15s ease",
-                  transform: isHovered || isSelected ? "scaleY(1.04)" : "scaleY(1)",
-                  transformOrigin: "bottom",
-                }}
-              />
-              <div
-                style={{
-                  fontSize: 11,
-                  color: isSelected ? ACCENT : "#8A8D96",
-                  fontWeight: isSelected ? 800 : 600,
-                  transition: "color 0.18s",
-                  textAlign: "center",
-                  whiteSpace: "nowrap",
-                }}
-              >
-                {d.label}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
 
 function StatCard({ label, value, danger }: { label: string; value: string; danger?: boolean }) {
   return (
