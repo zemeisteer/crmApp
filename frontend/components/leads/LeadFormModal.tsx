@@ -23,6 +23,31 @@ import { useLanguage } from "@/lib/i18n-context";
 import { useAuth } from "@/lib/auth-context";
 import { LEAD_SOURCES, label, primaryBtn, ghostBtn, sourceKey, statusKey, StatusBadge, toIsoFromParts } from "./lead-ui";
 
+// Same rules as the server (backend/src/leads/phone.ts), plus a length
+// check for Uzbek numbers: +998 followed by exactly 9 digits.
+function phoneValid(raw: string) {
+  const trimmed = raw.trim();
+  const digits = trimmed.replace(/\D/g, "").replace(/^00/, "");
+  if (digits.length === 9 && !trimmed.startsWith("+")) return true;
+  if (digits.startsWith("998")) return digits.length === 12;
+  return digits.length >= 8 && digits.length <= 15;
+}
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+
+type FieldErrors = Partial<Record<"fullName" | "phone" | "secondaryPhone" | "email" | "overrideReason", string>>;
+
+function FieldError({ msg }: { msg?: string }) {
+  if (!msg) return null;
+  return (
+    <div role="alert" style={{ marginTop: 5, fontSize: 12, fontWeight: 600, color: "#B91C1C", display: "flex", alignItems: "center", gap: 5 }}>
+      <span aria-hidden style={{ display: "inline-flex", width: 14, height: 14, borderRadius: 7, background: "#B91C1C", color: "#fff", fontSize: 10, alignItems: "center", justifyContent: "center" }}>!</span>
+      {msg}
+    </div>
+  );
+}
+
+const errBorder = (on: boolean): React.CSSProperties | undefined => (on ? { borderColor: "#DC2626", boxShadow: "0 0 0 3px rgba(220,38,38,0.12)" } : undefined);
+
 interface Props {
   open: boolean;
   onClose: () => void;
@@ -55,6 +80,7 @@ export default function LeadFormModal({ open, onClose, onSaved, lead, managers =
   const [override, setOverride] = useState(false);
   const [overrideReason, setOverrideReason] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [saving, setSaving] = useState(false);
 
   const [subjects, setSubjects] = useState<Subject[]>([]);
@@ -73,10 +99,26 @@ export default function LeadFormModal({ open, onClose, onSaved, lead, managers =
     [courses, subjectId],
   );
 
+  // Our own messages instead of the browser's "please fill out this field".
+  function validate(): FieldErrors {
+    const errs: FieldErrors = {};
+    if (fullName.trim().length < 2) errs.fullName = t("leadForm.errName");
+    if (!phone.trim()) errs.phone = t("leadForm.errPhoneRequired");
+    else if (!phoneValid(phone)) errs.phone = t("leadForm.errPhone");
+    if (secondaryPhone.trim() && !phoneValid(secondaryPhone)) errs.secondaryPhone = t("leadForm.errPhone");
+    if (email.trim() && !EMAIL_RE.test(email.trim())) errs.email = t("leadForm.errEmail");
+    if (override && overrideReason.trim().length < 3) errs.overrideReason = t("leadForm.errReason");
+    return errs;
+  }
+  const clearErr = (k: keyof FieldErrors) => setFieldErrors((prev) => (prev[k] ? { ...prev, [k]: undefined } : prev));
+
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (saving) return;
     setError(null);
+    const errs = validate();
+    setFieldErrors(errs);
+    if (Object.values(errs).some(Boolean)) return;
     setSaving(true);
     try {
       let saved: Lead;
@@ -114,7 +156,7 @@ export default function LeadFormModal({ open, onClose, onSaved, lead, managers =
       if (err instanceof ApiError && err.body?.code === "DUPLICATE_LEAD") {
         setDuplicates((err.body.duplicates as LeadDuplicate[]) ?? []);
       }
-      setError(err instanceof ApiError ? err.message : "Xatolik yuz berdi");
+      setError(err instanceof ApiError ? err.message : t("common.errorGeneric"));
     } finally {
       setSaving(false);
     }
@@ -124,23 +166,27 @@ export default function LeadFormModal({ open, onClose, onSaved, lead, managers =
 
   return (
     <Modal open={open} onClose={onClose} title={editing ? t("leads.editLead") : t("leads.modalTitle")} width={640}>
-      <form onSubmit={onSubmit} className="adm-form">
+      <form onSubmit={onSubmit} className="adm-form" noValidate>
         <div className="adm-grid2">
           <div>
             <label style={label}>{t("leads.fieldFullName")} *</label>
-            <input className="field-input" value={fullName} onChange={(e) => setFullName(e.target.value)} required minLength={2} maxLength={200} />
+            <input className="field-input" style={errBorder(!!fieldErrors.fullName)} value={fullName} onChange={(e) => { setFullName(e.target.value); clearErr("fullName"); }} maxLength={200} aria-invalid={!!fieldErrors.fullName} />
+            <FieldError msg={fieldErrors.fullName} />
           </div>
           <div>
             <label style={label}>{t("leads.fieldPhone")} *</label>
-            <input className="field-input" type="tel" inputMode="tel" placeholder="+998 90 123 45 67" value={phone} onChange={(e) => { setPhone(e.target.value); setDuplicates([]); }} required />
+            <input className="field-input" style={errBorder(!!fieldErrors.phone)} type="tel" inputMode="tel" placeholder="+998 90 123 45 67" value={phone} onChange={(e) => { setPhone(e.target.value); setDuplicates([]); clearErr("phone"); }} aria-invalid={!!fieldErrors.phone} />
+            <FieldError msg={fieldErrors.phone} />
           </div>
           <div>
             <label style={label}>{t("adm.fieldSecondaryPhone")}</label>
-            <input className="field-input" type="tel" inputMode="tel" value={secondaryPhone} onChange={(e) => setSecondaryPhone(e.target.value)} />
+            <input className="field-input" style={errBorder(!!fieldErrors.secondaryPhone)} type="tel" inputMode="tel" placeholder="+998 __ ___ __ __" value={secondaryPhone} onChange={(e) => { setSecondaryPhone(e.target.value); clearErr("secondaryPhone"); }} />
+            <FieldError msg={fieldErrors.secondaryPhone} />
           </div>
           <div>
             <label style={label}>{t("adm.fieldEmail")}</label>
-            <input className="field-input" type="email" value={email} onChange={(e) => { setEmail(e.target.value); setDuplicates([]); }} />
+            <input className="field-input" style={errBorder(!!fieldErrors.email)} type="email" placeholder="ism@example.com" value={email} onChange={(e) => { setEmail(e.target.value); setDuplicates([]); clearErr("email"); }} />
+            <FieldError msg={fieldErrors.email} />
           </div>
           <div>
             <label style={label}>{t("leads.fieldSource")}</label>
@@ -167,16 +213,19 @@ export default function LeadFormModal({ open, onClose, onSaved, lead, managers =
               placeholder={t("common.notSelected")}
               options={[{ value: "", label: t("common.notSelected") }, ...subjects.map((s) => ({ value: s.id, label: s.name }))]}
             />
+            {subjects.length === 0 && <div style={{ marginTop: 5, fontSize: 12, color: "#8A8D96" }}>{t("leadForm.noSubjectsHint")}</div>}
           </div>
-          <div>
-            <label style={label}>{t("adm.fieldCourse")}</label>
-            <Select
-              value={courseId}
-              onChange={setCourseId}
-              placeholder={t("common.notSelected")}
-              options={[{ value: "", label: t("common.notSelected") }, ...courseOptions.map((c) => ({ value: c.id, label: c.name }))]}
-            />
-          </div>
+          {courses.length > 0 && (
+            <div>
+              <label style={label}>{t("adm.fieldCourse")}</label>
+              <Select
+                value={courseId}
+                onChange={setCourseId}
+                placeholder={t("common.notSelected")}
+                options={[{ value: "", label: t("common.notSelected") }, ...courseOptions.map((c) => ({ value: c.id, label: c.name }))]}
+              />
+            </div>
+          )}
           {!editing && can("admissions.assign") && (
             <div>
               <label style={label}>{t("adm.fieldManager")}</label>
@@ -195,6 +244,7 @@ export default function LeadFormModal({ open, onClose, onSaved, lead, managers =
                 <DatePicker value={followDate} onChange={setFollowDate} style={{ flex: 1 }} />
                 <TimePicker value={followTime} onChange={setFollowTime} style={{ width: 110 }} />
               </div>
+              <div style={{ marginTop: 5, fontSize: 12, color: "#8A8D96" }}>{t("leadForm.followUpHint")}</div>
             </div>
           )}
         </div>
@@ -229,11 +279,10 @@ export default function LeadFormModal({ open, onClose, onSaved, lead, managers =
                     style={{ marginTop: 8 }}
                     placeholder={t("adm.duplicateReason")}
                     value={overrideReason}
-                    onChange={(e) => setOverrideReason(e.target.value)}
-                    minLength={3}
-                    required
+                    onChange={(e) => { setOverrideReason(e.target.value); clearErr("overrideReason"); }}
                   />
                 )}
+                {override && <FieldError msg={fieldErrors.overrideReason} />}
               </div>
             )}
           </div>

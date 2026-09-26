@@ -1,7 +1,7 @@
 import { ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { and, eq, isNotNull, isNull } from 'drizzle-orm';
 import { DB, Database } from '../db/db.module';
-import { branches, courses, groups, teachers } from '../db/schema';
+import { branches, courses, groups, subjects, teachers } from '../db/schema';
 import { CreateGroupDto, UpdateGroupDto } from './dto/group.dto';
 import { AuditService } from '../audit/audit.service';
 
@@ -122,12 +122,22 @@ export class GroupsService {
         status: dto.status || 'ACTIVE',
       })
       .returning();
+    await this.ensureSubject(tenantId, dto.subject);
     this.audit.log({ tenantId, userId, action: 'create', entityType: 'group', entityId: group.id, meta: { name: group.name } });
     return group;
   }
 
+  // Group subjects are free text; keep a matching row in the subjects
+  // (directions) list so lead and placement forms can offer it.
+  private async ensureSubject(tenantId: string, name?: string | null) {
+    const clean = name?.trim();
+    if (!clean) return;
+    await this.db.insert(subjects).values({ tenantId, name: clean }).onConflictDoNothing();
+  }
+
   async update(tenantId: string, userId: string, id: string, dto: UpdateGroupDto) {
     await this.findOne(tenantId, id);
+    await this.ensureSubject(tenantId, dto.subject);
 
     if (dto.courseId) {
       const course = await this.db.query.courses.findFirst({

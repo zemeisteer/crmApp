@@ -11,7 +11,7 @@ import TimePicker from "@/components/TimePicker";
 import { useAuth } from "@/lib/auth-context";
 import { useLanguage } from "@/lib/i18n-context";
 import type { TranslationKey } from "@/lib/i18n";
-import { groupsApi, branchesApi, teachersApi, Group, Branch, Teacher, ApiError, CATEGORY_SUBJECT_SUGGESTIONS } from "@/lib/api";
+import { groupsApi, branchesApi, teachersApi, subjectsApi, Group, Branch, Teacher, ApiError, CATEGORY_SUBJECT_SUGGESTIONS } from "@/lib/api";
 import { matchesSubject } from "@/lib/subject";
 
 const ACCENT = "#4F46E5";
@@ -67,7 +67,12 @@ function GroupsContent() {
     return () => { cancelled = true; clearTimeout(timer); };
   }, [teacherId, days, startTime]);
 
-  const usedSubjects = useMemo(() => Array.from(new Set(groups.map((g) => g.subject))), [groups]);
+  // Directions saved in the subjects list (also filled from group subjects).
+  const [savedSubjects, setSavedSubjects] = useState<string[]>([]);
+  useEffect(() => {
+    subjectsApi.list("ACTIVE").then((list) => setSavedSubjects(list.map((x) => x.name))).catch(() => setSavedSubjects([]));
+  }, []);
+  const usedSubjects = useMemo(() => Array.from(new Set([...groups.map((g) => g.subject), ...savedSubjects])), [groups, savedSubjects]);
   const subjectSuggestions = tenant ? CATEGORY_SUBJECT_SUGGESTIONS[tenant.category] || [] : [];
   const subjectOptions = useMemo(
     () => Array.from(new Set([...usedSubjects, ...subjectSuggestions])).sort(),

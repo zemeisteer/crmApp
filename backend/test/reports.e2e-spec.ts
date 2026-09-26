@@ -125,6 +125,13 @@ describe('Reports overview (e2e)', () => {
     await http().get('/api/reports/overview?month=2026-13').set(as('OWNER')).expect(400);
   });
 
+  it('adds group subjects to the directions list once, per tenant', async () => {
+    const own = (await http().get('/api/subjects').set(as('OWNER')).expect(200)).body as Array<{ name: string }>;
+    expect(own.filter((x) => x.name === 'Math')).toHaveLength(1);
+    const other = (await http().get('/api/subjects').set(as('B')).expect(200)).body as Array<{ name: string }>;
+    expect(other.filter((x) => x.name === 'Math')).toHaveLength(1);
+  });
+
   it('serves the home dashboard from the server, scoped by role', async () => {
     const d = (await http().get('/api/reports/dashboard').set(as('OWNER')).expect(200)).body;
     expect(d.counts).toMatchObject({ activeStudents: 4, activeGroups: 2, attendanceMarks: 4 });
