@@ -34,7 +34,7 @@ export class AiService {
     }
     const geminiKey = this.config.get<string>('GEMINI_API_KEY');
     if (geminiKey) {
-      const model = this.config.get<string>('GEMINI_MODEL') || 'gemini-2.5-flash';
+      const model = this.config.get<string>('GEMINI_MODEL') || 'gemini-flash-latest';
       const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-goog-api-key': geminiKey },
