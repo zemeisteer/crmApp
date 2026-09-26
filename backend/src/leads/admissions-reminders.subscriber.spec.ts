@@ -15,6 +15,7 @@ describe('AdmissionsRemindersSubscriber', () => {
   let email: { send: ReturnType<typeof vi.fn> };
   let leadsService: { activeAssignableMembership: ReturnType<typeof vi.fn>; tenantTimezone: ReturnType<typeof vi.fn> };
   let sub: AdmissionsRemindersSubscriber;
+  let telegram: { notifyUser: ReturnType<typeof vi.fn> };
   const event = (name: AdmissionsEvent['name'], data = {}): AdmissionsEvent => ({
     name, tenantId: 't1', leadId: 'l1', actorUserId: null, data, occurredAt: new Date().toISOString(),
   });
@@ -28,12 +29,14 @@ describe('AdmissionsRemindersSubscriber', () => {
       tenantTimezone: vi.fn().mockResolvedValue('Asia/Tashkent'),
     };
     const config = { get: vi.fn(() => undefined) };
-    sub = new AdmissionsRemindersSubscriber(db as any, {} as any, email as any, leadsService as any, config as any);
+    telegram = { notifyUser: vi.fn().mockResolvedValue(true) };
+    sub = new AdmissionsRemindersSubscriber(db as any, {} as any, email as any, leadsService as any, config as any, telegram as any);
   });
 
   it('emails the active assigned manager, without the prospect\'s contact details', async () => {
-    selectResults.push([{ id: 'l1', fullName: 'Aziza', managerUserId: 'u1' }], [{ email: 'm@x.uz', fullName: 'Manager' }]);
+    selectResults.push([{ id: 'l1', fullName: 'Aziza', managerUserId: 'u1' }], [{ id: 'u1', email: 'm@x.uz', fullName: 'Manager' }]);
     expect(await sub.remind(event('LeadFollowUpDue'))).toBe(true);
+    expect(telegram.notifyUser).toHaveBeenCalledWith('u1', expect.stringContaining('Aziza'));
     expect(email.send).toHaveBeenCalledWith('m@x.uz', expect.stringContaining('Aziza'), expect.stringContaining('/leads/l1'));
     expect(email.send.mock.calls[0][2]).not.toMatch(/\+998/);
   });
@@ -65,11 +68,12 @@ describe('AdmissionsRemindersSubscriber', () => {
   it('tells every active owner/admin/manager about a new website application', async () => {
     selectResults.push(
       [{ id: 'l1', fullName: 'Aziza' }],
-      [{ email: 'owner@x.uz', fullName: 'Owner' }, { email: 'mgr@x.uz', fullName: 'Manager' }],
+      [{ id: 'o1', email: 'owner@x.uz', fullName: 'Owner' }, { id: 'm1', email: 'mgr@x.uz', fullName: 'Manager' }],
     );
     expect(await sub.notifyNewWebsiteLead(event('LeadCreated', { source: 'WEBSITE', channel: 'public_form' }))).toBe(2);
     expect(email.send.mock.calls.map((c) => c[0])).toEqual(['owner@x.uz', 'mgr@x.uz']);
     expect(email.send.mock.calls[0][1]).toContain('Saytdan yangi ariza: Aziza');
     expect(email.send.mock.calls[0][2]).toContain('/leads/l1');
+    expect(telegram.notifyUser.mock.calls.map((c) => c[0])).toEqual(['o1', 'm1']);
   });
 });

@@ -29,6 +29,13 @@
       "when": 1790412834307,
       "tag": "0003_admissions_crm",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1790499234307,
+      "tag": "0004_staff_telegram",
+      "breakpoints": true
     }
   ]
 }

@@ -1541,6 +1541,16 @@ export const dict = {
   "rep.riskMedium": { UZ: "O'rta", RU: "Средний", EN: "Medium" },
   "rep.overdue": { UZ: "Muddati o'tgan qarz", RU: "Просрочено", EN: "Overdue" },
   "rep.occupancyTitle": { UZ: "Guruhlar to'lganligi", RU: "Заполненность групп", EN: "Group occupancy" },
+
+  // Staff Telegram reminders
+  "tg.title": { UZ: "Telegram eslatmalari", RU: "Напоминания в Telegram", EN: "Telegram reminders" },
+  "tg.linkedText": { UZ: "Ulangan — yangi arizalar, qayta aloqa va sinov darslari haqida xabar olasiz.", RU: "Подключено — вы получаете уведомления о заявках, контактах и пробных уроках.", EN: "Connected — you get notices about new applications, follow-ups and trials." },
+  "tg.unlinkedText": { UZ: "Yangi arizalar va qayta aloqa vaqtini Telegram'da oling.", RU: "Получайте заявки и напоминания о контактах в Telegram.", EN: "Get new applications and follow-up reminders in Telegram." },
+  "tg.connect": { UZ: "Ulash", RU: "Подключить", EN: "Connect" },
+  "tg.disconnect": { UZ: "Uzish", RU: "Отключить", EN: "Disconnect" },
+  "tg.check": { UZ: "Tekshirish", RU: "Проверить", EN: "Check" },
+  "tg.openHint": { UZ: "Telegram ochildi: botda \"Start\" ni bosing, keyin \"Tekshirish\"ni bosing.", RU: "Откроется Telegram: нажмите «Start» в боте, затем «Проверить».", EN: "Telegram opens: press \"Start\" in the bot, then \"Check\"." },
+  "tg.notConfigured": { UZ: "Telegram bot hali sozlanmagan (TELEGRAM_BOT_TOKEN).", RU: "Telegram-бот ещё не настроен (TELEGRAM_BOT_TOKEN).", EN: "Telegram bot is not set up yet (TELEGRAM_BOT_TOKEN)." },
 } as const;
 
 export type TranslationKey = keyof typeof dict;

@@ -1,7 +1,7 @@
 import { Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { and, desc, eq, gt, inArray, isNotNull, isNull, or } from 'drizzle-orm';
-import { randomBytes } from 'crypto';
+import { randomBytes, timingSafeEqual } from 'crypto';
 import * as qrcode from 'qrcode';
 import { DB, Database } from '../db/db.module';
 import {
@@ -14,6 +14,7 @@ import {
   payments,
   students,
   telegramLinkTokens,
+  users,
 } from '../db/schema';
 
 const MAIN_KEYBOARD = {
@@ -26,6 +27,11 @@ const MAIN_KEYBOARD = {
   resize_keyboard: true,
 };
 
+
+// Messages use parse_mode HTML; names come from user input.
+function escapeHtml(v: string) {
+  return v.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
 
 @Injectable()
 export class TelegramService {
@@ -83,6 +89,80 @@ export class TelegramService {
   linkUrl(studentId: string) {
     if (!this.botUsername) return null;
     return `https://t.me/${this.botUsername}?start=${studentId}`;
+  }
+
+  // ==================== STAFF (CRM reminders) ====================
+
+  // Telegram sends this secret in X-Telegram-Bot-Api-Secret-Token when the
+  // webhook was registered with secret_token. Without it anyone could post
+  // forged updates to the public webhook URL.
+  isValidWebhookSecret(header: string | undefined) {
+    const secret = this.config.get<string>('TELEGRAM_WEBHOOK_SECRET');
+    if (!secret) return true;
+    if (!header) return false;
+    const a = Buffer.from(header);
+    const b = Buffer.from(secret);
+    return a.length === b.length && timingSafeEqual(a, b);
+  }
+
+  async staffStatus(userId: string) {
+    const [u] = await this.db.select({ chat: users.telegramChatId }).from(users).where(eq(users.id, userId));
+    return { configured: this.isConfigured && Boolean(this.botUsername), botUsername: this.botUsername, linked: Boolean(u?.chat) };
+  }
+
+  // One-time, 15-minute deep link that connects the caller's own Telegram
+  // chat to their user account.
+  async generateStaffLinkToken(tenantId: string, userId: string) {
+    const token = randomBytes(16).toString('hex');
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+    await this.db.insert(telegramLinkTokens).values({ tenantId, userId, token, expiresAt });
+    return {
+      linkUrl: this.botUsername ? `https://t.me/${this.botUsername}?start=staff_${token}` : null,
+      expiresAt: expiresAt.toISOString(),
+    };
+  }
+
+  async unlinkStaff(userId: string) {
+    await this.db.update(users).set({ telegramChatId: null }).where(eq(users.id, userId));
+    return { linked: false };
+  }
+
+  // Sends a CRM notice to a staff member if they linked Telegram. Returns
+  // whether a message was sent.
+  async notifyUser(userId: string, text: string) {
+    if (!this.token) return false;
+    const [u] = await this.db.select({ chat: users.telegramChatId }).from(users).where(eq(users.id, userId));
+    if (!u?.chat) return false;
+    await this.sendMessage(u.chat, text);
+    return true;
+  }
+
+  private async linkStaffChat(chatId: string, token: string) {
+    const linkRecord = await this.db.query.telegramLinkTokens.findFirst({
+      where: and(
+        eq(telegramLinkTokens.token, token),
+        isNull(telegramLinkTokens.usedAt),
+        gt(telegramLinkTokens.expiresAt, new Date()),
+        isNotNull(telegramLinkTokens.userId),
+      ),
+      with: { user: { columns: { id: true, fullName: true } } },
+    });
+    if (!linkRecord?.user) {
+      await this.sendMessage(chatId, "❌ Havola noto'g'ri, muddati (15 daqiqa) o'tgan yoki oldin ishlatilgan.\n\nCRM'dan yangi havola oling.");
+      return;
+    }
+    // Consume first (single use), then attach this chat to the user only;
+    // a chat can belong to one staff account at a time.
+    const [claimed] = await this.db.update(telegramLinkTokens).set({ usedAt: new Date() })
+      .where(and(eq(telegramLinkTokens.id, linkRecord.id), isNull(telegramLinkTokens.usedAt)))
+      .returning({ id: telegramLinkTokens.id });
+    if (!claimed) return;
+    await this.db.update(users).set({ telegramChatId: null }).where(eq(users.telegramChatId, chatId));
+    await this.db.update(users).set({ telegramChatId: chatId }).where(eq(users.id, linkRecord.user.id));
+    await this.sendMessage(
+      chatId,
+      `✅ <b>${escapeHtml(linkRecord.user.fullName)}</b>, Telegram hisobingiz CRMAPP'ga ulandi.\n\nEndi yangi arizalar, qayta aloqa va sinov darslari haqidagi eslatmalar shu yerga keladi.`,
+    );
   }
 
   async sendMessage(chatId: string, text: string, replyMarkup?: any) {
@@ -249,6 +329,11 @@ export class TelegramService {
         return;
       }
 
+      if (rawPayload.startsWith('staff_')) {
+        await this.linkStaffChat(chatId, rawPayload.replace('staff_', ''));
+        return;
+      }
+
       const token = rawPayload.startsWith('link_')
         ? rawPayload.replace('link_', '')
         : rawPayload;
@@ -311,6 +396,14 @@ export class TelegramService {
     });
 
     if (!student) {
+      const staff = await this.db.query.users.findFirst({ where: eq(users.telegramChatId, chatId), columns: { fullName: true } });
+      if (staff) {
+        await this.sendMessage(
+          chatId,
+          `${escapeHtml(staff.fullName)}, bu chat CRMAPP eslatmalari uchun ulangan. Eslatmalarni o'chirish uchun CRM'dagi "Telegram eslatmalari" bo'limidan foydalaning.`,
+        );
+        return;
+      }
       await this.sendMessage(
         chatId,
         "⚠️ Sizning Telegram akkauntingiz hali TalimCRM tizimidagi hech qaysi o'quvchiga ulanmagan.\n\nUlash uchun o'quv markazingizdan maxsus bir martalik havola oling.",

@@ -6,6 +6,7 @@ import DashboardShell from "@/components/DashboardShell";
 import Select from "@/components/Select";
 import Pagination from "@/components/Pagination";
 import LeadFormModal from "@/components/leads/LeadFormModal";
+import TelegramConnectCard from "@/components/telegram/TelegramConnectCard";
 import {
   ApiError,
   leadsApi,
@@ -209,6 +210,8 @@ function LeadsContent() {
             {toast}
           </div>
         )}
+
+        <TelegramConnectCard />
 
         <div className="adm-stats">
           {stat(t("adm.statOpen"), openCount ?? "—", "#181A1F")}

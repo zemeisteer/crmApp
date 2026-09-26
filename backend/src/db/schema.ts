@@ -241,10 +241,14 @@ export const users = pgTable('users', {
   verifyTokenHash: text('verify_token_hash'),
   twoFactorSecret: text('two_factor_secret'),
   twoFactorEnabled: boolean('two_factor_enabled').notNull().default(false),
+  // Staff Telegram chat for CRM reminders, linked through a one-time bot
+  // deep link (see TelegramService.generateStaffLinkToken).
+  telegramChatId: text('telegram_chat_id'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 }, (t) => ({
   emailIdx: uniqueIndex('users_email_idx').on(t.email),
+  telegramChatIdx: index('users_telegram_chat_idx').on(t.telegramChatId),
   tenantIdx: index('users_tenant_idx').on(t.tenantId),
 }));
 
@@ -714,6 +718,8 @@ export const telegramLinkTokens = pgTable('telegram_link_tokens', {
   id: text('id').primaryKey().$defaultFn(() => createId()),
   tenantId: text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
   studentId: text('student_id').references(() => students.id, { onDelete: 'cascade' }),
+  // Set instead of studentId when a staff member links their own Telegram.
+  userId: text('user_id').references(() => users.id, { onDelete: 'cascade' }),
   token: text('token').notNull(),
   expiresAt: timestamp('expires_at').notNull(),
   usedAt: timestamp('used_at'),
@@ -1193,6 +1199,7 @@ export const billingTransactionsRelations = relations(billingTransactions, ({ on
 export const telegramLinkTokensRelations = relations(telegramLinkTokens, ({ one }) => ({
   tenant: one(tenants, { fields: [telegramLinkTokens.tenantId], references: [tenants.id] }),
   student: one(students, { fields: [telegramLinkTokens.studentId], references: [students.id] }),
+  user: one(users, { fields: [telegramLinkTokens.userId], references: [users.id] }),
 }));
 
 export const certificatesRelations = relations(certificates, ({ one }) => ({

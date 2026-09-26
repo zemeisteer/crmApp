@@ -57,6 +57,22 @@ Agar baza serveri ilgari UTC bo'lmagan vaqt zonasida ishlagan bo'lsa (masalan `A
 node scripts/fix-local-timestamps.cjs --offset-minutes=300 --before=2026-09-24T17:00:00Z
 ```
 
+### Telegram bot (xodimlarga eslatmalar)
+
+1. Telegram'da **@BotFather** → `/newbot` → nom va username bering. U bergan tokenni oling.
+2. `backend/.env`ga yozing va backendni qayta ishga tushiring:
+
+```
+TELEGRAM_BOT_TOKEN=123456:ABC...
+TELEGRAM_BOT_USERNAME=sizning_botingiz_bot
+TELEGRAM_POLLING=true      # lokal kompyuterda
+```
+
+3. Xodimlar CRM'dagi **Lidlar** sahifasida "Telegram eslatmalari" → **Ulash** ni bosadi, botda **Start** ni bosadi. Shundan so'ng yangi arizalar, qayta aloqa va sinov darslari haqidagi eslatmalar Telegram'ga ham keladi.
+
+Production (ochiq domen) uchun `TELEGRAM_POLLING=false` qiling, `TELEGRAM_WEBHOOK_SECRET`ga tasodifiy satr yozing va webhook'ni shu sir bilan ulang:
+`https://api.telegram.org/bot<TOKEN>/setWebhook?url=https://<domen>/api/telegram/webhook&secret_token=<TELEGRAM_WEBHOOK_SECRET>`
+
 ### Email (Resend)
 
 Parolni tiklash, email tasdiqlash va lid eslatmalari xatlari uchun:

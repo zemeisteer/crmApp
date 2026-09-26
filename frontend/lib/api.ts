@@ -1366,6 +1366,10 @@ export const telegramApi = {
       method: "POST",
       body: JSON.stringify({ studentId }),
     }),
+  // The signed-in staff member's own Telegram, for CRM reminders.
+  myStatus: () => request<{ configured: boolean; botUsername: string | null; linked: boolean }>("/telegram/me"),
+  myLink: () => request<{ linkUrl: string | null; expiresAt: string }>("/telegram/me/link", { method: "POST" }),
+  myUnlink: () => request<{ linked: boolean }>("/telegram/me", { method: "DELETE" }),
 };
 
 // ---- AI ----
