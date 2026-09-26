@@ -16,12 +16,16 @@ export default function MultiSelect({
   onChange,
   placeholder,
   style,
+  summary,
 }: {
   options: MultiSelectOption[];
   selected: string[];
   onChange: (values: string[]) => void;
   placeholder?: string;
   style?: React.CSSProperties;
+  // When set, the closed field shows this text instead of one chip per
+  // selected option (for pages that list the picks themselves).
+  summary?: (count: number) => string;
 }) {
   const { t } = useLanguage();
   const effectivePlaceholder = placeholder ?? t("picker.select");
@@ -65,6 +69,8 @@ export default function MultiSelect({
         <div style={{ display: "flex", flexWrap: "wrap", gap: 5, flex: 1 }}>
           {selectedLabels.length === 0 ? (
             <span style={{ color: "#8A8D96" }}>{effectivePlaceholder}</span>
+          ) : summary ? (
+            <span style={{ fontWeight: 600 }}>{summary(selectedLabels.length)}</span>
           ) : (
             selectedLabels.map((l) => (
               <span

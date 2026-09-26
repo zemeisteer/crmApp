@@ -51,14 +51,10 @@ function StudentsContent() {
   const [phone, setPhone] = useState("");
   const [parentPhone, setParentPhone] = useState("");
   const [birthDate, setBirthDate] = useState("");
-  const [direction, setDirection] = useState("");
   const [groupIds, setGroupIds] = useState<string[]>([]);
   const [placementOpen, setPlacementOpen] = useState(false);
 
   const subjects = useMemo(() => extractUniqueSubjects(groups), [groups]);
-  // The direction only filters the list: groups picked under another
-  // direction stay selected, so a student can join several directions.
-  const groupsInDirection = direction ? groups.filter((g) => matchesSubject(g.subject, direction) || groupIds.includes(g.id)) : groups;
   const selectedGroups = groups.filter((g) => groupIds.includes(g.id));
   const timeClashes = useMemo(() => {
     const out: string[] = [];
@@ -101,7 +97,6 @@ function StudentsContent() {
     setPhone("");
     setParentPhone("");
     setBirthDate("");
-    setDirection("");
     setGroupIds([]);
     setError(null);
   }
@@ -336,28 +331,33 @@ function StudentsContent() {
           <Field label={t("students.fieldBirthDate")}>
             <DatePicker value={birthDate} onChange={setBirthDate} />
           </Field>
-          <Field label={t("students.fieldDirection")}>
-            <Select
-              options={[{ value: "", label: t("students.allDirections") }, ...subjects.map((s) => ({ value: s, label: s }))]}
-              value={direction}
-              onChange={setDirection}
-            />
-          </Field>
           <Field label={t("students.fieldGroups")}>
+            {/* One list for all directions, sorted by direction; each option
+                names its direction so picks from two directions stay clear. */}
             <MultiSelect
-              options={groupsInDirection.map((g) => ({ value: g.id, label: `${g.name} · ${g.subject}${g.startTime ? ` · ${g.startTime}` : ""}` }))}
+              options={[...groups]
+                .sort((x, y) => x.subject.localeCompare(y.subject) || x.name.localeCompare(y.name))
+                .map((g) => ({ value: g.id, label: `${g.subject} — ${g.name}${g.startTime ? ` (${g.startTime})` : ""}` }))}
               selected={groupIds}
               onChange={setGroupIds}
               placeholder={t("students.selectGroups")}
+              summary={(n) => `${n} ${t("students.groupsSelected")}`}
             />
             <div style={{ fontSize: 12, color: "#8A8D96", marginTop: 6 }}>{t("students.multiDirectionHint")}</div>
             {selectedGroups.length > 0 && (
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
-                {selectedGroups.map((g) => (
-                  <span key={g.id} style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "#EEF0FF", color: ACCENT, fontSize: 12, fontWeight: 700, padding: "4px 10px", borderRadius: 999 }}>
-                    {g.name} <span style={{ fontWeight: 500, opacity: 0.8 }}>· {g.subject}</span>
-                    <button type="button" onClick={() => setGroupIds((ids) => ids.filter((id) => id !== g.id))} style={{ background: "none", border: "none", color: ACCENT, cursor: "pointer", fontWeight: 800, padding: 0 }} aria-label={t("common.clear")}>✕</button>
-                  </span>
+              <div style={{ marginTop: 8, border: "1px solid #EAE8E2", borderRadius: 10, overflow: "hidden" }}>
+                {Array.from(new Set(selectedGroups.map((g) => g.subject))).map((subj) => (
+                  <div key={subj} style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "8px 12px", borderBottom: "1px solid #F2F1EC" }}>
+                    <div style={{ minWidth: 96, fontSize: 12, fontWeight: 700, color: "#4A4E58", paddingTop: 3 }}>{subj}</div>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                      {selectedGroups.filter((g) => g.subject === subj).map((g) => (
+                        <span key={g.id} style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "#EEF0FF", color: ACCENT, fontSize: 12, fontWeight: 700, padding: "3px 10px", borderRadius: 999 }}>
+                          {g.name}{g.startTime ? <span style={{ fontWeight: 500, opacity: 0.8 }}>{g.startTime}</span> : null}
+                          <button type="button" onClick={() => setGroupIds((ids) => ids.filter((id) => id !== g.id))} style={{ background: "none", border: "none", color: ACCENT, cursor: "pointer", fontWeight: 800, padding: 0 }} aria-label={t("common.clear")}>✕</button>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
                 ))}
               </div>
             )}

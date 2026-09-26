@@ -50,7 +50,10 @@ export default function BarChart({
   const max = Math.max(1, ...data.map((d) => d.value));
 
   const activeIdx = selectedIdx !== null ? selectedIdx : currentIdx;
-  const selectedItem = activeIdx !== null && activeIdx >= 0 && activeIdx < data.length ? data[activeIdx] : null;
+  // Hovering previews a bar in the badge; the floating tooltip used to be
+  // clipped by the chart's scroll box.
+  const shownIdx = hoveredIdx ?? activeIdx;
+  const selectedItem = shownIdx !== null && shownIdx >= 0 && shownIdx < data.length ? data[shownIdx] : null;
   const isCustomSelected = selectedIdx !== null && selectedIdx !== currentIdx;
   const isEmpty = data.length === 0 || (!!emptyText && data.every((d) => d.value === 0));
 
@@ -131,28 +134,6 @@ export default function BarChart({
                   userSelect: "none",
                 }}
               >
-                {/* Hover tooltip near mouse/bar */}
-                {isHovered && !isSelected && (
-                  <div
-                    style={{
-                      position: "absolute",
-                      bottom: barHeight + 28,
-                      background: "#181A1F",
-                      color: "#fff",
-                      fontSize: 11,
-                      fontWeight: 700,
-                      padding: "4px 8px",
-                      borderRadius: 6,
-                      whiteSpace: "nowrap",
-                      zIndex: 30,
-                      boxShadow: "0 4px 12px rgba(0,0,0,0.2)",
-                      pointerEvents: "none",
-                    }}
-                  >
-                    {d.title ?? d.label}: {formatted}
-                    {unit && ` ${unit}`}
-                  </div>
-                )}
                 <div style={{ fontSize: 11, fontWeight: isSelected ? 800 : 600, color: isSelected ? color : "#4A4E58" }}>
                   {formatted}
                 </div>

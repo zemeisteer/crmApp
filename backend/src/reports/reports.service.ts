@@ -155,7 +155,11 @@ export class ReportsService {
     }));
     // Today's marks at each group's real lesson start time (the old page
     // spread today's total evenly over made-up time slots).
+    // Every lesson time scheduled today shows up, even before marking.
     const slots = new Map<string, number>();
+    for (const g of groupRows) {
+      if (g.startTime && runsOn(g.scheduleDays, now.weekday)) slots.set(g.startTime, slots.get(g.startTime) ?? 0);
+    }
     for (const r of byDate.filter((x) => x.date === today)) {
       const start = groupRows.find((g) => g.id === r.groupId)?.startTime || '—';
       slots.set(start, (slots.get(start) ?? 0) + r.total);

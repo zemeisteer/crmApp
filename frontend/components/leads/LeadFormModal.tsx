@@ -5,7 +5,6 @@ import Link from "next/link";
 import Modal from "@/components/Modal";
 import Select from "@/components/Select";
 import DatePicker from "@/components/DatePicker";
-import TimePicker from "@/components/TimePicker";
 import {
   ApiError,
   leadsApi,
@@ -74,7 +73,6 @@ export default function LeadFormModal({ open, onClose, onSaved, lead, managers =
   const [branchId, setBranchId] = useState(lead?.preferredBranchId ?? "");
   const [managerId, setManagerId] = useState("");
   const [followDate, setFollowDate] = useState("");
-  const [followTime, setFollowTime] = useState("10:00");
   const [notes, setNotes] = useState(lead?.notes ?? "");
   const [duplicates, setDuplicates] = useState<LeadDuplicate[]>([]);
   const [override, setOverride] = useState(false);
@@ -145,7 +143,7 @@ export default function LeadFormModal({ open, onClose, onSaved, lead, managers =
           desiredCourseId: courseId || undefined,
           preferredBranchId: branchId || undefined,
           assignedManagerUserId: managerId || undefined,
-          followUpAt: followDate ? toIsoFromParts(followDate, followTime) : undefined,
+          followUpAt: followDate ? toIsoFromParts(followDate, "10:00") : undefined,
           notes: notes.trim() || undefined,
           ...(override ? { allowDuplicate: true, duplicateReason: overrideReason.trim() } : {}),
         });
@@ -240,10 +238,7 @@ export default function LeadFormModal({ open, onClose, onSaved, lead, managers =
           {!editing && (
             <div>
               <label style={label}>{t("adm.fieldFollowUp")}</label>
-              <div style={{ display: "flex", gap: 8 }}>
-                <DatePicker value={followDate} onChange={setFollowDate} style={{ flex: 1 }} />
-                <TimePicker value={followTime} onChange={setFollowTime} style={{ width: 110 }} />
-              </div>
+              <DatePicker value={followDate} onChange={setFollowDate} />
               <div style={{ marginTop: 5, fontSize: 12, color: "#8A8D96" }}>{t("leadForm.followUpHint")}</div>
             </div>
           )}

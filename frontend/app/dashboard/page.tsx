@@ -108,12 +108,9 @@ function DashboardContent() {
       return { chartData: items, defaultActiveIdx: idx >= 0 ? idx : 0 };
     }
     if (activityPeriod === "day") {
-      // The last 14 days, one bar per day.
-      const items = att.days.map((d) => {
-        const [, m, day] = d.date.split("-").map(Number);
-        return { label: String(day), title: `${day} ${t(MONTH_KEYS[m - 1])}`, value: d.marks, isCurrent: d.date === data.today };
-      });
-      return { chartData: items, defaultActiveIdx: items.length - 1 };
+      // Today's lessons by their start time.
+      const items = att.todayBySlot.map((slot) => ({ label: slot.startTime, value: slot.marks }));
+      return { chartData: items, defaultActiveIdx: 0 };
     }
     // January to December of this year.
     const items = att.months.map((m) => {
@@ -289,7 +286,7 @@ function DashboardContent() {
                     options={[{ key: "day", label: t("dashboard.periodDay") }, { key: "week", label: t("dashboard.periodWeek") }, { key: "month", label: t("dashboard.periodMonth") }]}
                   />
                 </div>
-                <BarChart data={chartData} defaultActiveIdx={defaultActiveIdx} unit={t("dashboard.marksUnit")} emptyText={t("dashboard.noMarksYet")} />
+                <BarChart data={chartData} defaultActiveIdx={defaultActiveIdx} unit={t("dashboard.marksUnit")} emptyText={activityPeriod === "day" ? (chartData.length === 0 ? t("dashboard.noLessonsToday") : undefined) : t("dashboard.noMarksYet")} />
               </div>
               <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 20, display: "flex", flexDirection: "column" }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
