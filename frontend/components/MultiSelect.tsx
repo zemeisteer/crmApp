@@ -8,6 +8,8 @@ const ACCENT = "#4F46E5";
 export interface MultiSelectOption {
   value: string;
   label: string;
+  // Options with a group are listed under that heading (e.g. a direction).
+  group?: string;
 }
 
 export default function MultiSelect({
@@ -30,6 +32,7 @@ export default function MultiSelect({
   const { t } = useLanguage();
   const effectivePlaceholder = placeholder ?? t("picker.select");
   const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -45,6 +48,10 @@ export default function MultiSelect({
   }
 
   const selectedLabels = options.filter((o) => selected.includes(o.value)).map((o) => o.label);
+  // Long lists get a search box; it matches the option and its group.
+  const searchable = options.length > 6;
+  const needle = query.trim().toLowerCase();
+  const visible = needle ? options.filter((o) => `${o.group ?? ""} ${o.label}`.toLowerCase().includes(needle)) : options;
 
   return (
     <div ref={ref} style={{ position: "relative", flexShrink: 0, ...style }}>
@@ -115,22 +122,38 @@ export default function MultiSelect({
             background: "#fff",
             border: "1px solid #EAE8E2",
             borderRadius: 12,
-            maxHeight: 240,
+            maxHeight: 320,
             overflowY: "auto",
             padding: 5,
             boxShadow: "0 12px 36px rgba(18,19,26,0.14), 0 2px 6px rgba(18,19,26,0.06)",
           }}
         >
-          {options.length === 0 ? (
+          {searchable && (
+            <input
+              autoFocus
+              className="field-input"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder={t("picker.search")}
+              style={{ position: "sticky", top: 0, zIndex: 1, marginBottom: 4, height: 36, fontSize: 13 }}
+            />
+          )}
+          {visible.length === 0 ? (
             <div style={{ padding: "10px 12px", fontSize: 12.5, color: "#8A8D96", textAlign: "center" }}>
-              Variantlar yo&apos;q
+              {t("picker.noOptions")}
             </div>
           ) : (
-            options.map((o) => {
+            visible.map((o, i) => {
               const isChecked = selected.includes(o.value);
+              const heading = o.group && o.group !== visible[i - 1]?.group ? o.group : null;
               return (
+                <div key={o.value}>
+                {heading && (
+                  <div style={{ padding: "8px 10px 4px", fontSize: 11, fontWeight: 800, color: "#8A8D96", textTransform: "uppercase", letterSpacing: 0.4 }}>
+                    {heading}
+                  </div>
+                )}
                 <label
-                  key={o.value}
                   style={{
                     display: "flex",
                     alignItems: "center",
@@ -159,6 +182,7 @@ export default function MultiSelect({
                   />
                   <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{o.label}</span>
                 </label>
+                </div>
               );
             })
           )}

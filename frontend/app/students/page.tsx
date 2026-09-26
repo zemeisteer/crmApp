@@ -337,7 +337,7 @@ function StudentsContent() {
             <MultiSelect
               options={[...groups]
                 .sort((x, y) => x.subject.localeCompare(y.subject) || x.name.localeCompare(y.name))
-                .map((g) => ({ value: g.id, label: `${g.subject} — ${g.name}${g.startTime ? ` (${g.startTime})` : ""}` }))}
+                .map((g) => ({ value: g.id, group: g.subject, label: `${g.name}${g.startTime ? ` · ${g.startTime}` : ""}${g.level ? ` · ${g.level}` : ""}` }))}
               selected={groupIds}
               onChange={setGroupIds}
               placeholder={t("students.selectGroups")}

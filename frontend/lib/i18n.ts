@@ -988,6 +988,8 @@ export const dict = {
   "tch.fixedAmount": { UZ: "Oylik maosh summasi (so'm)", RU: "Месячный оклад (сум)", EN: "Monthly salary (sum)" },
   "ver.serverError": { UZ: "Server bilan bog'lanishda xatolik yuz berdi", RU: "Ошибка связи с сервером", EN: "Could not reach the server" },
   "ver.center": { UZ: "Ta'lim markazi", RU: "Учебный центр", EN: "Learning center" },
+  "picker.search": { UZ: "Qidirish: guruh yoki yo'nalish...", RU: "Поиск: группа или направление...", EN: "Search group or direction..." },
+  "picker.noOptions": { UZ: "Hech narsa topilmadi", RU: "Ничего не найдено", EN: "Nothing found" },
   "chart.current": { UZ: "joriy", RU: "текущий", EN: "current" },
   "chart.noData": { UZ: "Ma'lumot yo'q", RU: "Нет данных", EN: "No data" },
   "dashboard.marksUnit": { UZ: "belgi", RU: "отметок", EN: "marks" },
