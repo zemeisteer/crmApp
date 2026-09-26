@@ -124,4 +124,22 @@ describe('Reports overview (e2e)', () => {
     await http().get('/api/reports/overview').set(as('TEACHER')).expect(403);
     await http().get('/api/reports/overview?month=2026-13').set(as('OWNER')).expect(400);
   });
+
+  it('serves the home dashboard from the server, scoped by role', async () => {
+    const d = (await http().get('/api/reports/dashboard').set(as('OWNER')).expect(200)).body;
+    expect(d.counts).toMatchObject({ activeStudents: 4, activeGroups: 2, attendanceMarks: 4 });
+    expect(d.attendance.rates.month).toBe(25);
+    expect(d.attendance.week).toHaveLength(7);
+    expect(d.attendance.months).toHaveLength(6);
+    expect(d.attendance.months.at(-1)).toEqual({ month, marks: 4 });
+    expect(d.groupFill[0]).toMatchObject({ id: g1, students: 2, maxStudents: 10 });
+    expect(d.finance).toMatchObject({ monthRevenue: 500_000, debtorCount: 2, paymentStatus: { paid: 1, total: 1 } });
+
+    // A teacher with no groups of their own sees nothing and no money.
+    const t = (await http().get('/api/reports/dashboard').set(as('TEACHER')).expect(200)).body;
+    expect(t.scopedToOwnGroups).toBe(true);
+    expect(t.counts).toMatchObject({ activeStudents: 0, activeGroups: 0, attendanceMarks: 0 });
+    expect(t.finance).toBeNull();
+    expect(t.attendance.rates.month).toBeNull();
+  });
 });

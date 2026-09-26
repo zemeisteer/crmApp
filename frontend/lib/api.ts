@@ -1651,8 +1651,25 @@ export interface ReportsOverview {
   admissions: LeadAnalytics | null;
 }
 
+export interface DashboardData {
+  today: string;
+  timezone: string;
+  scopedToOwnGroups: boolean;
+  counts: { activeStudents: number; activeGroups: number; teachers: number; todaysLessons: number; attendanceMarks: number };
+  attendance: {
+    week: Array<{ date: string; weekday: number; marks: number }>;
+    months: Array<{ month: string; marks: number }>;
+    todayBySlot: Array<{ startTime: string; marks: number }>;
+    rates: { day: number | null; week: number | null; month: number | null };
+  };
+  groupFill: Array<{ id: string; name: string; students: number; maxStudents: number }>;
+  // null for roles that may not see payments (and for teachers).
+  finance: null | { monthRevenue: number; debtorCount: number; paymentStatus: { paid: number; pending: number; failed: number; total: number } };
+}
+
 export const reportsApi = {
   overview: (month?: string) => request<ReportsOverview>(`/reports/overview${month ? `?month=${month}` : ""}`),
+  dashboard: () => request<DashboardData>("/reports/dashboard"),
 };
 
 // ---- Certificates (Spec Section 23) ----

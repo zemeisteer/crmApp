@@ -6,13 +6,10 @@ import DashboardShell from "@/components/DashboardShell";
 import { DonutChart } from "@/components/BarChart";
 import { useAuth } from "@/lib/auth-context";
 import { useLanguage } from "@/lib/i18n-context";
-import { groupsApi, studentsApi, teachersApi, paymentsApi, attendanceApi, announcementsApi, aiApi, Group, Student, Teacher, Payment, AttendanceRecord, Announcement } from "@/lib/api";
-import { localMonthStr } from "@/lib/date";
+import { reportsApi, announcementsApi, aiApi, Announcement, type DashboardData } from "@/lib/api";
 import type { TranslationKey } from "@/lib/i18n";
 
 const ACCENT = "#4F46E5";
-// Matches the day-of-week strings stored on groups.scheduleDays (always Uzbek) — display-only translation happens separately via WEEKDAY_SHORT_KEYS.
-const WEEKDAYS = ["Yakshanba", "Dushanba", "Seshanba", "Chorshanba", "Payshanba", "Juma", "Shanba"];
 const WEEKDAY_SHORT_KEYS: TranslationKey[] = [
   "weekday.short.sunday", "weekday.short.monday", "weekday.short.tuesday", "weekday.short.wednesday",
   "weekday.short.thursday", "weekday.short.friday", "weekday.short.saturday",
@@ -61,11 +58,9 @@ function PeriodPills({ value, onChange, options }: { value: string; onChange: (v
 function DashboardContent() {
   const { user, tenant } = useAuth();
   const { t, lang } = useLanguage();
-  const [groups, setGroups] = useState<Group[]>([]);
-  const [students, setStudents] = useState<Student[]>([]);
-  const [teachers, setTeachers] = useState<Teacher[]>([]);
-  const [payments, setPayments] = useState<Payment[]>([]);
-  const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
+  // Aggregated on the server (GET /reports/dashboard) instead of loading
+  // every group, student, payment and attendance row into the browser.
+  const [data, setData] = useState<DashboardData | null>(null);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -76,177 +71,61 @@ function DashboardContent() {
   const [aiLoading, setAiLoading] = useState(false);
 
   useEffect(() => {
-    Promise.all([
-      groupsApi.list(),
-      studentsApi.list(),
-      teachersApi.list(),
-      // Finance data is role-restricted; other staff just see no payments.
-      paymentsApi.list().catch(() => []),
-      attendanceApi.list(),
-      announcementsApi.list().catch(() => []),
-    ])
-      .then(([g, s, t, p, a, ann]) => {
-        setGroups(g);
-        setStudents(s);
-        setTeachers(t);
-        setPayments(p);
-        setAttendance(a);
+    Promise.all([reportsApi.dashboard().catch(() => null), announcementsApi.list().catch(() => [])])
+      .then(([d, ann]) => {
+        setData(d);
         setAnnouncements(ann);
       })
       .finally(() => setLoading(false));
   }, []);
 
+  const firstGroupId = data?.groupFill[0]?.id;
   useEffect(() => {
-    if (groups.length === 0) return;
+    if (!firstGroupId) return;
     setAiLoading(true);
     aiApi
-      .groupInsights(groups[0].id)
+      .groupInsights(firstGroupId)
       .then((res) => setAiPreview(res.insight.split("\n")[0]))
       .catch(() => setAiPreview(null))
       .finally(() => setAiLoading(false));
-  }, [groups]);
+  }, [firstGroupId]);
 
   const today = new Date().toLocaleDateString(lang === "UZ" ? "uz-UZ" : lang === "RU" ? "ru-RU" : "en-US", { day: "numeric", month: "long", year: "numeric" });
-  const currentMonth = localMonthStr();
-  const todayWeekday = WEEKDAYS[new Date().getDay()];
-
-  const todaysLessons = groups.filter((g) => (g.scheduleDays || "").split(",").includes(todayWeekday)).length;
-  const monthRevenue = payments.filter((p) => p.forMonth === currentMonth && p.status === "PAID").reduce((sum, p) => sum + p.amount, 0);
-  const debtorsCount = useMemo(() => {
-    return students.filter((s) => {
-      const enrolled = s.enrollments || [];
-      if (enrolled.length === 0) return false;
-      const hasPricedGroup = enrolled.some((e) => (e.group?.monthlyPrice || 0) > 0);
-      if (!hasPricedGroup) return false;
-      return !payments.some((p) => p.studentId === s.id && p.forMonth === currentMonth && p.status === "PAID");
-    }).length;
-  }, [students, payments, currentMonth]);
+  const counts = data?.counts;
+  const finance = data?.finance ?? null;
 
   const { chartData, defaultActiveIdx } = useMemo(() => {
-    const now = new Date();
+    const att = data?.attendance;
+    if (!att) return { chartData: [], defaultActiveIdx: 0 };
     if (activityPeriod === "week") {
-      const start = new Date(now);
-      const dayOffset = (now.getDay() + 6) % 7; // Monday-first
-      start.setDate(now.getDate() - dayOffset);
-      const items = Array.from({ length: 7 }, (_, i) => {
-        const d = new Date(start);
-        d.setDate(start.getDate() + i);
-        const dayStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-        return {
-          label: t(WEEKDAY_SHORT_KEYS[d.getDay()]),
-          value: attendance.filter((a) => a.date === dayStr).length,
-          isCurrent: d.toDateString() === now.toDateString(),
-        };
-      });
-      const currIdx = items.findIndex((it) => it.isCurrent);
-      return { chartData: items, defaultActiveIdx: currIdx >= 0 ? currIdx : 0 };
+      const items = att.week.map((d) => ({
+        label: t(WEEKDAY_SHORT_KEYS[d.weekday % 7]),
+        value: d.marks,
+        isCurrent: d.date === data.today,
+      }));
+      const idx = items.findIndex((i) => i.isCurrent);
+      return { chartData: items, defaultActiveIdx: idx >= 0 ? idx : 0 };
     }
-
     if (activityPeriod === "day") {
-      const dayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-      const dayRecords = attendance.filter((a) => a.date === dayStr);
-
-      // Extract unique lesson start times from groups scheduled for today
-      const todaysGroups = groups.filter((g) => (g.scheduleDays || "").split(",").map((s) => s.trim()).includes(todayWeekday));
-      const groupTimes = Array.from(
-        new Set(
-          todaysGroups
-            .map((g) => g.startTime?.trim())
-            .filter((t): t is string => Boolean(t && t.length >= 4))
-        )
-      ).sort();
-
-      let slots: { label: string; startH: number; endH: number }[] = [];
-      if (groupTimes.length > 0) {
-        slots = groupTimes.map((timeStr) => {
-          const parts = timeStr.split(":");
-          const h = parseInt(parts[0], 10) || 9;
-          const m = parseInt(parts[1], 10) || 0;
-          const endMinTotal = h * 60 + m + 90; // Standard 90 min lessons
-          const endH = Math.floor(endMinTotal / 60);
-          const endM = endMinTotal % 60;
-          const endStr = `${String(endH).padStart(2, "0")}:${String(endM).padStart(2, "0")}`;
-          return {
-            label: `${timeStr} - ${endStr}`,
-            startH: h,
-            endH,
-          };
-        });
-      } else {
-        // Active educational center lesson schedule (not 24 hours)
-        slots = [
-          { label: "09:00 - 10:30", startH: 9, endH: 11 },
-          { label: "11:00 - 12:30", startH: 11, endH: 13 },
-          { label: "14:00 - 15:30", startH: 14, endH: 16 },
-          { label: "16:00 - 17:30", startH: 16, endH: 18 },
-          { label: "18:00 - 19:30", startH: 18, endH: 20 },
-        ];
-      }
-
-      const currentHour = now.getHours();
-      let currIdx = slots.findIndex((s) => currentHour >= s.startH && currentHour < s.endH);
-      if (currIdx === -1) {
-        currIdx = slots.findIndex((s) => s.startH > currentHour);
-        if (currIdx === -1) currIdx = slots.length - 1;
-      }
-      if (currIdx < 0) currIdx = 0;
-
-      const items = slots.map((s, idx) => {
-        const count = dayRecords.length > 0 ? Math.round(dayRecords.length / slots.length) : 0;
-        return {
-          label: s.label,
-          value: count,
-          isCurrent: idx === currIdx,
-        };
-      });
-
-      return { chartData: items, defaultActiveIdx: currIdx };
+      // Real marks per lesson start time today.
+      const items = att.todayBySlot.map((s) => ({ label: s.startTime, value: s.marks, isCurrent: false }));
+      return { chartData: items, defaultActiveIdx: 0 };
     }
+    const items = att.months.map((m, i) => ({ label: m.month.slice(5), value: m.marks, isCurrent: i === att.months.length - 1 }));
+    return { chartData: items, defaultActiveIdx: items.length - 1 };
+  }, [data, activityPeriod, t]);
 
-    // Month
-    const months = Array.from({ length: 6 }, (_, i) =>
-      localMonthStr(new Date(now.getFullYear(), now.getMonth() - (5 - i), 1)),
-    );
-    const currMonthStr = localMonthStr(now);
-    const items = months.map((m) => ({
-      label: m.slice(5),
-      value: attendance.filter((a) => a.date.startsWith(m)).length,
-      isCurrent: m === currMonthStr,
-    }));
-    const currIdx = items.findIndex((it) => it.isCurrent);
-    return { chartData: items, defaultActiveIdx: currIdx >= 0 ? currIdx : items.length - 1 };
-  }, [attendance, activityPeriod, t]);
-
-
-  const attendanceRate = useMemo(() => {
-    const scoped =
-      attendancePeriod === "day"
-        ? attendance.filter((a) => a.date === `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}-${String(new Date().getDate()).padStart(2, "0")}`)
-        : attendancePeriod === "month"
-          ? attendance.filter((a) => a.date.startsWith(currentMonth))
-          : attendance;
-    if (scoped.length === 0) return 0;
-    const present = scoped.filter((a) => a.status === "PRESENT" || a.status === "LATE").length;
-    return Math.round((present / scoped.length) * 100);
-  }, [attendance, attendancePeriod, currentMonth]);
-
-  const groupFillRates = groups
-    .map((g) => ({ group: g, enrolled: students.filter((s) => (s.enrollments || []).some((e) => e.groupId === g.id)).length }))
-    .sort((a, b) => b.enrolled - a.enrolled)
-    .slice(0, 4);
+  const attendanceRate = data?.attendance.rates[attendancePeriod] ?? null;
 
   const paymentStatus = useMemo(() => {
-    const thisMonth = payments.filter((p) => p.forMonth === currentMonth);
-    const total = thisMonth.length || 1;
-    const paid = thisMonth.filter((p) => p.status === "PAID").length;
-    const pending = thisMonth.filter((p) => p.status === "PENDING").length;
-    const failed = thisMonth.filter((p) => p.status === "FAILED").length;
+    const ps = finance?.paymentStatus;
+    const total = ps?.total || 1;
     return {
-      paid: Math.round((paid / total) * 100),
-      pending: Math.round((pending / total) * 100),
-      failed: Math.round((failed / total) * 100),
+      paid: ps ? Math.round((ps.paid / total) * 100) : 0,
+      pending: ps ? Math.round((ps.pending / total) * 100) : 0,
+      failed: ps ? Math.round((ps.failed / total) * 100) : 0,
     };
-  }, [payments, currentMonth]);
+  }, [finance]);
 
   const activeBroadcasts = useMemo(() => {
     return announcements.filter((a) => a.priority === "URGENT" || a.priority === "HIGH").slice(0, 2);
@@ -329,7 +208,7 @@ function DashboardContent() {
               </div>
             )}
 
-            {groups.length > 0 && (
+            {(counts?.activeGroups ?? 0) > 0 && (
               <div
                 style={{
                   background: "linear-gradient(135deg,#0F0B29,#1B1440)", borderRadius: 16, padding: "18px 24px",
@@ -362,16 +241,25 @@ function DashboardContent() {
             )}
 
             <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0,1fr))", gap: 16 }}>
-              <StatCard label={t("dashboard.statTodaysLessons")} value={String(todaysLessons)} />
-              <StatCard label={t("dashboard.statActiveStudents")} value={String(students.length)} />
-              <StatCard label={t("dashboard.statMonthRevenue")} value={`${formatMoney(monthRevenue)} ${t("common.sumUnit")}`} />
-              <StatCard label={t("dashboard.statDebtors")} value={String(debtorsCount)} danger={debtorsCount > 0} />
+              <StatCard label={t("dashboard.statTodaysLessons")} value={String(counts?.todaysLessons ?? 0)} />
+              <StatCard label={t("dashboard.statActiveStudents")} value={String(counts?.activeStudents ?? 0)} />
+              {finance ? (
+                <>
+                  <StatCard label={t("dashboard.statMonthRevenue")} value={`${formatMoney(finance.monthRevenue)} ${t("common.sumUnit")}`} />
+                  <StatCard label={t("dashboard.statDebtors")} value={String(finance.debtorCount)} danger={finance.debtorCount > 0} />
+                </>
+              ) : (
+                <>
+                  <StatCard label={t("dashboard.statGroupsCount")} value={String(counts?.activeGroups ?? 0)} />
+                  <StatCard label={t("dashboard.statTotalLessons")} value={String(counts?.attendanceMarks ?? 0)} />
+                </>
+              )}
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0,1fr))", gap: 16 }}>
-              <StatCard label={t("dashboard.statTeachersCount")} value={String(teachers.length)} />
-              <StatCard label={t("dashboard.statTotalStudents")} value={String(students.length)} />
-              <StatCard label={t("dashboard.statGroupsCount")} value={String(groups.length)} />
-              <StatCard label={t("dashboard.statTotalLessons")} value={String(attendance.length)} />
+              <StatCard label={t("dashboard.statTeachersCount")} value={String(counts?.teachers ?? 0)} />
+              <StatCard label={t("dashboard.statTotalStudents")} value={String(counts?.activeStudents ?? 0)} />
+              <StatCard label={t("dashboard.statGroupsCount")} value={String(counts?.activeGroups ?? 0)} />
+              <StatCard label={t("dashboard.statTotalLessons")} value={String(counts?.attendanceMarks ?? 0)} />
             </div>
 
             <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: 16 }}>
@@ -396,7 +284,7 @@ function DashboardContent() {
                   />
                 </div>
                 <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <DonutChart value={attendanceRate} max={100} color={ACCENT} label={t("dashboard.average")} />
+                  <DonutChart value={attendanceRate ?? 0} max={100} color={ACCENT} label={attendanceRate === null ? "—" : t("dashboard.average")} />
                 </div>
               </div>
             </div>
@@ -404,30 +292,30 @@ function DashboardContent() {
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
               <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 20 }}>
                 <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 700, fontSize: 15, marginBottom: 16 }}>{t("dashboard.groupFillRate")}</div>
-                {groupFillRates.length === 0 ? (
+                {(data?.groupFill.length ?? 0) === 0 ? (
                   <div style={{ fontSize: 13, color: "#8A8D96" }}>{t("dashboard.noGroupsYet")}</div>
                 ) : (
                   <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-                    {groupFillRates.map(({ group, enrolled }) => (
+                    {data!.groupFill.map((g) => (
                       <ProgressBar
-                        key={group.id}
-                        label={group.name}
-                        value={enrolled}
-                        max={group.maxStudents || 1}
-                        color={enrolled >= group.maxStudents ? "#1FA463" : ACCENT}
+                        key={g.id}
+                        label={g.name}
+                        value={g.students}
+                        max={g.maxStudents || 1}
+                        color={g.students >= g.maxStudents ? "#1FA463" : ACCENT}
                       />
                     ))}
                   </div>
                 )}
               </div>
-              <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 20 }}>
+              {finance && <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 20 }}>
                 <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 700, fontSize: 15, marginBottom: 16 }}>{t("dashboard.paymentStatusThisMonth")}</div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                   <ProgressBar label={t("dashboard.paid")} value={paymentStatus.paid} max={100} color="#1FA463" suffix={`${paymentStatus.paid}%`} />
                   <ProgressBar label={t("dashboard.pending")} value={paymentStatus.pending} max={100} color="#8A8D96" suffix={`${paymentStatus.pending}%`} />
                   <ProgressBar label={t("dashboard.overdue")} value={paymentStatus.failed} max={100} color="#B23A47" suffix={`${paymentStatus.failed}%`} />
                 </div>
-              </div>
+              </div>}
             </div>
           </>
         )}

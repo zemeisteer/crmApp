@@ -1,11 +1,12 @@
 import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { and, eq, gte, inArray, isNull, lt, sql } from 'drizzle-orm';
 import { DB, Database } from '../db/db.module';
-import { attendance, enrollments, groups, invoices, payments, students } from '../db/schema';
+import { attendance, enrollments, groups, invoices, payments, students, teachers } from '../db/schema';
 import { PaymentsService } from '../payments/payments.service';
 import { LeadsService } from '../leads/leads.service';
 import { DEFAULT_TIMEZONE, zonedParts, zonedTimeToUtc } from '../common/timezone';
 import { seatHeldWhere } from '../common/seats';
+import { studentIdsInGroups, teacherGroupIds } from '../common/teacher-scope';
 
 // Who sees which part of the overview. Finance mirrors the payments/expenses
 // read rules; admissions mirrors admissions.analytics.
@@ -14,6 +15,21 @@ export interface ReportViewer {
   permissions: string[];
 }
 const FINANCE_ROLES = ['SUPERADMIN', 'OWNER', 'ADMIN', 'MANAGER', 'ACCOUNTANT'];
+// Same audience as the payments read endpoints.
+const PAYMENT_READ_ROLES = ['SUPERADMIN', 'OWNER', 'ADMIN', 'MANAGER', 'ACCOUNTANT', 'RECEPTIONIST'];
+// groups.scheduleDays holds Uzbek day names (the UI writes them); English
+// codes are accepted too. Index = ISO weekday - 1.
+const WEEKDAY_NAMES = [
+  ['dushanba', 'mon'], ['seshanba', 'tue'], ['chorshanba', 'wed'], ['payshanba', 'thu'],
+  ['juma', 'fri'], ['shanba', 'sat'], ['yakshanba', 'sun'],
+];
+function runsOn(scheduleDays: string | null, isoWeekday: number) {
+  const names = WEEKDAY_NAMES[isoWeekday - 1];
+  return (scheduleDays ?? '').split(',').map((d) => d.trim().toLowerCase()).some((d) => names.includes(d));
+}
+function ymd(p: { year: number; month: number; day: number }) {
+  return `${p.year}-${String(p.month).padStart(2, '0')}-${String(p.day).padStart(2, '0')}`;
+}
 const PROFIT_ROLES = ['SUPERADMIN', 'OWNER', 'ADMIN', 'ACCOUNTANT'];
 
 function pct(numerator: number, denominator: number) {
@@ -78,6 +94,116 @@ export class ReportsService {
       admissions: canAdmissions
         ? await this.leadsService.getAnalytics(tenantId, { from: monthStart.toISOString(), to: monthEnd.toISOString() })
         : null,
+    };
+  }
+
+  // Home dashboard for every staff role. Teachers get their own groups only;
+  // money figures only for roles that may read payments.
+  async dashboard(tenantId: string, viewer: { role: string; userId: string }) {
+    const tz = await this.leadsService.tenantTimezone(tenantId).catch(() => DEFAULT_TIMEZONE);
+    const now = zonedParts(new Date(), tz);
+    const today = ymd(now);
+    const month = today.slice(0, 7);
+    const scope = await teacherGroupIds(this.db, tenantId, viewer.role, viewer.userId);
+
+    const groupRows = await this.db.select({
+      id: groups.id, name: groups.name, maxStudents: groups.maxStudents, scheduleDays: groups.scheduleDays, startTime: groups.startTime,
+    }).from(groups).where(and(
+      eq(groups.tenantId, tenantId), isNull(groups.deletedAt), eq(groups.status, 'ACTIVE'),
+      ...(scope ? [scope.length ? inArray(groups.id, scope) : sql`false`] : []),
+    ));
+    const groupIds = groupRows.map((g) => g.id);
+
+    let activeStudents: number;
+    if (scope) {
+      const ids = await studentIdsInGroups(this.db, scope);
+      activeStudents = ids.length === 0 ? 0 : (await this.db.select({ n: sql<number>`count(*)::int` }).from(students)
+        .where(and(inArray(students.id, ids), isNull(students.deletedAt), eq(students.status, 'ACTIVE'))))[0].n;
+    } else {
+      activeStudents = (await this.db.select({ n: sql<number>`count(*)::int` }).from(students)
+        .where(and(eq(students.tenantId, tenantId), isNull(students.deletedAt), eq(students.status, 'ACTIVE'))))[0].n;
+    }
+    const [{ teacherCount }] = await this.db.select({ teacherCount: sql<number>`count(*)::int` }).from(teachers)
+      .where(and(eq(teachers.tenantId, tenantId), isNull(teachers.deletedAt)));
+
+    // Attendance marks per date and group for roughly the last 6 months.
+    const since = ymd(zonedParts(new Date(Date.now() - 190 * 86_400_000), tz));
+    const attScope = and(
+      eq(attendance.tenantId, tenantId),
+      ...(scope ? [groupIds.length ? inArray(attendance.groupId, groupIds) : sql`false`] : []),
+    );
+    const byDate = await this.db.select({
+      date: attendance.date,
+      groupId: attendance.groupId,
+      total: sql<number>`count(*)::int`,
+      present: sql<number>`count(*) filter (where ${attendance.status} in ('PRESENT', 'LATE'))::int`,
+    }).from(attendance)
+      .where(and(attScope, gte(attendance.date, since)))
+      .groupBy(attendance.date, attendance.groupId);
+    const [{ allMarks }] = await this.db.select({ allMarks: sql<number>`count(*)::int` }).from(attendance).where(attScope);
+
+    // Current week, Monday first, in the center's timezone.
+    const week = Array.from({ length: 7 }, (_, i) => {
+      const date = ymd(zonedParts(new Date(Date.now() + (i - (now.weekday - 1)) * 86_400_000), tz));
+      return { date, weekday: i + 1, marks: byDate.filter((r) => r.date === date).reduce((s, r) => s + r.total, 0) };
+    });
+    const months = Array.from({ length: 6 }, (_, i) => shiftMonth(month, i - 5)).map((m) => ({
+      month: m,
+      marks: byDate.filter((r) => r.date.startsWith(m)).reduce((s, r) => s + r.total, 0),
+    }));
+    // Today's marks at each group's real lesson start time (the old page
+    // spread today's total evenly over made-up time slots).
+    const slots = new Map<string, number>();
+    for (const r of byDate.filter((x) => x.date === today)) {
+      const start = groupRows.find((g) => g.id === r.groupId)?.startTime || '—';
+      slots.set(start, (slots.get(start) ?? 0) + r.total);
+    }
+    const rateOf = (rows: typeof byDate) => pct(rows.reduce((s, r) => s + r.present, 0), rows.reduce((s, r) => s + r.total, 0));
+    const weekDates = new Set(week.map((w) => w.date));
+
+    const seats = groupIds.length === 0 ? [] : await this.db.select({ groupId: enrollments.groupId, n: sql<number>`count(*)::int` })
+      .from(enrollments).innerJoin(students, eq(students.id, enrollments.studentId))
+      .where(seatHeldWhere(inArray(enrollments.groupId, groupIds))).groupBy(enrollments.groupId);
+
+    let finance: null | { monthRevenue: number; debtorCount: number; paymentStatus: { paid: number; pending: number; failed: number; total: number } } = null;
+    if (!scope && PAYMENT_READ_ROLES.includes(viewer.role)) {
+      const rows = await this.db.select({ status: payments.status, n: sql<number>`count(*)::int`, amount: sql<number>`coalesce(sum(${payments.amount}), 0)::int` })
+        .from(payments).where(and(eq(payments.tenantId, tenantId), eq(payments.forMonth, month))).groupBy(payments.status);
+      const get = (s: string) => rows.find((r) => r.status === s);
+      const debtors = await this.paymentsService.getDebtors(tenantId, month, false);
+      finance = {
+        monthRevenue: get('PAID')?.amount ?? 0,
+        debtorCount: debtors.debtorCount,
+        paymentStatus: { paid: get('PAID')?.n ?? 0, pending: get('PENDING')?.n ?? 0, failed: get('FAILED')?.n ?? 0, total: rows.reduce((s, r) => s + r.n, 0) },
+      };
+    }
+
+    return {
+      today,
+      timezone: tz,
+      scopedToOwnGroups: Boolean(scope),
+      counts: {
+        activeStudents,
+        activeGroups: groupRows.length,
+        teachers: teacherCount,
+        todaysLessons: groupRows.filter((g) => runsOn(g.scheduleDays, now.weekday)).length,
+        attendanceMarks: allMarks,
+      },
+      attendance: {
+        week,
+        months,
+        todayBySlot: [...slots.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([startTime, marks]) => ({ startTime, marks })),
+        rates: {
+          day: rateOf(byDate.filter((r) => r.date === today)),
+          week: rateOf(byDate.filter((r) => weekDates.has(r.date))),
+          month: rateOf(byDate.filter((r) => r.date.startsWith(month))),
+        },
+      },
+      groupFill: groupRows
+        .map((g) => ({ id: g.id, name: g.name, students: seats.find((s) => s.groupId === g.id)?.n ?? 0, maxStudents: g.maxStudents }))
+        .sort((a, b) => b.students - a.students)
+        .slice(0, 4),
+      finance,
     };
   }
 
