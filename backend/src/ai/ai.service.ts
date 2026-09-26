@@ -16,19 +16,46 @@ export class AiService {
     private readonly config: ConfigService,
   ) {}
 
-  private client() {
-    const apiKey = this.config.get<string>('ANTHROPIC_API_KEY');
-    if (!apiKey) {
-      throw new ServiceUnavailableException(
-        "AI xususiyati yoqilmagan: backend/.env fayliga ANTHROPIC_API_KEY qo'shing.",
-      );
+  // Which AI answers: Claude when ANTHROPIC_API_KEY is set, otherwise
+  // Google Gemini (free tier) when GEMINI_API_KEY is set.
+  private aiConfigured() {
+    return Boolean(this.config.get<string>('ANTHROPIC_API_KEY') || this.config.get<string>('GEMINI_API_KEY'));
+  }
+
+  private async complete(prompt: string, maxTokens: number): Promise<string> {
+    const anthropicKey = this.config.get<string>('ANTHROPIC_API_KEY');
+    if (anthropicKey) {
+      const res = await new Anthropic({ apiKey: anthropicKey }).messages.create({
+        model: MODEL,
+        max_tokens: maxTokens,
+        messages: [{ role: 'user', content: prompt }],
+      });
+      return res.content.find((b) => b.type === 'text')?.text ?? '';
     }
-    return new Anthropic({ apiKey });
+    const geminiKey = this.config.get<string>('GEMINI_API_KEY');
+    if (geminiKey) {
+      const model = this.config.get<string>('GEMINI_MODEL') || 'gemini-2.5-flash';
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': geminiKey },
+        body: JSON.stringify({
+          contents: [{ role: 'user', parts: [{ text: prompt }] }],
+          generationConfig: { maxOutputTokens: Math.max(maxTokens, 2048) },
+        }),
+      });
+      if (!res.ok) {
+        const body = await res.text().catch(() => '');
+        throw new ServiceUnavailableException(`Gemini xatosi (${res.status}): ${body.slice(0, 200)}`);
+      }
+      const data = (await res.json()) as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> };
+      return data.candidates?.[0]?.content?.parts?.map((p) => p.text ?? '').join('') ?? '';
+    }
+    throw new ServiceUnavailableException(
+      "AI yoqilmagan: backend/.env fayliga GEMINI_API_KEY (bepul) yoki ANTHROPIC_API_KEY qo'shing.",
+    );
   }
 
   async groupInsights(tenantId: string, groupId: string) {
-    const client = this.client();
-
     const group = await this.db.query.groups.findFirst({
       where: eq(groups.id, groupId),
       with: { teacher: true, enrollments: { with: { student: true } } },
@@ -58,13 +85,7 @@ O'qituvchi: ${group.teacher?.fullName ?? "biriktirilmagan"}
 O'quvchilar (${studentSummaries.length} ta):
 ${studentSummaries.join('\n') || 'Guruhda o\'quvchi yo\'q.'}`;
 
-    const res = await client.messages.create({
-      model: MODEL,
-      max_tokens: 700,
-      messages: [{ role: 'user', content: prompt }],
-    });
-
-    const text = res.content.find((b) => b.type === 'text')?.text ?? '';
+    const text = await this.complete(prompt, 700);
     return { insight: text };
   }
 
@@ -79,19 +100,12 @@ Daraja: ${dto.level || "belgilanmagan"}
 Mavzu: ${dto.topic}${dto.customInstructions ? `\nO'qituvchi maxsus talabi / tafsifi: ${dto.customInstructions}` : ''}`;
 
     try {
-      const apiKey = this.config.get<string>('ANTHROPIC_API_KEY');
-      if (apiKey) {
-        const client = this.client();
-        const res = await client.messages.create({
-          model: MODEL,
-          max_tokens: 1500,
-          messages: [{ role: 'user', content: prompt }],
-        });
-        const text = res.content.find((b) => b.type === 'text')?.text ?? '';
+      if (this.aiConfigured()) {
+        const text = await this.complete(prompt, 1500);
         if (text) return { material: text };
       }
     } catch (e) {
-      if (this.config.get<string>('ANTHROPIC_API_KEY')) throw e;
+      if (this.aiConfigured()) throw e;
     }
 
     return { material: this.buildFallbackMaterial(dto) };
@@ -163,9 +177,7 @@ ${dto.customInstructions ? `O'qituvchi eslatmasi: ${dto.customInstructions}\n` :
     const request = dto.request?.trim() || '';
 
     try {
-      const apiKey = this.config.get<string>('ANTHROPIC_API_KEY');
-      if (apiKey) {
-        const client = this.client();
+      if (this.aiConfigured()) {
         const prompt = `Sen o'quv markazi uchun tajribali o'qituvchi yordamchisisan.
 Quyidagi guruh va fan uchun aniq, qiziqarli va professional uyga vazifa (homework) tavsiya et.
 Fan: ${subject}
@@ -181,12 +193,7 @@ Javobni FAQAT quyidagi JSON formatida ber (boshqa hech qanday so'z qo'shma):
   "description": "Vazifaning qisqa va aniq bandlari (1. ..., 2. ..., 3. ...)",
   "dueDays": 3
 }`;
-        const res = await client.messages.create({
-          model: MODEL,
-          max_tokens: 500,
-          messages: [{ role: 'user', content: prompt }],
-        });
-        const text = res.content.find((b) => b.type === 'text')?.text ?? '';
+        const text = await this.complete(prompt, 500);
         const match = text.match(/\{[\s\S]*\}/);
         if (match) {
           const parsed = JSON.parse(match[0]);
@@ -243,9 +250,7 @@ Javobni FAQAT quyidagi JSON formatida ber (boshqa hech qanday so'z qo'shma):
     points: number;
   }>> {
     try {
-      const apiKey = this.config.get<string>('ANTHROPIC_API_KEY');
-      if (apiKey) {
-        const client = this.client();
+      if (this.aiConfigured()) {
         const prompt = `Sen o'quv markazi uchun professional test tuzuvchisisan.
 Quyidagi fan va mavzu bo'yicha ${count} ta sifatli, qiziqarli test savolini o'zbek tilida tuz:
 Fan: ${subject || 'Umumiy'}
@@ -267,12 +272,7 @@ Javobni FAQAT valid JSON array ko'rinishida ber (hech qanday markdown yoki tushu
     "points": 1
   }
 ]`;
-        const res = await client.messages.create({
-          model: MODEL,
-          max_tokens: 1500,
-          messages: [{ role: 'user', content: prompt }],
-        });
-        const text = res.content.find((b) => b.type === 'text')?.text ?? '';
+        const text = await this.complete(prompt, 1500);
         const match = text.match(/\[[\s\S]*\]/);
         if (match) {
           const parsed = JSON.parse(match[0]);
@@ -381,7 +381,7 @@ Javobni FAQAT valid JSON array ko'rinishida ber (hech qanday markdown yoki tushu
     const target = dto.level === 'BEGINNER' ? 1 : dto.level === 'ADVANCED' ? 3 : dto.level === 'INTERMEDIATE' ? 2 : undefined;
     const language = dto.language ?? 'UZ';
 
-    if (this.config.get<string>('ANTHROPIC_API_KEY')) {
+    if (this.aiConfigured()) {
       try {
         const questions = await this.aiPlacementQuestions(subject, count, dto.level ?? null, groupLevel, language);
         if (questions.length >= Math.min(5, count)) return { subject, source: 'ai' as const, questions };
@@ -392,7 +392,7 @@ Javobni FAQAT valid JSON array ko'rinishida ber (hech qanday markdown yoki tushu
     const bank = bankFor(subject);
     if (!bank) {
       throw new ServiceUnavailableException(
-        `"${subject}" uchun tayyor test yo'q. AI bilan yaratish uchun backend/.env fayliga ANTHROPIC_API_KEY qo'shing (hozircha Ingliz tili va Matematika tayyor).`,
+        `"${subject}" uchun tayyor test yo'q. AI bilan yaratish uchun backend/.env fayliga GEMINI_API_KEY (bepul) qo'shing (hozircha Ingliz tili va Matematika tayyor).`,
       );
     }
     return { subject, source: 'bank' as const, questions: pickFromBank(bank, count, target) };
@@ -409,8 +409,7 @@ Har bir savolda 4 ta variant, faqat bittasi to'g'ri. Savollar osondan qiyinga: l
 
 Javobni FAQAT JSON massiv ko'rinishida ber, boshqa so'z qo'shma:
 [{"prompt": "...", "options": ["...", "...", "...", "..."], "correctIndex": 0, "level": 1}]`;
-    const res = await this.client().messages.create({ model: MODEL, max_tokens: 4000, messages: [{ role: 'user', content: prompt }] });
-    const text = res.content.find((b) => b.type === 'text')?.text ?? '';
+    const text = await this.complete(prompt, 4000);
     const match = text.match(/\[[\s\S]*\]/);
     if (!match) return [];
     const raw = JSON.parse(match[0]) as Array<Partial<PlacementQuestion>>;

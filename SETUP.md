@@ -160,7 +160,7 @@ Uch integratsiya **kodi tayyor, lekin real kalitlarsiz ishlamaydi** (`.env`ga qi
 
 - **Telegram bot** — @BotFather'dan token oling, `.env`ga yozing, so'ng Telegram'da `setWebhook` orqali `https://<domen>/api/telegram/webhook`ni ulang.
 - **Click/Payme** (markaz o'z o'quvchilaridan, va markaz platformadan) — merchant kabinetdagi ID/kalitlarni `.env`ga yozing. **Real pul bilan ishlaydi — production'ga chiqarishdan oldin sandbox'da sinab ko'ring.**
-- **AI xususiyatlar** (tahlil, materiallar) — `ANTHROPIC_API_KEY` kerak (console.anthropic.com).
+- **AI xususiyatlar** (tahlil, materiallar, daraja testi) — `GEMINI_API_KEY` (bepul, aistudio.google.com) yoki `ANTHROPIC_API_KEY` (console.anthropic.com). Ikkalasi bo'lsa Claude ishlatiladi.
 
 Domen sotib olish va DNS sozlash (`*.talimcrm.uz` wildcard, HTTPS) — bu Claude Code tomonidan bajarib bo'lmaydigan yagona bosqich, qo'lda amalga oshirilishi kerak.
 
