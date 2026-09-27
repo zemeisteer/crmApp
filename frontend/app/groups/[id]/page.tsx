@@ -8,6 +8,8 @@ import Modal from "@/components/Modal";
 import Select from "@/components/Select";
 import DatePicker from "@/components/DatePicker";
 import GroupExamResults from "@/components/groups/GroupExamResults";
+import GroupInfoCard from "@/components/groups/GroupInfoCard";
+import GroupAttendanceHistory from "@/components/groups/GroupAttendanceHistory";
 import { groupsApi, studentsApi, paymentsApi, attendanceApi, Group, Student, Gender, Payment, AttendanceRecord, AttendanceStatus, ApiError } from "@/lib/api";
 import { PHONE_PATTERN, PHONE_TITLE, NAME_PATTERN, NAME_TITLE } from "@/lib/validation";
 import { localDateStr, localMonthStr } from "@/lib/date";
@@ -303,15 +305,7 @@ function GroupDetailContent() {
           </div>
         </div>
 
-        <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 20 }}>
-          <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 700, fontSize: 15, marginBottom: 14 }}>{t("groupDetail.aboutGroup")}</div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0,1fr))", gap: "18px 16px" }}>
-            <InfoField label={t("groupDetail.subject")} value={group.subject} />
-            <InfoField label={t("groupDetail.level")} value={group.level || "—"} />
-            <InfoField label={t("groupDetail.startedDate")} value={formatDate(group.startDate)} />
-            <InfoField label={t("groupDetail.schedule")} value={group.schedule || "—"} />
-          </div>
-        </div>
+        <GroupInfoCard group={group} students={enrollments.length} />
 
         <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 20 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
@@ -367,6 +361,8 @@ function GroupDetailContent() {
             </>
           )}
         </div>
+
+        <GroupAttendanceHistory students={enrollments.map((e) => e.student)} records={attendance} />
 
         <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, overflow: "hidden" }}>
           <div style={{ padding: "16px 20px 4px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>

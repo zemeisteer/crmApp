@@ -221,4 +221,27 @@ describe('Group capacity & schedule day alignment (e2e)', () => {
     expect(res.body.code).toBe('SKIP_TRIAL_REASON_REQUIRED');
     await http().post(`/api/leads/${lead.id}/transition`).set(auth()).send({ toStatus: 'QUALIFIED', note: 'Came from a partner school, level known' }).expect(201);
   });
+
+  it('marks teacher attendance and takes missed lessons off the payroll', async () => {
+    const teacher = (await http().post('/api/teachers').set(auth()).send({ fullName: 'Payroll Teacher', salaryType: 'FIXED', salaryValue: 2_000_000 }).expect(201)).body.id as string;
+    const sub = (await http().post('/api/teachers').set(auth()).send({ fullName: 'Sub Teacher', salaryType: 'PER_LESSON', salaryValue: 50_000 }).expect(201)).body.id as string;
+    const g = (await http().post('/api/groups').set(auth())
+      .send({ name: 'Monday Group', subject: 'Math', teacherId: teacher, scheduleDays: 'Dushanba', startTime: '08:00', endTime: '09:00' }).expect(201)).body.id as string;
+
+    // 2031-03 has five Mondays: 3, 10, 17, 24, 31.
+    const day = (await http().get('/api/teacher-attendance?date=2031-03-10').set(auth()).expect(200)).body;
+    expect(day.find((l: { groupId: string }) => l.groupId === g)).toMatchObject({ teacherId: teacher, status: null });
+    await http().get('/api/teacher-attendance?date=2031-03-11').set(auth()).expect(200)
+      .then((r) => expect(r.body.find((l: { groupId: string }) => l.groupId === g)).toBeUndefined());
+
+    await http().post('/api/teacher-attendance').set(auth())
+      .send({ date: '2031-03-10', entries: [{ groupId: g, status: 'ABSENT', substituteTeacherId: sub }] }).expect(201);
+
+    const payroll = (await http().get('/api/salary-payments/calculate?forMonth=2031-03').set(auth()).expect(200)).body;
+    const main = payroll.teachers.find((x: { teacherId: string }) => x.teacherId === teacher);
+    expect(main.details).toMatchObject({ plannedLessons: 5, absentLessons: 1, deduction: 400_000 });
+    expect(main.calculatedSalary).toBe(1_600_000);
+    const cover = payroll.teachers.find((x: { teacherId: string }) => x.teacherId === sub);
+    expect(cover).toMatchObject({ calculatedSalary: 50_000 });
+  });
 });

@@ -1,7 +1,9 @@
 import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { and, eq, isNull } from 'drizzle-orm';
 import { DB, Database } from '../db/db.module';
+import { TeacherAttendanceService } from '../teacher-attendance/teacher-attendance.service';
 import {
+  enrollments,
   expenses,
   groups,
   payments,
@@ -16,7 +18,7 @@ export interface TeacherPayrollItem {
   teacherName: string;
   phone: string | null;
   subject: string | null;
-  salaryType: 'FIXED' | 'PER_LESSON' | 'PERCENTAGE';
+  salaryType: 'FIXED' | 'PER_LESSON' | 'PERCENTAGE' | 'PER_STUDENT';
   salaryValue: number;
   calculatedSalary: number;
   paidAmount: number;
@@ -28,7 +30,15 @@ export interface TeacherPayrollItem {
     rate: number;
     lessonCount?: number;
     groupRevenue?: number;
+    studentCount?: number;
     groupCount: number;
+    // Teacher attendance for the month (see TeacherAttendanceService).
+    plannedLessons: number;
+    absentLessons: number;
+    lateLessons: number;
+    substitutedLessons: number;
+    // Taken off for missed lessons (non per-lesson pay).
+    deduction: number;
   };
 }
 
@@ -43,7 +53,10 @@ export interface PayrollCalculationResponse {
 
 @Injectable()
 export class SalaryService {
-  constructor(@Inject(DB) private readonly db: Database) {}
+  constructor(
+    @Inject(DB) private readonly db: Database,
+    private readonly teacherAttendance: TeacherAttendanceService,
+  ) {}
 
   findAll(tenantId: string, teacherId?: string) {
     const conditions = [eq(salaryPayments.tenantId, tenantId)];
@@ -126,40 +139,49 @@ export class SalaryService {
       ),
     });
 
-    // 6. Fetch enrollments
-    const allEnrollments = await this.db.query.enrollments.findMany();
+    // 6. Fetch enrollments of this center
+    const allEnrollments = await this.db.query.enrollments.findMany({ where: eq(enrollments.tenantId, tenantId) });
+    const attendanceStats = await this.teacherAttendance.monthStats(tenantId, month);
 
     const items: TeacherPayrollItem[] = [];
 
     for (const teacher of activeTeachers) {
-      const type = (teacher.salaryType as 'FIXED' | 'PER_LESSON' | 'PERCENTAGE') || 'FIXED';
+      // The teacher form stores PERCENT; older rows PERCENTAGE.
+      const raw = teacher.salaryType || 'FIXED';
+      const type = (raw === 'PERCENT' ? 'PERCENTAGE' : raw) as TeacherPayrollItem['salaryType'];
       const rate = teacher.salaryValue || 0;
       const teacherGroups = tenantGroups.filter((g) => g.teacherId === teacher.id);
+      const teacherGroupIds = new Set(teacherGroups.map((g) => g.id));
+      const att = attendanceStats.get(teacher.id) ?? { planned: 0, absent: 0, late: 0, substituted: 0 };
       let calculatedSalary = 0;
       let lessonCount = 0;
       let groupRevenue = 0;
+      let studentCount = 0;
+      let deduction = 0;
 
-      if (type === 'FIXED') {
-        calculatedSalary = rate;
-      } else if (type === 'PER_LESSON') {
-        const teacherSchedules = tenantSchedules.filter(
-          (s) => s.teacherId === teacher.id && s.status !== 'CANCELLED',
-        );
-        const dateSpecific = teacherSchedules.filter((s) => s.date && s.date.startsWith(month));
-        const recurring = teacherSchedules.filter((s) => s.isRecurring);
-        lessonCount = dateSpecific.length > 0 ? dateSpecific.length : recurring.length * 4;
+      if (type === 'PER_LESSON') {
+        // Lessons actually taught: planned, minus missed, plus covered for others.
+        lessonCount = Math.max(0, att.planned - att.absent) + att.substituted;
         calculatedSalary = lessonCount * rate;
-      } else if (type === 'PERCENTAGE') {
-        const teacherGroupIds = new Set(teacherGroups.map((g) => g.id));
-        const enrolledStudentIds = new Set(
-          allEnrollments
-            .filter((e) => teacherGroupIds.has(e.groupId))
-            .map((e) => e.studentId),
-        );
-        groupRevenue = paidPayments
-          .filter((p) => enrolledStudentIds.has(p.studentId))
-          .reduce((sum, p) => sum + p.amount, 0);
-        calculatedSalary = Math.round(groupRevenue * (rate / 100));
+      } else {
+        let base = 0;
+        if (type === 'FIXED') {
+          base = rate;
+        } else if (type === 'PERCENTAGE') {
+          const enrolledStudentIds = new Set(
+            allEnrollments.filter((e) => teacherGroupIds.has(e.groupId)).map((e) => e.studentId),
+          );
+          groupRevenue = paidPayments.filter((p) => enrolledStudentIds.has(p.studentId)).reduce((sum, p) => sum + p.amount, 0);
+          base = Math.round(groupRevenue * (rate / 100));
+        } else if (type === 'PER_STUDENT') {
+          studentCount = new Set(
+            allEnrollments.filter((e) => teacherGroupIds.has(e.groupId) && e.status === 'ACTIVE').map((e) => e.studentId),
+          ).size;
+          base = studentCount * rate;
+        }
+        // A missed lesson costs its share of the month's pay.
+        deduction = att.planned > 0 ? Math.round((base * Math.min(att.absent, att.planned)) / att.planned) : 0;
+        calculatedSalary = Math.max(0, base - deduction);
       }
 
       const existing = paymentMap.get(teacher.id);
@@ -185,7 +207,13 @@ export class SalaryService {
           rate,
           lessonCount: type === 'PER_LESSON' ? lessonCount : undefined,
           groupRevenue: type === 'PERCENTAGE' ? groupRevenue : undefined,
+          studentCount: type === 'PER_STUDENT' ? studentCount : undefined,
           groupCount: teacherGroups.length,
+          plannedLessons: att.planned,
+          absentLessons: att.absent,
+          lateLessons: att.late,
+          substitutedLessons: att.substituted,
+          deduction,
         },
       });
     }

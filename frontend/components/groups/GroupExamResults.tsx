@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { examsApi, type Exam, type Student } from "@/lib/api";
 import { useLanguage } from "@/lib/i18n-context";
+import { formatDate } from "@/lib/format-date";
 
 const ACCENT = "#4F46E5";
 const MAX_COLUMNS = 6;
@@ -14,7 +15,7 @@ type Cell = { score: number; max: number; passed: boolean } | null;
 // first), each student's average and the group's summary. Manual results
 // win over online test attempts; for attempts the best one counts.
 export default function GroupExamResults({ groupId, students }: { groupId: string; students: Student[] }) {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const [exams, setExams] = useState<Exam[] | null>(null);
 
   useEffect(() => {
@@ -89,16 +90,16 @@ export default function GroupExamResults({ groupId, students }: { groupId: strin
           <table className="table" style={{ minWidth: 520 }}>
             <thead>
               <tr>
-                <th>{t("groupExams.student")}</th>
+                <th style={{ width: "40%" }}>{t("groupExams.student")}</th>
                 {columns.map((e) => (
-                  <th key={e.id} style={{ textAlign: "center", maxWidth: 120 }} title={e.title}>
-                    <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 120 }}>{e.title}</div>
+                  <th key={e.id} style={{ textAlign: "center", width: 130 }} title={e.title}>
+                    <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 130, margin: "0 auto" }}>{e.title}</div>
                     <div style={{ fontSize: 10.5, color: "#A0A3AB", fontWeight: 500 }}>
-                      {e.examDate ? e.examDate.slice(0, 10) : ""} · {t("groupExams.outOf")} {e.maxScore}
+                      {[e.examDate ? formatDate(e.examDate, lang, "dayMonth") : null, `${t("groupExams.outOf")} ${e.maxScore}`].filter(Boolean).join(" · ")}
                     </div>
                   </th>
                 ))}
-                <th style={{ textAlign: "right" }}>{t("groupExams.average")}</th>
+                <th style={{ textAlign: "right", width: 110 }}>{t("groupExams.average")}</th>
               </tr>
             </thead>
             <tbody>

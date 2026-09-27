@@ -20,6 +20,7 @@ import { SalaryModule } from './salary/salary.module';
 import { BillingModule } from './billing/billing.module';
 import { AiModule } from './ai/ai.module';
 import { PlacementModule } from './placement/placement.module';
+import { TeacherAttendanceModule } from './teacher-attendance/teacher-attendance.module';
 import { HomeworkModule } from './homework/homework.module';
 import { BranchesModule } from './branches/branches.module';
 import { ExportModule } from './export/export.module';
@@ -63,6 +64,7 @@ import { InvoicesModule } from './invoices/invoices.module';
     BillingModule,
     AiModule,
     PlacementModule,
+    TeacherAttendanceModule,
     HomeworkModule,
     BranchesModule,
     ExportModule,

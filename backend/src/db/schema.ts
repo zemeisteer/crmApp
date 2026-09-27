@@ -716,6 +716,26 @@ export const portalLoginCodes = pgTable('portal_login_codes', {
   phoneIdx: index('portal_login_codes_phone_idx').on(t.phone),
 }));
 
+// Whether the teacher taught a given group's lesson on a date. ABSENT
+// lessons are taken off the payroll; a substitute gets the lesson instead
+// (per-lesson pay).
+export const teacherAttendance = pgTable('teacher_attendance', {
+  id: text('id').primaryKey().$defaultFn(() => createId()),
+  tenantId: text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  groupId: text('group_id').notNull().references(() => groups.id, { onDelete: 'cascade' }),
+  teacherId: text('teacher_id').notNull().references(() => teachers.id, { onDelete: 'cascade' }),
+  date: text('date').notNull(), // YYYY-MM-DD
+  status: text('status').notNull(), // 'PRESENT' | 'LATE' | 'ABSENT'
+  substituteTeacherId: text('substitute_teacher_id').references(() => teachers.id, { onDelete: 'set null' }),
+  note: text('note'),
+  markedByUserId: text('marked_by_user_id').references(() => users.id, { onDelete: 'set null' }),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+}, (t) => ({
+  groupDateIdx: uniqueIndex('teacher_attendance_group_date_idx').on(t.groupId, t.date),
+  tenantDateIdx: index('teacher_attendance_tenant_date_idx').on(t.tenantId, t.date),
+}));
+
 // Placement (level) tests shared by link: new students open
 // /t/<token>, enter name and phone, and answer. Questions include the
 // answers, so the public endpoint strips them.

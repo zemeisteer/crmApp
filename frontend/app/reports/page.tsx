@@ -334,7 +334,17 @@ function ReportsContent() {
                           {item.salaryType === "PER_LESSON" && `${item.details.lessonCount || 0} ta dars × ${formatMoney(item.salaryValue)} so'm`}
                           {item.salaryType === "PERCENTAGE" && `Guruh tushumi: ${formatMoney(item.details.groupRevenue || 0)} × ${item.salaryValue}%`}
                         </td>
-                        <td style={{ fontWeight: 700 }}>{formatMoney(item.calculatedSalary)} so&apos;m</td>
+                        <td style={{ fontWeight: 700 }}>
+                          {formatMoney(item.calculatedSalary)} so&apos;m
+                          {(item.details.absentLessons ?? 0) > 0 && (
+                            <div style={{ fontSize: 11.5, fontWeight: 600, color: "#B23A47" }}>
+                              −{formatMoney(item.details.deduction ?? 0)} · {item.details.absentLessons}/{item.details.plannedLessons} {t("tatt.missed")}
+                            </div>
+                          )}
+                          {(item.details.substitutedLessons ?? 0) > 0 && (
+                            <div style={{ fontSize: 11.5, fontWeight: 600, color: "#1FA463" }}>+{item.details.substitutedLessons} {t("tatt.covered")}</div>
+                          )}
+                        </td>
                         <td style={{ fontWeight: 600, color: item.paidAmount > 0 ? "#10B981" : "#8A8D96" }}>
                           {formatMoney(item.paidAmount)} so&apos;m
                         </td>

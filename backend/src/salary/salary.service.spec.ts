@@ -39,11 +39,18 @@ describe('SalaryService', () => {
       }),
     };
 
-    service = new SalaryService(mockDb);
+    // t-2 teaches 3 lessons this month and t-1 missed 1 of their 20.
+    const attendance = {
+      monthStats: vi.fn().mockResolvedValue(new Map([
+        ['t-1', { planned: 20, absent: 1, late: 0, substituted: 0 }],
+        ['t-2', { planned: 3, absent: 0, late: 0, substituted: 0 }],
+      ])),
+    };
+    service = new SalaryService(mockDb, attendance as any);
   });
 
   describe('calculatePayroll', () => {
-    it('calculates payroll correctly for FIXED, PER_LESSON, and PERCENTAGE models', async () => {
+    it('calculates payroll for FIXED, PER_LESSON and PERCENTAGE, minus missed lessons', async () => {
       const mockTeachers = [
         { id: 't-1', fullName: 'Alisher Navoiy', phone: '+998901112233', subject: 'Matematika', salaryType: 'FIXED', salaryValue: 5000000 },
         { id: 't-2', fullName: 'Bobur Mirzo', phone: '+998902223344', subject: 'Ingliz tili', salaryType: 'PER_LESSON', salaryValue: 100000 },
@@ -83,11 +90,13 @@ describe('SalaryService', () => {
       expect(result.teacherCount).toBe(3);
       expect(result.forMonth).toBe('2026-09');
 
-      // t-1: FIXED 5,000,000, paid 2,000,000 => netPayable 3,000,000
+      // t-1: FIXED 5,000,000 minus 1 of 20 missed lessons (250,000) = 4,750,000;
+      // paid 2,000,000 => netPayable 2,750,000
       const p1 = result.teachers.find((t) => t.teacherId === 't-1');
-      expect(p1?.calculatedSalary).toBe(5000000);
+      expect(p1?.details.deduction).toBe(250000);
+      expect(p1?.calculatedSalary).toBe(4750000);
       expect(p1?.paidAmount).toBe(2000000);
-      expect(p1?.netPayable).toBe(3000000);
+      expect(p1?.netPayable).toBe(2750000);
       expect(p1?.isPaid).toBe(false);
 
       // t-2: PER_LESSON 3 lessons * 100,000 => 300,000, paid 0 => netPayable 300,000
@@ -102,9 +111,9 @@ describe('SalaryService', () => {
       expect(p3?.paidAmount).toBe(0);
       expect(p3?.netPayable).toBe(400000);
 
-      expect(result.totalCalculated).toBe(5700000);
+      expect(result.totalCalculated).toBe(5450000);
       expect(result.totalPaid).toBe(2000000);
-      expect(result.totalPending).toBe(3700000);
+      expect(result.totalPending).toBe(3450000);
     });
   });
 

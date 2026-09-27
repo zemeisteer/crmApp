@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import DashboardShell from "@/components/DashboardShell";
+import TeacherAttendanceModal from "@/components/teachers/TeacherAttendanceModal";
 import Modal from "@/components/Modal";
 import MultiSelect from "@/components/MultiSelect";
 import Pagination, { usePagedSlice } from "@/components/Pagination";
@@ -54,6 +55,7 @@ function formatMoney(n: number) {
 function TeachersContent() {
   const { user } = useAuth();
   const { t: tr } = useLanguage();
+  const [attendanceOpen, setAttendanceOpen] = useState(false);
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
@@ -218,6 +220,14 @@ function TeachersContent() {
             {tr("nav.trash")}
           </Link>
         </div>
+        <button
+          type="button"
+          className="btn"
+          onClick={() => setAttendanceOpen(true)}
+          style={{ background: "#fff", color: "#181A1F", border: "1px solid #EAE8E2", fontSize: 13.5, fontWeight: 700, padding: "10px 16px", borderRadius: 9, marginRight: 8 }}
+        >
+          {tr("tatt.button")}
+        </button>
         <button
           className="btn"
           onClick={() => setModalOpen(true)}
@@ -498,6 +508,7 @@ function TeachersContent() {
           </button>
         </form>
       </Modal>
+      {attendanceOpen && <TeacherAttendanceModal teachers={teachers} onClose={() => setAttendanceOpen(false)} />}
     </>
   );
 }

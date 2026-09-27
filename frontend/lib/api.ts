@@ -1329,7 +1329,7 @@ export interface TeacherPayrollItem {
   teacherName: string;
   phone: string | null;
   subject: string | null;
-  salaryType: "FIXED" | "PER_LESSON" | "PERCENTAGE";
+  salaryType: "FIXED" | "PER_LESSON" | "PERCENTAGE" | "PER_STUDENT";
   salaryValue: number;
   calculatedSalary: number;
   paidAmount: number;
@@ -1341,9 +1341,35 @@ export interface TeacherPayrollItem {
     rate: number;
     lessonCount?: number;
     groupRevenue?: number;
+    studentCount?: number;
     groupCount: number;
+    plannedLessons?: number;
+    absentLessons?: number;
+    lateLessons?: number;
+    substitutedLessons?: number;
+    deduction?: number;
   };
 }
+
+export type TeacherMark = "PRESENT" | "LATE" | "ABSENT";
+
+export interface TeacherLesson {
+  groupId: string;
+  groupName: string;
+  startTime: string;
+  endTime: string;
+  teacherId: string | null;
+  teacherName: string | null;
+  status: TeacherMark | null;
+  substituteTeacherId: string | null;
+  note: string | null;
+}
+
+export const teacherAttendanceApi = {
+  day: (date: string) => request<TeacherLesson[]>(`/teacher-attendance?date=${date}`),
+  mark: (date: string, entries: Array<{ groupId: string; status: TeacherMark; substituteTeacherId?: string | null; note?: string | null }>) =>
+    request<TeacherLesson[]>("/teacher-attendance", { method: "POST", body: JSON.stringify({ date, entries }) }),
+};
 
 export interface PayrollCalculationResponse {
   forMonth: string;
