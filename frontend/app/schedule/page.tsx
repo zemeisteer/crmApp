@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import DashboardShell from "@/components/DashboardShell";
+import RoomsManager from "@/components/schedule/RoomsManager";
 import Select from "@/components/Select";
 import TimePicker from "@/components/TimePicker";
 import { useAuth } from "@/lib/auth-context";
@@ -70,11 +71,6 @@ export default function SchedulePage() {
   const [formError, setFormError] = useState("");
 
   // Room Form state
-  const [roomName, setRoomName] = useState("");
-  const [roomCapacity, setRoomCapacity] = useState("20");
-  const [roomColor, setRoomColor] = useState("#4F46E5");
-  const [roomBranchId, setRoomBranchId] = useState("");
-  const [savingRoom, setSavingRoom] = useState(false);
 
   // Today's day of week (1=Monday ... 7=Sunday)
   const currentDayOfWeek = useMemo(() => {
@@ -233,39 +229,6 @@ export default function SchedulePage() {
     } catch (err) {
       console.error(err);
       alert(t("sch.deleteError"));
-    }
-  }
-
-  async function handleCreateRoom(e: React.FormEvent) {
-    e.preventDefault();
-    if (!roomName.trim()) return;
-    setSavingRoom(true);
-    try {
-      const created = await scheduleApi.createRoom({
-        name: roomName.trim(),
-        capacity: parseInt(roomCapacity, 10) || 20,
-        color: roomColor,
-        branchId: roomBranchId || undefined,
-      });
-      setRooms((prev) => [...prev, created]);
-      setRoomName("");
-      setRoomCapacity("20");
-    } catch (err) {
-      console.error(err);
-      alert("Xonani saqlashda xatolik yuz berdi");
-    } finally {
-      setSavingRoom(false);
-    }
-  }
-
-  async function handleDeleteRoom(id: string) {
-    if (!confirm(t("sch.confirmDeleteRoom"))) return;
-    try {
-      await scheduleApi.deleteRoom(id);
-      setRooms((prev) => prev.filter((r) => r.id !== id));
-    } catch (err) {
-      console.error(err);
-      alert(t("sch.deleteRoomError"));
     }
   }
 
@@ -829,120 +792,17 @@ export default function SchedulePage() {
         </div>
       )}
 
-      {/* Manage Rooms Modal */}
       {showRoomsModal && (
-        <div className="modal-backdrop" onClick={() => setShowRoomsModal(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 540 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-              <h2 style={{ fontSize: 18, fontWeight: 800, margin: 0 }}>{t("schedule.manageRooms")}</h2>
-              <button onClick={() => setShowRoomsModal(false)} style={{ background: "transparent", border: "none", fontSize: 20, cursor: "pointer" }}>
-                ✕
-              </button>
-            </div>
-
-            {/* Create Room Form */}
-            <form onSubmit={handleCreateRoom} style={{ background: "#F9FAFB", padding: 14, borderRadius: 8, marginBottom: 18, border: "1px solid #E5E7EB" }}>
-              <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 10, color: "#374151" }}>{t("sch.newRoom")}</div>
-              <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr auto", gap: 10, alignItems: "flex-end" }}>
-                <div>
-                  <label style={{ display: "block", fontSize: 11.5, color: "#6B7280", marginBottom: 3 }}>{t("schedule.roomName")}</label>
-                  <input
-                    type="text"
-                    value={roomName}
-                    onChange={(e) => setRoomName(e.target.value)}
-                    placeholder={t("sch.roomPh")}
-                    className="field-input"
-                    style={{ width: "100%", padding: "6px 10px" }}
-                  />
-                </div>
-                <div>
-                  <label style={{ display: "block", fontSize: 11.5, color: "#6B7280", marginBottom: 3 }}>{t("schedule.roomCapacity")}</label>
-                  <input
-                    type="number"
-                    value={roomCapacity}
-                    onChange={(e) => setRoomCapacity(e.target.value)}
-                    className="field-input"
-                    style={{ width: "100%", padding: "6px 10px" }}
-                    min="1"
-                    max="200"
-                  />
-                </div>
-                <div>
-                  <label style={{ display: "block", fontSize: 11.5, color: "#6B7280", marginBottom: 3 }}>{t("schedule.roomColor")}</label>
-                  <input
-                    type="color"
-                    value={roomColor}
-                    onChange={(e) => setRoomColor(e.target.value)}
-                    style={{ width: "100%", height: 35, padding: 2, borderRadius: 6, border: "1px solid #D1D5DB", cursor: "pointer" }}
-                  />
-                </div>
-                <button
-                  type="submit"
-                  disabled={savingRoom || !roomName.trim()}
-                  className="btn"
-                  style={{
-                    padding: "8px 16px",
-                    background: ACCENT,
-                    color: "#fff",
-                    border: "none",
-                    borderRadius: 6,
-                    fontWeight: 700,
-                    fontSize: 13,
-                    cursor: "pointer",
-                    height: 35,
-                  }}
-                >
-                  +
-                </button>
-              </div>
-            </form>
-
-            {/* Rooms List */}
-            <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: 320, overflowY: "auto" }}>
-              {rooms.length === 0 ? (
-                <div style={{ textAlign: "center", color: "#9CA3AF", padding: 20 }}>{t("sch.noRooms")}</div>
-              ) : (
-                rooms.map((room) => (
-                  <div
-                    key={room.id}
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      padding: "10px 14px",
-                      background: "#fff",
-                      border: "1px solid #E5E7EB",
-                      borderRadius: 8,
-                    }}
-                  >
-                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                      <span style={{ width: 14, height: 14, borderRadius: 4, background: room.color }} />
-                      <div>
-                        <div style={{ fontWeight: 700, fontSize: 13.5, color: "#111827" }}>{room.name}</div>
-                        <div style={{ fontSize: 12, color: "#6B7280" }}>Sig'imi: {room.capacity} ta o'quvchi</div>
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => handleDeleteRoom(room.id)}
-                      style={{
-                        background: "transparent",
-                        border: "none",
-                        color: "#EF4444",
-                        cursor: "pointer",
-                        padding: 6,
-                      }}
-                      title={t("common.delete")}
-                    >
-                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                      </svg>
-                    </button>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-        </div>
+        <RoomsManager
+          rooms={rooms}
+          branches={branches}
+          lessonsPerRoom={schedules.reduce<Record<string, number>>((acc, l) => {
+            if (l.roomId) acc[l.roomId] = (acc[l.roomId] ?? 0) + 1;
+            return acc;
+          }, {})}
+          onChange={setRooms}
+          onClose={() => setShowRoomsModal(false)}
+        />
       )}
       </div>
     </DashboardShell>

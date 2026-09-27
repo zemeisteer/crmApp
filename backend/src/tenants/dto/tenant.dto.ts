@@ -1,4 +1,4 @@
-import { Equals, IsEmail, IsIn, IsInt, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
+import { IsArray, Equals, IsEmail, IsIn, IsInt, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
 
 export class CreateTenantDto {
   @IsString()
@@ -62,6 +62,12 @@ export class UpdateTenantDto {
   @IsOptional()
   @IsIn(['UZS', 'USD', 'RUB'])
   currency?: string;
+
+  // A center can teach several directions (same ids as onboarding).
+  @IsOptional()
+  @IsArray()
+  @IsIn(['languages', 'mathematics', 'it', 'science', 'school', 'test_prep', 'other'], { each: true })
+  teachingCategories?: string[];
 }
 
 export class UpdateTenantStatusDto {

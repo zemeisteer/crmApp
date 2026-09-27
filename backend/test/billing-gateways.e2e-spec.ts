@@ -656,7 +656,7 @@ describe('Billing & Payment Gateways E2E Test Suite (25 Tests)', () => {
         amount: 1000000,
         currency: 'UZS',
         dueDate: '2026-11-01',
-        forMonth: '2026-10',
+        forMonth: '2026-12',
         description: 'Katta tolov',
       })
       .expect(201);
@@ -669,7 +669,7 @@ describe('Billing & Payment Gateways E2E Test Suite (25 Tests)', () => {
       .send({
         studentId: studentA1Id,
         amount: 400000,
-        forMonth: '2026-10',
+        forMonth: '2026-12',
         invoiceId: partialInvId,
       })
       .expect(201);

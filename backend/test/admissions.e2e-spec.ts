@@ -68,8 +68,10 @@ describe('Admissions & Sales CRM Suite (e2e)', () => {
     return http().post('/api/leads').set(auth(token)).send(body);
   }
 
+  // Qualifying straight from CONTACTED skips the trial and needs a reason.
   async function move(token: string, id: string, toStatus: string) {
-    return http().post(`/api/leads/${id}/transition`).set(auth(token)).send({ toStatus }).expect(201);
+    const note = toStatus === 'QUALIFIED' ? 'Level already known' : undefined;
+    return http().post(`/api/leads/${id}/transition`).set(auth(token)).send({ toStatus, note }).expect(201);
   }
 
   async function qualifiedLead(fullName: string, phone: string) {

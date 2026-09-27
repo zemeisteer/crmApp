@@ -3,27 +3,32 @@
 import { useEffect, useRef, useState } from "react";
 import Modal from "@/components/Modal";
 import DashboardShell from "@/components/DashboardShell";
+import BranchesManager from "@/components/settings/BranchesManager";
 import Select from "@/components/Select";
 import TagListInput from "@/components/TagListInput";
 import { useAuth } from "@/lib/auth-context";
 import { useLanguage } from "@/lib/i18n-context";
 import type { TranslationKey } from "@/lib/i18n";
 import {
-  tenantsApi, telegramApi, branchesApi, authApi, webhooksApi, staffApi, notificationsApi,
-  Branch, Session, Webhook, StaffMember, ApiError, Role, TenantCategory, fileUrl,
+  tenantsApi, telegramApi, authApi, webhooksApi, staffApi, notificationsApi,
+  Session, Webhook, StaffMember, ApiError, Role, fileUrl,
   NotificationLog, NotificationSettings, NotificationStats,
 } from "@/lib/api";
 import { PHONE_PATTERN, PHONE_TITLE, NAME_PATTERN, NAME_TITLE } from "@/lib/validation";
 import { formatDate, formatDateTime, formatTime } from "@/lib/format-date";
 
 const ACCENT = "#4F46E5";
-const CATEGORY_OPTIONS: TenantCategory[] = ["TIL_MARKAZI", "MATEMATIKA", "IT", "BOSHQA"];
-const CATEGORY_LABEL_KEYS: Record<TenantCategory, TranslationKey> = {
-  TIL_MARKAZI: "category.tilMarkazi",
-  MATEMATIKA: "category.matematika",
-  IT: "category.it",
-  BOSHQA: "category.boshqa",
-};
+// Same ids as onboarding (tenants.teachingCategories).
+const DIRECTION_OPTIONS: { id: string; key: TranslationKey; icon: string }[] = [
+  { id: "languages", key: "onb.catLanguages", icon: "🌐" },
+  { id: "mathematics", key: "onb.catMath", icon: "📐" },
+  { id: "it", key: "onb.catIt", icon: "💻" },
+  { id: "science", key: "onb.catScience", icon: "🔬" },
+  { id: "school", key: "onb.catSchool", icon: "📚" },
+  { id: "test_prep", key: "onb.catTest", icon: "🎯" },
+  { id: "other", key: "onb.catOther", icon: "✨" },
+];
+
 const ROLE_LABEL_KEYS: Record<Role, TranslationKey> = {
   SUPERADMIN: "role.superadmin",
   OWNER: "role.owner",
@@ -102,13 +107,10 @@ function SettingsContent() {
   // Profile tab
   const [name, setName] = useState("");
   const [accentColor, setAccentColor] = useState("#4F46E5");
-  const [category, setCategory] = useState<TenantCategory>("BOSHQA");
+  const [directions, setDirections] = useState<string[]>([]);
   const [phones, setPhones] = useState<string[]>([""]);
-  const [address, setAddress] = useState("");
   const [emails, setEmails] = useState<string[]>([""]);
   const [telegramUsernames, setTelegramUsernames] = useState<string[]>([""]);
-  const [website, setWebsite] = useState("");
-  const [websiteLabel, setWebsiteLabel] = useState("");
   const [language, setLanguage] = useState<"UZ" | "RU" | "EN">("UZ");
   const [currency, setCurrency] = useState<"UZS" | "USD" | "RUB">("UZS");
   const [saving, setSaving] = useState(false);
@@ -119,22 +121,15 @@ function SettingsContent() {
 
   const [telegramStatus, setTelegramStatus] = useState<{ configured: boolean; botUsername: string | null } | null>(null);
 
-  const [branches, setBranches] = useState<Branch[]>([]);
-  const [branchName, setBranchName] = useState("");
-  const [branchAddress, setBranchAddress] = useState("");
-  const [savingBranch, setSavingBranch] = useState(false);
 
   useEffect(() => {
     if (tenant) {
       setName(tenant.name);
       setAccentColor(tenant.accentColor);
-      setCategory(tenant.category);
+      setDirections(tenant.teachingCategories?.length ? tenant.teachingCategories : tenant.category === "TIL_MARKAZI" ? ["languages"] : tenant.category === "MATEMATIKA" ? ["mathematics"] : tenant.category === "IT" ? ["it"] : ["other"]);
       setPhones(splitList(tenant.phone).length ? splitList(tenant.phone) : [""]);
-      setAddress(tenant.address || "");
       setEmails(splitList(tenant.email).length ? splitList(tenant.email) : [""]);
       setTelegramUsernames(splitList(tenant.telegramUsername).length ? splitList(tenant.telegramUsername) : [""]);
-      setWebsite(tenant.website || "");
-      setWebsiteLabel(tenant.websiteLabel || "");
       setLanguage(tenant.language);
       setCurrency(tenant.currency);
     }
@@ -168,15 +163,11 @@ function SettingsContent() {
 
   useEffect(() => {
     telegramApi.status().then(setTelegramStatus).catch(() => setTelegramStatus(null));
-    loadBranches();
     loadSessions();
     loadWebhooks();
     loadStaff();
   }, []);
 
-  function loadBranches() {
-    branchesApi.list().then(setBranches);
-  }
   function loadSessions() {
     authApi.sessions().then(setSessions).catch(() => undefined);
   }
@@ -322,26 +313,6 @@ function SettingsContent() {
     }
   }
 
-  async function onAddBranch(e: React.FormEvent) {
-    e.preventDefault();
-    if (!branchName.trim()) return;
-    setSavingBranch(true);
-    try {
-      await branchesApi.create({ name: branchName, address: branchAddress || undefined });
-      setBranchName("");
-      setBranchAddress("");
-      loadBranches();
-    } finally {
-      setSavingBranch(false);
-    }
-  }
-
-  async function onRemoveBranch(id: string) {
-    if (!confirm(t("settings.confirmRemoveBranch"))) return;
-    await branchesApi.remove(id);
-    loadBranches();
-  }
-
   async function onSave(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
@@ -349,13 +320,10 @@ function SettingsContent() {
     setSaving(true);
     try {
       await tenantsApi.updateMe({
-        name, accentColor, category,
+        name, accentColor, teachingCategories: directions,
         phone: joinList(phones) || undefined,
-        address: address || undefined,
         email: joinList(emails) || undefined,
         telegramUsername: joinList(telegramUsernames) || undefined,
-        website: website || undefined,
-        websiteLabel: websiteLabel || undefined,
         language,
         currency,
       });
@@ -459,20 +427,6 @@ function SettingsContent() {
                     <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>{t("settings.loginEmail")}</div>
                     <input className="field-input" value={user?.email || ""} disabled style={{ opacity: 0.6 }} />
                   </div>
-                  <div>
-                    <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>{t("settings.address")}</div>
-                    <input className="field-input" value={address} onChange={(e) => setAddress(e.target.value)} placeholder={t("set.addressPh")} />
-                  </div>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-                    <div>
-                      <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>{t("settings.locationUrl")}</div>
-                      <input className="field-input" type="url" value={website} onChange={(e) => setWebsite(e.target.value)} placeholder="https://maps.google.com/..." />
-                    </div>
-                    <div>
-                      <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>{t("settings.linkLabel")}</div>
-                      <input className="field-input" value={websiteLabel} onChange={(e) => setWebsiteLabel(e.target.value)} placeholder={t("settings.linkLabelPlaceholder")} />
-                    </div>
-                  </div>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
                     <div>
                       <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>{t("settings.interfaceLanguage")}</div>
@@ -484,12 +438,26 @@ function SettingsContent() {
                     </div>
                   </div>
                   <div>
-                    <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>{t("settings.direction")}</div>
-                    <Select
-                      options={CATEGORY_OPTIONS.map((c) => ({ value: c, label: t(CATEGORY_LABEL_KEYS[c]) }))}
-                      value={category}
-                      onChange={(v) => setCategory(v as TenantCategory)}
-                    />
+                    <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>
+                      {t("settings.direction")} <span style={{ fontWeight: 500, color: "#8A8D96" }}>· {t("set.directionsHint")}</span>
+                    </div>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                      {DIRECTION_OPTIONS.map((d) => {
+                        const on = directions.includes(d.id);
+                        return (
+                          <button
+                            key={d.id}
+                            type="button"
+                            onClick={() => setDirections((cur) => (on ? cur.filter((x) => x !== d.id) : [...cur, d.id]))}
+                            style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 12px", borderRadius: 999, cursor: "pointer", fontSize: 13, fontWeight: 600, border: `1.5px solid ${on ? ACCENT : "#EAE8E2"}`, background: on ? "#EEF0FF" : "#fff", color: on ? ACCENT : "#4A4E58" }}
+                          >
+                            <span>{d.icon}</span>
+                            {t(d.key)}
+                            {on && <span>✓</span>}
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
                   <button
                     className="btn"
@@ -536,44 +504,7 @@ function SettingsContent() {
             </div>
           )}
 
-          {tab === "branches" && (
-            <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 22, maxWidth: 640 }}>
-              <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 700, fontSize: 15, marginBottom: 14 }}>{t("settings.branches")}</div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 14 }}>
-                {branches.length === 0 ? (
-                  <div style={{ fontSize: 13, color: "#8A8D96" }}>{t("settings.noBranches")}</div>
-                ) : (
-                  branches.map((b) => (
-                    <div key={b.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", border: "1px solid #EAE8E2", borderRadius: 10, padding: "8px 12px" }}>
-                      <div>
-                        <div style={{ fontSize: 13.5, fontWeight: 600 }}>{b.name}</div>
-                        {b.address && <div style={{ fontSize: 11.5, color: "#8A8D96" }}>{b.address}</div>}
-                      </div>
-                      <button
-                        className="btn"
-                        onClick={() => onRemoveBranch(b.id)}
-                        style={{ background: "transparent", color: "#B23A47", fontSize: 12, fontWeight: 600, padding: "4px 8px", borderRadius: 8 }}
-                      >
-                        {t("common.delete")}
-                      </button>
-                    </div>
-                  ))
-                )}
-              </div>
-              <form onSubmit={onAddBranch} style={{ display: "flex", gap: 8 }}>
-                <input className="field-input" placeholder={t("settings.branchName")} value={branchName} onChange={(e) => setBranchName(e.target.value)} style={{ flex: 1 }} />
-                <input className="field-input" placeholder={t("settings.branchAddressOptional")} value={branchAddress} onChange={(e) => setBranchAddress(e.target.value)} style={{ flex: 1 }} />
-                <button
-                  className="btn"
-                  type="submit"
-                  disabled={savingBranch}
-                  style={{ background: ACCENT, color: "#fff", border: "none", fontSize: 13, fontWeight: 700, padding: "0 16px", borderRadius: 9, whiteSpace: "nowrap" }}
-                >
-                  {t("common.add")}
-                </button>
-              </form>
-            </div>
-          )}
+          {tab === "branches" && <BranchesManager />}
 
           {tab === "staff" && (
             <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 22, maxWidth: 720 }}>

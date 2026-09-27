@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
+import { fileUrl } from "@/lib/api";
 import { useLanguage } from "@/lib/i18n-context";
 import type { TranslationKey } from "@/lib/i18n";
 import type { Role } from "@/lib/api";
@@ -245,13 +246,21 @@ export default function Sidebar({ open, onClose }: { open?: boolean; onClose?: (
         }}
       >
       <Link href="/dashboard" style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 6px 22px" }}>
-        <div style={{ width: 30, height: 30, borderRadius: 8, background: ACCENT, display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M22 10 12 5 2 10l10 5 10-5Z" />
-            <path d="M6 12v5c0 1.5 2.7 3 6 3s6-1.5 6-3v-5" />
-          </svg>
-        </div>
-        <span style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 800, fontSize: 16.5, color: "#fff" }}>CRMAPP</span>
+        {/* The center's own logo and name once set in Settings. */}
+        {tenant?.logoUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={fileUrl(tenant.logoUrl) || ""} alt="" style={{ width: 30, height: 30, borderRadius: 8, objectFit: "cover", flexShrink: 0, background: "#fff" }} />
+        ) : (
+          <div style={{ width: 30, height: 30, borderRadius: 8, background: ACCENT, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M22 10 12 5 2 10l10 5 10-5Z" />
+              <path d="M6 12v5c0 1.5 2.7 3 6 3s6-1.5 6-3v-5" />
+            </svg>
+          </div>
+        )}
+        <span style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 800, fontSize: 16.5, color: "#fff", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={tenant?.name ?? "CRMAPP"}>
+          {tenant?.name ?? "CRMAPP"}
+        </span>
       </Link>
 
       <div

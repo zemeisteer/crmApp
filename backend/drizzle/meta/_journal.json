@@ -64,6 +64,27 @@
       "when": 1790900000000,
       "tag": "0008_portal_login",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1791000000000,
+      "tag": "0009_parse_text_schedules",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1791100000000,
+      "tag": "0010_link_loose_payments",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1791200000000,
+      "tag": "0011_branch_map_url",
+      "breakpoints": true
     }
   ]
 }

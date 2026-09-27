@@ -455,6 +455,12 @@ export default function PublicSitePage() {
                   <p className="text-xs text-slate-400 mt-1 leading-relaxed">
                     {b.address || "Manzil ko'rsatilmagan"}
                   </p>
+                  {b.phone && <p className="text-xs text-slate-400 mt-1">📞 {b.phone}</p>}
+                  {b.mapUrl && (
+                    <a href={b.mapUrl} target="_blank" rel="noreferrer" className="text-xs text-indigo-300 hover:text-indigo-200 mt-1 inline-block">
+                      🗺 Xaritada ochish
+                    </a>
+                  )}
                 </div>
               </div>
             ))}
@@ -677,7 +683,7 @@ export default function PublicSitePage() {
         <div className="max-w-6xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left">
           <div>
             <span className="font-bold text-slate-300 block">{tenant.name}</span>
-            <span className="text-[11px] mt-0.5 block">{tenant.address || "O'zbekiston"}</span>
+            <span className="text-[11px] mt-0.5 block">{branches[0]?.address || tenant.address || "O'zbekiston"}</span>
           </div>
 
           <div className="flex items-center gap-4 text-slate-400">

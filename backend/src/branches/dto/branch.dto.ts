@@ -7,9 +7,19 @@ export class CreateBranchDto {
   @IsOptional()
   @IsString()
   address?: string;
+
+  @IsOptional()
+  @IsString()
+  phone?: string;
+
+  @IsOptional()
+  @IsString()
+  mapUrl?: string;
 }
 
 export class UpdateBranchDto {
   @IsOptional() @IsString() name?: string;
   @IsOptional() @IsString() address?: string;
+  @IsOptional() @IsString() phone?: string;
+  @IsOptional() @IsString() mapUrl?: string;
 }

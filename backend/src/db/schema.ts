@@ -339,6 +339,8 @@ export const branches = pgTable('branches', {
   name: text('name').notNull(),
   address: text('address'),
   phone: text('phone'),
+  // Map link (Google/Yandex) shown on the public site and to students.
+  mapUrl: text('map_url'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
 }, (t) => ({
   tenantIdx: index('branches_tenant_idx').on(t.tenantId),

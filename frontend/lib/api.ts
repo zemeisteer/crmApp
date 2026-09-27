@@ -240,6 +240,8 @@ export interface PublicShowcaseBranch {
   id: string;
   name: string;
   address?: string | null;
+  phone?: string | null;
+  mapUrl?: string | null;
 }
 
 export interface PublicShowcaseAnnouncement {
@@ -351,6 +353,8 @@ export interface Branch {
   tenantId: string;
   name: string;
   address: string | null;
+  phone?: string | null;
+  mapUrl?: string | null;
   createdAt: string;
 }
 
@@ -1381,7 +1385,7 @@ export const tenantsApi = {
   updateMe: (data: {
     name?: string; accentColor?: string; category?: TenantCategory; phone?: string; address?: string;
     email?: string; telegramUsername?: string; website?: string; websiteLabel?: string;
-    language?: "UZ" | "RU" | "EN"; currency?: "UZS" | "USD" | "RUB";
+    language?: "UZ" | "RU" | "EN"; currency?: "UZS" | "USD" | "RUB"; teachingCategories?: string[];
   }) => request<Tenant>("/tenants/me", { method: "PATCH", body: JSON.stringify(data) }),
   uploadLogo: (file: File) => uploadFile<Tenant>("/tenants/me/logo", file),
   updateStatus: (id: string, data: { status?: string; plan?: string }) =>
@@ -1525,9 +1529,9 @@ export const homeworkApi = {
 
 export const branchesApi = {
   list: () => request<Branch[]>("/branches"),
-  create: (data: { name: string; address?: string }) =>
+  create: (data: { name: string; address?: string; phone?: string; mapUrl?: string }) =>
     request<Branch>("/branches", { method: "POST", body: JSON.stringify(data) }),
-  update: (id: string, data: { name?: string; address?: string }) =>
+  update: (id: string, data: { name?: string; address?: string; phone?: string; mapUrl?: string }) =>
     request<Branch>(`/branches/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
   remove: (id: string) => request<{ success: boolean }>(`/branches/${id}`, { method: "DELETE" }),
 };

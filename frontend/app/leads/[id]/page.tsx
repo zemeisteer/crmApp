@@ -212,11 +212,26 @@ function LeadProfile() {
 
         {editable && (
           <div className="adm-actions">
-            {simpleMoves.map((to) => (
-              <button key={to} type="button" className="btn" style={primaryBtn} disabled={busy} onClick={() => run(() => leadsApi.transition(lead.id, to))}>
-                → {t(statusKey(to))}
-              </button>
-            ))}
+            {simpleMoves.map((to) => {
+              // Contacted -> qualified skips the trial: secondary, with a reason.
+              const skip = lead.status === "CONTACTED" && to === "QUALIFIED";
+              return (
+                <button
+                  key={to}
+                  type="button"
+                  className="btn"
+                  style={skip ? ghostBtn : primaryBtn}
+                  disabled={busy}
+                  onClick={() => {
+                    if (!skip) return run(() => leadsApi.transition(lead.id, to));
+                    const reason = window.prompt(t("adm.skipTrialReason"))?.trim();
+                    if (reason) run(() => leadsApi.transition(lead.id, to, reason));
+                  }}
+                >
+                  → {skip ? t("adm.skipTrial") : t(statusKey(to))}
+                </button>
+              );
+            })}
             {canBookTrial && (
               <button type="button" className="btn" style={primaryBtn} onClick={() => openDialog({ kind: "trial" })}>{t("adm.bookTrial")}</button>
             )}

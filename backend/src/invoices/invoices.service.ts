@@ -4,13 +4,47 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { and, desc, eq, inArray, isNull, lt } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, isNull, lt, notExists, sql } from 'drizzle-orm';
 import { DB, Database } from '../db/db.module';
-import { enrollments, invoices, students } from '../db/schema';
+import { enrollments, invoices, paymentAllocations, payments, students } from '../db/schema';
 import { AuditService } from '../audit/audit.service';
 import { CreateInvoiceDto, QueryInvoicesDto } from './dto/invoice.dto';
 
 type InvoiceExecutor = Database | Parameters<Parameters<Database['transaction']>[0]>[0];
+
+// A payment taken before the month's invoice existed is not linked to any
+// invoice. When the invoice is created, such payments of the same student
+// and month count towards it, so paid students don't show up as debtors.
+export async function applyUnallocatedPayments(db: InvoiceExecutor, invoice: typeof invoices.$inferSelect) {
+  if (invoice.status === 'CANCELLED' || invoice.remainingAmount <= 0) return invoice;
+  const loose = await db.select({ id: payments.id, amount: payments.amount, invoiceId: payments.invoiceId })
+    .from(payments)
+    .where(and(
+      eq(payments.tenantId, invoice.tenantId),
+      eq(payments.studentId, invoice.studentId),
+      eq(payments.forMonth, invoice.forMonth),
+      eq(payments.status, 'PAID'),
+      notExists(db.select({ x: sql`1` }).from(paymentAllocations).where(eq(paymentAllocations.paymentId, payments.id))),
+    ))
+    .orderBy(asc(payments.paidAt));
+  let current = invoice;
+  for (const p of loose) {
+    if (current.remainingAmount <= 0) break;
+    const amount = Math.min(p.amount, current.remainingAmount);
+    await db.insert(paymentAllocations).values({ tenantId: invoice.tenantId, paymentId: p.id, invoiceId: invoice.id, amount });
+    if (!p.invoiceId) await db.update(payments).set({ invoiceId: invoice.id }).where(eq(payments.id, p.id));
+    const remaining = current.remainingAmount - amount;
+    const [updated] = await db.update(invoices).set({
+      amountPaid: current.amountPaid + amount,
+      remainingAmount: remaining,
+      status: remaining === 0 ? 'PAID' : 'PARTIALLY_PAID',
+      paidAt: remaining === 0 ? new Date() : current.paidAt,
+      updatedAt: new Date(),
+    }).where(eq(invoices.id, invoice.id)).returning();
+    current = updated;
+  }
+  return current;
+}
 
 @Injectable()
 export class InvoicesService {
@@ -140,6 +174,7 @@ export class InvoicesService {
         status: 'OPEN',
       })
       .returning();
+    const settled = await applyUnallocatedPayments(db, invoice);
 
     if (!tx) this.audit.log({
       tenantId,
@@ -154,7 +189,7 @@ export class InvoicesService {
       },
     });
 
-    return invoice;
+    return settled;
   }
 
   async generateMonthly(tenantId: string, forMonth?: string, userId?: string) {
@@ -221,7 +256,7 @@ export class InvoicesService {
           })
           .returning();
 
-        generated.push(inv);
+        generated.push(await applyUnallocatedPayments(this.db, inv));
       }
     }
 

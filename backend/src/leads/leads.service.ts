@@ -686,7 +686,15 @@ export class LeadsService {
       const lead = await this.getLeadRow(tx, tenantId, id, { lock: true });
       this.assertMutable(lead);
       this.assertTransition(lead.status, to);
-      return this.applyTransition(tx, tenantId, lead, to, actor.userId, { type: 'STATUS_CHANGE', body: note?.trim() || null });
+      // The normal path is contacted -> trial -> attended -> qualified.
+      // Skipping the trial is allowed only on purpose, with a reason.
+      const skippedTrial = lead.status === 'CONTACTED' && to === 'QUALIFIED';
+      if (skippedTrial && (note?.trim().length ?? 0) < 3) {
+        throw new BadRequestException({ code: 'SKIP_TRIAL_REASON_REQUIRED', message: "Sinov darsisiz o'tkazish uchun sababini yozing" });
+      }
+      return this.applyTransition(tx, tenantId, lead, to, actor.userId, {
+        type: 'STATUS_CHANGE', body: note?.trim() || null, metadata: skippedTrial ? { skippedTrial: true } : undefined,
+      });
     });
     if (to === 'QUALIFIED') this.events.emit('LeadQualified', { tenantId, leadId: id, actorUserId: actor.userId });
     return updated;

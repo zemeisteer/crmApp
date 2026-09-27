@@ -202,4 +202,23 @@ describe('Group capacity & schedule day alignment (e2e)', () => {
     const after = (await http().get('/api/portal/exams/available').set(p()).expect(200)).body;
     expect(after.find((e: { id: string }) => e.id === examId)).toMatchObject({ taken: true, score: 10 });
   });
+
+  it('counts a payment taken before the month invoice existed', async () => {
+    const g = (await http().post('/api/groups').set(auth()).send({ name: 'Early Payers', subject: 'Math', monthlyPrice: 300_000 }).expect(201)).body.id as string;
+    const kid = (await mkStudent('Early Payer', [g]).expect(201)).body.id as string;
+    const month = '2031-02';
+    await http().post('/api/payments').set(auth()).send({ studentId: kid, amount: 300_000, method: 'CASH', forMonth: month }).expect(201);
+    await http().post(`/api/invoices/generate-monthly?forMonth=${month}`).set(auth()).send({ forMonth: month }).expect(201);
+    const list = (await http().get(`/api/invoices?forMonth=${month}`).set(auth()).expect(200)).body;
+    const rows = (Array.isArray(list) ? list : list.items) as Array<{ studentId: string; status: string; remainingAmount: number }>;
+    expect(rows.find((r) => r.studentId === kid)).toMatchObject({ status: 'PAID', remainingAmount: 0 });
+  });
+
+  it('needs a reason to qualify a lead without a trial lesson', async () => {
+    const lead = (await http().post('/api/leads').set(auth()).send({ fullName: 'Skip Trial', phone: `+99893${String(suffix).slice(-7)}`, source: 'PHONE' }).expect(201)).body;
+    await http().post(`/api/leads/${lead.id}/transition`).set(auth()).send({ toStatus: 'CONTACTED' }).expect(201);
+    const res = await http().post(`/api/leads/${lead.id}/transition`).set(auth()).send({ toStatus: 'QUALIFIED' }).expect(400);
+    expect(res.body.code).toBe('SKIP_TRIAL_REASON_REQUIRED');
+    await http().post(`/api/leads/${lead.id}/transition`).set(auth()).send({ toStatus: 'QUALIFIED', note: 'Came from a partner school, level known' }).expect(201);
+  });
 });

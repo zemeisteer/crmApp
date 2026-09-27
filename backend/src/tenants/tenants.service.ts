@@ -72,7 +72,7 @@ export class TenantsService {
     // 3. Branches
     const activeBranches = await this.db.query.branches.findMany({
       where: eq(branches.tenantId, tenant.id),
-      columns: { id: true, name: true, address: true },
+      columns: { id: true, name: true, address: true, phone: true, mapUrl: true },
     });
 
     // 4. Announcements (targeted to ALL)
@@ -182,6 +182,12 @@ export class TenantsService {
   }
 
   async updateMe(tenantId: string, dto: UpdateTenantDto) {
+    // The legacy single category (used for subject suggestions) follows the
+    // first chosen direction.
+    if (dto.teachingCategories && !dto.category) {
+      const first = dto.teachingCategories[0];
+      dto.category = first === 'languages' ? 'TIL_MARKAZI' : first === 'mathematics' ? 'MATEMATIKA' : first === 'it' ? 'IT' : 'BOSHQA';
+    }
     const [tenant] = await this.db
       .update(tenants)
       .set({ ...dto, category: dto.category as any, language: dto.language as any, currency: dto.currency as any, updatedAt: new Date() })

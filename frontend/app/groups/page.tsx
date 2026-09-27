@@ -54,6 +54,7 @@ function GroupsContent() {
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [startDate, setStartDate] = useState("");
   const [monthlyPrice, setMonthlyPrice] = useState("");
   const [maxStudents, setMaxStudents] = useState("");
@@ -112,6 +113,7 @@ function GroupsContent() {
     setStartTime("");
     setEndTime("");
     setEditingId(null);
+    setFieldErrors({});
     setStartDate("");
     setMonthlyPrice("");
     setMaxStudents("");
@@ -144,9 +146,34 @@ function GroupsContent() {
     setDays((prev) => (prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day]));
   }
 
+  // Everything but description, duration and level is required; our own
+  // messages instead of the browser's.
+  function validate() {
+    const req = t("groups.required");
+    const errs: Record<string, string> = {};
+    if (!name.trim()) errs.name = req;
+    const subj = subject === OTHER_SUBJECT ? customSubject : subject;
+    if (!subj.trim()) errs.subject = req;
+    if (teachers.length === 0) errs.teacher = t("groups.errNoTeachers");
+    else if (!teacherId) errs.teacher = t("groups.errTeacher");
+    if (branches.length > 0 && !branchId) errs.branch = req;
+    if (days.length === 0) errs.days = t("groups.errDays");
+    if (!startTime) errs.startTime = req;
+    if (!startDate) errs.startDate = req;
+    if (!monthlyPrice || Number(monthlyPrice) <= 0) errs.monthlyPrice = t("groups.errPrice");
+    if (!maxStudents || Number(maxStudents) <= 0) errs.maxStudents = t("groups.errSeats");
+    return errs;
+  }
+
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    const errs = validate();
+    setFieldErrors(errs);
+    if (Object.keys(errs).length > 0) {
+      setError(t("groups.fixErrors"));
+      return;
+    }
     setSaving(true);
     try {
       // Keep the weekdays in calendar order.
@@ -347,14 +374,14 @@ function GroupsContent() {
       </div>
 
       <Modal open={modalOpen} onClose={() => { setModalOpen(false); resetForm(); }} title={editingId ? t("groups.editTitle") : t("groups.modalTitle")}>
-        <form onSubmit={onSubmit} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+        <form onSubmit={onSubmit} style={{ display: "flex", flexDirection: "column", gap: 14 }} noValidate>
           {error && (
             <div style={{ background: "#FDEBEC", color: "#B23A47", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: 10 }}>{error}</div>
           )}
-          <Field label={t("groups.fieldName")}>
-            <input className="field-input" required value={name} onChange={(e) => setName(e.target.value)} placeholder="IELTS Speaking — B2" />
+          <Field label={t("groups.fieldName")} required error={fieldErrors.name}>
+            <input className="field-input" value={name} onChange={(e) => setName(e.target.value)} placeholder="IELTS Speaking — B2" />
           </Field>
-          <Field label={t("groups.fieldSubject")}>
+          <Field label={t("groups.fieldSubject")} required error={fieldErrors.subject}>
             <Select
               options={[
                 { value: "", label: t("groups.selectPlaceholder") },
@@ -378,8 +405,8 @@ function GroupsContent() {
           <Field label={t("groups.fieldLevel")}>
             <input className="field-input" value={level} onChange={(e) => setLevel(e.target.value)} placeholder="B2, Beginner..." />
           </Field>
-          {teachers.length > 0 && (
-            <Field label={t("groups.fieldTeacher")}>
+          {(
+            <Field label={t("groups.fieldTeacher")} required error={fieldErrors.teacher}>
               <Select
                 options={[{ value: "", label: t("groups.notSelected") }, ...teachers.map((tc) => ({ value: tc.id, label: tc.fullName }))]}
                 value={teacherId}
@@ -388,7 +415,7 @@ function GroupsContent() {
             </Field>
           )}
           {branches.length > 0 && (
-            <Field label={t("groups.fieldBranch")}>
+            <Field label={t("groups.fieldBranch")} required error={fieldErrors.branch}>
               <Select
                 options={[{ value: "", label: t("groups.notSelected") }, ...branches.map((b) => ({ value: b.id, label: b.name }))]}
                 value={branchId}
@@ -396,7 +423,7 @@ function GroupsContent() {
               />
             </Field>
           )}
-          <Field label={t("groups.fieldDays")}>
+          <Field label={t("groups.fieldDays")} required error={fieldErrors.days}>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
               {WEEKDAYS.map((d, i) => (
                 <button
@@ -416,7 +443,7 @@ function GroupsContent() {
             </div>
           </Field>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-            <Field label={t("groups.fieldStartTime")}>
+            <Field label={t("groups.fieldStartTime")} required error={fieldErrors.startTime}>
               <TimePicker value={startTime} onChange={setStartTime} />
             </Field>
             <Field label={t("groups.fieldEndTime")}>
@@ -431,14 +458,14 @@ function GroupsContent() {
               {t("groups.scheduleConflictWarning")} {scheduleConflicts.map((c) => c.name).join(", ")}
             </div>
           )}
-          <Field label={t("groups.fieldStartDate")}>
+          <Field label={t("groups.fieldStartDate")} required error={fieldErrors.startDate}>
             <DatePicker value={startDate} onChange={setStartDate} />
           </Field>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-            <Field label={t("groups.fieldMonthlyPrice")}>
+            <Field label={t("groups.fieldMonthlyPrice")} required error={fieldErrors.monthlyPrice}>
               <input className="field-input" type="number" min={0} value={monthlyPrice} onChange={(e) => setMonthlyPrice(e.target.value)} placeholder="500000" />
             </Field>
-            <Field label={t("groups.fieldMaxSeats")}>
+            <Field label={t("groups.fieldMaxSeats")} required error={fieldErrors.maxStudents}>
               <input className="field-input" type="number" min={1} value={maxStudents} onChange={(e) => setMaxStudents(e.target.value)} placeholder="15" />
             </Field>
           </div>
@@ -462,11 +489,15 @@ function GroupsContent() {
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({ label, children, required, error }: { label: string; children: React.ReactNode; required?: boolean; error?: string }) {
   return (
     <div>
-      <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>{label}</div>
-      {children}
+      <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>
+        {label}
+        {required && <span style={{ color: "#DC2626", marginLeft: 3 }}>*</span>}
+      </div>
+      <div style={error ? { borderRadius: 10, boxShadow: "0 0 0 2px rgba(220,38,38,0.35)" } : undefined}>{children}</div>
+      {error && <div role="alert" style={{ marginTop: 5, fontSize: 12, fontWeight: 600, color: "#B91C1C" }}>{error}</div>}
     </div>
   );
 }

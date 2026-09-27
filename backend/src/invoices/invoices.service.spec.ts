@@ -22,6 +22,8 @@ describe('InvoicesService', () => {
           findFirst: vi.fn(),
         },
       },
+      // No loose payments to apply in these unit tests.
+      select: vi.fn().mockReturnValue({ from: vi.fn().mockReturnValue({ where: vi.fn().mockReturnValue({ orderBy: vi.fn().mockResolvedValue([]) }) }) }),
       insert: vi.fn().mockReturnValue({
         values: vi.fn().mockReturnValue({
           returning: vi.fn().mockResolvedValue([{ id: 'inv-1', amount: 500000, remainingAmount: 500000, status: 'OPEN' }]),

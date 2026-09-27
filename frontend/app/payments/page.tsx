@@ -492,6 +492,8 @@ function PaymentsContent() {
   // History filters
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+  const [groupFilter, setGroupFilter] = useState("");
+  const [debtorGroupFilter, setDebtorGroupFilter] = useState("");
   const [methodFilter, setMethodFilter] = useState("");
   const [sendingReminders, setSendingReminders] = useState(false);
 
@@ -646,10 +648,18 @@ function PaymentsContent() {
     .reduce((sum, p) => sum + p.amount, 0);
   const failedCount = payments.filter((p) => p.status === "FAILED").length;
 
+  // Groups of the center's students, for the group filters.
+  const groupOptions = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const s of students) for (const e of s.enrollments ?? []) if (e.group) map.set(e.groupId, e.group.name);
+    return [...map.entries()].sort((a, b) => a[1].localeCompare(b[1])).map(([value, label]) => ({ value, label }));
+  }, [students]);
+
   const filteredPayments = useMemo(() => {
     return payments.filter((p) => {
       if (statusFilter && p.status !== statusFilter) return false;
       if (methodFilter && p.method !== methodFilter) return false;
+      if (groupFilter && !students.find((s) => s.id === p.studentId)?.enrollments?.some((e) => e.groupId === groupFilter)) return false;
       if (search) {
         const q = search.toLowerCase();
         if (!studentName(p.studentId).toLowerCase().includes(q) && !p.forMonth.includes(q))
@@ -657,9 +667,9 @@ function PaymentsContent() {
       }
       return true;
     });
-  }, [payments, search, statusFilter, methodFilter, students]);
+  }, [payments, search, statusFilter, methodFilter, groupFilter, students]);
 
-  useEffect(() => setPage(1), [search, statusFilter, methodFilter, activeTab]);
+  useEffect(() => setPage(1), [search, statusFilter, methodFilter, groupFilter, activeTab]);
   const pageItems = usePagedSlice(filteredPayments, page);
 
   // Filtered debtors
@@ -667,6 +677,7 @@ function PaymentsContent() {
     if (!debtorsData) return [];
     return debtorsData.debtors.filter((d) => {
       if (debtorStatusFilter !== "ALL" && d.status !== debtorStatusFilter) return false;
+      if (debtorGroupFilter && !d.groups.some((g) => g.id === debtorGroupFilter)) return false;
       if (debtorSearch) {
         const q = debtorSearch.toLowerCase();
         const matchesName = d.studentName.toLowerCase().includes(q);
@@ -675,7 +686,7 @@ function PaymentsContent() {
       }
       return true;
     });
-  }, [debtorsData, debtorStatusFilter, debtorSearch]);
+  }, [debtorsData, debtorStatusFilter, debtorSearch, debtorGroupFilter]);
 
   const filteredInvoices = useMemo(() => {
     return invoices.filter((inv) => {
@@ -1230,6 +1241,12 @@ function PaymentsContent() {
                     onChange={setMethodFilter}
                     style={{ width: 170 }}
                   />
+                  <Select
+                    options={[{ value: "", label: t("pay.allGroups") }, ...groupOptions]}
+                    value={groupFilter}
+                    onChange={setGroupFilter}
+                    style={{ width: 190 }}
+                  />
                 </div>
 
                 {filteredPayments.length === 0 ? (
@@ -1454,6 +1471,12 @@ function PaymentsContent() {
                 onChange={setDebtorStatusFilter}
                 style={{ width: 190 }}
               />
+              <Select
+                options={[{ value: "", label: t("pay.allGroups") }, ...groupOptions]}
+                value={debtorGroupFilter}
+                onChange={setDebtorGroupFilter}
+                style={{ width: 190 }}
+              />
               <button
                 type="button"
                 className="btn"
@@ -1644,6 +1667,10 @@ function PaymentsContent() {
         {/* ========================================================================= */}
         {activeTab === "invoices" && (
           <>
+            <details style={{ background: "#F7F6FF", border: "1px solid #DDD6FE", borderRadius: 12, padding: "10px 14px", fontSize: 13, color: "#4A4E58" }}>
+              <summary style={{ cursor: "pointer", fontWeight: 700, color: "#5B21B6" }}>ℹ️ {t("pay.invHelpTitle")}</summary>
+              <div style={{ marginTop: 8, lineHeight: 1.6 }}>{t("pay.invHelp")}</div>
+            </details>
             {/* Top Invoices Cards */}
             <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0,1fr))", gap: 16 }}>
               <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 14, padding: 18 }}>
