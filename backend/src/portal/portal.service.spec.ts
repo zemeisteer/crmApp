@@ -1,3 +1,4 @@
+import * as bcrypt from 'bcryptjs';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { PortalService } from './portal.service';
 
@@ -77,7 +78,7 @@ describe('PortalService', () => {
       generatePaymeLink: vi.fn().mockResolvedValue({ url: 'https://checkout.paycom.uz/abc', transactionId: 'tx-2' }),
     };
 
-    service = new PortalService(mockDb, mockJwt, mockConfig, mockBilling as any, {} as any);
+    service = new PortalService(mockDb, mockJwt, mockConfig, mockBilling as any, {} as any, { sendMessage: vi.fn() } as any);
   });
 
   describe('loginWithToken', () => {
@@ -122,24 +123,31 @@ describe('PortalService', () => {
     });
   });
 
-  describe('loginWithPhone', () => {
-    it('matches student by phone digits and signs access token', async () => {
-      const mockStudents = [
-        {
-          id: 'student-1',
-          fullName: 'Komil Aliyev',
-          phone: '+998 90 123 45 67',
-          tenantId: 'tenant-1',
-          deletedAt: null,
-          tenant: { id: 'tenant-1', name: 'Apex Academy' },
-        },
-      ];
+  describe('verifyPhoneLogin', () => {
+    const student = (pin: string | null) => {
+      // PIN hashes live in their own table; stub the lookup.
+      vi.spyOn(service as any, 'pinsFor').mockResolvedValue(new Map(pin ? [['student-1', bcrypt.hashSync(pin, 4)]] : []));
+      return {
+        id: 'student-1',
+        fullName: 'Komil Aliyev',
+        phone: '+998 90 123 45 67',
+        tenantId: 'tenant-1',
+        deletedAt: null,
+        telegramChatId: null,
+        tenant: { id: 'tenant-1', name: 'Apex Academy' },
+      };
+    };
 
-      mockDb.query.students.findMany.mockResolvedValue(mockStudents);
+    it('signs in with the PIN the center issued', async () => {
+      mockDb.query.students.findMany.mockResolvedValue([student('482915')]);
+      const result = await service.verifyPhoneLogin('+998901234567', { pin: '482915' });
+      expect((result as { accessToken: string }).accessToken).toBe('mock-portal-token');
+    });
 
-      const result = await service.loginWithPhone('+998901234567');
-      expect(result.accessToken).toBe('mock-portal-token');
-      expect(result.student.fullName).toBe('Komil Aliyev');
+    it('refuses a wrong PIN and a phone number alone', async () => {
+      mockDb.query.students.findMany.mockResolvedValue([student('482915')]);
+      await expect(service.verifyPhoneLogin('+998901234567', { pin: '000000' })).rejects.toThrow();
+      await expect(service.verifyPhoneLogin('+998901234567', {})).rejects.toThrow();
     });
   });
 

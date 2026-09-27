@@ -8,7 +8,7 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
-import { and, desc, eq, gt, inArray, isNull, or } from 'drizzle-orm';
+import { and, desc, eq, gt, inArray, isNull, or, sql, type AnyColumn } from 'drizzle-orm';
 import { DB, Database } from '../db/db.module';
 import {
   announcements,
@@ -16,6 +16,8 @@ import {
   certificates,
   enrollments,
   examAttempts,
+  portalLoginCodes,
+  studentPortalPins,
   exams as examsTable,
   examResults,
   homework,
@@ -29,6 +31,10 @@ import {
 } from '../db/schema';
 import { BillingService } from '../billing/billing.service';
 import { ExamsService } from '../exams/exams.service';
+import { TelegramService } from '../telegram/telegram.service';
+import { normalizePhone } from '../leads/phone';
+import { createHash, randomInt } from 'crypto';
+import * as bcrypt from 'bcryptjs';
 
 @Injectable()
 export class PortalService {
@@ -38,6 +44,7 @@ export class PortalService {
     private readonly config: ConfigService,
     private readonly billing: BillingService,
     private readonly exams: ExamsService,
+    private readonly telegram: TelegramService,
   ) {}
 
   private async signPortalToken(student: { id: string; tenantId: string; fullName: string }) {
@@ -100,76 +107,108 @@ export class PortalService {
     };
   }
 
-  async loginWithPhone(phone: string, studentCode?: string) {
-    const rawDigits = phone.replace(/\D/g, '');
-    if (rawDigits.length < 9) {
-      throw new BadRequestException("Telefon raqami noto'g'ri");
-    }
+  // ---- Phone login, step 1: send a one-time code to the student's
+  // Telegram (when linked) and say whether a center-issued PIN can be used.
+  // Knowing a phone number alone never logs anyone in.
 
-    const matchedStudents = await this.db.query.students.findMany({
-      where: isNull(students.deletedAt),
-      with: {
-        tenant: true,
-      },
-    });
-
-    // Find student whose phone ends with rawDigits
-    const student = matchedStudents.find((s) => {
-      const sDigits = (s.phone || '').replace(/\D/g, '');
-      const pDigits = (s.parentPhone || '').replace(/\D/g, '');
-      const phoneMatch = sDigits.endsWith(rawDigits) || pDigits.endsWith(rawDigits);
-      if (!phoneMatch) return false;
-      if (studentCode) {
-        return s.id === studentCode || s.id.slice(-4) === studentCode;
-      }
-      return true;
-    });
-
-    if (!student || !student.tenant) {
-      throw new NotFoundException("Ushbu telefon raqamiga biriktirilgan o'quvchi topilmadi");
-    }
-
-    const accessToken = await this.signPortalToken(student);
-
-    return {
-      accessToken,
-      student: {
-        id: student.id,
-        fullName: student.fullName,
-        phone: student.phone,
-      },
-      tenant: {
-        id: student.tenant.id,
-        name: student.tenant.name,
-        subdomain: student.tenant.subdomain,
-        logoUrl: student.tenant.logoUrl,
-        phone: student.tenant.phone,
-        address: student.tenant.address,
-      },
-    };
+  private hashCode(phone: string, code: string) {
+    return createHash('sha256').update(`${phone}:${code}:${this.config.get<string>('JWT_SECRET') ?? ''}`).digest('hex');
   }
 
-  async loginWithTelegram(chatId: string) {
-    const student = await this.db.query.students.findFirst({
-      where: and(eq(students.telegramChatId, chatId), isNull(students.deletedAt)),
-      with: {
-        tenant: true,
-      },
+  // Students whose own or parent phone is this number (exact match on the
+  // normalized number; older records may lack the 998 prefix).
+  private async studentsByPhone(phone: string) {
+    const digits = phone.replace(/\D/g, '');
+    const local = digits.slice(-9);
+    const clean = (col: AnyColumn) => sql`regexp_replace(coalesce(${col}, ''), '\\D', '', 'g')`;
+    return this.db.query.students.findMany({
+      where: and(
+        isNull(students.deletedAt),
+        or(
+          sql`${clean(students.phone)} in (${digits}, ${local})`,
+          sql`${clean(students.parentPhone)} in (${digits}, ${local})`,
+        ),
+      ),
+      with: { tenant: true },
     });
+  }
 
-    if (!student || !student.tenant) {
-      throw new NotFoundException("Telegram orqali ulangan o'quvchi topilmadi");
+  private async pinsFor(studentIds: string[]) {
+    if (studentIds.length === 0) return new Map<string, string>();
+    const rows = await this.db.select().from(studentPortalPins).where(inArray(studentPortalPins.studentId, studentIds));
+    return new Map(rows.map((r) => [r.studentId, r.pinHash]));
+  }
+
+  async startPhoneLogin(rawPhone: string) {
+    const phone = normalizePhone(rawPhone);
+    if (!phone) throw new BadRequestException("Telefon raqami noto'g'ri");
+    const matched = await this.studentsByPhone(phone);
+    const chats = [...new Set(matched.map((s) => s.telegramChatId).filter((c): c is string => Boolean(c)))];
+    const pins = await this.pinsFor(matched.map((s) => s.id));
+    const pinAvailable = pins.size > 0;
+    let telegramSent = false;
+    if (chats.length > 0) {
+      // One live code per phone per minute; a repeat press re-uses it.
+      const [recent] = await this.db.select({ id: portalLoginCodes.id }).from(portalLoginCodes)
+        .where(and(eq(portalLoginCodes.phone, phone), isNull(portalLoginCodes.usedAt), gt(portalLoginCodes.createdAt, new Date(Date.now() - 60_000))));
+      if (!recent) {
+        const code = String(randomInt(0, 1_000_000)).padStart(6, '0');
+        await this.db.insert(portalLoginCodes).values({ phone, codeHash: this.hashCode(phone, code), expiresAt: new Date(Date.now() + 5 * 60_000) });
+        for (const chat of chats) {
+          await this.telegram.sendMessage(chat, `🔐 Portalga kirish kodi: <b>${code}</b>\n\n5 daqiqa amal qiladi. Kodni hech kimga bermang.`);
+        }
+      }
+      telegramSent = true;
+    }
+    return { telegramSent, pinAvailable };
+  }
+
+  // Step 2: check the Telegram code or the PIN. When the number belongs to
+  // several students (siblings), the caller picks one from `choose`.
+  async verifyPhoneLogin(rawPhone: string, body: { code?: string; pin?: string; studentId?: string }) {
+    const phone = normalizePhone(rawPhone);
+    if (!phone) throw new BadRequestException("Telefon raqami noto'g'ri");
+    const matched = await this.studentsByPhone(phone);
+    let allowed: typeof matched = [];
+    let codeRowId: string | null = null;
+
+    if (body.code) {
+      const [row] = await this.db.select().from(portalLoginCodes)
+        .where(and(eq(portalLoginCodes.phone, phone), isNull(portalLoginCodes.usedAt), gt(portalLoginCodes.expiresAt, new Date())))
+        .orderBy(desc(portalLoginCodes.createdAt)).limit(1);
+      if (!row || row.attempts >= 5) throw new UnauthorizedException("Kod eskirgan. Yangi kod so'rang.");
+      if (row.codeHash !== this.hashCode(phone, body.code.trim())) {
+        await this.db.update(portalLoginCodes).set({ attempts: row.attempts + 1 }).where(eq(portalLoginCodes.id, row.id));
+        throw new UnauthorizedException("Kod noto'g'ri");
+      }
+      codeRowId = row.id;
+      allowed = matched.filter((s) => s.telegramChatId);
+    } else if (body.pin) {
+      const pins = await this.pinsFor(matched.map((s) => s.id));
+      for (const s of matched) {
+        const hash = pins.get(s.id);
+        if (hash && (await bcrypt.compare(body.pin.trim(), hash))) allowed.push(s);
+      }
+      if (allowed.length === 0) throw new UnauthorizedException("PIN noto'g'ri");
+    } else {
+      throw new BadRequestException('Kod yoki PIN kiriting');
     }
 
-    const accessToken = await this.signPortalToken(student);
+    const active = allowed.filter((s) => s.tenant);
+    if (active.length === 0) throw new UnauthorizedException("Kod noto'g'ri");
+    const student = body.studentId ? active.find((s) => s.id === body.studentId) : active.length === 1 ? active[0] : null;
+    if (!student) {
+      return { choose: active.map((s) => ({ id: s.id, fullName: s.fullName, centerName: s.tenant!.name })) };
+    }
+    if (codeRowId) await this.db.update(portalLoginCodes).set({ usedAt: new Date() }).where(eq(portalLoginCodes.id, codeRowId));
+    return this.portalSession(student as typeof student & { tenant: NonNullable<typeof student.tenant> });
+  }
 
+  private async portalSession(student: { id: string; tenantId: string; fullName: string; phone: string | null; tenant: { id: string; name: string; subdomain: string; logoUrl: string | null; phone: string | null; address: string | null } }) {
+    const accessToken = await this.signPortalToken(student);
     return {
       accessToken,
-      student: {
-        id: student.id,
-        fullName: student.fullName,
-        phone: student.phone,
-      },
+      student: { id: student.id, fullName: student.fullName, phone: student.phone },
       tenant: {
         id: student.tenant.id,
         name: student.tenant.name,

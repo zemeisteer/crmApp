@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import DashboardShell from "@/components/DashboardShell";
+import StudentPortalPin from "@/components/students/StudentPortalPin";
 import Modal from "@/components/Modal";
 import Select from "@/components/Select";
 import MonthPicker from "@/components/MonthPicker";
@@ -427,6 +428,8 @@ function StudentDetailContent() {
             </div>
           </div>
         </div>
+
+        <StudentPortalPin studentId={student.id} hasPhone={Boolean(student.phone || student.parentPhone)} />
 
         <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, overflow: "hidden" }}>
           <div style={{ padding: "16px 20px 4px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>

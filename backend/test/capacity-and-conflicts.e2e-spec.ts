@@ -177,7 +177,16 @@ describe('Group capacity & schedule day alignment (e2e)', () => {
       { prompt: 'Past of go', questionType: 'SHORT_ANSWER', options: [], correctAnswer: 'went', points: 1 },
     ] }).expect(201);
 
-    const portal = (await http().post('/api/portal/auth/phone').send({ phone, studentCode: kid }).expect(201)).body.accessToken as string;
+    // A phone number alone no longer logs in; the center-issued PIN does.
+    await http().post('/api/portal/auth/phone').send({ phone }).expect(404);
+    await http().post('/api/portal/auth/telegram').send({ chatId: '1' }).expect(404);
+    expect((await http().post('/api/portal/auth/phone/start').send({ phone }).expect(201)).body).toEqual({ telegramSent: false, pinAvailable: false });
+    const { pin } = (await http().post(`/api/students/${kid}/portal-pin`).set(auth()).expect(201)).body;
+    expect(pin).toMatch(/^\d{6}$/);
+    expect((await http().get(`/api/students/${kid}`).set(auth()).expect(200)).body).not.toHaveProperty('pinHash');
+    expect((await http().post('/api/portal/auth/phone/start').send({ phone }).expect(201)).body.pinAvailable).toBe(true);
+    await http().post('/api/portal/auth/phone/verify').send({ phone, pin: pin === '000000' ? '111111' : '000000' }).expect(401);
+    const portal = (await http().post('/api/portal/auth/phone/verify').send({ phone, pin }).expect(201)).body.accessToken as string;
     const p = () => ({ Authorization: `Bearer ${portal}` });
     const list = (await http().get('/api/portal/exams/available').set(p()).expect(200)).body;
     expect(list.find((e: { id: string }) => e.id === examId)).toMatchObject({ questionCount: 2, taken: false });

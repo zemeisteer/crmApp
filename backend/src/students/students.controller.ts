@@ -90,6 +90,18 @@ export class StudentsController {
     return this.service.restore(tenantId, userId, id);
   }
 
+  @Roles('ADMIN', 'MANAGER', 'RECEPTIONIST')
+  @Get(':id/portal-pin')
+  portalPinStatus(@CurrentUser('tenantId') tenantId: string, @Param('id') id: string) {
+    return this.service.portalPinStatus(tenantId, id);
+  }
+
+  @Roles('ADMIN', 'MANAGER', 'RECEPTIONIST')
+  @Post(':id/portal-pin')
+  issuePortalPin(@CurrentUser('tenantId') tenantId: string, @CurrentUser('sub') userId: string, @Param('id') id: string) {
+    return this.service.issuePortalPin(tenantId, userId, id);
+  }
+
   @Roles('ADMIN')
   @Post(':id/enroll/:groupId')
   enroll(

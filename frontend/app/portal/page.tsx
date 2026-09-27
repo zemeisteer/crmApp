@@ -4,6 +4,7 @@ import { formatDateTime } from "@/lib/format-date";
 import { useEffect, useState } from "react";
 import { useLanguage } from "@/lib/i18n-context";
 import PortalExamList from "@/components/portal/PortalExams";
+import PortalLogin from "@/components/portal/PortalLogin";
 import type { Lang, TranslationKey } from "@/lib/i18n";
 import {
   portalApi,
@@ -68,10 +69,7 @@ export default function StudentPortalPage() {
   >("home");
 
   // Auth form state
-  const [phone, setPhone] = useState("");
-  const [studentCode, setStudentCode] = useState("");
   const [authError, setAuthError] = useState<string | null>(null);
-  const [authLoading, setAuthLoading] = useState(false);
 
   // Portal data states
   const [me, setMe] = useState<PortalMe | null>(null);
@@ -115,7 +113,6 @@ export default function StudentPortalPage() {
     const urlToken = searchParams.get("token");
 
     if (urlToken) {
-      setAuthLoading(true);
       portalApi
         .loginWithToken(urlToken)
         .then((res) => {
@@ -128,7 +125,6 @@ export default function StudentPortalPage() {
           setAuthError(err instanceof ApiError ? err.message : t("ptl.badLink"));
         })
         .finally(() => {
-          setAuthLoading(false);
           setLoading(false);
         });
       return;
@@ -170,21 +166,6 @@ export default function StudentPortalPage() {
       })
       .finally(() => setLoading(false));
   }, [token]);
-
-  async function handlePhoneLogin(e: React.FormEvent) {
-    e.preventDefault();
-    setAuthError(null);
-    setAuthLoading(true);
-    try {
-      const res = await portalApi.loginWithPhone(phone, studentCode || undefined);
-      setPortalToken(res.accessToken);
-      setTokenState(res.accessToken);
-    } catch (err) {
-      setAuthError(err instanceof ApiError ? err.message : t("ptl.loginError"));
-    } finally {
-      setAuthLoading(false);
-    }
-  }
 
   function handleLogout() {
     clearPortalToken();
@@ -276,74 +257,12 @@ export default function StudentPortalPage() {
             </div>
           )}
 
-          <form onSubmit={handlePhoneLogin} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-            <div>
-              <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#CBD5E1", marginBottom: 6 }}>
-                {t("ptl.phone")}
-              </label>
-              <input
-                type="tel"
-                required
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="+998 90 123 45 67"
-                style={{
-                  width: "100%",
-                  padding: "12px 14px",
-                  borderRadius: 12,
-                  border: "1px solid rgba(255, 255, 255, 0.15)",
-                  background: "rgba(15, 23, 42, 0.6)",
-                  color: "#fff",
-                  fontSize: 14,
-                  outline: "none",
-                  boxSizing: "border-box",
-                }}
-              />
-            </div>
-
-            <div>
-              <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#CBD5E1", marginBottom: 6 }}>
-                {t("ptl.studentCode")}
-              </label>
-              <input
-                type="text"
-                value={studentCode}
-                onChange={(e) => setStudentCode(e.target.value)}
-                placeholder={t("ptl.studentCodePh")}
-                style={{
-                  width: "100%",
-                  padding: "12px 14px",
-                  borderRadius: 12,
-                  border: "1px solid rgba(255, 255, 255, 0.15)",
-                  background: "rgba(15, 23, 42, 0.6)",
-                  color: "#fff",
-                  fontSize: 14,
-                  outline: "none",
-                  boxSizing: "border-box",
-                }}
-              />
-            </div>
-
-            <button
-              type="submit"
-              disabled={authLoading}
-              style={{
-                width: "100%",
-                padding: 13,
-                borderRadius: 12,
-                border: "none",
-                background: "linear-gradient(135deg, #6366F1 0%, #4F46E5 100%)",
-                color: "#fff",
-                fontSize: 14,
-                fontWeight: 700,
-                cursor: "pointer",
-                boxShadow: "0 8px 20px rgba(79, 70, 229, 0.4)",
-                marginTop: 6,
-              }}
-            >
-              {authLoading ? t("ptl.signingIn") : t("ptl.signIn")}
-            </button>
-          </form>
+          <PortalLogin
+            onLoggedIn={(accessToken) => {
+              setPortalToken(accessToken);
+              setTokenState(accessToken);
+            }}
+          />
 
           <div
             style={{

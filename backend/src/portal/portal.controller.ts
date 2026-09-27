@@ -6,6 +6,7 @@ import {
   Post,
   UseGuards,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { PortalService } from './portal.service';
 import { PortalAuthGuard } from './portal-auth.guard';
 import { PortalUser, PortalUserPayload } from './portal-user.decorator';
@@ -24,17 +25,27 @@ export class PortalController {
     return this.service.loginWithToken(token);
   }
 
-  @Post('auth/phone')
-  loginWithPhone(
-    @Body('phone') phone: string,
-    @Body('studentCode') studentCode?: string,
-  ) {
-    return this.service.loginWithPhone(phone, studentCode);
+  // Phone login in two steps: a code is sent to the student's Telegram
+  // (or the center-issued PIN is used), then verified here.
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @Post('auth/phone/start')
+  startPhoneLogin(@Body('phone') phone: string) {
+    return this.service.startPhoneLogin(String(phone ?? ''));
   }
 
-  @Post('auth/telegram')
-  loginWithTelegram(@Body('chatId') chatId: string) {
-    return this.service.loginWithTelegram(chatId);
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @Post('auth/phone/verify')
+  verifyPhoneLogin(
+    @Body('phone') phone: string,
+    @Body('code') code?: string,
+    @Body('pin') pin?: string,
+    @Body('studentId') studentId?: string,
+  ) {
+    return this.service.verifyPhoneLogin(String(phone ?? ''), {
+      code: typeof code === 'string' ? code : undefined,
+      pin: typeof pin === 'string' ? pin : undefined,
+      studentId: typeof studentId === 'string' ? studentId : undefined,
+    });
   }
 
   // Protected portal queries

@@ -692,6 +692,28 @@ export const examAttempts = pgTable('exam_attempts', {
   examStudentIdx: index('exam_attempts_exam_student_idx').on(t.examId, t.studentId),
 }));
 
+// Portal PIN the center hands a student (bcrypt hash). Kept out of the
+// students table so student reads never carry it.
+export const studentPortalPins = pgTable('student_portal_pins', {
+  studentId: text('student_id').primaryKey().references(() => students.id, { onDelete: 'cascade' }),
+  pinHash: text('pin_hash').notNull(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
+// One-time portal login codes sent to a student's Telegram. Keyed by the
+// normalized phone the person typed; only the hash is stored.
+export const portalLoginCodes = pgTable('portal_login_codes', {
+  id: text('id').primaryKey().$defaultFn(() => createId()),
+  phone: text('phone').notNull(), // "+998901234567"
+  codeHash: text('code_hash').notNull(),
+  attempts: integer('attempts').notNull().default(0),
+  expiresAt: timestamp('expires_at').notNull(),
+  usedAt: timestamp('used_at'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+}, (t) => ({
+  phoneIdx: index('portal_login_codes_phone_idx').on(t.phone),
+}));
+
 // Placement (level) tests shared by link: new students open
 // /t/<token>, enter name and phone, and answer. Questions include the
 // answers, so the public endpoint strips them.

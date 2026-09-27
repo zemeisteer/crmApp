@@ -1,7 +1,9 @@
 import { BadRequestException, ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { and, eq, isNotNull, isNull, inArray, or } from 'drizzle-orm';
 import { DB, Database } from '../db/db.module';
-import { branches, enrollments, groups, organizationMemberships, studentGuardians, students, users } from '../db/schema';
+import { branches, enrollments, groups, organizationMemberships, studentGuardians, studentPortalPins, students, users } from '../db/schema';
+import { randomInt } from 'crypto';
+import * as bcrypt from 'bcryptjs';
 import { CreateStudentDto, LinkGuardianDto, UpdateStudentDto } from './dto/student.dto';
 import { AuditService } from '../audit/audit.service';
 import { countOccupiedSeats } from '../common/seats';
@@ -181,6 +183,24 @@ export class StudentsService {
     if (!student) throw new NotFoundException("O'quvchi topilmadi");
     this.audit.log({ tenantId, userId, action: 'restore', entityType: 'student', entityId: id });
     return student;
+  }
+
+  // Portal PIN: a new 6-digit PIN is shown to staff once (to hand to the
+  // student/parent); only its hash is kept. Issuing again replaces it.
+  async portalPinStatus(tenantId: string, id: string) {
+    await this.findOne(tenantId, id);
+    const [row] = await this.db.select({ updatedAt: studentPortalPins.updatedAt }).from(studentPortalPins).where(eq(studentPortalPins.studentId, id));
+    return { hasPin: Boolean(row), updatedAt: row?.updatedAt ?? null };
+  }
+
+  async issuePortalPin(tenantId: string, userId: string, id: string) {
+    const student = await this.findOne(tenantId, id);
+    const pin = String(randomInt(0, 1_000_000)).padStart(6, '0');
+    const pinHash = await bcrypt.hash(pin, 10);
+    await this.db.insert(studentPortalPins).values({ studentId: id, pinHash })
+      .onConflictDoUpdate({ target: studentPortalPins.studentId, set: { pinHash, updatedAt: new Date() } });
+    this.audit.log({ tenantId, userId, action: 'update', entityType: 'student', entityId: id, meta: { portalPin: 'issued' } });
+    return { pin, phone: student.phone ?? student.parentPhone ?? null };
   }
 
   async enroll(tenantId: string, studentId: string, groupId: string) {

@@ -216,18 +216,20 @@ describe('Billing & Payment Gateways E2E Test Suite (25 Tests)', () => {
       })
       .expect(201);
 
-    // 8. Obtain Portal Tokens for Student A1 and Student A2
-    const loginA1 = await request(app.getHttpServer())
-      .post('/api/portal/auth/phone')
-      .send({ phone: studentA1Phone })
-      .expect(201);
-    studentA1PortalToken = loginA1.body.accessToken;
-
-    const loginA2 = await request(app.getHttpServer())
-      .post('/api/portal/auth/phone')
-      .send({ phone: studentA2Phone })
-      .expect(201);
-    studentA2PortalToken = loginA2.body.accessToken;
+    // 8. Obtain Portal Tokens for Student A1 and Student A2 (phone + the
+    // PIN the center issues; a phone number alone does not sign in).
+    const portalLogin = async (studentId: string, phone: string) => {
+      const { pin } = (await request(app.getHttpServer())
+        .post(`/api/students/${studentId}/portal-pin`)
+        .set('Authorization', `Bearer ${tokenA}`)
+        .expect(201)).body;
+      return (await request(app.getHttpServer())
+        .post('/api/portal/auth/phone/verify')
+        .send({ phone, pin })
+        .expect(201)).body.accessToken as string;
+    };
+    studentA1PortalToken = await portalLogin(studentA1Id, studentA1Phone);
+    studentA2PortalToken = await portalLogin(studentA2Id, studentA2Phone);
   }, 60000);
 
   afterAll(async () => {

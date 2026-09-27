@@ -1183,6 +1183,8 @@ export const studentsApi = {
     request<StudentGuardian>(`/students/${id}/guardians`, { method: "POST", body: JSON.stringify(data) }),
   unlinkGuardian: (id: string, guardianId: string) =>
     request<{ success: boolean }>(`/students/${id}/guardians/${guardianId}`, { method: "DELETE" }),
+  portalPinStatus: (id: string) => request<{ hasPin: boolean; updatedAt: string | null }>(`/students/${id}/portal-pin`),
+  issuePortalPin: (id: string) => request<{ pin: string; phone: string | null }>(`/students/${id}/portal-pin`, { method: "POST" }),
 };
 
 // ---- Teachers ----
@@ -2074,16 +2076,16 @@ export const portalApi = {
       method: "POST",
       body: JSON.stringify({ token }),
     }),
-  loginWithPhone: (phone: string, studentCode?: string) =>
-    request<{ accessToken: string; student: any; tenant: any }>("/portal/auth/phone", {
+  startPhoneLogin: (phone: string) =>
+    request<{ telegramSent: boolean; pinAvailable: boolean }>("/portal/auth/phone/start", {
       method: "POST",
-      body: JSON.stringify({ phone, studentCode }),
+      body: JSON.stringify({ phone }),
     }),
-  loginWithTelegram: (chatId: string) =>
-    request<{ accessToken: string; student: any; tenant: any }>("/portal/auth/telegram", {
-      method: "POST",
-      body: JSON.stringify({ chatId }),
-    }),
+  verifyPhoneLogin: (data: { phone: string; code?: string; pin?: string; studentId?: string }) =>
+    request<
+      | { accessToken: string; student: { id: string; fullName: string }; tenant: { id: string; name: string } }
+      | { choose: Array<{ id: string; fullName: string; centerName: string }> }
+    >("/portal/auth/phone/verify", { method: "POST", body: JSON.stringify(data) }),
   getMe: () => request<PortalMe>("/portal/me"),
   getSchedule: () => request<PortalSchedule>("/portal/schedule"),
   getAttendance: () => request<PortalAttendance>("/portal/attendance"),
