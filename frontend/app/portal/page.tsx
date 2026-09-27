@@ -337,11 +337,13 @@ export default function StudentPortalPage() {
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
+            gap: 10,
           }}
         >
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0, flex: 1 }}>
             <div
               style={{
+                flexShrink: 0,
                 width: 40,
                 height: 40,
                 borderRadius: 12,
@@ -354,17 +356,17 @@ export default function StudentPortalPage() {
             >
               🎓
             </div>
-            <div>
-              <div style={{ fontSize: 14, fontWeight: 800, color: "#1E293B" }}>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: 14, fontWeight: 800, color: "#1E293B", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                 {me?.tenant?.name || t("ptl.center")}
               </div>
-              <div style={{ fontSize: 11.5, color: "#64748B" }}>
+              <div style={{ fontSize: 11.5, color: "#64748B", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                 {me?.fullName || t("ptl.student")}
               </div>
             </div>
           </div>
 
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
             <button
               onClick={() => setActiveTab("notifications")}
               style={{
@@ -386,7 +388,7 @@ export default function StudentPortalPage() {
                 <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
                 <path d="M13.73 21a2 2 0 0 1-3.46 0" />
               </svg>
-              <span>{t("ptl.messages")}</span>
+              <span className="hide-sm">{t("ptl.messages")}</span>
               {(announcements.length + (payments && payments.debtAmount > 0 ? 1 : 0)) > 0 && (
                 <span
                   style={{

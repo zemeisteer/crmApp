@@ -18,6 +18,13 @@ interface NavItem {
   roles?: Role[];
 }
 
+// The owner has every admin right (same rule as the backend RolesGuard).
+function canSee(item: NavItem, role?: Role) {
+  if (!item.roles) return true;
+  if (!role) return false;
+  return item.roles.includes(role) || (role === "OWNER" && item.roles.includes("ADMIN"));
+}
+
 const NAV_ITEMS: NavItem[] = [
   {
     href: "/dashboard",
@@ -277,7 +284,7 @@ export default function Sidebar({ open, onClose }: { open?: boolean; onClose?: (
           marginBottom: 10,
         }}
       >
-        {NAV_ITEMS.filter((item) => !item.roles || (user?.role && item.roles.includes(user.role))).map((item) => {
+        {NAV_ITEMS.filter((item) => canSee(item, user?.role)).map((item) => {
           const active = pathname === item.href || pathname.startsWith(item.href + "/");
           return (
             <Link

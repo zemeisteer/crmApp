@@ -842,16 +842,19 @@ function PaymentsContent() {
           gap: 16,
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "10px 20px", flexWrap: "wrap", minWidth: 0, maxWidth: "100%" }}>
           <h1 style={{ fontSize: 22, fontWeight: 800, margin: 0 }}>{t("payments.title")}</h1>
 
-          {/* 3 Tabs */}
+          {/* 3 Tabs (scroll sideways on a phone) */}
           <div
             style={{
               display: "flex",
               background: "#F2F1EC",
               borderRadius: 10,
               padding: 3,
+              maxWidth: "100%",
+              overflowX: "auto",
+              whiteSpace: "nowrap",
             }}
           >
             <button

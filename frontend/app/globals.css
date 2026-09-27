@@ -306,3 +306,73 @@ tbody tr:hover {
   .adm-table-wrap { display: none; }
   .adm-cards { display: grid; gap: 10px; }
 }
+
+/* ---- Phones ----
+   Pages are mostly styled inline, so the phone layout is applied here by
+   matching the inline values: page gutters shrink, multi-column grids
+   stack, wide tables and week grids scroll sideways, modals fill the
+   screen. */
+@media (max-width: 768px) {
+  .dashboard-content h1 { font-size: 20px !important; }
+
+  /* Page gutters (32px on desktop). */
+  .dashboard-content [style*="px 32px"],
+  .dashboard-content [style*="px 30px"],
+  .dashboard-content [style*="px 36px"] {
+    padding-left: 16px !important;
+    padding-right: 16px !important;
+  }
+
+  /* Header rows: let buttons drop under the title instead of overflowing. */
+  .dashboard-content [style*="justify-content: space-between"] { flex-wrap: wrap; row-gap: 10px; }
+
+  /* Two/three-column layouts stack. */
+  .dashboard-content [style*="grid-template-columns: 1fr 1fr"],
+  .dashboard-content [style*="grid-template-columns: repeat(3"],
+  .dashboard-content [style*="grid-template-columns: 1fr 2fr"],
+  .dashboard-content [style*="grid-template-columns: 1.4fr 1fr"],
+  .dashboard-content [style*="grid-template-columns: 1.3fr"],
+  .dashboard-content [style*="grid-template-columns: minmax(0, 2fr) minmax(280px"],
+  .dashboard-content [style*="grid-template-columns: minmax(0px, 2fr) minmax(280px"],
+  .dashboard-content [style*="minmax(380px"],
+  .dashboard-content [style*="minmax(340px"],
+  .dashboard-content [style*="minmax(300px"],
+  .dashboard-content [style*="minmax(280px"],
+  .modal-panel [style*="grid-template-columns: 1fr 1fr"],
+  .modal-panel [style*="grid-template-columns: repeat(3"] {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  /* Stat tiles: two per row. */
+  .dashboard-content [style*="grid-template-columns: repeat(4"],
+  .dashboard-content [style*="grid-template-columns: repeat(5"] {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  /* Week grids keep their columns and scroll. */
+  .dashboard-content [style*="repeat(7, minmax(170px"] { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+  /* Tables scroll sideways inside their card. */
+  .dashboard-content table,
+  .modal-panel table {
+    display: block;
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .dashboard-content th,
+  .dashboard-content td { white-space: nowrap; }
+
+  /* Modals use the whole width. */
+  .modal-panel {
+    width: calc(100vw - 16px) !important;
+    max-width: calc(100vw - 16px) !important;
+    max-height: calc(100dvh - 24px) !important;
+    padding: 18px 16px !important;
+    border-radius: 16px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .hide-sm { display: none; }
+}

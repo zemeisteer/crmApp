@@ -33,6 +33,7 @@ export default function Modal({
       }}
     >
       <div
+        className="modal-panel"
         onClick={(e) => e.stopPropagation()}
         style={{
           background: "#fff",
