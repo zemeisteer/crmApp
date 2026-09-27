@@ -93,29 +93,3 @@ export function pickFromBank(bank: PlacementQuestion[], count: number, targetLev
   }
   return out.slice(0, count).sort((a, b) => a.level - b.level);
 }
-
-// Grades one answer. For MCQ/TRUE_FALSE the answer is the option index.
-export function isCorrect(q: PlacementQuestion, given: string | undefined | null): boolean {
-  const a = (given ?? '').trim();
-  if (!a) return false;
-  if (q.type === 'SHORT_ANSWER') {
-    const norm = (s: string) => s.trim().toLowerCase().replace(/[.,!?;:"'`]+$/g, '').replace(/\s+/g, ' ');
-    return (q.answer ?? '').split('|').map(norm).filter(Boolean).includes(norm(a));
-  }
-  return a === String(q.correctIndex);
-}
-
-// Suggested level from per-level results: advanced needs most level-3
-// questions right on top of level 2, and so on.
-export function suggestLevel(questions: PlacementQuestion[], answers: Array<string | null | undefined>): 1 | 2 | 3 {
-  const pct = (level: number) => {
-    const idx = questions.map((q, i) => (q.level === level ? i : -1)).filter((i) => i >= 0);
-    if (idx.length === 0) return null;
-    return (idx.filter((i) => isCorrect(questions[i], answers[i])).length / idx.length) * 100;
-  };
-  const ok = (p: number | null, min: number) => p === null || p >= min;
-  const [l1, l2, l3] = [pct(1), pct(2), pct(3)];
-  if (l3 !== null && l3 >= 60 && ok(l2, 70)) return 3;
-  if (l2 !== null && l2 >= 60 && ok(l1, 70)) return 2;
-  return 1;
-}

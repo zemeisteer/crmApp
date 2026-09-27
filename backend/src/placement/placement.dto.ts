@@ -1,4 +1,4 @@
-import { ArrayMaxSize, IsArray, IsBoolean, IsIn, IsInt, IsOptional, IsString, Max, MaxLength, Min, MinLength } from 'class-validator';
+import { ArrayMaxSize, IsArray, IsBoolean, IsIn, IsInt, IsObject, IsOptional, IsString, Max, MaxLength, Min, MinLength } from 'class-validator';
 
 export class CreatePlacementTestDto {
   @IsString()
@@ -32,13 +32,25 @@ export class CreatePlacementTestDto {
   // Ready questions (e.g. reviewed after a PDF import) instead of generating.
   @IsOptional()
   @IsArray()
-  @ArrayMaxSize(100)
+  @ArrayMaxSize(300)
   questions?: unknown[];
 }
 
+// Close/reopen the link, or rename the test.
 export class SetPlacementActiveDto {
+  @IsOptional()
   @IsBoolean()
-  active!: boolean;
+  active?: boolean;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(160)
+  title?: string;
+}
+
+export class GradePlacementDto {
+  @IsObject()
+  scores!: Record<string, number>;
 }
 
 export class SubmitPlacementDto {
@@ -55,8 +67,8 @@ export class SubmitPlacementDto {
   // One entry per question, by position: option index for choice
   // questions, the typed text for short answers ('' when skipped).
   @IsArray()
-  @ArrayMaxSize(100)
+  @ArrayMaxSize(300)
   @IsString({ each: true })
-  @MaxLength(200, { each: true })
+  @MaxLength(5000, { each: true })
   answers!: string[];
 }

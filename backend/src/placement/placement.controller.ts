@@ -8,7 +8,7 @@ import { Roles } from '../common/roles.decorator';
 import { CurrentUser } from '../common/current-user.decorator';
 import { ATTACHMENT_MAX_SIZE } from '../common/upload.util';
 import { PlacementService } from './placement.service';
-import { CreatePlacementTestDto, SetPlacementActiveDto, SubmitPlacementDto } from './placement.dto';
+import { CreatePlacementTestDto, GradePlacementDto, SetPlacementActiveDto, SubmitPlacementDto } from './placement.dto';
 
 const STAFF = ['ADMIN', 'OWNER', 'MANAGER', 'TEACHER', 'RECEPTIONIST'];
 
@@ -55,8 +55,27 @@ export class PlacementController {
 
   @Roles(...STAFF)
   @Patch(':id')
-  setActive(@CurrentUser('tenantId') tenantId: string, @Param('id') id: string, @Body() dto: SetPlacementActiveDto) {
-    return this.service.setActive(tenantId, id, dto.active);
+  update(@CurrentUser('tenantId') tenantId: string, @Param('id') id: string, @Body() dto: SetPlacementActiveDto) {
+    if (dto.title !== undefined) return this.service.rename(tenantId, id, dto.title);
+    return this.service.setActive(tenantId, id, dto.active ?? true);
+  }
+
+  @Roles(...STAFF)
+  @Get(':id/attempts/:attemptId')
+  attempt(@CurrentUser('tenantId') tenantId: string, @Param('id') id: string, @Param('attemptId') attemptId: string) {
+    return this.service.getAttempt(tenantId, id, attemptId);
+  }
+
+  @Roles(...STAFF)
+  @Post(':id/attempts/:attemptId/grade')
+  grade(@CurrentUser('tenantId') tenantId: string, @Param('id') id: string, @Param('attemptId') attemptId: string, @Body() dto: GradePlacementDto) {
+    return this.service.gradeAttempt(tenantId, id, attemptId, dto.scores);
+  }
+
+  @Roles(...STAFF)
+  @Post(':id/attempts/:attemptId/ai-review')
+  aiReview(@CurrentUser('tenantId') tenantId: string, @Param('id') id: string, @Param('attemptId') attemptId: string) {
+    return this.service.aiReviewAttempt(tenantId, id, attemptId);
   }
 }
 

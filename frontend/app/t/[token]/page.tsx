@@ -6,6 +6,8 @@ import { ApiError, placementApi, type PublicPlacementTest } from "@/lib/api";
 import { useLanguage } from "@/lib/i18n-context";
 import type { Lang } from "@/lib/i18n";
 import { placementLevelName } from "@/lib/placement";
+import { isAnswered } from "@/lib/tests";
+import TestPaper from "@/components/tests/TestPaper";
 
 const ACCENT = "#4F46E5";
 
@@ -24,7 +26,7 @@ export default function PublicPlacementPage() {
   const [answers, setAnswers] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [result, setResult] = useState<{ correct: number; total: number; percent: number; suggestedLevel: 1 | 2 | 3 } | null>(null);
+  const [result, setResult] = useState<{ correct: number; total: number; percent: number; suggestedLevel: 1 | 2 | 3; pending: boolean } | null>(null);
 
   useEffect(() => {
     if (!token) return;
@@ -38,7 +40,7 @@ export default function PublicPlacementPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
-  const answered = answers.filter((a) => a.trim()).length;
+  const answered = test ? test.questions.filter((q, i) => isAnswered(q, answers[i])).length : 0;
 
   function start(e: React.FormEvent) {
     e.preventDefault();
@@ -72,7 +74,7 @@ export default function PublicPlacementPage() {
 
   return (
     <div style={{ minHeight: "100vh", background: "#F7F6F2", padding: "24px 16px" }}>
-      <div style={{ maxWidth: 720, margin: "0 auto" }}>
+      <div style={{ maxWidth: 760, margin: "0 auto" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, gap: 12 }}>
           <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 800, fontSize: 16, color: "#181A1F" }}>{test?.centerName ?? "CRMAPP"}</div>
           <div style={{ display: "flex", gap: 4 }}>
@@ -125,34 +127,7 @@ export default function PublicPlacementPage() {
                   <div style={{ width: `${(answered / test.questions.length) * 100}%`, height: "100%", background: ACCENT, transition: "width 0.2s" }} />
                 </div>
               </div>
-              {test.questions.map((q, i) => (
-                <div key={i}>
-                  <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 8, lineHeight: 1.45 }}>
-                    <span style={{ color: ACCENT, marginRight: 6 }}>{i + 1}.</span>
-                    {q.prompt}
-                  </div>
-                  {q.type === "SHORT_ANSWER" ? (
-                    <input className="field-input" value={answers[i]} onChange={(e) => setAnswer(i, e.target.value)} placeholder={t("ex.typeAnswer")} maxLength={200} />
-                  ) : (
-                    <div style={{ display: "grid", gridTemplateColumns: q.type === "TRUE_FALSE" ? "1fr 1fr" : "repeat(auto-fit, minmax(220px, 1fr))", gap: 8 }}>
-                      {q.options.map((o, oi) => {
-                        const picked = answers[i] === String(oi);
-                        return (
-                          <button
-                            key={oi}
-                            type="button"
-                            onClick={() => setAnswer(i, String(oi))}
-                            style={{ textAlign: "left", fontSize: 14, padding: "11px 12px", borderRadius: 10, cursor: "pointer", border: `1.5px solid ${picked ? ACCENT : "#EAE8E2"}`, background: picked ? "#EEF0FF" : "#fff", color: "#181A1F", fontWeight: picked ? 700 : 500 }}
-                          >
-                            {q.type === "MCQ" && <b style={{ marginRight: 8, color: picked ? ACCENT : "#8A8D96" }}>{"ABCDEFGH"[oi]}.</b>}
-                            {q.type === "TRUE_FALSE" ? (oi === 0 ? t("pt.true") : t("pt.false")) : o}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              ))}
+              <TestPaper questions={test.questions} answers={answers} onAnswer={setAnswer} />
               {error && <div role="alert" style={alertStyle}>{error}</div>}
               <button type="button" className="btn" onClick={submit} disabled={submitting} style={{ ...primary, opacity: submitting ? 0.7 : 1 }}>
                 {submitting ? t("pt.submitting") : `${t("pt.finish")} (${answered}/${test.questions.length})`}
@@ -165,11 +140,17 @@ export default function PublicPlacementPage() {
                 <h1 style={{ fontSize: 22, fontWeight: 800, margin: "8px 0" }}>{t("pt.thanks")}, {fullName.trim()}!</h1>
                 <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 800, fontSize: 44, color: ACCENT }}>{result.percent}%</div>
                 <div style={{ fontSize: 14, color: "#4A4E58" }}>
-                  {result.correct} / {result.total} {t("placement.correct")}
+                  {result.correct} / {result.total} {t("pt.points")}
                 </div>
-                <div style={{ marginTop: 14, display: "inline-block", background: "#EEF0FF", color: ACCENT, fontWeight: 700, fontSize: 14, padding: "8px 16px", borderRadius: 999 }}>
-                  {t("placement.suggested")}: {placementLevelName(test.subject, result.suggestedLevel, t)}
-                </div>
+                {result.pending ? (
+                  <div style={{ marginTop: 14, display: "inline-block", background: "#FEF3C7", color: "#92400E", fontWeight: 700, fontSize: 13.5, padding: "8px 16px", borderRadius: 12 }}>
+                    ⏳ {t("pt.pendingReview")}
+                  </div>
+                ) : (
+                  <div style={{ marginTop: 14, display: "inline-block", background: "#EEF0FF", color: ACCENT, fontWeight: 700, fontSize: 14, padding: "8px 16px", borderRadius: 999 }}>
+                    {t("placement.suggested")}: {placementLevelName(test.subject, result.suggestedLevel, t)}
+                  </div>
+                )}
                 <div style={{ fontSize: 13, color: "#8A8D96", marginTop: 16, lineHeight: 1.5 }}>{t("pt.contactSoon")}</div>
               </div>
             )

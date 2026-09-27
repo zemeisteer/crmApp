@@ -12,31 +12,22 @@ import {
   type PlacementTestSummary,
 } from "@/lib/api";
 import { useLanguage } from "@/lib/i18n-context";
-import type { TranslationKey } from "@/lib/i18n";
 import { extractUniqueSubjects, matchesSubject } from "@/lib/subject";
 import { formatDateTime } from "@/lib/format-date";
 import { placementLevelName, placementLink } from "@/lib/placement";
+import { hasAnswer, type TestQuestion } from "@/lib/tests";
+import { printTest } from "@/lib/print-test";
+import QuestionList from "@/components/tests/QuestionView";
+import QuestionEditor, { emptyQuestion } from "@/components/tests/QuestionEditor";
+import PlacementAttemptModal from "@/components/students/PlacementAttemptModal";
 
 const ACCENT = "#4F46E5";
 type Level = "" | "BEGINNER" | "INTERMEDIATE" | "ADVANCED";
 type Created = PlacementTestSummary & { questions: PlacementQuestion[] };
-type Draft = PlacementQuestion & { include: boolean };
+type Draft = TestQuestion & { include: boolean };
 
-const TYPE_KEYS: Record<PlacementQuestion["type"], TranslationKey> = {
-  MCQ: "placement.typeMcq",
-  TRUE_FALSE: "placement.typeTf",
-  SHORT_ANSWER: "placement.typeShort",
-};
-
-function esc(s: string) {
-  return s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
-}
-
-const hasAnswer = (q: PlacementQuestion) =>
-  q.type === "SHORT_ANSWER" ? Boolean(q.answer?.trim()) : q.correctIndex !== null && q.correctIndex !== undefined;
-
-// Level test for new students. The center creates it (AI or from a PDF),
-// shares the link, and the student solves it on their own phone or
+// Level test for new students. The center creates it (AI, from a PDF or by
+// hand), shares the link, and the student solves it on their own phone or
 // computer; results show up in the "Tests & results" tab.
 export default function PlacementTestModal({ groups, onClose }: { groups: Group[]; onClose: () => void }) {
   const { t, lang } = useLanguage();
@@ -44,7 +35,7 @@ export default function PlacementTestModal({ groups, onClose }: { groups: Group[
   const [tab, setTab] = useState<"new" | "list">("new");
 
   // ---- new test ----
-  const [source, setSource] = useState<"ai" | "pdf">("ai");
+  const [source, setSource] = useState<"ai" | "pdf" | "manual">("ai");
   const [subject, setSubject] = useState(subjects[0] ?? "");
   const [title, setTitle] = useState("");
   const [groupId, setGroupId] = useState("");
@@ -53,6 +44,7 @@ export default function PlacementTestModal({ groups, onClose }: { groups: Group[
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [drafts, setDrafts] = useState<Draft[] | null>(null);
+  const [editing, setEditing] = useState<number | null>(null);
   const [created, setCreated] = useState<Created | null>(null);
   const [copied, setCopied] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -86,7 +78,10 @@ export default function PlacementTestModal({ groups, onClose }: { groups: Group[
     try {
       const res = await placementApi.parsePdf(file);
       if (res.questions.length === 0) setError(t("pdfq.none"));
-      else setDrafts(res.questions.map((q) => ({ ...q, include: true })));
+      else {
+        setDrafts(res.questions.map((q) => ({ ...q, include: true })));
+        setEditing(null);
+      }
     } catch (err) {
       setError(err instanceof ApiError ? err.message : t("common.errorGeneric"));
     } finally {
@@ -95,8 +90,30 @@ export default function PlacementTestModal({ groups, onClose }: { groups: Group[
     }
   }
 
+  function startManual() {
+    setError(null);
+    setDrafts([{ ...emptyQuestion("MCQ"), level: 1, include: true }]);
+    setEditing(0);
+  }
+
+  function addDraft() {
+    const list = drafts ?? [];
+    const last = list[list.length - 1];
+    // A new question continues the current section.
+    const next: Draft = {
+      ...emptyQuestion(last?.type ?? "MCQ"),
+      section: last?.section,
+      instruction: last?.instruction,
+      passage: last?.passage,
+      level: last?.level ?? 1,
+      include: true,
+    };
+    setDrafts([...list, next]);
+    setEditing(list.length);
+  }
+
   const chosen = (drafts ?? []).filter((q) => q.include);
-  const missing = chosen.filter((q) => !hasAnswer(q)).length;
+  const missing = chosen.filter((q) => !hasAnswer(q) || !(q.prompt.trim() || q.type === "MATCHING")).length;
   const updateDraft = (i: number, patch: Partial<Draft>) => setDrafts((d) => d && d.map((q, j) => (j === i ? { ...q, ...patch } : q)));
 
   async function saveDrafts() {
@@ -108,10 +125,11 @@ export default function PlacementTestModal({ groups, onClose }: { groups: Group[
         subject,
         title: title.trim() || undefined,
         language: lang,
-        questions: chosen.map(({ include: _i, ...q }) => q),
+        questions: chosen.map(({ include: _i, ...q }) => ({ ...q, level: q.level ?? 1 })),
       });
       setCreated(res);
       setDrafts(null);
+      setEditing(null);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : t("common.errorGeneric"));
     } finally {
@@ -122,6 +140,7 @@ export default function PlacementTestModal({ groups, onClose }: { groups: Group[
   function resetNew() {
     setCreated(null);
     setDrafts(null);
+    setEditing(null);
     setError(null);
     setCopied(false);
   }
@@ -137,34 +156,19 @@ export default function PlacementTestModal({ groups, onClose }: { groups: Group[
   }
 
   function print(test: Created) {
-    const w = window.open("", "_blank");
-    if (!w) return;
-    const items = test.questions
-      .map((q, i) => {
-        const body =
-          q.type === "SHORT_ANSWER"
-            ? `<p class="line">______________________________</p>`
-            : `<ol type="A">${q.options.map((o) => `<li>${esc(o)}</li>`).join("")}</ol>`;
-        return `<li><p><b>${i + 1}.</b> ${esc(q.prompt)}</p>${body}</li>`;
-      })
-      .join("");
-    const key = test.questions
-      .map((q, i) => `${i + 1}) ${q.type === "SHORT_ANSWER" ? esc((q.answer ?? "").split("|")[0]) : q.type === "TRUE_FALSE" ? esc(q.options[q.correctIndex ?? 0]) : "ABCD"[q.correctIndex ?? 0]}`)
-      .join(" &nbsp; ");
-    w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${esc(test.title)}</title>
-      <style>body{font-family:system-ui,sans-serif;padding:28px;color:#181A1F}h1{font-size:20px}ul{list-style:none;padding:0}li{margin-bottom:12px}ol[type=A]{margin-top:4px}.line{color:#999}.key{margin-top:40px;page-break-before:always;font-size:12px;color:#555}</style>
-      </head><body><h1>${esc(test.title)}</h1>
-      <p>${esc(t("placement.studentName"))}: ______________________ &nbsp; ${esc(t("placement.date"))}: ____________</p>
-      <ul>${items}</ul><div class="key"><b>${esc(t("placement.answerKey"))}:</b> ${key}</div></body></html>`);
-    w.document.close();
-    w.focus();
-    w.print();
+    printTest(test.title, test.questions, {
+      name: t("placement.studentName"),
+      date: t("placement.date"),
+      key: t("placement.answerKey"),
+      tf: { true: t("pt.true"), false: t("pt.false"), ng: t("qt.notGiven") },
+    });
   }
 
   // ---- tests & results ----
   const [tests, setTests] = useState<PlacementTestSummary[] | null>(null);
   const [openTest, setOpenTest] = useState<string | null>(null);
   const [attempts, setAttempts] = useState<Record<string, PlacementAttempt[]>>({});
+  const [review, setReview] = useState<{ test: PlacementTestSummary; attemptId: string } | null>(null);
 
   useEffect(() => {
     if (tab !== "list") return;
@@ -177,6 +181,19 @@ export default function PlacementTestModal({ groups, onClose }: { groups: Group[
       const rows = await placementApi.attempts(id).catch(() => []);
       setAttempts((a) => ({ ...a, [id]: rows }));
     }
+  }
+
+  async function reloadAttempts(id: string) {
+    const rows = await placementApi.attempts(id).catch(() => null);
+    if (rows) setAttempts((a) => ({ ...a, [id]: rows }));
+    placementApi.list().then(setTests).catch(() => undefined);
+  }
+
+  async function rename(test: PlacementTestSummary) {
+    const next = window.prompt(t("placement.renamePrompt"), test.title)?.trim();
+    if (!next || next === test.title) return;
+    const updated = await placementApi.rename(test.id, next).catch(() => null);
+    if (updated) setTests((list) => list && list.map((x) => (x.id === test.id ? { ...x, title: updated.title } : x)));
   }
 
   async function toggleActive(test: PlacementTestSummary) {
@@ -194,8 +211,10 @@ export default function PlacementTestModal({ groups, onClose }: { groups: Group[
     </button>
   );
 
+  const sourceLabel = { ai: t("placement.sourceAiBtn"), pdf: t("placement.sourcePdfBtn"), manual: t("placement.sourceManualBtn") };
+
   return (
-    <Modal open onClose={onClose} title={`🧭 ${t("placement.title")}`} width={780}>
+    <Modal open onClose={onClose} title={`🧭 ${t("placement.title")}`} width={820}>
       <div style={{ display: "flex", gap: 4, background: "#F2F1EC", padding: 4, borderRadius: 10, marginBottom: 16 }}>
         {tabBtn("new", t("placement.tabNew"))}
         {tabBtn("list", t("placement.tabList"))}
@@ -204,19 +223,19 @@ export default function PlacementTestModal({ groups, onClose }: { groups: Group[
       {tab === "new" && !created && !drafts && (
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           <div style={{ fontSize: 13, color: "#4A4E58", lineHeight: 1.5 }}>{t("placement.introLink")}</div>
-          <div style={{ display: "flex", gap: 8 }}>
-            {(["ai", "pdf"] as const).map((s) => (
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            {(["ai", "pdf", "manual"] as const).map((s) => (
               <button
                 key={s}
                 type="button"
                 onClick={() => setSource(s)}
-                style={{ flex: 1, padding: "10px 12px", borderRadius: 10, cursor: "pointer", fontSize: 13, fontWeight: 700, border: `1.5px solid ${source === s ? ACCENT : "#EAE8E2"}`, background: source === s ? "#EEF0FF" : "#fff", color: source === s ? ACCENT : "#4A4E58" }}
+                style={{ flex: 1, minWidth: 140, padding: "10px 12px", borderRadius: 10, cursor: "pointer", fontSize: 13, fontWeight: 700, border: `1.5px solid ${source === s ? ACCENT : "#EAE8E2"}`, background: source === s ? "#EEF0FF" : "#fff", color: source === s ? ACCENT : "#4A4E58" }}
               >
-                {s === "ai" ? t("placement.sourceAiBtn") : t("placement.sourcePdfBtn")}
+                {sourceLabel[s]}
               </button>
             ))}
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 10 }}>
             <div>
               <div style={lbl}>{t("placement.direction")}</div>
               <Select value={subject} onChange={(v) => { setSubject(v); setGroupId(""); }} options={subjects.map((s) => ({ value: s, label: s }))} placeholder={t("placement.direction")} />
@@ -231,7 +250,7 @@ export default function PlacementTestModal({ groups, onClose }: { groups: Group[
                   <div style={lbl}>{t("placement.group")}</div>
                   <Select value={groupId} onChange={setGroupId} options={[{ value: "", label: t("placement.anyGroup") }, ...groupsOfSubject.map((g) => ({ value: g.id, label: `${g.name}${g.level ? ` · ${g.level}` : ""}` }))]} />
                 </div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) 110px", gap: 10 }}>
                   <div>
                     <div style={lbl}>{t("placement.expectedLevel")}</div>
                     <Select
@@ -255,56 +274,74 @@ export default function PlacementTestModal({ groups, onClose }: { groups: Group[
           </div>
           {source === "ai" && <div style={{ fontSize: 12, color: "#8A8D96" }}>{t("placement.mixedHint")}</div>}
           {source === "pdf" && <div style={{ fontSize: 12, color: "#8A8D96" }}>{t("placement.pdfHint")}</div>}
+          {source === "manual" && <div style={{ fontSize: 12, color: "#8A8D96" }}>{t("placement.manualHint")}</div>}
           {error && <div role="alert" style={alertStyle}>{error}</div>}
           <input ref={fileRef} type="file" accept="application/pdf" style={{ display: "none" }} onChange={(e) => onPdf(e.target.files?.[0])} />
           <button
             type="button"
             className="btn"
             disabled={busy || !subject}
-            onClick={() => (source === "ai" ? generate() : fileRef.current?.click())}
+            onClick={() => (source === "ai" ? generate() : source === "pdf" ? fileRef.current?.click() : startManual())}
             style={{ background: "linear-gradient(135deg, #7C3AED, #4F46E5)", color: "#fff", border: "none", fontSize: 14, fontWeight: 700, padding: 12, borderRadius: 10, opacity: !subject ? 0.6 : 1 }}
           >
-            {busy ? t("placement.generating") : source === "ai" ? `✨ ${t("placement.generate")}` : `📄 ${t("placement.pickPdf")}`}
+            {busy
+              ? source === "pdf"
+                ? t("pdfq.reading")
+                : t("placement.generating")
+              : source === "ai"
+                ? `✨ ${t("placement.generate")}`
+                : source === "pdf"
+                  ? `📄 ${t("placement.pickPdf")}`
+                  : `✍️ ${t("placement.startManual")}`}
           </button>
         </div>
       )}
 
       {tab === "new" && drafts && (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          <div style={{ fontSize: 12.5, color: "#4A4E58" }}>
-            {t("pdfq.found")}: {drafts.length} · {t("pdfq.selected")}: {chosen.length}
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+            <div style={{ flex: 1, minWidth: 200 }}>
+              <div style={lbl}>{t("placement.testTitle")}</div>
+              <input className="field-input" value={title} onChange={(e) => setTitle(e.target.value)} placeholder={subject ? `${subject} — ${t("placement.title")}` : ""} />
+            </div>
+            <div style={{ fontSize: 12.5, color: "#4A4E58", alignSelf: "flex-end", paddingBottom: 8 }}>
+              {t("pdfq.found")}: <b>{drafts.length}</b> · {t("pdfq.selected")}: <b>{chosen.length}</b> · {t("pdfq.pts")}: <b>{chosen.reduce((s, q) => s + q.points, 0)}</b>
+            </div>
           </div>
           {missing > 0 && <div style={{ ...alertStyle, background: "#FFFBEB", color: "#92400E" }}>{t("pdfq.missing")} ({missing})</div>}
           {error && <div role="alert" style={alertStyle}>{error}</div>}
-          <div style={{ maxHeight: 440, overflowY: "auto", display: "flex", flexDirection: "column", gap: 8 }}>
-            {drafts.map((q, i) => {
-              const noAnswer = q.include && !hasAnswer(q);
-              return (
-                <div key={i} style={{ border: `1px solid ${noAnswer ? "#FCD34D" : "#EAE8E2"}`, background: noAnswer ? "#FFFBEB" : "#fff", borderRadius: 10, padding: 10, opacity: q.include ? 1 : 0.5 }}>
-                  <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
-                    <input type="checkbox" checked={q.include} onChange={(e) => updateDraft(i, { include: e.target.checked })} style={{ marginTop: 3, accentColor: ACCENT }} />
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>
-                        {i + 1}. {q.prompt} <TypeBadge label={t(TYPE_KEYS[q.type])} />
-                      </div>
-                      {q.type === "SHORT_ANSWER" ? (
-                        <input className="field-input" value={q.answer ?? ""} onChange={(e) => updateDraft(i, { answer: e.target.value })} placeholder={t("pdfq.shortAnswerPh")} style={{ height: 36, fontSize: 13 }} />
-                      ) : (
-                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
-                          {q.options.map((o, oi) => (
-                            <button key={oi} type="button" onClick={() => updateDraft(i, { correctIndex: oi })} style={optionStyle(q.correctIndex === oi)}>
-                              {q.type === "MCQ" && <b style={{ marginRight: 6 }}>{"ABCDEFGH"[oi]}.</b>}
-                              {o}
-                              {q.correctIndex === oi && " ✓"}
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
+          <div style={{ maxHeight: 480, overflowY: "auto", paddingRight: 4 }}>
+            <QuestionList
+              questions={drafts}
+              itemStyle={(q, i) => {
+                const noAnswer = drafts[i].include && !hasAnswer(q);
+                return { opacity: drafts[i].include ? 1 : 0.5, borderColor: editing === i ? ACCENT : noAnswer ? "#FCD34D" : "#E2E8F0", background: noAnswer && editing !== i ? "#FFFBEB" : "#fff" };
+              }}
+              meta={(q) => <span style={{ fontSize: 11, color: "#94A3B8" }}> · {levelName(q.level ?? 1)}</span>}
+              renderItem={(q, i) => (editing === i ? <QuestionEditor value={q} showLevel onChange={(nq) => updateDraft(i, nq)} /> : null)}
+              aside={(_q, i) => (
+                <div style={{ display: "flex", flexDirection: "column", gap: 6, alignItems: "center" }}>
+                  <input type="checkbox" aria-label={t("pdfq.selected")} checked={drafts[i].include} onChange={(e) => updateDraft(i, { include: e.target.checked })} style={{ accentColor: ACCENT, width: 16, height: 16 }} />
+                  <button type="button" title={t("common.edit")} onClick={() => setEditing(editing === i ? null : i)} style={iconBtn(editing === i)}>
+                    {editing === i ? "✓" : "✎"}
+                  </button>
+                  <button
+                    type="button"
+                    title={t("common.delete")}
+                    onClick={() => {
+                      setDrafts((d) => d && d.filter((_, j) => j !== i));
+                      setEditing(null);
+                    }}
+                    style={iconBtn(false)}
+                  >
+                    🗑
+                  </button>
                 </div>
-              );
-            })}
+              )}
+            />
+            <button type="button" onClick={addDraft} style={{ ...ghost, width: "100%", marginTop: 10, borderStyle: "dashed", color: ACCENT }}>
+              + {t("placement.addQuestion")}
+            </button>
           </div>
           <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
             <button type="button" className="btn" onClick={resetNew} style={ghost}>← {t("placement.back")}</button>
@@ -328,9 +365,9 @@ export default function PlacementTestModal({ groups, onClose }: { groups: Group[
               </a>
             </div>
           </div>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
             <div style={{ fontSize: 13, color: "#4A4E58" }}>
-              <b>{created.title}</b> · {created.questions.length} {t("placement.questions")}
+              <b>{created.title}</b> · {created.questions.length} {t("placement.questions")} · {created.questions.reduce((s, q) => s + q.points, 0)} {t("pdfq.pts")}
             </div>
             <div style={{ display: "flex", gap: 8 }}>
               <button type="button" className="btn" onClick={() => print(created)} style={ghost}>🖨 {t("placement.print")}</button>
@@ -338,32 +375,14 @@ export default function PlacementTestModal({ groups, onClose }: { groups: Group[
             </div>
           </div>
           <div style={{ fontSize: 12, color: "#8A8D96" }}>{t("placement.teacherView")}</div>
-          <div style={{ maxHeight: 360, overflowY: "auto", display: "flex", flexDirection: "column", gap: 10 }}>
-            {created.questions.map((q, i) => (
-              <div key={i} style={{ fontSize: 13.5 }}>
-                <div style={{ fontWeight: 600, marginBottom: 6 }}>
-                  {i + 1}. {q.prompt} <TypeBadge label={t(TYPE_KEYS[q.type])} /> <span style={{ fontSize: 11, color: "#8A8D96" }}>· {levelName(q.level, created.subject)}</span>
-                </div>
-                {q.type === "SHORT_ANSWER" ? (
-                  <div style={{ ...optionStyle(true), display: "inline-block" }}>{t("placement.answer")}: {(q.answer ?? "").split("|").join(" / ")}</div>
-                ) : (
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
-                    {q.options.map((o, oi) => (
-                      <div key={oi} style={optionStyle(q.correctIndex === oi)}>
-                        {q.type === "MCQ" && <b style={{ marginRight: 6 }}>{"ABCDEFGH"[oi]}.</b>}
-                        {o}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ))}
+          <div style={{ maxHeight: 400, overflowY: "auto", paddingRight: 4 }}>
+            <QuestionList questions={created.questions} meta={(q) => <span style={{ fontSize: 11, color: "#94A3B8" }}> · {levelName(q.level ?? 1, created.subject)}</span>} />
           </div>
         </div>
       )}
 
       {tab === "list" && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: 520, overflowY: "auto" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: 540, overflowY: "auto" }}>
           {tests === null ? (
             <div style={{ fontSize: 13, color: "#8A8D96" }}>{t("common.loading")}</div>
           ) : tests.length === 0 ? (
@@ -371,9 +390,16 @@ export default function PlacementTestModal({ groups, onClose }: { groups: Group[
           ) : (
             tests.map((x) => (
               <div key={x.id} style={{ border: "1px solid #EAE8E2", borderRadius: 12, overflow: "hidden" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", flexWrap: "wrap" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px", flexWrap: "wrap" }}>
                   <button type="button" onClick={() => toggleOpen(x.id)} style={{ flex: 1, minWidth: 200, textAlign: "left", background: "none", border: "none", cursor: "pointer", padding: 0 }}>
-                    <div style={{ fontSize: 13.5, fontWeight: 700, color: "#181A1F" }}>{openTest === x.id ? "▾" : "▸"} {x.title}</div>
+                    <div style={{ fontSize: 13.5, fontWeight: 700, color: "#181A1F" }}>
+                      {openTest === x.id ? "▾" : "▸"} {x.title}
+                      {(x.pending ?? 0) > 0 && (
+                        <span style={{ marginLeft: 8, fontSize: 11, fontWeight: 700, color: "#92400E", background: "#FEF3C7", padding: "2px 8px", borderRadius: 999 }}>
+                          ⏳ {x.pending} {t("placement.toReview")}
+                        </span>
+                      )}
+                    </div>
                     <div style={{ fontSize: 12, color: "#8A8D96" }}>
                       {x.subject} · {x.questionCount} {t("placement.questions")} · {formatDateTime(x.createdAt, lang)}
                     </div>
@@ -381,6 +407,9 @@ export default function PlacementTestModal({ groups, onClose }: { groups: Group[
                   <span style={{ fontSize: 12, fontWeight: 700, color: ACCENT, background: "#EEF0FF", padding: "3px 10px", borderRadius: 999 }}>
                     {x.attempts ?? 0} {t("placement.results")}
                   </span>
+                  <button type="button" className="btn" onClick={() => rename(x)} style={{ ...ghost, padding: "6px 10px" }} title={t("placement.rename")}>
+                    ✎
+                  </button>
                   <button type="button" className="btn" onClick={() => copy(placementLink(x.token))} style={{ ...ghost, padding: "6px 10px" }} disabled={!x.active}>
                     🔗 {t("placement.copyLink")}
                   </button>
@@ -389,7 +418,7 @@ export default function PlacementTestModal({ groups, onClose }: { groups: Group[
                   </button>
                 </div>
                 {openTest === x.id && (
-                  <div style={{ borderTop: "1px solid #F2F1EC", padding: "8px 12px 12px" }}>
+                  <div style={{ borderTop: "1px solid #F2F1EC", padding: "8px 12px 12px", overflowX: "auto" }}>
                     {!attempts[x.id] ? (
                       <div style={{ fontSize: 12.5, color: "#8A8D96" }}>{t("common.loading")}</div>
                     ) : attempts[x.id].length === 0 ? (
@@ -403,6 +432,7 @@ export default function PlacementTestModal({ groups, onClose }: { groups: Group[
                             <th style={{ textAlign: "right" }}>{t("placement.score")}</th>
                             <th>{t("placement.suggested")}</th>
                             <th>{t("placement.date")}</th>
+                            <th />
                           </tr>
                         </thead>
                         <tbody>
@@ -410,11 +440,21 @@ export default function PlacementTestModal({ groups, onClose }: { groups: Group[
                             <tr key={a.id}>
                               <td style={{ fontWeight: 600 }}>{a.fullName}</td>
                               <td>{a.phone || "—"}</td>
-                              <td style={{ textAlign: "right", fontWeight: 800, color: a.percent >= 80 ? "#1FA463" : a.percent >= 50 ? "#D97706" : "#B23A47" }}>
+                              <td style={{ textAlign: "right", fontWeight: 800, whiteSpace: "nowrap", color: a.percent >= 80 ? "#1FA463" : a.percent >= 50 ? "#D97706" : "#B23A47" }}>
                                 {a.percent}% <span style={{ fontWeight: 500, color: "#8A8D96" }}>({a.correct}/{a.total})</span>
                               </td>
-                              <td>{levelName(a.suggestedLevel, x.subject)}</td>
+                              <td>{a.reviewStatus === "PENDING" ? "—" : levelName(a.suggestedLevel, x.subject)}</td>
                               <td style={{ whiteSpace: "nowrap" }}>{formatDateTime(a.createdAt, lang)}</td>
+                              <td>
+                                <button
+                                  type="button"
+                                  className="btn"
+                                  onClick={() => setReview({ test: x, attemptId: a.id })}
+                                  style={{ ...ghost, padding: "4px 10px", whiteSpace: "nowrap", ...(a.reviewStatus === "PENDING" ? { background: "#FEF3C7", borderColor: "#FCD34D", color: "#92400E" } : {}) }}
+                                >
+                                  {a.reviewStatus === "PENDING" ? `⏳ ${t("review.check")}` : t("placement.details")}
+                                </button>
+                              </td>
                             </tr>
                           ))}
                         </tbody>
@@ -428,24 +468,22 @@ export default function PlacementTestModal({ groups, onClose }: { groups: Group[
           {copied && <div style={{ fontSize: 12, color: "#1FA463", fontWeight: 700 }}>✓ {t("placement.copied")}</div>}
         </div>
       )}
+      {review && (
+        <PlacementAttemptModal test={review.test} attemptId={review.attemptId} onClose={() => setReview(null)} onChanged={() => reloadAttempts(review.test.id)} />
+      )}
     </Modal>
   );
 }
 
-function TypeBadge({ label }: { label: string }) {
-  return <span style={{ fontSize: 10.5, fontWeight: 700, color: "#6D28D9", background: "#F5F3FF", padding: "2px 7px", borderRadius: 999, marginLeft: 4, verticalAlign: "middle" }}>{label}</span>;
-}
-
-const optionStyle = (right: boolean): React.CSSProperties => ({
-  textAlign: "left",
-  fontSize: 13,
-  padding: "7px 10px",
-  borderRadius: 8,
+const iconBtn = (on: boolean): React.CSSProperties => ({
+  width: 28,
+  height: 28,
+  borderRadius: 7,
+  border: `1px solid ${on ? ACCENT : "#E2E8F0"}`,
+  background: on ? "#EEF0FF" : "#fff",
+  color: on ? ACCENT : "#64748B",
   cursor: "pointer",
-  border: `1px solid ${right ? "#1FA463" : "#EAE8E2"}`,
-  background: right ? "#E8F7EF" : "#fff",
-  color: "#181A1F",
-  fontWeight: right ? 700 : 500,
+  fontSize: 13,
 });
 const lbl: React.CSSProperties = { fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 };
 const ghost: React.CSSProperties = { background: "#fff", border: "1px solid #EAE8E2", color: "#181A1F", fontSize: 12.5, fontWeight: 700, padding: "8px 12px", borderRadius: 8, cursor: "pointer" };

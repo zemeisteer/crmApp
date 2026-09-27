@@ -1,4 +1,5 @@
-import { ArrayMinSize, IsArray, IsIn, IsInt, IsNotEmpty, IsObject, IsOptional, IsString, Min, ValidateNested } from 'class-validator';
+import { ArrayMinSize, IsArray, IsIn, IsInt, IsNotEmpty, IsObject, IsOptional, IsString, Max, MaxLength, Min, ValidateNested } from 'class-validator';
+import { QUESTION_TYPES } from '../../common/test-questions';
 import { Type } from 'class-transformer';
 
 export class CreateExamDto {
@@ -54,25 +55,37 @@ export class SubmitResultsDto {
   results: ExamResultEntryDto[];
 }
 
+// Shape of one question (validated in depth by normalizeQuestion).
 export class CreateExamQuestionDto {
   @IsString()
   @IsNotEmpty()
   prompt: string;
 
   @IsOptional()
-  @IsIn(['MCQ', 'TRUE_FALSE', 'SHORT_ANSWER'])
-  questionType?: 'MCQ' | 'TRUE_FALSE' | 'SHORT_ANSWER';
+  @IsIn(QUESTION_TYPES as unknown as string[])
+  questionType?: string;
 
   @IsOptional()
-  options?: any; // array or JSON string: [{ id: "A", text: "..." }, ...]
+  @IsIn(QUESTION_TYPES as unknown as string[])
+  type?: string;
 
-  @IsString()
-  @IsNotEmpty()
-  correctAnswer: string;
+  @IsOptional()
+  options?: any;
 
   @IsOptional()
   @IsString()
-  explanation?: string;
+  correctAnswer?: string;
+
+  @IsOptional() @IsString() @MaxLength(300) section?: string | null;
+  @IsOptional() @IsString() @MaxLength(2000) instruction?: string | null;
+  @IsOptional() @IsString() @MaxLength(20000) passage?: string | null;
+  @IsOptional() @IsArray() pairs?: Array<{ left: string; right: string }>;
+  @IsOptional() @IsArray() words?: string[];
+  @IsOptional() @IsString() @MaxLength(4000) rubric?: string | null;
+
+  @IsOptional()
+  @IsString()
+  explanation?: string | null;
 
   @IsOptional()
   @IsInt()
@@ -82,6 +95,16 @@ export class CreateExamQuestionDto {
   @IsOptional()
   @IsInt()
   order?: number;
+}
+
+export class GradeAttemptDto {
+  @IsObject()
+  scores: Record<string, number>;
+}
+
+export class GenerateQuestionsDto {
+  @IsOptional() @IsInt() @Min(1) @Max(40) count?: number;
+  @IsOptional() @IsString() @MaxLength(1000) request?: string;
 }
 
 export class BatchCreateQuestionsDto {

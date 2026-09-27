@@ -5,29 +5,10 @@ import Anthropic from '@anthropic-ai/sdk';
 import { DB, Database } from '../db/db.module';
 import { groups, payments, attendance } from '../db/schema';
 import { GenerateMaterialDto, PlacementTestDto } from './dto/ai.dto';
-import { bankFor, pickFromBank, type PlacementQuestion } from './placement-bank';
+import { bankFor, pickFromBank } from './placement-bank';
+import { normalizeQuestion, type TestQuestion } from '../common/test-questions';
+import { essayGradePrompt, generateTestPrompt, parseJsonArray, pdfExtractPrompt } from './test-prompts';
 
-// Cleans AI (or client) supplied placement questions; drops broken ones.
-export function normalizePlacementQuestions(raw: unknown): PlacementQuestion[] {
-  if (!Array.isArray(raw)) return [];
-  const out: PlacementQuestion[] = [];
-  for (const q of raw) {
-    if (!q || typeof q.prompt !== 'string' || !q.prompt.trim()) continue;
-    const level = ([1, 2, 3].includes(q.level) ? q.level : 2) as 1 | 2 | 3;
-    const options = Array.isArray(q.options) ? q.options.map((o: unknown) => String(o)) : [];
-    const type = q.type === 'TRUE_FALSE' || q.type === 'SHORT_ANSWER' ? q.type : 'MCQ';
-    if (type === 'SHORT_ANSWER') {
-      const answer = typeof q.answer === 'string' ? q.answer.trim() : '';
-      if (!answer) continue;
-      out.push({ type, prompt: q.prompt.trim(), options: [], answer, level });
-    } else {
-      const opts = type === 'TRUE_FALSE' && options.length !== 2 ? ['True', 'False'] : options;
-      if (opts.length < 2 || !Number.isInteger(q.correctIndex) || q.correctIndex < 0 || q.correctIndex >= opts.length) continue;
-      out.push({ type, prompt: q.prompt.trim(), options: opts, correctIndex: q.correctIndex, level });
-    }
-  }
-  return out;
-}
 
 const MODEL = 'claude-sonnet-5';
 
@@ -283,127 +264,38 @@ Javobni FAQAT quyidagi JSON formatida ber (boshqa hech qanday so'z qo'shma):
     }
   }
 
-  async generateExamQuestions(topic: string, subject?: string, count: number = 5): Promise<Array<{
-    prompt: string;
-    questionType: 'MCQ' | 'TRUE_FALSE';
-    options: Array<{ id: string; text: string }>;
-    correctAnswer: string;
-    explanation?: string;
-    points: number;
-  }>> {
-    try {
-      if (this.aiConfigured()) {
-        const prompt = `Sen o'quv markazi uchun professional test tuzuvchisisan.
-Quyidagi fan va mavzu bo'yicha ${count} ta sifatli, qiziqarli test savolini o'zbek tilida tuz:
-Fan: ${subject || 'Umumiy'}
-Mavzu: ${topic}
-
-Javobni FAQAT valid JSON array ko'rinishida ber (hech qanday markdown yoki tushuntirishsiz, faqat xom JSON array):
-[
-  {
-    "prompt": "Savol matni?",
-    "questionType": "MCQ",
-    "options": [
-      { "id": "A", "text": "Variant 1" },
-      { "id": "B", "text": "Variant 2" },
-      { "id": "C", "text": "Variant 3" },
-      { "id": "D", "text": "Variant 4" }
-    ],
-    "correctAnswer": "A",
-    "explanation": "Nima sababdan ushbu javob to'g'riligi haqida qisqa izoh",
-    "points": 1
-  }
-]`;
-        const text = await this.complete(prompt, 1500);
-        const match = text.match(/\[[\s\S]*\]/);
-        if (match) {
-          const parsed = JSON.parse(match[0]);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            return parsed.map((q: any) => ({
-              prompt: String(q.prompt || 'Savol matni'),
-              questionType: (q.questionType === 'TRUE_FALSE' ? 'TRUE_FALSE' : 'MCQ') as 'MCQ' | 'TRUE_FALSE',
-              options: Array.isArray(q.options) ? q.options : [
-                { id: 'A', text: 'Variant A' },
-                { id: 'B', text: 'Variant B' },
-                { id: 'C', text: 'Variant C' },
-                { id: 'D', text: 'Variant D' },
-              ],
-              correctAnswer: String(q.correctAnswer || 'A'),
-              explanation: q.explanation ? String(q.explanation) : undefined,
-              points: Number(q.points) || 1,
-            }));
-          }
-        }
-      }
-    } catch {
-      // Fallback
+  // Questions for an exam's question bank, mixed types. Needs an AI key: a
+  // made-up fallback would put wrong questions in front of students.
+  async generateExamQuestions(opts: { subject: string; topic: string; count?: number; level?: string | null; request?: string | null; language?: string }): Promise<TestQuestion[]> {
+    if (!this.aiConfigured()) {
+      throw new ServiceUnavailableException("AI bilan savol yaratish uchun backend/.env fayliga GEMINI_API_KEY (bepul) qo'shing.");
     }
+    const count = Math.min(Math.max(opts.count ?? 5, 1), 40);
+    const text = await this.complete(
+      generateTestPrompt({ subject: opts.subject, topic: opts.topic, count, level: opts.level ?? null, request: opts.request ?? null, language: opts.language ?? 'UZ', withLevels: false }),
+      Math.max(8000, count * 900),
+    );
+    const questions = parseJsonArray(text).map((q) => normalizeQuestion(q)).filter((q): q is TestQuestion => q !== null);
+    if (questions.length === 0) throw new ServiceUnavailableException("AI savol yarata olmadi. Qaytadan urinib ko'ring.");
+    return questions.slice(0, count);
+  }
 
-    return [
-      {
-        prompt: `"${topic}" mavzusi bo'yicha eng muhim asosiy tushuncha yoki qoida qaysi javobda to'g'ri ifodalangan?`,
-        questionType: 'MCQ',
-        options: [
-          { id: 'A', text: `${topic} ning asosiy nazariy ta'rifi va amaliy qo'llanilishi` },
-          { id: 'B', text: 'Mavzuga to\'g\'ri kelmaydigan chalg\'ituvchi variant' },
-          { id: 'C', text: 'Faqat ikkinchi darajali xususiyatlar' },
-          { id: 'D', text: 'Teskari ma\'nodagi noto\'g\'ri tushuncha' },
-        ],
-        correctAnswer: 'A',
-        explanation: `${topic} bo'yicha asosiy ta'rif qoidaga to'liq mos keladi.`,
-        points: 1,
-      },
-      {
-        prompt: `Amaliyotda "${topic}" bilan ishlashda qaysi qoidaga qat'iy amal qilish lozim?`,
-        questionType: 'MCQ',
-        options: [
-          { id: 'A', text: 'Shartlarni e\'tiborga olmasdan tezkor ishlash' },
-          { id: 'B', text: 'Ketma-ketlik va tekshirish bosqichlariga rioya qilish' },
-          { id: 'C', text: 'Hech qanday qo\'shimcha qoidaga hojat yo\'q' },
-          { id: 'D', text: 'Faqat oxirgi natijani tekshirish' },
-        ],
-        correctAnswer: 'B',
-        explanation: 'Ketma-ketlik va tekshiruv har doim to\'g\'ri natijani kafolatlaydi.',
-        points: 1,
-      },
-      {
-        prompt: `Tasdiqlang: "${topic}" tushunchasi o'rganilayotgan fanning muhim amaliy bo'limlaridan biri hisoblanadi.`,
-        questionType: 'TRUE_FALSE',
-        options: [
-          { id: 'true', text: 'To\'g\'ri (Rost)' },
-          { id: 'false', text: 'Noto\'g\'ri (Yolg\'on)' },
-        ],
-        correctAnswer: 'true',
-        explanation: 'Ushbu tasdiq fan dasturida to\'liq tasdiqlangan.',
-        points: 1,
-      },
-      {
-        prompt: `Quyidagi misollardan qaysi biri "${topic}" ga to'g'ridan-to'g'ri misol bo'la oladi?`,
-        questionType: 'MCQ',
-        options: [
-          { id: 'A', text: 'Standart amaliy misol va holat' },
-          { id: 'B', text: 'Tegishli bo\'lmagan holat' },
-          { id: 'C', text: 'Qarama-qarshi holat' },
-          { id: 'D', text: 'Barcha javoblar noto\'g\'ri' },
-        ],
-        correctAnswer: 'A',
-        explanation: 'Standart misol ushbu mavzuni to\'liq yoritadi.',
-        points: 1,
-      },
-      {
-        prompt: `"${topic}" mavzusida eng ko'p uchraydigan tipik xatolik nimada?`,
-        questionType: 'MCQ',
-        options: [
-          { id: 'A', text: 'Nazariy qoidalarni e\'tibordan chetda qoldirish' },
-          { id: 'B', text: 'Keragidan ortiq to\'g\'ri ishlash' },
-          { id: 'C', text: 'Barcha qoidalarga qat\'iy bo\'ysunish' },
-          { id: 'D', text: 'Xatolik umuman bo\'lmaydi' },
-        ],
-        correctAnswer: 'A',
-        explanation: 'Nazariy qoidalarni e\'tibordan chetda qoldirish ko\'pincha xatolarga sabab bo\'ladi.',
-        points: 1,
-      },
-    ];
+  // Scores one essay answer for the teacher to confirm.
+  async gradeEssay(opts: { prompt: string; rubric?: string | null; answer: string; maxPoints: number }) {
+    if (!this.aiConfigured()) {
+      throw new ServiceUnavailableException("AI yoqilmagan: backend/.env fayliga GEMINI_API_KEY (bepul) qo'shing.");
+    }
+    if (!opts.answer.trim()) return { score: 0, comment: "Javob yozilmagan." };
+    const text = await this.complete(essayGradePrompt(opts), 1500);
+    const match = text.match(/\{[\s\S]*\}/);
+    let parsed: { score?: unknown; comment?: unknown } = {};
+    try {
+      parsed = match ? JSON.parse(match[0]) : {};
+    } catch {
+      parsed = {};
+    }
+    const score = Math.max(0, Math.min(opts.maxPoints, Math.round(Number(parsed.score) || 0)));
+    return { score, comment: typeof parsed.comment === 'string' ? parsed.comment.slice(0, 600) : '' };
   }
 
   // Level test with mixed question types. Questions carry a level (1-3) so
@@ -439,83 +331,39 @@ Javobni FAQAT valid JSON array ko'rinishida ber (hech qanday markdown yoki tushu
         `"${subject}" uchun tayyor test yo'q. AI bilan yaratish uchun backend/.env fayliga GEMINI_API_KEY (bepul) qo'shing (hozircha Ingliz tili va Matematika tayyor).`,
       );
     }
-    return { subject, source: 'bank' as const, questions: pickFromBank(bank, count, target) };
+    const questions = pickFromBank(bank, count, target)
+      .map((q) => normalizeQuestion({ ...q, correctAnswer: q.answer }))
+      .filter((q): q is TestQuestion => q !== null);
+    return { subject, source: 'bank' as const, questions };
   }
 
-  private async aiPlacementQuestions(subject: string, count: number, level: string | null, groupLevel: string | null, language: string): Promise<PlacementQuestion[]> {
-    const lang = language === 'RU' ? 'rus' : language === 'EN' ? 'ingliz' : "o'zbek";
-    const prompt = `Sen o'quv markazi uchun daraja aniqlash (placement) testini tuzasan.
-Fan: ${subject}
-Kutilayotgan daraja: ${level ?? groupLevel ?? "noma'lum — barcha darajalarni teng qamrab ol"}
-Savollar soni: ${count}
-Savollar tili: ${lang} (til fanining o'zi bo'lsa, savollar o'sha tilda bo'lsin).
-Savol turlari ARALASH bo'lsin, bir xil turdagi savollar ketma-ket kelmasin:
-- taxminan 60% "MCQ": 4 ta variant, bittasi to'g'ri ("correctIndex" 0-3);
-- taxminan 20% "TRUE_FALSE": tasdiq, options ["True","False"] (yoki savol tilida), "correctIndex" 0 = to'g'ri, 1 = noto'g'ri;
-- taxminan 20% "SHORT_ANSWER": bo'sh joyni to'ldirish yoki qisqa javob (1-3 so'z yoki son), options [], "answer" — to'g'ri javob, muqobil yozilishlar "|" bilan ("6|x=6").
-Savollar mavzusi ham xilma-xil bo'lsin (grammatika, lug'at, o'qib tushunish, masala va h.k. — fanga qarab).
-Osondan qiyinga: level 1 (boshlang'ich), 2 (o'rta), 3 (yuqori), taxminan teng taqsimlangan.
-
-Javobni FAQAT JSON massiv ko'rinishida ber, boshqa so'z qo'shma:
-[{"type": "MCQ", "prompt": "...", "options": ["...", "...", "...", "..."], "correctIndex": 0, "level": 1},
- {"type": "TRUE_FALSE", "prompt": "...", "options": ["True", "False"], "correctIndex": 1, "level": 2},
- {"type": "SHORT_ANSWER", "prompt": "... ______ ...", "options": [], "answer": "went", "level": 2}]`;
-    // Roomy budget: long tests got cut off mid-JSON.
-    const text = await this.complete(prompt, Math.max(8000, count * 800));
-    const match = text.match(/\[[\s\S]*\]/);
-    if (!match) return [];
-    return normalizePlacementQuestions(JSON.parse(match[0])).slice(0, count);
+  private async aiPlacementQuestions(subject: string, count: number, level: string | null, groupLevel: string | null, language: string): Promise<TestQuestion[]> {
+    const text = await this.complete(
+      generateTestPrompt({ subject, count, level: level ?? groupLevel, language, withLevels: true }),
+      Math.max(8000, count * 900),
+    );
+    return parseJsonArray(text)
+      .map((q) => normalizeQuestion(q))
+      .filter((q): q is TestQuestion => q !== null && q.type !== 'ESSAY')
+      .slice(0, count);
   }
 
-  // Reads a test from a PDF and returns its questions in the question-bank
-  // format. Copies questions as written (no new ones); the correct answer is
-  // filled only when the PDF shows it (answer key, marked option).
-  async extractQuestionsFromPdf(pdf: Buffer) {
+  // Reads a test from a PDF (typed or scanned) into questions for review:
+  // sections, instructions, reading passages, points and answers from the
+  // answer key when there is one (otherwise left empty for the teacher).
+  async extractQuestionsFromPdf(pdf: Buffer): Promise<TestQuestion[]> {
     if (!this.aiConfigured()) {
       throw new ServiceUnavailableException(
         "PDF'dan savollarni o'qish uchun AI kerak: backend/.env fayliga GEMINI_API_KEY (bepul) qo'shing.",
       );
     }
-    const prompt = `Bu PDF faylda test (imtihon) bor. Undagi BARCHA savollarni aynan qanday yozilgan bo'lsa shunday, o'z tilida ko'chirib ol.
-Yangi savol o'ylab topma, matnni tarjima qilma, tuzatma.
-- Variantli savollar: questionType "MCQ", variantlar A, B, C, D ... tartibida.
-- To'g'ri/Noto'g'ri savollar: questionType "TRUE_FALSE", options [{"id":"true","text":"True"},{"id":"false","text":"False"}].
-- Variantsiz (ochiq javobli) savollar: questionType "SHORT_ANSWER", options [].
-- correctAnswer: PDF'da javoblar kaliti yoki belgilangan javob bo'lsa — variant harfi ("A"), "true"/"false" yoki qisqa javob matni. Javob ko'rsatilmagan bo'lsa null.
-- Savoldagi rasm yoki formulani matn bilan iloji boricha ifodalab yoz.
-
-Javobni FAQAT JSON massiv ko'rinishida ber, boshqa so'z qo'shma:
-[{"prompt": "...", "questionType": "MCQ", "options": [{"id": "A", "text": "..."}], "correctAnswer": "A", "points": 1}]`;
-    const text = await this.complete(prompt, 8000, pdf);
-    const match = text.match(/\[[\s\S]*\]/);
-    if (!match) throw new ServiceUnavailableException("PDF'dan savollar topilmadi. Fayl test ekanini tekshiring.");
-    let raw: unknown;
-    try {
-      raw = JSON.parse(match[0]);
-    } catch {
-      throw new ServiceUnavailableException("AI javobini o'qib bo'lmadi, qaytadan urinib ko'ring.");
-    }
-    if (!Array.isArray(raw)) return [];
-    return raw
-      .filter((q) => q && typeof q.prompt === 'string' && q.prompt.trim())
-      .slice(0, 200)
-      .map((q) => {
-        const type: 'MCQ' | 'TRUE_FALSE' | 'SHORT_ANSWER' =
-          q.questionType === 'TRUE_FALSE' ? 'TRUE_FALSE' : q.questionType === 'SHORT_ANSWER' ? 'SHORT_ANSWER' : 'MCQ';
-        const options: Array<{ id: string; text: string }> = Array.isArray(q.options)
-          ? q.options
-              .filter((o: { text?: unknown }) => o && o.text !== undefined)
-              .map((o: { id?: unknown; text: unknown }, i: number) => ({ id: String(o.id ?? String.fromCharCode(65 + i)), text: String(o.text) }))
-          : [];
-        const answer = q.correctAnswer === null || q.correctAnswer === undefined ? null : String(q.correctAnswer).trim();
-        return {
-          prompt: String(q.prompt).trim(),
-          questionType: type,
-          options: type === 'TRUE_FALSE' && options.length === 0 ? [{ id: 'true', text: 'True' }, { id: 'false', text: 'False' }] : options,
-          correctAnswer: answer || null,
-          points: Number.isInteger(q.points) && q.points > 0 ? q.points : 1,
-        };
-      });
+    const text = await this.complete(pdfExtractPrompt(), 24000, pdf);
+    const questions = parseJsonArray(text)
+      .map((q) => normalizeQuestion(q, { requireAnswer: false }))
+      .filter((q): q is TestQuestion => q !== null)
+      .slice(0, 300);
+    if (questions.length === 0) throw new ServiceUnavailableException("PDF'dan savollar topilmadi. Fayl test ekanini tekshiring.");
+    return questions;
   }
 }
 

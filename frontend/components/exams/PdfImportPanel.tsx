@@ -1,14 +1,17 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { ApiError, examsApi, type ExamQuestion, type ParsedPdfQuestion } from "@/lib/api";
+import { ApiError, examsApi, type ExamQuestion } from "@/lib/api";
 import { useLanguage } from "@/lib/i18n-context";
+import { hasAnswer, type TestQuestion } from "@/lib/tests";
+import QuestionList from "@/components/tests/QuestionView";
+import QuestionEditor from "@/components/tests/QuestionEditor";
 
-type Draft = ParsedPdfQuestion & { include: boolean };
+type Draft = TestQuestion & { include: boolean };
 
-// Upload a PDF test, review the questions the AI read from it (fix or pick
-// missing answers, untick ones you don't want), then add them to the
-// exam's question bank in one go.
+// Upload a PDF test, review the questions the AI read from it (grouped by
+// section, every question type; fix or fill missing answers, untick ones
+// you don't want), then add them to the exam's question bank in one go.
 export default function PdfImportPanel({ examId, onImported }: { examId: string; onImported: (created: ExamQuestion[]) => void }) {
   const { t } = useLanguage();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -16,6 +19,7 @@ export default function PdfImportPanel({ examId, onImported }: { examId: string;
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [drafts, setDrafts] = useState<Draft[] | null>(null);
+  const [editing, setEditing] = useState<number | null>(null);
 
   async function onFile(file: File | undefined) {
     if (!file) return;
@@ -29,6 +33,7 @@ export default function PdfImportPanel({ examId, onImported }: { examId: string;
       const res = await examsApi.parsePdfQuestions(examId, file);
       if (res.questions.length === 0) setError(t("pdfq.none"));
       setDrafts(res.questions.map((q) => ({ ...q, include: true })));
+      setEditing(null);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : t("common.errorGeneric"));
     } finally {
@@ -39,24 +44,21 @@ export default function PdfImportPanel({ examId, onImported }: { examId: string;
 
   const update = (i: number, patch: Partial<Draft>) => setDrafts((d) => d && d.map((q, j) => (j === i ? { ...q, ...patch } : q)));
   const chosen = (drafts ?? []).filter((q) => q.include);
-  const missing = chosen.filter((q) => !q.correctAnswer?.trim()).length;
+  const missing = chosen.filter((q) => !hasAnswer(q)).length;
+  const sections = new Set(chosen.map((q) => q.section).filter(Boolean)).size;
+  const close = () => {
+    if (saving) return;
+    setDrafts(null);
+    setError(null);
+    setEditing(null);
+  };
 
   async function save() {
     if (!drafts || chosen.length === 0 || missing > 0) return;
     setSaving(true);
     setError(null);
     try {
-      const created = await examsApi.batchQuestions(
-        examId,
-        chosen.map((q, i) => ({
-          prompt: q.prompt,
-          questionType: q.questionType,
-          options: q.options,
-          correctAnswer: q.correctAnswer!.trim(),
-          points: q.points,
-          order: i,
-        })),
-      );
+      const created = await examsApi.batchQuestions(examId, chosen.map(({ include: _i, ...q }) => q));
       onImported(created);
       setDrafts(null);
     } catch (err) {
@@ -79,69 +81,50 @@ export default function PdfImportPanel({ examId, onImported }: { examId: string;
       </button>
 
       {(drafts || error) && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => !saving && (setDrafts(null), setError(null))}>
-          <div className="w-full max-w-3xl max-h-[90vh] flex flex-col rounded-2xl bg-white shadow-xl" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-2 sm:p-4" onClick={close}>
+          <div className="w-full max-w-3xl max-h-[92vh] flex flex-col rounded-2xl bg-white shadow-xl" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
               <div>
                 <h3 className="text-sm font-bold text-slate-900">{t("pdfq.title")}</h3>
                 {drafts && (
                   <p className="text-xs text-slate-500 mt-0.5">
-                    {t("pdfq.found")}: {drafts.length} · {t("pdfq.selected")}: {chosen.length}
+                    {sections > 0 && `${t("pdfq.sections")}: ${sections} · `}
+                    {t("pdfq.found")}: {drafts.length} · {t("pdfq.selected")}: {chosen.length} · {t("pdfq.pts")}: {chosen.reduce((s, q) => s + q.points, 0)}
                   </p>
                 )}
               </div>
-              <button type="button" onClick={() => { setDrafts(null); setError(null); }} className="text-slate-400 hover:text-slate-700 text-lg cursor-pointer" aria-label={t("common.close")}>✕</button>
+              <button type="button" onClick={close} className="text-slate-400 hover:text-slate-700 text-lg cursor-pointer" aria-label={t("common.close")}>✕</button>
             </div>
 
-            <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
+            <div className="flex-1 overflow-y-auto px-4 sm:px-5 py-4 space-y-3">
               {error && <div className="rounded-lg bg-rose-50 text-rose-700 text-xs font-semibold px-3 py-2">{error}</div>}
+              {drafts && drafts.length > 0 && <div className="rounded-lg bg-indigo-50 text-indigo-800 text-xs px-3 py-2">{t("pdfq.sectionsHint")}</div>}
               {drafts && missing > 0 && (
                 <div className="rounded-lg bg-amber-50 text-amber-800 text-xs font-semibold px-3 py-2">{t("pdfq.missing")} ({missing})</div>
               )}
-              {drafts?.map((q, i) => {
-                const noAnswer = q.include && !q.correctAnswer?.trim();
-                return (
-                  <div key={i} className={`rounded-xl border p-3 ${noAnswer ? "border-amber-300 bg-amber-50/40" : q.include ? "border-slate-200" : "border-slate-100 opacity-50"}`}>
-                    <div className="flex items-start gap-2">
-                      <input type="checkbox" checked={q.include} onChange={(e) => update(i, { include: e.target.checked })} className="mt-1 accent-indigo-600" />
-                      <div className="flex-1 space-y-2">
-                        <textarea
-                          value={q.prompt}
-                          onChange={(e) => update(i, { prompt: e.target.value })}
-                          rows={Math.min(4, Math.ceil(q.prompt.length / 90))}
-                          className="w-full text-xs font-semibold text-slate-900 border border-transparent hover:border-slate-200 focus:border-indigo-300 rounded-md p-1 resize-none"
-                        />
-                        {q.questionType === "SHORT_ANSWER" ? (
-                          <input
-                            value={q.correctAnswer ?? ""}
-                            onChange={(e) => update(i, { correctAnswer: e.target.value })}
-                            placeholder={t("pdfq.shortAnswerPh")}
-                            className="w-full text-xs border border-slate-200 rounded-md px-2 py-1.5"
-                          />
-                        ) : (
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-                            {q.options.map((o) => {
-                              const right = q.correctAnswer === o.id;
-                              return (
-                                <button
-                                  key={o.id}
-                                  type="button"
-                                  onClick={() => update(i, { correctAnswer: o.id })}
-                                  title={t("pdfq.markCorrect")}
-                                  className={`text-left text-xs rounded-md border px-2 py-1.5 cursor-pointer ${right ? "border-emerald-500 bg-emerald-50 text-emerald-900 font-semibold" : "border-slate-200 hover:bg-slate-50 text-slate-700"}`}
-                                >
-                                  <b className="mr-1">{q.questionType === "TRUE_FALSE" ? "" : `${o.id}.`}</b>{o.text}{right && " ✓"}
-                                </button>
-                              );
-                            })}
-                          </div>
-                        )}
-                      </div>
-                      <span className="text-[10px] font-bold text-slate-400 whitespace-nowrap">{q.points} {t("pdfq.pts")}</span>
+              {drafts && (
+                <QuestionList
+                  questions={drafts}
+                  itemStyle={(q, i) => {
+                    const noAnswer = drafts[i].include && !hasAnswer(q);
+                    return { opacity: drafts[i].include ? 1 : 0.5, borderColor: editing === i ? "#4F46E5" : noAnswer ? "#FCD34D" : "#E2E8F0", background: noAnswer && editing !== i ? "#FFFBEB" : "#fff" };
+                  }}
+                  renderItem={(q, i) => (editing === i ? <QuestionEditor value={q} onChange={(nq) => update(i, nq)} /> : null)}
+                  aside={(_q, i) => (
+                    <div className="flex flex-col items-center gap-1.5">
+                      <input type="checkbox" aria-label={t("pdfq.selected")} checked={drafts[i].include} onChange={(e) => update(i, { include: e.target.checked })} className="accent-indigo-600 w-4 h-4" />
+                      <button
+                        type="button"
+                        title={t("common.edit")}
+                        onClick={() => setEditing(editing === i ? null : i)}
+                        className={`w-7 h-7 rounded-md border text-xs cursor-pointer ${editing === i ? "border-indigo-500 bg-indigo-50 text-indigo-700" : "border-slate-200 text-slate-500 hover:bg-slate-50"}`}
+                      >
+                        {editing === i ? "✓" : "✎"}
+                      </button>
                     </div>
-                  </div>
-                );
-              })}
+                  )}
+                />
+              )}
             </div>
 
             {drafts && drafts.length > 0 && (

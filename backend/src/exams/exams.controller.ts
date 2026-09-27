@@ -25,6 +25,8 @@ import {
   BatchCreateQuestionsDto,
   SubmitAttemptDto,
   SubmitResultsDto,
+  GenerateQuestionsDto,
+  GradeAttemptDto,
 } from './dto/exam.dto';
 
 @UseGuards(JwtAuthGuard, RolesGuard, TrialGuard)
@@ -128,8 +130,8 @@ export class ExamsController {
 
   @Roles('ADMIN', 'TEACHER')
   @Post(':id/generate-questions')
-  generateQuestions(@CurrentUser('tenantId') tenantId: string, @Param('id') id: string) {
-    return this.service.generateQuestionsWithAi(tenantId, id);
+  generateQuestions(@CurrentUser('tenantId') tenantId: string, @Param('id') id: string, @Body() dto: GenerateQuestionsDto) {
+    return this.service.generateQuestionsWithAi(tenantId, id, dto ?? {});
   }
 
   // ---- Interactive Test Taking Endpoints ----
@@ -156,5 +158,29 @@ export class ExamsController {
   @Get(':id/attempts')
   getAttempts(@CurrentUser('tenantId') tenantId: string, @Param('id') id: string) {
     return this.service.getAttempts(tenantId, id);
+  }
+
+  // Teacher review of one attempt: written answers get points here.
+  @Roles('ADMIN', 'TEACHER')
+  @Get(':id/attempts/:attemptId')
+  getAttempt(@CurrentUser('tenantId') tenantId: string, @Param('id') id: string, @Param('attemptId') attemptId: string) {
+    return this.service.getAttempt(tenantId, id, attemptId);
+  }
+
+  @Roles('ADMIN', 'TEACHER')
+  @Post(':id/attempts/:attemptId/grade')
+  gradeAttempt(
+    @CurrentUser('tenantId') tenantId: string,
+    @Param('id') id: string,
+    @Param('attemptId') attemptId: string,
+    @Body() dto: GradeAttemptDto,
+  ) {
+    return this.service.gradeAttempt(tenantId, id, attemptId, dto.scores);
+  }
+
+  @Roles('ADMIN', 'TEACHER')
+  @Post(':id/attempts/:attemptId/ai-review')
+  aiReviewAttempt(@CurrentUser('tenantId') tenantId: string, @Param('id') id: string, @Param('attemptId') attemptId: string) {
+    return this.service.aiReviewAttempt(tenantId, id, attemptId);
   }
 }

@@ -116,7 +116,7 @@ describe('ExamsService (Question Bank & Auto-Grading)', () => {
     for (const q of session.questions) {
       expect((q as any).correctAnswer).toBeUndefined();
       expect((q as any).explanation).toBeUndefined();
-      expect(Array.isArray(q.options)).toBe(true);
+      expect(Array.isArray((q as { options?: unknown }).options)).toBe(true);
     }
   });
 

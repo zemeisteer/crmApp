@@ -13,6 +13,7 @@ import {
 } from './dto/exam.dto';
 import { TelegramService } from '../telegram/telegram.service';
 import { AiService } from '../ai/ai.service';
+import { gradeAnswer, normalizeQuestion, publicQuestion, type TestQuestion } from '../common/test-questions';
 
 @Injectable()
 export class ExamsService {
@@ -140,49 +141,88 @@ export class ExamsService {
   }
 
   // ---- Questions & Question Bank (Section 21) ----
+  // Stored with the rich question model (common/test-questions.ts):
+  // section/instruction/passage columns, type-specific extras in `meta`.
+
+  private toRow(tenantId: string, examId: string, q: TestQuestion, order: number) {
+    return {
+      tenantId,
+      examId,
+      prompt: q.prompt,
+      questionType: q.type,
+      options: JSON.stringify(q.options ?? []),
+      correctAnswer: q.correctAnswer,
+      explanation: q.explanation ?? null,
+      points: q.points,
+      order,
+      section: q.section ?? null,
+      instruction: q.instruction ?? null,
+      passage: q.passage ?? null,
+      meta: JSON.stringify({ pairs: q.pairs, words: q.words, rubric: q.rubric }),
+    };
+  }
+
+  private fromRow(row: typeof examQuestions.$inferSelect): TestQuestion & { id: string; order: number } {
+    const parse = <T>(v: string | null, fallback: T): T => {
+      try {
+        return v ? (JSON.parse(v) as T) : fallback;
+      } catch {
+        return fallback;
+      }
+    };
+    const meta = parse<{ pairs?: TestQuestion['pairs']; words?: string[]; rubric?: string | null }>(row.meta, {});
+    return {
+      id: row.id,
+      order: row.order,
+      type: row.questionType as TestQuestion['type'],
+      prompt: row.prompt,
+      section: row.section,
+      instruction: row.instruction,
+      passage: row.passage,
+      options: parse(row.options, []),
+      correctAnswer: row.correctAnswer,
+      pairs: meta.pairs,
+      words: meta.words,
+      rubric: meta.rubric ?? null,
+      explanation: row.explanation,
+      points: row.points,
+    };
+  }
+
+  private cleanOrThrow(raw: unknown, index: number): TestQuestion {
+    const q = normalizeQuestion(raw);
+    if (!q) throw new BadRequestException(`${index + 1}-savol to'liq emas: matni, turi va to'g'ri javobini tekshiring`);
+    return q;
+  }
 
   async getQuestions(tenantId: string, examId: string) {
     await this.findOne(tenantId, examId);
-    return this.db.query.examQuestions.findMany({
+    const rows = await this.db.query.examQuestions.findMany({
       where: and(eq(examQuestions.tenantId, tenantId), eq(examQuestions.examId, examId)),
       orderBy: [asc(examQuestions.order), asc(examQuestions.createdAt)],
     });
+    return rows.map((r) => this.fromRow(r));
+  }
+
+  private async nextOrder(examId: string) {
+    const rows = await this.db.select({ order: examQuestions.order }).from(examQuestions).where(eq(examQuestions.examId, examId));
+    return rows.reduce((m, r) => Math.max(m, r.order + 1), 0);
   }
 
   async createQuestion(tenantId: string, examId: string, dto: CreateExamQuestionDto) {
     await this.findOne(tenantId, examId);
-    const optionsStr = typeof dto.options === 'string' ? dto.options : JSON.stringify(dto.options || []);
-    const [q] = await this.db
-      .insert(examQuestions)
-      .values({
-        tenantId,
-        examId,
-        prompt: dto.prompt,
-        questionType: dto.questionType || 'MCQ',
-        options: optionsStr,
-        correctAnswer: dto.correctAnswer,
-        explanation: dto.explanation,
-        points: dto.points || 1,
-        order: dto.order || 0,
-      })
-      .returning();
-    return q;
+    const q = this.cleanOrThrow(dto, 0);
+    const [row] = await this.db.insert(examQuestions).values(this.toRow(tenantId, examId, q, dto.order ?? (await this.nextOrder(examId)))).returning();
+    return this.fromRow(row);
   }
 
   async batchCreateQuestions(tenantId: string, examId: string, dto: BatchCreateQuestionsDto) {
     await this.findOne(tenantId, examId);
-    const values = dto.questions.map((q, idx) => ({
-      tenantId,
-      examId,
-      prompt: q.prompt,
-      questionType: q.questionType || 'MCQ',
-      options: typeof q.options === 'string' ? q.options : JSON.stringify(q.options || []),
-      correctAnswer: q.correctAnswer,
-      explanation: q.explanation,
-      points: q.points || 1,
-      order: q.order ?? idx,
-    }));
-    return this.db.insert(examQuestions).values(values).returning();
+    if (dto.questions.length === 0) return [];
+    const start = await this.nextOrder(examId);
+    const values = dto.questions.map((raw, i) => this.toRow(tenantId, examId, this.cleanOrThrow(raw, i), start + i));
+    const rows = await this.db.insert(examQuestions).values(values).returning();
+    return rows.map((r) => this.fromRow(r));
   }
 
   async removeQuestion(tenantId: string, examId: string, questionId: string) {
@@ -193,6 +233,7 @@ export class ExamsService {
     return { success: true };
   }
 
+  // Reads a PDF for review; nothing is saved until the teacher confirms.
   async parsePdfQuestions(tenantId: string, examId: string, file?: Express.Multer.File) {
     await this.findOne(tenantId, examId);
     if (!file?.buffer?.length) throw new BadRequestException('PDF fayl yuklang');
@@ -200,27 +241,16 @@ export class ExamsService {
     return { questions };
   }
 
-  async generateQuestionsWithAi(tenantId: string, examId: string) {
+  async generateQuestionsWithAi(tenantId: string, examId: string, opts: { count?: number; request?: string } = {}) {
     const exam = await this.findOne(tenantId, examId);
-    const generated = await this.ai.generateExamQuestions(
-      exam.title,
-      exam.group?.subject || exam.description || undefined,
-      5,
-    );
-
-    const created = await this.batchCreateQuestions(tenantId, examId, {
-      questions: generated.map((g, idx) => ({
-        prompt: g.prompt,
-        questionType: g.questionType,
-        options: g.options,
-        correctAnswer: g.correctAnswer,
-        explanation: g.explanation,
-        points: g.points,
-        order: idx,
-      })),
+    const generated = await this.ai.generateExamQuestions({
+      subject: exam.group?.subject || 'Umumiy',
+      topic: exam.title + (exam.description ? ` — ${exam.description}` : ''),
+      level: exam.group?.level ?? null,
+      count: opts.count ?? 5,
+      request: opts.request ?? null,
     });
-
-    return created;
+    return this.batchCreateQuestions(tenantId, examId, { questions: generated as unknown as CreateExamQuestionDto[] });
   }
 
   // ---- Interactive Test Taking & Auto Grading (Section 21) ----
@@ -232,28 +262,10 @@ export class ExamsService {
     });
     if (!student) throw new NotFoundException("O'quvchi topilmadi");
 
-    const rawQuestions = await this.getQuestions(tenantId, examId);
-    if (rawQuestions.length === 0) {
+    const questions = await this.getQuestions(tenantId, examId);
+    if (questions.length === 0) {
       throw new BadRequestException("Ushbu imtihonga hali savollar kiritilmagan");
     }
-
-    // Sanitize questions: strip correctAnswer and explanation to prevent student client inspection
-    const sanitizedQuestions = rawQuestions.map((q) => {
-      let parsedOptions = [];
-      try {
-        parsedOptions = q.options ? JSON.parse(q.options) : [];
-      } catch {
-        parsedOptions = [];
-      }
-      return {
-        id: q.id,
-        prompt: q.prompt,
-        questionType: q.questionType,
-        options: parsedOptions,
-        points: q.points,
-        order: q.order,
-      };
-    });
 
     return {
       exam: {
@@ -263,14 +275,71 @@ export class ExamsService {
         durationMinutes: exam.durationMinutes,
         maxScore: exam.maxScore,
         passingScore: exam.passingScore,
-        questionCount: sanitizedQuestions.length,
+        questionCount: questions.length,
       },
-      student: {
-        id: student.id,
-        fullName: student.fullName,
-      },
-      questions: sanitizedQuestions,
+      student: { id: student.id, fullName: student.fullName },
+      // No answers leave the server before the attempt is submitted.
+      questions: questions.map((q, i) => ({ id: q.id, order: q.order, ...publicQuestion(q, i) })),
     };
+  }
+
+  // Grades every question; essays wait for the teacher (score counts the
+  // rest until then). `manual` overrides per question (teacher review).
+  private score(
+    exam: { maxScore: number; passingScore: number | null },
+    questions: Array<TestQuestion & { id: string }>,
+    answers: Record<string, string>,
+    manual: Record<string, number> = {},
+  ) {
+    let earnedPoints = 0;
+    let totalPoints = 0;
+    let pending = false;
+    const breakdown = questions.map((q) => {
+      const g = gradeAnswer(q, answers[q.id]);
+      const manualScore = manual[q.id];
+      const earned = manualScore !== undefined ? Math.max(0, Math.min(q.points, manualScore)) : g.earned;
+      const isPending = g.pending && manualScore === undefined;
+      if (isPending) pending = true;
+      totalPoints += q.points;
+      earnedPoints += earned;
+      return {
+        questionId: q.id,
+        prompt: q.prompt,
+        questionType: q.type,
+        section: q.section ?? null,
+        instruction: q.instruction ?? null,
+        passage: q.passage ?? null,
+        options: q.options ?? [],
+        pairs: q.pairs ?? null,
+        words: q.words ?? null,
+        rubric: q.rubric ?? null,
+        studentAnswer: answers[q.id] || '',
+        correctAnswer: q.correctAnswer,
+        isCorrect: isPending ? false : earned >= q.points,
+        pending: isPending,
+        points: q.points,
+        earned: Math.round(earned * 100) / 100,
+        explanation: q.explanation ?? null,
+      };
+    });
+    const calculatedScore = totalPoints > 0 ? Math.round((earnedPoints / totalPoints) * exam.maxScore) : 0;
+    const passing = exam.passingScore ?? Math.round(exam.maxScore * 0.6);
+    return {
+      breakdown,
+      earnedPoints: Math.round(earnedPoints * 100) / 100,
+      totalPoints,
+      pending,
+      score: calculatedScore,
+      passed: calculatedScore >= passing,
+      passing,
+    };
+  }
+
+  private async saveResult(examId: string, studentId: string, score: number, note: string) {
+    await this.db
+      .insert(examResults)
+      .values({ examId, studentId, score, note })
+      .onConflictDoUpdate({ target: [examResults.examId, examResults.studentId], set: { score, note } });
   }
 
   async submitAttempt(tenantId: string, examId: string, dto: SubmitAttemptDto) {
@@ -284,44 +353,8 @@ export class ExamsService {
     if (questions.length === 0) {
       throw new BadRequestException("Imtihon savollari topilmadi");
     }
+    const r = this.score(exam, questions, dto.answers);
 
-    let earnedPoints = 0;
-    let totalPoints = 0;
-
-    const breakdown = questions.map((q) => {
-      const studentAns = (dto.answers[q.id] || '').trim().toLowerCase();
-      const correctAns = (q.correctAnswer || '').trim().toLowerCase();
-      const isCorrect = studentAns.length > 0 && studentAns === correctAns;
-      totalPoints += q.points;
-      if (isCorrect) earnedPoints += q.points;
-
-      let parsedOptions = [];
-      try {
-        parsedOptions = q.options ? JSON.parse(q.options) : [];
-      } catch {
-        parsedOptions = [];
-      }
-
-      return {
-        questionId: q.id,
-        prompt: q.prompt,
-        questionType: q.questionType,
-        options: parsedOptions,
-        studentAnswer: dto.answers[q.id] || '',
-        correctAnswer: q.correctAnswer,
-        isCorrect,
-        points: q.points,
-        earned: isCorrect ? q.points : 0,
-        explanation: q.explanation,
-      };
-    });
-
-    // Score proportional to exam.maxScore
-    const calculatedScore = totalPoints > 0 ? Math.round((earnedPoints / totalPoints) * exam.maxScore) : 0;
-    const passing = exam.passingScore ?? Math.round(exam.maxScore * 0.6);
-    const passed = calculatedScore >= passing;
-
-    // 1. Save attempt record
     const [attempt] = await this.db
       .insert(examAttempts)
       .values({
@@ -329,50 +362,34 @@ export class ExamsService {
         examId,
         studentId: dto.studentId,
         completedAt: new Date(),
-        score: calculatedScore,
+        score: r.score,
         maxScore: exam.maxScore,
-        passed,
+        passed: r.passed,
         answers: JSON.stringify(dto.answers),
+        reviewStatus: r.pending ? 'PENDING' : 'DONE',
       })
       .returning();
 
-    // 2. Automatically record / update in examResults table
-    await this.db
-      .insert(examResults)
-      .values({
-        examId,
-        studentId: dto.studentId,
-        score: calculatedScore,
-        note: `Onlayn test: ${earnedPoints}/${totalPoints} to'g'ri (${Math.round((calculatedScore / exam.maxScore) * 100)}%)`,
-      })
-      .onConflictDoUpdate({
-        target: [examResults.examId, examResults.studentId],
-        set: {
-          score: calculatedScore,
-          note: `Onlayn test: ${earnedPoints}/${totalPoints} to'g'ri (${Math.round((calculatedScore / exam.maxScore) * 100)}%)`,
-        },
-      });
+    const pct = Math.round((r.score / exam.maxScore) * 100);
+    await this.saveResult(examId, dto.studentId, r.score, `Onlayn test: ${r.earnedPoints}/${r.totalPoints} ball (${pct}%)${r.pending ? ' — yozma javoblar tekshirilmoqda' : ''}`);
 
-    // 3. Send Telegram notification to student/parent
-    void this.telegram.notifyExamResult(
-      dto.studentId,
-      exam.title,
-      calculatedScore,
-      exam.maxScore,
-      passed
-        ? `✅ Onlayn testdan o'tdi (${Math.round((calculatedScore / exam.maxScore) * 100)}%)`
-        : `❌ O'tish bali: ${passing}`,
-    );
+    if (!r.pending) {
+      void this.telegram.notifyExamResult(
+        dto.studentId, exam.title, r.score, exam.maxScore,
+        r.passed ? `✅ Onlayn testdan o'tdi (${pct}%)` : `❌ O'tish bali: ${r.passing}`,
+      );
+    }
 
     return {
       attempt,
-      score: calculatedScore,
+      score: r.score,
       maxScore: exam.maxScore,
-      earnedPoints,
-      totalPoints,
-      passed,
-      percentage: Math.round((calculatedScore / exam.maxScore) * 100),
-      breakdown,
+      earnedPoints: r.earnedPoints,
+      totalPoints: r.totalPoints,
+      passed: r.passed,
+      pending: r.pending,
+      percentage: pct,
+      breakdown: r.breakdown,
     };
   }
 
@@ -383,5 +400,90 @@ export class ExamsService {
       with: { student: true },
       orderBy: [desc(examAttempts.createdAt)],
     });
+  }
+
+  // ---- Teacher review of written answers ----
+
+  private async attemptRow(tenantId: string, examId: string, attemptId: string) {
+    const attempt = await this.db.query.examAttempts.findFirst({
+      where: and(eq(examAttempts.id, attemptId), eq(examAttempts.examId, examId), eq(examAttempts.tenantId, tenantId)),
+      with: { student: true },
+    });
+    if (!attempt) throw new NotFoundException('Urinish topilmadi');
+    return attempt;
+  }
+
+  private parseJson<T>(v: string | null, fallback: T): T {
+    try {
+      return v ? (JSON.parse(v) as T) : fallback;
+    } catch {
+      return fallback;
+    }
+  }
+
+  async getAttempt(tenantId: string, examId: string, attemptId: string) {
+    const exam = await this.findOne(tenantId, examId);
+    const attempt = await this.attemptRow(tenantId, examId, attemptId);
+    const questions = await this.getQuestions(tenantId, examId);
+    const manual = this.parseJson<Record<string, number>>(attempt.manualScores, {});
+    const r = this.score(exam, questions, this.parseJson(attempt.answers, {}), manual);
+    return {
+      id: attempt.id,
+      student: { id: attempt.student?.id, fullName: attempt.student?.fullName },
+      createdAt: attempt.createdAt,
+      reviewStatus: attempt.reviewStatus,
+      score: attempt.score,
+      maxScore: attempt.maxScore,
+      passed: attempt.passed,
+      earnedPoints: r.earnedPoints,
+      totalPoints: r.totalPoints,
+      manualScores: manual,
+      aiReview: this.parseJson<Record<string, { score: number; comment: string }>>(attempt.aiReview, {}),
+      breakdown: r.breakdown,
+    };
+  }
+
+  // Teacher sets points for written answers (and may override any
+  // question); the attempt, the exam result and the student are updated.
+  async gradeAttempt(tenantId: string, examId: string, attemptId: string, scores: Record<string, number>) {
+    const exam = await this.findOne(tenantId, examId);
+    const attempt = await this.attemptRow(tenantId, examId, attemptId);
+    const questions = await this.getQuestions(tenantId, examId);
+    const valid = new Set(questions.map((q) => q.id));
+    const manual = { ...this.parseJson<Record<string, number>>(attempt.manualScores, {}) };
+    for (const [id, v] of Object.entries(scores ?? {})) {
+      if (valid.has(id) && Number.isFinite(Number(v))) manual[id] = Number(v);
+    }
+    const r = this.score(exam, questions, this.parseJson(attempt.answers, {}), manual);
+    await this.db.update(examAttempts).set({
+      manualScores: JSON.stringify(manual),
+      score: r.score,
+      passed: r.passed,
+      reviewStatus: r.pending ? 'PENDING' : 'DONE',
+    }).where(eq(examAttempts.id, attemptId));
+    const pct = Math.round((r.score / exam.maxScore) * 100);
+    await this.saveResult(examId, attempt.studentId, r.score, `Onlayn test: ${r.earnedPoints}/${r.totalPoints} ball (${pct}%)`);
+    if (!r.pending && attempt.reviewStatus === 'PENDING') {
+      void this.telegram.notifyExamResult(
+        attempt.studentId, exam.title, r.score, exam.maxScore,
+        r.passed ? `✅ Imtihondan o'tdi (${pct}%)` : `❌ O'tish bali: ${r.passing}`,
+      );
+    }
+    return this.getAttempt(tenantId, examId, attemptId);
+  }
+
+  // AI suggests points and a comment for each written answer; the teacher
+  // decides (nothing is applied automatically).
+  async aiReviewAttempt(tenantId: string, examId: string, attemptId: string) {
+    await this.findOne(tenantId, examId);
+    const attempt = await this.attemptRow(tenantId, examId, attemptId);
+    const questions = await this.getQuestions(tenantId, examId);
+    const answers = this.parseJson<Record<string, string>>(attempt.answers, {});
+    const review: Record<string, { score: number; comment: string }> = {};
+    for (const q of questions.filter((x) => x.type === 'ESSAY')) {
+      review[q.id] = await this.ai.gradeEssay({ prompt: q.prompt, rubric: q.rubric, answer: answers[q.id] ?? '', maxPoints: q.points });
+    }
+    await this.db.update(examAttempts).set({ aiReview: JSON.stringify(review) }).where(eq(examAttempts.id, attemptId));
+    return this.getAttempt(tenantId, examId, attemptId);
   }
 }

@@ -5,6 +5,11 @@ import DashboardShell from "@/components/DashboardShell";
 import Modal from "@/components/Modal";
 import BarChart from "@/components/BarChart";
 import PdfImportPanel from "@/components/exams/PdfImportPanel";
+import ExamAttemptsModal, { ExamAttemptReview } from "@/components/exams/ExamAttemptReview";
+import QuestionList, { GroupHeader } from "@/components/tests/QuestionView";
+import QuestionEditor, { emptyQuestion } from "@/components/tests/QuestionEditor";
+import QuestionInput from "@/components/tests/QuestionInput";
+import { hasAnswer, isAnswered, type PublicQuestion, type TestQuestion } from "@/lib/tests";
 import MultiSelect from "@/components/MultiSelect";
 import Pagination, { usePagedSlice } from "@/components/Pagination";
 import Select from "@/components/Select";
@@ -14,7 +19,6 @@ import {
   aiApi,
   Exam,
   ExamQuestion,
-  ExamQuestionType,
   SubmitAttemptResult,
   Group,
   ApiError,
@@ -67,27 +71,20 @@ function ExamsContent() {
   const [aiGeneratingQuestions, setAiGeneratingQuestions] = useState(false);
   const [questionError, setQuestionError] = useState<string | null>(null);
 
-  // New question form state
-  const [showAddQuestionForm, setShowAddQuestionForm] = useState(false);
-  const [qPrompt, setQPrompt] = useState("");
-  const [qType, setQType] = useState<ExamQuestionType>("MCQ");
-  const [qOptA, setQOptA] = useState("");
-  const [qOptB, setQOptB] = useState("");
-  const [qOptC, setQOptC] = useState("");
-  const [qOptD, setQOptD] = useState("");
-  const [qCorrectAnswer, setQCorrectAnswer] = useState("A");
-  const [qExplanation, setQExplanation] = useState("");
-  const [qPoints, setQPoints] = useState("1");
+  // New question form (any type) and AI generation options
+  const [newQ, setNewQ] = useState<TestQuestion | null>(null);
   const [savingQuestion, setSavingQuestion] = useState(false);
+  const [showAiForm, setShowAiForm] = useState(false);
+  const [aiCount, setAiCount] = useState("10");
+  const [aiRequest, setAiRequest] = useState("");
+  const [attemptsExam, setAttemptsExam] = useState<Exam | null>(null);
 
   // ---- Interactive Test Taking Simulator State ----
   const [simulatorExam, setSimulatorExam] = useState<Exam | null>(null);
   const [simulatorStudentId, setSimulatorStudentId] = useState("");
   const [simulatorStudents, setSimulatorStudents] = useState<{ id: string; fullName: string }[]>([]);
   const [simulatorStep, setSimulatorStep] = useState<"SELECT" | "TESTING" | "RESULT">("SELECT");
-  const [simulatorQuestions, setSimulatorQuestions] = useState<
-    { id: string; prompt: string; questionType: ExamQuestionType; options: { id: string; text: string }[]; points: number }[]
-  >([]);
+  const [simulatorQuestions, setSimulatorQuestions] = useState<Array<PublicQuestion & { id: string }>>([]);
   const [simulatorAnswers, setSimulatorAnswers] = useState<Record<string, string>>({});
   const [currentQIdx, setCurrentQIdx] = useState(0);
   const [simulatorTimer, setSimulatorTimer] = useState<number>(0);
@@ -236,7 +233,8 @@ function ExamsContent() {
   async function openQuestionManager(exam: Exam) {
     setQuestionsExam(exam);
     setQuestionError(null);
-    setShowAddQuestionForm(false);
+    setNewQ(null);
+    setShowAiForm(false);
     setLoadingQuestions(true);
     try {
       const qList = await examsApi.getQuestions(exam.id);
@@ -253,8 +251,9 @@ function ExamsContent() {
     setAiGeneratingQuestions(true);
     setQuestionError(null);
     try {
-      const newQuestions = await examsApi.generateQuestions(questionsExam.id);
+      const newQuestions = await examsApi.generateQuestions(questionsExam.id, { count: Number(aiCount), request: aiRequest.trim() || undefined });
       setExamQuestionsList((prev) => [...prev, ...newQuestions]);
+      setShowAiForm(false);
       load(); // refresh main exam list question counts
     } catch (err) {
       setQuestionError(err instanceof ApiError ? err.message : t("ex.aiError"));
@@ -263,46 +262,18 @@ function ExamsContent() {
     }
   }
 
+  const newQReady = newQ ? hasAnswer(newQ) && (newQ.prompt.trim() || newQ.type === "MATCHING") && (newQ.type !== "MCQ" || (newQ.options ?? []).every((o) => o.text.trim())) : false;
+
   async function handleAddQuestion(e: React.FormEvent) {
     e.preventDefault();
-    if (!questionsExam || !qPrompt.trim()) return;
-
+    if (!questionsExam || !newQ || !newQReady) return;
     setSavingQuestion(true);
     setQuestionError(null);
-
     try {
-      let options: { id: string; text: string }[] = [];
-      if (qType === "MCQ") {
-        options = [
-          { id: "A", text: qOptA.trim() || "A varianti" },
-          { id: "B", text: qOptB.trim() || "B varianti" },
-          { id: "C", text: qOptC.trim() || "C varianti" },
-          { id: "D", text: qOptD.trim() || "D varianti" },
-        ];
-      } else if (qType === "TRUE_FALSE") {
-        options = [
-          { id: "true", text: t("ex.true") },
-          { id: "false", text: t("ex.false") },
-        ];
-      }
-
-      const created = await examsApi.createQuestion(questionsExam.id, {
-        prompt: qPrompt.trim(),
-        questionType: qType,
-        options,
-        correctAnswer: qCorrectAnswer,
-        explanation: qExplanation.trim() || undefined,
-        points: Number(qPoints) || 1,
-      });
-
+      const created = await examsApi.createQuestion(questionsExam.id, newQ);
       setExamQuestionsList((prev) => [...prev, created]);
-      setQPrompt("");
-      setQOptA("");
-      setQOptB("");
-      setQOptC("");
-      setQOptD("");
-      setQExplanation("");
-      setShowAddQuestionForm(false);
+      // Keep type and section for the next question of the same block.
+      setNewQ({ ...emptyQuestion(newQ.type), section: newQ.section, instruction: newQ.instruction, passage: newQ.passage, points: newQ.points });
       load();
     } catch (err) {
       setQuestionError(err instanceof ApiError ? err.message : t("ex.saveQError"));
@@ -525,7 +496,7 @@ function ExamsContent() {
                           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                             <span style={{ fontSize: 16, fontWeight: 800, fontFamily: "'Manrope', sans-serif" }}>{ex.title}</span>
                             <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">
-                              {ex.questions?.length || 0} ta savol
+                              {ex.questions?.length || 0} {t("placement.questions")}
                             </span>
                           </div>
                           <div style={{ fontSize: 12.5, color: "#8A8D96", marginTop: 4 }}>
@@ -561,6 +532,18 @@ function ExamsContent() {
                           >
                             {t("ex.takeTest")}
                           </button>
+
+                          {/* Online attempts (review written answers) */}
+                          {(ex.attempts ?? []).length > 0 && (
+                            <button
+                              className="btn cursor-pointer"
+                              onClick={() => setAttemptsExam(ex)}
+                              style={{ background: "#FFFBEB", color: "#92400E", border: "1px solid #FDE68A", fontSize: 12, fontWeight: 700, padding: "6px 12px", borderRadius: 8 }}
+                            >
+                              📋 {t("review.attemptsBtn")} ({(ex.attempts ?? []).length})
+                              {(ex.attempts ?? []).some((a) => a.reviewStatus === "PENDING") && ` · ⏳ ${(ex.attempts ?? []).filter((a) => a.reviewStatus === "PENDING").length}`}
+                            </button>
+                          )}
 
                           {/* Manual Grading */}
                           <button
@@ -764,6 +747,7 @@ function ExamsContent() {
         open={!!questionsExam}
         onClose={() => setQuestionsExam(null)}
         title={questionsExam ? `${t("ex.bank")}: ${questionsExam.title}` : t("ex.bank")}
+        width={820}
       >
         {questionsExam && (
           <div className="space-y-4">
@@ -774,17 +758,17 @@ function ExamsContent() {
             )}
 
             {/* Action Bar */}
-            <div className="flex items-center justify-between gap-3 p-3 rounded-xl bg-slate-50 border border-slate-200">
+            <div className="flex items-center justify-between gap-3 p-3 rounded-xl bg-slate-50 border border-slate-200 flex-wrap">
               <div>
                 <span className="text-xs font-bold text-slate-800">
-                  Jami: {examQuestionsList.length} ta savol
+                  {t("ex.totalQ")}: {examQuestionsList.length}
                 </span>
                 <span className="text-[11px] text-slate-500 block">
                   {t("ex.totalPoints")}: {examQuestionsList.reduce((sum, q) => sum + (q.points || 1), 0)}
                 </span>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <PdfImportPanel
                   examId={questionsExam.id}
                   onImported={(created) => {
@@ -793,141 +777,78 @@ function ExamsContent() {
                   }}
                 />
                 <button
-                  onClick={handleAiGenerateQuestions}
-                  disabled={aiGeneratingQuestions}
-                  className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer shadow-sm"
+                  onClick={() => { setShowAiForm(!showAiForm); setNewQ(null); }}
+                  className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer shadow-sm"
                 >
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8L12 3Z" />
-                    <path d="M19 15l.7 2 2 .7-2 .7-.7 2-.7-2-2-.7 2-.7.7-2Z" />
-                  </svg>
-                  {aiGeneratingQuestions ? t("ex.aiGenerating") : t("ex.aiGenerate5")}
+                  ✨ {t("ex.aiGenerate")}
                 </button>
-
                 <button
-                  onClick={() => setShowAddQuestionForm(!showAddQuestionForm)}
+                  onClick={() => { setNewQ(newQ ? null : emptyQuestion("MCQ")); setShowAiForm(false); }}
                   className="px-3 py-1.5 rounded-lg bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-semibold transition cursor-pointer"
                 >
-                  {showAddQuestionForm ? t("ex.cancelX") : t("ex.addQ")}
+                  {newQ ? t("ex.cancelX") : t("ex.addQ")}
                 </button>
               </div>
             </div>
 
-            {/* Add Question Inline Form */}
-            {showAddQuestionForm && (
-              <form onSubmit={handleAddQuestion} className="p-4 rounded-xl border border-indigo-100 bg-indigo-50/40 space-y-3">
-                <h4 className="text-xs font-bold text-indigo-950 uppercase tracking-wide">{t("ex.newQ")}</h4>
-
-                <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1">{t("ex.qText")}</label>
-                  <textarea
-                    required
-                    rows={2}
-                    placeholder={t("ex.qTextPh")}
-                    value={qPrompt}
-                    onChange={(e) => setQPrompt(e.target.value)}
-                    className="w-full bg-white border border-slate-300 rounded-lg p-2.5 text-xs text-slate-800 focus:outline-none focus:border-indigo-500"
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
+            {/* AI generation options */}
+            {showAiForm && (
+              <div className="p-4 rounded-xl border border-violet-200 bg-violet-50/50 space-y-3">
+                <div className="text-xs font-bold text-violet-950">✨ {t("ex.aiTitle")}</div>
+                <div className="grid grid-cols-1 sm:grid-cols-[120px_1fr] gap-3">
                   <div>
-                    <label className="block text-xs font-medium text-slate-700 mb-1">{t("ex.qType")}</label>
-                    <select
-                      value={qType}
-                      onChange={(e) => setQType(e.target.value as ExamQuestionType)}
-                      className="w-full bg-white border border-slate-300 rounded-lg p-2 text-xs text-slate-800 focus:outline-none focus:border-indigo-500"
-                    >
-                      <option value="MCQ">{t("ex.mcq")}</option>
-                      <option value="TRUE_FALSE">{t("ex.tf")}</option>
+                    <label className="block text-xs font-medium text-slate-700 mb-1">{t("ex.aiCount")}</label>
+                    <select value={aiCount} onChange={(e) => setAiCount(e.target.value)} className="w-full bg-white border border-slate-300 rounded-lg p-2 text-xs">
+                      {["5", "10", "15", "20", "25", "30"].map((n) => (
+                        <option key={n} value={n}>{n}</option>
+                      ))}
                     </select>
                   </div>
-
                   <div>
-                    <label className="block text-xs font-medium text-slate-700 mb-1">{t("ex.points")}</label>
-                    <input
-                      type="number"
-                      min={1}
-                      value={qPoints}
-                      onChange={(e) => setQPoints(e.target.value)}
-                      className="w-full bg-white border border-slate-300 rounded-lg p-2 text-xs text-slate-800 focus:outline-none focus:border-indigo-500"
+                    <label className="block text-xs font-medium text-slate-700 mb-1">{t("ex.aiRequest")}</label>
+                    <textarea
+                      rows={2}
+                      value={aiRequest}
+                      onChange={(e) => setAiRequest(e.target.value)}
+                      placeholder={t("ex.aiRequestPh")}
+                      className="w-full bg-white border border-slate-300 rounded-lg p-2 text-xs"
                     />
                   </div>
                 </div>
+                <div className="flex items-center justify-between gap-3 flex-wrap">
+                  <span className="text-[11px] text-slate-500">{t("ex.aiHint")}</span>
+                  <button
+                    type="button"
+                    onClick={handleAiGenerateQuestions}
+                    disabled={aiGeneratingQuestions}
+                    className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-xs font-bold cursor-pointer"
+                  >
+                    {aiGeneratingQuestions ? t("ex.aiGenerating") : `✨ ${t("ex.aiCreate")} (${aiCount})`}
+                  </button>
+                </div>
+              </div>
+            )}
 
-                {qType === "MCQ" ? (
-                  <div className="space-y-2 pt-1">
-                    <span className="text-[11px] font-bold text-slate-700 block">{t("ex.options")}</span>
-                    {[
-                      { key: "A", val: qOptA, set: setQOptA },
-                      { key: "B", val: qOptB, set: setQOptB },
-                      { key: "C", val: qOptC, set: setQOptC },
-                      { key: "D", val: qOptD, set: setQOptD },
-                    ].map((opt) => (
-                      <div key={opt.key} className="flex items-center gap-2">
-                        <input
-                          type="radio"
-                          name="correctAnswerRadio"
-                          checked={qCorrectAnswer === opt.key}
-                          onChange={() => setQCorrectAnswer(opt.key)}
-                          className="w-4 h-4 accent-indigo-600 cursor-pointer"
-                        />
-                        <span className="text-xs font-bold text-slate-600 w-4">{opt.key})</span>
-                        <input
-                          type="text"
-                          required
-                          placeholder={`${opt.key} varianti matni`}
-                          value={opt.val}
-                          onChange={(e) => opt.set(e.target.value)}
-                          className="flex-1 bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 focus:outline-none focus:border-indigo-500"
-                        />
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="space-y-2 pt-1">
-                    <span className="text-[11px] font-bold text-slate-700 block">{t("ex.correctAnswer")}</span>
-                    <div className="flex items-center gap-4">
-                      <label className="flex items-center gap-1.5 text-xs text-slate-800 cursor-pointer">
-                        <input
-                          type="radio"
-                          name="tfRadio"
-                          checked={qCorrectAnswer === "true"}
-                          onChange={() => setQCorrectAnswer("true")}
-                          className="w-4 h-4 accent-indigo-600"
-                        />
-                        {t("ex.true")}
-                      </label>
-                      <label className="flex items-center gap-1.5 text-xs text-slate-800 cursor-pointer">
-                        <input
-                          type="radio"
-                          name="tfRadio"
-                          checked={qCorrectAnswer === "false"}
-                          onChange={() => setQCorrectAnswer("false")}
-                          className="w-4 h-4 accent-indigo-600"
-                        />
-                        {t("ex.false")}
-                      </label>
-                    </div>
-                  </div>
-                )}
-
+            {/* Add Question Inline Form */}
+            {newQ && (
+              <form onSubmit={handleAddQuestion} className="p-4 rounded-xl border border-indigo-100 bg-indigo-50/40 space-y-3">
+                <h4 className="text-xs font-bold text-indigo-950 uppercase tracking-wide">{t("ex.newQ")}</h4>
+                <QuestionEditor value={newQ} onChange={setNewQ} />
                 <div>
                   <label className="block text-xs font-medium text-slate-700 mb-1">{t("ex.explanation")}</label>
                   <input
                     type="text"
                     placeholder={t("ex.explanationPh")}
-                    value={qExplanation}
-                    onChange={(e) => setQExplanation(e.target.value)}
+                    value={newQ.explanation ?? ""}
+                    onChange={(e) => setNewQ({ ...newQ, explanation: e.target.value })}
                     className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 focus:outline-none focus:border-indigo-500"
                   />
                 </div>
-
                 <div className="flex justify-end gap-2 pt-2">
                   <button
                     type="submit"
-                    disabled={savingQuestion}
-                    className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition cursor-pointer"
+                    disabled={savingQuestion || !newQReady}
+                    className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-xs font-bold transition cursor-pointer"
                   >
                     {savingQuestion ? t("common.saving") : t("ex.saveQ")}
                   </button>
@@ -946,82 +867,20 @@ function ExamsContent() {
                 </p>
               </div>
             ) : (
-              <div className="space-y-3 max-h-[420px] overflow-y-auto pr-1">
-                {examQuestionsList.map((q, idx) => {
-                  let parsedOptions: { id: string; text: string }[] = [];
-                  try {
-                    parsedOptions = typeof q.options === "string" ? JSON.parse(q.options) : q.options || [];
-                  } catch {
-                    parsedOptions = [];
-                  }
-
-                  return (
-                    <div key={q.id} className="p-3.5 rounded-xl border border-slate-200 bg-white shadow-xs hover:border-indigo-200 transition">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="space-y-1.5 flex-1">
-                          <div className="flex items-center gap-2">
-                            <span className="w-5 h-5 rounded-full bg-slate-100 text-slate-700 flex items-center justify-center text-[10px] font-bold">
-                              {idx + 1}
-                            </span>
-                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 uppercase">
-                              {q.questionType === "TRUE_FALSE" ? t("ex.tf") : q.questionType === "SHORT_ANSWER" ? t("ex.short") : t("ex.mcqShort")}
-                            </span>
-                            <span className="text-[10px] font-semibold text-slate-500">
-                              {q.points || 1} ball
-                            </span>
-                          </div>
-
-                          <h5 className="text-xs font-semibold text-slate-900 leading-snug">
-                            {q.prompt}
-                          </h5>
-
-                          {/* Options breakdown */}
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 pt-1">
-                            {parsedOptions.map((opt) => {
-                              const isCorrect = String(opt.id).toLowerCase() === String(q.correctAnswer).toLowerCase();
-                              return (
-                                <div
-                                  key={opt.id}
-                                  className={`p-1.5 px-2.5 rounded-lg text-xs flex items-center gap-2 border ${
-                                    isCorrect
-                                      ? "bg-emerald-50 border-emerald-300 text-emerald-800 font-semibold"
-                                      : "bg-slate-50 border-slate-200 text-slate-600"
-                                  }`}
-                                >
-                                  <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-bold ${
-                                    isCorrect ? "bg-emerald-600 text-white" : "bg-slate-200 text-slate-600"
-                                  }`}>
-                                    {opt.id}
-                                  </span>
-                                  <span className="truncate">{opt.text}</span>
-                                  {isCorrect && <span className="ml-auto text-[10px] text-emerald-700">{t("ex.correctMark")}</span>}
-                                </div>
-                              );
-                            })}
-                          </div>
-
-                          {q.explanation && (
-                            <p className="text-[11px] text-slate-500 italic pt-1">
-                              💡 {t("ex.note")}: {q.explanation}
-                            </p>
-                          )}
-                        </div>
-
-                        <button
-                          onClick={() => handleDeleteQuestion(q.id)}
-                          title={t("ex.deleteQ")}
-                          className="p-1 rounded text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer"
-                        >
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M3 6h18" />
-                            <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
-                            <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
-                          </svg>
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
+              <div className="max-h-[460px] overflow-y-auto pr-1">
+                <QuestionList
+                  questions={examQuestionsList}
+                  meta={(q) => (q.explanation ? <span className="block text-[11px] text-slate-500 italic font-normal mt-1">💡 {q.explanation}</span> : null)}
+                  aside={(q) => (
+                    <button
+                      onClick={() => q.id && handleDeleteQuestion(q.id)}
+                      title={t("ex.deleteQ")}
+                      className="p-1 rounded text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer"
+                    >
+                      🗑
+                    </button>
+                  )}
+                />
               </div>
             )}
           </div>
@@ -1034,7 +893,8 @@ function ExamsContent() {
       <Modal
         open={!!simulatorExam}
         onClose={() => setSimulatorExam(null)}
-        title={simulatorExam ? `Onlayn Test Simulyatori: ${simulatorExam.title}` : "Test Simulyatori"}
+        title={simulatorExam ? `${t("ex.simulator")}: ${simulatorExam.title}` : t("ex.simulator")}
+        width={simulatorStep === "SELECT" ? 480 : 760}
       >
         {simulatorExam && (
           <div className="space-y-4">
@@ -1107,7 +967,7 @@ function ExamsContent() {
                 {/* Quick question pill bar */}
                 <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
                   {simulatorQuestions.map((q, idx) => {
-                    const answered = Boolean(simulatorAnswers[q.id]);
+                    const answered = isAnswered(q, simulatorAnswers[q.id]);
                     const isCurrent = idx === currentQIdx;
                     return (
                       <button
@@ -1127,47 +987,23 @@ function ExamsContent() {
                   })}
                 </div>
 
-                {/* Question Prompt */}
+                {/* Question (with its section, instruction and passage) */}
                 <div className="p-4 rounded-xl border border-slate-200 bg-white shadow-xs space-y-4">
-                  <h4 className="text-sm font-semibold text-slate-900 leading-relaxed">
+                  <GroupHeader
+                    section={simulatorQuestions[currentQIdx].section ?? null}
+                    instruction={simulatorQuestions[currentQIdx].instruction ?? null}
+                    passage={simulatorQuestions[currentQIdx].passage ?? null}
+                    first
+                  />
+                  <h4 className="text-sm font-semibold text-slate-900 leading-relaxed whitespace-pre-wrap">
                     {simulatorQuestions[currentQIdx].prompt}
                   </h4>
-
-                  {/* Options List (a text box for open questions) */}
-                  {simulatorQuestions[currentQIdx].options.length === 0 && (
-                    <input
-                      value={simulatorAnswers[simulatorQuestions[currentQIdx].id] ?? ""}
-                      onChange={(e) => handleSelectAnswer(simulatorQuestions[currentQIdx].id, e.target.value)}
-                      placeholder={t("ex.typeAnswer")}
-                      className="w-full p-3 rounded-xl border border-slate-200 text-sm"
-                    />
-                  )}
-                  <div className="space-y-2">
-                    {simulatorQuestions[currentQIdx].options.map((opt) => {
-                      const selected = simulatorAnswers[simulatorQuestions[currentQIdx].id] === opt.id;
-                      return (
-                        <button
-                          key={opt.id}
-                          type="button"
-                          onClick={() => handleSelectAnswer(simulatorQuestions[currentQIdx].id, opt.id)}
-                          className={`w-full text-left p-3 rounded-xl border transition cursor-pointer flex items-center gap-3 ${
-                            selected
-                              ? "bg-indigo-50/80 border-indigo-500 ring-1 ring-indigo-500 text-indigo-950 font-medium"
-                              : "bg-slate-50/50 border-slate-200 hover:bg-slate-100/70 text-slate-700"
-                          }`}
-                        >
-                          <span className={`w-5 h-5 rounded-full border flex items-center justify-center text-xs font-bold ${
-                            selected
-                              ? "border-indigo-600 bg-indigo-600 text-white"
-                              : "border-slate-300 bg-white text-slate-600"
-                          }`}>
-                            {opt.id}
-                          </span>
-                          <span className="text-xs leading-normal">{opt.text}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
+                  <QuestionInput
+                    key={simulatorQuestions[currentQIdx].id}
+                    q={simulatorQuestions[currentQIdx]}
+                    value={simulatorAnswers[simulatorQuestions[currentQIdx].id] ?? ""}
+                    onChange={(v) => handleSelectAnswer(simulatorQuestions[currentQIdx].id, v)}
+                  />
                 </div>
 
                 {/* Footer Navigation */}
@@ -1197,7 +1033,7 @@ function ExamsContent() {
                         onClick={submitTestAttempt}
                         className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-xs font-bold cursor-pointer shadow-sm"
                       >
-                        {submittingAttempt ? "Yakunlanmoqda..." : "Testni Yakunlash ✓"}
+                        {submittingAttempt ? t("pt.submitting") : `${t("pt.finish")} ✓`}
                       </button>
                     )}
                   </div>
@@ -1222,7 +1058,7 @@ function ExamsContent() {
                   </div>
 
                   <h3 className="text-base font-bold text-slate-900 mt-3">
-                    {simulatorResult.passed ? t("ex.passed") : t("ex.recorded")}
+                    {simulatorResult.pending ? `⏳ ${t("pex.pending")}` : simulatorResult.passed ? t("ex.passed") : t("ex.recorded")}
                   </h3>
 
                   <div className="flex items-center justify-center gap-4 text-xs mt-2 text-slate-600 font-medium">
@@ -1235,51 +1071,13 @@ function ExamsContent() {
                   </p>
                 </div>
 
-                {/* Question Breakdown List */}
+                {/* Question by question, with grading of written answers */}
                 <div className="space-y-2">
                   <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wide">
                     {t("ex.review")}
                   </h4>
-
-                  <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1">
-                    {simulatorResult.breakdown.map((b, idx) => (
-                      <div
-                        key={b.questionId}
-                        className={`p-3 rounded-xl border text-xs ${
-                          b.isCorrect
-                            ? "bg-emerald-50/40 border-emerald-200 text-slate-800"
-                            : "bg-rose-50/40 border-rose-200 text-slate-800"
-                        }`}
-                      >
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="font-semibold text-slate-900">
-                            {idx + 1}. {b.prompt}
-                          </div>
-                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                            b.isCorrect ? "bg-emerald-600 text-white" : "bg-rose-600 text-white"
-                          }`}>
-                            {b.isCorrect ? t("ex.right1") : t("ex.wrong0")}
-                          </span>
-                        </div>
-
-                        <div className="mt-2 flex flex-wrap items-center gap-3 text-[11px]">
-                          <span>
-                            Sizning javobingiz: <strong className={b.isCorrect ? "text-emerald-700" : "text-rose-700"}>{b.studentAnswer || "—"}</strong>
-                          </span>
-                          {!b.isCorrect && (
-                            <span>
-                              To&apos;g&apos;ri javob: <strong className="text-emerald-700 font-bold">{b.correctAnswer}</strong>
-                            </span>
-                          )}
-                        </div>
-
-                        {b.explanation && (
-                          <p className="text-[11px] text-slate-600 italic mt-1.5 pt-1 border-t border-slate-200/60">
-                            💡 {t("ex.note")}: {b.explanation}
-                          </p>
-                        )}
-                      </div>
-                    ))}
+                  <div className="max-h-[420px] overflow-y-auto pr-1">
+                    <ExamAttemptReview examId={simulatorExam.id} attemptId={simulatorResult.attempt.id} onChanged={load} />
                   </div>
                 </div>
 
@@ -1296,6 +1094,14 @@ function ExamsContent() {
           </div>
         )}
       </Modal>
+
+      {attemptsExam && (
+        <ExamAttemptsModal
+          exam={exams.find((e) => e.id === attemptsExam.id) ?? attemptsExam}
+          onClose={() => setAttemptsExam(null)}
+          onChanged={load}
+        />
+      )}
     </>
   );
 }

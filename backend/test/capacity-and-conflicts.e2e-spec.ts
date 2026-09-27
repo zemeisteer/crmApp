@@ -136,31 +136,42 @@ describe('Group capacity & schedule day alignment (e2e)', () => {
   });
 
   it('shares a placement test by link and grades mixed question types', async () => {
-    const created = (await http().post('/api/placement-tests').set(auth()).send({
-      subject: 'Ingliz tili',
-      title: 'Level check',
-      questions: [
-        { type: 'MCQ', prompt: 'She ___ a teacher.', options: ['am', 'is', 'are', 'be'], correctIndex: 1, level: 1 },
-        { type: 'TRUE_FALSE', prompt: 'Paris is in France.', options: ['True', 'False'], correctIndex: 0, level: 2 },
-        { type: 'SHORT_ANSWER', prompt: 'Past tense of buy: ___', options: [], answer: 'bought', level: 3 },
-        { type: 'MCQ', prompt: 'broken, no answer', options: ['a', 'b'], level: 1 },
-      ],
-    }).expect(201)).body;
-    expect(created.questions).toHaveLength(3);
+    const reading = 'Registan Square is surrounded by three large madrasas.';
+    const questions = [
+      { type: 'MCQ', section: '1. Multiple choice', prompt: 'She ___ a teacher.', options: ['am', 'is', 'are', 'be'], correctAnswer: 'B', level: 1 },
+      { type: 'TRUE_FALSE_NG', section: '2. Reading', passage: reading, prompt: 'There are three madrasas.', correctAnswer: 'T', level: 2 },
+      { type: 'FILL_BLANK', prompt: 'Past tense of buy: ___', correctAnswer: 'bought', level: 3 },
+      { type: 'MATCHING', prompt: 'Match', points: 2, pairs: [{ left: 'reliable', right: 'able to be trusted' }, { left: 'enormous', right: 'extremely large' }], level: 2 },
+      { type: 'ESSAY', prompt: 'Write an email to a friend (60-80 words).', points: 4, rubric: 'content, format, language' },
+    ];
+    // A question with no answer is refused, not silently dropped.
+    await http().post('/api/placement-tests').set(auth())
+      .send({ subject: 'Ingliz tili', questions: [...questions, { type: 'MCQ', prompt: 'no answer', options: ['a', 'b'] }] }).expect(400);
+    const created = (await http().post('/api/placement-tests').set(auth()).send({ subject: 'Ingliz tili', title: 'Level check', questions }).expect(201)).body;
+    expect(created.questions).toHaveLength(5);
 
-    // The public view never exposes answers.
+    // The public view never exposes answers; matching gives both columns.
     const pub = (await http().get(`/api/public/placement/${created.token}`).expect(200)).body;
-    expect(pub.questions).toHaveLength(3);
-    expect(JSON.stringify(pub)).not.toMatch(/correctIndex|bought/);
+    expect(pub.questions).toHaveLength(5);
+    expect(JSON.stringify(pub)).not.toMatch(/correctAnswer|bought|rubric/);
+    expect(pub.questions[1]).toMatchObject({ passage: reading, section: '2. Reading', options: [{ id: 'true' }, { id: 'false' }, { id: 'ng' }] });
+    expect(pub.questions[3].left).toEqual(['reliable', 'enormous']);
 
+    const matching = JSON.stringify({ 0: 'able to be trusted', 1: 'extremely large' });
     const res = (await http().post(`/api/public/placement/${created.token}/submit`)
-      .send({ fullName: 'New Kid', phone: '+998901112233', answers: ['1', '0', ' Bought. '] }).expect(201)).body;
-    expect(res).toMatchObject({ correct: 3, total: 3, percent: 100, suggestedLevel: 3 });
+      .send({ fullName: 'New Kid', phone: '+998901112233', answers: ['B', 'true', ' Bought. ', matching, 'Dear Ali, come to Samarkand in May...'] }).expect(201)).body;
+    // 1 + 1 + 1 + 2 of 9 points; the essay (4) waits for the teacher.
+    expect(res).toMatchObject({ correct: 5, total: 9, pending: true });
 
     const attempts = (await http().get(`/api/placement-tests/${created.id}/attempts`).set(auth()).expect(200)).body;
-    expect(attempts[0]).toMatchObject({ fullName: 'New Kid', percent: 100 });
+    expect(attempts[0]).toMatchObject({ fullName: 'New Kid', reviewStatus: 'PENDING' });
+    const listed = (await http().get('/api/placement-tests').set(auth()).expect(200)).body.find((x: { id: string }) => x.id === created.id);
+    expect(listed).toMatchObject({ attempts: 1, pending: 1 });
+    const graded = (await http().post(`/api/placement-tests/${created.id}/attempts/${attempts[0].id}/grade`).set(auth()).send({ scores: { 4: 3 } }).expect(201)).body;
+    expect(graded).toMatchObject({ reviewStatus: 'DONE', earned: 8, total: 9, percent: 89 });
 
-    // Closing the test stops the link.
+    // Rename, then closing the test stops the link.
+    await http().patch(`/api/placement-tests/${created.id}`).set(auth()).send({ title: 'B1 check' }).expect(200);
     await http().patch(`/api/placement-tests/${created.id}`).set(auth()).send({ active: false }).expect(200);
     await http().get(`/api/public/placement/${created.token}`).expect(404);
   });
@@ -243,5 +254,28 @@ describe('Group capacity & schedule day alignment (e2e)', () => {
     expect(main.calculatedSalary).toBe(1_600_000);
     const cover = payroll.teachers.find((x: { teacherId: string }) => x.teacherId === sub);
     expect(cover).toMatchObject({ calculatedSalary: 50_000 });
+  });
+
+  it('grades exams with mixed types and lets the teacher score essays', async () => {
+    const g = (await http().post('/api/groups').set(auth()).send({ name: 'Essay Group', subject: 'English' }).expect(201)).body.id as string;
+    const kid = (await mkStudent('Essay Kid', [g]).expect(201)).body.id as string;
+    const exams = (await http().post('/api/exams').set(auth()).send({ groupIds: [g], title: 'Unit test', maxScore: 100 }).expect(201)).body;
+    const examId = (Array.isArray(exams) ? exams[0] : exams).id as string;
+    const created = (await http().post(`/api/exams/${examId}/questions/batch`).set(auth()).send({ questions: [
+      { type: 'WORD_ORDER', prompt: 'always / she / on / arrives / time', correctAnswer: 'She always arrives on time.', points: 1 },
+      { type: 'ERROR_CORRECTION', prompt: 'We need to do a decision before Friday.', correctAnswer: 'We need to make a decision before Friday.|make', points: 1 },
+      { type: 'ESSAY', prompt: 'Describe your city.', points: 2, rubric: 'content and grammar' },
+    ] }).expect(201)).body;
+    expect(created.map((q: { type: string }) => q.type)).toEqual(['WORD_ORDER', 'ERROR_CORRECTION', 'ESSAY']);
+
+    const start = (await http().get(`/api/exams/${examId}/start-attempt?studentId=${kid}`).set(auth()).expect(200)).body;
+    expect(start.questions[0].words).toEqual(['always', 'she', 'on', 'arrives', 'time']);
+    const ids = start.questions.map((q: { id: string }) => q.id);
+    const res = (await http().post(`/api/exams/${examId}/submit-attempt`).set(auth())
+      .send({ studentId: kid, answers: { [ids[0]]: 'she always arrives on time', [ids[1]]: 'make', [ids[2]]: 'My city is Tashkent...' } }).expect(201)).body;
+    expect(res).toMatchObject({ earnedPoints: 2, totalPoints: 4, pending: true, score: 50 });
+
+    const graded = (await http().post(`/api/exams/${examId}/attempts/${res.attempt.id}/grade`).set(auth()).send({ scores: { [ids[2]]: 2 } }).expect(201)).body;
+    expect(graded).toMatchObject({ reviewStatus: 'DONE', earnedPoints: 4, score: 100, passed: true });
   });
 });

@@ -664,9 +664,18 @@ export const examQuestions = pgTable('exam_questions', {
   tenantId: text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
   examId: text('exam_id').notNull().references(() => exams.id, { onDelete: 'cascade' }),
   prompt: text('prompt').notNull(),
-  questionType: examQuestionTypeEnum('question_type').notNull().default('MCQ'),
+  // See common/test-questions.ts for the types (MCQ, TRUE_FALSE_NG,
+  // MATCHING, ESSAY, ...). Plain text so new types need no migration.
+  questionType: text('question_type').notNull().default('MCQ'),
   options: text('options'), // JSON string: [{ "id": "A", "text": "..." }, ...]
-  correctAnswer: text('correct_answer').notNull(), // "A", "true", keyword, etc.
+  correctAnswer: text('correct_answer').notNull(), // "A", "true", accepted texts "a|b", matching JSON
+  // Shown once above a run of questions: section title, instruction and a
+  // reading passage the questions refer to.
+  section: text('section'),
+  instruction: text('instruction'),
+  passage: text('passage'),
+  // Type-specific extras as JSON: matching pairs, word-order words, essay rubric.
+  meta: text('meta'),
   explanation: text('explanation'),
   points: integer('points').notNull().default(1),
   order: integer('order').notNull().default(0),
@@ -688,6 +697,10 @@ export const examAttempts = pgTable('exam_attempts', {
   maxScore: integer('max_score').notNull().default(0),
   passed: boolean('passed').notNull().default(false),
   answers: text('answers'), // JSON string: { [questionId]: string }
+  // PENDING while essays wait for the teacher; DONE otherwise.
+  reviewStatus: text('review_status').notNull().default('DONE'),
+  manualScores: text('manual_scores'), // JSON { [questionId]: points }
+  aiReview: text('ai_review'), // JSON { [questionId]: { score, comment } }
   createdAt: timestamp('created_at').notNull().defaultNow(),
 }, (t) => ({
   tenantIdx: index('exam_attempts_tenant_idx').on(t.tenantId),
@@ -766,6 +779,9 @@ export const placementAttempts = pgTable('placement_attempts', {
   total: integer('total').notNull().default(0),
   percent: integer('percent').notNull().default(0),
   suggestedLevel: integer('suggested_level').notNull().default(1), // 1-3
+  reviewStatus: text('review_status').notNull().default('DONE'),
+  manualScores: text('manual_scores'), // JSON { [questionIndex]: points }
+  aiReview: text('ai_review'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
 }, (t) => ({
   testIdx: index('placement_attempts_test_idx').on(t.testId),

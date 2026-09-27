@@ -1,5 +1,7 @@
 // TalimCRM — typed API client wrapping fetch calls to the NestJS backend.
 
+import type { PublicQuestion, QuestionType, TestQuestion } from "./tests";
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api";
 const TOKEN_KEY = "talimcrm_token";
 const REFRESH_KEY = "talimcrm_refresh";
@@ -820,19 +822,8 @@ export interface Homework {
   completions?: HomeworkCompletion[];
 }
 
-export type PlacementQuestionType = "MCQ" | "TRUE_FALSE" | "SHORT_ANSWER";
-
-export interface PlacementQuestion {
-  type: PlacementQuestionType;
-  prompt: string;
-  // MCQ: options; TRUE_FALSE: [true, false] labels; SHORT_ANSWER: [].
-  options: string[];
-  // MCQ / TRUE_FALSE. null only while reviewing a PDF import.
-  correctIndex?: number | null;
-  // SHORT_ANSWER: accepted answers separated by "|".
-  answer?: string;
-  level: 1 | 2 | 3;
-}
+// Placement questions use the shared rich question model (lib/tests.ts).
+export type PlacementQuestion = TestQuestion & { level: 1 | 2 | 3 };
 
 export interface PlacementTestSummary {
   id: string;
@@ -844,6 +835,7 @@ export interface PlacementTestSummary {
   createdAt: string;
   questionCount?: number;
   attempts?: number;
+  pending?: number;
 }
 
 export interface PlacementAttempt {
@@ -854,7 +846,29 @@ export interface PlacementAttempt {
   total: number;
   percent: number;
   suggestedLevel: 1 | 2 | 3;
+  reviewStatus?: "PENDING" | "DONE";
   createdAt: string;
+}
+
+// Written answers are scored by the teacher; AI may suggest a score first.
+export interface AiSuggestion {
+  score: number;
+  comment: string;
+}
+
+export interface PlacementAttemptDetail {
+  id: string;
+  fullName: string;
+  phone: string | null;
+  createdAt: string;
+  reviewStatus: "PENDING" | "DONE";
+  percent: number;
+  earned: number;
+  total: number;
+  suggestedLevel: 1 | 2 | 3;
+  manualScores: Record<string, number>;
+  aiReview: Record<string, AiSuggestion>;
+  items: Array<{ question: PlacementQuestion; answer: string; earned: number; max: number; pending: boolean; correct: boolean }>;
 }
 
 export interface PublicPlacementTest {
@@ -862,7 +876,7 @@ export interface PublicPlacementTest {
   subject: string;
   language: "UZ" | "RU" | "EN";
   centerName: string;
-  questions: Array<{ type: PlacementQuestionType; prompt: string; options: string[] }>;
+  questions: PublicQuestion[];
 }
 
 export const placementApi = {
@@ -880,10 +894,17 @@ export const placementApi = {
   attempts: (id: string) => request<PlacementAttempt[]>(`/placement-tests/${id}/attempts`),
   setActive: (id: string, active: boolean) =>
     request<PlacementTestSummary>(`/placement-tests/${id}`, { method: "PATCH", body: JSON.stringify({ active }) }),
+  rename: (id: string, title: string) =>
+    request<PlacementTestSummary>(`/placement-tests/${id}`, { method: "PATCH", body: JSON.stringify({ title }) }),
+  getAttempt: (id: string, attemptId: string) => request<PlacementAttemptDetail>(`/placement-tests/${id}/attempts/${attemptId}`),
+  gradeAttempt: (id: string, attemptId: string, scores: Record<string, number>) =>
+    request<PlacementAttemptDetail>(`/placement-tests/${id}/attempts/${attemptId}/grade`, { method: "POST", body: JSON.stringify({ scores }) }),
+  aiReviewAttempt: (id: string, attemptId: string) =>
+    request<PlacementAttemptDetail>(`/placement-tests/${id}/attempts/${attemptId}/ai-review`, { method: "POST" }),
   parsePdf: (file: File) => uploadFile<{ questions: PlacementQuestion[] }>("/placement-tests/parse-pdf", file),
   publicGet: (token: string) => request<PublicPlacementTest>(`/public/placement/${encodeURIComponent(token)}`),
   publicSubmit: (token: string, data: { fullName: string; phone?: string; answers: string[] }) =>
-    request<{ correct: number; total: number; percent: number; suggestedLevel: 1 | 2 | 3 }>(`/public/placement/${encodeURIComponent(token)}/submit`, {
+    request<{ correct: number; total: number; percent: number; suggestedLevel: 1 | 2 | 3; pending: boolean }>(`/public/placement/${encodeURIComponent(token)}/submit`, {
       method: "POST",
       body: JSON.stringify(data),
     }),
@@ -931,31 +952,10 @@ export interface ExamQuestionOption {
   text: string;
 }
 
-export type ExamQuestionType = 'MCQ' | 'TRUE_FALSE' | 'SHORT_ANSWER';
+export type ExamQuestionType = QuestionType;
 
-// A question read from an uploaded PDF, before it is saved.
-export interface ParsedPdfQuestion {
-  prompt: string;
-  questionType: ExamQuestionType;
-  options: ExamQuestionOption[];
-  correctAnswer: string | null;
-  points: number;
-}
-
-export interface ExamQuestion {
-  id: string;
-  tenantId: string;
-  examId: string;
-  prompt: string;
-  questionType: ExamQuestionType;
-  options: ExamQuestionOption[] | string | null;
-  correctAnswer: string;
-  explanation?: string | null;
-  points: number;
-  order: number;
-  createdAt: string;
-  updatedAt: string;
-}
+// A saved exam question (rich model, with answers - staff only).
+export type ExamQuestion = TestQuestion & { id: string; order: number };
 
 export interface ExamAttempt {
   id: string;
@@ -968,6 +968,7 @@ export interface ExamAttempt {
   maxScore: number;
   passed: boolean;
   answers: string;
+  reviewStatus?: "PENDING" | "DONE";
   createdAt: string;
   student?: Student;
 }
@@ -976,13 +977,35 @@ export interface ExamAttemptBreakdown {
   questionId: string;
   prompt: string;
   questionType: ExamQuestionType;
+  section: string | null;
+  instruction: string | null;
+  passage: string | null;
   options: ExamQuestionOption[];
+  pairs: Array<{ left: string; right: string }> | null;
+  words: string[] | null;
+  rubric: string | null;
   studentAnswer: string;
   correctAnswer: string;
   isCorrect: boolean;
+  pending: boolean;
   points: number;
   earned: number;
-  explanation?: string;
+  explanation?: string | null;
+}
+
+export interface ExamAttemptDetail {
+  id: string;
+  student: { id: string; fullName: string };
+  createdAt: string;
+  reviewStatus: "PENDING" | "DONE";
+  score: number;
+  maxScore: number;
+  passed: boolean;
+  earnedPoints: number;
+  totalPoints: number;
+  manualScores: Record<string, number>;
+  aiReview: Record<string, AiSuggestion>;
+  breakdown: ExamAttemptBreakdown[];
 }
 
 export interface SubmitAttemptResult {
@@ -992,6 +1015,7 @@ export interface SubmitAttemptResult {
   earnedPoints: number;
   totalPoints: number;
   passed: boolean;
+  pending?: boolean;
   percentage: number;
   breakdown: ExamAttemptBreakdown[];
 }
@@ -1581,30 +1605,28 @@ export const examsApi = {
   remove: (id: string) => request<{ success: boolean }>(`/exams/${id}`, { method: "DELETE" }),
   uploadMaterial: (id: string, file: File) => uploadFile<Exam>(`/exams/${id}/material`, file),
   getQuestions: (id: string) => request<ExamQuestion[]>(`/exams/${id}/questions`),
-  createQuestion: (id: string, data: {
-    prompt: string;
-    questionType?: ExamQuestionType;
-    options?: ExamQuestionOption[];
-    correctAnswer: string;
-    explanation?: string;
-    points?: number;
-    order?: number;
-  }) => request<ExamQuestion>(`/exams/${id}/questions`, { method: "POST", body: JSON.stringify(data) }),
+  createQuestion: (id: string, data: TestQuestion) =>
+    request<ExamQuestion>(`/exams/${id}/questions`, { method: "POST", body: JSON.stringify(data) }),
   removeQuestion: (id: string, questionId: string) =>
     request<{ success: boolean }>(`/exams/${id}/questions/${questionId}`, { method: "DELETE" }),
-  generateQuestions: (id: string) =>
-    request<ExamQuestion[]>(`/exams/${id}/generate-questions`, { method: "POST" }),
-  parsePdfQuestions: (id: string, file: File) => uploadFile<{ questions: ParsedPdfQuestion[] }>(`/exams/${id}/questions/parse-pdf`, file),
-  batchQuestions: (id: string, questions: Array<{ prompt: string; questionType: ExamQuestionType; options: ExamQuestionOption[]; correctAnswer: string; points?: number; order?: number }>) =>
+  generateQuestions: (id: string, data: { count?: number; request?: string } = {}) =>
+    request<ExamQuestion[]>(`/exams/${id}/generate-questions`, { method: "POST", body: JSON.stringify(data) }),
+  parsePdfQuestions: (id: string, file: File) => uploadFile<{ questions: TestQuestion[] }>(`/exams/${id}/questions/parse-pdf`, file),
+  batchQuestions: (id: string, questions: TestQuestion[]) =>
     request<ExamQuestion[]>(`/exams/${id}/questions/batch`, { method: "POST", body: JSON.stringify({ questions }) }),
   startAttempt: (id: string, studentId: string) =>
     request<{
       exam: { id: string; title: string; description: string | null; durationMinutes: number | null; maxScore: number; passingScore: number | null; questionCount: number };
       student: { id: string; fullName: string };
-      questions: { id: string; prompt: string; questionType: ExamQuestionType; options: ExamQuestionOption[]; points: number; order: number }[];
+      questions: Array<PublicQuestion & { id: string; order: number }>;
     }>(`/exams/${id}/start-attempt?studentId=${studentId}`),
   submitAttempt: (id: string, data: { studentId: string; answers: Record<string, string> }) =>
     request<SubmitAttemptResult>(`/exams/${id}/submit-attempt`, { method: "POST", body: JSON.stringify(data) }),
+  getAttempt: (id: string, attemptId: string) => request<ExamAttemptDetail>(`/exams/${id}/attempts/${attemptId}`),
+  gradeAttempt: (id: string, attemptId: string, scores: Record<string, number>) =>
+    request<ExamAttemptDetail>(`/exams/${id}/attempts/${attemptId}/grade`, { method: "POST", body: JSON.stringify({ scores }) }),
+  aiReviewAttempt: (id: string, attemptId: string) =>
+    request<ExamAttemptDetail>(`/exams/${id}/attempts/${attemptId}/ai-review`, { method: "POST" }),
   getAttempts: (id: string) => request<ExamAttempt[]>(`/exams/${id}/attempts`),
 };
 
@@ -2129,7 +2151,7 @@ export const portalApi = {
   startExam: (id: string) =>
     request<{
       exam: { id: string; title: string; description: string | null; durationMinutes: number | null; maxScore: number; questionCount: number };
-      questions: { id: string; prompt: string; questionType: ExamQuestionType; options: ExamQuestionOption[]; points: number }[];
+      questions: Array<PublicQuestion & { id: string }>;
     }>(`/portal/exams/${id}/start`),
   submitExam: (id: string, answers: Record<string, string>) =>
     request<SubmitAttemptResult>(`/portal/exams/${id}/submit`, { method: "POST", body: JSON.stringify({ answers }) }),
