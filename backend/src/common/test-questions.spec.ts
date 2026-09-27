@@ -44,3 +44,11 @@ describe('test questions', () => {
     expect(gradeAnswer(essay, 'Dear friend...')).toMatchObject({ pending: true, earned: 0, max: 8 });
   });
 });
+
+describe('option letters', () => {
+  it('drops a letter prefix the AI copied into the option text', () => {
+    const q = normalizeQuestion({ type: 'MCQ', prompt: 'I ___ there.', options: ['A) have gone', 'B) went'], correctAnswer: 'B' });
+    expect(q?.options?.map((o) => o.text)).toEqual(['have gone', 'went']);
+    expect(q?.correctAnswer).toBe('B');
+  });
+});

@@ -56,6 +56,9 @@ const TFNG_OPTIONS: QuestionOption[] = [{ id: 'true', text: 'True' }, { id: 'fal
 
 const str = (v: unknown) => (typeof v === 'string' ? v.trim() : v === null || v === undefined ? '' : String(v).trim());
 
+// "A) went" / "b. went" -> "went": the letter is shown separately.
+const stripLetter = (t: string) => t.replace(/^\(?[A-Ha-h][).:]\s+/, '');
+
 function normalizeTF(answer: string, ng: boolean) {
   const a = answer.toLowerCase().replace(/[^a-z]/g, '');
   if (['t', 'true', 'yes', 'rost', 'togri', 'verno', 'da'].includes(a)) return 'true';
@@ -110,8 +113,8 @@ export function normalizeQuestion(raw: unknown, opts: { requireAnswer?: boolean 
       const rawOpts = Array.isArray(q.options) ? q.options : [];
       options = rawOpts
         .map((o, i) => (typeof o === 'string'
-          ? { id: String.fromCharCode(65 + i), text: o.trim() }
-          : { id: str((o as QuestionOption)?.id) || String.fromCharCode(65 + i), text: str((o as QuestionOption)?.text) }))
+          ? { id: String.fromCharCode(65 + i), text: stripLetter(o.trim()) }
+          : { id: str((o as QuestionOption)?.id) || String.fromCharCode(65 + i), text: stripLetter(str((o as QuestionOption)?.text)) }))
         .filter((o) => o.text);
       if (options.length < 2) return null;
     }

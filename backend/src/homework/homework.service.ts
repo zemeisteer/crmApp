@@ -2,6 +2,8 @@ import { BadRequestException, Inject, Injectable, NotFoundException } from '@nes
 import { and, eq, inArray, isNull } from 'drizzle-orm';
 import { unlink } from 'fs/promises';
 import { join } from 'path';
+import { saveGeneratedFile } from '../common/upload.util';
+import { pdfFileName, renderTextPdf } from '../common/text-pdf';
 import { DB, Database } from '../db/db.module';
 import {
   homework,
@@ -266,6 +268,18 @@ export class HomeworkService {
       .where(and(eq(homework.id, id), eq(homework.tenantId, tenantId)))
       .returning();
     return hw;
+  }
+
+  async attachText(tenantId: string, id: string, title: string, content: string) {
+    const hw = await this.findOne(tenantId, id);
+    const pdf = await renderTextPdf({ title, subtitle: hw.group?.name ?? undefined, body: content });
+    const stored = await saveGeneratedFile(pdf, '.pdf');
+    const [updated] = await this.db
+      .update(homework)
+      .set({ attachmentPath: stored, attachmentName: pdfFileName(title), updatedAt: new Date() })
+      .where(and(eq(homework.id, id), eq(homework.tenantId, tenantId)))
+      .returning();
+    return updated;
   }
 
   async attach(tenantId: string, id: string, file: Express.Multer.File) {

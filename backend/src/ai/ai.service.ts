@@ -7,7 +7,7 @@ import { groups, payments, attendance } from '../db/schema';
 import { GenerateMaterialDto, PlacementTestDto } from './dto/ai.dto';
 import { bankFor, pickFromBank } from './placement-bank';
 import { normalizeQuestion, type TestQuestion } from '../common/test-questions';
-import { essayGradePrompt, generateTestPrompt, parseJsonArray, pdfExtractPrompt } from './test-prompts';
+import { essayGradePrompt, generateTestPrompt, parseJsonArray, pdfExtractPrompt, textExtractPrompt } from './test-prompts';
 
 
 const MODEL = 'claude-sonnet-5';
@@ -210,19 +210,25 @@ Daraja: ${dto.level || "ko'rsatilmagan"}
 O'qituvchining talabi (eng muhimi, aynan shunga mos vazifa tuz): ${request || "yo'q"}
 Vazifa matni o'qituvchi talabidagi tilda bo'lsin.
 
+Vazifaning o'zi (mashqlar, gaplar, misollar, matn) o'quvchiga PDF fayl bo'lib beriladi — uni "content" ga to'liq yoz:
+sarlavhalar "## " bilan, mashqlar raqamlangan, har bir mashqda aniq ko'rsatma va barcha gaplar/misollar bo'lsin (o'quvchi faqat shu faylga qarab bajara olsin).
+Oddiy matn yoz: jadval, LaTeX va HTML ishlatma.
+
 Javobni FAQAT quyidagi JSON formatida ber (boshqa hech qanday so'z qo'shma):
 {
   "title": "Vazifa sarlavhasi (masalan: Unit 5: Present Perfect vs Past Simple mashqlari)",
-  "description": "Vazifaning qisqa va aniq bandlari (1. ..., 2. ..., 3. ...)",
+  "description": "O'quvchiga 1-2 gapli qisqa ko'rsatma (masalan: Biriktirilgan fayldagi 3 ta mashqni daftarga bajaring.)",
+  "content": "Vazifaning to'liq matni (qatorlar \\n bilan)",
   "dueDays": 3
 }`;
-        const text = await this.complete(prompt, 500);
+        const text = await this.complete(prompt, 4000);
         const match = text.match(/\{[\s\S]*\}/);
         if (match) {
           const parsed = JSON.parse(match[0]);
           return {
-            title: parsed.title,
-            description: parsed.description,
+            title: String(parsed.title ?? '').slice(0, 160),
+            description: String(parsed.description ?? ''),
+            content: typeof parsed.content === 'string' && parsed.content.trim() ? parsed.content.trim() : null,
             dueDays: parsed.dueDays || 3,
           };
         }
@@ -237,6 +243,7 @@ Javobni FAQAT quyidagi JSON formatida ber (boshqa hech qanday so'z qo'shma):
         title: topic || request.split(/[.!?\n]/)[0].slice(0, 80),
         description: `1. ${request}\n2. Bajarilgan ishni daftarga toza yozib, keyingi darsga olib keling.\n3. Tushunmagan joylaringizni belgilab, savol sifatida yozib keling.`,
         dueDays: 3,
+        content: null,
       };
     }
 
@@ -248,18 +255,21 @@ Javobni FAQAT quyidagi JSON formatida ber (boshqa hech qanday so'z qo'shma):
         title: topic ? `${topic} — Homework & Practice` : `${groupName || "English"} — Unit 4 Grammar & Vocabulary`,
         description: `1. Kitobdagi 4-mavzu bo'yicha Ex 1-6 mashqlarni daftarda to'liq bajaring.\n2. Berilgan 15 ta yangi so'z bilan kamida 2 tadan gap tuzing.\n3. Reading matnini o'qib, savollarga yozma javob tayyorlang (kamida 80-100 so'z).`,
         dueDays: 3,
+        content: null,
       };
     } else if (isMath) {
       return {
         title: topic ? `${topic} — Misollar to'plami` : `${groupName || "Matematika"} — Amaliy masalalar va formulalar`,
         description: `1. Darslikdagi §12 mavzu qoidalarini takrorlash va formulalarni yodlash.\n2. 145-155-misollarni daftarga to'liq yechish (har bir qadamni ko'rsatgan holda).\n3. 2 ta murakkabroq mantiqiy masalani mustaqil yechishga harakat qiling.`,
         dueDays: 2,
+        content: null,
       };
     } else {
       return {
         title: topic ? `${topic} — Mustaqil ish` : `${subject} — Amaliy topshiriq va mashqlar`,
         description: `1. O'tilgan mavzu bo'yicha konspektni to'ldiring.\n2. Mavzu oxiridagi savollarga yozma javob yozing.\n3. Amaliy mashqlarni bajaring va keyingi darsda savollarga tayyor bo'ling.`,
         dueDays: 3,
+        content: null,
       };
     }
   }
@@ -363,6 +373,20 @@ Javobni FAQAT quyidagi JSON formatida ber (boshqa hech qanday so'z qo'shma):
       .filter((q): q is TestQuestion => q !== null)
       .slice(0, 300);
     if (questions.length === 0) throw new ServiceUnavailableException("PDF'dan savollar topilmadi. Fayl test ekanini tekshiring.");
+    return questions;
+  }
+
+  // Questions from written text (e.g. an AI material), for review.
+  async extractQuestionsFromText(text: string): Promise<TestQuestion[]> {
+    if (!this.aiConfigured()) {
+      throw new ServiceUnavailableException("Matndan savol ajratish uchun AI kerak: backend/.env fayliga GEMINI_API_KEY (bepul) qo'shing.");
+    }
+    const out = await this.complete(textExtractPrompt(text.slice(0, 40000)), 16000);
+    const questions = parseJsonArray(out)
+      .map((q) => normalizeQuestion(q, { requireAnswer: false }))
+      .filter((q): q is TestQuestion => q !== null)
+      .slice(0, 300);
+    if (questions.length === 0) throw new ServiceUnavailableException('Matndan savollar topilmadi.');
     return questions;
   }
 }

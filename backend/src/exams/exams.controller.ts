@@ -27,6 +27,7 @@ import {
   SubmitResultsDto,
   GenerateQuestionsDto,
   GradeAttemptDto,
+  ParseTextDto,
 } from './dto/exam.dto';
 
 @UseGuards(JwtAuthGuard, RolesGuard, TrialGuard)
@@ -109,6 +110,13 @@ export class ExamsController {
     @Param('questionId') questionId: string,
   ) {
     return this.service.removeQuestion(tenantId, id, questionId);
+  }
+
+  // Reads questions from written text (an AI material) for review.
+  @Roles('ADMIN', 'TEACHER')
+  @Post(':id/questions/parse-text')
+  parseTextQuestions(@CurrentUser('tenantId') tenantId: string, @Param('id') id: string, @Body() dto: ParseTextDto) {
+    return this.service.parseTextQuestions(tenantId, id, dto.text);
   }
 
   // Reads questions from an uploaded PDF test. Nothing is saved: the page

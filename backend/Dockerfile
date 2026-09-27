@@ -26,6 +26,7 @@ RUN npm install --omit=dev --legacy-peer-deps
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/drizzle ./drizzle
 COPY --from=builder /app/drizzle.config.ts ./drizzle.config.ts
+COPY --from=builder /app/assets ./assets
 
 RUN mkdir -p /app/uploads && chown -R node:node /app
 

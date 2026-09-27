@@ -234,6 +234,11 @@ export class ExamsService {
   }
 
   // Reads a PDF for review; nothing is saved until the teacher confirms.
+  async parseTextQuestions(tenantId: string, examId: string, text: string) {
+    await this.findOne(tenantId, examId);
+    return { questions: await this.ai.extractQuestionsFromText(text) };
+  }
+
   async parsePdfQuestions(tenantId: string, examId: string, file?: Express.Multer.File) {
     await this.findOne(tenantId, examId);
     if (!file?.buffer?.length) throw new BadRequestException('PDF fayl yuklang');

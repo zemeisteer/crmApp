@@ -19,6 +19,7 @@ import {
   PortalPayments,
   PortalAnnouncement,
   ApiError,
+  fileUrl,
 } from "@/lib/api";
 
 const ACCENT = "#4F46E5";
@@ -966,6 +967,16 @@ export default function StudentPortalPage() {
                       >
                         {hw.description}
                       </div>
+                    )}
+                    {hw.attachmentPath && (
+                      <a
+                        href={fileUrl(hw.attachmentPath) || "#"}
+                        target="_blank"
+                        rel="noreferrer"
+                        style={{ display: "inline-flex", alignItems: "center", gap: 8, marginTop: 10, padding: "8px 12px", borderRadius: 10, border: "1px solid #C7D2FE", background: "#EEF2FF", color: "#4338CA", fontSize: 13, fontWeight: 700, textDecoration: "none" }}
+                      >
+                        📎 {hw.attachmentName || t("homework.file")}
+                      </a>
                     )}
                   </div>
                 ))}

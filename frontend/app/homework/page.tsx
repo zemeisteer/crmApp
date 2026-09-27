@@ -8,6 +8,7 @@ import BarChart from "@/components/BarChart";
 import Pagination, { usePagedSlice } from "@/components/Pagination";
 import Select from "@/components/Select";
 import DatePicker from "@/components/DatePicker";
+import MarkdownLite from "@/components/MarkdownLite";
 import { homeworkApi, groupsApi, aiApi, Homework, Group, ApiError, fileUrl, type LeaderboardEntry } from "@/lib/api";
 import { useLanguage } from "@/lib/i18n-context";
 import { matchesSubject, extractUniqueSubjects } from "@/lib/subject";
@@ -347,7 +348,10 @@ function HomeworkContent() {
   const [file, setFile] = useState<File | null>(null);
 
   const [aiSuggesting, setAiSuggesting] = useState(false);
-  const [aiSuggestion, setAiSuggestion] = useState<{ title: string; description: string; dueDate?: string } | null>(null);
+  const [aiSuggestion, setAiSuggestion] = useState<{ title: string; description: string; content: string | null; dueDate?: string } | null>(null);
+  // The AI task text, attached to the homework as a PDF on save.
+  const [aiFile, setAiFile] = useState<{ title: string; content: string } | null>(null);
+  const [aiFileEditing, setAiFileEditing] = useState(false);
   const [aiPromptOpen, setAiPromptOpen] = useState(false);
   const [aiRequest, setAiRequest] = useState("");
 
@@ -380,6 +384,8 @@ function HomeworkContent() {
     setDueDate("");
     setMaxScore(100);
     setFile(null);
+    setAiFile(null);
+    setAiFileEditing(false);
     setAiSuggestion(null);
     setAiSuggesting(false);
     setAiPromptOpen(false);
@@ -414,6 +420,7 @@ function HomeworkContent() {
       setAiSuggestion({
         title: res.title,
         description: res.description,
+        content: res.content,
         dueDate: calculatedDue,
       });
     } catch (err) {
@@ -427,6 +434,11 @@ function HomeworkContent() {
     if (!aiSuggestion) return;
     setTitle(aiSuggestion.title);
     setDescription(aiSuggestion.description);
+    // The task itself goes to the file section; a chosen file still wins.
+    if (aiSuggestion.content) {
+      setAiFile({ title: aiSuggestion.title, content: aiSuggestion.content });
+      setFile(null);
+    }
     if (aiSuggestion.dueDate) setDueDate(aiSuggestion.dueDate);
     setAiSuggestion(null);
   }
@@ -448,8 +460,11 @@ function HomeworkContent() {
         dueDate: dueDate || undefined,
         maxScore: Number(maxScore) || 100,
       });
-      if (file && created[0]) {
-        await homeworkApi.uploadAttachment(created[0].id, file);
+      // Every group's copy gets the attachment, not only the first one.
+      if (file) {
+        await Promise.all(created.map((h) => homeworkApi.uploadAttachment(h.id, file)));
+      } else if (aiFile?.content.trim()) {
+        await Promise.all(created.map((h) => homeworkApi.attachText(h.id, { title: title.trim() || aiFile.title, content: aiFile.content })));
       }
       setModalOpen(false);
       resetForm();
@@ -705,7 +720,37 @@ function HomeworkContent() {
           </div>
           <div>
             <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>{t("homework.fieldAttachment")}</div>
-            <input className="field-input" type="file" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
+            {aiFile && !file ? (
+              <div style={{ border: "1px solid #DDD6FE", background: "#FAF8FF", borderRadius: 10, padding: 10, display: "flex", flexDirection: "column", gap: 8 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <span style={{ fontSize: 22 }}>📄</span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: "#181A1F", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{(title.trim() || aiFile.title)}.pdf</div>
+                    <div style={{ fontSize: 11.5, color: "#7C3AED", fontWeight: 600 }}>✨ {t("hwAi.fileNote")}</div>
+                  </div>
+                  <button type="button" onClick={() => setAiFileEditing((v) => !v)} style={smallBtn}>{aiFileEditing ? t("hwAi.fileDone") : t("hwAi.fileEdit")}</button>
+                  <button type="button" onClick={() => { setAiFile(null); setAiFileEditing(false); }} style={{ ...smallBtn, color: "#B23A47" }} aria-label={t("common.delete")}>✕</button>
+                </div>
+                {aiFileEditing ? (
+                  <textarea
+                    className="field-input"
+                    rows={10}
+                    value={aiFile.content}
+                    onChange={(e) => setAiFile({ ...aiFile, content: e.target.value })}
+                    style={{ resize: "vertical", fontFamily: "inherit", fontSize: 12.5, background: "#fff" }}
+                  />
+                ) : (
+                  <div style={{ maxHeight: 180, overflowY: "auto", background: "#fff", borderRadius: 8, border: "1px solid #EDE9FE", padding: "8px 12px" }}>
+                    <MarkdownLite text={aiFile.content} style={{ fontSize: 12.5 }} />
+                  </div>
+                )}
+              </div>
+            ) : (
+              <>
+                <input className="field-input" type="file" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
+                {file && aiFile && <div style={{ fontSize: 11.5, color: "#8A8D96", marginTop: 4 }}>{t("hwAi.fileReplaced")}</div>}
+              </>
+            )}
           </div>
           {aiPromptOpen && (
             <div style={{ border: "1px solid #DDD6FE", background: "#F5F3FF", borderRadius: 12, padding: 14, display: "flex", flexDirection: "column", gap: 10 }}>
@@ -770,8 +815,14 @@ function HomeworkContent() {
               <div style={{ fontSize: 12.5, color: "#4A4E58", whiteSpace: "pre-line", lineHeight: 1.5 }}>
                 {aiSuggestion.description}
               </div>
+              {aiSuggestion.content && (
+                <div style={{ background: "#fff", border: "1px solid #E4E1FB", borderRadius: 8, padding: "8px 12px", maxHeight: 200, overflowY: "auto" }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: "#7C3AED", marginBottom: 4 }}>📄 {t("hwAi.fileWillAttach")}</div>
+                  <MarkdownLite text={aiSuggestion.content} style={{ fontSize: 12.5 }} />
+                </div>
+              )}
               {aiSuggestion.dueDate && (
-                <div style={{ fontSize: 11.5, color: "#8A8D96" }}>Tavsiya muddati: {aiSuggestion.dueDate}</div>
+                <div style={{ fontSize: 11.5, color: "#8A8D96" }}>{t("hwAi.dueSuggested")}: {aiSuggestion.dueDate}</div>
               )}
               <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
                 <button
@@ -861,3 +912,5 @@ export default function HomeworkPage() {
     </DashboardShell>
   );
 }
+
+const smallBtn: React.CSSProperties = { background: "#fff", border: "1px solid #E4E1FB", color: "#4F46E5", fontSize: 12, fontWeight: 700, padding: "5px 10px", borderRadius: 7, cursor: "pointer", whiteSpace: "nowrap" };

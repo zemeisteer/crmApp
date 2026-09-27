@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import DashboardShell from "@/components/DashboardShell";
 import Select from "@/components/Select";
+import MarkdownLite from "@/components/MarkdownLite";
+import MaterialActions from "@/components/ai/MaterialActions";
 import { aiApi, groupsApi, homeworkApi, Group, Homework, ApiError } from "@/lib/api";
 import { useLanguage } from "@/lib/i18n-context";
 import type { TranslationKey } from "@/lib/i18n";
@@ -449,7 +451,7 @@ function AiMaterialsContent() {
                           marginTop: 8,
                         }}
                       >
-                        <strong>Tafsilot/Prompt:</strong> {activeMaterial.customInstructions}
+                        <strong>{t("aim.promptLabel")}:</strong> {activeMaterial.customInstructions}
                       </div>
                     )}
                   </div>
@@ -474,19 +476,11 @@ function AiMaterialsContent() {
                   </button>
                 </div>
 
-                <div
-                  style={{
-                    fontSize: 13.5,
-                    lineHeight: 1.7,
-                    whiteSpace: "pre-wrap",
-                    color: "#2C3038",
-                    fontFamily: "inherit",
-                    maxHeight: 500,
-                    overflowY: "auto",
-                    paddingRight: 6,
-                  }}
-                >
-                  {activeMaterial.content}
+                <div style={{ marginBottom: 14, paddingBottom: 14, borderBottom: "1px solid #F1F0EC" }}>
+                  <MaterialActions key={activeMaterial.id} material={activeMaterial} groups={groups} defaultGroupId={groupId !== "ALL" ? groupId : undefined} />
+                </div>
+                <div style={{ maxHeight: 520, overflowY: "auto", paddingRight: 6 }}>
+                  <MarkdownLite text={activeMaterial.content} />
                 </div>
               </div>
             ) : (

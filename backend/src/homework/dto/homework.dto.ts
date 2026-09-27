@@ -6,6 +6,8 @@ import {
   IsOptional,
   IsString,
   Min,
+  MaxLength,
+  MinLength,
 } from 'class-validator';
 
 export class CreateHomeworkDto {
@@ -57,6 +59,19 @@ export class SubmitHomeworkDto {
   @IsOptional()
   @IsString()
   attachmentUrl?: string;
+}
+
+// Text (e.g. an AI-written task) to attach to the homework as a PDF.
+export class AttachTextDto {
+  @IsString()
+  @MinLength(1)
+  @MaxLength(160)
+  title: string;
+
+  @IsString()
+  @MinLength(1)
+  @MaxLength(60000)
+  content: string;
 }
 
 export class GradeHomeworkDto {

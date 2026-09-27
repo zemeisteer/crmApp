@@ -1,4 +1,4 @@
-import { IsIn, IsInt, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator';
+import { IsIn, IsInt, IsOptional, IsString, Max, MaxLength, Min, MinLength } from 'class-validator';
 
 export class GroupInsightsDto {
   @IsString()
@@ -72,4 +72,22 @@ export class PlacementTestDto {
   @IsOptional()
   @IsIn(['UZ', 'RU', 'EN'])
   language?: 'UZ' | 'RU' | 'EN';
+}
+
+// Text to turn into a downloadable PDF (AI materials).
+export class RenderPdfDto {
+  @IsString()
+  @MinLength(1)
+  @MaxLength(160)
+  title!: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  subtitle?: string;
+
+  @IsString()
+  @MinLength(1)
+  @MaxLength(60000)
+  content!: string;
 }

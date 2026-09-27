@@ -25,6 +25,7 @@ import {
   SetCompletionDto,
   SubmitHomeworkDto,
   GradeHomeworkDto,
+  AttachTextDto,
 } from './dto/homework.dto';
 
 @UseGuards(JwtAuthGuard, RolesGuard, TrialGuard)
@@ -109,6 +110,17 @@ export class HomeworkController {
     @UploadedFile() file: Express.Multer.File,
   ) {
     return this.service.attach(tenantId, id, file);
+  }
+
+  // Attach written text (the AI task) as a PDF file.
+  @Roles('ADMIN', 'TEACHER')
+  @Post(':id/attachment-text')
+  attachText(
+    @CurrentUser('tenantId') tenantId: string,
+    @Param('id') id: string,
+    @Body() dto: AttachTextDto,
+  ) {
+    return this.service.attachText(tenantId, id, dto.title, dto.content);
   }
 
   @Roles('ADMIN', 'TEACHER')

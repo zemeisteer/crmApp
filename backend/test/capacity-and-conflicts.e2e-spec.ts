@@ -278,4 +278,19 @@ describe('Group capacity & schedule day alignment (e2e)', () => {
     const graded = (await http().post(`/api/exams/${examId}/attempts/${res.attempt.id}/grade`).set(auth()).send({ scores: { [ids[2]]: 2 } }).expect(201)).body;
     expect(graded).toMatchObject({ reviewStatus: 'DONE', earnedPoints: 4, score: 100, passed: true });
   });
+
+  it('attaches an AI task to homework as a PDF and renders materials', async () => {
+    const teacher = (await http().post('/api/teachers').set(auth()).send({ fullName: 'Hw Teacher' }).expect(201)).body.id as string;
+    const g = (await http().post('/api/groups').set(auth())
+      .send({ name: 'Hw Group', subject: 'English', teacherId: teacher, scheduleDays: 'Seshanba', startTime: '10:00', endTime: '11:00' }).expect(201)).body.id as string;
+    const [hw] = (await http().post('/api/homework').set(auth()).send({ groupIds: [g], title: 'Unit 5', description: 'Faylni bajaring.' }).expect(201)).body;
+    const content = '## 1-mashq\n1. She (live) here since 2020.\n- Ўзбекча: ғ, қ\n**Muhim**';
+    const updated = (await http().post(`/api/homework/${hw.id}/attachment-text`).set(auth()).send({ title: 'Unit 5: Present Perfect', content }).expect(201)).body;
+    expect(updated.attachmentName).toBe('Unit-5-Present-Perfect.pdf');
+    expect(updated.attachmentPath).toMatch(/\.pdf$/);
+
+    const pdf = await http().post('/api/ai/pdf').set(auth()).send({ title: 'Material', content }).expect(201);
+    expect(pdf.headers['content-type']).toContain('application/pdf');
+    expect(Buffer.from(pdf.body).subarray(0, 4).toString()).toBe('%PDF');
+  });
 });

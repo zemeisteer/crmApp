@@ -10,7 +10,7 @@ const TYPES_HELP = `Savol turlari (type):
 - "SHORT_ANSWER": qisqa yozma javob. "correctAnswer": to'g'ri javob.
 - "MATCHING": moslashtirish. "pairs": [{"left": "chap element", "right": "unga mos o'ng element"}, ...]. "correctAnswer": "".
 - "WORD_ORDER": so'zlarni tartiblash. "words": berilgan so'zlar ro'yxati (aralash tartibda), "correctAnswer": to'g'ri gap.
-- "ERROR_CORRECTION": xatoni topib tuzatish. "correctAnswer": to'g'rilangan gap VA to'g'rilangan so'z, "|" bilan ("There are fewer people here today than yesterday.|fewer").
+- "ERROR_CORRECTION": xatoni topib tuzatish. "correctAnswer": to'g'rilangan gap VA to'g'rilangan so'z (xato so'z emas!), "|" bilan ("There are fewer people here today than yesterday.|fewer").
 - "TRANSFORMATION": gapni ma'nosini saqlab qayta yozish (kalit so'z bilan). "correctAnswer": bo'sh joyga tushadigan so'zlar.
 - "WORD_FORMATION": katta harfdagi so'zdan yangi so'z yasash. "correctAnswer": yasalgan so'z.
 - "ESSAY": insho/xat/erkin yozish. "rubric": baholash mezoni, "correctAnswer": "".
@@ -22,7 +22,28 @@ const FIELDS_HELP = `Har bir savol maydonlari:
  "correctAnswer": "...", "rubric": "...", "points": ball (butun son), "level": 1|2|3}`;
 
 export function pdfExtractPrompt() {
-  return `Bu PDF faylda o'quv markazi testi (imtihon varag'i) bor. Undagi BARCHA savollarni raqamli testga aylantir.
+  return extractPrompt('pdf');
+}
+
+// Same rules for a test given as text (e.g. an AI material). A written
+// material rarely has an answer key, so the model works the answers out.
+export function textExtractPrompt(text: string) {
+  return `${extractPrompt('text')}
+
+MATN:
+"""
+${text}
+"""`;
+}
+
+function extractPrompt(source: 'pdf' | 'text') {
+  const intro = source === 'pdf'
+    ? "Bu PDF faylda o'quv markazi testi (imtihon varag'i) bor. Undagi BARCHA savollarni raqamli testga aylantir."
+    : "Quyidagi matnda o'quv materiali (test, mashqlar yoki topshiriqlar) bor. Undagi BARCHA savol va mashqlarni raqamli testga aylantir.";
+  const answers = source === 'pdf'
+    ? `Javob ko'rsatilmagan bo'lsa "correctAnswer": "" qoldir (o'ylab topma).`
+    : `Javob ko'rsatilmagan bo'lsa to'g'ri javobni o'zing aniq yech va yoz; javobi bir xil bo'lmaydigan ochiq topshiriqlarni "ESSAY" qil.`;
+  return `${intro}
 
 Qoidalar:
 - Savollarni AYNAN qanday yozilgan bo'lsa shunday ko'chir: tarjima qilma, tuzatma, yangi savol qo'shma, birortasini ham tashlab ketma.
@@ -30,7 +51,7 @@ Qoidalar:
 - Bo'lim sarlavhasini "section" ga, bo'lim ko'rsatmasini "instruction" ga yoz — shu bo'limning har bir savoliga takrorla.
 - O'qish matni (reading text) bo'lsa, uni shu matnga tegishli HAR BIR savolning "passage" maydoniga to'liq yoz.
 - Ballar: bo'limda ball ko'rsatilgan bo'lsa (masalan "(4 POINTS)" va 4 ta savol) — har bir savolga teng bo'lib ber; MATCHING va ESSAY uchun bo'lim balining hammasi.
-- Javoblar kaliti (Answer Key) sahifasi yoki belgilangan javoblar bo'lsa, "correctAnswer" ni shundan ol. Javob ko'rsatilmagan bo'lsa "correctAnswer": "" qoldir (o'ylab topma).
+- Javoblar kaliti (Answer Key) sahifasi yoki belgilangan javoblar bo'lsa, "correctAnswer" ni shundan ol. ${answers}
 - Savoldagi rasm yoki jadvalni iloji boricha matn bilan ifodala.
 
 ${TYPES_HELP}

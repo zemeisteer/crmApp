@@ -1,4 +1,18 @@
-import { ArrayMinSize, IsArray, IsIn, IsInt, IsNotEmpty, IsObject, IsOptional, IsString, Max, MaxLength, Min, ValidateNested } from 'class-validator';
+import {
+  ArrayMinSize,
+  IsArray,
+  IsIn,
+  IsInt,
+  IsNotEmpty,
+  IsObject,
+  IsOptional,
+  IsString,
+  Max,
+  MaxLength,
+  Min,
+  ValidateNested,
+  MinLength,
+} from 'class-validator';
 import { QUESTION_TYPES } from '../../common/test-questions';
 import { Type } from 'class-transformer';
 
@@ -121,4 +135,12 @@ export class SubmitAttemptDto {
 
   @IsObject()
   answers: Record<string, string>; // { [questionId]: "A" }
+}
+
+// A written material to read questions from (e.g. an AI quiz).
+export class ParseTextDto {
+  @IsString()
+  @MinLength(20)
+  @MaxLength(40000)
+  text!: string;
 }

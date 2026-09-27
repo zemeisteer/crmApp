@@ -140,11 +140,12 @@ async function request<T>(
 
 // Downloads a file (xlsx/pdf) as a Blob, using the same auth header as
 // request(), and triggers a browser save via a temporary <a download>.
-async function download(path: string, filename: string) {
+async function download(path: string, filename: string, body?: unknown) {
   const token = getToken();
   const headers: Record<string, string> = {};
   if (token) headers["Authorization"] = `Bearer ${token}`;
-  const res = await fetch(`${API_URL}${path}`, { headers });
+  if (body !== undefined) headers["Content-Type"] = "application/json";
+  const res = await fetch(`${API_URL}${path}`, body === undefined ? { headers } : { method: "POST", headers, body: JSON.stringify(body) });
   if (!res.ok) {
     const body = await res.json().catch(() => null);
     throw new ApiError(body?.message || "Yuklab bo'lmadi", res.status);
@@ -1517,10 +1518,15 @@ export const aiApi = {
   generateMaterial: (data: { subject: string; level?: string; topic: string; type: string; customInstructions?: string }) =>
     request<{ material: string }>("/ai/materials", { method: "POST", body: JSON.stringify(data) }),
   suggestHomework: (data: { subject?: string; groupName?: string; topic?: string; level?: string; request?: string }) =>
-    request<{ title: string; description: string; dueDays?: number }>("/ai/suggest-homework", {
+    request<{ title: string; description: string; content: string | null; dueDays?: number }>("/ai/suggest-homework", {
       method: "POST",
       body: JSON.stringify(data),
     }),
+  // Saves the text as a PDF file (built on the server, Uzbek/Cyrillic safe).
+  downloadPdf: (data: { title: string; subtitle?: string; content: string }) => {
+    const name = `${data.title.replace(/[\\/:*?"<>|]+/g, " ").trim().slice(0, 80) || "material"}.pdf`;
+    return download("/ai/pdf", name, data);
+  },
 };
 
 
@@ -1554,6 +1560,9 @@ export const homeworkApi = {
     request<Homework>(`/homework/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
   remove: (id: string) => request<{ success: boolean }>(`/homework/${id}`, { method: "DELETE" }),
   uploadAttachment: (id: string, file: File) => uploadFile<Homework>(`/homework/${id}/attachment`, file),
+  // Attaches written text (e.g. the AI task) as a PDF file.
+  attachText: (id: string, data: { title: string; content: string }) =>
+    request<Homework>(`/homework/${id}/attachment-text`, { method: "POST", body: JSON.stringify(data) }),
   roster: (id: string) =>
     request<{
       student: Student;
@@ -1612,6 +1621,8 @@ export const examsApi = {
   generateQuestions: (id: string, data: { count?: number; request?: string } = {}) =>
     request<ExamQuestion[]>(`/exams/${id}/generate-questions`, { method: "POST", body: JSON.stringify(data) }),
   parsePdfQuestions: (id: string, file: File) => uploadFile<{ questions: TestQuestion[] }>(`/exams/${id}/questions/parse-pdf`, file),
+  parseTextQuestions: (id: string, text: string) =>
+    request<{ questions: TestQuestion[] }>(`/exams/${id}/questions/parse-text`, { method: "POST", body: JSON.stringify({ text }) }),
   batchQuestions: (id: string, questions: TestQuestion[]) =>
     request<ExamQuestion[]>(`/exams/${id}/questions/batch`, { method: "POST", body: JSON.stringify({ questions }) }),
   startAttempt: (id: string, studentId: string) =>
