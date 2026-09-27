@@ -692,6 +692,42 @@ export const examAttempts = pgTable('exam_attempts', {
   examStudentIdx: index('exam_attempts_exam_student_idx').on(t.examId, t.studentId),
 }));
 
+// Placement (level) tests shared by link: new students open
+// /t/<token>, enter name and phone, and answer. Questions include the
+// answers, so the public endpoint strips them.
+export const placementTests = pgTable('placement_tests', {
+  id: text('id').primaryKey().$defaultFn(() => createId()),
+  tenantId: text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  createdByUserId: text('created_by_user_id').references(() => users.id, { onDelete: 'set null' }),
+  title: text('title').notNull(),
+  subject: text('subject').notNull(),
+  language: text('language').notNull().default('UZ'),
+  questions: text('questions').notNull(), // JSON: PlacementQuestion[]
+  token: text('token').notNull(),
+  active: boolean('active').notNull().default(true),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+}, (t) => ({
+  tokenIdx: uniqueIndex('placement_tests_token_idx').on(t.token),
+  tenantIdx: index('placement_tests_tenant_idx').on(t.tenantId),
+}));
+
+export const placementAttempts = pgTable('placement_attempts', {
+  id: text('id').primaryKey().$defaultFn(() => createId()),
+  tenantId: text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  testId: text('test_id').notNull().references(() => placementTests.id, { onDelete: 'cascade' }),
+  fullName: text('full_name').notNull(),
+  phone: text('phone'),
+  answers: text('answers').notNull(), // JSON: string[] by question index
+  correct: integer('correct').notNull().default(0),
+  total: integer('total').notNull().default(0),
+  percent: integer('percent').notNull().default(0),
+  suggestedLevel: integer('suggested_level').notNull().default(1), // 1-3
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+}, (t) => ({
+  testIdx: index('placement_attempts_test_idx').on(t.testId),
+  tenantIdx: index('placement_attempts_tenant_idx').on(t.tenantId),
+}));
+
 // Outgoing event notifications to a tenant's own systems (Zapier-style).
 export const webhooks = pgTable('webhooks', {
   id: text('id').primaryKey().$defaultFn(() => createId()),

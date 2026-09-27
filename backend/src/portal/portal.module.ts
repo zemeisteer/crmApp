@@ -5,10 +5,12 @@ import { PortalService } from './portal.service';
 import { PortalController } from './portal.controller';
 import { PortalAuthGuard } from './portal-auth.guard';
 import { BillingModule } from '../billing/billing.module';
+import { ExamsModule } from '../exams/exams.module';
 
 @Module({
   imports: [
     BillingModule,
+    ExamsModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],

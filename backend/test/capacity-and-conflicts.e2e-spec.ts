@@ -135,14 +135,62 @@ describe('Group capacity & schedule day alignment (e2e)', () => {
     expect(late.body.code).toBe('STUDENT_SCHEDULE_CONFLICT');
   });
 
-  it('builds a placement test from the built-in questions when no AI key is set', async () => {
-    const res = await http().post('/api/ai/placement-test').set(auth()).send({ subject: 'Ingliz tili', count: 9 }).expect(201);
-    expect(res.body.questions).toHaveLength(9);
-    for (const q of res.body.questions) {
-      expect(q.options).toHaveLength(4);
-      expect(q.correctIndex).toBeGreaterThanOrEqual(0);
-    }
-    expect(new Set(res.body.questions.map((q: { level: number }) => q.level))).toEqual(new Set([1, 2, 3]));
-    await http().post('/api/ai/placement-test').set(auth()).send({ subject: 'Ingliz tili', count: 100 }).expect(400);
+  it('shares a placement test by link and grades mixed question types', async () => {
+    const created = (await http().post('/api/placement-tests').set(auth()).send({
+      subject: 'Ingliz tili',
+      title: 'Level check',
+      questions: [
+        { type: 'MCQ', prompt: 'She ___ a teacher.', options: ['am', 'is', 'are', 'be'], correctIndex: 1, level: 1 },
+        { type: 'TRUE_FALSE', prompt: 'Paris is in France.', options: ['True', 'False'], correctIndex: 0, level: 2 },
+        { type: 'SHORT_ANSWER', prompt: 'Past tense of buy: ___', options: [], answer: 'bought', level: 3 },
+        { type: 'MCQ', prompt: 'broken, no answer', options: ['a', 'b'], level: 1 },
+      ],
+    }).expect(201)).body;
+    expect(created.questions).toHaveLength(3);
+
+    // The public view never exposes answers.
+    const pub = (await http().get(`/api/public/placement/${created.token}`).expect(200)).body;
+    expect(pub.questions).toHaveLength(3);
+    expect(JSON.stringify(pub)).not.toMatch(/correctIndex|bought/);
+
+    const res = (await http().post(`/api/public/placement/${created.token}/submit`)
+      .send({ fullName: 'New Kid', phone: '+998901112233', answers: ['1', '0', ' Bought. '] }).expect(201)).body;
+    expect(res).toMatchObject({ correct: 3, total: 3, percent: 100, suggestedLevel: 3 });
+
+    const attempts = (await http().get(`/api/placement-tests/${created.id}/attempts`).set(auth()).expect(200)).body;
+    expect(attempts[0]).toMatchObject({ fullName: 'New Kid', percent: 100 });
+
+    // Closing the test stops the link.
+    await http().patch(`/api/placement-tests/${created.id}`).set(auth()).send({ active: false }).expect(200);
+    await http().get(`/api/public/placement/${created.token}`).expect(404);
+  });
+
+  it('lets a student take their group exam in the portal once', async () => {
+    const g = (await http().post('/api/groups').set(auth()).send({ name: 'Portal Exam Group', subject: 'Math' }).expect(201)).body.id as string;
+    const phone = `+99890${String(suffix).slice(-7)}`;
+    const kid = (await mkStudent('Portal Kid', [g]).expect(201)).body.id as string;
+    await http().patch(`/api/students/${kid}`).set(auth()).send({ phone }).expect(200);
+    const exams = (await http().post('/api/exams').set(auth()).send({ groupIds: [g], title: 'Portal quiz', maxScore: 10 }).expect(201)).body;
+    const examId = (Array.isArray(exams) ? exams[0] : exams).id as string;
+    await http().post(`/api/exams/${examId}/questions/batch`).set(auth()).send({ questions: [
+      { prompt: '2+2', questionType: 'MCQ', options: [{ id: 'A', text: '3' }, { id: 'B', text: '4' }], correctAnswer: 'B', points: 1 },
+      { prompt: 'Past of go', questionType: 'SHORT_ANSWER', options: [], correctAnswer: 'went', points: 1 },
+    ] }).expect(201);
+
+    const portal = (await http().post('/api/portal/auth/phone').send({ phone, studentCode: kid }).expect(201)).body.accessToken as string;
+    const p = () => ({ Authorization: `Bearer ${portal}` });
+    const list = (await http().get('/api/portal/exams/available').set(p()).expect(200)).body;
+    expect(list.find((e: { id: string }) => e.id === examId)).toMatchObject({ questionCount: 2, taken: false });
+
+    const started = (await http().get(`/api/portal/exams/${examId}/start`).set(p()).expect(200)).body;
+    expect(JSON.stringify(started.questions)).not.toMatch(/correctAnswer|went/);
+    const ids = started.questions.map((q: { id: string }) => q.id);
+    const res = (await http().post(`/api/portal/exams/${examId}/submit`).set(p()).send({ answers: { [ids[0]]: 'B', [ids[1]]: 'Went' } }).expect(201)).body;
+    expect(res).toMatchObject({ earnedPoints: 2, totalPoints: 2, score: 10 });
+
+    // One attempt only.
+    await http().get(`/api/portal/exams/${examId}/start`).set(p()).expect(400);
+    const after = (await http().get('/api/portal/exams/available').set(p()).expect(200)).body;
+    expect(after.find((e: { id: string }) => e.id === examId)).toMatchObject({ taken: true, score: 10 });
   });
 });

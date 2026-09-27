@@ -77,7 +77,7 @@ describe('PortalService', () => {
       generatePaymeLink: vi.fn().mockResolvedValue({ url: 'https://checkout.paycom.uz/abc', transactionId: 'tx-2' }),
     };
 
-    service = new PortalService(mockDb, mockJwt, mockConfig, mockBilling as any);
+    service = new PortalService(mockDb, mockJwt, mockConfig, mockBilling as any, {} as any);
   });
 
   describe('loginWithToken', () => {

@@ -16,6 +16,7 @@ import {
   certificates,
   enrollments,
   examAttempts,
+  exams as examsTable,
   examResults,
   homework,
   homeworkCompletions,
@@ -27,6 +28,7 @@ import {
   telegramLinkTokens,
 } from '../db/schema';
 import { BillingService } from '../billing/billing.service';
+import { ExamsService } from '../exams/exams.service';
 
 @Injectable()
 export class PortalService {
@@ -35,6 +37,7 @@ export class PortalService {
     private readonly jwt: JwtService,
     private readonly config: ConfigService,
     private readonly billing: BillingService,
+    private readonly exams: ExamsService,
   ) {}
 
   private async signPortalToken(student: { id: string; tenantId: string; fullName: string }) {
@@ -624,5 +627,55 @@ export class PortalService {
   ) {
     await this.verifyParentAccess(tenantId, parentUserId, studentId);
     return this.createCheckoutLink(studentId, tenantId, body);
+  }
+
+  // ---- Online exams taken by the student on their own device ----
+
+  // Exams of the student's active groups that have questions, with whether
+  // the student already took them (one attempt each).
+  async getAvailableExams(studentId: string, tenantId: string) {
+    const groupIds = (await this.db.select({ groupId: enrollments.groupId }).from(enrollments)
+      .where(and(eq(enrollments.studentId, studentId), eq(enrollments.status, 'ACTIVE')))).map((r) => r.groupId);
+    if (groupIds.length === 0) return [];
+    const list = await this.db.query.exams.findMany({
+      where: and(eq(examsTable.tenantId, tenantId), inArray(examsTable.groupId, groupIds)),
+      with: { questions: { columns: { id: true } }, group: { columns: { name: true } } },
+      orderBy: [desc(examsTable.createdAt)],
+    });
+    const done = await this.db.select({ examId: examAttempts.examId, score: examAttempts.score, maxScore: examAttempts.maxScore })
+      .from(examAttempts).where(and(eq(examAttempts.studentId, studentId), eq(examAttempts.tenantId, tenantId)));
+    return list
+      .filter((e) => (e.questions?.length ?? 0) > 0)
+      .map((e) => {
+        const attempt = done.find((d) => d.examId === e.id);
+        return {
+          id: e.id,
+          title: e.title,
+          groupName: e.group?.name ?? null,
+          questionCount: e.questions.length,
+          durationMinutes: e.durationMinutes,
+          examDate: e.examDate,
+          taken: Boolean(attempt),
+          score: attempt?.score ?? null,
+          maxScore: attempt?.maxScore ?? e.maxScore,
+        };
+      });
+  }
+
+  private async assertCanTake(studentId: string, tenantId: string, examId: string) {
+    const available = await this.getAvailableExams(studentId, tenantId);
+    const exam = available.find((e) => e.id === examId);
+    if (!exam) throw new NotFoundException('Imtihon topilmadi');
+    if (exam.taken) throw new BadRequestException('Siz bu imtihonni topshirgansiz');
+  }
+
+  async startExam(studentId: string, tenantId: string, examId: string) {
+    await this.assertCanTake(studentId, tenantId, examId);
+    return this.exams.startAttempt(tenantId, examId, studentId);
+  }
+
+  async submitExam(studentId: string, tenantId: string, examId: string, answers: Record<string, string>) {
+    await this.assertCanTake(studentId, tenantId, examId);
+    return this.exams.submitAttempt(tenantId, examId, { studentId, answers });
   }
 }

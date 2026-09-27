@@ -3,6 +3,7 @@
 import { formatDateTime } from "@/lib/format-date";
 import { useEffect, useState } from "react";
 import { useLanguage } from "@/lib/i18n-context";
+import PortalExamList from "@/components/portal/PortalExams";
 import type { Lang, TranslationKey } from "@/lib/i18n";
 import {
   portalApi,
@@ -1062,6 +1063,8 @@ export default function StudentPortalPage() {
             <h2 style={{ fontSize: 18, fontWeight: 800, margin: 0 }}>
               {t("ptl.examsCerts")}
             </h2>
+
+            <PortalExamList onFinished={() => portalApi.getExams().then(setExams).catch(() => undefined)} />
 
             {/* Certificates */}
             {exams?.certificates && exams.certificates.length > 0 && (

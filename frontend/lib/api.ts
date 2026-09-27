@@ -816,12 +816,74 @@ export interface Homework {
   completions?: HomeworkCompletion[];
 }
 
+export type PlacementQuestionType = "MCQ" | "TRUE_FALSE" | "SHORT_ANSWER";
+
 export interface PlacementQuestion {
+  type: PlacementQuestionType;
   prompt: string;
+  // MCQ: options; TRUE_FALSE: [true, false] labels; SHORT_ANSWER: [].
   options: string[];
-  correctIndex: number;
+  // MCQ / TRUE_FALSE. null only while reviewing a PDF import.
+  correctIndex?: number | null;
+  // SHORT_ANSWER: accepted answers separated by "|".
+  answer?: string;
   level: 1 | 2 | 3;
 }
+
+export interface PlacementTestSummary {
+  id: string;
+  title: string;
+  subject: string;
+  language: string;
+  token: string;
+  active: boolean;
+  createdAt: string;
+  questionCount?: number;
+  attempts?: number;
+}
+
+export interface PlacementAttempt {
+  id: string;
+  fullName: string;
+  phone: string | null;
+  correct: number;
+  total: number;
+  percent: number;
+  suggestedLevel: 1 | 2 | 3;
+  createdAt: string;
+}
+
+export interface PublicPlacementTest {
+  title: string;
+  subject: string;
+  language: "UZ" | "RU" | "EN";
+  centerName: string;
+  questions: Array<{ type: PlacementQuestionType; prompt: string; options: string[] }>;
+}
+
+export const placementApi = {
+  list: () => request<PlacementTestSummary[]>("/placement-tests"),
+  create: (data: {
+    subject: string;
+    title?: string;
+    level?: "BEGINNER" | "INTERMEDIATE" | "ADVANCED";
+    groupId?: string;
+    count?: number;
+    language?: "UZ" | "RU" | "EN";
+    questions?: PlacementQuestion[];
+  }) => request<PlacementTestSummary & { source: "ai" | "bank" | "manual"; questions: PlacementQuestion[] }>("/placement-tests", { method: "POST", body: JSON.stringify(data) }),
+  get: (id: string) => request<PlacementTestSummary & { questions: PlacementQuestion[] }>(`/placement-tests/${id}`),
+  attempts: (id: string) => request<PlacementAttempt[]>(`/placement-tests/${id}/attempts`),
+  setActive: (id: string, active: boolean) =>
+    request<PlacementTestSummary>(`/placement-tests/${id}`, { method: "PATCH", body: JSON.stringify({ active }) }),
+  parsePdf: (file: File) => uploadFile<{ questions: PlacementQuestion[] }>("/placement-tests/parse-pdf", file),
+  publicGet: (token: string) => request<PublicPlacementTest>(`/public/placement/${encodeURIComponent(token)}`),
+  publicSubmit: (token: string, data: { fullName: string; phone?: string; answers: string[] }) =>
+    request<{ correct: number; total: number; percent: number; suggestedLevel: 1 | 2 | 3 }>(`/public/placement/${encodeURIComponent(token)}/submit`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+};
 
 export interface LeaderboardEntry {
   rank: number;
@@ -1398,8 +1460,6 @@ export const aiApi = {
     request<{ insight: string }>("/ai/insights", { method: "POST", body: JSON.stringify({ groupId }) }),
   generateMaterial: (data: { subject: string; level?: string; topic: string; type: string; customInstructions?: string }) =>
     request<{ material: string }>("/ai/materials", { method: "POST", body: JSON.stringify(data) }),
-  placementTest: (data: { subject: string; groupId?: string; level?: "BEGINNER" | "INTERMEDIATE" | "ADVANCED"; count?: number; language?: "UZ" | "RU" | "EN" }) =>
-    request<{ subject: string; source: "ai" | "bank"; questions: PlacementQuestion[] }>("/ai/placement-test", { method: "POST", body: JSON.stringify(data) }),
   suggestHomework: (data: { subject?: string; groupName?: string; topic?: string; level?: string; request?: string }) =>
     request<{ title: string; description: string; dueDays?: number }>("/ai/suggest-homework", {
       method: "POST",
@@ -1996,6 +2056,18 @@ export interface PortalAnnouncement {
   createdAt: string;
 }
 
+export interface PortalAvailableExam {
+  id: string;
+  title: string;
+  groupName: string | null;
+  questionCount: number;
+  durationMinutes: number | null;
+  examDate: string | null;
+  taken: boolean;
+  score: number | null;
+  maxScore: number;
+}
+
 export const portalApi = {
   loginWithToken: (token: string) =>
     request<{ accessToken: string; student: any; tenant: any }>("/portal/auth/token", {
@@ -2021,6 +2093,14 @@ export const portalApi = {
       method: "POST",
     }),
   getExams: () => request<PortalExams>("/portal/exams"),
+  getAvailableExams: () => request<PortalAvailableExam[]>("/portal/exams/available"),
+  startExam: (id: string) =>
+    request<{
+      exam: { id: string; title: string; description: string | null; durationMinutes: number | null; maxScore: number; questionCount: number };
+      questions: { id: string; prompt: string; questionType: ExamQuestionType; options: ExamQuestionOption[]; points: number }[];
+    }>(`/portal/exams/${id}/start`),
+  submitExam: (id: string, answers: Record<string, string>) =>
+    request<SubmitAttemptResult>(`/portal/exams/${id}/submit`, { method: "POST", body: JSON.stringify({ answers }) }),
   getInvoices: () => request<Invoice[]>("/portal/invoices"),
   getPayments: () => request<PortalPayments>("/portal/payments"),
   createCheckoutLink: (data: { provider: "CLICK" | "PAYME"; amount?: number; forMonth?: string; invoiceId?: string }) =>

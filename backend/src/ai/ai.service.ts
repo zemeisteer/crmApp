@@ -1,4 +1,4 @@
-import { Inject, Injectable, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
+import { Inject, Injectable, Logger, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { and, eq, isNull } from 'drizzle-orm';
 import Anthropic from '@anthropic-ai/sdk';
@@ -7,10 +7,33 @@ import { groups, payments, attendance } from '../db/schema';
 import { GenerateMaterialDto, PlacementTestDto } from './dto/ai.dto';
 import { bankFor, pickFromBank, type PlacementQuestion } from './placement-bank';
 
+// Cleans AI (or client) supplied placement questions; drops broken ones.
+export function normalizePlacementQuestions(raw: unknown): PlacementQuestion[] {
+  if (!Array.isArray(raw)) return [];
+  const out: PlacementQuestion[] = [];
+  for (const q of raw) {
+    if (!q || typeof q.prompt !== 'string' || !q.prompt.trim()) continue;
+    const level = ([1, 2, 3].includes(q.level) ? q.level : 2) as 1 | 2 | 3;
+    const options = Array.isArray(q.options) ? q.options.map((o: unknown) => String(o)) : [];
+    const type = q.type === 'TRUE_FALSE' || q.type === 'SHORT_ANSWER' ? q.type : 'MCQ';
+    if (type === 'SHORT_ANSWER') {
+      const answer = typeof q.answer === 'string' ? q.answer.trim() : '';
+      if (!answer) continue;
+      out.push({ type, prompt: q.prompt.trim(), options: [], answer, level });
+    } else {
+      const opts = type === 'TRUE_FALSE' && options.length !== 2 ? ['True', 'False'] : options;
+      if (opts.length < 2 || !Number.isInteger(q.correctIndex) || q.correctIndex < 0 || q.correctIndex >= opts.length) continue;
+      out.push({ type, prompt: q.prompt.trim(), options: opts, correctIndex: q.correctIndex, level });
+    }
+  }
+  return out;
+}
+
 const MODEL = 'claude-sonnet-5';
 
 @Injectable()
 export class AiService {
+  private readonly logger = new Logger(AiService.name);
   constructor(
     @Inject(DB) private readonly db: Database,
     private readonly config: ConfigService,
@@ -44,19 +67,28 @@ export class AiService {
     }
     const geminiKey = this.config.get<string>('GEMINI_API_KEY');
     if (geminiKey) {
-      const model = this.config.get<string>('GEMINI_MODEL') || 'gemini-flash-latest';
-      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': geminiKey },
-        body: JSON.stringify({
-          contents: [{ role: 'user', parts: [...(pdf ? [{ inline_data: { mime_type: 'application/pdf', data: pdf.toString('base64') } }] : []), { text: prompt }] }],
-          generationConfig: { maxOutputTokens: Math.max(maxTokens, 2048) },
-        }),
-      });
-      if (!res.ok) {
-        const body = await res.text().catch(() => '');
-        throw new ServiceUnavailableException(`Gemini xatosi (${res.status}): ${body.slice(0, 200)}`);
+      // Gemini's free tier is sometimes overloaded (503/429): retry, then
+      // fall back to the lighter model.
+      const primary = this.config.get<string>('GEMINI_MODEL') || 'gemini-flash-latest';
+      const models = [primary, primary, 'gemini-flash-lite-latest'];
+      let res: Response | null = null;
+      let lastError = '';
+      for (let i = 0; i < models.length; i++) {
+        if (i > 0) await new Promise((r) => setTimeout(r, 1500 * i));
+        res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(models[i])}:generateContent`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-goog-api-key': geminiKey },
+          body: JSON.stringify({
+            contents: [{ role: 'user', parts: [...(pdf ? [{ inline_data: { mime_type: 'application/pdf', data: pdf.toString('base64') } }] : []), { text: prompt }] }],
+            generationConfig: { maxOutputTokens: Math.max(maxTokens, 2048) },
+          }),
+        });
+        if (res.ok) break;
+        lastError = `Gemini xatosi (${res.status}): ${(await res.text().catch(() => '')).slice(0, 200)}`;
+        if (res.status !== 503 && res.status !== 429 && res.status !== 500) break;
+        this.logger.warn(`${lastError} — retrying`);
       }
+      if (!res || !res.ok) throw new ServiceUnavailableException(lastError || 'Gemini javob bermadi');
       const data = (await res.json()) as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> };
       return data.candidates?.[0]?.content?.parts?.map((p) => p.text ?? '').join('') ?? '';
     }
@@ -374,9 +406,9 @@ Javobni FAQAT valid JSON array ko'rinishida ber (hech qanday markdown yoki tushu
     ];
   }
 
-  // Multiple-choice level test. Questions carry a level (1-3) so the page
-  // can suggest a level from the score. Uses Claude when a key is set,
-  // otherwise the built-in English/Math questions.
+  // Level test with mixed question types. Questions carry a level (1-3) so
+  // the result can suggest a level. Uses AI when configured, otherwise the
+  // built-in English/Math questions.
   async placementTest(tenantId: string, dto: PlacementTestDto) {
     let subject = dto.subject.trim();
     let groupLevel: string | null = null;
@@ -395,8 +427,10 @@ Javobni FAQAT valid JSON array ko'rinishida ber (hech qanday markdown yoki tushu
       try {
         const questions = await this.aiPlacementQuestions(subject, count, dto.level ?? null, groupLevel, language);
         if (questions.length >= Math.min(5, count)) return { subject, source: 'ai' as const, questions };
-      } catch {
+        this.logger.warn(`AI placement test for "${subject}" returned ${questions.length} usable questions; using built-in ones`);
+      } catch (e) {
         // fall through to the built-in questions
+        this.logger.warn(`AI placement test for "${subject}" failed: ${(e as Error).message}`);
       }
     }
     const bank = bankFor(subject);
@@ -408,26 +442,29 @@ Javobni FAQAT valid JSON array ko'rinishida ber (hech qanday markdown yoki tushu
     return { subject, source: 'bank' as const, questions: pickFromBank(bank, count, target) };
   }
 
-  private async aiPlacementQuestions(subject: string, count: number, level: string | null, groupLevel: string | null, language: string) {
+  private async aiPlacementQuestions(subject: string, count: number, level: string | null, groupLevel: string | null, language: string): Promise<PlacementQuestion[]> {
     const lang = language === 'RU' ? 'rus' : language === 'EN' ? 'ingliz' : "o'zbek";
     const prompt = `Sen o'quv markazi uchun daraja aniqlash (placement) testini tuzasan.
 Fan: ${subject}
 Kutilayotgan daraja: ${level ?? groupLevel ?? "noma'lum — barcha darajalarni teng qamrab ol"}
 Savollar soni: ${count}
-Savollar va variantlar tili: ${lang} (til fanining o'zi bo'lsa, savollar o'sha tilda bo'lsin).
-Har bir savolda 4 ta variant, faqat bittasi to'g'ri. Savollar osondan qiyinga: level 1 (boshlang'ich), 2 (o'rta), 3 (yuqori), taxminan teng taqsimlangan.
+Savollar tili: ${lang} (til fanining o'zi bo'lsa, savollar o'sha tilda bo'lsin).
+Savol turlari ARALASH bo'lsin, bir xil turdagi savollar ketma-ket kelmasin:
+- taxminan 60% "MCQ": 4 ta variant, bittasi to'g'ri ("correctIndex" 0-3);
+- taxminan 20% "TRUE_FALSE": tasdiq, options ["True","False"] (yoki savol tilida), "correctIndex" 0 = to'g'ri, 1 = noto'g'ri;
+- taxminan 20% "SHORT_ANSWER": bo'sh joyni to'ldirish yoki qisqa javob (1-3 so'z yoki son), options [], "answer" — to'g'ri javob, muqobil yozilishlar "|" bilan ("6|x=6").
+Savollar mavzusi ham xilma-xil bo'lsin (grammatika, lug'at, o'qib tushunish, masala va h.k. — fanga qarab).
+Osondan qiyinga: level 1 (boshlang'ich), 2 (o'rta), 3 (yuqori), taxminan teng taqsimlangan.
 
 Javobni FAQAT JSON massiv ko'rinishida ber, boshqa so'z qo'shma:
-[{"prompt": "...", "options": ["...", "...", "...", "..."], "correctIndex": 0, "level": 1}]`;
-    const text = await this.complete(prompt, 4000);
+[{"type": "MCQ", "prompt": "...", "options": ["...", "...", "...", "..."], "correctIndex": 0, "level": 1},
+ {"type": "TRUE_FALSE", "prompt": "...", "options": ["True", "False"], "correctIndex": 1, "level": 2},
+ {"type": "SHORT_ANSWER", "prompt": "... ______ ...", "options": [], "answer": "went", "level": 2}]`;
+    // Roomy budget: long tests got cut off mid-JSON.
+    const text = await this.complete(prompt, Math.max(8000, count * 800));
     const match = text.match(/\[[\s\S]*\]/);
     if (!match) return [];
-    const raw = JSON.parse(match[0]) as Array<Partial<PlacementQuestion>>;
-    return raw
-      .filter((q) => typeof q.prompt === 'string' && Array.isArray(q.options) && q.options.length === 4
-        && Number.isInteger(q.correctIndex) && q.correctIndex! >= 0 && q.correctIndex! < 4)
-      .slice(0, count)
-      .map((q) => ({ prompt: q.prompt!, options: q.options!.map(String), correctIndex: q.correctIndex!, level: ([1, 2, 3].includes(q.level as number) ? q.level : 2) as 1 | 2 | 3 }));
+    return normalizePlacementQuestions(JSON.parse(match[0])).slice(0, count);
   }
 
   // Reads a test from a PDF and returns its questions in the question-bank

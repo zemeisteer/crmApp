@@ -78,6 +78,25 @@ export class PortalController {
   }
 
   @UseGuards(PortalAuthGuard)
+  @Get('exams/available')
+  availableExams(@PortalUser() user: PortalUserPayload) {
+    return this.service.getAvailableExams(user.studentId, user.tenantId);
+  }
+
+  @UseGuards(PortalAuthGuard)
+  @Get('exams/:id/start')
+  startExam(@PortalUser() user: PortalUserPayload, @Param('id') id: string) {
+    return this.service.startExam(user.studentId, user.tenantId, id);
+  }
+
+  @UseGuards(PortalAuthGuard)
+  @Post('exams/:id/submit')
+  submitExam(@PortalUser() user: PortalUserPayload, @Param('id') id: string, @Body() body: { answers?: Record<string, string> }) {
+    const answers = body?.answers && typeof body.answers === 'object' ? body.answers : {};
+    return this.service.submitExam(user.studentId, user.tenantId, id, answers);
+  }
+
+  @UseGuards(PortalAuthGuard)
   @Get('invoices')
   getInvoices(@PortalUser() user: PortalUserPayload) {
     return this.service.getInvoices(user.studentId, user.tenantId);
