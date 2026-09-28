@@ -67,11 +67,17 @@ export class StudentsService {
       },
     });
     if (!student) throw new NotFoundException("O'quvchi topilmadi");
-    // How the student found the center, when they came through admissions.
+    // Payment history is finance data, not part of a teacher's view.
+    if (scope) return { ...student, payments: [] };
+    return student;
+  }
+
+  // Profile page: the student plus how they found the center, when they
+  // came through admissions (lead source).
+  async findProfile(tenantId: string, id: string, viewer?: { role?: string; userId?: string }) {
+    const student = await this.findOne(tenantId, id, viewer);
     const [origin] = await this.db.select({ leadId: leads.id, source: leads.source, convertedAt: leads.convertedAt })
       .from(leads).where(and(eq(leads.tenantId, tenantId), eq(leads.convertedStudentId, id))).limit(1);
-    // Payment history is finance data, not part of a teacher's view.
-    if (scope) return { ...student, origin: origin ?? null, payments: [] };
     return { ...student, origin: origin ?? null };
   }
 

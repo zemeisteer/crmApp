@@ -2,10 +2,10 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ConflictException, NotFoundException } from '@nestjs/common';
 import { StudentsService } from './students.service';
 
-// Awaitable stand-in for a drizzle select builder (select().from().where().for()).
+// Awaitable stand-in for a drizzle select builder (select().from().where().for()/.limit()).
 function selectChain(result: unknown) {
   const c: Record<string, unknown> = {};
-  for (const m of ['from', 'where', 'for', 'innerJoin']) c[m] = vi.fn(() => c);
+  for (const m of ['from', 'where', 'for', 'innerJoin', 'limit']) c[m] = vi.fn(() => c);
   // oxlint-disable-next-line unicorn/no-thenable -- deliberately awaitable, like a drizzle builder
   c.then = (res: (v: unknown) => unknown, rej: (e: unknown) => unknown) => Promise.resolve(result).then(res, rej);
   return c;

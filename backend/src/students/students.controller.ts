@@ -46,7 +46,7 @@ export class StudentsController {
     @CurrentUser('sub') userId: string,
     @Param('id') id: string,
   ) {
-    return this.service.findOne(tenantId, id, { role, userId });
+    return this.service.findProfile(tenantId, id, { role, userId });
   }
 
   @Roles('ADMIN')
