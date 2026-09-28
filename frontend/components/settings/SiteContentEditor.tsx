@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { ApiError, fileUrl, placementApi, tenantsApi, type PlacementTestSummary, type SiteContent } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { useLanguage } from "@/lib/i18n-context";
+import Select from "@/components/Select";
 
 const ACCENT = "#4F46E5";
 const ICONS = ["✅", "🎯", "👩‍🏫", "📚", "🏆", "💡", "🕒", "💬", "📈", "🧑‍🎓", "🏫", "💳", "🌍", "🤝", "⭐", "🎓"];
@@ -125,9 +126,7 @@ export default function SiteContentEditor() {
         {rows("advantages", 8, { icon: "✅", title: "", text: "" }, (r, u) => (
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             <div style={{ display: "flex", gap: 8 }}>
-              <select className="field-input" value={r.icon} onChange={(e) => u({ icon: e.target.value })} style={{ width: 70, flexShrink: 0 }}>
-                {ICONS.map((i) => <option key={i} value={i}>{i}</option>)}
-              </select>
+              <Select value={r.icon} onChange={(v) => u({ icon: v })} options={ICONS.map((i) => ({ value: i, label: i }))} style={{ width: 76 }} />
               <input className="field-input" value={r.title} maxLength={80} onChange={(e) => u({ title: e.target.value })} placeholder={t("site.advTitlePh")} />
             </div>
             <input className="field-input" value={r.text} maxLength={300} onChange={(e) => u({ text: e.target.value })} placeholder={t("site.advTextPh")} />
@@ -148,8 +147,11 @@ export default function SiteContentEditor() {
       </div>
 
       <div style={card}>
-        <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 700, fontSize: 15, marginBottom: 12 }}>{t("site.secTestimonials")}</div>
-        {rows("testimonials", 10, { name: "", role: "", text: "" }, (r, u) => (
+        <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 700, fontSize: 15 }}>{t("site.secTestimonials")}</div>
+        <div style={{ fontSize: 12.5, color: site.testimonials.length >= 10 ? "#1FA463" : "#B45309", margin: "4px 0 12px", fontWeight: 600 }}>
+          {t("site.testimonialsHint").replace("{n}", String(site.testimonials.length))}
+        </div>
+        {rows("testimonials", 20, { name: "", role: "", text: "" }, (r, u) => (
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
               <input className="field-input" value={r.name} maxLength={80} onChange={(e) => u({ name: e.target.value })} placeholder={t("site.tstNamePh")} />
@@ -205,10 +207,12 @@ export default function SiteContentEditor() {
           )}
           <div>
             <div style={lbl}>{t("site.placement")}</div>
-            <select className="field-input" value={site.placementTestId ?? ""} onChange={(e) => set({ placementTestId: e.target.value || null })}>
-              <option value="">{t("site.placementNone")}</option>
-              {tests.filter((x) => x.active).map((x) => <option key={x.id} value={x.id}>{x.title}</option>)}
-            </select>
+            <Select
+              value={site.placementTestId ?? ""}
+              onChange={(v) => set({ placementTestId: v || null })}
+              options={[{ value: "", label: t("site.placementNone") }, ...tests.filter((x) => x.active).map((x) => ({ value: x.id, label: x.title }))]}
+              style={{ width: "100%" }}
+            />
             <div style={{ fontSize: 12, color: "#8A8D96", marginTop: 4 }}>{t("site.placementHint")}</div>
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>

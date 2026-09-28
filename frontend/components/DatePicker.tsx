@@ -50,7 +50,7 @@ export default function DatePicker({
   const [viewDate, setViewDate] = useState(() => selected || new Date());
   const ref = useRef<HTMLDivElement>(null);
   // Opens upward / right-aligned when there is no room (phones, modals).
-  const place = usePopoverPlacement(ref, open, 330);
+  const place = usePopoverPlacement(ref, open, 360, 290);
 
   useEffect(() => {
     if (open && ref.current) {

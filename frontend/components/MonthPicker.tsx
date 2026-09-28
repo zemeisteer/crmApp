@@ -31,7 +31,7 @@ export default function MonthPicker({
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   // Opens upward / right-aligned when there is no room (phones, modals).
-  const place = usePopoverPlacement(ref, open, 260);
+  const place = usePopoverPlacement(ref, open, 280, 250);
   const [y, m] = value ? value.split("-").map(Number) : [new Date().getFullYear(), new Date().getMonth() + 1];
   const [viewYear, setViewYear] = useState(y || new Date().getFullYear());
 
