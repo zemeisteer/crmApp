@@ -13,6 +13,7 @@ import { homeworkApi, groupsApi, aiApi, Homework, Group, ApiError, fileUrl, type
 import { useLanguage } from "@/lib/i18n-context";
 import { matchesSubject, extractUniqueSubjects } from "@/lib/subject";
 import { formatDate as fmtDate } from "@/lib/format-date";
+import { localDateStr } from "@/lib/date";
 
 const ACCENT = "#4F46E5";
 
@@ -514,6 +515,30 @@ function HomeworkContent() {
       .map((g) => ({ label: g.name, value: Math.round((g.completed / g.total) * 100) }));
   }, [items]);
 
+  // Demo-style summary: per homework, how many of the group's students
+  // handed it in, and whether it is active, due today, done or overdue.
+  const today = localDateStr();
+  const hwState = (h: Homework) => {
+    const size = groups.find((g) => g.id === h.groupId)?.studentCount ?? 0;
+    const done = (h.completions || []).filter((c) => c.completed).length;
+    const due = h.dueDate ? localDateStr(new Date(h.dueDate)) : null;
+    const status: "DONE" | "TODAY" | "OVERDUE" | "ACTIVE" =
+      size > 0 && done >= size ? "DONE" : due === today ? "TODAY" : due && due < today ? "OVERDUE" : "ACTIVE";
+    return { size, done, status };
+  };
+  const hwStats = useMemo(() => {
+    const states = items.map((h) => hwState(h));
+    const open = states.filter((x) => x.status === "ACTIVE" || x.status === "TODAY");
+    const rated = states.filter((x) => x.size > 0);
+    return {
+      active: open.length,
+      dueToday: states.filter((x) => x.status === "TODAY").length,
+      avgDone: rated.length ? Math.round((rated.reduce((s2, x) => s2 + Math.min(1, x.done / x.size), 0) / rated.length) * 100) : null,
+      notSubmitted: open.reduce((s2, x) => s2 + Math.max(0, x.size - x.done), 0),
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items, groups, today]);
+
   const homeworkCountChart = useMemo(() => {
     const byGroup: Record<string, number> = {};
     for (const h of items) {
@@ -589,6 +614,21 @@ function HomeworkContent() {
         ) : (
           <>
             {items.length > 0 && (
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0,1fr))", gap: 16, marginBottom: 16 }}>
+                {[
+                  { label: t("hws.active"), value: String(hwStats.active) },
+                  { label: t("hws.dueToday"), value: String(hwStats.dueToday), warn: hwStats.dueToday > 0 },
+                  { label: t("hws.avgDone"), value: hwStats.avgDone === null ? "—" : `${hwStats.avgDone}%` },
+                  { label: t("hws.notSubmitted"), value: String(hwStats.notSubmitted), danger: hwStats.notSubmitted > 0 },
+                ].map((c) => (
+                  <div key={c.label} style={{ background: c.danger ? "#FDEBEC" : "#fff", border: `1px solid ${c.danger ? "#F6D2D6" : "#EAE8E2"}`, borderRadius: 14, padding: 18 }}>
+                    <div style={{ fontSize: 12, color: c.danger ? "#B23A47" : "#8A8D96" }}>{c.label}</div>
+                    <div style={{ fontSize: 24, fontWeight: 800, fontFamily: "'Manrope', sans-serif", marginTop: 4, color: c.danger ? "#B23A47" : c.warn ? "#B45309" : "#181A1F" }}>{c.value}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+            {items.length > 0 && (
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 20 }}>
                 <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 20 }}>
                   <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 14 }}>{t("homework.completionRateTitle")}</div>
@@ -614,6 +654,15 @@ function HomeworkContent() {
                   {pageItems.map((h) => {
                     const completions = h.completions || [];
                     const completedCount = completions.filter((c) => c.completed).length;
+                    const st = hwState(h);
+                    const badge =
+                      st.status === "DONE"
+                        ? { text: t("hws.stDone"), color: "#1FA463", bg: "#E9F8EF" }
+                        : st.status === "TODAY"
+                          ? { text: t("hws.stToday"), color: "#B45309", bg: "#FEF3C7" }
+                          : st.status === "OVERDUE"
+                            ? { text: t("hws.stOverdue"), color: "#B23A47", bg: "#FDEBEC" }
+                            : { text: t("hws.stActive"), color: ACCENT, bg: "#EEF0FF" };
                     return (
                       <div key={h.id} style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 20, display: "flex", flexDirection: "column", gap: 10 }}>
                         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
@@ -632,6 +681,19 @@ function HomeworkContent() {
                           </button>
                         </div>
                         {h.description && <div style={{ fontSize: 13.5, lineHeight: 1.6, color: "#4A4E58" }}>{h.description}</div>}
+                        <div>
+                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 6 }}>
+                            <span style={{ fontSize: 12.5, fontWeight: 700, color: "#4A4E58" }}>
+                              {st.size > 0 ? t("hws.submitted").replace("{done}", String(st.done)).replace("{total}", String(st.size)) : t("hws.noStudents")}
+                            </span>
+                            <span style={{ fontSize: 11.5, fontWeight: 700, color: badge.color, background: badge.bg, padding: "3px 9px", borderRadius: 100, whiteSpace: "nowrap" }}>{badge.text}</span>
+                          </div>
+                          {st.size > 0 && (
+                            <div style={{ height: 6, background: "#F1F0EC", borderRadius: 4, overflow: "hidden" }}>
+                              <div style={{ width: `${Math.min(100, Math.round((st.done / st.size) * 100))}%`, height: "100%", background: badge.color, borderRadius: 4 }} />
+                            </div>
+                          )}
+                        </div>
                         <div style={{ marginTop: "auto", display: "flex", alignItems: "center", justifyContent: "space-between", paddingTop: 10, borderTop: "1px solid #F1F0EC", flexWrap: "wrap", gap: 8 }}>
                           <div style={{ fontSize: 12, color: "#8A8D96" }}>{t("homework.due")}: {formatDate(h.dueDate)}</div>
                           {h.attachmentPath && (
