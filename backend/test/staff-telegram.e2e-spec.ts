@@ -7,6 +7,7 @@ import { AppModule } from '../src/app.module.js';
 import { DB, type Database } from '../src/db/db.module.js';
 import { telegramLinkTokens, users } from '../src/db/schema.js';
 import { TelegramService } from '../src/telegram/telegram.service.js';
+import { TelegramController } from '../src/telegram/telegram.controller.js';
 
 // Staff member links their own Telegram for CRM reminders through a
 // one-time bot deep link. Telegram itself is simulated by posting updates
@@ -24,8 +25,12 @@ describe('Staff Telegram linking (e2e)', () => {
   const latestToken = async () =>
     (await db.select({ token: telegramLinkTokens.token }).from(telegramLinkTokens)
       .where(and(eq(telegramLinkTokens.userId, ownerId))).orderBy(desc(telegramLinkTokens.createdAt)).limit(1))[0].token;
-  const botStart = (payload: string) =>
-    http().post('/api/telegram/webhook').send({ update_id: 1, message: { text: `/start ${payload}`, chat: { id: Number(chatId) } } }).expect(201);
+  // The webhook answers at once and handles the update after; wait for it.
+  const settle = () => app.get(TelegramController).idle();
+  const botStart = async (payload: string) => {
+    await http().post('/api/telegram/webhook').send({ update_id: 1, message: { text: `/start ${payload}`, chat: { id: Number(chatId) } } }).expect(201);
+    await settle();
+  };
   const chatOf = async (id: string) => (await db.select({ c: users.telegramChatId }).from(users).where(eq(users.id, id)))[0].c;
 
   beforeAll(async () => {
@@ -74,6 +79,7 @@ describe('Staff Telegram linking (e2e)', () => {
     try {
       for (const text of ['/start', '📊 Bugungi holat', '🆕 Yangi arizalar', '📞 Qayta aloqa', '🎓 Sinov darslari']) {
         await http().post('/api/telegram/webhook').send({ update_id: 2, message: { text, chat: { id: Number(chatId) } } }).expect(201);
+        await settle();
       }
     } finally {
       tg.sendMessage = original;

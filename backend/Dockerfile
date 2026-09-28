@@ -27,10 +27,12 @@ COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/drizzle ./drizzle
 COPY --from=builder /app/drizzle.config.ts ./drizzle.config.ts
 COPY --from=builder /app/assets ./assets
+COPY --from=builder /app/scripts/migrate.cjs ./scripts/migrate.cjs
 
 RUN mkdir -p /app/uploads && chown -R node:node /app
 
 USER node
 EXPOSE 4000
 
-CMD ["node", "dist/main.js"]
+# Pending SQL migrations first, then the API.
+CMD ["sh", "-c", "node scripts/migrate.cjs && node dist/main.js"]

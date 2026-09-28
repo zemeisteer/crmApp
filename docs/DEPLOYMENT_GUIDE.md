@@ -86,33 +86,51 @@ nano .env
 
 ---
 
-## 5. SSL Sertifikatini O'rnatish (Let's Encrypt Certbot)
+## 5. SSL Sertifikatini O'rnatish (Let's Encrypt, wildcard)
 
-Avtomatlashtirilgan SSL sozlash skriptini ishga tushiring:
+Har bir markaz sayti o'z subdomenida ochiladi (`<markaz>.DOMAIN`), shuning uchun sertifikat `DOMAIN` va `*.DOMAIN` uchun olinadi. Wildcard sertifikat faqat DNS orqali tasdiqlanadi:
+
+- **Tavsiya:** domen DNS'ini Cloudflare'ga (bepul) o'tkazing, Cloudflare'da *Zone → DNS → Edit* huquqli API token yarating va `.env` ga `CLOUDFLARE_API_TOKEN=` qilib yozing. Sertifikat avtomatik olinadi va avtomatik yangilanadi.
+- Token bo'lmasa, skript `_acme-challenge.DOMAIN` uchun TXT yozuvni ko'rsatadi — uni DNS panelga qo'lda qo'shasiz. Bu holda sertifikat 90 kunda tugaydi va skriptni qayta ishga tushirish kerak.
 
 ```bash
 chmod +x scripts/production/*.sh
 ./scripts/production/init-ssl.sh
 ```
 
-Ushbu skript:
-1. Vaqtinchalik HTTP serverni ishga tushiradi.
-2. Certbot orqali bepul Let's Encrypt SSL sertifikatini yuklab oladi.
-3. Nginx'ni to'liq HTTPS va HTTP/2 rejimiga o'tkazadi.
+Nginx har 12 soatda qayta yuklanadi, yangilangan sertifikat o'zi ulanadi.
 
 ---
 
-## 6. Ma'lumotlar Bazasini Migratsiya Qilish & Ishga Tushirish
-
-Barcha konteynerlarni yig'ish va fonda ishga tushirish:
+## 6. Ishga Tushirish (Migratsiyalar avtomatik)
 
 ```bash
-# 1. Barcha xizmatlarni (Postgres, Redis, Backend, Frontend, Nginx, DB Backup) ko'tarish
 docker compose -f docker-compose.prod.yml up -d --build
-
-# 2. Ma'lumotlar bazasi jadvallarini yaratish (Migratsiya)
-docker compose -f docker-compose.prod.yml exec backend npm run db:push
 ```
+
+Backend har ishga tushganda `backend/drizzle/*.sql` dagi hali qo'llanmagan migratsiyalarni tartib bilan qo'llaydi (`app_migrations` jadvalida qayd etiladi). Yangi versiyani chiqarish:
+
+```bash
+git pull && docker compose -f docker-compose.prod.yml up -d --build
+```
+
+Holatni ko'rish: `docker compose -f docker-compose.prod.yml exec backend node scripts/migrate.cjs --status`
+
+> Agar baza avval `db:push` bilan yaratilgan bo'lsa (jadvallar bor, `app_migrations` yo'q), backend ishga tushmaydi va ogohlantiradi. Sxema dolzarb bo'lsa, bir marta: `docker compose -f docker-compose.prod.yml run --rm backend node scripts/migrate.cjs --baseline`
+
+### Telegram bot
+
+`.env` da `TELEGRAM_BOT_TOKEN`, `TELEGRAM_BOT_USERNAME` va `TELEGRAM_WEBHOOK_SECRET` (`openssl rand -hex 24`) bo'lsin, so'ng:
+
+```bash
+./scripts/production/set-telegram-webhook.sh
+```
+
+Production'da `TELEGRAM_WEBHOOK_SECRET` majburiy — usiz bot xabarlari qabul qilinmaydi.
+
+### AI (o'qituvchi materiallari va o'quvchilar uchun AI ustoz)
+
+`.env` ga `GEMINI_API_KEY` (bepul, aistudio.google.com) yoki `ANTHROPIC_API_KEY` yozing. O'quvchi kuniga nechta savol berishini har bir markaz Sozlamalar'da belgilaydi.
 
 ---
 

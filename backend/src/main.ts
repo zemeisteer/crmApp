@@ -9,6 +9,7 @@ import { ValidationPipe } from '@nestjs/common';
 import * as Sentry from '@sentry/node';
 import pinoHttp from 'pino-http';
 import { AppModule } from './app.module';
+import { corsOriginChecker } from './common/cors';
 
 if (process.env.SENTRY_DSN) {
   Sentry.init({ dsn: process.env.SENTRY_DSN, environment: process.env.NODE_ENV || 'development' });
@@ -16,7 +17,12 @@ if (process.env.SENTRY_DSN) {
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
-  app.enableCors({ origin: true, credentials: true });
+  // Only the app's own domain and center subdomains (plus localhost in dev).
+  const corsAllowed = corsOriginChecker(process.env);
+  app.enableCors({
+    origin: (origin, cb) => cb(null, corsAllowed(origin)),
+    credentials: true,
+  });
 
   // Uploaded homework/exam attachments — local disk in dev. For a
   // multi-instance or ephemeral-filesystem production deploy, swap this

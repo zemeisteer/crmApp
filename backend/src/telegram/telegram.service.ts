@@ -260,7 +260,8 @@ export class TelegramService {
   // forged updates to the public webhook URL.
   isValidWebhookSecret(header: string | undefined) {
     const secret = this.config.get<string>('TELEGRAM_WEBHOOK_SECRET');
-    if (!secret) return true;
+    // Production must set a secret: otherwise anyone could post fake updates.
+    if (!secret) return process.env.NODE_ENV !== 'production';
     if (!header) return false;
     const a = Buffer.from(header);
     const b = Buffer.from(secret);

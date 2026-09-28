@@ -26,6 +26,9 @@ async function main() {
   try {
     await client.query('BEGIN');
     for (const stmt of statements) await client.query(stmt);
+    // Keep the migrate.cjs journal in step when it exists.
+    const { rows } = await client.query("SELECT to_regclass('public.app_migrations') AS m");
+    if (rows[0].m) await client.query('INSERT INTO app_migrations (tag) VALUES ($1) ON CONFLICT DO NOTHING', [path.basename(file)]);
     await client.query('COMMIT');
     console.log(`Applied ${path.basename(file)} (${statements.length} statements)`);
   } catch (err) {

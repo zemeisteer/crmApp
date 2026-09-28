@@ -57,11 +57,22 @@ services:
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be defined}
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
       PORT: 4000
-      FRONTEND_URL: ${FRONTEND_URL:-https://crmapp.uz}
+      FRONTEND_URL: ${FRONTEND_URL:-https://${DOMAIN}}
+      # Main domain: centers live on <sub>.${DOMAIN}; also limits CORS.
+      ROOT_DOMAIN: ${DOMAIN:?DOMAIN must be defined}
       # Optional external integrations
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-}
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
       TELEGRAM_BOT_USERNAME: ${TELEGRAM_BOT_USERNAME:-}
+      TELEGRAM_WEBHOOK_SECRET: ${TELEGRAM_WEBHOOK_SECRET:-}
+      ESKIZ_API_TOKEN: ${ESKIZ_API_TOKEN:-}
+      ESKIZ_SENDER: ${ESKIZ_SENDER:-}
+      PLAYMOBILE_API_TOKEN: ${PLAYMOBILE_API_TOKEN:-}
+      PLAYMOBILE_ORIGINATOR: ${PLAYMOBILE_ORIGINATOR:-}
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      EMAIL_FROM: ${EMAIL_FROM:-}
       CLICK_MERCHANT_ID: ${CLICK_MERCHANT_ID:-}
       CLICK_SERVICE_ID: ${CLICK_SERVICE_ID:-}
       CLICK_SECRET_KEY: ${CLICK_SECRET_KEY:-}
@@ -96,6 +107,7 @@ services:
       target: runner
       args:
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-/api}
+        NEXT_PUBLIC_ROOT_DOMAIN: ${DOMAIN:?DOMAIN must be defined}
     container_name: talimcrm_frontend
     restart: always
     depends_on:
@@ -112,6 +124,8 @@ services:
     image: nginx:1.27-alpine
     container_name: talimcrm_nginx
     restart: always
+    # Reload every 12h so renewed certificates are picked up.
+    command: ["/bin/sh", "-c", "while :; do sleep 12h; nginx -s reload; done & exec nginx -g 'daemon off;'"]
     ports:
       - "80:80"
       - "443:443"
@@ -128,7 +142,7 @@ services:
       - talimcrm_net
 
   certbot:
-    image: certbot/certbot:latest
+    image: certbot/dns-cloudflare:latest
     container_name: talimcrm_certbot
     restart: unless-stopped
     volumes:

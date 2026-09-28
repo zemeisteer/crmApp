@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, ForbiddenException, Get, Headers, Post, UnauthorizedException, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, ForbiddenException, Get, Headers, Logger, Post, UnauthorizedException, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../common/jwt-auth.guard';
 import { RolesGuard } from '../common/roles.guard';
 import { Roles } from '../common/roles.decorator';
@@ -7,6 +7,14 @@ import { TelegramService } from './telegram.service';
 
 @Controller('telegram')
 export class TelegramController {
+  private readonly logger = new Logger(TelegramController.name);
+  private readonly inFlight = new Set<Promise<unknown>>();
+
+  // Resolves when every update received so far has been handled.
+  async idle() {
+    await Promise.all([...this.inFlight]);
+  }
+
   constructor(private readonly service: TelegramService) {}
 
   // Called by Telegram itself (set via setWebhook) — no auth, Telegram
@@ -14,7 +22,14 @@ export class TelegramController {
   @Post('webhook')
   webhook(@Body() update: any, @Headers('x-telegram-bot-api-secret-token') secret?: string) {
     if (!this.service.isValidWebhookSecret(secret)) throw new UnauthorizedException();
-    return this.service.handleUpdate(update).then(() => ({ ok: true }));
+    // Answer Telegram at once: a slow reply (the AI tutor) would otherwise
+    // time out and Telegram would deliver the same message again.
+    const job = this.service
+      .handleUpdate(update)
+      .catch((err) => this.logger.error(`Telegram update failed: ${(err as Error).message}`))
+      .finally(() => this.inFlight.delete(job));
+    this.inFlight.add(job);
+    return { ok: true };
   }
 
   // ---- The signed-in staff member's own Telegram (CRM reminders) ----
