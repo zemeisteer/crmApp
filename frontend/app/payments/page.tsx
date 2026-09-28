@@ -643,10 +643,11 @@ function PaymentsContent() {
   const monthPaid = payments
     .filter((p) => p.forMonth === currentMonth && p.status === "PAID")
     .reduce((sum, p) => sum + p.amount, 0);
-  const pendingAmount = payments
-    .filter((p) => p.status === "PENDING")
-    .reduce((sum, p) => sum + p.amount, 0);
-  const failedCount = payments.filter((p) => p.status === "FAILED").length;
+  // Same meaning as the dashboard: money still expected for the selected
+  // month, and how many students owe it (previously PENDING payments of
+  // any month and FAILED attempts, which read as 0 while students owed).
+  const pendingAmount = debtorsData?.totalDebt ?? 0;
+  const failedCount = debtorsData?.debtorCount ?? 0;
 
   // Groups of the center's students, for the group filters.
   const groupOptions = useMemo(() => {
@@ -1120,7 +1121,7 @@ function PaymentsContent() {
                 }}
               >
                 <div style={{ fontSize: 12, color: failedCount > 0 ? "#B23A47" : "#8A8D96" }}>
-                  {t("payments.statOverdue")}
+                  {t("dashboard.statDebtors")}
                 </div>
                 <div
                   style={{
