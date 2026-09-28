@@ -1,5 +1,6 @@
 "use client";
 
+import PortalHome from "@/components/portal/PortalHome";
 import { formatDateTime } from "@/lib/format-date";
 import { useEffect, useState } from "react";
 import { useLanguage } from "@/lib/i18n-context";
@@ -490,184 +491,15 @@ export default function StudentPortalPage() {
         {/* TAB: HOME                                                                 */}
         {/* ========================================================================= */}
         {activeTab === "home" && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-            {/* Student Welcome Card */}
-            <div
-              style={{
-                background: "linear-gradient(135deg, #4F46E5 0%, #3730A3 100%)",
-                borderRadius: 20,
-                padding: 24,
-                color: "#fff",
-                boxShadow: "0 10px 24px rgba(79, 70, 229, 0.25)",
-              }}
-            >
-              <div style={{ fontSize: 13, color: "#C7D2FE", marginBottom: 4 }}>
-                {t("ptl.welcome")}
-              </div>
-              <h2 style={{ fontSize: 22, fontWeight: 900, margin: "0 0 12px 0" }}>
-                {me?.fullName}
-              </h2>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                {me?.enrollments.map((e) => (
-                  <span
-                    key={e.id}
-                    style={{
-                      background: "rgba(255, 255, 255, 0.18)",
-                      backdropFilter: "blur(8px)",
-                      padding: "4px 10px",
-                      borderRadius: 8,
-                      fontSize: 12,
-                      fontWeight: 600,
-                    }}
-                  >
-                    📚 {e.group.name} ({e.group.subject})
-                  </span>
-                ))}
-              </div>
-            </div>
-
-            {/* Quick Metrics */}
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-                gap: 12,
-              }}
-            >
-              <div
-                style={{
-                  background: "#fff",
-                  border: "1px solid #E2E8F0",
-                  borderRadius: 16,
-                  padding: 18,
-                }}
-              >
-                <div style={{ fontSize: 12, color: "#64748B" }}>{t("ptl.attendanceRate")}</div>
-                <div
-                  style={{
-                    fontSize: 24,
-                    fontWeight: 900,
-                    color: (attendance?.rate || 100) >= 80 ? "#10B981" : "#EF4444",
-                    marginTop: 4,
-                  }}
-                >
-                  {attendance?.rate ?? 100}%
-                </div>
-              </div>
-
-              <div
-                style={{
-                  background: "#fff",
-                  border: "1px solid #E2E8F0",
-                  borderRadius: 16,
-                  padding: 18,
-                }}
-              >
-                <div style={{ fontSize: 12, color: "#64748B" }}>{t("ptl.monthPayment")}</div>
-                <div style={{ marginTop: 6 }}>
-                  {payments?.status === "PAID" && (
-                    <span
-                      style={{
-                        background: "#DCFCE7",
-                        color: "#15803D",
-                        fontSize: 13,
-                        fontWeight: 700,
-                        padding: "4px 10px",
-                        borderRadius: 8,
-                      }}
-                    >
-                      {t("ptl.paid")}
-                    </span>
-                  )}
-                  {payments?.status === "PARTIAL" && (
-                    <span
-                      style={{
-                        background: "#FEF3C7",
-                        color: "#B45309",
-                        fontSize: 13,
-                        fontWeight: 700,
-                        padding: "4px 10px",
-                        borderRadius: 8,
-                      }}
-                    >
-                      {t("ptl.partial")} ({formatMoney(payments.debtAmount)} {t("ptl.debt")})
-                    </span>
-                  )}
-                  {payments?.status === "UNPAID" && (
-                    <span
-                      style={{
-                        background: "#FEE2E2",
-                        color: "#DC2626",
-                        fontSize: 13,
-                        fontWeight: 700,
-                        padding: "4px 10px",
-                        borderRadius: 8,
-                      }}
-                    >
-                      {t("ptl.unpaid")} ({formatMoney(payments?.debtAmount || 0)} {t("ptl.debt")})
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              <div
-                style={{
-                  background: "#fff",
-                  border: "1px solid #E2E8F0",
-                  borderRadius: 16,
-                  padding: 18,
-                }}
-              >
-                <div style={{ fontSize: 12, color: "#64748B" }}>{t("ptl.homework")}</div>
-                <div
-                  style={{
-                    fontSize: 24,
-                    fontWeight: 900,
-                    color: ACCENT,
-                    marginTop: 4,
-                  }}
-                >
-                  {homework.filter((h) => !h.completed).length} ta topshirilmagan
-                </div>
-              </div>
-            </div>
-
-            {/* Announcements Card */}
-            {announcements.length > 0 && (
-              <div
-                style={{
-                  background: "#fff",
-                  border: "1px solid #E2E8F0",
-                  borderRadius: 16,
-                  padding: 20,
-                }}
-              >
-                <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 12 }}>
-                  {t("ptl.latestNews")}
-                </div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                  {announcements.slice(0, 3).map((a) => (
-                    <div
-                      key={a.id}
-                      style={{
-                        background: "#F8FAFC",
-                        border: "1px solid #EDF2F7",
-                        borderRadius: 12,
-                        padding: 14,
-                      }}
-                    >
-                      <div style={{ fontSize: 13.5, fontWeight: 700, color: "#1E293B" }}>
-                        {a.title}
-                      </div>
-                      <div style={{ fontSize: 12.5, color: "#475569", marginTop: 4 }}>
-                        {a.content}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
+          <PortalHome
+            me={me}
+            schedule={schedule}
+            attendance={attendance}
+            homework={homework}
+            payments={payments}
+            announcements={announcements}
+            onOpen={(tab) => setActiveTab(tab)}
+          />
         )}
 
         {/* ========================================================================= */}
