@@ -173,6 +173,20 @@ describe('Group capacity & schedule day alignment (e2e)', () => {
     const graded = (await http().post(`/api/placement-tests/${created.id}/attempts/${attempts[0].id}/grade`).set(auth()).send({ scores: { 4: 3 } }).expect(201)).body;
     expect(graded).toMatchObject({ reviewStatus: 'DONE', earned: 8, total: 9, percent: 89 });
 
+    // The applicant is filed as a lead, with the result on its card and
+    // timeline; a second attempt with the same phone joins the same lead.
+    const leadId = attempts[0].leadId as string;
+    expect(leadId).toBeTruthy();
+    const lead = (await http().get(`/api/leads/${leadId}`).set(auth()).expect(200)).body;
+    expect(lead).toMatchObject({ fullName: 'New Kid', source: 'WEBSITE', status: 'NEW', origin: { channel: 'PLACEMENT_TEST' } });
+    expect(lead.placementAttempts[0]).toMatchObject({ testTitle: 'Level check', percent: 89, reviewStatus: 'DONE' });
+    await http().post(`/api/public/placement/${created.token}/submit`)
+      .send({ fullName: 'New Kid', phone: '+998 90 111 22 33', answers: ['A', '', '', '', ''] }).expect(201);
+    const again = (await http().get(`/api/leads/${leadId}`).set(auth()).expect(200)).body;
+    expect(again.placementAttempts).toHaveLength(2);
+    const timeline = (await http().get(`/api/leads/${leadId}/timeline`).set(auth()).expect(200)).body as Array<{ metadata?: { kind?: string } }>;
+    expect(timeline.filter((a) => a.metadata?.kind === 'PLACEMENT_TEST')).toHaveLength(2);
+
     // Rename, then closing the test stops the link.
     await http().patch(`/api/placement-tests/${created.id}`).set(auth()).send({ title: 'B1 check' }).expect(200);
     await http().patch(`/api/placement-tests/${created.id}`).set(auth()).send({ active: false }).expect(200);

@@ -16,6 +16,8 @@ import {
   leads,
   leadTrials,
   organizationMemberships,
+  placementAttempts,
+  placementTests,
   subjects,
   tenants,
   users,
@@ -222,7 +224,39 @@ export class LeadsService {
       const m = await this.activeAssignableMembership(this.db, tenantId, lead.assignedManagerUserId);
       assignedManagerActive = !!m;
     }
-    return { ...lead, assignedManagerActive, allowedTransitions: allowedTransitions(lead.status) };
+
+    // Where the lead came from: who added it (staff) or which public
+    // channel (site form, level test), with ad tags from the landing URL.
+    const [[created], [createdBy], attempts] = await Promise.all([
+      this.db.select({ metadata: leadActivities.metadata, occurredAt: leadActivities.occurredAt }).from(leadActivities)
+        .where(and(eq(leadActivities.tenantId, tenantId), eq(leadActivities.leadId, id), sql`${leadActivities.metadata}->>'kind' = 'CREATED'`))
+        .orderBy(asc(leadActivities.occurredAt)).limit(1),
+      lead.createdByUserId
+        ? this.db.select({ id: users.id, fullName: users.fullName }).from(users).where(eq(users.id, lead.createdByUserId))
+        : Promise.resolve([] as { id: string; fullName: string }[]),
+      this.db.select({
+        id: placementAttempts.id,
+        testId: placementAttempts.testId,
+        testTitle: placementTests.title,
+        subject: placementTests.subject,
+        correct: placementAttempts.correct,
+        total: placementAttempts.total,
+        percent: placementAttempts.percent,
+        suggestedLevel: placementAttempts.suggestedLevel,
+        reviewStatus: placementAttempts.reviewStatus,
+        createdAt: placementAttempts.createdAt,
+      }).from(placementAttempts)
+        .innerJoin(placementTests, eq(placementTests.id, placementAttempts.testId))
+        .where(and(eq(placementAttempts.tenantId, tenantId), eq(placementAttempts.leadId, id)))
+        .orderBy(desc(placementAttempts.createdAt)),
+    ]);
+    const meta = (created?.metadata ?? {}) as { channel?: string; utm?: Record<string, string> };
+    const origin = {
+      channel: lead.createdByUserId ? 'STAFF' : meta.channel === 'placement_test' ? 'PLACEMENT_TEST' : 'PUBLIC_FORM',
+      createdBy: createdBy ?? null,
+      utm: meta.utm ?? null,
+    };
+    return { ...lead, assignedManagerActive, allowedTransitions: allowedTransitions(lead.status), origin, placementAttempts: attempts };
   }
 
   async timeline(tenantId: string, id: string) {
@@ -516,17 +550,24 @@ export class LeadsService {
       branchId?: string;
       notes?: string;
       utm?: { source?: string; medium?: string; campaign?: string };
+      // A level test taken from the public link files its applicant too.
+      channel?: 'public_form' | 'placement_test';
     },
   ) {
     const phoneNormalized = this.requirePhone(dto.phone);
+    const channel = dto.channel ?? 'public_form';
     // Marketing attribution from the landing URL, kept on the timeline.
     const utm = Object.fromEntries(Object.entries(dto.utm ?? {}).filter(([, v]) => typeof v === 'string' && v.trim()).map(([k, v]) => [k, v!.trim()]));
     const [existing] = await this.findDuplicates(this.db, tenantId, phoneNormalized, null);
-    const noteText = dto.notes?.trim()
-      ? `Saytdan onlayn ariza: ${dto.notes.trim()}`
-      : 'Markaz veb-saytidan onlayn ariza topshirildi';
+    const noteText = channel === 'placement_test'
+      ? 'Onlayn daraja testini topshirdi'
+      : dto.notes?.trim()
+        ? `Saytdan onlayn ariza: ${dto.notes.trim()}`
+        : 'Markaz veb-saytidan onlayn ariza topshirildi';
 
     if (existing) {
+      // The test result itself goes on the timeline (see recordPlacementAttempt).
+      if (channel === 'placement_test') return { id: existing.id };
       await this.recordActivity(this.db, {
         tenantId, leadId: existing.id, actorUserId: null, type: 'NOTE',
         body: `Takroriy onlayn ariza. ${noteText}`, metadata: { kind: 'PUBLIC_REAPPLY', ...(Object.keys(utm).length ? { utm } : {}) },
@@ -567,11 +608,11 @@ export class LeadsService {
         }).returning();
         await this.recordActivity(tx, {
           tenantId, leadId: row.id, actorUserId: null, type: 'STATUS_CHANGE', toStatus: 'NEW',
-          metadata: { kind: 'CREATED', source: 'WEBSITE', ...(Object.keys(utm).length ? { utm } : {}) },
+          metadata: { kind: 'CREATED', source: 'WEBSITE', channel, ...(Object.keys(utm).length ? { utm } : {}) },
         });
         return row;
       });
-      this.events.emit('LeadCreated', { tenantId, leadId: lead.id, actorUserId: null, data: { source: 'WEBSITE', channel: 'public_form' } });
+      this.events.emit('LeadCreated', { tenantId, leadId: lead.id, actorUserId: null, data: { source: 'WEBSITE', channel } });
       return { id: lead.id };
     } catch (err) {
       if (isUniqueViolation(err)) {
@@ -580,6 +621,28 @@ export class LeadsService {
       }
       throw err;
     }
+  }
+
+  // A level test submitted from the public link: the applicant is filed as
+  // a lead (matched by phone, or created) and the result goes on the
+  // lead's timeline, so admissions see who took it and how they did.
+  // Returns the lead id, or null when no usable phone was given.
+  async recordPlacementAttempt(
+    tenantId: string,
+    a: { fullName: string; phone?: string | null; subject: string; testTitle: string; attemptId: string; percent: number; level: number; pending: boolean },
+  ): Promise<string | null> {
+    if (!a.phone || !normalizePhone(a.phone)) return null;
+    const { id } = await this.createFromPublicForm(tenantId, {
+      fullName: a.fullName, phone: a.phone, subjectText: a.subject, channel: 'placement_test',
+    });
+    await this.recordActivity(this.db, {
+      tenantId, leadId: id, actorUserId: null, type: 'NOTE',
+      body: a.pending
+        ? `Daraja testi "${a.testTitle}": ${a.percent}% (yozma javoblar o'qituvchi tekshiruvini kutmoqda)`
+        : `Daraja testi "${a.testTitle}": ${a.percent}%, taxminiy daraja ${a.level}/3`,
+      metadata: { kind: 'PLACEMENT_TEST', attemptId: a.attemptId, percent: a.percent, level: a.level, pending: a.pending },
+    });
+    return id;
   }
 
   async update(tenantId: string, actor: Actor, id: string, dto: UpdateLeadDto) {

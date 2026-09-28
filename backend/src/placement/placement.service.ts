@@ -1,9 +1,10 @@
-import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { randomBytes } from 'crypto';
 import { and, desc, eq, sql } from 'drizzle-orm';
 import { DB, Database } from '../db/db.module';
 import { placementAttempts, placementTests, tenants } from '../db/schema';
 import { AiService } from '../ai/ai.service';
+import { LeadsService } from '../leads/leads.service';
 import { gradeAnswer, normalizeQuestion, publicQuestion, suggestLevel, type TestQuestion } from '../common/test-questions';
 import { CreatePlacementTestDto, SubmitPlacementDto } from './placement.dto';
 
@@ -13,9 +14,12 @@ import { CreatePlacementTestDto, SubmitPlacementDto } from './placement.dto';
 // (essays) wait for the teacher, with an AI-suggested score.
 @Injectable()
 export class PlacementService {
+  private readonly logger = new Logger(PlacementService.name);
+
   constructor(
     @Inject(DB) private readonly db: Database,
     private readonly ai: AiService,
+    private readonly leads: LeadsService,
   ) {}
 
   // Older tests stored a simpler format; normalizeQuestion reads both.
@@ -125,6 +129,7 @@ export class PlacementService {
       percent: placementAttempts.percent,
       suggestedLevel: placementAttempts.suggestedLevel,
       reviewStatus: placementAttempts.reviewStatus,
+      leadId: placementAttempts.leadId,
       createdAt: placementAttempts.createdAt,
     }).from(placementAttempts)
       .where(and(eq(placementAttempts.testId, id), eq(placementAttempts.tenantId, tenantId)))
@@ -184,7 +189,7 @@ export class PlacementService {
     const questions = this.parse(test);
     const answers = questions.map((_, i) => dto.answers[i] ?? '');
     const r = this.score(questions, answers);
-    await this.db.insert(placementAttempts).values({
+    const [attempt] = await this.db.insert(placementAttempts).values({
       tenantId: test.tenantId,
       testId: test.id,
       fullName: dto.fullName.trim(),
@@ -195,7 +200,18 @@ export class PlacementService {
       percent: r.percent,
       suggestedLevel: r.level,
       reviewStatus: r.pending ? 'PENDING' : 'DONE',
-    });
+    }).returning({ id: placementAttempts.id });
+    // File the applicant under admissions. A failure here must not lose the
+    // result the student just submitted.
+    try {
+      const leadId = await this.leads.recordPlacementAttempt(test.tenantId, {
+        fullName: dto.fullName.trim(), phone: dto.phone, subject: test.subject, testTitle: test.title,
+        attemptId: attempt.id, percent: r.percent, level: r.level, pending: r.pending,
+      });
+      if (leadId) await this.db.update(placementAttempts).set({ leadId }).where(eq(placementAttempts.id, attempt.id));
+    } catch (err) {
+      this.logger.warn(`Placement attempt ${attempt.id} not filed as a lead: ${(err as Error).message}`);
+    }
     return { correct: r.earned, total: r.total, percent: r.percent, suggestedLevel: r.level, pending: r.pending };
   }
 

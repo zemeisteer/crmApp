@@ -10,12 +10,17 @@ import DatePicker from "@/components/DatePicker";
 import TimePicker from "@/components/TimePicker";
 import LeadFormModal from "@/components/leads/LeadFormModal";
 import ConvertWizard from "@/components/leads/ConvertWizard";
+import PlacementAttemptModal from "@/components/students/PlacementAttemptModal";
+import { placementLevelName, placementLink } from "@/lib/placement";
 import {
   ApiError,
   groupsApi,
   leadsApi,
   notificationsApi,
+  placementApi,
   teachersApi,
+  type LeadPlacementAttempt,
+  type PlacementTestSummary,
   type AssignableManager,
   type Group,
   type Lead,
@@ -52,7 +57,7 @@ import {
 type Dialog =
   | { kind: "lose" }
   | { kind: "reopen" }
-  | { kind: "trial"; reschedule?: LeadTrial }
+  | { kind: "trial"; reschedule?: LeadTrial; groupId?: string }
   | { kind: "sms" }
   | null;
 
@@ -68,6 +73,7 @@ function activityTitle(a: LeadActivity, t: (k: TranslationKey) => string) {
     TRIAL_CANCELLED: "adm.activity.trialCancelled",
     RESCHEDULED: "adm.activity.rescheduled",
     PUBLIC_REAPPLY: "adm.activity.reapply",
+    PLACEMENT_TEST: "adm.activity.placement",
   };
   if (kind && byKind[kind]) return t(byKind[kind]);
   return t(`adm.activity.${a.type}` as TranslationKey);
@@ -83,6 +89,9 @@ function LeadProfile() {
   const [managers, setManagers] = useState<AssignableManager[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
   const [teachers, setTeachers] = useState<Teacher[]>([]);
+  const [tests, setTests] = useState<PlacementTestSummary[]>([]);
+  const [viewAttempt, setViewAttempt] = useState<LeadPlacementAttempt | null>(null);
+  const [copied, setCopied] = useState(false);
   const [loadError, setLoadError] = useState<{ status: number; message: string } | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -123,6 +132,7 @@ function LeadProfile() {
     leadsApi.managers().then(setManagers).catch(() => setManagers([]));
     groupsApi.list().then(setGroups).catch(() => setGroups([]));
     teachersApi.list().then(setTeachers).catch(() => setTeachers([]));
+    placementApi.list().then(setTests).catch(() => setTests([]));
   }, [load]);
 
   // Every mutating action: disable controls, run, reload the source of truth.
@@ -152,7 +162,7 @@ function LeadProfile() {
       setTrialDate("");
       setTrialTime("10:00");
       setTrialDuration(String(d.reschedule?.durationMinutes ?? 60));
-      setTrialGroup(d.reschedule?.groupId ?? "");
+      setTrialGroup(d.reschedule?.groupId ?? d.groupId ?? "");
       setTrialTeacher(d.reschedule?.teacherId ?? "");
     }
     if (d?.kind === "sms" && lead) {
@@ -183,6 +193,26 @@ function LeadProfile() {
   const bookedTrial = lead.trials?.find((tr) => tr.status === "BOOKED");
   const canBookTrial = editable && !bookedTrial && (lead.status === "CONTACTED" || lead.status === "TRIAL_BOOKED");
   const isOpen = OPEN_STATUSES.includes(lead.status);
+
+  // Level test -> trial lesson in a matching group -> enrolment. A new lead
+  // is marked contacted first, since booking a trial needs that stage.
+  async function startTrial(groupId?: string) {
+    if (!lead) return;
+    if (lead.status === "NEW") await run(() => leadsApi.transition(lead.id, "CONTACTED"));
+    openDialog({ kind: "trial", groupId });
+  }
+
+  const attempts = lead.placementAttempts ?? [];
+  const interest = (lead.desiredSubject?.name ?? attempts[0]?.subject ?? lead.legacySubject ?? "").trim().toLowerCase();
+  const matchingGroups = groups
+    .filter((g) => g.status !== "ARCHIVED" && g.status !== "COMPLETED")
+    .filter((g) => !interest || g.subject.trim().toLowerCase() === interest || g.name.toLowerCase().includes(interest))
+    .slice(0, 4);
+  const activeTests = tests.filter((x) => x.active);
+  const shareTest = activeTests.find((x) => interest && x.subject.trim().toLowerCase() === interest) ?? activeTests[0];
+  const canTrialFlow = editable && !bookedTrial && (lead.status === "NEW" || lead.status === "CONTACTED" || lead.status === "TRIAL_BOOKED");
+  const origin = lead.origin;
+  const utm = origin?.utm ? [origin.utm.source, origin.utm.medium, origin.utm.campaign].filter(Boolean).join(" / ") : "";
 
   const detail = (k: string, v: React.ReactNode) => (
     <div style={{ display: "grid", gridTemplateColumns: "140px minmax(0,1fr)", gap: 10, padding: "8px 0", borderBottom: "1px solid #F2F1EC", fontSize: 13 }}>
@@ -282,11 +312,104 @@ function LeadProfile() {
         <div className="adm-profile">
           <div style={{ display: "grid", gap: 14 }}>
             <section style={card}>
+              <h2 style={{ fontSize: 15, fontWeight: 800, marginBottom: 8 }}>{t("adm.origin")}</h2>
+              {detail(
+                t("adm.originChannel"),
+                origin?.channel === "PLACEMENT_TEST" ? `🧭 ${t("adm.originTest")}` : origin?.channel === "PUBLIC_FORM" ? `🌐 ${t("adm.originForm")}` : `👤 ${t("adm.originStaff")}`,
+              )}
+              {detail(t("leads.fieldSource"), t(sourceKey(lead.source)))}
+              {origin?.createdBy && detail(t("adm.originAddedBy"), origin.createdBy.fullName)}
+              {utm && detail(t("adm.originAd"), utm)}
+              {detail(t("adm.originWant"), [lead.desiredSubject?.name ?? lead.legacySubject, lead.desiredCourse?.name, lead.preferredBranch?.name].filter(Boolean).join(" · ") || "—")}
+              {detail(t("adm.originDate"), formatDateTime(lead.createdAt, lang))}
+              {lead.notes && detail(t("leads.fieldNotes"), <span style={{ whiteSpace: "pre-wrap", fontWeight: 400 }}>{lead.notes}</span>)}
+            </section>
+
+            <section style={card}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
+                <h2 style={{ fontSize: 15, fontWeight: 800 }}>{t("adm.test")}</h2>
+                <span style={{ fontSize: 11.5, color: "#8A8D96" }}>{t("adm.flowSteps")}</span>
+              </div>
+              {attempts.length === 0 ? (
+                <div style={{ display: "grid", gap: 10 }}>
+                  <p style={{ fontSize: 13, color: "#8A8D96", margin: 0 }}>{t("adm.testNone")}</p>
+                  {shareTest && (
+                    <div>
+                      <button
+                        type="button"
+                        className="btn"
+                        style={ghostBtn}
+                        onClick={() => {
+                          navigator.clipboard?.writeText(placementLink(shareTest.token)).then(() => {
+                            setCopied(true);
+                            setTimeout(() => setCopied(false), 2000);
+                          }).catch(() => undefined);
+                        }}
+                      >
+                        🔗 {copied ? t("adm.testCopied") : `${t("adm.testCopy")}: ${shareTest.title}`}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gap: 10 }}>
+                  {attempts.map((a) => (
+                    <li key={a.id} style={{ border: "1px solid #F2F1EC", borderRadius: 10, padding: 12, display: "grid", gap: 8 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                        <strong style={{ fontSize: 13.5 }}>{a.testTitle}</strong>
+                        <span style={{ fontSize: 11.5, color: "#8A8D96" }}>{formatDateTime(a.createdAt, lang)}</span>
+                      </div>
+                      <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+                        <span style={{ fontFamily: "'Manrope',sans-serif", fontWeight: 800, fontSize: 24, color: a.percent >= 70 ? "#15803D" : a.percent >= 40 ? "#B45309" : "#B91C1C" }}>{a.percent}%</span>
+                        <span style={{ fontSize: 12.5, color: "#5B5F6A" }}>{a.correct}/{a.total}</span>
+                        {a.reviewStatus === "PENDING" ? (
+                          <span style={{ fontSize: 11.5, fontWeight: 700, padding: "3px 9px", borderRadius: 999, background: "#FEF3C7", color: "#92400E" }}>⏳ {t("adm.testPending")}</span>
+                        ) : (
+                          <span style={{ fontSize: 11.5, fontWeight: 700, padding: "3px 9px", borderRadius: 999, background: "#EEF0FF", color: ACCENT }}>
+                            {t("adm.testLevel")}: {placementLevelName(a.subject, a.suggestedLevel, t)}
+                          </span>
+                        )}
+                        <button type="button" className="btn" style={{ ...ghostBtn, padding: "5px 11px", fontSize: 12, marginLeft: "auto" }} onClick={() => setViewAttempt(a)}>{t("adm.testView")}</button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {canTrialFlow && (
+                <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid #F2F1EC", display: "grid", gap: 8 }}>
+                  <div style={{ fontSize: 12.5, fontWeight: 700 }}>{t("adm.flowTitle")}</div>
+                  <div style={{ fontSize: 12.5, color: "#5B5F6A" }}>{t("adm.flowTrial")}</div>
+                  {matchingGroups.length > 0 && (
+                    <div style={{ display: "grid", gap: 6 }}>
+                      <div style={{ fontSize: 11.5, color: "#8A8D96", fontWeight: 600 }}>{t("adm.flowGroups")}</div>
+                      {matchingGroups.map((g) => (
+                        <div key={g.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, flexWrap: "wrap", background: "#FAFAF8", border: "1px solid #F2F1EC", borderRadius: 9, padding: "8px 10px" }}>
+                          <div style={{ minWidth: 0 }}>
+                            <div style={{ fontSize: 13, fontWeight: 700 }}>{g.name}</div>
+                            <div style={{ fontSize: 11.5, color: "#8A8D96" }}>
+                              {[g.level, g.scheduleDays, g.startTime, g.teacher?.fullName].filter(Boolean).join(" · ")}
+                              {typeof g.studentCount === "number" ? ` · ${g.studentCount}/${g.maxStudents}` : ""}
+                            </div>
+                          </div>
+                          <button type="button" className="btn" style={{ ...primaryBtn, padding: "6px 12px", fontSize: 12 }} disabled={busy} onClick={() => startTrial(g.id)}>{t("adm.flowBook")}</button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {matchingGroups.length === 0 && (
+                    <div>
+                      <button type="button" className="btn" style={primaryBtn} disabled={busy} onClick={() => startTrial()}>{t("adm.bookTrial")}</button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </section>
+
+            <section style={card}>
               <h2 style={{ fontSize: 15, fontWeight: 800, marginBottom: 8 }}>{t("adm.details")}</h2>
               {detail(t("leads.fieldPhone"), <a href={telHref(lead.phone)} style={{ color: ACCENT }}>{lead.phone}</a>)}
-              {lead.secondaryPhone && detail(t("adm.fieldSecondaryPhone"), <a href={telHref(lead.secondaryPhone)} style={{ color: ACCENT }}>{lead.secondaryPhone}</a>)}
+              {lead.secondaryPhone && detail(t("adm.parentPhone"), <a href={telHref(lead.secondaryPhone)} style={{ color: ACCENT }}>{lead.secondaryPhone}</a>)}
               {lead.email && detail(t("adm.fieldEmail"), <a href={`mailto:${lead.email}`} style={{ color: ACCENT }}>{lead.email}</a>)}
-              {detail(t("leads.fieldSource"), t(sourceKey(lead.source)))}
               {detail(t("adm.fieldSubject"), lead.desiredSubject?.name ?? "—")}
               {detail(t("adm.fieldCourse"), lead.desiredCourse?.name ?? "—")}
               {lead.legacySubject && detail(t("adm.legacySubject"), lead.legacySubject)}
@@ -314,7 +437,6 @@ function LeadProfile() {
                 <div style={{ fontSize: 12, color: "#B45309", marginTop: 6 }}>⚠ {t("adm.managerInactive")}</div>
               )}
               {lead.status === "LOST" && detail(t("adm.lostReason"), <>{lead.lostReason ? t(lostKey(lead.lostReason)) : "—"}{lead.lostNote ? ` — ${lead.lostNote}` : ""}</>)}
-              {detail(t("leads.fieldNotes"), <span style={{ whiteSpace: "pre-wrap", fontWeight: 400 }}>{lead.notes || "—"}</span>)}
               {detail(t("adm.createdBy"), formatDateTime(lead.createdAt, lang))}
               {detail(t("adm.lastUpdated"), formatDateTime(lead.updatedAt, lang))}
             </section>
@@ -435,6 +557,14 @@ function LeadProfile() {
 
       {editOpen && <LeadFormModal open={editOpen} lead={lead} onClose={() => setEditOpen(false)} onSaved={() => load()} />}
       {convertOpen && <ConvertWizard lead={lead} open={convertOpen} onClose={() => setConvertOpen(false)} />}
+      {viewAttempt && (
+        <PlacementAttemptModal
+          test={{ id: viewAttempt.testId, title: viewAttempt.testTitle, subject: viewAttempt.subject, language: "UZ", token: "", active: true, createdAt: viewAttempt.createdAt }}
+          attemptId={viewAttempt.id}
+          onClose={() => setViewAttempt(null)}
+          onChanged={() => load()}
+        />
+      )}
 
       <Modal
         open={dialog !== null}

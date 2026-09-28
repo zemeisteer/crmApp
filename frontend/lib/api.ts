@@ -470,8 +470,28 @@ export interface Lead {
   legacySubject?: string | null;
   trials?: LeadTrial[];
   allowedTransitions?: LeadStatus[];
+  // Detail view only: how the lead arrived and its level-test results.
+  origin?: {
+    channel: "STAFF" | "PUBLIC_FORM" | "PLACEMENT_TEST";
+    createdBy: { id: string; fullName: string } | null;
+    utm: { source?: string; medium?: string; campaign?: string } | null;
+  };
+  placementAttempts?: LeadPlacementAttempt[];
   createdAt: string;
   updatedAt: string;
+}
+
+export interface LeadPlacementAttempt {
+  id: string;
+  testId: string;
+  testTitle: string;
+  subject: string;
+  correct: number;
+  total: number;
+  percent: number;
+  suggestedLevel: 1 | 2 | 3;
+  reviewStatus: "PENDING" | "DONE";
+  createdAt: string;
 }
 
 export interface LeadActivity {
@@ -877,6 +897,7 @@ export interface PlacementAttempt {
   percent: number;
   suggestedLevel: 1 | 2 | 3;
   reviewStatus?: "PENDING" | "DONE";
+  leadId?: string | null;
   createdAt: string;
 }
 

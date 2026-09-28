@@ -774,6 +774,9 @@ export const placementAttempts = pgTable('placement_attempts', {
   id: text('id').primaryKey().$defaultFn(() => createId()),
   tenantId: text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
   testId: text('test_id').notNull().references(() => placementTests.id, { onDelete: 'cascade' }),
+  // The admissions lead this attempt was filed under (matched or created
+  // by phone when the test was submitted).
+  leadId: text('lead_id').references((): AnyPgColumn => leads.id, { onDelete: 'set null' }),
   fullName: text('full_name').notNull(),
   phone: text('phone'),
   answers: text('answers').notNull(), // JSON: string[] by question index
@@ -787,6 +790,7 @@ export const placementAttempts = pgTable('placement_attempts', {
   createdAt: timestamp('created_at').notNull().defaultNow(),
 }, (t) => ({
   testIdx: index('placement_attempts_test_idx').on(t.testId),
+  leadIdx: index('placement_attempts_lead_idx').on(t.leadId),
   tenantIdx: index('placement_attempts_tenant_idx').on(t.tenantId),
 }));
 
