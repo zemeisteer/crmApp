@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { useLanguage } from "@/lib/i18n-context";
 import PortalExamList from "@/components/portal/PortalExams";
 import PortalLogin from "@/components/portal/PortalLogin";
+import { AttendanceTab, HomeworkTab, PaymentsTab, ScheduleTab, TabTitle } from "@/components/portal/PortalTabs";
 import type { Lang, TranslationKey } from "@/lib/i18n";
 import {
   portalApi,
@@ -20,7 +21,6 @@ import {
   PortalPayments,
   PortalAnnouncement,
   ApiError,
-  fileUrl,
 } from "@/lib/api";
 
 const ACCENT = "#4F46E5";
@@ -29,15 +29,24 @@ function formatMoney(n: number) {
   return new Intl.NumberFormat("uz-UZ").format(n);
 }
 
-const DAY_KEYS: TranslationKey[] = [
-  "weekday.monday",
-  "weekday.tuesday",
-  "weekday.wednesday",
-  "weekday.thursday",
-  "weekday.friday",
-  "weekday.saturday",
-  "weekday.sunday",
+type PortalTab = "home" | "schedule" | "attendance" | "homework" | "exams" | "payments" | "notifications";
+const NAV: Array<{ id: PortalTab; icon: string; label: TranslationKey; short: TranslationKey; bottom: boolean }> = [
+  { id: "home", icon: "🏠", label: "ptn.home", short: "ptn.home", bottom: true },
+  { id: "schedule", icon: "🗓️", label: "ptn.schedule", short: "ptn.schedule", bottom: true },
+  { id: "homework", icon: "📚", label: "ptn.homework", short: "ptn.homework", bottom: true },
+  { id: "exams", icon: "📝", label: "ptn.exams", short: "ptn.exams", bottom: true },
+  { id: "payments", icon: "💳", label: "ptn.payments", short: "ptn.payments", bottom: true },
+  { id: "attendance", icon: "✅", label: "ptn.attendance", short: "ptn.attendance", bottom: false },
+  { id: "notifications", icon: "🔔", label: "ptn.notifications", short: "ptn.notifications", bottom: false },
 ];
+const PORTAL_CSS = `
+  .ptl-bottom{display:none;}
+  @media (max-width:640px){
+    .ptl-top{display:none;}
+    .ptl-bottom{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:40;background:rgba(255,255,255,0.97);backdrop-filter:blur(8px);border-top:1px solid #EAE8E2;padding:0 4px env(safe-area-inset-bottom);box-shadow:0 -6px 20px rgba(18,19,26,0.06);}
+    .ptl-main{padding-bottom:96px!important;}
+  }
+`;
 
 // Portal users (students, parents) pick their own language here.
 function LangSwitch({ lang, setLang, dark }: { lang: Lang; setLang: (l: Lang) => void; dark?: boolean }) {
@@ -66,9 +75,7 @@ export default function StudentPortalPage() {
   const { t, lang, setLang } = useLanguage();
   const [token, setTokenState] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<
-    "home" | "schedule" | "attendance" | "homework" | "exams" | "payments" | "notifications"
-  >("home");
+  const [activeTab, setActiveTab] = useState<PortalTab>("home");
 
   // Auth form state
   const [authError, setAuthError] = useState<string | null>(null);
@@ -168,6 +175,8 @@ export default function StudentPortalPage() {
       })
       .finally(() => setLoading(false));
   }, [token]);
+
+  const notifCount = announcements.length + (payments && payments.debtAmount > 0 ? 1 : 0);
 
   function handleLogout() {
     clearPortalToken();
@@ -312,8 +321,8 @@ export default function StudentPortalPage() {
     <div
       style={{
         minHeight: "100vh",
-        background: "#F8FAFC",
-        color: "#0F172A",
+        background: "#F7F7F5",
+        color: "#181A1F",
         fontFamily: "'Inter', sans-serif",
         display: "flex",
         flexDirection: "column",
@@ -390,7 +399,7 @@ export default function StudentPortalPage() {
                 <path d="M13.73 21a2 2 0 0 1-3.46 0" />
               </svg>
               <span className="hide-sm">{t("ptl.messages")}</span>
-              {(announcements.length + (payments && payments.debtAmount > 0 ? 1 : 0)) > 0 && (
+              {notifCount > 0 && (
                 <span
                   style={{
                     background: "#EF4444",
@@ -401,7 +410,7 @@ export default function StudentPortalPage() {
                     borderRadius: 100,
                   }}
                 >
-                  {announcements.length + (payments && payments.debtAmount > 0 ? 1 : 0)}
+                  {notifCount}
                 </span>
               )}
             </button>
@@ -425,56 +434,36 @@ export default function StudentPortalPage() {
         </div>
       </header>
 
-      {/* Nav Tabs Bar */}
-      <div
-        style={{
-          background: "#fff",
-          borderBottom: "1px solid #E2E8F0",
-          overflowX: "auto",
-        }}
-      >
-        <div
-          style={{
-            maxWidth: 1000,
-            margin: "0 auto",
-            display: "flex",
-            padding: "0 16px",
-            gap: 6,
-          }}
-        >
-          {[
-            { id: "home", label: t("ptl.tabHome") },
-            { id: "schedule", label: t("ptl.tabSchedule") },
-            { id: "attendance", label: t("ptl.tabAttendance") },
-            { id: "homework", label: t("ptl.tabHomework") },
-            { id: "exams", label: t("ptl.tabExams") },
-            { id: "payments", label: t("ptl.tabPayments") },
-            {
-              id: "notifications",
-              label: `${t("ptl.tabNotifications")} ${(announcements.length + (payments && payments.debtAmount > 0 ? 1 : 0)) > 0 ? `(${announcements.length + (payments && payments.debtAmount > 0 ? 1 : 0)})` : ""}`,
-            },
-          ].map((tab) => (
+      <style>{PORTAL_CSS}</style>
+      {/* Tabs: a pill row on wide screens, a bottom bar on phones */}
+      <div className="ptl-top" style={{ background: "#fff", borderBottom: "1px solid #EAE8E2" }}>
+        <div style={{ maxWidth: 1000, margin: "0 auto", display: "flex", padding: "10px 16px", gap: 6, overflowX: "auto" }}>
+          {NAV.map((tab) => (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
-              style={{
-                padding: "14px 14px",
-                border: "none",
-                background: "transparent",
-                fontSize: 13,
-                fontWeight: activeTab === tab.id ? 700 : 500,
-                color: activeTab === tab.id ? ACCENT : "#64748B",
-                borderBottom: `2.5px solid ${activeTab === tab.id ? ACCENT : "transparent"}`,
-                cursor: "pointer",
-                whiteSpace: "nowrap",
-                transition: "all 0.15s ease",
-              }}
+              type="button"
+              onClick={() => setActiveTab(tab.id)}
+              style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "9px 14px", border: "none", borderRadius: 10, fontSize: 13.5, fontWeight: activeTab === tab.id ? 700 : 600, background: activeTab === tab.id ? "#EEF0FF" : "transparent", color: activeTab === tab.id ? ACCENT : "#6B6E78", cursor: "pointer", whiteSpace: "nowrap" }}
             >
-              {tab.label}
+              <span aria-hidden>{tab.icon}</span>
+              {t(tab.label)}
+              {tab.id === "notifications" && notifCount > 0 && <span style={{ background: "#EF4444", color: "#fff", fontSize: 10.5, fontWeight: 800, padding: "1px 6px", borderRadius: 100 }}>{notifCount}</span>}
             </button>
           ))}
         </div>
       </div>
+      <nav className="ptl-bottom" aria-label="menu">
+        {NAV.filter((x) => x.bottom).map((tab) => {
+          const on = activeTab === tab.id;
+          return (
+            <button key={tab.id} type="button" onClick={() => { setActiveTab(tab.id); window.scrollTo(0, 0); }} aria-current={on ? "page" : undefined} style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 3, padding: "8px 2px 6px", border: "none", background: "transparent", color: on ? ACCENT : "#8A8D96", cursor: "pointer" }}>
+              <span aria-hidden style={{ fontSize: 19, lineHeight: 1, filter: on ? "none" : "grayscale(1)", opacity: on ? 1 : 0.75 }}>{tab.icon}</span>
+              <span style={{ fontSize: 10.5, fontWeight: on ? 800 : 600, maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t(tab.short)}</span>
+              <span style={{ width: 18, height: 3, borderRadius: 3, background: on ? ACCENT : "transparent" }} />
+            </button>
+          );
+        })}
+      </nav>
 
       {/* Main Container */}
       <main
@@ -486,6 +475,7 @@ export default function StudentPortalPage() {
           padding: "20px 16px 40px 16px",
           boxSizing: "border-box",
         }}
+        className="ptl-main"
       >
         {/* ========================================================================= */}
         {/* TAB: HOME                                                                 */}
@@ -502,331 +492,16 @@ export default function StudentPortalPage() {
           />
         )}
 
-        {/* ========================================================================= */}
-        {/* TAB: SCHEDULE                                                             */}
-        {/* ========================================================================= */}
-        {activeTab === "schedule" && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-            <h2 style={{ fontSize: 18, fontWeight: 800, margin: 0 }}>
-              {t("ptl.schedule")}
-            </h2>
-
-            {schedule?.timetable.length === 0 && schedule?.fallbackGroups.length === 0 ? (
-              <div
-                style={{
-                  background: "#fff",
-                  border: "1px solid #E2E8F0",
-                  borderRadius: 16,
-                  padding: 32,
-                  textAlign: "center",
-                  color: "#64748B",
-                }}
-              >
-                {t("ptl.noSchedule")}
-              </div>
-            ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                {schedule?.timetable.map((item) => (
-                  <div
-                    key={item.id}
-                    style={{
-                      background: "#fff",
-                      border: "1px solid #E2E8F0",
-                      borderRadius: 14,
-                      padding: 16,
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      flexWrap: "wrap",
-                      gap: 12,
-                    }}
-                  >
-                    <div>
-                      <div style={{ fontSize: 14.5, fontWeight: 700 }}>
-                        {item.group?.name}
-                      </div>
-                      <div style={{ fontSize: 12, color: "#64748B", marginTop: 2 }}>
-                        {item.dayOfWeek ? t(DAY_KEYS[item.dayOfWeek - 1]) : t("ptl.weekly")} |{" "}
-                        {item.startTime} - {item.endTime}
-                      </div>
-                      <div style={{ fontSize: 12, color: "#475569", marginTop: 4 }}>
-                        {item.room ? `🚪 ${item.room.name}` : ""}
-                        {item.room && item.teacher ? " • " : ""}
-                        {item.teacher ? `👨‍🏫 ${item.teacher.fullName}` : ""}
-                      </div>
-                    </div>
-
-                    {item.onlineMeetingUrl && (
-                      <a
-                        href={item.onlineMeetingUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        style={{
-                          background: "#EEF2FF",
-                          color: ACCENT,
-                          textDecoration: "none",
-                          fontSize: 12,
-                          fontWeight: 700,
-                          padding: "8px 14px",
-                          borderRadius: 8,
-                          display: "inline-flex",
-                          alignItems: "center",
-                          gap: 6,
-                        }}
-                      >
-                        {t("ptl.joinOnline")}
-                      </a>
-                    )}
-                  </div>
-                ))}
-
-                {/* Fallback groups schedule if no explicit timetable */}
-                {schedule?.fallbackGroups.map((g) => (
-                  <div
-                    key={g.id}
-                    style={{
-                      background: "#fff",
-                      border: "1px solid #E2E8F0",
-                      borderRadius: 14,
-                      padding: 16,
-                    }}
-                  >
-                    <div style={{ fontSize: 14.5, fontWeight: 700 }}>{g.name}</div>
-                    <div style={{ fontSize: 12, color: "#64748B", marginTop: 2 }}>
-                      {t("ptl.days")}: {g.scheduleDays || g.schedule || "—"}
-                    </div>
-                    <div style={{ fontSize: 12, color: "#475569", marginTop: 4 }}>
-                      {t("ptl.time")}: {g.startTime || "—"} {g.teacher ? `• 👨‍🏫 ${g.teacher}` : ""}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* ========================================================================= */}
-        {/* TAB: ATTENDANCE                                                           */}
-        {/* ========================================================================= */}
-        {activeTab === "attendance" && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-            <h2 style={{ fontSize: 18, fontWeight: 800, margin: 0 }}>{t("ptl.attHistory")}</h2>
-
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(3, 1fr)",
-                gap: 10,
-              }}
-            >
-              <div
-                style={{
-                  background: "#F0FDF4",
-                  border: "1px solid #BBF7D0",
-                  borderRadius: 12,
-                  padding: 14,
-                  textAlign: "center",
-                }}
-              >
-                <div style={{ fontSize: 11.5, color: "#166534" }}>{t("ptl.present")}</div>
-                <div style={{ fontSize: 22, fontWeight: 900, color: "#15803D" }}>
-                  {attendance?.present || 0} ta
-                </div>
-              </div>
-              <div
-                style={{
-                  background: "#FEF3C7",
-                  border: "1px solid #FDE68A",
-                  borderRadius: 12,
-                  padding: 14,
-                  textAlign: "center",
-                }}
-              >
-                <div style={{ fontSize: 11.5, color: "#92400E" }}>{t("ptl.late")}</div>
-                <div style={{ fontSize: 22, fontWeight: 900, color: "#B45309" }}>
-                  {attendance?.late || 0} ta
-                </div>
-              </div>
-              <div
-                style={{
-                  background: "#FEF2F2",
-                  border: "1px solid #FECACA",
-                  borderRadius: 12,
-                  padding: 14,
-                  textAlign: "center",
-                }}
-              >
-                <div style={{ fontSize: 11.5, color: "#991B1B" }}>{t("ptl.absent")}</div>
-                <div style={{ fontSize: 22, fontWeight: 900, color: "#DC2626" }}>
-                  {attendance?.absent || 0} ta
-                </div>
-              </div>
-            </div>
-
-            <div
-              style={{
-                background: "#fff",
-                border: "1px solid #E2E8F0",
-                borderRadius: 16,
-                overflow: "hidden",
-              }}
-            >
-              {attendance?.records.length === 0 ? (
-                <div style={{ padding: 24, textAlign: "center", color: "#64748B", fontSize: 13 }}>
-                  {t("ptl.noAtt")}
-                </div>
-              ) : (
-                <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                  <thead>
-                    <tr style={{ background: "#F8FAFC", borderBottom: "1px solid #E2E8F0", textAlign: "left" }}>
-                      <th style={{ padding: "12px 16px", fontSize: 12, color: "#64748B" }}>{t("ptl.date")}</th>
-                      <th style={{ padding: "12px 16px", fontSize: 12, color: "#64748B", textAlign: "right" }}>{t("ptl.status")}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {attendance?.records.map((r) => (
-                      <tr key={r.id} style={{ borderBottom: "1px solid #F1F5F9" }}>
-                        <td style={{ padding: "12px 16px", fontSize: 13, fontWeight: 600 }}>{r.date}</td>
-                        <td style={{ padding: "12px 16px", textAlign: "right" }}>
-                          {r.status === "PRESENT" && (
-                            <span style={{ background: "#DCFCE7", color: "#15803D", fontSize: 11.5, fontWeight: 700, padding: "3px 8px", borderRadius: 6 }}>
-                              {t("ptl.present")}
-                            </span>
-                          )}
-                          {r.status === "LATE" && (
-                            <span style={{ background: "#FEF3C7", color: "#B45309", fontSize: 11.5, fontWeight: 700, padding: "3px 8px", borderRadius: 6 }}>
-                              {t("ptl.late")}
-                            </span>
-                          )}
-                          {r.status === "ABSENT" && (
-                            <span style={{ background: "#FEE2E2", color: "#DC2626", fontSize: 11.5, fontWeight: 700, padding: "3px 8px", borderRadius: 6 }}>
-                              {t("ptl.absent")}
-                            </span>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* ========================================================================= */}
-        {/* TAB: HOMEWORK                                                             */}
-        {/* ========================================================================= */}
-        {activeTab === "homework" && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-            <h2 style={{ fontSize: 18, fontWeight: 800, margin: 0 }}>{t("ptl.homework")}</h2>
-
-            {homework.length === 0 ? (
-              <div
-                style={{
-                  background: "#fff",
-                  border: "1px solid #E2E8F0",
-                  borderRadius: 16,
-                  padding: 32,
-                  textAlign: "center",
-                  color: "#64748B",
-                }}
-              >
-                {t("ptl.noHomework")}
-              </div>
-            ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                {homework.map((hw) => (
-                  <div
-                    key={hw.id}
-                    style={{
-                      background: "#fff",
-                      border: "1px solid #E2E8F0",
-                      borderRadius: 16,
-                      padding: 18,
-                    }}
-                  >
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
-                      <div>
-                        <div style={{ fontSize: 14.5, fontWeight: 700 }}>{hw.title}</div>
-                        <div style={{ fontSize: 12, color: "#64748B", marginTop: 2 }}>
-                          {t("ptl.group")}: {hw.groupName || t("ptl.general")} {hw.dueDate ? `• ${t("ptl.deadline")}: ${hw.dueDate.slice(0, 10)}` : ""}
-                        </div>
-                      </div>
-                      <div>
-                        {hw.completed ? (
-                          <span
-                            style={{
-                              background: "#DCFCE7",
-                              color: "#15803D",
-                              fontSize: 11.5,
-                              fontWeight: 700,
-                              padding: "4px 9px",
-                              borderRadius: 6,
-                            }}
-                          >
-                            {t("ptl.submitted")}
-                          </span>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => handleHomeworkSubmit(hw.id)}
-                            style={{
-                              background: ACCENT,
-                              color: "#fff",
-                              border: "none",
-                              fontSize: 12,
-                              fontWeight: 700,
-                              padding: "6px 12px",
-                              borderRadius: 8,
-                              cursor: "pointer",
-                            }}
-                          >
-                            {t("ptl.submit")}
-                          </button>
-                        )}
-                      </div>
-                    </div>
-
-                    {hw.description && (
-                      <div
-                        style={{
-                          background: "#F8FAFC",
-                          border: "1px solid #EDF2F7",
-                          borderRadius: 10,
-                          padding: 12,
-                          fontSize: 13,
-                          color: "#334155",
-                          marginTop: 12,
-                        }}
-                      >
-                        {hw.description}
-                      </div>
-                    )}
-                    {hw.attachmentPath && (
-                      <a
-                        href={fileUrl(hw.attachmentPath) || "#"}
-                        target="_blank"
-                        rel="noreferrer"
-                        style={{ display: "inline-flex", alignItems: "center", gap: 8, marginTop: 10, padding: "8px 12px", borderRadius: 10, border: "1px solid #C7D2FE", background: "#EEF2FF", color: "#4338CA", fontSize: 13, fontWeight: 700, textDecoration: "none" }}
-                      >
-                        📎 {hw.attachmentName || t("homework.file")}
-                      </a>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
+        {activeTab === "schedule" && <ScheduleTab schedule={schedule} />}
+        {activeTab === "attendance" && <AttendanceTab attendance={attendance} />}
+        {activeTab === "homework" && <HomeworkTab homework={homework} onSubmit={handleHomeworkSubmit} />}
 
         {/* ========================================================================= */}
         {/* TAB: EXAMS                                                                */}
         {/* ========================================================================= */}
         {activeTab === "exams" && (
           <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-            <h2 style={{ fontSize: 18, fontWeight: 800, margin: 0 }}>
-              {t("ptl.examsCerts")}
-            </h2>
+            <TabTitle title={t("ptl.examsCerts")} />
 
             <PortalExamList onFinished={() => portalApi.getExams().then(setExams).catch(() => undefined)} />
 
@@ -934,152 +609,7 @@ export default function StudentPortalPage() {
           </div>
         )}
 
-        {/* ========================================================================= */}
-        {/* TAB: PAYMENTS                                                             */}
-        {/* ========================================================================= */}
-        {activeTab === "payments" && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-            <h2 style={{ fontSize: 18, fontWeight: 800, margin: 0 }}>
-              {t("ptl.paymentsBalance")}
-            </h2>
-
-            {/* Balance Card */}
-            <div
-              style={{
-                background: "#fff",
-                border: "1px solid #E2E8F0",
-                borderRadius: 16,
-                padding: 20,
-              }}
-            >
-              <div style={{ fontSize: 12, color: "#64748B" }}>
-                {t("ptl.monthStatus")} ({payments?.forMonth})
-              </div>
-              <div
-                style={{
-                  fontSize: 22,
-                  fontWeight: 900,
-                  marginTop: 6,
-                  color: (payments?.debtAmount || 0) > 0 ? "#DC2626" : "#10B981",
-                }}
-              >
-                {(payments?.debtAmount || 0) > 0
-                  ? `${t("ptl.debtLabel")}: ${formatMoney(payments?.debtAmount || 0)} ${t("common.sumUnit")}`
-                  : t("ptl.allPaid")}
-              </div>
-              <div style={{ fontSize: 12, color: "#64748B", marginTop: 4 }}>
-                {t("ptl.coursePrice")}: {formatMoney(payments?.expectedTuition || 0)} {t("common.sumUnit")} | {t("ptl.paidSoFar")}:{" "}
-                {formatMoney(payments?.monthPaid || 0)} {t("common.sumUnit")}
-              </div>
-
-              {(payments?.debtAmount || 0) > 0 && (
-                <div style={{ display: "flex", gap: 10, marginTop: 14, flexWrap: "wrap" }}>
-                  <button
-                    type="button"
-                    onClick={() => handlePayOnline("CLICK")}
-                    disabled={checkoutLoading !== null}
-                    style={{
-                      background: "#0073FF",
-                      color: "#fff",
-                      border: "none",
-                      padding: "10px 18px",
-                      borderRadius: 10,
-                      fontWeight: 700,
-                      fontSize: 13,
-                      cursor: "pointer",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 6,
-                    }}
-                  >
-                    <span>💳</span>
-                    <span>{checkoutLoading === "CLICK" ? t("common.loading") : t("ptl.payClick")}</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handlePayOnline("PAYME")}
-                    disabled={checkoutLoading !== null}
-                    style={{
-                      background: "#18AC98",
-                      color: "#fff",
-                      border: "none",
-                      padding: "10px 18px",
-                      borderRadius: 10,
-                      fontWeight: 700,
-                      fontSize: 13,
-                      cursor: "pointer",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 6,
-                    }}
-                  >
-                    <span>💳</span>
-                    <span>{checkoutLoading === "PAYME" ? t("common.loading") : t("ptl.payPayme")}</span>
-                  </button>
-                </div>
-              )}
-            </div>
-
-            {/* Payment History */}
-            <div
-              style={{
-                background: "#fff",
-                border: "1px solid #E2E8F0",
-                borderRadius: 16,
-                overflow: "hidden",
-              }}
-            >
-              <div style={{ padding: "14px 18px", fontSize: 14, fontWeight: 700, borderBottom: "1px solid #E2E8F0" }}>
-                {t("ptl.history")}
-              </div>
-              {payments?.history.length === 0 ? (
-                <div style={{ padding: 24, textAlign: "center", color: "#64748B", fontSize: 13 }}>
-                  {t("ptl.noHistory")}
-                </div>
-              ) : (
-                <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                  <thead>
-                    <tr style={{ background: "#F8FAFC", borderBottom: "1px solid #E2E8F0", textAlign: "left" }}>
-                      <th style={{ padding: "12px 16px", fontSize: 12, color: "#64748B" }}>{t("ptl.date")}</th>
-                      <th style={{ padding: "12px 16px", fontSize: 12, color: "#64748B" }}>{t("ptl.month")}</th>
-                      <th style={{ padding: "12px 16px", fontSize: 12, color: "#64748B" }}>{t("ptl.amount")}</th>
-                      <th style={{ padding: "12px 16px", fontSize: 12, color: "#64748B", textAlign: "right" }}>{t("ptl.status")}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {payments?.history.map((p) => (
-                      <tr key={p.id} style={{ borderBottom: "1px solid #F1F5F9" }}>
-                        <td style={{ padding: "12px 16px", fontSize: 13 }}>
-                          {p.paidAt ? p.paidAt.slice(0, 10) : "—"}
-                        </td>
-                        <td style={{ padding: "12px 16px", fontSize: 13, fontWeight: 600 }}>
-                          {p.forMonth}
-                        </td>
-                        <td style={{ padding: "12px 16px", fontSize: 13, fontWeight: 800 }}>
-                          {formatMoney(p.amount)} {t("common.sumUnit")}
-                        </td>
-                        <td style={{ padding: "12px 16px", textAlign: "right" }}>
-                          <span
-                            style={{
-                              background: p.status === "PAID" ? "#DCFCE7" : "#FEE2E2",
-                              color: p.status === "PAID" ? "#15803D" : "#DC2626",
-                              fontSize: 11,
-                              fontWeight: 700,
-                              padding: "3px 8px",
-                              borderRadius: 6,
-                            }}
-                          >
-                            {p.status === "PAID" ? t("ptl.paidStatus") : p.status}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-            </div>
-          </div>
-        )}
+        {activeTab === "payments" && <PaymentsTab payments={payments} checkoutLoading={checkoutLoading} onPay={handlePayOnline} />}
 
         {/* ========================================================================= */}
         {/* TAB: NOTIFICATIONS                                                        */}
