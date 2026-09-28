@@ -360,7 +360,7 @@ export default function InviteAcceptPage({
         </form>
 
         <div style={{ textAlign: "center", fontSize: 13, color: "#9CA3AF" }}>
-          CRMAPP &copy; {new Date().getFullYear()} — {t("inv.footer")}
+          TalimCRM &copy; {new Date().getFullYear()} — {t("inv.footer")}
         </div>
       </div>
     </div>

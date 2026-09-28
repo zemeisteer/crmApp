@@ -21,7 +21,7 @@ export class EmailService {
     this.from =
       this.config.get<string>('EMAIL_FROM')?.trim() ||
       this.config.get<string>('SMTP_FROM')?.trim() ||
-      'CRMAPP <no-reply@crmapp.com>';
+      'TalimCRM <no-reply@crmapp.com>';
 
     const host = this.config.get<string>('SMTP_HOST');
     const port = this.config.get<string>('SMTP_PORT');

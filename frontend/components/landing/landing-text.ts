@@ -73,7 +73,7 @@ const uz = {
   portalLabel: "O'quvchilar uchun",
   portalTitle: "O'quvchi va ota-onalar uchun alohida bo'lim",
   portalDesc: "Telegram orqali ochiladigan shaxsiy kabinetda o'quvchi darslar jadvalini, uy vazifalarini, davomatini, to'lov holatini ko'radi va tushunmagan mavzuda to'g'ridan-to'g'ri AI Yordamchidan so'raydi — qo'ng'iroq qilib so'rashning hojati yo'q.",
-  whyLabel: "Nega CRMAPP?",
+  whyLabel: "Nega TalimCRM?",
   whyTitle: "Ishonch bilan ishlash uchun to'rtta sabab",
   why: [
     ["Ma'lumotlaringiz xavfsiz", "Har bir markazning ma'lumoti alohida ajratilgan va shifrlangan holda saqlanadi — boshqa mijoz uni ko'ra olmaydi."],
@@ -182,7 +182,7 @@ const ru: LandingText = {
   portalLabel: "Для учеников",
   portalTitle: "Отдельный кабинет для учеников и родителей",
   portalDesc: "В личном кабинете через Telegram ученик видит расписание, домашние задания, посещаемость и статус оплаты, а непонятную тему спрашивает прямо у ИИ-помощника — звонить не нужно.",
-  whyLabel: "Почему CRMAPP?",
+  whyLabel: "Почему TalimCRM?",
   whyTitle: "Четыре причины работать уверенно",
   why: [
     ["Данные в безопасности", "Данные каждого центра хранятся отдельно и в зашифрованном виде — другие клиенты их не видят."],
@@ -289,7 +289,7 @@ const en: LandingText = {
   portalLabel: "For students",
   portalTitle: "A separate space for students and parents",
   portalDesc: "In a personal space opened through Telegram, students see their schedule, homework, attendance and payment status, and ask the AI helper directly about anything unclear — no phone calls needed.",
-  whyLabel: "Why CRMAPP?",
+  whyLabel: "Why TalimCRM?",
   whyTitle: "Four reasons to work with confidence",
   why: [
     ["Your data is safe", "Each center's data is kept separate and encrypted — no other client can see it."],

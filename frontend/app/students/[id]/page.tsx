@@ -631,7 +631,7 @@ function StudentDetailContent() {
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <span style={{ fontSize: 20 }}>🎓</span>
                 <div>
-                  <div style={{ fontWeight: 800, fontSize: 13, letterSpacing: "0.5px", textTransform: "uppercase" }}>CRMAPP Education</div>
+                  <div style={{ fontWeight: 800, fontSize: 13, letterSpacing: "0.5px", textTransform: "uppercase" }}>TalimCRM Education</div>
                   <div style={{ fontSize: 10, opacity: 0.75 }}>{t("std.idCard")}</div>
                 </div>
               </div>

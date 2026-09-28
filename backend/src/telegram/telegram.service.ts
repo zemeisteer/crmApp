@@ -162,7 +162,7 @@ export class TelegramService {
     await this.db.update(users).set({ telegramChatId: chatId }).where(eq(users.id, linkRecord.user.id));
     await this.sendMessage(
       chatId,
-      `✅ <b>${escapeHtml(linkRecord.user.fullName)}</b>, Telegram hisobingiz CRMAPP'ga ulandi.\n\nEndi yangi arizalar, qayta aloqa va sinov darslari haqidagi eslatmalar shu yerga keladi.`,
+      `✅ <b>${escapeHtml(linkRecord.user.fullName)}</b>, Telegram hisobingiz TalimCRM'ga ulandi.\n\nEndi yangi arizalar, qayta aloqa va sinov darslari haqidagi eslatmalar shu yerga keladi.`,
     );
   }
 
@@ -422,7 +422,7 @@ export class TelegramService {
       if (staff) {
         await this.sendMessage(
           chatId,
-          `${escapeHtml(staff.fullName)}, bu chat CRMAPP eslatmalari uchun ulangan. Eslatmalarni o'chirish uchun CRM'dagi "Telegram eslatmalari" bo'limidan foydalaning.`,
+          `${escapeHtml(staff.fullName)}, bu chat TalimCRM eslatmalari uchun ulangan. Eslatmalarni o'chirish uchun CRM'dagi "Telegram eslatmalari" bo'limidan foydalaning.`,
         );
         return;
       }

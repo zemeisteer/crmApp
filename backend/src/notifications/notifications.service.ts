@@ -245,7 +245,7 @@ export class NotificationsService {
       if (!student) return;
 
       const formatted = new Intl.NumberFormat('uz-UZ').format(amount);
-      const text = `To'lov qabul qilindi: ${formatted} so'm (${forMonth} oyi uchun). Rahmat! CRMAPP`;
+      const text = `To'lov qabul qilindi: ${formatted} so'm (${forMonth} oyi uchun). Rahmat! TalimCRM`;
 
       if (student.telegramChatId) {
         void this.send(tenantId, {
@@ -335,7 +335,7 @@ export class NotificationsService {
 
       if (debt > 0) {
         const formattedDebt = new Intl.NumberFormat('uz-UZ').format(debt);
-        const text = `Hurmatli o'quvchi / ota-ona! Sizning ${month} oyi uchun ${formattedDebt} so'm to'lovingiz mavjud. Iltimos, o'z vaqtida to'lovni amalga oshiring. CRMAPP`;
+        const text = `Hurmatli o'quvchi / ota-ona! Sizning ${month} oyi uchun ${formattedDebt} so'm to'lovingiz mavjud. Iltimos, o'z vaqtida to'lovni amalga oshiring. TalimCRM`;
 
         if (student.telegramChatId) {
           void this.send(tenantId, {

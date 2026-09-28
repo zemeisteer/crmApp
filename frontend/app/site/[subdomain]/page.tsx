@@ -705,7 +705,7 @@ export default function PublicSitePage() {
           </div>
 
           <div className="text-[11px]">
-            © {new Date().getFullYear()} {tenant.name}. CRMAPP platformasida yaratilgan.
+            © {new Date().getFullYear()} {tenant.name}. TalimCRM platformasida yaratilgan.
           </div>
         </div>
       </footer>

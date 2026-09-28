@@ -553,7 +553,7 @@ export default function OnboardingPage() {
             C
           </div>
           <span style={{ fontSize: 16, fontWeight: 800, color: "#111827", letterSpacing: "-0.02em" }}>
-            CRMAPP Onboarding
+            TalimCRM Onboarding
           </span>
         </div>
 

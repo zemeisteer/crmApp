@@ -67,9 +67,9 @@ export const dict = {
   "auth.tryFree": { UZ: "Bepul boshlash", RU: "Начать бесплатно", EN: "Start for free" },
   "auth.welcomeBack": { UZ: "Tizimga kirish", RU: "Вход в систему", EN: "Log in" },
   "auth.loginSubtitle": {
-    UZ: "CRMAPP hisobingizga kiring.",
-    RU: "Войдите в свой аккаунт CRMAPP.",
-    EN: "Log in to your CRMAPP account.",
+    UZ: "TalimCRM hisobingizga kiring.",
+    RU: "Войдите в свой аккаунт TalimCRM.",
+    EN: "Log in to your TalimCRM account.",
   },
   "auth.loggingIn": { UZ: "Kirilmoqda...", RU: "Вход...", EN: "Logging in..." },
   "auth.welcomeHero": {
@@ -98,9 +98,9 @@ export const dict = {
     EN: "Sign in with a different account",
   },
   "auth.termsAgreement": {
-    UZ: "Men CRMAPP foydalanish shartlari va maxfiylik siyosatiga rozilik bildiraman.",
-    RU: "Я согласен с условиями использования и политикой конфиденциальности CRMAPP.",
-    EN: "I agree to the CRMAPP Terms of Service and Privacy Policy.",
+    UZ: "Men TalimCRM foydalanish shartlari va maxfiylik siyosatiga rozilik bildiraman.",
+    RU: "Я согласен с условиями использования и политикой конфиденциальности TalimCRM.",
+    EN: "I agree to the TalimCRM Terms of Service and Privacy Policy.",
   },
   "auth.allRightsReserved": {
     UZ: "Barcha huquqlar himoyalangan.",
@@ -220,9 +220,9 @@ export const dict = {
     EN: "Sign-up takes a few minutes. No card, no commitment.",
   },
   "landing.footer": {
-    UZ: "© 2026 CRMAPP. Barcha huquqlar himoyalangan.",
-    RU: "© 2026 CRMAPP. Все права защищены.",
-    EN: "© 2026 CRMAPP. All rights reserved.",
+    UZ: "© 2026 TalimCRM. Barcha huquqlar himoyalangan.",
+    RU: "© 2026 TalimCRM. Все права защищены.",
+    EN: "© 2026 TalimCRM. All rights reserved.",
   },
   "register.heroTitle": {
     UZ: "7 kun bepul — kartasiz sinab ko'ring",
@@ -841,7 +841,7 @@ export const dict = {
   "inv.accept": { UZ: "Taklifnomani qabul qilish va kirish", RU: "Принять приглашение и войти", EN: "Accept the invitation and sign in" },
   "inv.footer": { UZ: "Xavfsiz ta'lim platformasi", RU: "Безопасная образовательная платформа", EN: "Secure education platform" },
   "role.ownerFull": { UZ: "Markaz rahbari", RU: "Руководитель центра", EN: "Center owner" },
-  "ver.portal": { UZ: "CRMAPP rasmiy tekshiruv portali", RU: "Официальный портал проверки CRMAPP", EN: "CRMAPP official verification portal" },
+  "ver.portal": { UZ: "TalimCRM rasmiy tekshiruv portali", RU: "Официальный портал проверки TalimCRM", EN: "TalimCRM official verification portal" },
   "ver.title": { UZ: "Elektron sertifikatni tekshirish", RU: "Проверка электронного сертификата", EN: "Verify an e-certificate" },
   "ver.subtitle": { UZ: "Raqamli sertifikatlarni tekshirish tizimi", RU: "Система проверки цифровых сертификатов", EN: "Digital certificate verification" },
   "ver.checking": { UZ: "Sertifikat ma'lumotlari tekshirilmoqda...", RU: "Проверяем сертификат...", EN: "Checking the certificate..." },
@@ -857,7 +857,7 @@ export const dict = {
   "ver.signer": { UZ: "Tasdiqlovchi shaxs:", RU: "Подписант:", EN: "Signed by:" },
   "ver.print": { UZ: "Sertifikatni chop etish", RU: "Распечатать сертификат", EN: "Print the certificate" },
   "ver.copyLink": { UZ: "Havolani nusxalash", RU: "Скопировать ссылку", EN: "Copy link" },
-  "ver.footer": { UZ: "CRMAPP raqamli sertifikatlar • Barcha huquqlar himoyalangan", RU: "Цифровые сертификаты CRMAPP • Все права защищены", EN: "CRMAPP digital credentials • All rights reserved" },
+  "ver.footer": { UZ: "TalimCRM raqamli sertifikatlar • Barcha huquqlar himoyalangan", RU: "Цифровые сертификаты TalimCRM • Все права защищены", EN: "TalimCRM digital credentials • All rights reserved" },
   "onb.catLanguages": { UZ: "Tillar", RU: "Языки", EN: "Languages" },
   "onb.catLanguagesDesc": { UZ: "Ingliz, rus, nemis, koreys, arab va boshqalar", RU: "Английский, русский, немецкий, корейский, арабский и др.", EN: "English, Russian, German, Korean, Arabic, etc." },
   "onb.catMath": { UZ: "Matematika", RU: "Математика", EN: "Mathematics" },
@@ -893,7 +893,7 @@ export const dict = {
   "onb.of": { UZ: "/", RU: "из", EN: "of" },
   "onb.optional": { UZ: "(ixtiyoriy)", RU: "(необязательно)", EN: "(optional)" },
   "onb.final": { UZ: "(yakuniy)", RU: "(финал)", EN: "(final)" },
-  "onb.welcome": { UZ: "CRMAPP'ga xush kelibsiz", RU: "Добро пожаловать в CRMAPP", EN: "Welcome to CRMAPP" },
+  "onb.welcome": { UZ: "TalimCRM'ga xush kelibsiz", RU: "Добро пожаловать в TalimCRM", EN: "Welcome to TalimCRM" },
   "onb.welcomeBody": { UZ: "Markaz profili va asosiy sozlamalarni kiritamiz.", RU: "Настроим профиль центра и основные параметры.", EN: "Let's set up your learning center profile and defaults." },
   "onb.centerName": { UZ: "Markaz nomi", RU: "Название центра", EN: "Center name" },
   "onb.phone": { UZ: "Telefon raqami", RU: "Номер телефона", EN: "Phone number" },
@@ -2052,9 +2052,9 @@ export const dict = {
   "privacy.title": { UZ: "Maxfiylik siyosati", RU: "Политика конфиденциальности", EN: "Privacy policy" },
   "privacy.s1Title": { UZ: "1. Qanday ma'lumot to'playmiz", RU: "1. Какие данные мы собираем", EN: "1. What data we collect" },
   "privacy.s1Body": {
-    UZ: "CRMAPP — o'quv markazlari uchun boshqaruv tizimi. Biz sizning markazingiz kiritgan ma'lumotlarni (o'quvchilar, o'qituvchilar, to'lovlar, davomat) saqlaymiz. Bu ma'lumotlarning egasi — sizning markazingiz (tenant); biz uni faqat xizmatni ko'rsatish uchun ishlatamiz.",
-    RU: "CRMAPP — система управления для учебных центров. Мы храним данные, введённые вашим центром (учащиеся, учителя, платежи, посещаемость). Владельцем этих данных является ваш центр (арендатор); мы используем их только для предоставления услуги.",
-    EN: "CRMAPP is a management system for learning centers. We store the data your center enters (students, teachers, payments, attendance). Your center (tenant) owns this data; we use it only to provide the service.",
+    UZ: "TalimCRM — o'quv markazlari uchun boshqaruv tizimi. Biz sizning markazingiz kiritgan ma'lumotlarni (o'quvchilar, o'qituvchilar, to'lovlar, davomat) saqlaymiz. Bu ma'lumotlarning egasi — sizning markazingiz (tenant); biz uni faqat xizmatni ko'rsatish uchun ishlatamiz.",
+    RU: "TalimCRM — система управления для учебных центров. Мы храним данные, введённые вашим центром (учащиеся, учителя, платежи, посещаемость). Владельцем этих данных является ваш центр (арендатор); мы используем их только для предоставления услуги.",
+    EN: "TalimCRM is a management system for learning centers. We store the data your center enters (students, teachers, payments, attendance). Your center (tenant) owns this data; we use it only to provide the service.",
   },
   "privacy.s2Title": { UZ: "2. Ma'lumotlardan foydalanish", RU: "2. Использование данных", EN: "2. Use of data" },
   "privacy.s2Body": {
@@ -2080,9 +2080,9 @@ export const dict = {
   "terms.title": { UZ: "Foydalanish shartlari", RU: "Условия использования", EN: "Terms of use" },
   "terms.s1Title": { UZ: "1. Xizmat", RU: "1. Услуга", EN: "1. Service" },
   "terms.s1Body": {
-    UZ: "CRMAPP — o'quv markazlarga guruh, o'quvchi, to'lov va davomatni boshqarish uchun dasturiy ta'minot (SaaS) sifatida taqdim etiladi. Ro'yxatdan o'tish orqali siz shu shartlarga rozilik bildirasiz.",
-    RU: "CRMAPP предоставляется учебным центрам как программное обеспечение (SaaS) для управления группами, учащимися, платежами и посещаемостью. Регистрируясь, вы соглашаетесь с этими условиями.",
-    EN: "CRMAPP is provided to learning centers as software (SaaS) for managing groups, students, payments, and attendance. By registering, you agree to these terms.",
+    UZ: "TalimCRM — o'quv markazlarga guruh, o'quvchi, to'lov va davomatni boshqarish uchun dasturiy ta'minot (SaaS) sifatida taqdim etiladi. Ro'yxatdan o'tish orqali siz shu shartlarga rozilik bildirasiz.",
+    RU: "TalimCRM предоставляется учебным центрам как программное обеспечение (SaaS) для управления группами, учащимися, платежами и посещаемостью. Регистрируясь, вы соглашаетесь с этими условиями.",
+    EN: "TalimCRM is provided to learning centers as software (SaaS) for managing groups, students, payments, and attendance. By registering, you agree to these terms.",
   },
   "terms.s2Title": { UZ: "2. Sinov muddati va to'lov", RU: "2. Пробный период и оплата", EN: "2. Trial period and payment" },
   "terms.s2Body": {
@@ -2092,9 +2092,9 @@ export const dict = {
   },
   "terms.s3Title": { UZ: "3. Mas'uliyat", RU: "3. Ответственность", EN: "3. Responsibility" },
   "terms.s3Body": {
-    UZ: "Kiritilgan ma'lumotlarning to'g'riligi uchun markaz (siz) mas'ulsiz. CRMAPP texnik xizmat sifatida ishlaydi va ma'lumotlaringizning mazmuniga aralashmaydi.",
-    RU: "За точность введённых данных отвечает центр (вы). CRMAPP работает как техническая услуга и не вмешивается в содержание ваших данных.",
-    EN: "You (the center) are responsible for the accuracy of the data you enter. CRMAPP operates as a technical service and does not interfere with the content of your data.",
+    UZ: "Kiritilgan ma'lumotlarning to'g'riligi uchun markaz (siz) mas'ulsiz. TalimCRM texnik xizmat sifatida ishlaydi va ma'lumotlaringizning mazmuniga aralashmaydi.",
+    RU: "За точность введённых данных отвечает центр (вы). TalimCRM работает как техническая услуга и не вмешивается в содержание ваших данных.",
+    EN: "You (the center) are responsible for the accuracy of the data you enter. TalimCRM operates as a technical service and does not interfere with the content of your data.",
   },
   "terms.s4Title": { UZ: "4. Bekor qilish", RU: "4. Отмена", EN: "4. Cancellation" },
   "terms.s4Body": {
@@ -2113,7 +2113,7 @@ export const dict = {
     EN: "Groups, schedule, attendance and payments — all transparent and organized. To start studying at our center, contact the center directly — registration is handled by the administrator.",
   },
   "publicSite.contactCta": { UZ: "Ariza uchun markaz bilan bog'laning", RU: "Свяжитесь с центром для подачи заявки", EN: "Contact the center to apply" },
-  "publicSite.poweredBy": { UZ: "CRMAPP orqali quvvatlanadi.", RU: "Работает на CRMAPP.", EN: "Powered by CRMAPP." },
+  "publicSite.poweredBy": { UZ: "TalimCRM orqali quvvatlanadi.", RU: "Работает на TalimCRM.", EN: "Powered by TalimCRM." },
 
   // Shared date/time pickers
   "picker.selectDate": { UZ: "Sanani tanlang", RU: "Выберите дату", EN: "Select date" },

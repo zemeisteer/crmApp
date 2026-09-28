@@ -190,7 +190,7 @@ export default function LoginPage() {
         >
           <div>
             <div style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "4px 10px", borderRadius: 8, background: "#EEF2FF", color: ACCENT, fontSize: 12, fontWeight: 700, marginBottom: 10 }}>
-              CRMAPP WORKSPACE
+              TalimCRM Workspace
             </div>
             <h2 style={{ fontSize: 24, fontWeight: 800, color: "#111827", letterSpacing: "-0.02em" }}>
               {t("auth.chooseWorkspace")}
@@ -401,7 +401,7 @@ export default function LoginPage() {
             </svg>
           </div>
           <span style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 800, fontSize: 21, color: "#fff", letterSpacing: "-0.02em" }}>
-            CRMAPP
+            TalimCRM
           </span>
         </div>
 
@@ -415,7 +415,7 @@ export default function LoginPage() {
         </div>
 
         <div style={{ position: "relative", zIndex: 2, fontSize: 13, color: "#8E8CA8" }}>
-          CRMAPP &copy; {new Date().getFullYear()} — {t("auth.allRightsReserved")}
+          TalimCRM &copy; {new Date().getFullYear()} — {t("auth.allRightsReserved")}
         </div>
 
         <div

@@ -265,8 +265,8 @@ export default function Sidebar({ open, onClose }: { open?: boolean; onClose?: (
             </svg>
           </div>
         )}
-        <span style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 800, fontSize: 16.5, color: "#fff", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={tenant?.name ?? "CRMAPP"}>
-          {tenant?.name ?? "CRMAPP"}
+        <span style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 800, fontSize: 16.5, color: "#fff", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={tenant?.name ?? "TalimCRM"}>
+          {tenant?.name ?? "TalimCRM"}
         </span>
       </Link>
 

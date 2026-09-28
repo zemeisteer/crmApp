@@ -76,7 +76,7 @@ export default function PublicPlacementPage() {
     <div style={{ minHeight: "100vh", background: "#F7F6F2", padding: "24px 16px" }}>
       <div style={{ maxWidth: 760, margin: "0 auto" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, gap: 12 }}>
-          <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 800, fontSize: 16, color: "#181A1F" }}>{test?.centerName ?? "CRMAPP"}</div>
+          <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 800, fontSize: 16, color: "#181A1F" }}>{test?.centerName ?? "TalimCRM"}</div>
           <div style={{ display: "flex", gap: 4 }}>
             {(["UZ", "RU", "EN"] as Lang[]).map((l) => (
               <button key={l} type="button" onClick={() => setLang(l)} style={{ fontSize: 11, fontWeight: 700, padding: "5px 8px", borderRadius: 7, border: "none", cursor: "pointer", background: lang === l ? ACCENT : "#EAE8E2", color: lang === l ? "#fff" : "#4A4E58" }}>

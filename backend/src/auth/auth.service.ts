@@ -173,7 +173,7 @@ export class AuthService {
 
     void this.email.send(
       user.email,
-      "CRMAPP — emailingizni tasdiqlang",
+      "TalimCRM — emailingizni tasdiqlang",
       `Assalomu alaykum, ${user.fullName}!\n\nEmailingizni tasdiqlash uchun havolani oching:\n${this.frontendUrl()}/verify-email?token=${verifyToken}\n\nAgar ro'yxatdan o'tmagan bo'lsangiz, bu xabarni e'tiborsiz qoldiring.`,
     );
 

@@ -164,7 +164,7 @@ export default function RegisterPage() {
               letterSpacing: "-0.02em",
             }}
           >
-            CRMAPP
+            TalimCRM
           </span>
         </div>
 
@@ -246,7 +246,7 @@ export default function RegisterPage() {
 
         {/* Footer info */}
         <div style={{ position: "relative", zIndex: 2, fontSize: 13, color: "#8E8CA8" }}>
-          CRMAPP &copy; {new Date().getFullYear()} — {t("auth.allRightsReserved")}
+          TalimCRM &copy; {new Date().getFullYear()} — {t("auth.allRightsReserved")}
         </div>
       </div>
 

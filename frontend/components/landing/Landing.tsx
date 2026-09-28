@@ -217,7 +217,7 @@ export default function Landing() {
             <div style={{ width: 32, height: 32, borderRadius: 9, background: ACCENT, display: "flex", alignItems: "center", justifyContent: "center" }}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 10 12 5 2 10l10 5 10-5Z" /><path d="M6 12v5c0 1.5 2.7 3 6 3s6-1.5 6-3v-5" /></svg>
             </div>
-            <span style={{ fontFamily: "'Manrope',sans-serif", fontWeight: 800, fontSize: 19, letterSpacing: "-0.02em" }}>CRMAPP</span>
+            <span style={{ fontFamily: "'Manrope',sans-serif", fontWeight: 800, fontSize: 19, letterSpacing: "-0.02em" }}>TalimCRM</span>
           </Link>
           <nav className="lp-nav" style={{ display: "flex", alignItems: "center", gap: 36, fontSize: 14.5, fontWeight: 500, color: "var(--text-2)" }}>
             <a href="#features">{L.navFeatures}</a>
@@ -593,7 +593,7 @@ export default function Landing() {
       {/* FOOTER */}
       <div style={{ width: "100%", borderTop: "1px solid var(--border)", padding: "40px 32px", boxSizing: "border-box" }}>
         <div className="lp-wrap lp-footer" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: 13, color: "var(--muted)" }}>
-          <span>© {new Date().getFullYear()} CRMAPP</span>
+          <span>© {new Date().getFullYear()} TalimCRM</span>
           <div style={{ display: "flex", gap: 24, flexWrap: "wrap" }}>
             <Link href="/login">{L.login}</Link>
             <Link href="/terms">{L.footerContact}</Link>
