@@ -57,6 +57,13 @@ const ATTENDANCE_COLOR: Record<AttendanceStatus, string> = {
   ABSENT: "#B23A47",
 };
 
+const DAY_SHORT: Record<string, TranslationKey> = {
+  dushanba: "weekday.short.monday", seshanba: "weekday.short.tuesday", chorshanba: "weekday.short.wednesday",
+  payshanba: "weekday.short.thursday", juma: "weekday.short.friday", shanba: "weekday.short.saturday", yakshanba: "weekday.short.sunday",
+  mon: "weekday.short.monday", tue: "weekday.short.tuesday", wed: "weekday.short.wednesday", thu: "weekday.short.thursday",
+  fri: "weekday.short.friday", sat: "weekday.short.saturday", sun: "weekday.short.sunday",
+};
+
 function GroupDetailContent() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
@@ -68,7 +75,7 @@ function GroupDetailContent() {
     return fmtDate(iso, lang, "long");
   }
 
-  const [group, setGroup] = useState<Group & { enrollments?: { id: string; student: Student }[] } | null>(null);
+  const [group, setGroup] = useState<Group & { enrollments?: { id: string; status?: string; student: Student }[] } | null>(null);
   const [allStudents, setAllStudents] = useState<Student[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
   const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
@@ -145,7 +152,9 @@ function GroupDetailContent() {
     );
   }
 
-  const enrollments = group.enrollments || [];
+  // Only students who are in the group now: removed students keep a
+  // CANCELLED enrollment row and must not be listed or counted.
+  const enrollments = (group.enrollments || []).filter((e) => !e.status || e.status === "ACTIVE" || e.status === "PAUSED");
   const enrolledIds = new Set(enrollments.map((e) => e.student.id));
   const availableStudents = allStudents.filter((s) => !enrolledIds.has(s.id));
   const month = currentMonth();
@@ -246,11 +255,30 @@ function GroupDetailContent() {
         </Link>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div>
-            <h1 style={{ fontSize: 22, fontWeight: 800 }}>{group.name}</h1>
+            <h1 style={{ fontSize: 22, fontWeight: 800, display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+              {group.name}
+              {(() => {
+                const max = group.maxStudents || 0;
+                const b =
+                  group.status && group.status !== "ACTIVE"
+                    ? { text: group.status === "PLANNED" ? t("grp.stPlanned") : group.status === "COMPLETED" ? t("grp.stCompleted") : t("grp.stArchived"), color: "#8A8D96", bg: "#F2F1EC" }
+                    : max > 0 && enrollments.length >= max
+                      ? { text: t("grp.stFull"), color: "#1FA463", bg: "#E9F8EF" }
+                      : { text: t("grp.activeGroup"), color: "#1FA463", bg: "#E9F8EF" };
+                return <span style={{ fontSize: 12, fontWeight: 700, color: b.color, background: b.bg, padding: "4px 10px", borderRadius: 100, fontFamily: "'Inter', sans-serif" }}>{b.text}</span>;
+              })()}
+            </h1>
             <div style={{ fontSize: 13, color: "#8A8D96", marginTop: 2 }}>
-              {group.subject}
-              {group.teacher ? ` · ${group.teacher.fullName}` : ""}
-              {group.schedule ? ` · ${group.schedule}` : ""}
+              {[
+                group.teacher?.fullName,
+                group.subject,
+                (() => {
+                  const days = (group.scheduleDays ?? "").split(",").map((d) => d.trim()).filter(Boolean)
+                    .map((d) => DAY_SHORT[d.toLowerCase()] ? t(DAY_SHORT[d.toLowerCase()]) : d);
+                  return days.length && group.startTime ? `${days.join("/")}, ${group.startTime}` : group.schedule;
+                })(),
+                `${enrollments.length} ${t("dash.studentsShort")}`,
+              ].filter(Boolean).join(" · ")}
             </div>
           </div>
           <div style={{ display: "flex", gap: 10 }}>
@@ -305,7 +333,7 @@ function GroupDetailContent() {
           </div>
         </div>
 
-        <GroupInfoCard group={group} students={enrollments.length} />
+        <GroupInfoCard group={group} students={enrollments.length} lessonsHeld={new Set(attendance.map((a) => a.date)).size} />
 
         <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 20 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>

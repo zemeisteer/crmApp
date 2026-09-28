@@ -12,7 +12,7 @@ const DAY_KEYS: Record<string, TranslationKey> = {
 
 // Compact "about the group" card: everything a teacher or admin needs at a
 // glance, with icons, in a two-column grid.
-export default function GroupInfoCard({ group, students }: { group: Group; students: number }) {
+export default function GroupInfoCard({ group, students, lessonsHeld }: { group: Group; students: number; lessonsHeld?: number }) {
   const { t, lang } = useLanguage();
   const days = (group.scheduleDays ?? "")
     .split(",")
@@ -34,6 +34,17 @@ export default function GroupInfoCard({ group, students }: { group: Group; stude
     { icon: "💰", label: t("groups.fieldMonthlyPrice"), value: group.monthlyPrice ? `${money(group.monthlyPrice)} ${t("common.sumUnit")}` : "—" },
     { icon: "🚀", label: t("groupDetail.startedDate"), value: group.startDate ? formatDate(group.startDate, lang, "long") : "—" },
   ];
+  // Length of the course and its end month, when a duration is set.
+  if (group.durationMonths) {
+    let end = "";
+    if (group.startDate) {
+      const d = new Date(group.startDate);
+      d.setMonth(d.getMonth() + group.durationMonths);
+      end = ` (${t("grp.until")}: ${d.toLocaleDateString(lang === "EN" ? "en-GB" : lang === "RU" ? "ru-RU" : "uz-UZ", { month: "long", year: "numeric" })})`;
+    }
+    rows.push({ icon: "⏳", label: t("grp.duration"), value: `${t("stu.months").replace("{n}", String(group.durationMonths))}${end}` });
+  }
+  if (lessonsHeld !== undefined) rows.push({ icon: "✅", label: t("grp.lessonsHeld"), value: String(lessonsHeld) });
 
   return (
     <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 20 }}>
