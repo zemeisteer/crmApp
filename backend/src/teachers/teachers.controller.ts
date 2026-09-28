@@ -14,7 +14,7 @@ import { TrialGuard } from '../common/trial.guard';
 import { Roles } from '../common/roles.decorator';
 import { CurrentUser } from '../common/current-user.decorator';
 import { TeachersService } from './teachers.service';
-import { CreateTeacherDto, UpdateTeacherDto } from './dto/teacher.dto';
+import { CreateTeacherDto, UpdateTeacherDto , TeacherAccountDto } from './dto/teacher.dto';
 
 @UseGuards(JwtAuthGuard, RolesGuard, TrialGuard)
 @Controller('teachers')
@@ -56,6 +56,24 @@ export class TeachersController {
     @Body() dto: UpdateTeacherDto,
   ) {
     return this.service.update(tenantId, userId, id, dto);
+  }
+
+  // Login for the teacher (email + password), and taking it away.
+  @Roles('ADMIN')
+  @Post(':id/account')
+  createAccount(
+    @CurrentUser('tenantId') tenantId: string,
+    @CurrentUser('sub') userId: string,
+    @Param('id') id: string,
+    @Body() dto: TeacherAccountDto,
+  ) {
+    return this.service.createAccount(tenantId, userId, id, dto);
+  }
+
+  @Roles('ADMIN')
+  @Delete(':id/account')
+  removeAccount(@CurrentUser('tenantId') tenantId: string, @CurrentUser('sub') userId: string, @Param('id') id: string) {
+    return this.service.removeAccount(tenantId, userId, id);
   }
 
   @Roles('ADMIN')

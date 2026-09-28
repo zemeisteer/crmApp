@@ -1,7 +1,7 @@
 import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { and, eq, gte, inArray, isNull, lt, sql } from 'drizzle-orm';
 import { DB, Database } from '../db/db.module';
-import { attendance, enrollments, groups, invoices, payments, students, teachers } from '../db/schema';
+import { attendance, enrollments, groups, homework, homeworkCompletions, invoices, payments, students, teachers } from '../db/schema';
 import { PaymentsService } from '../payments/payments.service';
 import { LeadsService } from '../leads/leads.service';
 import { DEFAULT_TIMEZONE, zonedParts, zonedTimeToUtc } from '../common/timezone';
@@ -219,10 +219,16 @@ export class ReportsService {
       };
     }
 
+    // Hand-ins waiting for the teacher's grade.
+    const [{ toReview }] = groupIds.length === 0 ? [{ toReview: 0 }] : await this.db.select({ toReview: sql<number>`count(*)::int` })
+      .from(homeworkCompletions).innerJoin(homework, eq(homework.id, homeworkCompletions.homeworkId))
+      .where(and(eq(homework.tenantId, tenantId), inArray(homework.groupId, groupIds), eq(homeworkCompletions.status, 'SUBMITTED')));
+
     return {
       today,
       timezone: tz,
       scopedToOwnGroups: Boolean(scope),
+      homeworkToReview: toReview,
       counts: {
         activeStudents,
         activeGroups: groupRows.length,

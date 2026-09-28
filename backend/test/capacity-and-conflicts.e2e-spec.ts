@@ -293,4 +293,27 @@ describe('Group capacity & schedule day alignment (e2e)', () => {
     expect(pdf.headers['content-type']).toContain('application/pdf');
     expect(Buffer.from(pdf.body).subarray(0, 4).toString()).toBe('%PDF');
   });
+
+  it('gives a teacher a login that sees only their own groups', async () => {
+    const tid = (await http().post('/api/teachers').set(auth()).send({ fullName: 'Login Teacher', subject: 'Math' }).expect(201)).body.id as string;
+    const mine = (await http().post('/api/groups').set(auth()).send({ name: 'Mine', subject: 'Math', maxStudents: 5, teacherId: tid, scheduleDays: 'Dushanba', startTime: '09:00', endTime: '10:00' }).expect(201)).body.id as string;
+    await http().post('/api/groups').set(auth()).send({ name: 'Not mine', subject: 'Math', maxStudents: 5, scheduleDays: 'Dushanba', startTime: '11:00', endTime: '12:00' }).expect(201);
+
+    const email = `teacher-${suffix}@test.uz`;
+    const linked = (await http().post(`/api/teachers/${tid}/account`).set(auth()).send({ email, password: 'secret123' }).expect(201)).body;
+    expect(linked.user).toMatchObject({ email });
+    await http().post(`/api/teachers/${tid}/account`).set(auth()).send({ email, password: 'secret123' }).expect(409);
+
+    const login = (await http().post('/api/auth/login').send({ email, password: 'secret123' }).expect(201)).body;
+    const groups = (await http().get('/api/groups').set({ Authorization: `Bearer ${login.accessToken}` }).expect(200)).body;
+    expect(groups.map((g: { id: string }) => g.id)).toEqual([mine]);
+
+    // A user id from another center cannot be linked.
+    const other = (await http().post('/api/auth/register').send({ centerName: `Other ${suffix}`, subdomain: `other-${suffix}`, email: `other-${suffix}@test.uz`, password: 'password123', fullName: 'Other Owner' }).expect(201)).body;
+    await http().post('/api/teachers').set(auth()).send({ fullName: 'Hijack', userId: other.user.id }).expect(400);
+
+    // Taking the login away.
+    const unlinked = (await http().delete(`/api/teachers/${tid}/account`).set(auth()).expect(200)).body;
+    expect(unlinked.userId).toBeNull();
+  });
 });

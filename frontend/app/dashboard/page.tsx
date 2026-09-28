@@ -8,6 +8,7 @@ import { useAuth } from "@/lib/auth-context";
 import { useLanguage } from "@/lib/i18n-context";
 import { reportsApi, announcementsApi, Announcement, type DashboardData, type ReportsOverview } from "@/lib/api";
 import { buildInsights } from "@/lib/insights";
+import TeacherHome from "@/components/dashboard/TeacherHome";
 import { MONTH_KEYS, MONTH_SHORT_KEYS, type TranslationKey } from "@/lib/i18n";
 import { formatDate } from "@/lib/format-date";
 
@@ -227,6 +228,10 @@ function DashboardContent() {
               </div>
             )}
 
+            {user?.role === "TEACHER" && data ? (
+              <TeacherHome data={data} />
+            ) : (
+            <>
             {(counts?.activeGroups ?? 0) > 0 && (
               <div
                 style={{
@@ -422,6 +427,8 @@ function DashboardContent() {
                 </div>
                 <BarChart data={revenueData} color="#1FA463" formatValue={(v) => formatMoney(v)} unit={t("common.sumUnit")} emptyText={t("dashboard.noPaymentsYet")} />
               </div>
+            )}
+            </>
             )}
           </>
         )}

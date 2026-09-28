@@ -33,7 +33,7 @@ describe('TeachersService', () => {
       log: vi.fn().mockResolvedValue(undefined),
     };
 
-    service = new TeachersService(mockDb, mockAudit);
+    service = new TeachersService(mockDb, mockAudit, { create: vi.fn() } as any);
   });
 
   describe('findAll', () => {

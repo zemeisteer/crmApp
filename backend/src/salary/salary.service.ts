@@ -92,6 +92,17 @@ export class SalaryService {
     return row;
   }
 
+  // One teacher's line of the payroll, looked up by their login.
+  async forTeacherUser(tenantId: string, userId: string, forMonth?: string) {
+    const me = await this.db.query.teachers.findFirst({
+      where: and(eq(teachers.tenantId, tenantId), eq(teachers.userId, userId), isNull(teachers.deletedAt)),
+      columns: { id: true },
+    });
+    if (!me) return null;
+    const payroll = await this.calculatePayroll(tenantId, forMonth);
+    return payroll.teachers.find((t) => t.teacherId === me.id) ?? null;
+  }
+
   async calculatePayroll(tenantId: string, forMonth?: string): Promise<PayrollCalculationResponse> {
     const month = forMonth || new Date().toISOString().slice(0, 7);
 

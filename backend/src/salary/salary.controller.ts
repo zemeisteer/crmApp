@@ -12,6 +12,13 @@ import { CreateSalaryPaymentDto, DisburseSalaryDto } from './dto/salary.dto';
 export class SalaryController {
   constructor(private readonly service: SalaryService) {}
 
+  // The signed-in teacher's own pay for a month (same engine as payroll).
+  @Roles('TEACHER')
+  @Get('me')
+  mine(@CurrentUser('tenantId') tenantId: string, @CurrentUser('sub') userId: string, @Query('forMonth') forMonth?: string) {
+    return this.service.forTeacherUser(tenantId, userId, forMonth);
+  }
+
   // Every teacher's pay: finance staff only.
   @Roles('ADMIN', 'OWNER', 'ACCOUNTANT')
   @Get()

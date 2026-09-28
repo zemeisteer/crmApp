@@ -621,6 +621,8 @@ export interface Teacher {
   deletedAt?: string | null;
   createdAt: string;
   updatedAt: string;
+  // Linked login (set via /teachers/:id/account).
+  user?: { id: string; email: string } | null;
 }
 
 export type InvoiceStatus = 'DRAFT' | 'OPEN' | 'PARTIALLY_PAID' | 'PAID' | 'OVERDUE' | 'CANCELLED';
@@ -1232,6 +1234,9 @@ export const teachersApi = {
     request<Teacher>(`/teachers/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
   remove: (id: string) => request<void>(`/teachers/${id}`, { method: "DELETE" }),
   restore: (id: string) => request<Teacher>(`/teachers/${id}/restore`, { method: "POST" }),
+  createAccount: (id: string, data: { email: string; password: string }) =>
+    request<Teacher>(`/teachers/${id}/account`, { method: "POST", body: JSON.stringify(data) }),
+  removeAccount: (id: string) => request<Teacher>(`/teachers/${id}/account`, { method: "DELETE" }),
 };
 
 // ---- Payments ----
@@ -1414,6 +1419,9 @@ export const salaryApi = {
     request<SalaryPayment[]>(`/salary-payments${teacherId ? `?teacherId=${encodeURIComponent(teacherId)}` : ""}`),
   create: (data: { teacherId: string; amount: number; forMonth: string; paidAt?: string }) =>
     request<SalaryPayment>("/salary-payments", { method: "POST", body: JSON.stringify(data) }),
+  // The signed-in teacher's own pay line (null when not linked to a teacher).
+  mine: (forMonth?: string) =>
+    request<TeacherPayrollItem | null>(`/salary-payments/me${forMonth ? `?forMonth=${encodeURIComponent(forMonth)}` : ""}`),
   calculate: (forMonth?: string) => {
     const q = forMonth ? `?forMonth=${encodeURIComponent(forMonth)}` : "";
     return request<PayrollCalculationResponse>(`/salary-payments/calculate${q}`);
@@ -1809,6 +1817,8 @@ export interface DashboardData {
   timezone: string;
   scopedToOwnGroups: boolean;
   counts: { activeStudents: number; activeGroups: number; teachers: number; todaysLessons: number; attendanceMarks: number };
+  // Hand-ins waiting for a grade (own groups for teachers).
+  homeworkToReview?: number;
   attendance: {
     week: Array<{ date: string; weekday: number; marks: number }>;
     months: Array<{ month: string; marks: number }>;
