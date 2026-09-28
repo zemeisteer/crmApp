@@ -8,6 +8,7 @@ import { GenerateMaterialDto, PlacementTestDto } from './dto/ai.dto';
 import { bankFor, pickFromBank } from './placement-bank';
 import { normalizeQuestion, type TestQuestion } from '../common/test-questions';
 import { essayGradePrompt, generateTestPrompt, parseJsonArray, pdfExtractPrompt, textExtractPrompt } from './test-prompts';
+import { tutorPrompt, type TutorContext } from './tutor-prompt';
 
 
 const MODEL = 'claude-sonnet-5';
@@ -288,6 +289,17 @@ Javobni FAQAT quyidagi JSON formatida ber (boshqa hech qanday so'z qo'shma):
     const questions = parseJsonArray(text).map((q) => normalizeQuestion(q)).filter((q): q is TestQuestion => q !== null);
     if (questions.length === 0) throw new ServiceUnavailableException("AI savol yarata olmadi. Qaytadan urinib ko'ring.");
     return questions.slice(0, count);
+  }
+
+  get isConfigured() {
+    return this.aiConfigured();
+  }
+
+  // One reply of the students' AI tutor (Telegram bot).
+  async tutorReply(ctx: TutorContext): Promise<string> {
+    if (!this.aiConfigured()) throw new ServiceUnavailableException('AI yoqilmagan');
+    const text = (await this.complete(tutorPrompt(ctx), 900)).trim();
+    return text || "Kechirasiz, javob tayyorlay olmadim. Savolni boshqacha yozib ko'ring.";
   }
 
   // Scores one essay answer for the teacher to confirm.

@@ -222,6 +222,8 @@ export const tenants = pgTable('tenants', {
   timezone: text('timezone').notNull().default('Asia/Tashkent'),
   // Public site content written by the center (JSON, see tenants/site-content.ts).
   siteContent: text('site_content'),
+  // Questions a student may ask the AI tutor in Telegram per day (0 = off).
+  studentAiDailyLimit: integer('student_ai_daily_limit').notNull().default(20),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 }, (t) => ({
@@ -832,6 +834,20 @@ export const telegramLinkTokens = pgTable('telegram_link_tokens', {
 }, (t) => ({
   tokenIdx: uniqueIndex('telegram_link_tokens_token_idx').on(t.token),
   tenantIdx: index('telegram_link_tokens_tenant_idx').on(t.tenantId),
+}));
+
+// A student's conversation with the AI tutor in the Telegram bot (kept for
+// context and the daily limit; old rows are pruned).
+export const studentAiMessages = pgTable('student_ai_messages', {
+  id: text('id').primaryKey().$defaultFn(() => createId()),
+  tenantId: text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  studentId: text('student_id').notNull().references(() => students.id, { onDelete: 'cascade' }),
+  role: text('role').notNull(), // 'user' | 'assistant'
+  content: text('content').notNull(),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+}, (t) => ({
+  studentIdx: index('student_ai_messages_student_idx').on(t.studentId, t.createdAt),
+  tenantIdx: index('student_ai_messages_tenant_idx').on(t.tenantId),
 }));
 
 // Admissions & Sales CRM — Leads management

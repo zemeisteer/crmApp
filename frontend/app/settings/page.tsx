@@ -117,6 +117,7 @@ function SettingsContent() {
   const [phones, setPhones] = useState<string[]>([""]);
   const [emails, setEmails] = useState<string[]>([""]);
   const [telegramUsernames, setTelegramUsernames] = useState<string[]>([""]);
+  const [aiLimit, setAiLimit] = useState("20");
   const [language, setLanguage] = useState<"UZ" | "RU" | "EN">("UZ");
   const [currency, setCurrency] = useState<"UZS" | "USD" | "RUB">("UZS");
   const [saving, setSaving] = useState(false);
@@ -136,6 +137,7 @@ function SettingsContent() {
       setPhones(splitList(tenant.phone).length ? splitList(tenant.phone) : [""]);
       setEmails(splitList(tenant.email).length ? splitList(tenant.email) : [""]);
       setTelegramUsernames(splitList(tenant.telegramUsername).length ? splitList(tenant.telegramUsername) : [""]);
+      setAiLimit(String(tenant.studentAiDailyLimit ?? 20));
       setLanguage(tenant.language);
       setCurrency(tenant.currency);
     }
@@ -330,6 +332,7 @@ function SettingsContent() {
         phone: joinList(phones) || undefined,
         email: joinList(emails) || undefined,
         telegramUsername: joinList(telegramUsernames) || undefined,
+        studentAiDailyLimit: Math.max(0, Math.min(200, Math.round(Number(aiLimit) || 0))),
         language,
         currency,
       });
@@ -428,6 +431,11 @@ function SettingsContent() {
                   <div>
                     <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>{t("settings.telegramUsernames")}</div>
                     <TagListInput values={telegramUsernames} onChange={setTelegramUsernames} placeholder="markaz_bot" prefix="@" addLabel={t("settings.addTelegramUsername")} />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>🤖 {t("settings.aiTutorLimit")}</div>
+                    <input className="field-input" type="number" inputMode="numeric" min={0} max={200} value={aiLimit} onChange={(e) => setAiLimit(e.target.value)} style={{ maxWidth: 160 }} />
+                    <div style={{ fontSize: 12, color: "#8A8D96", marginTop: 5, lineHeight: 1.5 }}>{t("settings.aiTutorHint")}</div>
                   </div>
                   <div>
                     <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>{t("settings.loginEmail")}</div>

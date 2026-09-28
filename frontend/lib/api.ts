@@ -214,6 +214,7 @@ export interface Tenant {
   teachingCategories?: string[];
   country?: string;
   timezone?: string;
+  studentAiDailyLimit?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -1515,6 +1516,7 @@ export const tenantsApi = {
     name?: string; accentColor?: string; category?: TenantCategory; phone?: string; address?: string;
     email?: string; telegramUsername?: string; website?: string; websiteLabel?: string;
     language?: "UZ" | "RU" | "EN"; currency?: "UZS" | "USD" | "RUB"; teachingCategories?: string[];
+    studentAiDailyLimit?: number;
   }) => request<Tenant>("/tenants/me", { method: "PATCH", body: JSON.stringify(data) }),
   uploadLogo: (file: File) => uploadFile<Tenant>("/tenants/me/logo", file),
   getSite: () => request<SiteContent>("/tenants/me/site"),

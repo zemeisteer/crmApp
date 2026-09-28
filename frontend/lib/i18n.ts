@@ -1393,6 +1393,8 @@ export const dict = {
   "ptn.payments": { UZ: "To'lovlar", RU: "Оплата", EN: "Payments" },
   "ptn.attendance": { UZ: "Davomat", RU: "Посещаемость", EN: "Attendance" },
   "ptn.notifications": { UZ: "Xabarlar", RU: "Сообщения", EN: "Messages" },
+  "settings.aiTutorLimit": { UZ: "AI ustoz: kunlik savollar (har bir o'quvchiga)", RU: "AI-наставник: вопросов в день (на ученика)", EN: "AI tutor: questions per day (per student)" },
+  "settings.aiTutorHint": { UZ: "O'quvchilar Telegram botdagi \"🤖 AI ustoz\" tugmasi orqali darsdan savol berishadi. AI javobni tayyor yozib bermaydi, tushuntiradi. 0 — o'chirilgan.", RU: "Ученики задают вопросы по урокам через кнопку «🤖 AI ustoz» в Telegram-боте. AI не даёт готовых ответов, а объясняет. 0 — выключено.", EN: "Students ask lesson questions via the \"🤖 AI ustoz\" button in the Telegram bot. The AI explains rather than giving ready answers. 0 = off." },
   "chart.current": { UZ: "joriy", RU: "текущий", EN: "current" },
   "chart.noData": { UZ: "Ma'lumot yo'q", RU: "Нет данных", EN: "No data" },
   "dashboard.marksUnit": { UZ: "belgi", RU: "отметок", EN: "marks" },

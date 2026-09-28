@@ -1,4 +1,4 @@
-import { IsArray, Equals, IsEmail, IsIn, IsInt, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
+import { IsArray, Equals, IsEmail, IsIn, IsInt, IsOptional, IsString, Max, MaxLength, Min, MinLength } from 'class-validator';
 
 export class CreateTenantDto {
   @IsString()
@@ -22,6 +22,13 @@ export class UpdateTenantDto {
   @IsOptional()
   @IsString()
   name?: string;
+
+  // Daily AI tutor questions per student in Telegram (0 turns it off).
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(200)
+  studentAiDailyLimit?: number;
 
   @IsOptional()
   @IsString()
