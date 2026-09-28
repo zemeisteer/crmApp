@@ -271,6 +271,52 @@ export class ReportsService {
     };
   }
 
+  // Per-student columns for the students list: attendance over the last
+  // 30 days and this month's payment state (finance roles only; teachers
+  // see their own groups' students without money).
+  async studentsSummary(tenantId: string, viewer: { role: string; userId: string }) {
+    const tz = await this.leadsService.tenantTimezone(tenantId).catch(() => DEFAULT_TIMEZONE);
+    const now = zonedParts(new Date(), tz);
+    const month = ymd(now).slice(0, 7);
+    const since = ymd(zonedParts(new Date(Date.now() - 29 * 86_400_000), tz));
+    const scope = await teacherGroupIds(this.db, tenantId, viewer.role, viewer.userId);
+    if (scope && scope.length === 0) return { items: [], withPayments: false };
+
+    const att = await this.db.select({
+      studentId: attendance.studentId,
+      total: sql<number>`count(*)::int`,
+      present: sql<number>`count(*) filter (where ${attendance.status} in ('PRESENT', 'LATE'))::int`,
+    }).from(attendance)
+      .where(and(
+        eq(attendance.tenantId, tenantId),
+        gte(attendance.date, since),
+        ...(scope ? [inArray(attendance.groupId, scope)] : []),
+      ))
+      .groupBy(attendance.studentId);
+
+    const withPayments = !scope && PAYMENT_READ_ROLES.includes(viewer.role);
+    const pay = new Map<string, 'PAID' | 'DEBT' | 'PENDING' | 'NONE'>();
+    if (withPayments) {
+      const debtors = await this.paymentsService.getDebtors(tenantId, month, false);
+      const pending = await this.db.select({ studentId: payments.studentId }).from(payments)
+        .where(and(eq(payments.tenantId, tenantId), eq(payments.forMonth, month), eq(payments.status, 'PENDING')));
+      const pendingIds = new Set(pending.map((r) => r.studentId));
+      for (const d of debtors.debtors) {
+        const state = d.expectedAmount - d.discountAmount <= 0 ? 'NONE' : d.debtAmount === 0 ? 'PAID' : pendingIds.has(d.studentId) ? 'PENDING' : 'DEBT';
+        pay.set(d.studentId, state);
+      }
+    }
+
+    const ids = new Set([...att.map((a) => a.studentId), ...pay.keys()]);
+    return {
+      withPayments,
+      items: [...ids].map((id) => {
+        const a = att.find((x) => x.studentId === id);
+        return { studentId: id, attendanceRate: a ? pct(a.present, a.total) : null, payment: pay.get(id) ?? null };
+      }),
+    };
+  }
+
   private async studentsSection(tenantId: string, month: string, monthStart: Date, monthEnd: Date, tz: string) {
     const base = and(eq(students.tenantId, tenantId), isNull(students.deletedAt));
     const [{ active }] = await this.db.select({ active: sql<number>`count(*)::int` }).from(students)

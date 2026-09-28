@@ -1838,6 +1838,9 @@ export interface DashboardData {
 export const reportsApi = {
   overview: (month?: string) => request<ReportsOverview>(`/reports/overview${month ? `?month=${month}` : ""}`),
   dashboard: () => request<DashboardData>("/reports/dashboard"),
+  // Students list columns: attendance % (last 30 days) and this month's payment state.
+  studentsSummary: () =>
+    request<{ withPayments: boolean; items: Array<{ studentId: string; attendanceRate: number | null; payment: "PAID" | "DEBT" | "PENDING" | "NONE" | null }> }>("/reports/students-summary"),
 };
 
 // ---- Certificates (Spec Section 23) ----

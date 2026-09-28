@@ -20,6 +20,13 @@ export class ReportsController {
     return this.reports.dashboard(user.tenantId, { role: user.role, userId: user.sub });
   }
 
+  // Attendance % and payment state per student (students list columns).
+  @Get('students-summary')
+  studentsSummary(@CurrentUser() user: JwtPayload) {
+    if (!user?.tenantId) throw new ForbiddenException('Tashkilot tanlanmagan');
+    return this.reports.studentsSummary(user.tenantId, { role: user.role, userId: user.sub });
+  }
+
   // Same audience as the Reports page; sections inside are trimmed further
   // by role (finance, profit) and permission (admissions analytics).
   @Roles('ADMIN', 'OWNER', 'MANAGER', 'ACCOUNTANT')

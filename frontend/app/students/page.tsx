@@ -9,7 +9,7 @@ import PlacementTestModal from "@/components/students/PlacementTestModal";
 import Pagination, { usePagedSlice } from "@/components/Pagination";
 import Select from "@/components/Select";
 import DatePicker from "@/components/DatePicker";
-import { studentsApi, groupsApi, exportApi, Student, Group, Gender, ApiError } from "@/lib/api";
+import { studentsApi, groupsApi, exportApi, reportsApi, Student, Group, Gender, ApiError } from "@/lib/api";
 import { PHONE_PATTERN, PHONE_TITLE, NAME_PATTERN, NAME_TITLE } from "@/lib/validation";
 import { useLanguage } from "@/lib/i18n-context";
 import { matchesSubject, extractUniqueSubjects } from "@/lib/subject";
@@ -79,6 +79,10 @@ function StudentsContent() {
   }, [selectedGroups]);
   const filterGroupsInDirection = filterDirection ? groups.filter((g) => matchesSubject(g.subject, filterDirection)) : groups;
 
+  // Attendance % and payment state per student (demo columns).
+  const [summary, setSummary] = useState<Awaited<ReturnType<typeof reportsApi.studentsSummary>> | null>(null);
+  const summaryById = useMemo(() => new Map((summary?.items ?? []).map((i) => [i.studentId, i])), [summary]);
+
   function load() {
     setLoading(true);
     Promise.all([studentsApi.list(), groupsApi.list()])
@@ -87,6 +91,7 @@ function StudentsContent() {
         setGroups(g);
       })
       .finally(() => setLoading(false));
+    reportsApi.studentsSummary().then(setSummary).catch(() => setSummary(null));
   }
 
   useEffect(load, []);
@@ -255,8 +260,10 @@ function StudentsContent() {
                 <tr>
                   <th style={{ paddingTop: 16 }}>{t("students.colStudent")}</th>
                   <th style={{ paddingTop: 16 }}>{t("students.colGroups")}</th>
+                  <th style={{ paddingTop: 16 }} title={t("stu.attendanceHint")}>{t("stu.colAttendance")}</th>
                   <th style={{ paddingTop: 16 }}>{t("students.colPhone")}</th>
                   <th style={{ paddingTop: 16 }}>{t("students.colParentPhone")}</th>
+                  {summary?.withPayments && <th style={{ paddingTop: 16 }}>{t("stu.colPayment")}</th>}
                   <th style={{ paddingTop: 16 }}></th>
                 </tr>
               </thead>
@@ -265,8 +272,29 @@ function StudentsContent() {
                   <tr key={s.id}>
                     <td style={{ fontWeight: 600 }}>{s.fullName}</td>
                     <td>{s.enrollments?.map((e) => e.group.name).join(", ") || "—"}</td>
+                    <td>
+                      {(() => {
+                        const r = summaryById.get(s.id)?.attendanceRate ?? null;
+                        return r === null ? <span style={{ color: "#8A8D96" }}>—</span> : <span style={{ fontWeight: 700, color: r >= 85 ? "#1FA463" : r >= 70 ? "#D97706" : "#B23A47" }}>{r}%</span>;
+                      })()}
+                    </td>
                     <td>{s.phone || "—"}</td>
                     <td>{s.parentPhone || "—"}</td>
+                    {summary?.withPayments && (
+                      <td>
+                        {(() => {
+                          const st = summaryById.get(s.id)?.payment ?? null;
+                          if (!st || st === "NONE") return <span style={{ color: "#8A8D96" }}>—</span>;
+                          const map = {
+                            PAID: { text: t("stu.payPaid"), color: "#1FA463", bg: "#E9F8EF" },
+                            DEBT: { text: t("stu.payDebt"), color: "#B23A47", bg: "#FDEBEC" },
+                            PENDING: { text: t("stu.payPending"), color: "#B45309", bg: "#FEF3C7" },
+                          } as const;
+                          const b = map[st];
+                          return <span style={{ fontSize: 12, fontWeight: 700, color: b.color, background: b.bg, padding: "4px 10px", borderRadius: 100 }}>{b.text}</span>;
+                        })()}
+                      </td>
+                    )}
                     <td style={{ textAlign: "right" }}>
                       <Link
                         href={`/students/${s.id}`}
