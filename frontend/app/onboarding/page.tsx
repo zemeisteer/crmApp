@@ -14,6 +14,7 @@ import {
 import { useLanguage } from "@/lib/i18n-context";
 import type { TranslationKey } from "@/lib/i18n";
 import PhoneInput from "@/components/PhoneInput";
+import { centerHost, ROOT_DOMAIN } from "@/lib/domain";
 
 const ACCENT = "#4F46E5";
 
@@ -133,7 +134,7 @@ export default function OnboardingPage() {
         const stepName = t.onboardingStep || "PROFILE";
         if (stepName === "COMPLETED") {
           setIsCompleted(true);
-          setFinalWorkspaceUrl(`${t.subdomain}.crmapp.com`);
+          setFinalWorkspaceUrl(centerHost(t.subdomain));
         } else {
           const idx = STEPS.findIndex((s) => s.id === stepName);
           if (idx >= 0) setCurrentStepIndex(idx);
@@ -467,13 +468,13 @@ export default function OnboardingPage() {
                 {t("onb.wsUrl")}
               </span>
               <span style={{ fontSize: 16, fontWeight: 700, color: ACCENT }}>
-                {finalWorkspaceUrl || `${workspaceSlug}.crmapp.com`}
+                {finalWorkspaceUrl || centerHost(workspaceSlug)}
               </span>
             </div>
             <button
               type="button"
               onClick={() => {
-                navigator.clipboard.writeText(`https://${finalWorkspaceUrl || `${workspaceSlug}.crmapp.com`}`);
+                navigator.clipboard.writeText(`https://${finalWorkspaceUrl || centerHost(workspaceSlug)}`);
                 alert("URL nusxalandi!");
               }}
               style={{
@@ -1201,7 +1202,7 @@ export default function OnboardingPage() {
                       whiteSpace: "nowrap",
                     }}
                   >
-                    .crmapp.com
+                    .{ROOT_DOMAIN}
                   </span>
                 </div>
 
@@ -1235,7 +1236,7 @@ export default function OnboardingPage() {
                 <div>
                   <div style={{ fontSize: 12, color: "#64748B" }}>{t("onb.preview")}</div>
                   <div style={{ fontSize: 14.5, fontWeight: 700, color: ACCENT }}>
-                    {workspaceSlug || "bilimdon"}.crmapp.com
+                    {centerHost(workspaceSlug || "bilimdon")}
                   </div>
                 </div>
               </div>

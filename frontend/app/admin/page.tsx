@@ -10,6 +10,7 @@ import { tenantsApi, plansApi, Plan, ApiError, type TenantsOverview } from "@/li
 import { useLanguage } from "@/lib/i18n-context";
 import type { TranslationKey } from "@/lib/i18n";
 import { formatDate } from "@/lib/format-date";
+import { centerHost } from "@/lib/domain";
 
 const ACCENT = "#4F46E5";
 
@@ -223,7 +224,7 @@ function AdminContent() {
                     <tr key={tn.id}>
                       <td>
                         <div style={{ fontWeight: 700 }}>{tn.name}</div>
-                        <div style={{ fontSize: 12, color: "#8A8D96" }}>{tn.subdomain}.crmapp.com</div>
+                        <div style={{ fontSize: 12, color: "#8A8D96" }}>{centerHost(tn.subdomain)}</div>
                         {tn.owner && <div style={{ fontSize: 12, color: "#4A4E58" }}>{tn.owner.fullName} · {tn.owner.email}</div>}
                       </td>
                       <td style={{ fontSize: 12.5 }}>

@@ -5,6 +5,7 @@ import { ApiError, fileUrl, placementApi, tenantsApi, type PlacementTestSummary,
 import { useAuth } from "@/lib/auth-context";
 import { useLanguage } from "@/lib/i18n-context";
 import Select from "@/components/Select";
+import { centerHost, centerSiteUrl } from "@/lib/domain";
 
 const ACCENT = "#4F46E5";
 const ICONS = ["✅", "🎯", "👩‍🏫", "📚", "🏆", "💡", "🕒", "💬", "📈", "🧑‍🎓", "🏫", "💳", "🌍", "🤝", "⭐", "🎓"];
@@ -89,12 +90,16 @@ export default function SiteContentEditor() {
     );
   }
 
-  const siteUrl = tenant?.subdomain ? `/site/${tenant.subdomain}` : null;
+  // The site lives on the center's own subdomain: <sub>.<main domain>.
+  const siteUrl = tenant?.subdomain ? centerSiteUrl(tenant.subdomain) : null;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16, maxWidth: 760 }}>
       <div style={{ ...card, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap", background: "#F5F3FF", borderColor: "#DDD6FE" }}>
-        <div style={{ fontSize: 13.5, color: "#4A4E58", lineHeight: 1.5, flex: 1, minWidth: 220 }}>{t("site.intro")}</div>
+        <div style={{ fontSize: 13.5, color: "#4A4E58", lineHeight: 1.5, flex: 1, minWidth: 220 }}>
+          {t("site.intro")}
+          {tenant?.subdomain && <div style={{ marginTop: 4, fontWeight: 700, color: ACCENT, overflowWrap: "anywhere" }}>{centerHost(tenant.subdomain)}</div>}
+        </div>
         {siteUrl && (
           <a href={siteUrl} target="_blank" rel="noreferrer" className="btn" style={{ background: "#fff", border: "1px solid #DDD6FE", color: ACCENT, fontSize: 13, fontWeight: 700, padding: "9px 14px", borderRadius: 9, textDecoration: "none" }}>
             🌐 {t("site.open")}

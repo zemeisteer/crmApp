@@ -279,7 +279,8 @@ export class OnboardingService {
     return {
       success: true,
       ready: true,
-      workspaceUrl: `${tenant.subdomain}.crmapp.com`,
+      // Same main domain the frontend uses (NEXT_PUBLIC_ROOT_DOMAIN there).
+      workspaceUrl: `${tenant.subdomain}.${process.env.ROOT_DOMAIN || 'crmapp.com'}`,
       redirectUrl: '/dashboard',
     };
   }

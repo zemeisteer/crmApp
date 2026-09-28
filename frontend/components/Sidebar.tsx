@@ -8,6 +8,7 @@ import { fileUrl } from "@/lib/api";
 import { useLanguage } from "@/lib/i18n-context";
 import type { TranslationKey } from "@/lib/i18n";
 import type { Role } from "@/lib/api";
+import { centerHost } from "@/lib/domain";
 
 const ACCENT = "#4F46E5";
 
@@ -408,7 +409,7 @@ export default function Sidebar({ open, onClose }: { open?: boolean; onClose?: (
         </div>
         <div>
           <div style={{ fontSize: 13, fontWeight: 600, color: "#fff" }}>{user?.fullName ?? "..."}</div>
-          <div style={{ fontSize: 11, color: "#71737C" }}>{tenant?.subdomain ? `${tenant.subdomain}.crmapp.com` : ""}</div>
+          <div style={{ fontSize: 11, color: "#71737C" }}>{tenant?.subdomain ? centerHost(tenant.subdomain) : ""}</div>
         </div>
       </div>
       </div>

@@ -13,6 +13,7 @@ import { localMonthStr } from "@/lib/date";
 import { useLanguage } from "@/lib/i18n-context";
 import { MONTH_KEYS, type TranslationKey } from "@/lib/i18n";
 import { formatDate as fmtDate } from "@/lib/format-date";
+import { ROOT_DOMAIN } from "@/lib/domain";
 
 const ACCENT = "#4F46E5";
 
@@ -737,7 +738,7 @@ function StudentDetailContent() {
 
             <div style={{ marginTop: 16, paddingTop: 10, borderTop: "1px solid rgba(255,255,255,0.15)", display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 10, opacity: 0.8 }}>
               <span>{t("std.scanHint")}</span>
-              <span>crmapp.com</span>
+              <span>{ROOT_DOMAIN}</span>
             </div>
           </div>
 

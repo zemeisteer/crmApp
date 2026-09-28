@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useAuth, isWorkspaceSelection } from "@/lib/auth-context";
 import { useLanguage } from "@/lib/i18n-context";
 import { ApiError, WorkspaceItem } from "@/lib/api";
+import { centerHost } from "@/lib/domain";
 
 const ACCENT = "#4F46E5";
 
@@ -262,7 +263,7 @@ export default function LoginPage() {
                         {ws.name}
                       </div>
                       <div style={{ fontSize: 12.5, color: "#6B7280", marginTop: 2 }}>
-                        {ws.subdomain}.crmapp.com
+                        {centerHost(ws.subdomain)}
                       </div>
                     </div>
                   </div>

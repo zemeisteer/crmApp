@@ -17,6 +17,7 @@ import {
 } from "@/lib/api";
 import { PHONE_PATTERN, PHONE_TITLE, NAME_PATTERN, NAME_TITLE } from "@/lib/validation";
 import { formatDate, formatDateTime, formatTime } from "@/lib/format-date";
+import { centerHost } from "@/lib/domain";
 
 const ACCENT = "#4F46E5";
 // Same ids as onboarding (tenants.teachingCategories).
@@ -413,7 +414,7 @@ function SettingsContent() {
                     </div>
                     <div>
                       <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>{t("settings.subdomain")}</div>
-                      <input className="field-input" value={tenant?.subdomain ? `${tenant.subdomain}.crmapp.com` : ""} disabled style={{ opacity: 0.6 }} />
+                      <input className="field-input" value={tenant?.subdomain ? centerHost(tenant.subdomain) : ""} disabled style={{ opacity: 0.6 }} />
                     </div>
                   </div>
                   <div>
