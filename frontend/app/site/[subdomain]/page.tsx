@@ -3,23 +3,57 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { tenantsApi, PublicShowcaseData, ApiError } from "@/lib/api";
+import { tenantsApi, fileUrl, PublicShowcaseData, ApiError } from "@/lib/api";
 import { formatDate } from "@/lib/format-date";
+import { useLanguage } from "@/lib/i18n-context";
+import type { TranslationKey } from "@/lib/i18n";
+import { SITE_TEXT, type SiteLang } from "@/components/site/site-text";
 
-function formatMoney(amount: number) {
-  return new Intl.NumberFormat("uz-UZ").format(amount);
-}
+// A center's public site, in the style of the TalimCRM demo: light, the
+// center's own accent colour, three languages, phone-ready. Visitors see
+// real groups, teachers and branches, and leave an application (a lead).
+
+const money = (n: number) => new Intl.NumberFormat("uz-UZ").format(n);
+const DAY_KEYS: Record<string, TranslationKey> = {
+  dushanba: "weekday.short.monday", seshanba: "weekday.short.tuesday", chorshanba: "weekday.short.wednesday",
+  payshanba: "weekday.short.thursday", juma: "weekday.short.friday", shanba: "weekday.short.saturday", yakshanba: "weekday.short.sunday",
+  mon: "weekday.short.monday", tue: "weekday.short.tuesday", wed: "weekday.short.wednesday", thu: "weekday.short.thursday",
+  fri: "weekday.short.friday", sat: "weekday.short.saturday", sun: "weekday.short.sunday",
+};
+
+const CSS = `
+  .ps{--bg:#F7F7F5;--surface:#fff;--border:#EAE8E2;--text:#181A1F;--text-2:#4A4E58;--muted:#8A8D96;--chip:#F2F1EC;background:var(--bg);color:var(--text);min-height:100vh;font-family:'Inter',system-ui,sans-serif;}
+  .ps h1,.ps h2,.ps h3{font-family:'Manrope',system-ui,sans-serif;margin:0;}
+  .ps a{color:inherit;text-decoration:none;}
+  .ps-wrap{max-width:1160px;margin:0 auto;padding:0 32px;box-sizing:border-box;}
+  .ps-grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;}
+  .ps-grid4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;}
+  .ps-grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;}
+  .ps-btn{display:inline-flex;align-items:center;justify-content:center;border:none;cursor:pointer;font-weight:700;border-radius:11px;transition:opacity .15s;}
+  .ps-btn:hover{opacity:.92;}
+  .ps-field{width:100%;box-sizing:border-box;border:1px solid var(--border);border-radius:11px;padding:11px 13px;font-size:14px;background:#fff;color:var(--text);font-family:inherit;}
+  .ps-field:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb, var(--accent) 15%, transparent);}
+  @media (max-width:980px){.ps-grid3{grid-template-columns:repeat(2,minmax(0,1fr));}.ps-grid4{grid-template-columns:repeat(2,minmax(0,1fr));}.ps-nav{display:none!important;}}
+  @media (max-width:640px){
+    .ps-wrap{padding:0 16px;}
+    .ps-grid3,.ps-grid2,.ps-grid4{grid-template-columns:minmax(0,1fr);}
+    .ps h1{font-size:32px!important;}
+    .ps h2{font-size:24px!important;}
+    .ps-hide-sm{display:none!important;}
+    .ps-field{font-size:16px;}
+  }
+`;
 
 export default function PublicSitePage() {
   const params = useParams<{ subdomain: string }>();
+  const { t, lang, setLang } = useLanguage();
+  const L = SITE_TEXT[(lang as SiteLang) in SITE_TEXT ? (lang as SiteLang) : "UZ"];
   const [data, setData] = useState<PublicShowcaseData | null>(null);
   const [notFound, setNotFound] = useState(false);
   const [loading, setLoading] = useState(true);
-
-  // Filter state for courses
   const [selectedSubject, setSelectedSubject] = useState<string>("ALL");
 
-  // Application form state
+  // Application form
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("+998 ");
   const [parentPhone, setParentPhone] = useState("");
@@ -33,7 +67,6 @@ export default function PublicSitePage() {
   // Anti-spam: a field humans never see, and when the form was first shown.
   const [honeypot, setHoneypot] = useState("");
   const formStartedAt = useRef(Date.now());
-
   const applyRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -42,12 +75,8 @@ export default function PublicSitePage() {
       .getPublicShowcase(params.subdomain)
       .then((res) => {
         setData(res);
-        if (res.subjects.length > 0) {
-          setSelectedCourse(res.subjects[0].subject);
-        }
-        if (res.branches.length > 0) {
-          setSelectedBranch(res.branches[0].id);
-        }
+        if (res.subjects.length > 0) setSelectedCourse(res.subjects[0].subject);
+        if (res.branches.length > 0) setSelectedBranch(res.branches[0].id);
       })
       .catch(() => setNotFound(true))
       .finally(() => setLoading(false));
@@ -55,8 +84,7 @@ export default function PublicSitePage() {
 
   const filteredGroups = useMemo(() => {
     if (!data) return [];
-    if (selectedSubject === "ALL") return data.groups;
-    return data.groups.filter((g) => g.subject === selectedSubject);
+    return selectedSubject === "ALL" ? data.groups : data.groups.filter((g) => g.subject === selectedSubject);
   }, [data, selectedSubject]);
 
   function scrollToApply(subject?: string) {
@@ -64,22 +92,27 @@ export default function PublicSitePage() {
     applyRef.current?.scrollIntoView({ behavior: "smooth" });
   }
 
+  const shortDays = (days?: string | null) =>
+    (days ?? "")
+      .split(",")
+      .map((d) => d.trim())
+      .filter(Boolean)
+      .map((d) => (DAY_KEYS[d.toLowerCase()] ? t(DAY_KEYS[d.toLowerCase()]) : d))
+      .join("/");
+
   async function handleApply(e: React.FormEvent) {
     e.preventDefault();
     if (!data) return;
-    if (!fullName.trim() || phone.trim().length < 9) {
-      setSubmitError("Iltimos, to'liq ismingiz va to'g'ri telefon raqamingizni kiriting");
+    if (!fullName.trim() || phone.replace(/\D/g, "").length < 9) {
+      setSubmitError(L.errRequired);
       return;
     }
-
     if (!consent) {
-      setSubmitError("Iltimos, shaxsiy ma'lumotlaringizni qayta ishlashga rozilik bering");
+      setSubmitError(L.errConsent);
       return;
     }
-
     setSubmitting(true);
     setSubmitError(null);
-
     // Carry ad-campaign tags from the landing URL (?utm_source=instagram...).
     const qs = new URLSearchParams(window.location.search);
     try {
@@ -97,7 +130,6 @@ export default function PublicSitePage() {
         utmMedium: qs.get("utm_medium") || undefined,
         utmCampaign: qs.get("utm_campaign") || undefined,
       });
-
       setSubmitSuccess(true);
       setConsent(false);
       setFullName("");
@@ -105,11 +137,8 @@ export default function PublicSitePage() {
       setParentPhone("");
       setNotes("");
     } catch (err) {
-      if (err instanceof ApiError && err.status === 429) {
-        setSubmitError("Juda ko'p urinish. Iltimos, bir daqiqadan so'ng qayta yuboring.");
-      } else {
-        setSubmitError(err instanceof ApiError ? err.message : "Ariza topshirishda xatolik yuz berdi");
-      }
+      if (err instanceof ApiError && err.status === 429) setSubmitError(L.errTooMany);
+      else setSubmitError(err instanceof ApiError ? err.message : L.errGeneric);
     } finally {
       setSubmitting(false);
     }
@@ -117,350 +146,167 @@ export default function PublicSitePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-950 text-slate-400">
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
-          <span className="text-xs font-medium tracking-wide">Markaz sahifasi yuklanmoqda...</span>
-        </div>
+      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#F7F7F5", color: "#8A8D96", fontSize: 14 }}>
+        {L.loading}
       </div>
     );
   }
 
   if (notFound || !data) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-950 text-slate-100 flex-col gap-4 p-4 text-center">
-        <div className="w-16 h-16 rounded-3xl bg-slate-900 border border-slate-800 flex items-center justify-center text-slate-400 text-2xl font-bold">
-          404
-        </div>
-        <h2 className="text-xl font-bold">O&apos;quv markazi topilmadi</h2>
-        <p className="text-xs text-slate-400 max-w-sm">
-          Ko&apos;rsatilgan manzil mavjud emas yoki noto&apos;g&apos;ri kiritilgan. Iltimos, havola to&apos;g&apos;riligini tekshiring.
-        </p>
-        <Link
-          href="/"
-          className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold transition"
-        >
-          Bosh sahifaga qaytish
-        </Link>
+      <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12, background: "#F7F7F5", padding: 16, textAlign: "center" }}>
+        <div style={{ width: 64, height: 64, borderRadius: 18, background: "#fff", border: "1px solid #EAE8E2", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, color: "#8A8D96" }}>404</div>
+        <h2 style={{ fontFamily: "'Manrope',sans-serif", fontSize: 20, fontWeight: 800 }}>{L.notFoundTitle}</h2>
+        <p style={{ fontSize: 13.5, color: "#8A8D96", maxWidth: 360 }}>{L.notFoundText}</p>
+        <Link href="/" style={{ background: "#4F46E5", color: "#fff", fontWeight: 700, fontSize: 13.5, padding: "10px 18px", borderRadius: 10 }}>{L.backHome}</Link>
       </div>
     );
   }
 
   const { tenant, stats, subjects, teachers, branches, announcements } = data;
   const accent = tenant.accentColor || "#4F46E5";
-
-  const categoryBadgeLabel = {
-    TIL_MARKAZI: "Xorijiy Tillar Markazi",
-    MATEMATIKA: "Aniq Fanlar & Matematika",
-    IT: "Zamonaviy IT & Dasturlash Akademiyasi",
-    BOSHQA: "O'quv Markazi",
-  }[tenant.category] || "O'quv Markazi";
+  const logo = fileUrl(tenant.logoUrl);
+  const statItems = [
+    { value: stats.coursesCount, label: L.statGroups },
+    { value: stats.teachersCount, label: L.statTeachers },
+    { value: stats.branchesCount, label: L.statBranches },
+  ].filter((i) => i.value > 0);
+  const label: React.CSSProperties = { fontSize: 13, fontWeight: 700, color: accent, textTransform: "uppercase", letterSpacing: "0.04em" };
+  const card: React.CSSProperties = { background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 16 };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans selection:bg-indigo-500 selection:text-white">
-      {/* 1. STICKY HEADER */}
-      <header className="sticky top-0 z-40 bg-slate-950/80 backdrop-blur-md border-b border-slate-800/80">
-        <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            {tenant.logoUrl ? (
-              <img
-                src={`/uploads/${tenant.logoUrl}`}
-                alt={tenant.name}
-                className="w-9 h-9 rounded-xl object-cover border border-slate-800"
-              />
+    <div className="ps" style={{ ["--accent" as string]: accent }}>
+      <style>{CSS}</style>
+
+      {/* HEADER */}
+      <header style={{ position: "sticky", top: 0, zIndex: 20, background: "rgba(247,247,245,0.92)", backdropFilter: "blur(6px)", borderBottom: "1px solid var(--border)" }}>
+        <div className="ps-wrap" style={{ height: 66, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+          <a href="#" style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+            {logo ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={logo} alt={tenant.name} style={{ width: 36, height: 36, borderRadius: 10, objectFit: "cover", border: "1px solid var(--border)" }} />
             ) : (
-              <div
-                style={{ backgroundColor: accent }}
-                className="w-9 h-9 rounded-xl flex items-center justify-center text-white font-extrabold text-sm shadow-md"
-              >
-                {tenant.name.slice(0, 1).toUpperCase()}
-              </div>
+              <div style={{ width: 36, height: 36, borderRadius: 10, background: accent, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800 }}>{tenant.name.slice(0, 1).toUpperCase()}</div>
             )}
-            <span className="font-extrabold text-base tracking-tight text-slate-100">
-              {tenant.name}
-            </span>
-          </div>
-
-          <nav className="hidden md:flex items-center gap-6 text-xs font-semibold text-slate-300">
-            <a href="#kurslar" className="hover:text-white transition">Kurslar</a>
-            {teachers.length > 0 && <a href="#ustozlar" className="hover:text-white transition">Ustozlar</a>}
-            {branches.length > 0 && <a href="#filiallar" className="hover:text-white transition">Filiallar</a>}
-            {announcements.length > 0 && <a href="#yangiliklar" className="hover:text-white transition">E&apos;lonlar</a>}
-            <a href="#ariza" className="hover:text-white transition">Ariza Topshirish</a>
+            <span style={{ fontFamily: "'Manrope',sans-serif", fontWeight: 800, fontSize: 17, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{tenant.name}</span>
+          </a>
+          <nav className="ps-nav" style={{ display: "flex", gap: 28, fontSize: 14, fontWeight: 500, color: "var(--text-2)" }}>
+            <a href="#courses">{L.navCourses}</a>
+            {teachers.length > 0 && <a href="#teachers">{L.navTeachers}</a>}
+            {branches.length > 0 && <a href="#branches">{L.navBranches}</a>}
+            {announcements.length > 0 && <a href="#news">{L.navNews}</a>}
           </nav>
-
-          <div className="flex items-center gap-3">
-            {tenant.phone && (
-              <a
-                href={`tel:${tenant.phone}`}
-                className="hidden sm:inline-flex items-center gap-1.5 text-xs font-semibold text-slate-300 hover:text-white transition"
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
-                </svg>
-                {tenant.phone}
-              </a>
-            )}
-
-            <Link
-              href="/login"
-              className="px-4 py-2 rounded-xl text-xs font-bold border border-slate-700 hover:border-slate-500 text-slate-200 transition"
-            >
-              Kirish
-            </Link>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+            <div style={{ display: "flex", background: "var(--chip)", borderRadius: 9, padding: 3 }}>
+              {(["UZ", "RU", "EN"] as const).map((l) => (
+                <button key={l} type="button" onClick={() => setLang(l)} style={{ border: "none", cursor: "pointer", fontSize: 11, fontWeight: 700, padding: "5px 8px", borderRadius: 7, background: lang === l ? "#fff" : "transparent", color: lang === l ? "var(--text)" : "var(--muted)" }}>
+                  {l}
+                </button>
+              ))}
+            </div>
+            <Link href="/login" className="ps-hide-sm" style={{ fontSize: 14, fontWeight: 600, padding: "0 6px" }}>{L.login}</Link>
+            <button type="button" className="ps-btn ps-hide-sm" onClick={() => scrollToApply()} style={{ background: accent, color: "#fff", fontSize: 14, padding: "10px 16px" }}>{L.apply}</button>
           </div>
         </div>
       </header>
 
-      {/* 2. HERO SECTION */}
-      <section className="relative overflow-hidden pt-16 pb-24 border-b border-slate-900 bg-gradient-to-b from-slate-900/40 via-slate-950 to-slate-950">
-        <div className="max-w-4xl mx-auto px-4 text-center relative z-10 space-y-6">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-semibold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
-            <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse" />
-            {categoryBadgeLabel}
-          </div>
-
-          <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight text-white leading-tight">
-            {tenant.name} bilan maqsadlaringizga tezroq erishing!
-          </h1>
-
-          <p className="text-sm sm:text-base text-slate-400 max-w-2xl mx-auto leading-relaxed">
-            Zamonaviy o&apos;qitish metodikasi, tajribali ustozlar va qulay dars jadvallari bilan bilimlaringizni eng yuqori darajaga ko&apos;taring.
-          </p>
-
-          <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
-            <button
-              onClick={() => scrollToApply()}
-              style={{ backgroundColor: accent }}
-              className="px-6 py-3.5 rounded-xl text-white text-xs font-bold transition shadow-lg hover:opacity-95 cursor-pointer"
-            >
-              Bepul Sinov Darsiga Yozilish →
-            </button>
-
-            <a
-              href="#kurslar"
-              className="px-6 py-3.5 rounded-xl bg-slate-900 border border-slate-800 hover:border-slate-700 text-slate-200 text-xs font-bold transition"
-            >
-              Kurslar bilan tanishish
-            </a>
-          </div>
-
-          {/* Stats Bar: real counts only — a public page must not advertise
-              groups or teachers the center doesn't have. */}
-          {(() => {
-            const items = [
-              { value: stats.coursesCount, label: "O'quv guruhlari" },
-              { value: stats.teachersCount, label: "Malakali ustozlar" },
-              { value: stats.branchesCount, label: "Shinam filial" },
-            ].filter((i) => i.value > 0);
-            if (items.length === 0) return null;
-            return (
-              <div
-                className="grid gap-3 pt-10 max-w-xl mx-auto"
-                style={{ gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))` }}
-              >
-                {items.map((i) => (
-                  <div key={i.label} className="p-4 rounded-2xl bg-slate-900/60 border border-slate-800/80">
-                    <div className="text-2xl font-extrabold text-white">{i.value}</div>
-                    <div className="text-xs text-slate-400 mt-0.5">{i.label}</div>
-                  </div>
-                ))}
-              </div>
-            );
-          })()}
-        </div>
-      </section>
-
-      {/* 3. COURSES & PROGRAMS SECTION */}
-      <section id="kurslar" className="py-20 max-w-6xl mx-auto px-4">
-        <div className="text-center space-y-2 mb-10">
-          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
-            Mavjud O&apos;quv Dasturlari
-          </h2>
-          <p className="text-xs sm:text-sm text-slate-400 max-w-md mx-auto">
-            Barcha yoshdagi o&apos;quvchilar va mutaxassislar uchun mo&apos;ljallangan maxsus bosqichli kurslar
-          </p>
-
-          {/* Subject Filter Tabs */}
-          {subjects.length > 1 && (
-            <div className="flex flex-wrap items-center justify-center gap-2 pt-4">
-              <button
-                onClick={() => setSelectedSubject("ALL")}
-                className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer ${
-                  selectedSubject === "ALL"
-                    ? "bg-white text-slate-950 font-bold"
-                    : "bg-slate-900 border border-slate-800 text-slate-400 hover:text-white"
-                }`}
-              >
-                Barchasi ({data.groups.length})
-              </button>
-              {subjects.map((s) => (
-                <button
-                  key={s.subject}
-                  onClick={() => setSelectedSubject(s.subject)}
-                  className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer ${
-                    selectedSubject === s.subject
-                      ? "bg-white text-slate-950 font-bold"
-                      : "bg-slate-900 border border-slate-800 text-slate-400 hover:text-white"
-                  }`}
-                >
-                  {s.subject} ({s.groupCount})
-                </button>
-              ))}
-            </div>
+      {/* HERO */}
+      <section className="ps-wrap" style={{ padding: "72px 32px 56px", display: "flex", flexDirection: "column", gap: 22, alignItems: "flex-start" }}>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 8, background: `color-mix(in srgb, ${accent} 12%, white)`, color: accent, fontSize: 13, fontWeight: 700, padding: "7px 14px", borderRadius: 100 }}>
+          <span style={{ width: 6, height: 6, borderRadius: "50%", background: accent }} />
+          {L.category[tenant.category] ?? L.category.BOSHQA}
+        </span>
+        <h1 style={{ fontSize: 48, lineHeight: 1.1, fontWeight: 800, letterSpacing: "-0.02em", maxWidth: 760 }}>{L.heroTitle.replace("{name}", tenant.name)}</h1>
+        <p style={{ fontSize: 17, lineHeight: 1.6, color: "var(--text-2)", maxWidth: 560, margin: 0 }}>{L.heroDesc}</p>
+        <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+          <button type="button" className="ps-btn" onClick={() => scrollToApply()} style={{ background: accent, color: "#fff", fontSize: 15, padding: "14px 24px" }}>{L.apply} →</button>
+          <a href="#courses" className="ps-btn" style={{ background: "#fff", border: "1px solid var(--border)", fontSize: 15, padding: "14px 22px" }}>{L.seeCourses}</a>
+          {tenant.phone && (
+            <a href={`tel:${tenant.phone}`} className="ps-btn" style={{ background: "transparent", fontSize: 15, padding: "14px 8px", color: "var(--text-2)" }}>📞 {tenant.phone}</a>
           )}
         </div>
-
-        {filteredGroups.length === 0 ? (
-          <div className="p-12 text-center rounded-2xl bg-slate-900/40 border border-slate-800 text-slate-400 text-xs">
-            Hozircha ushbu yo&apos;nalishda kurslar mavjud emas.
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-            {filteredGroups.map((g) => (
-              <div
-                key={g.id}
-                className="rounded-2xl p-6 bg-slate-900/70 border border-slate-800/80 hover:border-slate-700 transition flex flex-col justify-between space-y-4"
-              >
-                <div className="space-y-2.5">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="px-2.5 py-0.5 rounded-md text-[11px] font-bold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
-                      {g.subject}
-                    </span>
-                    {g.level && (
-                      <span className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-slate-800 text-slate-300">
-                        {g.level}
-                      </span>
-                    )}
-                  </div>
-
-                  <h3 className="text-base font-bold text-white tracking-tight">{g.name}</h3>
-
-                  <div className="space-y-1 text-xs text-slate-400 pt-1">
-                    {g.scheduleDays && (
-                      <div className="flex items-center gap-2">
-                        <span className="text-slate-500">📅 Kunlar:</span>
-                        <span className="text-slate-300 font-medium">{g.scheduleDays}</span>
-                      </div>
-                    )}
-                    {g.startTime && (
-                      <div className="flex items-center gap-2">
-                        <span className="text-slate-500">⏰ Vaqt:</span>
-                        <span className="text-slate-300 font-medium">{g.startTime}</span>
-                      </div>
-                    )}
-                    {g.teacherName && (
-                      <div className="flex items-center gap-2">
-                        <span className="text-slate-500">👨‍🏫 Ustoz:</span>
-                        <span className="text-slate-300 font-medium">{g.teacherName}</span>
-                      </div>
-                    )}
-                    {g.branchName && (
-                      <div className="flex items-center gap-2">
-                        <span className="text-slate-500">📍 Filial:</span>
-                        <span className="text-slate-300 font-medium">{g.branchName}</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <div className="pt-4 border-t border-slate-800/80 flex items-center justify-between gap-2">
-                  <div>
-                    <span className="text-[10px] text-slate-500 block uppercase font-bold tracking-wider">Oylik to&apos;lov</span>
-                    <span className="text-sm font-extrabold text-white">
-                      {g.monthlyPrice > 0 ? `${formatMoney(g.monthlyPrice)} so'm` : "Kelishuv asosida"}
-                    </span>
-                  </div>
-
-                  <button
-                    onClick={() => scrollToApply(g.subject)}
-                    className="px-3.5 py-2 rounded-xl text-xs font-bold bg-white hover:bg-slate-200 text-slate-950 transition cursor-pointer"
-                  >
-                    Yozilish →
-                  </button>
-                </div>
+        {statItems.length > 0 && (
+          <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 8 }}>
+            {statItems.map((i) => (
+              <div key={i.label} style={{ ...card, padding: "14px 20px", minWidth: 120 }}>
+                <div style={{ fontFamily: "'Manrope',sans-serif", fontWeight: 800, fontSize: 26 }}>{i.value}</div>
+                <div style={{ fontSize: 13, color: "var(--muted)" }}>{i.label}</div>
               </div>
             ))}
           </div>
         )}
       </section>
 
-      {/* 4. TEACHERS SECTION */}
-      {teachers.length > 0 && (
-        <section id="ustozlar" className="py-20 border-t border-slate-900 bg-slate-900/30">
-          <div className="max-w-6xl mx-auto px-4">
-            <div className="text-center space-y-2 mb-10">
-              <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
-                Tajribali Ustozlarimiz
-              </h2>
-              <p className="text-xs sm:text-sm text-slate-400 max-w-md mx-auto">
-                O&apos;z sohasining chuqur mutaxassislari, o&apos;quvchilarni oliy natijalarga yetaklovchi murabbiylar
-              </p>
+      {/* COURSES */}
+      <section id="courses" style={{ background: "var(--surface)", borderTop: "1px solid var(--border)", borderBottom: "1px solid var(--border)", padding: "72px 0" }}>
+        <div className="ps-wrap" style={{ display: "flex", flexDirection: "column", gap: 28 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <span style={label}>{L.coursesLabel}</span>
+            <h2 style={{ fontSize: 32, fontWeight: 800, letterSpacing: "-0.02em" }}>{L.coursesTitle}</h2>
+          </div>
+          {subjects.length > 1 && (
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              {[{ key: "ALL", name: `${L.all} (${data.groups.length})` }, ...subjects.map((s) => ({ key: s.subject, name: `${s.subject} (${s.groupCount})` }))].map((f) => (
+                <button key={f.key} type="button" onClick={() => setSelectedSubject(f.key)} style={{ border: `1px solid ${selectedSubject === f.key ? accent : "var(--border)"}`, background: selectedSubject === f.key ? accent : "#fff", color: selectedSubject === f.key ? "#fff" : "var(--text-2)", fontSize: 13, fontWeight: 700, padding: "7px 14px", borderRadius: 100, cursor: "pointer" }}>
+                  {f.name}
+                </button>
+              ))}
             </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {teachers.map((t) => (
-                <div
-                  key={t.id}
-                  className="rounded-2xl p-5 bg-slate-900/60 border border-slate-800/80 text-center space-y-3"
-                >
-                  <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-indigo-600 to-sky-500 text-white font-extrabold text-xl flex items-center justify-center mx-auto shadow-md">
-                    {t.fullName.slice(0, 1).toUpperCase()}
+          )}
+          {filteredGroups.length === 0 ? (
+            <div style={{ ...card, padding: 32, textAlign: "center", color: "var(--muted)", fontSize: 14 }}>{L.noCourses}</div>
+          ) : (
+            <div className="ps-grid3">
+              {filteredGroups.map((g) => (
+                <div key={g.id} style={{ ...card, background: "var(--bg)", padding: 22, display: "flex", flexDirection: "column", gap: 12 }}>
+                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: accent, background: `color-mix(in srgb, ${accent} 12%, white)`, padding: "3px 10px", borderRadius: 100 }}>{g.subject}</span>
+                    {g.level && <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)", background: "var(--chip)", padding: "3px 10px", borderRadius: 100 }}>{g.level}</span>}
                   </div>
-
-                  <div>
-                    <h4 className="text-sm font-bold text-white">{t.fullName}</h4>
-                    <span className="text-xs text-indigo-400 font-medium block mt-0.5">
-                      {t.subject || "Ustoz"}
-                    </span>
+                  <h3 style={{ fontSize: 17, fontWeight: 700 }}>{g.name}</h3>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 5, fontSize: 13.5, color: "var(--text-2)" }}>
+                    {(g.scheduleDays || g.startTime) && (
+                      <div>🗓 {[shortDays(g.scheduleDays), g.startTime ? `${g.startTime}${g.endTime ? `–${g.endTime}` : ""}` : ""].filter(Boolean).join(", ")}</div>
+                    )}
+                    {g.teacherName && <div>👩‍🏫 {g.teacherName}</div>}
+                    {g.branchName && <div>📍 {g.branchName}</div>}
                   </div>
-
-                  <div className="pt-2 border-t border-slate-800/60 text-[11px] text-slate-400">
-                    Oliy toifali pedagog
+                  <div style={{ marginTop: "auto", paddingTop: 12, borderTop: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                    <div>
+                      {g.monthlyPrice > 0 ? (
+                        <>
+                          <span style={{ fontFamily: "'Manrope',sans-serif", fontWeight: 800, fontSize: 18 }}>{money(g.monthlyPrice)}</span>
+                          <span style={{ fontSize: 12.5, color: "var(--muted)" }}> so&apos;m / {L.perMonth}</span>
+                        </>
+                      ) : (
+                        <span style={{ fontSize: 13.5, fontWeight: 700, color: "var(--text-2)" }}>{L.priceOnRequest}</span>
+                      )}
+                    </div>
+                    <button type="button" className="ps-btn" onClick={() => scrollToApply(g.subject)} style={{ background: accent, color: "#fff", fontSize: 13, padding: "8px 14px" }}>{L.enroll}</button>
                   </div>
                 </div>
               ))}
             </div>
-          </div>
-        </section>
-      )}
+          )}
+        </div>
+      </section>
 
-      {/* 5. BRANCHES SECTION */}
-      {branches.length > 0 && (
-        <section id="filiallar" className="py-20 max-w-6xl mx-auto px-4">
-          <div className="text-center space-y-2 mb-10">
-            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
-              Bizning Filiallarimiz
-            </h2>
-            <p className="text-xs sm:text-sm text-slate-400 max-w-md mx-auto">
-              Shahar bo&apos;ylab qulay lokatsiyalar va zamonaviy o&apos;quv xonalari
-            </p>
+      {/* TEACHERS */}
+      {teachers.length > 0 && (
+        <section id="teachers" className="ps-wrap" style={{ padding: "72px 32px", display: "flex", flexDirection: "column", gap: 28 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <span style={label}>{L.teachersLabel}</span>
+            <h2 style={{ fontSize: 32, fontWeight: 800, letterSpacing: "-0.02em" }}>{L.teachersTitle}</h2>
           </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-3xl mx-auto">
-            {branches.map((b) => (
-              <div
-                key={b.id}
-                className="p-5 rounded-2xl bg-slate-900/60 border border-slate-800 flex items-start gap-4"
-              >
-                <div className="w-10 h-10 rounded-xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center shrink-0">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
-                    <circle cx="12" cy="10" r="3" />
-                  </svg>
+          <div className="ps-grid4">
+            {teachers.map((tc) => (
+              <div key={tc.id} style={{ ...card, padding: 20, display: "flex", alignItems: "center", gap: 12 }}>
+                <div style={{ width: 46, height: 46, borderRadius: "50%", background: accent, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, flexShrink: 0 }}>
+                  {tc.fullName.split(/\s+/).slice(0, 2).map((w) => w[0]).join("").toUpperCase()}
                 </div>
-
-                <div>
-                  <h4 className="text-sm font-bold text-white">{b.name}</h4>
-                  <p className="text-xs text-slate-400 mt-1 leading-relaxed">
-                    {b.address || "Manzil ko'rsatilmagan"}
-                  </p>
-                  {b.phone && <p className="text-xs text-slate-400 mt-1">📞 {b.phone}</p>}
-                  {b.mapUrl && (
-                    <a href={b.mapUrl} target="_blank" rel="noreferrer" className="text-xs text-indigo-300 hover:text-indigo-200 mt-1 inline-block">
-                      🗺 Xaritada ochish
-                    </a>
-                  )}
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontWeight: 700, fontSize: 14.5 }}>{tc.fullName}</div>
+                  <div style={{ fontSize: 13, color: "var(--muted)" }}>{tc.subject || L.teacherFallback}</div>
                 </div>
               </div>
             ))}
@@ -468,29 +314,21 @@ export default function PublicSitePage() {
         </section>
       )}
 
-      {/* 6. ANNOUNCEMENTS SECTION */}
-      {announcements.length > 0 && (
-        <section id="yangiliklar" className="py-20 border-t border-slate-900 bg-slate-900/20">
-          <div className="max-w-4xl mx-auto px-4 space-y-6">
-            <div className="text-center space-y-2">
-              <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
-                Markaz Yangiliklari
-              </h2>
-              <p className="text-xs text-slate-400">
-                Eng so&apos;nggi e&apos;lonlar va tadbirlar haqida xabardor bo&apos;ling
-              </p>
+      {/* BRANCHES */}
+      {branches.length > 0 && (
+        <section id="branches" style={{ background: "#12131A", padding: "72px 0" }}>
+          <div className="ps-wrap" style={{ display: "flex", flexDirection: "column", gap: 28 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <span style={{ ...label, color: "#A9A6FF" }}>{L.branchesLabel}</span>
+              <h2 style={{ fontSize: 32, fontWeight: 800, letterSpacing: "-0.02em", color: "#fff" }}>{L.branchesTitle}</h2>
             </div>
-
-            <div className="space-y-3">
-              {announcements.map((a) => (
-                <div key={a.id} className="p-5 rounded-2xl bg-slate-900/70 border border-slate-800 space-y-2">
-                  <div className="flex items-center justify-between gap-2">
-                    <h4 className="text-sm font-bold text-white">{a.title}</h4>
-                    <span className="text-[11px] text-slate-500">
-                      {formatDate(a.publishedAt, "UZ", "dayMonth")}
-                    </span>
-                  </div>
-                  <p className="text-xs text-slate-300 leading-relaxed whitespace-pre-wrap">{a.content}</p>
+            <div className="ps-grid2">
+              {branches.map((b) => (
+                <div key={b.id} style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 16, padding: 20, color: "#fff", display: "flex", flexDirection: "column", gap: 6 }}>
+                  <div style={{ fontFamily: "'Manrope',sans-serif", fontWeight: 700, fontSize: 16 }}>📍 {b.name}</div>
+                  <div style={{ fontSize: 14, color: "#B7B0E8" }}>{b.address || L.noAddress}</div>
+                  {b.phone && <a href={`tel:${b.phone}`} style={{ fontSize: 14, color: "#fff" }}>📞 {b.phone}</a>}
+                  {b.mapUrl && <a href={b.mapUrl} target="_blank" rel="noreferrer" style={{ fontSize: 13.5, color: "#A9A6FF", fontWeight: 600 }}>🗺 {L.openMap} →</a>}
                 </div>
               ))}
             </div>
@@ -498,145 +336,71 @@ export default function PublicSitePage() {
         </section>
       )}
 
-      {/* 7. ONLINE APPLICATION LEAD INTAKE FORM */}
-      <section ref={applyRef} id="ariza" className="py-24 max-w-2xl mx-auto px-4">
-        <div className="p-8 sm:p-10 rounded-3xl bg-gradient-to-b from-slate-900 to-slate-900/90 border border-slate-800 shadow-2xl relative">
-          <div className="text-center space-y-2 mb-8">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-              🎁 Bepul Sinov Darsi
-            </div>
-            <h2 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-              Sinov Darsiga Yoziling
-            </h2>
-            <p className="text-xs sm:text-sm text-slate-400">
-              Arizangizni qoldiring, administratorimiz 15 daqiqa ichida siz bilan bog&apos;lanadi.
-            </p>
+      {/* NEWS */}
+      {announcements.length > 0 && (
+        <section id="news" className="ps-wrap" style={{ padding: "72px 32px", display: "flex", flexDirection: "column", gap: 24, maxWidth: 860 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <span style={label}>{L.newsLabel}</span>
+            <h2 style={{ fontSize: 30, fontWeight: 800, letterSpacing: "-0.02em" }}>{L.newsTitle}</h2>
           </div>
-
-          {submitSuccess ? (
-            <div className="p-8 text-center rounded-2xl bg-emerald-500/10 border border-emerald-500/20 space-y-3">
-              <div className="w-14 h-14 rounded-2xl bg-emerald-500 text-slate-950 flex items-center justify-center mx-auto text-2xl font-bold">
-                ✓
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            {announcements.map((a) => (
+              <div key={a.id} style={{ ...card, padding: 20 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 10, marginBottom: 6 }}>
+                  <div style={{ fontWeight: 700, fontSize: 15.5 }}>{a.title}</div>
+                  <div style={{ fontSize: 12.5, color: "var(--muted)", whiteSpace: "nowrap" }}>{formatDate(a.publishedAt, lang, "dayMonth")}</div>
+                </div>
+                <div style={{ fontSize: 14, color: "var(--text-2)", lineHeight: 1.6, whiteSpace: "pre-wrap" }}>{a.content}</div>
               </div>
-              <h3 className="text-base font-bold text-emerald-400">Arizangiz qabul qilindi!</h3>
-              <p className="text-xs text-slate-300 leading-relaxed max-w-sm mx-auto">
-                Tez orada markazimiz ma&apos;muriyati ko&apos;rsatilgan telefon raqami orqali siz bilan bog&apos;lanadi va dars vaqtini rejalashtiradi.
-              </p>
-              <button
-                onClick={() => setSubmitSuccess(false)}
-                className="mt-3 px-4 py-2 rounded-xl bg-slate-800 text-slate-200 text-xs font-semibold hover:bg-slate-700 cursor-pointer"
-              >
-                Yana ariza qoldirish
-              </button>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* APPLICATION */}
+      <section ref={applyRef} id="apply" style={{ padding: "72px 16px", borderTop: "1px solid var(--border)" }}>
+        <div style={{ maxWidth: 640, margin: "0 auto", ...card, padding: "32px 28px", position: "relative", boxShadow: "0 24px 48px -28px rgba(18,19,26,0.25)" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 22 }}>
+            <span style={label}>{L.formLabel}</span>
+            <h2 style={{ fontSize: 28, fontWeight: 800, letterSpacing: "-0.02em" }}>{L.formTitle}</h2>
+            <p style={{ fontSize: 14.5, color: "var(--text-2)", margin: 0 }}>{L.formDesc}</p>
+          </div>
+          {submitSuccess ? (
+            <div style={{ textAlign: "center", padding: "20px 0", display: "flex", flexDirection: "column", gap: 10, alignItems: "center" }}>
+              <div style={{ width: 56, height: 56, borderRadius: "50%", background: "#E9F8EF", color: "#1FA463", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26, fontWeight: 800 }}>✓</div>
+              <h3 style={{ fontSize: 19, fontWeight: 800 }}>{L.successTitle}</h3>
+              <p style={{ fontSize: 14, color: "var(--text-2)", margin: 0 }}>{L.successText}</p>
+              <button type="button" className="ps-btn" onClick={() => setSubmitSuccess(false)} style={{ background: "var(--chip)", color: "var(--text)", fontSize: 13.5, padding: "9px 16px", marginTop: 6 }}>{L.again}</button>
             </div>
           ) : (
-            <form onSubmit={handleApply} className="space-y-4">
-              {submitError && (
-                <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs font-medium">
-                  {submitError}
-                </div>
-              )}
-
-              <div>
-                <label className="block text-xs font-medium text-slate-300 mb-1.5">
-                  To&apos;liq Ism-sharifingiz <span className="text-rose-400">*</span>
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Masalan: Sardor Rustamov"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500"
-                />
+            <form onSubmit={handleApply} noValidate style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              {submitError && <div role="alert" style={{ background: "#FDEBEC", color: "#B23A47", fontSize: 13.5, fontWeight: 600, padding: "10px 14px", borderRadius: 10 }}>{submitError}</div>}
+              <Field label={`${L.fullName} *`}>
+                <input className="ps-field" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder={L.fullNamePh} autoComplete="name" />
+              </Field>
+              <div className="ps-grid2" style={{ gap: 12 }}>
+                <Field label={`${L.phone} *`}>
+                  <input className="ps-field" type="tel" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+998 90 123 45 67" autoComplete="tel" />
+                </Field>
+                <Field label={L.parentPhone}>
+                  <input className="ps-field" type="tel" inputMode="tel" value={parentPhone} onChange={(e) => setParentPhone(e.target.value)} placeholder="+998 90 987 65 43" />
+                </Field>
               </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-medium text-slate-300 mb-1.5">
-                    Telefon Raqamingiz <span className="text-rose-400">*</span>
-                  </label>
-                  <input
-                    type="tel"
-                    required
-                    placeholder="+998 90 123 45 67"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500 font-mono"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-medium text-slate-300 mb-1.5">
-                    Ota-ona telefoni (ixtiyoriy)
-                  </label>
-                  <input
-                    type="tel"
-                    placeholder="+998 90 987 65 43"
-                    value={parentPhone}
-                    onChange={(e) => setParentPhone(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500 font-mono"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-medium text-slate-300 mb-1.5">
-                    Qiziqtirgan kurs yoki fan
-                  </label>
-                  <select
-                    value={selectedCourse}
-                    onChange={(e) => setSelectedCourse(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-slate-100 focus:outline-none focus:border-indigo-500 cursor-pointer"
-                  >
-                    {subjects.length === 0 ? (
-                      <option value="Umumiy">Umumiy ta&apos;lim</option>
-                    ) : (
-                      subjects.map((s) => (
-                        <option key={s.subject} value={s.subject}>
-                          {s.subject}
-                        </option>
-                      ))
-                    )}
+              <div className="ps-grid2" style={{ gap: 12 }}>
+                <Field label={L.course}>
+                  <select className="ps-field" value={selectedCourse} onChange={(e) => setSelectedCourse(e.target.value)}>
+                    {subjects.length === 0 ? <option value="">{L.general}</option> : subjects.map((s) => <option key={s.subject} value={s.subject}>{s.subject}</option>)}
                   </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-medium text-slate-300 mb-1.5">
-                    Qulay filial
-                  </label>
-                  <select
-                    value={selectedBranch}
-                    onChange={(e) => setSelectedBranch(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-slate-100 focus:outline-none focus:border-indigo-500 cursor-pointer"
-                  >
-                    {branches.length === 0 ? (
-                      <option value="">Bosh bino</option>
-                    ) : (
-                      branches.map((b) => (
-                        <option key={b.id} value={b.id}>
-                          {b.name}
-                        </option>
-                      ))
-                    )}
+                </Field>
+                <Field label={L.branchPick}>
+                  <select className="ps-field" value={selectedBranch} onChange={(e) => setSelectedBranch(e.target.value)}>
+                    {branches.length === 0 ? <option value="">{L.mainBranch}</option> : branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
                   </select>
-                </div>
+                </Field>
               </div>
-
-              <div>
-                <label className="block text-xs font-medium text-slate-300 mb-1.5">
-                  Qo&apos;shimcha izoh yoki qulay dars vaqtlari
-                </label>
-                <textarea
-                  rows={3}
-                  placeholder="Masalan: Tushdan keyingi vaqtlar yoki dam olish kunlari darslari ma'qul..."
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500 resize-none"
-                />
-              </div>
-
+              <Field label={L.notes}>
+                <textarea className="ps-field" rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder={L.notesPh} style={{ resize: "vertical" }} />
+              </Field>
               {/* Honeypot: hidden from people and screen readers; bots fill it. */}
               <div aria-hidden="true" style={{ position: "absolute", left: "-10000px", width: 1, height: 1, overflow: "hidden" }}>
                 <label>
@@ -644,71 +408,47 @@ export default function PublicSitePage() {
                   <input type="text" tabIndex={-1} autoComplete="off" value={honeypot} onChange={(e) => setHoneypot(e.target.value)} />
                 </label>
               </div>
-
-              <label className="flex items-start gap-2.5 text-[11px] text-slate-400 leading-relaxed cursor-pointer">
-                <input
-                  type="checkbox"
-                  required
-                  checked={consent}
-                  onChange={(e) => setConsent(e.target.checked)}
-                  className="mt-0.5 accent-indigo-500"
-                />
+              <label style={{ display: "flex", gap: 10, alignItems: "flex-start", fontSize: 13, color: "var(--text-2)", lineHeight: 1.5, cursor: "pointer" }}>
+                <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} style={{ marginTop: 3, accentColor: accent, width: 16, height: 16 }} />
                 <span>
-                  Shaxsiy ma&apos;lumotlarim markaz tomonidan men bilan bog&apos;lanish uchun qayta ishlanishiga roziman.{" "}
-                  <a href="/privacy" target="_blank" rel="noreferrer" className="text-indigo-400 underline">
-                    Maxfiylik siyosati
-                  </a>
+                  {L.consent}{" "}
+                  <a href="/privacy" target="_blank" rel="noreferrer" style={{ color: accent, textDecoration: "underline" }}>{L.privacy}</a>
                 </span>
               </label>
-
-              <button
-                type="submit"
-                disabled={submitting}
-                style={{ backgroundColor: accent }}
-                className="w-full py-3.5 rounded-xl text-white text-xs font-bold transition hover:opacity-95 shadow-lg disabled:opacity-50 cursor-pointer"
-              >
-                {submitting ? "Yuborilmoqda..." : "Arizani Yuborish (Bepul) →"}
+              <button type="submit" className="ps-btn" disabled={submitting} style={{ background: accent, color: "#fff", fontSize: 15, padding: 14, opacity: submitting ? 0.7 : 1 }}>
+                {submitting ? L.sending : `${L.send} →`}
               </button>
-
-              <p className="text-[11px] text-slate-500 text-center pt-1">
-                🔒 Shaxsiy ma&apos;lumotlaringiz xavfsizligi kafolatlanadi.
-              </p>
             </form>
           )}
         </div>
       </section>
 
-      {/* 8. FOOTER */}
-      <footer className="border-t border-slate-900 bg-slate-950/60 py-12 text-slate-500 text-xs">
-        <div className="max-w-6xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left">
+      {/* FOOTER */}
+      <footer style={{ borderTop: "1px solid var(--border)", padding: "32px 0" }}>
+        <div className="ps-wrap" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 14, flexWrap: "wrap", fontSize: 13, color: "var(--muted)" }}>
           <div>
-            <span className="font-bold text-slate-300 block">{tenant.name}</span>
-            <span className="text-[11px] mt-0.5 block">{branches[0]?.address || tenant.address || "O'zbekiston"}</span>
+            <div style={{ fontWeight: 700, color: "var(--text)" }}>{tenant.name}</div>
+            <div>{branches[0]?.address || tenant.address || ""}</div>
           </div>
-
-          <div className="flex items-center gap-4 text-slate-400">
+          <div style={{ display: "flex", gap: 18, flexWrap: "wrap" }}>
             {tenant.telegramUsername && (
-              <a
-                href={`https://t.me/${tenant.telegramUsername.replace(/^@/, "")}`}
-                target="_blank"
-                rel="noreferrer"
-                className="hover:text-indigo-400 transition"
-              >
-                Telegram: @{tenant.telegramUsername.replace(/^@/, "")}
-              </a>
+              <a href={`https://t.me/${tenant.telegramUsername.replace(/^@/, "")}`} target="_blank" rel="noreferrer">Telegram: @{tenant.telegramUsername.replace(/^@/, "")}</a>
             )}
-            {tenant.phone && (
-              <a href={`tel:${tenant.phone}`} className="hover:text-white transition">
-                {tenant.phone}
-              </a>
-            )}
+            {tenant.phone && <a href={`tel:${tenant.phone}`}>{tenant.phone}</a>}
+            {tenant.email && <a href={`mailto:${tenant.email}`}>{tenant.email}</a>}
           </div>
-
-          <div className="text-[11px]">
-            © {new Date().getFullYear()} {tenant.name}. TalimCRM platformasida yaratilgan.
-          </div>
+          <div>© {new Date().getFullYear()} {tenant.name} · {L.poweredBy}</div>
         </div>
       </footer>
     </div>
+  );
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <label style={{ display: "flex", flexDirection: "column", gap: 6, minWidth: 0 }}>
+      <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-2)" }}>{label}</span>
+      {children}
+    </label>
   );
 }
