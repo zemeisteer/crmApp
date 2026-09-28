@@ -8,6 +8,7 @@ import { formatDate } from "@/lib/format-date";
 import { useLanguage } from "@/lib/i18n-context";
 import type { TranslationKey } from "@/lib/i18n";
 import { SITE_TEXT, type SiteLang } from "@/components/site/site-text";
+import HeroSlides, { type Slide } from "@/components/site/HeroSlides";
 
 // A center's public site, in the style of the TalimCRM demo: light, the
 // center's own accent colour, three languages, phone-ready. Visitors see
@@ -38,8 +39,21 @@ const CSS = `
   .ps-grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;}
   .ps-grid4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;}
   .ps-grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;}
-  .ps-btn{display:inline-flex;align-items:center;justify-content:center;border:none;cursor:pointer;font-weight:700;border-radius:11px;transition:opacity .15s;}
-  .ps-btn:hover{opacity:.92;}
+  .ps-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:none;cursor:pointer;font-weight:700;font-family:inherit;border-radius:12px;min-height:44px;white-space:nowrap;transition:transform .15s, box-shadow .15s, background .15s, opacity .15s;}
+  .ps-btn:hover{transform:translateY(-1px);}
+  .ps-btn:active{transform:translateY(0);}
+  .ps-btn:disabled{cursor:default;transform:none;}
+  .ps-primary{background:var(--accent);color:#fff;box-shadow:0 10px 22px -10px color-mix(in srgb, var(--accent) 70%, transparent);}
+  .ps-primary:hover{box-shadow:0 14px 28px -10px color-mix(in srgb, var(--accent) 80%, transparent);}
+  .ps-outline{background:#fff;color:var(--text);border:1.5px solid var(--border);}
+  .ps-outline:hover{border-color:var(--accent);color:var(--accent);}
+  .ps-soft{background:color-mix(in srgb, var(--accent) 10%, white);color:var(--accent);}
+  .ps-hero{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:48px;align-items:center;}
+  .ps-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;width:100%;max-width:520px;}
+  .ps-span2{grid-column:1/-1;}
+  .ps-cta{display:flex;gap:12px;flex-wrap:wrap;align-items:center;}
+  .ps-slide{animation:psFade .5s ease;}
+  @keyframes psFade{from{opacity:0;transform:scale(.985);}to{opacity:1;transform:none;}}
   .ps-field{width:100%;box-sizing:border-box;border:1px solid var(--border);border-radius:11px;padding:11px 13px;font-size:14px;background:#fff;color:var(--text);font-family:inherit;}
   .ps-field:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb, var(--accent) 15%, transparent);}
   .ps-faq summary{list-style:none;cursor:pointer;display:flex;justify-content:space-between;gap:12px;font-weight:700;font-size:15px;}
@@ -47,7 +61,7 @@ const CSS = `
   .ps-faq[open] summary .ps-plus{transform:rotate(45deg);}
   .ps-plus{transition:transform .2s;color:var(--accent);font-size:20px;line-height:1;}
   .ps-float{position:fixed;right:16px;bottom:16px;z-index:30;display:none;gap:8px;}
-  @media (max-width:980px){.ps-grid3{grid-template-columns:repeat(2,minmax(0,1fr));}.ps-grid4{grid-template-columns:repeat(2,minmax(0,1fr));}.ps-nav{display:none!important;}}
+  @media (max-width:980px){.ps-hero{grid-template-columns:minmax(0,1fr);gap:32px;}.ps-grid3{grid-template-columns:repeat(2,minmax(0,1fr));}.ps-grid4{grid-template-columns:repeat(2,minmax(0,1fr));}.ps-nav{display:none!important;}}
   @media (max-width:640px){
     .ps-wrap{padding:0 16px;}
     .ps-grid3,.ps-grid2,.ps-grid4{grid-template-columns:minmax(0,1fr);}
@@ -56,6 +70,12 @@ const CSS = `
     .ps-hide-sm{display:none!important;}
     .ps-field{font-size:16px;}
     .ps-float{display:flex;}
+    .ps-cta{flex-direction:column;align-items:stretch;}
+    .ps-cta .ps-btn{width:100%;}
+    .ps-full-sm{width:100%;}
+    .ps-hero-sec{padding:36px 16px 40px!important;}
+    .ps-stats{gap:8px;}
+    .ps-stats>div{min-width:0!important;padding:12px 14px!important;}
   }
 `;
 
@@ -193,6 +213,12 @@ export default function PublicSitePage() {
   const video = youtubeEmbed(site?.videoUrl);
   const socials = site ? (Object.entries(site.socials).filter(([, v]) => v) as Array<[string, string]>) : [];
   const telegramLink = tenant.telegramUsername ? `https://t.me/${tenant.telegramUsername.replace(/^@/, "")}` : site?.socials.telegram ?? null;
+  const slides: Slide[] = [
+    { kind: "teacher", title: L.slideTeacherTitle, text: L.slideTeacherText },
+    { kind: "ai", title: L.slideAiTitle, text: L.slideAiText },
+    { kind: "results", title: L.slideResultsTitle, text: L.slideResultsText },
+    ...(site?.gallery ?? []).slice(0, 3).map((g): Slide => ({ kind: "photo", title: tenant.name, text: L.slidePhoto, src: fileUrl(g) ?? "" })),
+  ];
   const label: React.CSSProperties = { fontSize: 13, fontWeight: 700, color: accent, textTransform: "uppercase", letterSpacing: "0.04em" };
   const card: React.CSSProperties = { background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 16 };
 
@@ -227,13 +253,14 @@ export default function PublicSitePage() {
               ))}
             </div>
             <Link href="/login" className="ps-hide-sm" style={{ fontSize: 14, fontWeight: 600, padding: "0 6px" }}>{L.login}</Link>
-            <button type="button" className="ps-btn ps-hide-sm" onClick={() => scrollToApply()} style={{ background: accent, color: "#fff", fontSize: 14, padding: "10px 16px" }}>{L.apply}</button>
+            <button type="button" className="ps-btn ps-primary ps-hide-sm" onClick={() => scrollToApply()} style={{ fontSize: 14, padding: "0 18px", minHeight: 40 }}>{L.apply}</button>
           </div>
         </div>
       </header>
 
       {/* HERO */}
-      <section className="ps-wrap" style={{ padding: "72px 32px 56px", display: "flex", flexDirection: "column", gap: 22, alignItems: "flex-start" }}>
+      <section className="ps-wrap ps-hero ps-hero-sec" style={{ padding: "64px 32px 56px" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 20, alignItems: "flex-start", minWidth: 0 }}>
         <span style={{ display: "inline-flex", alignItems: "center", gap: 8, background: `color-mix(in srgb, ${accent} 12%, white)`, color: accent, fontSize: 13, fontWeight: 700, padding: "7px 14px", borderRadius: 100 }}>
           <span style={{ width: 6, height: 6, borderRadius: "50%", background: accent }} />
           {L.category[tenant.category] ?? L.category.BOSHQA}
@@ -245,17 +272,20 @@ export default function PublicSitePage() {
         )}
         <h1 style={{ fontSize: 48, lineHeight: 1.1, fontWeight: 800, letterSpacing: "-0.02em", maxWidth: 760 }}>{site?.heroTitle || L.heroTitle.replace("{name}", tenant.name)}</h1>
         <p style={{ fontSize: 17, lineHeight: 1.6, color: "var(--text-2)", maxWidth: 560, margin: 0 }}>{site?.heroSubtitle || L.heroDesc}</p>
-        <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-          <button type="button" className="ps-btn" onClick={() => scrollToApply()} style={{ background: accent, color: "#fff", fontSize: 15, padding: "14px 24px" }}>{site?.trialLesson ? L.trialCta : L.apply} →</button>
-          <a href="#courses" className="ps-btn" style={{ background: "#fff", border: "1px solid var(--border)", fontSize: 15, padding: "14px 22px" }}>{L.seeCourses}</a>
-          {tenant.phone && (
-            <a href={`tel:${tenant.phone}`} className="ps-btn" style={{ background: "transparent", fontSize: 15, padding: "14px 8px", color: "var(--text-2)" }}>📞 {tenant.phone}</a>
-          )}
+        <div className="ps-cta" style={{ width: "100%" }}>
+          <button type="button" className="ps-btn ps-primary" onClick={() => scrollToApply()} style={{ fontSize: 15, padding: "0 24px", minHeight: 50 }}>{site?.trialLesson ? L.trialCta : L.apply} →</button>
+          <a href="#courses" className="ps-btn ps-outline" style={{ fontSize: 15, padding: "0 22px", minHeight: 50 }}>{L.seeCourses}</a>
         </div>
+        {tenant.phone && (
+          <a href={`tel:${tenant.phone}`} style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 14.5, fontWeight: 600, color: "var(--text-2)" }}>
+            <span style={{ width: 32, height: 32, borderRadius: "50%", display: "inline-flex", alignItems: "center", justifyContent: "center", background: `color-mix(in srgb, ${accent} 12%, white)` }}>📞</span>
+            {tenant.phone}
+          </a>
+        )}
         {(statItems.length > 0 || priceText) && (
-          <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 8 }}>
+          <div className="ps-stats" style={{ marginTop: 8 }}>
             {priceText && (
-              <div style={{ ...card, padding: "14px 20px", minWidth: 120 }}>
+              <div className="ps-span2" style={{ ...card, padding: "14px 20px", minWidth: 120 }}>
                 <div style={{ fontFamily: "'Manrope',sans-serif", fontWeight: 800, fontSize: 20 }}>{priceText}</div>
                 <div style={{ fontSize: 13, color: "var(--muted)" }}>{L.priceFrom}, so&apos;m / {L.perMonth}</div>
               </div>
@@ -268,6 +298,8 @@ export default function PublicSitePage() {
             ))}
           </div>
         )}
+        </div>
+        <HeroSlides slides={slides} accent={accent} />
       </section>
 
       {/* PLACEMENT TEST */}
@@ -278,7 +310,7 @@ export default function PublicSitePage() {
               <div style={{ fontFamily: "'Manrope',sans-serif", fontWeight: 800, fontSize: 22 }}>🧭 {L.placementTitle}</div>
               <div style={{ fontSize: 14.5, opacity: 0.85, marginTop: 6 }}>{L.placementDesc}</div>
             </div>
-            <Link href={`/t/${placement.token}`} className="ps-btn" style={{ background: "#fff", color: accent, fontSize: 15, padding: "13px 22px" }}>{L.placementCta} →</Link>
+            <Link href={`/t/${placement.token}`} className="ps-btn ps-full-sm" style={{ background: "#fff", color: accent, fontSize: 15, padding: "0 22px", minHeight: 48, boxShadow: "0 10px 24px -12px rgba(0,0,0,0.4)" }}>{L.placementCta} →</Link>
           </div>
         </section>
       )}
@@ -383,7 +415,7 @@ export default function PublicSitePage() {
                         <span style={{ fontSize: 13.5, fontWeight: 700, color: "var(--text-2)" }}>{L.priceOnRequest}</span>
                       )}
                     </div>
-                    <button type="button" className="ps-btn" onClick={() => scrollToApply(g.subject)} style={{ background: accent, color: "#fff", fontSize: 13, padding: "8px 14px" }}>{L.enroll}</button>
+                    <button type="button" className="ps-btn ps-primary" onClick={() => scrollToApply(g.subject)} style={{ fontSize: 13.5, padding: "0 16px", minHeight: 40 }}>{L.enroll} →</button>
                   </div>
                 </div>
               ))}
@@ -540,7 +572,7 @@ export default function PublicSitePage() {
               <div style={{ width: 56, height: 56, borderRadius: "50%", background: "#E9F8EF", color: "#1FA463", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26, fontWeight: 800 }}>✓</div>
               <h3 style={{ fontSize: 19, fontWeight: 800 }}>{L.successTitle}</h3>
               <p style={{ fontSize: 14, color: "var(--text-2)", margin: 0 }}>{L.successText}</p>
-              <button type="button" className="ps-btn" onClick={() => setSubmitSuccess(false)} style={{ background: "var(--chip)", color: "var(--text)", fontSize: 13.5, padding: "9px 16px", marginTop: 6 }}>{L.again}</button>
+              <button type="button" className="ps-btn ps-soft" onClick={() => setSubmitSuccess(false)} style={{ fontSize: 13.5, padding: "0 18px", marginTop: 6 }}>{L.again}</button>
             </div>
           ) : (
             <form onSubmit={handleApply} noValidate style={{ display: "flex", flexDirection: "column", gap: 14 }}>
@@ -585,7 +617,7 @@ export default function PublicSitePage() {
                   <a href="/privacy" target="_blank" rel="noreferrer" style={{ color: accent, textDecoration: "underline" }}>{L.privacy}</a>
                 </span>
               </label>
-              <button type="submit" className="ps-btn" disabled={submitting} style={{ background: accent, color: "#fff", fontSize: 15, padding: 14, opacity: submitting ? 0.7 : 1 }}>
+              <button type="submit" className="ps-btn ps-primary" disabled={submitting} style={{ width: "100%", fontSize: 15, minHeight: 52, opacity: submitting ? 0.7 : 1 }}>
                 {submitting ? L.sending : `${L.send} →`}
               </button>
             </form>
@@ -625,10 +657,10 @@ export default function PublicSitePage() {
       {(tenant.phone || telegramLink) && (
         <div className="ps-float">
           {telegramLink && (
-            <a href={telegramLink} target="_blank" rel="noreferrer" className="ps-btn" style={{ background: "#229ED9", color: "#fff", padding: "12px 16px", fontSize: 14, boxShadow: "0 10px 24px rgba(0,0,0,0.18)" }}>✈️ {L.write}</a>
+            <a href={telegramLink} target="_blank" rel="noreferrer" className="ps-btn" style={{ background: "#229ED9", color: "#fff", padding: "0 18px", minHeight: 48, borderRadius: 100, fontSize: 14, boxShadow: "0 10px 24px rgba(0,0,0,0.18)" }}>✈️ {L.write}</a>
           )}
           {tenant.phone && (
-            <a href={`tel:${tenant.phone}`} className="ps-btn" style={{ background: accent, color: "#fff", padding: "12px 16px", fontSize: 14, boxShadow: "0 10px 24px rgba(0,0,0,0.18)" }}>📞 {L.call}</a>
+            <a href={`tel:${tenant.phone}`} className="ps-btn ps-primary" style={{ padding: "0 18px", minHeight: 48, borderRadius: 100, fontSize: 14 }}>📞 {L.call}</a>
           )}
         </div>
       )}

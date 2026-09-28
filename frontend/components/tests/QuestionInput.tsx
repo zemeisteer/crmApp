@@ -13,8 +13,9 @@ export default function QuestionInput({ q, value, onChange, disabled }: { q: Pub
 
   if (q.type === "MCQ" || q.type === "TRUE_FALSE" || q.type === "TRUE_FALSE_NG") {
     const labels: Record<string, string> = { true: t("pt.true"), false: t("pt.false"), ng: t("qt.notGiven") };
+    const mcq = q.type === "MCQ";
     return (
-      <div style={{ display: "grid", gridTemplateColumns: q.type === "MCQ" ? "repeat(auto-fit, minmax(200px, 1fr))" : `repeat(${(q.options ?? []).length}, minmax(0, 1fr))`, gap: 8 }}>
+      <div style={{ display: "grid", gridTemplateColumns: mcq ? "repeat(auto-fit, minmax(220px, 1fr))" : "repeat(auto-fit, minmax(96px, 1fr))", gap: 8 }}>
         {(q.options ?? []).map((o) => {
           const picked = value === o.id;
           return (
@@ -23,10 +24,33 @@ export default function QuestionInput({ q, value, onChange, disabled }: { q: Pub
               type="button"
               disabled={disabled}
               onClick={() => onChange(o.id)}
-              style={{ textAlign: "left", fontSize: 14, padding: "11px 12px", borderRadius: 10, cursor: disabled ? "default" : "pointer", border: `1.5px solid ${picked ? ACCENT : "#E2E8F0"}`, background: picked ? "#EEF0FF" : "#fff", color: "#0F172A", fontWeight: picked ? 700 : 500 }}
+              aria-pressed={picked}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                justifyContent: mcq ? "flex-start" : "center",
+                textAlign: "left",
+                minHeight: 48,
+                fontSize: 14.5,
+                lineHeight: 1.35,
+                padding: "10px 12px",
+                borderRadius: 12,
+                cursor: disabled ? "default" : "pointer",
+                border: `1.5px solid ${picked ? ACCENT : "#E2E8F0"}`,
+                background: picked ? "#EEF0FF" : "#fff",
+                color: "#0F172A",
+                fontWeight: picked ? 700 : 500,
+                boxShadow: picked ? "0 0 0 3px rgba(79,70,229,0.12)" : "none",
+                transition: "border-color .15s, background .15s",
+              }}
             >
-              {q.type === "MCQ" && <b style={{ marginRight: 8, color: picked ? ACCENT : "#94A3B8" }}>{o.id}.</b>}
-              {q.type === "MCQ" ? o.text : labels[o.id] ?? o.text}
+              {mcq && (
+                <span style={{ width: 28, height: 28, flexShrink: 0, borderRadius: "50%", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 800, background: picked ? ACCENT : "#F1F5F9", color: picked ? "#fff" : "#64748B" }}>
+                  {o.id}
+                </span>
+              )}
+              <span style={{ minWidth: 0, overflowWrap: "anywhere" }}>{mcq ? o.text : labels[o.id] ?? o.text}</span>
             </button>
           );
         })}
@@ -41,27 +65,60 @@ export default function QuestionInput({ q, value, onChange, disabled }: { q: Pub
     } catch {
       map = {};
     }
-    const set = (i: number, right: string) => onChange(JSON.stringify({ ...map, [i]: right }));
+    const set = (i: number, right: string) => {
+      const next = { ...map };
+      if (next[String(i)] === right) delete next[String(i)];
+      else next[String(i)] = right;
+      onChange(JSON.stringify(next));
+    };
+    const used = new Set(Object.values(map));
+    // No dropdowns: each item shows the choices as buttons (easy on phones,
+    // long answers wrap instead of being cut off). Tap again to clear.
     return (
-      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-        {(q.left ?? []).map((l, i) => (
-          <div key={i} style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1.4fr)", gap: 8, alignItems: "center" }}>
-            <div style={{ fontSize: 14, fontWeight: 600, padding: "9px 12px", background: "#F7F6F2", borderRadius: 10 }}>
-              {i + 1}) {l}
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        {(q.left ?? []).map((l, i) => {
+          const chosen = map[String(i)] ?? "";
+          return (
+            <div key={i} style={{ border: `1.5px solid ${chosen ? ACCENT : "#E2E8F0"}`, borderRadius: 12, padding: 10, background: chosen ? "#FAFAFF" : "#fff" }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 8 }}>
+                <span style={{ fontSize: 14.5, fontWeight: 700 }}>
+                  <span style={{ color: ACCENT, marginRight: 6 }}>{i + 1})</span>
+                  {l}
+                </span>
+                <span style={{ fontSize: 12.5, fontWeight: 700, color: chosen ? ACCENT : "#94A3B8", whiteSpace: "nowrap" }}>{chosen ? `→ ${chosen}` : t("qt.pick")}</span>
+              </div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                {(q.right ?? []).map((r) => {
+                  const on = chosen === r;
+                  const elsewhere = !on && used.has(r);
+                  return (
+                    <button
+                      key={r}
+                      type="button"
+                      disabled={disabled}
+                      onClick={() => set(i, r)}
+                      aria-pressed={on}
+                      style={{
+                        fontSize: 13.5,
+                        fontWeight: on ? 700 : 500,
+                        padding: "8px 12px",
+                        borderRadius: 100,
+                        cursor: disabled ? "default" : "pointer",
+                        border: `1.5px solid ${on ? ACCENT : "#E2E8F0"}`,
+                        background: on ? ACCENT : "#fff",
+                        color: on ? "#fff" : elsewhere ? "#94A3B8" : "#0F172A",
+                        textAlign: "left",
+                        overflowWrap: "anywhere",
+                      }}
+                    >
+                      {r}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
-            <select
-              value={map[String(i)] ?? ""}
-              disabled={disabled}
-              onChange={(e) => set(i, e.target.value)}
-              style={{ padding: "10px 12px", borderRadius: 10, border: `1.5px solid ${map[String(i)] ? ACCENT : "#E2E8F0"}`, fontSize: 14, background: "#fff", color: "#0F172A" }}
-            >
-              <option value="">{t("qt.pick")}</option>
-              {(q.right ?? []).map((r) => (
-                <option key={r} value={r}>{r}</option>
-              ))}
-            </select>
-          </div>
-        ))}
+          );
+        })}
       </div>
     );
   }

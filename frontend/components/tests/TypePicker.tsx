@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useLanguage } from "@/lib/i18n-context";
 import { QUESTION_TYPES, TYPE_INFO, type QuestionType } from "@/lib/tests";
+import { usePopoverPlacement } from "@/lib/use-popover";
 
 const ACCENT = "#4F46E5";
 
@@ -12,6 +13,7 @@ export default function TypePicker({ value, onChange, exclude = [] }: { value: Q
   const { t } = useLanguage();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const place = usePopoverPlacement(ref, open, 360);
 
   useEffect(() => {
     if (!open) return;
@@ -45,7 +47,7 @@ export default function TypePicker({ value, onChange, exclude = [] }: { value: Q
       {open && (
         <div
           role="listbox"
-          style={{ position: "absolute", zIndex: 50, top: "calc(100% + 6px)", left: 0, right: 0, minWidth: 280, background: "#fff", border: "1px solid #E2E8F0", borderRadius: 12, boxShadow: "0 12px 32px rgba(15,23,42,0.16)", padding: 8, display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(190px, 1fr))", gap: 6, maxHeight: 360, overflowY: "auto" }}
+          style={{ position: "absolute", zIndex: 50, top: "calc(100% + 6px)", left: 0, right: 0, minWidth: "min(280px, calc(100vw - 24px))", background: "#fff", border: "1px solid #E2E8F0", borderRadius: 12, boxShadow: "0 12px 32px rgba(15,23,42,0.16)", padding: 8, display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(190px, 100%), 1fr))", gap: 6, maxHeight: 360, overflowY: "auto", ...place }}
         >
           {QUESTION_TYPES.filter((x) => !exclude.includes(x)).map((type) => {
             const it = TYPE_INFO[type];

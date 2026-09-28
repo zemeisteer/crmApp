@@ -129,9 +129,12 @@ export default function PublicPlacementPage() {
               </div>
               <TestPaper questions={test.questions} answers={answers} onAnswer={setAnswer} />
               {error && <div role="alert" style={alertStyle}>{error}</div>}
-              <button type="button" className="btn" onClick={submit} disabled={submitting} style={{ ...primary, opacity: submitting ? 0.7 : 1 }}>
-                {submitting ? t("pt.submitting") : `${t("pt.finish")} (${answered}/${test.questions.length})`}
-              </button>
+              {/* Always in reach on long tests. */}
+              <div style={{ position: "sticky", bottom: 0, zIndex: 1, margin: "0 -20px -22px", padding: "12px 20px 16px", background: "linear-gradient(to top, #fff 75%, rgba(255,255,255,0))", borderRadius: "0 0 18px 18px" }}>
+                <button type="button" className="btn" onClick={submit} disabled={submitting} style={{ ...primary, width: "100%", minHeight: 50, boxShadow: "0 10px 24px -12px rgba(79,70,229,0.7)", opacity: submitting ? 0.7 : 1 }}>
+                  {submitting ? t("pt.submitting") : `${t("pt.finish")} (${answered}/${test.questions.length})`}
+                </button>
+              </div>
             </div>
           ) : (
             result && (
