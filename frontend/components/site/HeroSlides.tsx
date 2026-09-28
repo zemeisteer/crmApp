@@ -2,9 +2,10 @@
 
 import { useEffect, useState } from "react";
 
-// Hero slider for a center's site: drawn illustrations (a teacher with a
-// class, an AI helper explaining on a phone, progress and results) and the
-// center's own photos. Colours follow the center's accent.
+// Hero slider for a center's site: the center's own photos first, then
+// real stock photos of lessons (a class with a teacher, studying together,
+// graduation). If a photo cannot load, the slide falls back to a drawn
+// illustration in the center's accent colour.
 
 export interface Slide {
   kind: "teacher" | "ai" | "results" | "photo";
@@ -13,9 +14,19 @@ export interface Slide {
   src?: string;
 }
 
+// Unsplash photos (free to use under the Unsplash License), served from
+// Unsplash's CDN at the size the slider needs.
+const unsplash = (id: string) => `https://images.unsplash.com/${id}?auto=format&fit=crop&w=1200&h=900&q=80`;
+export const STOCK_PHOTOS: Record<"teacher" | "ai" | "results", string> = {
+  teacher: unsplash("photo-1524178232363-1fb2b075b655"),
+  ai: unsplash("photo-1522202176988-66273c2fd55f"),
+  results: unsplash("photo-1523050854058-8df90110c9f1"),
+};
+
 export default function HeroSlides({ slides, accent }: { slides: Slide[]; accent: string }) {
   const [i, setI] = useState(0);
   const [paused, setPaused] = useState(false);
+  const [broken, setBroken] = useState<Record<string, true>>({});
 
   useEffect(() => {
     if (paused || slides.length < 2) return;
@@ -25,6 +36,7 @@ export default function HeroSlides({ slides, accent }: { slides: Slide[]; accent
 
   if (slides.length === 0) return null;
   const s = slides[Math.min(i, slides.length - 1)];
+  const photo = s.src && !broken[s.src] ? s.src : null;
   const go = (d: number) => setI((x) => (x + d + slides.length) % slides.length);
 
   return (
@@ -33,13 +45,18 @@ export default function HeroSlides({ slides, accent }: { slides: Slide[]; accent
       onMouseLeave={() => setPaused(false)}
       style={{ position: "relative", borderRadius: 22, overflow: "hidden", background: "#fff", border: "1px solid #EAE8E2", boxShadow: "0 30px 60px -28px rgba(18,19,26,0.35)" }}
     >
-      <div key={i} className="ps-slide" style={{ aspectRatio: "4 / 3", background: s.kind === "photo" ? "#111" : `linear-gradient(160deg, color-mix(in srgb, ${accent} 10%, white), #fff)` }}>
-        {s.kind === "photo" && s.src ? (
+      <div key={i} className="ps-slide" style={{ aspectRatio: "4 / 3", background: photo ? "#111" : `linear-gradient(160deg, color-mix(in srgb, ${accent} 10%, white), #fff)` }}>
+        {photo ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={s.src} alt={s.title} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+          <img
+            src={photo}
+            alt={s.title}
+            onError={() => setBroken((b) => ({ ...b, [photo]: true }))}
+            style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+          />
         ) : s.kind === "teacher" ? (
           <TeacherArt accent={accent} />
-        ) : s.kind === "ai" ? (
+        ) : s.kind === "ai" || s.kind === "photo" ? (
           <AiArt accent={accent} />
         ) : (
           <ResultsArt accent={accent} />

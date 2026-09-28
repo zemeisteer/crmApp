@@ -69,7 +69,7 @@ export function normalizeSiteContent(raw: unknown): SiteContent {
     about: opt(r.about, 2000),
     advantages: list(r.advantages, 8, (x) => (str(x.title, 80) ? { icon: emoji(x.icon) || '✅', title: str(x.title, 80), text: str(x.text, 300) } : null)),
     results: list(r.results, 12, (x) => (str(x.name, 80) && str(x.result, 60) ? { name: str(x.name, 80), result: str(x.result, 60), detail: str(x.detail, 120) } : null)),
-    testimonials: list(r.testimonials, 10, (x) => (str(x.name, 80) && str(x.text, 600) ? { name: str(x.name, 80), role: str(x.role, 80), text: str(x.text, 600) } : null)),
+    testimonials: list(r.testimonials, 20, (x) => (str(x.name, 80) && str(x.text, 600) ? { name: str(x.name, 80), role: str(x.role, 80), text: str(x.text, 600) } : null)),
     faq: list(r.faq, 12, (x) => (str(x.q, 200) && str(x.a, 800) ? { q: str(x.q, 200), a: str(x.a, 800) } : null)),
     gallery: (Array.isArray(r.gallery) ? r.gallery : [])
       .map((g) => str(g, 120))

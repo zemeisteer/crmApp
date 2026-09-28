@@ -8,7 +8,7 @@ import { formatDate } from "@/lib/format-date";
 import { useLanguage } from "@/lib/i18n-context";
 import type { TranslationKey } from "@/lib/i18n";
 import { SITE_TEXT, type SiteLang } from "@/components/site/site-text";
-import HeroSlides, { type Slide } from "@/components/site/HeroSlides";
+import HeroSlides, { STOCK_PHOTOS, type Slide } from "@/components/site/HeroSlides";
 import PhoneInput from "@/components/PhoneInput";
 import { isCompleteUzPhone, phoneOrEmpty } from "@/lib/validation";
 
@@ -31,6 +31,9 @@ function youtubeEmbed(url?: string | null) {
   return m ? `https://www.youtube-nocookie.com/embed/${m[1]}` : null;
 }
 
+// Reviews are shown only once there are enough of them to be convincing.
+const MIN_TESTIMONIALS = 10;
+
 const SOCIAL_ICON: Record<string, string> = { instagram: "📸", telegram: "✈️", youtube: "▶️", facebook: "📘", tiktok: "🎵" };
 
 const CSS = `
@@ -41,6 +44,19 @@ const CSS = `
   .ps-grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;}
   .ps-grid4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;}
   .ps-grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;}
+  /* Card rows: a short row (2 reviews, 3 teachers...) sits in the middle
+     instead of hugging the left edge. */
+  .ps-cards{display:flex;flex-wrap:wrap;justify-content:center;gap:18px;}
+  .ps-cards>*{box-sizing:border-box;min-width:0;flex:0 1 calc((100% - 36px) / 3);}
+  .ps-cards.c4{gap:16px;}
+  .ps-cards.c4>*{flex-basis:calc((100% - 48px) / 4);}
+  .ps-cards.c2{gap:16px;}
+  .ps-cards.c2>*{flex-basis:calc((100% - 16px) / 2);}
+  .ps-head{display:flex;flex-direction:column;gap:10px;align-items:center;text-align:center;}
+  .ps-chips{display:flex;gap:8px;flex-wrap:wrap;}
+  .ps-chip{border:1.5px solid var(--border);background:#fff;color:var(--text-2);font-size:13.5px;font-weight:600;padding:9px 14px;border-radius:100px;cursor:pointer;font-family:inherit;text-align:left;line-height:1.3;}
+  .ps-chip:hover{border-color:var(--accent);}
+  .ps-chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff;}
   .ps-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:none;cursor:pointer;font-weight:700;font-family:inherit;border-radius:12px;min-height:44px;white-space:nowrap;transition:transform .15s, box-shadow .15s, background .15s, opacity .15s;}
   .ps-btn:hover{transform:translateY(-1px);}
   .ps-btn:active{transform:translateY(0);}
@@ -63,15 +79,17 @@ const CSS = `
   .ps-faq[open] summary .ps-plus{transform:rotate(45deg);}
   .ps-plus{transition:transform .2s;color:var(--accent);font-size:20px;line-height:1;}
   .ps-float{position:fixed;right:16px;bottom:16px;z-index:30;display:none;gap:8px;}
-  @media (max-width:980px){.ps-hero{grid-template-columns:minmax(0,1fr);gap:32px;}.ps-grid3{grid-template-columns:repeat(2,minmax(0,1fr));}.ps-grid4{grid-template-columns:repeat(2,minmax(0,1fr));}.ps-nav{display:none!important;}}
+  @media (max-width:980px){.ps-cards>*,.ps-cards.c4>*{flex-basis:calc((100% - 18px) / 2);}.ps-hero{grid-template-columns:minmax(0,1fr);gap:32px;}.ps-grid3{grid-template-columns:repeat(2,minmax(0,1fr));}.ps-grid4{grid-template-columns:repeat(2,minmax(0,1fr));}.ps-nav{display:none!important;}}
   @media (max-width:640px){
     .ps-wrap{padding:0 16px;}
     .ps-grid3,.ps-grid2,.ps-grid4{grid-template-columns:minmax(0,1fr);}
+    .ps-cards>*,.ps-cards.c4>*,.ps-cards.c2>*{flex-basis:100%;}
     .ps h1{font-size:32px!important;}
     .ps h2{font-size:24px!important;}
     .ps-hide-sm{display:none!important;}
     .ps-field{font-size:16px;}
     .ps-float{display:flex;}
+    .ps-footer{padding-bottom:88px!important;}
     .ps-cta{flex-direction:column;align-items:stretch;}
     .ps-cta .ps-btn{width:100%;}
     .ps-full-sm{width:100%;}
@@ -216,11 +234,29 @@ export default function PublicSitePage() {
   const socials = site ? (Object.entries(site.socials).filter(([, v]) => v) as Array<[string, string]>) : [];
   const telegramLink = tenant.telegramUsername ? `https://t.me/${tenant.telegramUsername.replace(/^@/, "")}` : site?.socials.telegram ?? null;
   const slides: Slide[] = [
-    { kind: "teacher", title: L.slideTeacherTitle, text: L.slideTeacherText },
-    { kind: "ai", title: L.slideAiTitle, text: L.slideAiText },
-    { kind: "results", title: L.slideResultsTitle, text: L.slideResultsText },
     ...(site?.gallery ?? []).slice(0, 3).map((g): Slide => ({ kind: "photo", title: tenant.name, text: L.slidePhoto, src: fileUrl(g) ?? "" })),
+    { kind: "teacher", title: L.slideTeacherTitle, text: L.slideTeacherText, src: STOCK_PHOTOS.teacher },
+    { kind: "ai", title: L.slideAiTitle, text: L.slideAiText, src: STOCK_PHOTOS.ai },
+    { kind: "results", title: L.slideResultsTitle, text: L.slideResultsText, src: STOCK_PHOTOS.results },
   ];
+  // Questions every visitor asks, answered from the center's real data when
+  // it has not written its own.
+  const fill = (text: string, vars: Record<string, string>) => text.replace(/\{(\w+)\}/g, (_, k: string) => vars[k] ?? "");
+  const autoFaq: Array<{ q: string; a: string }> = [
+    ...(priceText ? [{ q: L.faqPriceQ, a: fill(L.faqPriceA, { price: priceText }) }] : []),
+    ...(site?.trialLesson ? [{ q: L.faqTrialQ, a: fill(L.faqTrialA, { trial: site.trialText || L.trialBadge.toLowerCase() }) }] : []),
+    { q: L.faqLevelQ, a: placement ? L.faqLevelTestA : L.faqLevelA },
+    { q: L.faqScheduleQ, a: [L.faqScheduleA, site?.workingHours ? fill(L.faqHoursA, { hours: site.workingHours }) : ""].filter(Boolean).join(" ") },
+    ...(teachers.length > 0
+      ? [{ q: L.faqTeachersQ, a: fill(L.faqTeachersA, { n: String(teachers.length), names: teachers.slice(0, 6).map((x) => (x.subject ? `${x.fullName} (${x.subject})` : x.fullName)).join(", ") }) }]
+      : []),
+    ...(branches.length > 0 || tenant.address
+      ? [{ q: L.faqWhereQ, a: branches.length > 0 ? branches.map((b) => [b.name, b.address].filter(Boolean).join(" — ")).join("; ") : tenant.address! }]
+      : []),
+    { q: L.faqHowQ, a: fill(L.faqHowA, { phone: tenant.phone ? fill(L.faqHowPhone, { phone: tenant.phone }) : "" }) },
+  ];
+  const faq = (site?.faq.length ?? 0) > 0 ? site!.faq : autoFaq;
+  const testimonials = (site?.testimonials.length ?? 0) >= MIN_TESTIMONIALS ? site!.testimonials : [];
   const label: React.CSSProperties = { fontSize: 13, fontWeight: 700, color: accent, textTransform: "uppercase", letterSpacing: "0.04em" };
   const card: React.CSSProperties = { background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 16 };
 
@@ -244,6 +280,7 @@ export default function PublicSitePage() {
             <a href="#courses">{L.navCourses}</a>
             {teachers.length > 0 && <a href="#teachers">{L.navTeachers}</a>}
             {branches.length > 0 && <a href="#branches">{L.navBranches}</a>}
+            <a href="#faq">{L.faqLabel}</a>
             {announcements.length > 0 && <a href="#news">{L.navNews}</a>}
           </nav>
           <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
@@ -321,18 +358,18 @@ export default function PublicSitePage() {
       {(site?.about || (site?.advantages.length ?? 0) > 0) && (
         <section className="ps-wrap" style={{ padding: "24px 32px 72px", display: "flex", flexDirection: "column", gap: 28 }}>
           {site?.about && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 10, maxWidth: 760 }}>
+            <div className="ps-head" style={{ maxWidth: 760, margin: "0 auto" }}>
               <span style={label}>{L.aboutLabel}</span>
               <p style={{ fontSize: 16, lineHeight: 1.75, color: "var(--text-2)", margin: 0, whiteSpace: "pre-wrap" }}>{site.about}</p>
             </div>
           )}
           {(site?.advantages.length ?? 0) > 0 && (
             <>
-              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <div className="ps-head">
                 <span style={label}>{L.whyLabel}</span>
                 <h2 style={{ fontSize: 32, fontWeight: 800, letterSpacing: "-0.02em" }}>{L.whyTitle}</h2>
               </div>
-              <div className="ps-grid4">
+              <div className="ps-cards c4">
                 {site!.advantages.map((a, i) => (
                   <div key={i} style={{ ...card, padding: 22, display: "flex", flexDirection: "column", gap: 10 }}>
                     <div style={{ width: 44, height: 44, borderRadius: 12, background: `color-mix(in srgb, ${accent} 12%, white)`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22 }}>{a.icon}</div>
@@ -350,11 +387,11 @@ export default function PublicSitePage() {
       {(site?.results.length ?? 0) > 0 && (
         <section style={{ background: "linear-gradient(135deg,#0F0B29,#1B1440)", padding: "72px 0" }}>
           <div className="ps-wrap" style={{ display: "flex", flexDirection: "column", gap: 28 }}>
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <div className="ps-head">
               <span style={{ ...label, color: "#A9A6FF" }}>{L.resultsLabel}</span>
               <h2 style={{ fontSize: 32, fontWeight: 800, letterSpacing: "-0.02em", color: "#fff" }}>{L.resultsTitle}</h2>
             </div>
-            <div className="ps-grid4">
+            <div className="ps-cards c4">
               {site!.results.map((r, i) => (
                 <div key={i} style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 16, padding: 20, color: "#fff" }}>
                   <div style={{ fontFamily: "'Manrope',sans-serif", fontWeight: 800, fontSize: 24, color: "#C4B5FD" }}>{r.result}</div>
@@ -370,12 +407,12 @@ export default function PublicSitePage() {
       {/* COURSES */}
       <section id="courses" style={{ background: "var(--surface)", borderTop: "1px solid var(--border)", borderBottom: "1px solid var(--border)", padding: "72px 0" }}>
         <div className="ps-wrap" style={{ display: "flex", flexDirection: "column", gap: 28 }}>
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <div className="ps-head">
             <span style={label}>{L.coursesLabel}</span>
             <h2 style={{ fontSize: 32, fontWeight: 800, letterSpacing: "-0.02em" }}>{L.coursesTitle}</h2>
           </div>
           {subjects.length > 1 && (
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "center" }}>
               {[{ key: "ALL", name: `${L.all} (${data.groups.length})` }, ...subjects.map((s) => ({ key: s.subject, name: `${s.subject} (${s.groupCount})` }))].map((f) => (
                 <button key={f.key} type="button" onClick={() => setSelectedSubject(f.key)} style={{ border: `1px solid ${selectedSubject === f.key ? accent : "var(--border)"}`, background: selectedSubject === f.key ? accent : "#fff", color: selectedSubject === f.key ? "#fff" : "var(--text-2)", fontSize: 13, fontWeight: 700, padding: "7px 14px", borderRadius: 100, cursor: "pointer" }}>
                   {f.name}
@@ -386,7 +423,7 @@ export default function PublicSitePage() {
           {filteredGroups.length === 0 ? (
             <div style={{ ...card, padding: 32, textAlign: "center", color: "var(--muted)", fontSize: 14 }}>{L.noCourses}</div>
           ) : (
-            <div className="ps-grid3">
+            <div className="ps-cards">
               {filteredGroups.map((g) => (
                 <div key={g.id} style={{ ...card, background: "var(--bg)", padding: 22, display: "flex", flexDirection: "column", gap: 12 }}>
                   <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
@@ -429,7 +466,7 @@ export default function PublicSitePage() {
       {/* GALLERY + VIDEO */}
       {((site?.gallery.length ?? 0) > 0 || video) && (
         <section className="ps-wrap" style={{ padding: "72px 32px 0", display: "flex", flexDirection: "column", gap: 24 }}>
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <div className="ps-head">
             <span style={label}>{L.galleryLabel}</span>
             <h2 style={{ fontSize: 32, fontWeight: 800, letterSpacing: "-0.02em" }}>{L.galleryTitle}</h2>
           </div>
@@ -439,7 +476,7 @@ export default function PublicSitePage() {
             </div>
           )}
           {(site?.gallery.length ?? 0) > 0 && (
-            <div className="ps-grid3">
+            <div className="ps-cards">
               {site!.gallery.map((g) => (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img key={g} src={fileUrl(g) ?? ""} alt="" loading="lazy" style={{ width: "100%", aspectRatio: "4 / 3", objectFit: "cover", borderRadius: 14, border: "1px solid var(--border)" }} />
@@ -452,11 +489,11 @@ export default function PublicSitePage() {
       {/* TEACHERS */}
       {teachers.length > 0 && (
         <section id="teachers" className="ps-wrap" style={{ padding: "72px 32px", display: "flex", flexDirection: "column", gap: 28 }}>
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <div className="ps-head">
             <span style={label}>{L.teachersLabel}</span>
             <h2 style={{ fontSize: 32, fontWeight: 800, letterSpacing: "-0.02em" }}>{L.teachersTitle}</h2>
           </div>
-          <div className="ps-grid4">
+          <div className="ps-cards c4">
             {teachers.map((tc) => (
               <div key={tc.id} style={{ ...card, padding: 20, display: "flex", alignItems: "center", gap: 12 }}>
                 <div style={{ width: 46, height: 46, borderRadius: "50%", background: accent, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, flexShrink: 0 }}>
@@ -473,15 +510,15 @@ export default function PublicSitePage() {
       )}
 
       {/* TESTIMONIALS */}
-      {(site?.testimonials.length ?? 0) > 0 && (
+      {testimonials.length > 0 && (
         <section style={{ background: "var(--surface)", borderTop: "1px solid var(--border)", borderBottom: "1px solid var(--border)", padding: "72px 0" }}>
           <div className="ps-wrap" style={{ display: "flex", flexDirection: "column", gap: 28 }}>
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <div className="ps-head">
               <span style={label}>{L.testimonialsLabel}</span>
               <h2 style={{ fontSize: 32, fontWeight: 800, letterSpacing: "-0.02em" }}>{L.testimonialsTitle}</h2>
             </div>
-            <div className="ps-grid3">
-              {site!.testimonials.map((r, i) => (
+            <div className="ps-cards">
+              {testimonials.map((r, i) => (
                 <div key={i} style={{ ...card, background: "var(--bg)", padding: 22, display: "flex", flexDirection: "column", gap: 14 }}>
                   <div style={{ fontSize: 28, lineHeight: 1, color: accent }}>“</div>
                   <div style={{ fontSize: 14.5, lineHeight: 1.65, color: "var(--text-2)", whiteSpace: "pre-wrap" }}>{r.text}</div>
@@ -497,14 +534,14 @@ export default function PublicSitePage() {
       )}
 
       {/* FAQ */}
-      {(site?.faq.length ?? 0) > 0 && (
-        <section className="ps-wrap" style={{ padding: "72px 32px", maxWidth: 860, display: "flex", flexDirection: "column", gap: 20 }}>
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      {faq.length > 0 && (
+        <section id="faq" className="ps-wrap" style={{ padding: "72px 32px", maxWidth: 860, display: "flex", flexDirection: "column", gap: 20 }}>
+          <div className="ps-head">
             <span style={label}>{L.faqLabel}</span>
             <h2 style={{ fontSize: 30, fontWeight: 800, letterSpacing: "-0.02em" }}>{L.faqTitle}</h2>
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {site!.faq.map((f, i) => (
+            {faq.map((f, i) => (
               <details key={i} className="ps-faq" style={{ ...card, padding: "16px 20px" }}>
                 <summary>
                   <span>{f.q}</span>
@@ -521,12 +558,12 @@ export default function PublicSitePage() {
       {branches.length > 0 && (
         <section id="branches" style={{ background: "#12131A", padding: "72px 0" }}>
           <div className="ps-wrap" style={{ display: "flex", flexDirection: "column", gap: 28 }}>
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <div className="ps-head">
               <span style={{ ...label, color: "#A9A6FF" }}>{L.branchesLabel}</span>
               <h2 style={{ fontSize: 32, fontWeight: 800, letterSpacing: "-0.02em", color: "#fff" }}>{L.branchesTitle}</h2>
               {site?.workingHours && <div style={{ color: "#B7B0E8", fontSize: 14.5 }}>🕒 {L.hours}: {site.workingHours}</div>}
             </div>
-            <div className="ps-grid2">
+            <div className="ps-cards c2">
               {branches.map((b) => (
                 <div key={b.id} style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 16, padding: 20, color: "#fff", display: "flex", flexDirection: "column", gap: 6 }}>
                   <div style={{ fontFamily: "'Manrope',sans-serif", fontWeight: 700, fontSize: 16 }}>📍 {b.name}</div>
@@ -543,7 +580,7 @@ export default function PublicSitePage() {
       {/* NEWS */}
       {announcements.length > 0 && (
         <section id="news" className="ps-wrap" style={{ padding: "72px 32px", display: "flex", flexDirection: "column", gap: 24, maxWidth: 860 }}>
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <div className="ps-head">
             <span style={label}>{L.newsLabel}</span>
             <h2 style={{ fontSize: 30, fontWeight: 800, letterSpacing: "-0.02em" }}>{L.newsTitle}</h2>
           </div>
@@ -590,18 +627,24 @@ export default function PublicSitePage() {
                   <PhoneInput className="ps-field" value={parentPhone} onChange={setParentPhone} placeholder="+998 90 987 65 43" autoComplete="off" />
                 </Field>
               </div>
-              <div className="ps-grid2" style={{ gap: 12 }}>
-                <Field label={L.course}>
-                  <select className="ps-field" value={selectedCourse} onChange={(e) => setSelectedCourse(e.target.value)}>
-                    {subjects.length === 0 ? <option value="">{L.general}</option> : subjects.map((s) => <option key={s.subject} value={s.subject}>{s.subject}</option>)}
-                  </select>
-                </Field>
-                <Field label={L.branchPick}>
-                  <select className="ps-field" value={selectedBranch} onChange={(e) => setSelectedBranch(e.target.value)}>
-                    {branches.length === 0 ? <option value="">{L.mainBranch}</option> : branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
-                  </select>
-                </Field>
-              </div>
+              {/* Choices as buttons, not dropdowns: every option is visible
+                  and works the same on phones and computers. */}
+              {subjects.length > 0 && (
+                <ChipGroup
+                  label={L.course}
+                  value={selectedCourse}
+                  onChange={setSelectedCourse}
+                  options={[...subjects.map((x) => ({ value: x.subject, label: x.subject })), { value: "", label: L.courseUnsure }]}
+                />
+              )}
+              {branches.length > 1 && (
+                <ChipGroup
+                  label={L.branchPick}
+                  value={selectedBranch}
+                  onChange={setSelectedBranch}
+                  options={branches.map((b) => ({ value: b.id, label: b.name }))}
+                />
+              )}
               <Field label={L.notes}>
                 <textarea className="ps-field" rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder={L.notesPh} style={{ resize: "vertical" }} />
               </Field>
@@ -628,7 +671,7 @@ export default function PublicSitePage() {
       </section>
 
       {/* FOOTER */}
-      <footer style={{ borderTop: "1px solid var(--border)", padding: "32px 0" }}>
+      <footer className="ps-footer" style={{ borderTop: "1px solid var(--border)", padding: "32px 0" }}>
         <div className="ps-wrap" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 14, flexWrap: "wrap", fontSize: 13, color: "var(--muted)" }}>
           <div>
             <div style={{ fontWeight: 700, color: "var(--text)" }}>{tenant.name}</div>
@@ -666,6 +709,21 @@ export default function PublicSitePage() {
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+function ChipGroup({ label, value, onChange, options }: { label: string; value: string; onChange: (v: string) => void; options: Array<{ value: string; label: string }> }) {
+  return (
+    <div role="radiogroup" aria-label={label} style={{ display: "flex", flexDirection: "column", gap: 8, minWidth: 0 }}>
+      <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-2)" }}>{label}</span>
+      <div className="ps-chips">
+        {options.map((o) => (
+          <button key={o.value || "none"} type="button" role="radio" aria-checked={value === o.value} aria-pressed={value === o.value} className="ps-chip" onClick={() => onChange(o.value)}>
+            {o.label}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }

@@ -1361,6 +1361,7 @@ export const dict = {
   "site.resNamePh": { UZ: "O'quvchi (masalan: Aziza K.)", RU: "Ученик (напр.: Азиза К.)", EN: "Student (e.g. Aziza K.)" },
   "site.resResultPh": { UZ: "Natija (IELTS 7.5)", RU: "Результат (IELTS 7.5)", EN: "Result (IELTS 7.5)" },
   "site.resDetailPh": { UZ: "Izoh (ixtiyoriy): 5 oyda, 5.5 dan", RU: "Пояснение (необяз.): за 5 месяцев, с 5.5", EN: "Note (optional): in 5 months, from 5.5" },
+  "site.testimonialsHint": { UZ: "Saytda kamida 10 ta fikr bo'lganda ko'rinadi (hozir {n} ta). Faqat haqiqiy ota-ona va o'quvchilar fikrini yozing.", RU: "Раздел появится на сайте, когда отзывов будет не меньше 10 (сейчас {n}). Добавляйте только настоящие отзывы.", EN: "Shown on the site once there are at least 10 reviews (now {n}). Add only real reviews from parents and students." },
   "site.secTestimonials": { UZ: "O'quvchi va ota-onalar fikrlari", RU: "Отзывы учеников и родителей", EN: "Testimonials" },
   "site.tstNamePh": { UZ: "Ism", RU: "Имя", EN: "Name" },
   "site.tstRolePh": { UZ: "Kim (o'quvchi, ota-ona...)", RU: "Кто (ученик, родитель...)", EN: "Who (student, parent...)" },
