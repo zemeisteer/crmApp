@@ -1,6 +1,6 @@
 import { Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { and, desc, eq, gt, inArray, isNotNull, isNull, or } from 'drizzle-orm';
+import { and, asc, count, desc, eq, gt, gte, inArray, isNotNull, isNull, lt, lte, or, sum } from 'drizzle-orm';
 import { randomBytes, timingSafeEqual } from 'crypto';
 import * as qrcode from 'qrcode';
 import { DB, Database } from '../db/db.module';
@@ -9,14 +9,20 @@ import {
   attendance,
   enrollments,
   examResults,
+  groups,
   homework,
   homeworkCompletions,
+  leadTrials,
+  leads,
   organizationMemberships,
   payments,
   students,
+  teachers,
   telegramLinkTokens,
+  tenants,
   users,
 } from '../db/schema';
+import { DEFAULT_TIMEZONE, isValidTimeZone, zonedDayBounds, zonedParts } from '../common/timezone';
 
 const MAIN_KEYBOARD = {
   keyboard: [
@@ -27,6 +33,39 @@ const MAIN_KEYBOARD = {
   ],
   resize_keyboard: true,
 };
+
+// Center staff (owner, admin, manager, reception, accountant) get CRM
+// buttons, teachers their own lessons; never the student cabinet.
+const STAFF_KEYBOARD = {
+  keyboard: [
+    [{ text: '📊 Bugungi holat' }, { text: '🆕 Yangi arizalar' }],
+    [{ text: '📞 Qayta aloqa' }, { text: '🎓 Sinov darslari' }],
+    [{ text: '❓ Yordam' }],
+  ],
+  resize_keyboard: true,
+};
+
+const TEACHER_KEYBOARD = {
+  keyboard: [[{ text: '📅 Bugungi darslarim' }], [{ text: '❓ Yordam' }]],
+  resize_keyboard: true,
+};
+
+const WEEKDAY_CODES: Record<number, string[]> = {
+  1: ['mon', 'dushanba', 'du'],
+  2: ['tue', 'seshanba', 'se'],
+  3: ['wed', 'chorshanba', 'chor'],
+  4: ['thu', 'payshanba', 'pay'],
+  5: ['fri', 'juma'],
+  6: ['sat', 'shanba'],
+  7: ['sun', 'yakshanba'],
+};
+
+const SOURCE_LABEL: Record<string, string> = {
+  INSTAGRAM: 'Instagram', TELEGRAM: 'Telegram', WEBSITE: 'Sayt', REFERRAL: 'Tavsiya',
+  WALK_IN: "O'zi keldi", PHONE: "Qo'ng'iroq", ADVERTISEMENT: 'Reklama', OTHER: 'Boshqa',
+};
+
+type StaffUser = { id: string; fullName: string; tenantId: string | null; role: string };
 
 
 // Messages use parse_mode HTML; names come from user input.
@@ -159,10 +198,169 @@ export class TelegramService {
       .returning({ id: telegramLinkTokens.id });
     if (!claimed) return;
     await this.db.update(users).set({ telegramChatId: null }).where(eq(users.telegramChatId, chatId));
+    // A chat belongs to one account: if this Telegram was linked to a
+    // student before (e.g. while testing), that link is dropped so the bot
+    // stops answering with the student cabinet.
+    await this.db.update(students).set({ telegramChatId: null }).where(eq(students.telegramChatId, chatId));
     await this.db.update(users).set({ telegramChatId: chatId }).where(eq(users.id, linkRecord.user.id));
+    const staff = await this.findStaff(chatId);
+    const teacher = staff?.role === 'TEACHER';
     await this.sendMessage(
       chatId,
-      `✅ <b>${escapeHtml(linkRecord.user.fullName)}</b>, Telegram hisobingiz TalimCRM'ga ulandi.\n\nEndi yangi arizalar, qayta aloqa va sinov darslari haqidagi eslatmalar shu yerga keladi.`,
+      `✅ <b>${escapeHtml(linkRecord.user.fullName)}</b>, Telegram hisobingiz TalimCRM'ga ${teacher ? "o'qituvchi" : 'markaz xodimi'} sifatida ulandi.\n\n` +
+        (teacher
+          ? "Pastdagi tugma orqali bugungi darslaringizni ko'rasiz."
+          : "Endi yangi arizalar, qayta aloqa va sinov darslari haqidagi eslatmalar shu yerga keladi. Pastdagi tugmalar orqali markaz holatini ko'rasiz."),
+      teacher ? TEACHER_KEYBOARD : STAFF_KEYBOARD,
+    );
+  }
+
+  // The staff account linked to this chat, with its role in its center.
+  private async findStaff(chatId: string): Promise<StaffUser | null> {
+    const u = await this.db.query.users.findFirst({
+      where: eq(users.telegramChatId, chatId),
+      columns: { id: true, fullName: true, tenantId: true, role: true },
+    });
+    if (!u) return null;
+    if (u.tenantId) {
+      const [m] = await this.db
+        .select({ role: organizationMemberships.role })
+        .from(organizationMemberships)
+        .where(and(eq(organizationMemberships.userId, u.id), eq(organizationMemberships.tenantId, u.tenantId)));
+      if (m) return { ...u, role: m.role };
+    }
+    return u;
+  }
+
+  private async tenantZone(tenantId: string) {
+    const [t] = await this.db.select({ name: tenants.name, timezone: tenants.timezone }).from(tenants).where(eq(tenants.id, tenantId));
+    return { name: t?.name ?? 'Markaz', tz: isValidTimeZone(t?.timezone) ? t!.timezone! : DEFAULT_TIMEZONE };
+  }
+
+  private fmtTime(d: Date, tz: string) {
+    const p = zonedParts(d, tz);
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${pad(p.day)}.${pad(p.month)} ${pad(p.hour)}:${pad(p.minute)}`;
+  }
+
+  // Replies for a linked staff member. Returns after sending one message.
+  private async handleStaffText(chatId: string, staff: StaffUser, text: string) {
+    const teacher = staff.role === 'TEACHER';
+    const keyboard = teacher ? TEACHER_KEYBOARD : STAFF_KEYBOARD;
+    const lower = text.toLowerCase();
+    if (!staff.tenantId) {
+      await this.sendMessage(chatId, "Hisobingiz hech qaysi markazga biriktirilmagan.", keyboard);
+      return;
+    }
+    const tenantId = staff.tenantId;
+    const { name, tz } = await this.tenantZone(tenantId);
+    const now = new Date();
+    const { startOfToday, endOfToday } = zonedDayBounds(now, tz);
+
+    if (teacher || lower.includes('darslarim')) {
+      if (lower.includes('darslarim') || lower === '/today') {
+        const weekday = zonedParts(now, tz).weekday;
+        const rows = await this.db
+          .select({ name: groups.name, subject: groups.subject, days: groups.scheduleDays, start: groups.startTime, end: groups.endTime })
+          .from(groups)
+          .innerJoin(teachers, eq(teachers.id, groups.teacherId))
+          .where(and(eq(groups.tenantId, tenantId), eq(teachers.userId, staff.id), isNull(groups.deletedAt), eq(groups.status, 'ACTIVE')))
+          .orderBy(asc(groups.startTime));
+        const today = rows.filter((g) =>
+          (g.days ?? '').toLowerCase().split(/[,\s/]+/).some((d) => WEEKDAY_CODES[weekday].includes(d.trim())),
+        );
+        const msg = today.length
+          ? `📅 <b>Bugungi darslaringiz</b>\n\n` +
+            today.map((g) => `• <b>${escapeHtml(g.name)}</b> (${escapeHtml(g.subject)}) — ${g.start ?? '—'}${g.end ? `–${g.end}` : ''}`).join('\n')
+          : "📅 Bugun sizda dars yo'q.";
+        await this.sendMessage(chatId, msg, keyboard);
+        return;
+      }
+    }
+
+    if (!teacher && (lower.includes('holat') || lower === '/stats')) {
+      const [[newToday], [open], [paid], [trials]] = await Promise.all([
+        this.db.select({ n: count() }).from(leads)
+          .where(and(eq(leads.tenantId, tenantId), isNull(leads.archivedAt), gte(leads.createdAt, startOfToday), lt(leads.createdAt, endOfToday))),
+        this.db.select({ n: count() }).from(leads)
+          .where(and(eq(leads.tenantId, tenantId), isNull(leads.archivedAt), inArray(leads.status, ['NEW', 'CONTACTED', 'TRIAL_BOOKED', 'TRIAL_ATTENDED', 'QUALIFIED']))),
+        this.db.select({ n: count(), total: sum(payments.amount) }).from(payments)
+          .where(and(eq(payments.tenantId, tenantId), eq(payments.status, 'PAID'), gte(payments.paidAt, startOfToday), lt(payments.paidAt, endOfToday))),
+        this.db.select({ n: count() }).from(leadTrials)
+          .where(and(eq(leadTrials.tenantId, tenantId), eq(leadTrials.status, 'BOOKED'), gte(leadTrials.scheduledAt, startOfToday), lt(leadTrials.scheduledAt, endOfToday))),
+      ]);
+      const money = Number(paid?.total ?? 0).toLocaleString('uz-UZ');
+      await this.sendMessage(
+        chatId,
+        `📊 <b>${escapeHtml(name)} — bugun</b>\n\n` +
+          `🆕 Yangi arizalar: <b>${newToday?.n ?? 0}</b>\n` +
+          `🗂 Ochiq lidlar: <b>${open?.n ?? 0}</b>\n` +
+          `🎓 Bugungi sinov darslari: <b>${trials?.n ?? 0}</b>\n` +
+          `💰 Bugungi to'lovlar: <b>${paid?.n ?? 0}</b> ta, <b>${money}</b> so'm`,
+        keyboard,
+      );
+      return;
+    }
+
+    if (!teacher && (lower.includes('ariza') || lower === '/leads')) {
+      const rows = await this.db
+        .select({ fullName: leads.fullName, phone: leads.phone, source: leads.source, createdAt: leads.createdAt })
+        .from(leads)
+        .where(and(eq(leads.tenantId, tenantId), isNull(leads.archivedAt), eq(leads.status, 'NEW')))
+        .orderBy(desc(leads.createdAt))
+        .limit(10);
+      const msg = rows.length
+        ? `🆕 <b>Yangi arizalar</b> (hali bog'lanilmagan)\n\n` +
+          rows.map((l) => `• <b>${escapeHtml(l.fullName)}</b> — ${escapeHtml(l.phone)}\n   ${SOURCE_LABEL[l.source] ?? l.source} · ${this.fmtTime(l.createdAt, tz)}`).join('\n')
+        : "✅ Bog'lanilmagan yangi ariza yo'q.";
+      await this.sendMessage(chatId, msg, keyboard);
+      return;
+    }
+
+    if (!teacher && (lower.includes('aloqa') || lower === '/followups')) {
+      const rows = await this.db
+        .select({ fullName: leads.fullName, phone: leads.phone, followUpAt: leads.followUpAt })
+        .from(leads)
+        .where(and(
+          eq(leads.tenantId, tenantId), isNull(leads.archivedAt), lte(leads.followUpAt, endOfToday),
+          inArray(leads.status, ['NEW', 'CONTACTED', 'TRIAL_BOOKED', 'TRIAL_ATTENDED', 'QUALIFIED']),
+        ))
+        .orderBy(asc(leads.followUpAt))
+        .limit(15);
+      const msg = rows.length
+        ? `📞 <b>Bugun qayta aloqa qilinadiganlar</b>\n\n` +
+          rows.map((l) => `• <b>${escapeHtml(l.fullName)}</b> — ${escapeHtml(l.phone)} · ${l.followUpAt ? this.fmtTime(l.followUpAt, tz) : ''}${l.followUpAt && l.followUpAt < startOfToday ? ' ⚠️ kechikkan' : ''}`).join('\n')
+        : "✅ Bugun qayta aloqa qilinadigan lid yo'q.";
+      await this.sendMessage(chatId, msg, keyboard);
+      return;
+    }
+
+    if (!teacher && (lower.includes('sinov') || lower === '/trials')) {
+      const weekAhead = new Date(endOfToday.getTime() + 6 * 86_400_000);
+      const rows = await this.db
+        .select({ at: leadTrials.scheduledAt, fullName: leads.fullName, phone: leads.phone, group: groups.name })
+        .from(leadTrials)
+        .innerJoin(leads, eq(leads.id, leadTrials.leadId))
+        .leftJoin(groups, eq(groups.id, leadTrials.groupId))
+        .where(and(eq(leadTrials.tenantId, tenantId), eq(leadTrials.status, 'BOOKED'), gte(leadTrials.scheduledAt, startOfToday), lt(leadTrials.scheduledAt, weekAhead)))
+        .orderBy(asc(leadTrials.scheduledAt))
+        .limit(15);
+      const msg = rows.length
+        ? `🎓 <b>Yaqin 7 kundagi sinov darslari</b>\n\n` +
+          rows.map((r) => `• ${this.fmtTime(r.at, tz)} — <b>${escapeHtml(r.fullName)}</b> (${escapeHtml(r.phone)})${r.group ? ` · ${escapeHtml(r.group)}` : ''}`).join('\n')
+        : "Yaqin 7 kunda sinov darsi yo'q.";
+      await this.sendMessage(chatId, msg, keyboard);
+      return;
+    }
+
+    await this.sendMessage(
+      chatId,
+      `Assalomu alaykum, <b>${escapeHtml(staff.fullName)}</b>! Bu chat <b>${escapeHtml(name)}</b> ${teacher ? "o'qituvchisi" : 'xodimi'} sifatida ulangan.\n\n` +
+        (teacher
+          ? "📅 Bugungi darslarim — bugungi guruhlaringiz."
+          : "📊 Bugungi holat — arizalar, sinov darslari va to'lovlar\n🆕 Yangi arizalar — hali bog'lanilmaganlar\n📞 Qayta aloqa — bugun qo'ng'iroq qilinadiganlar\n🎓 Sinov darslari — yaqin 7 kun") +
+        `\n\nUlanishni o'chirish: CRM → Sozlamalar → Telegram eslatmalari.`,
+      keyboard,
     );
   }
 
@@ -332,6 +530,11 @@ export class TelegramService {
     if (text.startsWith('/start')) {
       const rawPayload = text.replace('/start', '').trim();
       if (!rawPayload) {
+        const staff = await this.findStaff(chatId);
+        if (staff) {
+          await this.handleStaffText(chatId, staff, '/start');
+          return;
+        }
         const existingStudent = await this.db.query.students.findFirst({
           where: eq(students.telegramChatId, chatId),
         });
@@ -395,7 +598,9 @@ export class TelegramService {
         .set({ usedAt: new Date() })
         .where(eq(telegramLinkTokens.id, linkRecord.id));
 
-      // Link student's telegram chat ID
+      // Link student's telegram chat ID (a chat belongs to one account, so
+      // a staff link on the same chat is dropped).
+      await this.db.update(users).set({ telegramChatId: null }).where(eq(users.telegramChatId, chatId));
       await this.db
         .update(students)
         .set({ telegramChatId: chatId })
@@ -409,7 +614,14 @@ export class TelegramService {
       return;
     }
 
-    // 2. Look up the student linked with this chat ID
+    // 2. Staff chats get CRM buttons, never the student cabinet.
+    const staffUser = await this.findStaff(chatId);
+    if (staffUser) {
+      await this.handleStaffText(chatId, staffUser, text);
+      return;
+    }
+
+    // 3. Look up the student linked with this chat ID
     const student = await this.db.query.students.findFirst({
       where: eq(students.telegramChatId, chatId),
       with: {
@@ -418,14 +630,6 @@ export class TelegramService {
     });
 
     if (!student) {
-      const staff = await this.db.query.users.findFirst({ where: eq(users.telegramChatId, chatId), columns: { fullName: true } });
-      if (staff) {
-        await this.sendMessage(
-          chatId,
-          `${escapeHtml(staff.fullName)}, bu chat TalimCRM eslatmalari uchun ulangan. Eslatmalarni o'chirish uchun CRM'dagi "Telegram eslatmalari" bo'limidan foydalaning.`,
-        );
-        return;
-      }
       await this.sendMessage(
         chatId,
         "⚠️ Sizning Telegram akkauntingiz hali TalimCRM tizimidagi hech qaysi o'quvchiga ulanmagan.\n\nUlash uchun o'quv markazingizdan maxsus bir martalik havola oling.",

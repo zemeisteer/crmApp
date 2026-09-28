@@ -16,6 +16,9 @@ describe('TelegramService (Secure Link Token)', () => {
         telegramLinkTokens: {
           findFirst: vi.fn(),
         },
+        users: {
+          findFirst: vi.fn().mockResolvedValue(null),
+        },
         enrollments: {
           findMany: vi.fn(),
         },
@@ -95,7 +98,7 @@ describe('TelegramService (Secure Link Token)', () => {
       },
     });
 
-    expect(mockDb.update).toHaveBeenCalledTimes(2); // marked token consumed + linked student
+    expect(mockDb.update).toHaveBeenCalledTimes(3); // staff link on the chat dropped, token consumed + linked student
     expect(service.sendMessage).toHaveBeenCalledWith(
       '987654321',
       expect.stringContaining('Aziz Rahimov'),
@@ -170,5 +173,17 @@ describe('TelegramService (Secure Link Token)', () => {
       '987654321',
       expect.stringContaining("Midterm Test"),
     );
+  });
+
+  it('answers a linked center admin with staff buttons, not the student cabinet', async () => {
+    mockDb.query.users.findFirst.mockResolvedValue({ id: 'u1', fullName: 'Admin Aka', tenantId: null, role: 'ADMIN' });
+
+    await service.handleUpdate({ message: { text: '/start', chat: { id: 555 } } });
+
+    expect(mockDb.query.students.findFirst).not.toHaveBeenCalled();
+    const [, , keyboard] = (service.sendMessage as any).mock.calls[0];
+    const labels = keyboard.keyboard.flat().map((b: { text: string }) => b.text);
+    expect(labels).toContain('📊 Bugungi holat');
+    expect(labels).not.toContain('🪪 Mening QR-kodim');
   });
 });
