@@ -8,10 +8,10 @@ import StudentPortalPin from "@/components/students/StudentPortalPin";
 import Modal from "@/components/Modal";
 import Select from "@/components/Select";
 import MonthPicker from "@/components/MonthPicker";
-import { studentsApi, groupsApi, paymentsApi, attendanceApi, billingApi, telegramApi, exportApi, Student, Group, Payment, AttendanceRecord, ApiError } from "@/lib/api";
+import { studentsApi, groupsApi, paymentsApi, attendanceApi, billingApi, telegramApi, exportApi, reportsApi, Student, Group, Payment, AttendanceRecord, ApiError } from "@/lib/api";
 import { localMonthStr } from "@/lib/date";
 import { useLanguage } from "@/lib/i18n-context";
-import type { TranslationKey } from "@/lib/i18n";
+import { MONTH_KEYS, type TranslationKey } from "@/lib/i18n";
 import { formatDate as fmtDate } from "@/lib/format-date";
 
 const ACCENT = "#4F46E5";
@@ -117,8 +117,14 @@ function StudentDetailContent() {
     setTimeout(() => setCopiedLink(false), 2500);
   }
 
+  const [payState, setPayState] = useState<"PAID" | "DEBT" | "PENDING" | "NONE" | null>(null);
+
   function load() {
     setLoading(true);
+    reportsApi
+      .studentsSummary()
+      .then((r) => setPayState(r.withPayments ? r.items.find((i) => i.studentId === id)?.payment ?? null : null))
+      .catch(() => setPayState(null));
     Promise.all([studentsApi.get(id), groupsApi.list(), attendanceApi.list({ studentId: id })])
       .then(([s, g, a]) => {
         setStudent(s as any);
@@ -150,9 +156,33 @@ function StudentDetailContent() {
     );
   }
 
-  const enrollments = student.enrollments || [];
+  // Current (active/paused) groups first, then past ones (completed or
+  // removed), newest first — the demo's "previous and current groups".
+  const allEnrollments = student.enrollments || [];
+  const isCurrent = (st?: string) => !st || st === "ACTIVE" || st === "PAUSED";
+  const enrollments = allEnrollments.filter((e) => isCurrent(e.status));
+  const history = [...allEnrollments].sort(
+    (a, b) => Number(isCurrent(b.status)) - Number(isCurrent(a.status)) || (b.joinedAt ?? "").localeCompare(a.joinedAt ?? ""),
+  );
   const payments = (student.payments || []).slice().sort((a, b) => (b.paidAt || "").localeCompare(a.paidAt || ""));
   const enrolledGroupIds = new Set(enrollments.map((e) => e.groupId));
+  const monthYear = (iso?: string | null) => {
+    if (!iso) return "";
+    const d = new Date(iso);
+    return `${t(MONTH_KEYS[d.getMonth()])} ${d.getFullYear()}`;
+  };
+  // Time studying: from the first group join (or the start date) until now.
+  const since = [student.startDate, ...allEnrollments.map((e) => e.joinedAt)].filter(Boolean).sort()[0] as string | undefined;
+  const studyTime = (() => {
+    if (!since) return "—";
+    const from = new Date(since);
+    const now = new Date();
+    const months = Math.max(0, (now.getFullYear() - from.getFullYear()) * 12 + now.getMonth() - from.getMonth());
+    const y = Math.floor(months / 12);
+    const m = months % 12;
+    if (y === 0 && m === 0) return t("stu.lessThanMonth");
+    return [y ? t("stu.years").replace("{n}", String(y)) : "", m ? t("stu.months").replace("{n}", String(m)) : ""].filter(Boolean).join(" ");
+  })();
   const availableGroups = groups.filter((g) => !enrolledGroupIds.has(g.id));
   const totalPaid = payments.reduce((sum, p) => (p.status === "PAID" ? sum + p.amount : sum), 0);
   const attendancePercent =
@@ -262,7 +292,27 @@ function StudentDetailContent() {
               {initials(student.fullName)}
             </div>
             <div>
-              <h1 style={{ fontSize: 22, fontWeight: 800 }}>{student.fullName}</h1>
+              <h1 style={{ fontSize: 22, fontWeight: 800, display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                {student.fullName}
+                {payState && payState !== "NONE" && (
+                  <span
+                    style={{
+                      fontSize: 12,
+                      fontWeight: 700,
+                      padding: "4px 10px",
+                      borderRadius: 100,
+                      fontFamily: "'Inter', sans-serif",
+                      ...(payState === "PAID"
+                        ? { color: "#1FA463", background: "#E9F8EF" }
+                        : payState === "PENDING"
+                          ? { color: "#B45309", background: "#FEF3C7" }
+                          : { color: "#B23A47", background: "#FDEBEC" }),
+                    }}
+                  >
+                    {payState === "PAID" ? t("stu.payPaid") : payState === "PENDING" ? t("stu.payPending") : t("stu.payDebt")}
+                  </span>
+                )}
+              </h1>
               <div style={{ fontSize: 13, color: "#8A8D96", marginTop: 2 }}>
                 {student.phone || t("studentDetail.phoneMissing")} · {t("studentDetail.registeredOn")}: {formatDate(student.startDate)}
               </div>
@@ -291,8 +341,10 @@ function StudentDetailContent() {
       <div style={{ flex: 1, minHeight: 0, padding: "26px 32px", display: "flex", flexDirection: "column", gap: 20, overflow: "auto", boxSizing: "border-box" }}>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0,1fr))", gap: 16 }}>
           <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 14, padding: 18 }}>
-            <div style={{ fontSize: 12, color: "#8A8D96" }}>{t("studentDetail.statActiveGroups")}</div>
-            <div style={{ fontSize: 24, fontWeight: 800, fontFamily: "'Manrope', sans-serif", marginTop: 4 }}>{enrollments.length}</div>
+            <div style={{ fontSize: 12, color: "#8A8D96" }}>{enrollments.length > 1 ? t("stu.currentGroups") : t("stu.currentGroup")}</div>
+            <div style={{ fontSize: 17, fontWeight: 800, fontFamily: "'Manrope', sans-serif", marginTop: 6, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={enrollments.map((e) => e.group.name).join(", ")}>
+              {enrollments.map((e) => e.group.name).join(", ") || "—"}
+            </div>
           </div>
           <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 14, padding: 18 }}>
             <div style={{ fontSize: 12, color: "#8A8D96" }}>{t("studentDetail.statTotalAttendance")}</div>
@@ -305,15 +357,15 @@ function StudentDetailContent() {
             <div style={{ fontSize: 24, fontWeight: 800, fontFamily: "'Manrope', sans-serif", marginTop: 4 }}>{formatMoney(totalPaid)} {t("common.sumUnit")}</div>
           </div>
           <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 14, padding: 18 }}>
-            <div style={{ fontSize: 12, color: "#8A8D96" }}>{t("studentDetail.statPaymentsCount")}</div>
-            <div style={{ fontSize: 24, fontWeight: 800, fontFamily: "'Manrope', sans-serif", marginTop: 4 }}>{payments.length}</div>
+            <div style={{ fontSize: 12, color: "#8A8D96" }}>{t("stu.studyTime")}</div>
+            <div style={{ fontSize: 24, fontWeight: 800, fontFamily: "'Manrope', sans-serif", marginTop: 4 }}>{studyTime}</div>
           </div>
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
           <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 20 }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-              <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 700, fontSize: 15 }}>{t("studentDetail.groupsTitle")}</div>
+              <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 700, fontSize: 15 }}>{t("stu.groupHistory")}</div>
               <button
                 className="btn"
                 onClick={() => setEnrollOpen(true)}
@@ -323,30 +375,49 @@ function StudentDetailContent() {
                 {t("studentDetail.addToGroup")}
               </button>
             </div>
-            {enrollments.length === 0 ? (
+            {history.length === 0 ? (
               <div style={{ color: "#8A8D96", fontSize: 13.5 }}>{t("studentDetail.noGroupsYet")}</div>
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                {enrollments.map((e) => (
-                  <div
-                    key={e.id}
-                    style={{ display: "flex", alignItems: "center", justifyContent: "space-between", border: "1px solid #EAE8E2", borderRadius: 12, padding: "12px 14px" }}
-                  >
-                    <div>
-                      <Link href={`/groups/${e.group.id}`} style={{ fontSize: 13.5, fontWeight: 600, color: ACCENT }}>
-                        {e.group.name}
-                      </Link>
-                      <div style={{ fontSize: 12, color: "#8A8D96", marginTop: 2 }}>{e.group.schedule || t("studentDetail.scheduleMissing")}</div>
-                    </div>
-                    <button
-                      className="btn"
-                      onClick={() => onUnenroll(e.group.id)}
-                      style={{ background: "transparent", color: "#B23A47", fontSize: 12, fontWeight: 600, padding: "6px 8px", borderRadius: 8 }}
+                {history.map((e) => {
+                  const current = isCurrent(e.status);
+                  const badge =
+                    e.status === "PAUSED"
+                      ? { text: t("stu.enrPaused"), color: "#B45309", bg: "#FEF3C7" }
+                      : current
+                        ? { text: t("stu.enrCurrent"), color: ACCENT, bg: "#EEF0FF" }
+                        : e.status === "COMPLETED"
+                          ? { text: t("stu.enrCompleted"), color: "#1FA463", bg: "#E9F8EF" }
+                          : { text: t("stu.enrLeft"), color: "#8A8D96", bg: "#F2F1EC" };
+                  const period = `${monthYear(e.joinedAt)} — ${current ? t("stu.untilNow") : monthYear(e.leftAt) || "—"}`;
+                  return (
+                    <div
+                      key={e.id}
+                      style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, border: "1px solid #EAE8E2", borderRadius: 12, padding: "12px 14px", opacity: current ? 1 : 0.85 }}
                     >
-                      {t("studentDetail.remove")}
-                    </button>
-                  </div>
-                ))}
+                      <div style={{ minWidth: 0 }}>
+                        <Link href={`/groups/${e.group.id}`} style={{ fontSize: 13.5, fontWeight: 600, color: current ? ACCENT : "#181A1F" }}>
+                          {e.group.name}
+                        </Link>
+                        <div style={{ fontSize: 12, color: "#8A8D96", marginTop: 2 }}>
+                          {[period, e.group.teacher?.fullName].filter(Boolean).join(" · ")}
+                        </div>
+                      </div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+                        <span style={{ fontSize: 11.5, fontWeight: 700, color: badge.color, background: badge.bg, padding: "4px 10px", borderRadius: 100 }}>{badge.text}</span>
+                        {current && (
+                          <button
+                            className="btn"
+                            onClick={() => onUnenroll(e.group.id)}
+                            style={{ background: "transparent", color: "#B23A47", fontSize: 12, fontWeight: 600, padding: "6px 8px", borderRadius: 8 }}
+                          >
+                            {t("studentDetail.remove")}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
@@ -358,6 +429,8 @@ function StudentDetailContent() {
               <InfoField label={t("studentDetail.telegram")} value={student.telegramUsername ? `@${student.telegramUsername}` : "—"} />
               <InfoField label={t("studentDetail.parentPhone")} value={student.parentPhone || "—"} />
               <InfoField label={t("studentDetail.address")} value={student.address || "—"} />
+              <InfoField label={t("stu.foundUs")} value={student.origin ? t(`adm.source.${student.origin.source}` as TranslationKey) : "—"} />
+              {student.notes && <InfoField label={t("stu.notes")} value={student.notes} />}
             </div>
             <div style={{ marginTop: 16, paddingTop: 16, borderTop: "1px solid #EAE8E2" }}>
               <div style={{ fontSize: 11.5, color: "#8A8D96", marginBottom: 6 }}>{t("studentDetail.telegramNotifications")}</div>
@@ -469,7 +542,7 @@ function StudentDetailContent() {
                 {payments.map((p) => (
                   <tr key={p.id}>
                     <td>{formatDate(p.paidAt)}</td>
-                    <td>{p.forMonth}</td>
+                    <td>{/^\d{4}-\d{2}$/.test(p.forMonth ?? "") ? `${t(MONTH_KEYS[Number(p.forMonth!.slice(5)) - 1])} ${p.forMonth!.slice(0, 4)}` : p.forMonth || "—"}</td>
                     <td style={{ fontWeight: 700 }}>{formatMoney(p.amount)} {t("common.sumUnit")}</td>
                     <td>{p.method ? t(METHOD_LABEL_KEYS[p.method] || "payment.methodCash") : "—"}</td>
                     <td>

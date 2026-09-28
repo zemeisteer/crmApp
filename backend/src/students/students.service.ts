@@ -1,7 +1,7 @@
 import { BadRequestException, ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { and, eq, isNotNull, isNull, inArray, or } from 'drizzle-orm';
 import { DB, Database } from '../db/db.module';
-import { branches, enrollments, groups, organizationMemberships, studentGuardians, studentPortalPins, students, users } from '../db/schema';
+import { branches, enrollments, groups, leads, organizationMemberships, studentGuardians, studentPortalPins, students, users } from '../db/schema';
 import { randomInt } from 'crypto';
 import * as bcrypt from 'bcryptjs';
 import { CreateStudentDto, LinkGuardianDto, UpdateStudentDto } from './dto/student.dto';
@@ -60,16 +60,19 @@ export class StudentsService {
     const student = await this.db.query.students.findFirst({
       where: and(eq(students.id, id), eq(students.tenantId, tenantId), isNull(students.deletedAt)),
       with: {
-        enrollments: { with: { group: true } },
+        enrollments: { with: { group: { with: { teacher: { columns: { id: true, fullName: true } } } } } },
         guardians: { with: { user: { columns: { id: true, fullName: true, email: true, phone: true } } } },
         branch: true,
         payments: true,
       },
     });
     if (!student) throw new NotFoundException("O'quvchi topilmadi");
+    // How the student found the center, when they came through admissions.
+    const [origin] = await this.db.select({ leadId: leads.id, source: leads.source, convertedAt: leads.convertedAt })
+      .from(leads).where(and(eq(leads.tenantId, tenantId), eq(leads.convertedStudentId, id))).limit(1);
     // Payment history is finance data, not part of a teacher's view.
-    if (scope) return { ...student, payments: [] };
-    return student;
+    if (scope) return { ...student, origin: origin ?? null, payments: [] };
+    return { ...student, origin: origin ?? null };
   }
 
   async create(tenantId: string, userId: string, dto: CreateStudentDto) {

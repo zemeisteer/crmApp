@@ -599,7 +599,9 @@ export interface Student {
   updatedAt: string;
   branch?: Branch | null;
   guardians?: StudentGuardian[];
-  enrollments?: { id: string; groupId: string; status?: string; enrolledAt?: string; leftAt?: string | null; group: Group }[];
+  enrollments?: { id: string; groupId: string; status?: string; enrolledAt?: string; joinedAt?: string; leftAt?: string | null; group: Group & { teacher?: { id: string; fullName: string } | null } }[];
+  // Set when the student came through admissions (lead source).
+  origin?: { leadId: string; source: LeadSource; convertedAt: string | null } | null;
 }
 
 export interface Teacher {
