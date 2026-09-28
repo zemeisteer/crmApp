@@ -686,12 +686,10 @@ export class LeadsService {
       const lead = await this.getLeadRow(tx, tenantId, id, { lock: true });
       this.assertMutable(lead);
       this.assertTransition(lead.status, to);
-      // The normal path is contacted -> trial -> attended -> qualified.
-      // Skipping the trial is allowed only on purpose, with a reason.
+      // Contacted -> qualified without a trial lesson is a normal choice
+      // (e.g. the level test already showed where the student fits); it is
+      // only marked on the timeline, no reason is demanded.
       const skippedTrial = lead.status === 'CONTACTED' && to === 'QUALIFIED';
-      if (skippedTrial && (note?.trim().length ?? 0) < 3) {
-        throw new BadRequestException({ code: 'SKIP_TRIAL_REASON_REQUIRED', message: "Sinov darsisiz o'tkazish uchun sababini yozing" });
-      }
       return this.applyTransition(tx, tenantId, lead, to, actor.userId, {
         type: 'STATUS_CHANGE', body: note?.trim() || null, metadata: skippedTrial ? { skippedTrial: true } : undefined,
       });

@@ -213,7 +213,7 @@ function LeadProfile() {
         {editable && (
           <div className="adm-actions">
             {simpleMoves.map((to) => {
-              // Contacted -> qualified skips the trial: secondary, with a reason.
+              // Contacted -> qualified skips the trial lesson: a secondary button.
               const skip = lead.status === "CONTACTED" && to === "QUALIFIED";
               return (
                 <button
@@ -222,11 +222,7 @@ function LeadProfile() {
                   className="btn"
                   style={skip ? ghostBtn : primaryBtn}
                   disabled={busy}
-                  onClick={() => {
-                    if (!skip) return run(() => leadsApi.transition(lead.id, to));
-                    const reason = window.prompt(t("adm.skipTrialReason"))?.trim();
-                    if (reason) run(() => leadsApi.transition(lead.id, to, reason));
-                  }}
+                  onClick={() => run(() => leadsApi.transition(lead.id, to))}
                 >
                   → {skip ? t("adm.skipTrial") : t(statusKey(to))}
                 </button>

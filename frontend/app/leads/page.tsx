@@ -120,15 +120,10 @@ function LeadsContent() {
   // Optimistic stage move on the board; the server stays authoritative and
   // the card snaps back if the move is rejected.
   async function quickMove(lead: Lead, to: LeadStatus) {
-    let note: string | undefined;
-    if (lead.status === "CONTACTED" && to === "QUALIFIED") {
-      note = window.prompt(t("adm.skipTrialReason"))?.trim();
-      if (!note) return;
-    }
     const previous = data.items;
     setData((d) => ({ ...d, items: d.items.map((l) => (l.id === lead.id ? { ...l, status: to } : l)) }));
     try {
-      await leadsApi.transition(lead.id, to, note);
+      await leadsApi.transition(lead.id, to);
       loadSummary();
     } catch (err) {
       setData((d) => ({ ...d, items: previous }));
