@@ -6,7 +6,8 @@ import DashboardShell from "@/components/DashboardShell";
 import BarChart, { DonutChart } from "@/components/BarChart";
 import { useAuth } from "@/lib/auth-context";
 import { useLanguage } from "@/lib/i18n-context";
-import { reportsApi, announcementsApi, aiApi, Announcement, type DashboardData } from "@/lib/api";
+import { reportsApi, announcementsApi, Announcement, type DashboardData, type ReportsOverview } from "@/lib/api";
+import { buildInsights } from "@/lib/insights";
 import { MONTH_KEYS, MONTH_SHORT_KEYS, type TranslationKey } from "@/lib/i18n";
 import { formatDate } from "@/lib/format-date";
 
@@ -19,6 +20,16 @@ const WEEKDAY_SHORT_KEYS: TranslationKey[] = [
 function formatMoney(n: number) {
   return new Intl.NumberFormat("uz-UZ").format(n);
 }
+
+// 24 500 000 -> "24.5M", 850 000 -> "850K" (stat tiles).
+function compactMoney(n: number) {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(n >= 10_000_000 ? 1 : 2).replace(/\.?0+$/, "")}M`;
+  if (n >= 10_000) return `${Math.round(n / 1000)}K`;
+  return formatMoney(n);
+}
+
+const initials = (name: string) =>
+  name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]?.toUpperCase()).join("") || "?";
 
 function ProgressBar({ label, value, max, color, suffix }: { label: string; value: number; max: number; color: string; suffix?: string }) {
   const pct = max > 0 ? Math.min(100, Math.round((value / max) * 100)) : 0;
@@ -68,8 +79,9 @@ function DashboardContent() {
   const [activityPeriod, setActivityPeriod] = useState<"day" | "week" | "month">("week");
   const [attendancePeriod, setAttendancePeriod] = useState<"day" | "week" | "month">("week");
 
-  const [aiPreview, setAiPreview] = useState<string | null>(null);
-  const [aiLoading, setAiLoading] = useState(false);
+  // Same recommendations as the AI insights page (teachers may not read
+  // the full report; the banner then keeps its generic text).
+  const [report, setReport] = useState<ReportsOverview | null>(null);
 
   useEffect(() => {
     Promise.all([reportsApi.dashboard().catch(() => null), announcementsApi.list().catch(() => [])])
@@ -78,18 +90,11 @@ function DashboardContent() {
         setAnnouncements(ann);
       })
       .finally(() => setLoading(false));
+    reportsApi.overview().then(setReport).catch(() => setReport(null));
   }, []);
 
-  const firstGroupId = data?.groupFill[0]?.id;
-  useEffect(() => {
-    if (!firstGroupId) return;
-    setAiLoading(true);
-    aiApi
-      .groupInsights(firstGroupId)
-      .then((res) => setAiPreview(res.insight.split("\n")[0]))
-      .catch(() => setAiPreview(null))
-      .finally(() => setAiLoading(false));
-  }, [firstGroupId]);
+  const insights = useMemo(() => (report ? buildInsights(report, t) : null), [report, t]);
+  const urgent = insights ? insights.filter((i) => i.severity === "high" || i.severity === "medium") : [];
 
   const today = formatDate(new Date(), lang, "long");
   const counts = data?.counts;
@@ -237,10 +242,18 @@ function DashboardContent() {
                   </div>
                   <div>
                     <div style={{ fontSize: 13.5, fontWeight: 700, color: "#fff" }}>
-                      {aiLoading ? t("dashboard.aiAnalyzing") : t("dashboard.aiInsight")}
+                      {insights === null
+                        ? t("dashboard.aiInsight")
+                        : urgent.length > 0
+                          ? t("dash.aiCount").replace("{n}", String(urgent.length))
+                          : t("dash.aiAllGood")}
                     </div>
-                    <div style={{ fontSize: 12.5, color: "#B7B0E8", marginTop: 2 }}>
-                      {aiPreview || t("dashboard.aiInsightDefault")}
+                    <div style={{ fontSize: 12.5, color: "#B7B0E8", marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>
+                      {insights === null
+                        ? t("dashboard.aiInsightDefault")
+                        : urgent.length > 0
+                          ? `${urgent.slice(0, 2).map((i) => i.title).join(", ")}${urgent.length > 2 ? ` ${t("dash.aiAndMore")}` : ""}`
+                          : t("dash.aiAllGoodHint")}
                     </div>
                   </div>
                 </div>
@@ -259,7 +272,7 @@ function DashboardContent() {
               <StatCard label={t("dashboard.statActiveStudents")} value={String(counts?.activeStudents ?? 0)} />
               {finance ? (
                 <>
-                  <StatCard label={t("dashboard.statMonthRevenue")} value={`${formatMoney(finance.monthRevenue)} ${t("common.sumUnit")}`} />
+                  <StatCard label={t("dashboard.statMonthRevenue")} value={compactMoney(finance.monthRevenue)} title={`${formatMoney(finance.monthRevenue)} ${t("common.sumUnit")}`} />
                   <StatCard label={t("dashboard.statDebtors")} value={String(finance.debtorCount)} danger={finance.debtorCount > 0} />
                 </>
               ) : (
@@ -331,16 +344,36 @@ function DashboardContent() {
                 </div>
               </div>}
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: finance ? "1.4fr 1fr" : "1fr", gap: 16 }}>
+            <div style={{ display: "grid", gridTemplateColumns: finance ? "1fr 1fr" : "1fr", gap: 16 }}>
               {finance && (
                 <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 20 }}>
-                  <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 8 }}>
-                    <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 700, fontSize: 15 }}>{t("dashboard.revenueByMonth")}</div>
-                    <div style={{ fontSize: 12, color: "#8A8D96" }}>
-                      {t("dashboard.yearTotal")}: <strong style={{ color: "#1FA463" }}>{formatMoney(finance.revenueByMonth.reduce((s, m) => s + m.amount, 0))} {t("common.sumUnit")}</strong>
-                    </div>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+                    <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 700, fontSize: 15 }}>{t("dash.debtorsList")}</div>
+                    <Link href="/payments" style={{ fontSize: 12, color: ACCENT, fontWeight: 600, textDecoration: "none" }}>{t("dashboard.viewAll")}</Link>
                   </div>
-                  <BarChart data={revenueData} color="#1FA463" formatValue={(v) => formatMoney(v)} unit={t("common.sumUnit")} emptyText={t("dashboard.noPaymentsYet")} />
+                  {finance.topDebtors.length === 0 ? (
+                    <div style={{ fontSize: 13, color: "#1FA463", fontWeight: 600 }}>✓ {t("dash.noDebtors")}</div>
+                  ) : (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                      {finance.topDebtors.map((d) => (
+                        <Link key={d.studentId} href={`/students/${d.studentId}`} style={{ display: "flex", alignItems: "center", gap: 12, textDecoration: "none", color: "#181A1F" }}>
+                          <div style={{ width: 36, height: 36, borderRadius: 10, background: "#FDEBEC", color: "#B23A47", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 12.5, flexShrink: 0 }}>
+                            {initials(d.fullName)}
+                          </div>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: 13.5, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{d.fullName}</div>
+                            <div style={{ fontSize: 12, color: "#8A8D96", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{d.groups.join(", ") || "—"}</div>
+                          </div>
+                          <div style={{ textAlign: "right", flexShrink: 0 }}>
+                            <div style={{ fontSize: 13.5, fontWeight: 700 }}>{formatMoney(d.debt)} {t("common.sumUnit")}</div>
+                            <div style={{ fontSize: 11.5, fontWeight: 600, color: "#B23A47" }}>
+                              {d.overdueDays !== null ? t("dash.daysLate").replace("{n}", String(d.overdueDays)) : t("dash.unpaidThisMonth")}
+                            </div>
+                          </div>
+                        </Link>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
               <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 20 }}>
@@ -351,17 +384,45 @@ function DashboardContent() {
                 {(data?.todaysLessons.length ?? 0) === 0 ? (
                   <div style={{ fontSize: 13, color: "#8A8D96" }}>{t("dashboard.noLessonsToday")}</div>
                 ) : (
-                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                    {data!.todaysLessons.map((l) => (
-                      <Link key={l.id} href={`/groups/${l.id}`} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 12px", borderRadius: 10, background: "#F7F6F2", textDecoration: "none", color: "#181A1F" }}>
-                        <span style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 800, fontSize: 13, color: ACCENT, minWidth: 44 }}>{l.startTime ?? "—"}</span>
-                        <span style={{ fontSize: 13, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l.name}</span>
-                      </Link>
-                    ))}
+                  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                    {data!.todaysLessons.map((l, i) => {
+                      const palette = [["#ECEBFB", ACCENT], ["#FFF1E8", "#EA7A3A"], ["#E9F8EF", "#1FA463"], ["#FDEBEC", "#E15361"]][i % 4];
+                      const badge =
+                        l.status === "DONE"
+                          ? { text: `${t("dash.lessonDone")}${l.marked ? ` · ${l.present}/${l.marked}` : ""}`, color: "#1FA463", bg: "#E9F8EF" }
+                          : l.status === "UNMARKED"
+                            ? { text: t("dash.lessonUnmarked"), color: "#B45309", bg: "#FEF3C7" }
+                            : { text: t("dash.lessonPlanned"), color: "#8A8D96", bg: "#F2F1EC" };
+                      return (
+                        <Link key={l.id} href={`/groups/${l.id}`} style={{ display: "flex", alignItems: "center", gap: 12, textDecoration: "none", color: "#181A1F" }}>
+                          <div style={{ width: 36, height: 36, borderRadius: 10, background: palette[0], color: palette[1], display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 12.5, flexShrink: 0 }}>
+                            {initials(l.name)}
+                          </div>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: 13.5, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l.name}</div>
+                            <div style={{ fontSize: 12, color: "#8A8D96", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                              {[l.startTime ?? "—", l.teacherName, `${l.students} ${t("dash.studentsShort")}`].filter(Boolean).join(" · ")}
+                            </div>
+                          </div>
+                          <span style={{ fontSize: 11.5, fontWeight: 700, color: badge.color, background: badge.bg, padding: "4px 10px", borderRadius: 100, whiteSpace: "nowrap", flexShrink: 0 }}>{badge.text}</span>
+                        </Link>
+                      );
+                    })}
                   </div>
                 )}
               </div>
             </div>
+            {finance && (
+              <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 20 }}>
+                <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 8, flexWrap: "wrap", gap: 8 }}>
+                  <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 700, fontSize: 15 }}>{t("dashboard.revenueByMonth")}</div>
+                  <div style={{ fontSize: 12, color: "#8A8D96" }}>
+                    {t("dashboard.yearTotal")}: <strong style={{ color: "#1FA463" }}>{formatMoney(finance.revenueByMonth.reduce((s, m) => s + m.amount, 0))} {t("common.sumUnit")}</strong>
+                  </div>
+                </div>
+                <BarChart data={revenueData} color="#1FA463" formatValue={(v) => formatMoney(v)} unit={t("common.sumUnit")} emptyText={t("dashboard.noPaymentsYet")} />
+              </div>
+            )}
           </>
         )}
       </div>
@@ -369,9 +430,10 @@ function DashboardContent() {
   );
 }
 
-function StatCard({ label, value, danger }: { label: string; value: string; danger?: boolean }) {
+function StatCard({ label, value, danger, title }: { label: string; value: string; danger?: boolean; title?: string }) {
   return (
     <div
+      title={title}
       style={{
         background: danger ? "#FDEBEC" : "#fff",
         border: `1px solid ${danger ? "#F6D2D6" : "#EAE8E2"}`,

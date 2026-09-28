@@ -8,22 +8,11 @@ import { reportsApi, type DashboardData, type ReportsOverview } from "@/lib/api"
 import { useLanguage } from "@/lib/i18n-context";
 import { MONTH_KEYS, MONTH_SHORT_KEYS } from "@/lib/i18n";
 import { formatTime } from "@/lib/format-date";
+import { buildInsights, type Insight, type Severity } from "@/lib/insights";
 
 const ACCENT = "#4F46E5";
 const card: React.CSSProperties = { background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 20 };
 const cardTitle: React.CSSProperties = { fontFamily: "'Manrope', sans-serif", fontWeight: 700, fontSize: 15 };
-
-type Severity = "high" | "medium" | "opportunity" | "watch";
-
-interface Insight {
-  id: string;
-  severity: Severity;
-  icon: string;
-  title: string;
-  description: string;
-  actionLabel: string;
-  actionHref: string;
-}
 
 const SEVERITY_STYLE: Record<Severity, { border: string; bg: string; badge: string }> = {
   high: { border: "#F5C2C7", bg: "#FFF5F6", badge: "#B23A47" },
@@ -32,7 +21,6 @@ const SEVERITY_STYLE: Record<Severity, { border: string; bg: string; badge: stri
   watch: { border: "#D6D3FA", bg: "#F6F5FF", badge: ACCENT },
 };
 
-const money = (n: number) => new Intl.NumberFormat("uz-UZ").format(Math.round(n));
 const pctColor = (p: number | null) => (p === null ? "#8A8D96" : p >= 80 ? "#1FA463" : p >= 60 ? "#D97706" : "#B23A47");
 
 // Center health, 0-100: the average of the rates we actually have
@@ -70,109 +58,7 @@ function AiInsightsContent() {
 
   const insights = useMemo<Insight[]>(() => {
     if (!report) return [];
-    const out: Insight[] = [];
-
-    for (const s of report.atRisk.slice(0, 6)) {
-      out.push({
-        id: `risk-${s.studentId}`,
-        severity: s.risk === "HIGH" ? "high" : "medium",
-        icon: "⚠️",
-        title: `${s.fullName} ${t("aiInsights.churnTitle")}`,
-        description: [
-          s.attendanceRate !== null ? `${t("aiInsights.churnDesc1")}: ${s.attendanceRate}%` : null,
-          s.overdueAmount > 0 ? `${t("ai2.debt")}: ${money(s.overdueAmount)} ${t("common.sumUnit")}` : null,
-        ].filter(Boolean).join(" · "),
-        actionLabel: t("aiInsights.viewProfile"),
-        actionHref: `/students/${s.studentId}`,
-      });
-    }
-
-    for (const g of report.groups.items) {
-      if (g.occupancy !== null && g.occupancy < 60 && g.students > 0) {
-        out.push({
-          id: `fill-${g.id}`,
-          severity: "medium",
-          icon: "📉",
-          title: `"${g.name}" ${t("aiInsights.underfilledTitle1")}`,
-          description: `${g.students} / ${g.maxStudents} (${g.occupancy}%). ${t("ai2.fillHint")}`,
-          actionLabel: t("aiInsights.viewGroup"),
-          actionHref: `/groups/${g.id}`,
-        });
-      }
-      if (g.attendanceRate !== null && g.attendanceRate < 70) {
-        out.push({
-          id: `att-${g.id}`,
-          severity: g.attendanceRate < 50 ? "high" : "medium",
-          icon: "🕒",
-          title: `"${g.name}" — ${t("ai2.lowAttendance")}`,
-          description: `${t("aiInsights.churnDesc1")}: ${g.attendanceRate}%. ${t("ai2.lowAttendanceHint")}`,
-          actionLabel: t("aiInsights.viewGroup"),
-          actionHref: `/groups/${g.id}`,
-        });
-      }
-      if (g.maxStudents > 0 && g.students >= g.maxStudents) {
-        out.push({
-          id: `full-${g.id}`,
-          severity: "opportunity",
-          icon: "🚀",
-          title: `"${g.name}" ${t("ai2.fullTitle")}`,
-          description: t("ai2.fullHint"),
-          actionLabel: t("aiInsights.createGroup"),
-          actionHref: "/groups",
-        });
-      }
-    }
-
-    if (report.finance && report.finance.debtorCount > 0) {
-      out.push({
-        id: "debtors",
-        severity: "medium",
-        icon: "💳",
-        title: `${report.finance.debtorCount} ${t("aiInsights.debtorsTitle1")}`,
-        description: `${t("ai2.debt")}: ${money(report.finance.outstandingDebt)} ${t("common.sumUnit")} — ${t("aiInsights.debtorsDesc2")}`,
-        actionLabel: t("aiInsights.viewPayments"),
-        actionHref: "/payments",
-      });
-    }
-    if (report.finance?.yearToDate.growth != null && report.finance.yearToDate.growth > 0) {
-      out.push({
-        id: "growth",
-        severity: "opportunity",
-        icon: "📈",
-        title: `${t("ai2.growthTitle")} +${report.finance.yearToDate.growth}%`,
-        description: t("ai2.growthHint"),
-        actionLabel: t("ai2.openReports"),
-        actionHref: "/reports",
-      });
-    }
-
-    const fu = report.admissions?.followUps;
-    if (fu && fu.overdue > 0) {
-      out.push({
-        id: "followups",
-        severity: "high",
-        icon: "📞",
-        title: `${fu.overdue} ${t("ai2.overdueCalls")}`,
-        description: t("ai2.overdueCallsHint"),
-        actionLabel: t("ai2.openLeads"),
-        actionHref: "/leads",
-      });
-    }
-    const conv = report.admissions?.cohort.rates.conversion;
-    if (conv && conv.rate !== null && conv.denominator >= 5) {
-      out.push({
-        id: "conversion",
-        severity: conv.rate < 20 ? "watch" : "opportunity",
-        icon: "🎯",
-        title: `${t("ai2.conversion")}: ${conv.rate}%`,
-        description: conv.rate < 20 ? t("ai2.conversionLow") : t("ai2.conversionGood"),
-        actionLabel: t("ai2.openLeads"),
-        actionHref: "/leads",
-      });
-    }
-
-    const order: Severity[] = ["high", "medium", "opportunity", "watch"];
-    return out.sort((a, b) => order.indexOf(a.severity) - order.indexOf(b.severity));
+    return buildInsights(report, t);
   }, [report, t]);
 
   const collection = report?.finance?.collectionRate ?? null;

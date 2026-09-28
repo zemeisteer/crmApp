@@ -1812,10 +1812,27 @@ export interface DashboardData {
     todayBySlot: Array<{ startTime: string; marks: number }>;
     rates: { day: number | null; week: number | null; month: number | null };
   };
-  todaysLessons: Array<{ id: string; name: string; startTime: string | null }>;
+  todaysLessons: Array<{
+    id: string;
+    name: string;
+    startTime: string | null;
+    endTime: string | null;
+    teacherName: string | null;
+    students: number;
+    // DONE: attendance marked; UNMARKED: started but not marked; PLANNED: later today.
+    status: "DONE" | "UNMARKED" | "PLANNED";
+    present: number | null;
+    marked: number | null;
+  }>;
   groupFill: Array<{ id: string; name: string; students: number; maxStudents: number }>;
   // null for roles that may not see payments (and for teachers).
-  finance: null | { monthRevenue: number; debtorCount: number; paymentStatus: { paid: number; pending: number; failed: number; total: number }; revenueByMonth: Array<{ month: string; amount: number }> };
+  finance: null | {
+    monthRevenue: number;
+    debtorCount: number;
+    paymentStatus: { paid: number; pending: number; failed: number; total: number };
+    revenueByMonth: Array<{ month: string; amount: number }>;
+    topDebtors: Array<{ studentId: string; fullName: string; groups: string[]; debt: number; overdueDays: number | null }>;
+  };
 }
 
 export const reportsApi = {

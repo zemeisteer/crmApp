@@ -99,7 +99,8 @@ export class ReportsService {
 
     const groupRows = await this.db.select({
       id: groups.id, name: groups.name, maxStudents: groups.maxStudents, scheduleDays: groups.scheduleDays, startTime: groups.startTime,
-    }).from(groups).where(and(
+      endTime: groups.endTime, teacherName: teachers.fullName,
+    }).from(groups).leftJoin(teachers, eq(teachers.id, groups.teacherId)).where(and(
       eq(groups.tenantId, tenantId), isNull(groups.deletedAt), eq(groups.status, 'ACTIVE'),
       ...(scope ? [scope.length ? inArray(groups.id, scope) : sql`false`] : []),
     ));
@@ -171,7 +172,13 @@ export class ReportsService {
       .from(enrollments).innerJoin(students, eq(students.id, enrollments.studentId))
       .where(seatHeldWhere(inArray(enrollments.groupId, groupIds))).groupBy(enrollments.groupId);
 
-    let finance: null | { monthRevenue: number; debtorCount: number; paymentStatus: { paid: number; pending: number; failed: number; total: number }; revenueByMonth: Array<{ month: string; amount: number }> } = null;
+    let finance: null | {
+      monthRevenue: number;
+      debtorCount: number;
+      paymentStatus: { paid: number; pending: number; failed: number; total: number };
+      revenueByMonth: Array<{ month: string; amount: number }>;
+      topDebtors: Array<{ studentId: string; fullName: string; groups: string[]; debt: number; overdueDays: number | null }>;
+    } = null;
     if (!scope && PAYMENT_READ_ROLES.includes(viewer.role)) {
       const rows = await this.db.select({ status: payments.status, n: sql<number>`count(*)::int`, amount: sql<number>`coalesce(sum(${payments.amount}), 0)::int` })
         .from(payments).where(and(eq(payments.tenantId, tenantId), eq(payments.forMonth, month))).groupBy(payments.status);
@@ -181,7 +188,30 @@ export class ReportsService {
         .from(payments)
         .where(and(eq(payments.tenantId, tenantId), eq(payments.status, 'PAID'), inArray(payments.forMonth, yearMonths)))
         .groupBy(payments.forMonth);
+      // Biggest debts first; days late come from the oldest unpaid invoice
+      // past its due date (null when the student has no such invoice).
+      const owing = debtors.debtors.filter((d) => d.debtAmount > 0).sort((a, b) => b.debtAmount - a.debtAmount).slice(0, 5);
+      const overdue = owing.length === 0 ? [] : await this.db.select({
+        studentId: invoices.studentId,
+        oldest: sql<Date>`min(${invoices.dueDate})`,
+      }).from(invoices).where(and(
+        eq(invoices.tenantId, tenantId),
+        inArray(invoices.studentId, owing.map((d) => d.studentId)),
+        sql`${invoices.remainingAmount} > 0`,
+        sql`${invoices.status} not in ('PAID', 'CANCELLED')`,
+        lt(invoices.dueDate, new Date()),
+      )).groupBy(invoices.studentId);
       finance = {
+        topDebtors: owing.map((d) => {
+          const oldest = overdue.find((o) => o.studentId === d.studentId)?.oldest;
+          return {
+            studentId: d.studentId,
+            fullName: d.studentName,
+            groups: d.groups.map((g) => g.name),
+            debt: d.debtAmount,
+            overdueDays: oldest ? Math.max(1, Math.floor((Date.now() - new Date(oldest).getTime()) / 86_400_000)) : null,
+          };
+        }),
         monthRevenue: get('PAID')?.amount ?? 0,
         debtorCount: debtors.debtorCount,
         revenueByMonth: yearMonths.map((m) => ({ month: m, amount: revenue.find((r) => r.month === m)?.amount ?? 0 })),
@@ -212,9 +242,26 @@ export class ReportsService {
         },
       },
       // Lessons scheduled for today, by start time.
+      // Status: attendance marked -> DONE; start time passed without marks ->
+      // UNMARKED; otherwise PLANNED.
       todaysLessons: groupRows
         .filter((g) => runsOn(g.scheduleDays, now.weekday))
-        .map((g) => ({ id: g.id, name: g.name, startTime: g.startTime }))
+        .map((g) => {
+          const marks = byDate.find((r) => r.date === today && r.groupId === g.id);
+          const nowHm = `${String(now.hour).padStart(2, '0')}:${String(now.minute).padStart(2, '0')}`;
+          const status = marks ? 'DONE' : g.startTime && g.startTime <= nowHm ? 'UNMARKED' : 'PLANNED';
+          return {
+            id: g.id,
+            name: g.name,
+            startTime: g.startTime,
+            endTime: g.endTime,
+            teacherName: g.teacherName ?? null,
+            students: seats.find((x) => x.groupId === g.id)?.n ?? 0,
+            status,
+            present: marks?.present ?? null,
+            marked: marks?.total ?? null,
+          };
+        })
         .sort((a, b) => (a.startTime ?? '').localeCompare(b.startTime ?? '')),
       groupFill: groupRows
         .map((g) => ({ id: g.id, name: g.name, students: seats.find((s) => s.groupId === g.id)?.n ?? 0, maxStudents: g.maxStudents }))
