@@ -21,6 +21,8 @@ import {
 import { useLanguage } from "@/lib/i18n-context";
 import { useAuth } from "@/lib/auth-context";
 import { LEAD_SOURCES, label, primaryBtn, ghostBtn, sourceKey, statusKey, StatusBadge, toIsoFromParts } from "./lead-ui";
+import PhoneInput from "@/components/PhoneInput";
+import { phoneOrEmpty } from "@/lib/validation";
 
 // Same rules as the server (backend/src/leads/phone.ts), plus a length
 // check for Uzbek numbers: +998 followed by exactly 9 digits.
@@ -103,7 +105,7 @@ export default function LeadFormModal({ open, onClose, onSaved, lead, managers =
     if (fullName.trim().length < 2) errs.fullName = t("leadForm.errName");
     if (!phone.trim()) errs.phone = t("leadForm.errPhoneRequired");
     else if (!phoneValid(phone)) errs.phone = t("leadForm.errPhone");
-    if (secondaryPhone.trim() && !phoneValid(secondaryPhone)) errs.secondaryPhone = t("leadForm.errPhone");
+    if (phoneOrEmpty(secondaryPhone) && !phoneValid(secondaryPhone)) errs.secondaryPhone = t("leadForm.errPhone");
     if (email.trim() && !EMAIL_RE.test(email.trim())) errs.email = t("leadForm.errEmail");
     if (override && overrideReason.trim().length < 3) errs.overrideReason = t("leadForm.errReason");
     return errs;
@@ -124,7 +126,7 @@ export default function LeadFormModal({ open, onClose, onSaved, lead, managers =
         saved = await leadsApi.update(lead.id, {
           fullName: fullName.trim(),
           phone: phone.trim(),
-          secondaryPhone: secondaryPhone.trim() || null,
+          secondaryPhone: phoneOrEmpty(secondaryPhone) || null,
           email: email.trim() || null,
           source,
           desiredSubjectId: subjectId || null,
@@ -136,7 +138,7 @@ export default function LeadFormModal({ open, onClose, onSaved, lead, managers =
         saved = await leadsApi.create({
           fullName: fullName.trim(),
           phone: phone.trim(),
-          secondaryPhone: secondaryPhone.trim() || undefined,
+          secondaryPhone: phoneOrEmpty(secondaryPhone) || undefined,
           email: email.trim() || undefined,
           source,
           desiredSubjectId: subjectId || undefined,
@@ -173,12 +175,12 @@ export default function LeadFormModal({ open, onClose, onSaved, lead, managers =
           </div>
           <div>
             <label style={label}>{t("leads.fieldPhone")} *</label>
-            <input className="field-input" style={errBorder(!!fieldErrors.phone)} type="tel" inputMode="tel" placeholder="+998 90 123 45 67" value={phone} onChange={(e) => { setPhone(e.target.value); setDuplicates([]); clearErr("phone"); }} aria-invalid={!!fieldErrors.phone} />
+            <PhoneInput className="field-input" style={errBorder(!!fieldErrors.phone)} value={phone} onChange={(v) => { setPhone(v); setDuplicates([]); clearErr("phone"); }} aria-invalid={!!fieldErrors.phone} />
             <FieldError msg={fieldErrors.phone} />
           </div>
           <div>
             <label style={label}>{t("adm.fieldSecondaryPhone")}</label>
-            <input className="field-input" style={errBorder(!!fieldErrors.secondaryPhone)} type="tel" inputMode="tel" placeholder="+998 __ ___ __ __" value={secondaryPhone} onChange={(e) => { setSecondaryPhone(e.target.value); clearErr("secondaryPhone"); }} />
+            <PhoneInput className="field-input" style={errBorder(!!fieldErrors.secondaryPhone)} value={secondaryPhone} onChange={(v) => { setSecondaryPhone(v); clearErr("secondaryPhone"); }} />
             <FieldError msg={fieldErrors.secondaryPhone} />
           </div>
           <div>

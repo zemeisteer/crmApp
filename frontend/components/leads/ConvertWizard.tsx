@@ -22,6 +22,8 @@ import {
 import { useLanguage } from "@/lib/i18n-context";
 import type { TranslationKey } from "@/lib/i18n";
 import { ACCENT, ghostBtn, label, primaryBtn, sourceKey, statusKey, StatusBadge } from "./lead-ui";
+import PhoneInput from "@/components/PhoneInput";
+import { phoneOrEmpty } from "@/lib/validation";
 
 type Resolution = { mode: "AUTO" } | { mode: "CREATE_NEW" } | { mode: "LINK_EXISTING"; studentId: string };
 
@@ -102,7 +104,7 @@ export default function ConvertWizard({ lead, open, onClose }: { lead: Lead; ope
       gender: linking || !gender ? undefined : gender,
       birthDate: linking || !birthDate ? undefined : birthDate,
       address: linking || !address.trim() ? undefined : address.trim(),
-      guardianPhone: linking || !guardianPhone.trim() ? undefined : guardianPhone.trim(),
+      guardianPhone: linking || !phoneOrEmpty(guardianPhone) ? undefined : phoneOrEmpty(guardianPhone),
       branchId: linking || !branchId ? undefined : branchId,
       groupIds: groupIds.length ? groupIds : undefined,
       ...(createInvoice
@@ -225,7 +227,7 @@ export default function ConvertWizard({ lead, open, onClose }: { lead: Lead; ope
             </div>
             <div>
               <label style={label}>{t("adm.wiz.guardianPhone")}</label>
-              <input className="field-input" type="tel" value={guardianPhone} onChange={(e) => setGuardianPhone(e.target.value)} />
+              <PhoneInput className="field-input" value={guardianPhone} onChange={setGuardianPhone} />
             </div>
             <div>
               <label style={label}>{t("leads.fieldBranch")}</label>

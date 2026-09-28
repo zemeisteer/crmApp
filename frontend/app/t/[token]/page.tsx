@@ -8,6 +8,8 @@ import type { Lang } from "@/lib/i18n";
 import { placementLevelName } from "@/lib/placement";
 import { isAnswered } from "@/lib/tests";
 import TestPaper from "@/components/tests/TestPaper";
+import PhoneInput from "@/components/PhoneInput";
+import { isCompleteUzPhone } from "@/lib/validation";
 
 const ACCENT = "#4F46E5";
 
@@ -46,6 +48,11 @@ export default function PublicPlacementPage() {
     e.preventDefault();
     if (fullName.trim().length < 2) {
       setError(t("pt.nameRequired"));
+      return;
+    }
+    // The phone files the result with the center's admissions team.
+    if (!isCompleteUzPhone(phone)) {
+      setError(t("pt.phoneRequired"));
       return;
     }
     setError(null);
@@ -110,8 +117,8 @@ export default function PublicPlacementPage() {
                 <input className="field-input" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder={t("std.namePh")} maxLength={120} />
               </div>
               <div>
-                <div style={lbl}>{t("pt.phone")}</div>
-                <input className="field-input" type="tel" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+998 90 123 45 67" maxLength={30} />
+                <div style={lbl}>{t("pt.phone")} *</div>
+                <PhoneInput className="field-input" value={phone} onChange={setPhone} />
               </div>
               {error && <div role="alert" style={alertStyle}>{error}</div>}
               <button type="submit" className="btn" style={primary}>{t("pt.start")} →</button>

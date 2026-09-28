@@ -13,6 +13,7 @@ import {
 
 import { useLanguage } from "@/lib/i18n-context";
 import type { TranslationKey } from "@/lib/i18n";
+import PhoneInput from "@/components/PhoneInput";
 
 const ACCENT = "#4F46E5";
 
@@ -653,10 +654,9 @@ export default function OnboardingPage() {
                   <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 6 }}>
                     {t("onb.phone")}
                   </label>
-                  <input
+                  <PhoneInput
                     value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    placeholder="+998 90 123 45 67"
+                    onChange={setPhone}
                     style={{ width: "100%", height: 44, padding: "0 14px", borderRadius: 10, border: "1.5px solid #E5E7EB", fontSize: 14.5 }}
                   />
                 </div>
@@ -1313,10 +1313,9 @@ export default function OnboardingPage() {
                   <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 6 }}>
                     {t("onb.branchPhone")}
                   </label>
-                  <input
+                  <PhoneInput
                     value={branchPhone}
-                    onChange={(e) => setBranchPhone(e.target.value)}
-                    placeholder="+998 71 200 00 00"
+                    onChange={setBranchPhone}
                     style={{ width: "100%", height: 44, padding: "0 14px", borderRadius: 10, border: "1.5px solid #E5E7EB", fontSize: 14.5 }}
                   />
                 </div>
@@ -1543,10 +1542,9 @@ export default function OnboardingPage() {
                       placeholder={t("onb.studentNamePh")}
                       style={{ flex: 1, height: 40, padding: "0 12px", borderRadius: 8, border: "1px solid #CBD5E1", fontSize: 13.5 }}
                     />
-                    <input
+                    <PhoneInput
                       value={manualStudentPhone}
-                      onChange={(e) => setManualStudentPhone(e.target.value)}
-                      placeholder="+998 90 000 00 00"
+                      onChange={setManualStudentPhone}
                       style={{ flex: 1, height: 40, padding: "0 12px", borderRadius: 8, border: "1px solid #CBD5E1", fontSize: 13.5 }}
                     />
                     <button

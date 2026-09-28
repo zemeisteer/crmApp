@@ -15,6 +15,7 @@ import { teachersApi, groupsApi, salaryApi, Teacher, Group, ApiError } from "@/l
 import { localMonthStr } from "@/lib/date";
 import { PHONE_PATTERN, PHONE_TITLE, NAME_PATTERN, NAME_TITLE } from "@/lib/validation";
 import { matchesSubject } from "@/lib/subject";
+import PhoneInput from "@/components/PhoneInput";
 
 const ACCENT = "#4F46E5";
 const OTHER_SUBJECT = "__OTHER__";
@@ -33,20 +34,6 @@ const SUGGESTED_DIRECTIONS = [
   "Arab tili",
   "Koreys tili",
 ];
-
-function formatPhoneInput(val: string) {
-  const digits = val.replace(/\D/g, "");
-  if (!digits) return "";
-  let d = digits;
-  if (d.startsWith("998")) d = d.slice(3);
-  d = d.slice(0, 9);
-  let res = "+998";
-  if (d.length > 0) res += ` ${d.slice(0, 2)}`;
-  if (d.length > 2) res += ` ${d.slice(2, 5)}`;
-  if (d.length > 5) res += ` ${d.slice(5, 7)}`;
-  if (d.length > 7) res += ` ${d.slice(7, 9)}`;
-  return res;
-}
 
 function formatMoney(n: number) {
   return new Intl.NumberFormat("uz-UZ").format(n);
@@ -443,13 +430,7 @@ function TeachersContent() {
             />
           </Field>
           <Field label={tr("teachers.fieldPhone")}>
-            <input
-              className="field-input"
-              type="tel"
-              value={phone}
-              onChange={(e) => setPhone(formatPhoneInput(e.target.value))}
-              placeholder="+998 90 123 45 67"
-            />
+            <PhoneInput className="field-input" value={phone} onChange={setPhone} />
           </Field>
           <Field label={tr("teachers.fieldBirthDate")}>
             <DatePicker value={birthDate} onChange={setBirthDate} />

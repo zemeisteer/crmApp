@@ -11,27 +11,14 @@ import GroupExamResults from "@/components/groups/GroupExamResults";
 import GroupInfoCard from "@/components/groups/GroupInfoCard";
 import GroupAttendanceHistory from "@/components/groups/GroupAttendanceHistory";
 import { groupsApi, studentsApi, paymentsApi, attendanceApi, Group, Student, Gender, Payment, AttendanceRecord, AttendanceStatus, ApiError } from "@/lib/api";
-import { PHONE_PATTERN, PHONE_TITLE, NAME_PATTERN, NAME_TITLE } from "@/lib/validation";
+import { PHONE_PATTERN, PHONE_TITLE, NAME_PATTERN, NAME_TITLE, phoneOrEmpty } from "@/lib/validation";
 import { localDateStr, localMonthStr } from "@/lib/date";
 import { useLanguage } from "@/lib/i18n-context";
 import type { TranslationKey } from "@/lib/i18n";
 import { formatDate as fmtDate } from "@/lib/format-date";
+import PhoneInput from "@/components/PhoneInput";
 
 const ACCENT = "#4F46E5";
-
-function formatPhoneInput(val: string) {
-  const digits = val.replace(/\D/g, "");
-  if (!digits) return "";
-  let d = digits;
-  if (d.startsWith("998")) d = d.slice(3);
-  d = d.slice(0, 9);
-  let res = "+998";
-  if (d.length > 0) res += ` ${d.slice(0, 2)}`;
-  if (d.length > 2) res += ` ${d.slice(2, 5)}`;
-  if (d.length > 5) res += ` ${d.slice(5, 7)}`;
-  if (d.length > 7) res += ` ${d.slice(7, 9)}`;
-  return res;
-}
 
 function formatMoney(n: number) {
   return new Intl.NumberFormat("uz-UZ").format(n);
@@ -217,7 +204,7 @@ function GroupDetailContent() {
           fullName: newFullName.trim(),
           gender: newGender ? (newGender as Gender) : null,
           phone: newPhone.trim() || undefined,
-          parentPhone: newParentPhone.trim() || undefined,
+          parentPhone: phoneOrEmpty(newParentPhone) || undefined,
           birthDate: newBirthDate || undefined,
           groupId: id,
         });
@@ -577,23 +564,19 @@ function GroupDetailContent() {
 
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                 <Field label={t("students.fieldPhone")}>
-                  <input
+                  <PhoneInput
                     className="field-input"
-                    type="tel"
-                    placeholder="+998 90 123 45 67"
                     value={newPhone}
-                    onChange={(e) => setNewPhone(formatPhoneInput(e.target.value))}
+                    onChange={setNewPhone}
                     pattern={PHONE_PATTERN}
                     title={PHONE_TITLE}
                   />
                 </Field>
                 <Field label={t("students.fieldParentPhone")}>
-                  <input
+                  <PhoneInput
                     className="field-input"
-                    type="tel"
-                    placeholder="+998 90 123 45 67"
                     value={newParentPhone}
-                    onChange={(e) => setNewParentPhone(formatPhoneInput(e.target.value))}
+                    onChange={setNewParentPhone}
                     pattern={PHONE_PATTERN}
                     title={PHONE_TITLE}
                   />

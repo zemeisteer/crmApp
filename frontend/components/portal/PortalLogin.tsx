@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { ApiError, portalApi } from "@/lib/api";
 import { useLanguage } from "@/lib/i18n-context";
+import PhoneInput from "@/components/PhoneInput";
 
 type Step = "phone" | "verify" | "choose";
 
@@ -71,7 +72,7 @@ export default function PortalLogin({ onLoggedIn }: { onLoggedIn: (token: string
         <form onSubmit={start} style={{ display: "flex", flexDirection: "column", gap: 14 }} noValidate>
           <div>
             <label style={label}>{t("ptl.phone")}</label>
-            <input type="tel" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+998 90 123 45 67" style={input} />
+            <PhoneInput value={phone} onChange={setPhone} style={input} />
           </div>
           <button type="submit" disabled={busy} style={button}>
             {busy ? t("ptl.signingIn") : t("plog.next")}

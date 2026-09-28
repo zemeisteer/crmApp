@@ -9,6 +9,8 @@ import { useLanguage } from "@/lib/i18n-context";
 import type { TranslationKey } from "@/lib/i18n";
 import { SITE_TEXT, type SiteLang } from "@/components/site/site-text";
 import HeroSlides, { type Slide } from "@/components/site/HeroSlides";
+import PhoneInput from "@/components/PhoneInput";
+import { isCompleteUzPhone, phoneOrEmpty } from "@/lib/validation";
 
 // A center's public site, in the style of the TalimCRM demo: light, the
 // center's own accent colour, three languages, phone-ready. Visitors see
@@ -138,7 +140,7 @@ export default function PublicSitePage() {
   async function handleApply(e: React.FormEvent) {
     e.preventDefault();
     if (!data) return;
-    if (!fullName.trim() || phone.replace(/\D/g, "").length < 9) {
+    if (!fullName.trim() || !isCompleteUzPhone(phone)) {
       setSubmitError(L.errRequired);
       return;
     }
@@ -154,7 +156,7 @@ export default function PublicSitePage() {
       await tenantsApi.publicApply(params.subdomain, {
         fullName: fullName.trim(),
         phone: phone.trim(),
-        parentPhone: parentPhone.trim() || undefined,
+        parentPhone: phoneOrEmpty(parentPhone) || undefined,
         subject: selectedCourse || undefined,
         branchId: selectedBranch || undefined,
         notes: notes.trim() || undefined,
@@ -582,10 +584,10 @@ export default function PublicSitePage() {
               </Field>
               <div className="ps-grid2" style={{ gap: 12 }}>
                 <Field label={`${L.phone} *`}>
-                  <input className="ps-field" type="tel" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+998 90 123 45 67" autoComplete="tel" />
+                  <PhoneInput className="ps-field" value={phone} onChange={setPhone} />
                 </Field>
                 <Field label={L.parentPhone}>
-                  <input className="ps-field" type="tel" inputMode="tel" value={parentPhone} onChange={(e) => setParentPhone(e.target.value)} placeholder="+998 90 987 65 43" />
+                  <PhoneInput className="ps-field" value={parentPhone} onChange={setParentPhone} placeholder="+998 90 987 65 43" autoComplete="off" />
                 </Field>
               </div>
               <div className="ps-grid2" style={{ gap: 12 }}>

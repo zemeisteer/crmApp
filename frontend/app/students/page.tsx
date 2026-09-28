@@ -13,22 +13,9 @@ import { studentsApi, groupsApi, exportApi, reportsApi, Student, Group, Gender, 
 import { PHONE_PATTERN, PHONE_TITLE, NAME_PATTERN, NAME_TITLE } from "@/lib/validation";
 import { useLanguage } from "@/lib/i18n-context";
 import { matchesSubject, extractUniqueSubjects } from "@/lib/subject";
+import PhoneInput from "@/components/PhoneInput";
 
 const ACCENT = "#4F46E5";
-
-function formatPhoneInput(val: string) {
-  const digits = val.replace(/\D/g, "");
-  if (!digits) return "";
-  let d = digits;
-  if (d.startsWith("998")) d = d.slice(3);
-  d = d.slice(0, 9);
-  let res = "+998";
-  if (d.length > 0) res += ` ${d.slice(0, 2)}`;
-  if (d.length > 2) res += ` ${d.slice(2, 5)}`;
-  if (d.length > 5) res += ` ${d.slice(5, 7)}`;
-  if (d.length > 7) res += ` ${d.slice(7, 9)}`;
-  return res;
-}
 
 function StudentsContent() {
   const { t } = useLanguage();
@@ -339,22 +326,10 @@ function StudentsContent() {
             />
           </Field>
           <Field label={t("students.fieldPhone")}>
-            <input
-              className="field-input"
-              type="tel"
-              value={phone}
-              onChange={(e) => setPhone(formatPhoneInput(e.target.value))}
-              placeholder="+998 90 123 45 67"
-            />
+            <PhoneInput className="field-input" value={phone} onChange={setPhone} />
           </Field>
           <Field label={t("students.fieldParentPhone")}>
-            <input
-              className="field-input"
-              type="tel"
-              value={parentPhone}
-              onChange={(e) => setParentPhone(formatPhoneInput(e.target.value))}
-              placeholder="+998 90 123 45 67"
-            />
+            <PhoneInput className="field-input" value={parentPhone} onChange={setParentPhone} />
           </Field>
           <Field label={t("students.fieldBirthDate")}>
             <DatePicker value={birthDate} onChange={setBirthDate} />
