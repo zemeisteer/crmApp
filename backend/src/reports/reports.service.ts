@@ -349,7 +349,9 @@ export class ReportsService {
   private async groupsSection(tenantId: string, month: string) {
     const groupRows = await this.db.select({
       id: groups.id, name: groups.name, maxStudents: groups.maxStudents, monthlyPrice: groups.monthlyPrice, status: groups.status,
-    }).from(groups).where(and(eq(groups.tenantId, tenantId), isNull(groups.deletedAt), eq(groups.status, 'ACTIVE')));
+      teacherName: teachers.fullName,
+    }).from(groups).leftJoin(teachers, eq(teachers.id, groups.teacherId))
+      .where(and(eq(groups.tenantId, tenantId), isNull(groups.deletedAt), eq(groups.status, 'ACTIVE')));
     if (groupRows.length === 0) return { active: 0, averageOccupancy: null, items: [] };
     const ids = groupRows.map((g) => g.id);
 
@@ -378,6 +380,7 @@ export class ReportsService {
       return {
         id: g.id,
         name: g.name,
+        teacherName: g.teacherName ?? null,
         students,
         maxStudents: g.maxStudents,
         occupancy: pct(students, g.maxStudents),

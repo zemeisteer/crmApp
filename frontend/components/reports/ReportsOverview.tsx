@@ -232,6 +232,7 @@ export default function ReportsOverview({
               <thead>
                 <tr>
                   <th>{t("reports.colGroup")}</th>
+                  <th>{t("teachers.colTeacher")}</th>
                   <th>{t("reports.colStudents")}</th>
                   <th>{t("rep.occupancy")}</th>
                   <th>{t("reports.colAvgAttendance")}</th>
@@ -242,6 +243,7 @@ export default function ReportsOverview({
                 {groups.items.map((g) => (
                   <tr key={g.id}>
                     <td style={{ fontWeight: 600 }}><Link href={`/groups/${g.id}`} style={{ color: "#181A1F" }}>{g.name}</Link></td>
+                    <td>{g.teacherName ?? "—"}</td>
                     <td>{g.students}/{g.maxStudents}</td>
                     <td>{pctText(g.occupancy)}</td>
                     <td>{pctText(g.attendanceRate)}</td>

@@ -1782,7 +1782,7 @@ export interface ReportsOverview {
   groups: {
     active: number;
     averageOccupancy: number | null;
-    items: Array<{ id: string; name: string; students: number; maxStudents: number; occupancy: number | null; attendanceRate: number | null; collected: number }>;
+    items: Array<{ id: string; name: string; teacherName: string | null; students: number; maxStudents: number; occupancy: number | null; attendanceRate: number | null; collected: number }>;
   };
   attendance: { marks: number; byStatus: Record<string, number>; rate: number | null };
   atRisk: Array<{ studentId: string; fullName: string; phone: string | null; attendanceRate: number | null; overdueAmount: number; risk: "HIGH" | "MEDIUM" }>;
