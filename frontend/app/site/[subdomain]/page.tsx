@@ -8,7 +8,7 @@ import { formatDate } from "@/lib/format-date";
 import { useLanguage } from "@/lib/i18n-context";
 import type { TranslationKey } from "@/lib/i18n";
 import { SITE_TEXT, type SiteLang } from "@/components/site/site-text";
-import HeroSlides, { STOCK_PHOTOS, type Slide } from "@/components/site/HeroSlides";
+import HeroSlides, { type Slide } from "@/components/site/HeroSlides";
 import PhoneInput from "@/components/PhoneInput";
 import { isCompleteUzPhone, phoneOrEmpty } from "@/lib/validation";
 
@@ -235,9 +235,9 @@ export default function PublicSitePage() {
   const telegramLink = tenant.telegramUsername ? `https://t.me/${tenant.telegramUsername.replace(/^@/, "")}` : site?.socials.telegram ?? null;
   const slides: Slide[] = [
     ...(site?.gallery ?? []).slice(0, 3).map((g): Slide => ({ kind: "photo", title: tenant.name, text: L.slidePhoto, src: fileUrl(g) ?? "" })),
-    { kind: "teacher", title: L.slideTeacherTitle, text: L.slideTeacherText, src: STOCK_PHOTOS.teacher },
-    { kind: "ai", title: L.slideAiTitle, text: L.slideAiText, src: STOCK_PHOTOS.ai },
-    { kind: "results", title: L.slideResultsTitle, text: L.slideResultsText, src: STOCK_PHOTOS.results },
+    { kind: "teacher", title: L.slideTeacherTitle, text: L.slideTeacherText },
+    { kind: "ai", title: L.slideAiTitle, text: L.slideAiText },
+    { kind: "results", title: L.slideResultsTitle, text: L.slideResultsText },
   ];
   // Questions every visitor asks, answered from the center's real data when
   // it has not written its own.

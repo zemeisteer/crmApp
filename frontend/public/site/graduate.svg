@@ -1,0 +1,86 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900" preserveAspectRatio="xMidYMid slice">
+<defs>
+<linearGradient id="gbg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#EEF0FF"/><stop offset="1" stop-color="#FDF2E9"/></linearGradient>
+<radialGradient id="halo" cx=".5" cy=".45" r=".5"><stop offset="0" stop-color="#fff" stop-opacity=".95"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>
+<linearGradient id="gown" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2E2A6B"/><stop offset="1" stop-color="#15133A"/></linearGradient>
+<linearGradient id="gskin" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#F1C6A2"/><stop offset="1" stop-color="#D79C74"/></linearGradient>
+<linearGradient id="cert" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFDF6"/><stop offset="1" stop-color="#F6EEDB"/></linearGradient>
+<linearGradient id="gold" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FCD34D"/><stop offset="1" stop-color="#D97706"/></linearGradient>
+<filter id="gsh" x="-20%" y="-20%" width="140%" height="160%"><feDropShadow dx="0" dy="18" stdDeviation="18" flood-color="#1E1B4B" flood-opacity=".25"/></filter>
+<filter id="bokeh"><feGaussianBlur stdDeviation="3"/></filter>
+</defs>
+<rect width="1200" height="900" fill="url(#gbg)"/>
+<!-- bokeh -->
+<g filter="url(#bokeh)" opacity=".7">
+<circle style="fill:var(--accent,#4F46E5)" cx="140" cy="160" r="46" opacity=".18"/>
+<circle cx="1060" cy="140" r="60" fill="#F59E0B" opacity=".2"/>
+<circle style="fill:var(--accent,#4F46E5)" cx="1080" cy="620" r="40" opacity=".16"/>
+<circle cx="110" cy="640" r="56" fill="#F472B6" opacity=".16"/>
+<circle cx="260" cy="380" r="22" fill="#34D399" opacity=".25"/>
+<circle cx="960" cy="380" r="26" fill="#60A5FA" opacity=".25"/>
+</g>
+<circle cx="600" cy="400" r="340" fill="url(#halo)"/>
+<!-- confetti -->
+<g>
+<rect x="200" y="120" width="16" height="8" rx="2" fill="#F59E0B" transform="rotate(30 208 124)"/>
+<rect style="fill:var(--accent,#4F46E5)" x="320" y="70" width="14" height="7" rx="2" transform="rotate(-20 327 73)"/>
+<rect x="880" y="90" width="16" height="8" rx="2" fill="#34D399" transform="rotate(45 888 94)"/>
+<rect x="990" y="250" width="14" height="7" rx="2" fill="#F472B6" transform="rotate(-35 997 253)"/>
+<rect x="170" y="300" width="14" height="7" rx="2" fill="#60A5FA" transform="rotate(60 177 303)"/>
+<rect x="1010" y="460" width="16" height="8" rx="2" fill="#F59E0B" transform="rotate(15 1018 464)"/>
+<circle cx="420" cy="110" r="6" fill="#F472B6"/>
+<circle cx="780" cy="60" r="6" fill="#F59E0B"/>
+<circle style="fill:var(--accent,#4F46E5)" cx="240" cy="520" r="6"/>
+<circle cx="950" cy="560" r="6" fill="#34D399"/>
+</g>
+<!-- graduate -->
+<g filter="url(#gsh)">
+<!-- gown / shoulders -->
+<path d="M330 900 Q320 640 480 590 Q540 574 600 574 Q660 574 720 590 Q880 640 870 900 Z" fill="url(#gown)"/>
+<path d="M540 580 L600 690 L660 580 Z" fill="#F8FAFC"/>
+<path style="stroke:var(--accent,#4F46E5)" d="M560 584 L600 660 L640 584" fill="none" stroke-width="16"/>
+<!-- neck -->
+<path d="M568 500 h64 v70 q-32 26 -64 0 Z" fill="#D79C74"/>
+<!-- hair back -->
+<path d="M500 372 Q480 480 500 560 Q526 574 546 556 Q526 470 536 372 Z" fill="#20150F"/>
+<path d="M700 372 Q720 480 700 560 Q674 574 654 556 Q674 470 664 372 Z" fill="#20150F"/>
+<!-- face -->
+<ellipse cx="600" cy="420" rx="98" ry="116" fill="url(#gskin)"/>
+<ellipse cx="502" cy="430" rx="14" ry="22" fill="#D79C74"/>
+<ellipse cx="698" cy="430" rx="14" ry="22" fill="#D79C74"/>
+<!-- hair front -->
+<path d="M500 400 Q500 300 600 296 Q702 300 700 400 Q684 346 626 340 Q590 368 520 368 Q506 380 500 400 Z" fill="#2B1D14"/>
+<!-- brows / eyes -->
+<path d="M548 392 q18 -12 36 -2 M616 390 q18 -10 36 2" stroke="#2B1D14" stroke-width="6" fill="none" stroke-linecap="round"/>
+<path d="M552 424 q14 -12 28 0" stroke="#2B1D14" stroke-width="5.5" fill="none" stroke-linecap="round"/>
+<path d="M620 424 q14 -12 28 0" stroke="#2B1D14" stroke-width="5.5" fill="none" stroke-linecap="round"/>
+<!-- nose -->
+<path d="M600 432 q-8 26 2 34" stroke="#B97D58" stroke-width="4" fill="none" stroke-linecap="round"/>
+<!-- smile -->
+<path d="M560 480 Q600 520 640 480 Q600 498 560 480 Z" fill="#fff" stroke="#9E4A3A" stroke-width="4" stroke-linejoin="round"/>
+<ellipse cx="548" cy="466" rx="18" ry="10" fill="#EF8E7C" opacity=".35"/>
+<ellipse cx="652" cy="466" rx="18" ry="10" fill="#EF8E7C" opacity=".35"/>
+<!-- cap -->
+<path d="M600 214 L780 280 L600 346 L420 280 Z" fill="#1C1A45"/>
+<path d="M600 214 L780 280 L600 300 L420 280 Z" fill="#2B2870"/>
+<path d="M500 306 Q500 350 600 356 Q700 350 700 306 L600 344 Z" fill="#15133A"/>
+<circle cx="600" cy="280" r="7" fill="url(#gold)"/>
+<path d="M600 280 Q700 300 744 360" stroke="url(#gold)" stroke-width="5" fill="none"/>
+<path d="M736 356 l16 0 l-4 44 l-8 0 Z" fill="url(#gold)"/>
+<!-- arms holding certificate -->
+<path d="M430 700 Q470 760 540 770" stroke="#221F55" stroke-width="64" stroke-linecap="round" fill="none"/>
+<path d="M770 700 Q730 760 660 770" stroke="#221F55" stroke-width="64" stroke-linecap="round" fill="none"/>
+</g>
+<!-- certificate -->
+<g filter="url(#gsh)" transform="rotate(-4 600 760)">
+<rect x="440" y="680" width="320" height="200" rx="10" fill="url(#cert)"/>
+<rect x="454" y="694" width="292" height="172" rx="6" fill="none" stroke="#E8C77A" stroke-width="3"/>
+<text x="600" y="738" text-anchor="middle" font-family="Manrope, Inter, sans-serif" font-size="20" font-weight="800" fill="#1F2533" letter-spacing="2">SERTIFIKAT</text>
+<text style="fill:var(--accent,#4F46E5)" x="600" y="786" text-anchor="middle" font-family="Manrope, Inter, sans-serif" font-size="40" font-weight="800">IELTS 7.5</text>
+<path d="M510 816 H690" stroke="#D6C9A8" stroke-width="3"/>
+<circle cx="700" cy="836" r="22" fill="url(#gold)"/>
+<path d="M690 852 l-8 26 l14 -8 l8 12 l4 -24" fill="#D97706"/>
+</g>
+<ellipse cx="478" cy="790" rx="30" ry="24" fill="#E3AC84"/>
+<ellipse cx="722" cy="790" rx="30" ry="24" fill="#E3AC84"/>
+</svg>
