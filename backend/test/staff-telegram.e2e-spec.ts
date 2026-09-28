@@ -64,6 +64,26 @@ describe('Staff Telegram linking (e2e)', () => {
     expect(await chatOf(ownerId)).toBeNull();
   });
 
+  it('answers a linked owner with center numbers and staff buttons', async () => {
+    await http().post('/api/telegram/me/link').set('Authorization', `Bearer ${owner}`).expect(201);
+    await botStart(`staff_${await latestToken()}`);
+    const tg = app.get(TelegramService);
+    const sent: Array<{ text: string; kb?: { keyboard: Array<Array<{ text: string }>> } }> = [];
+    const original = tg.sendMessage.bind(tg);
+    tg.sendMessage = (async (_c: string, text: string, kb?: any) => { sent.push({ text, kb }); }) as typeof tg.sendMessage;
+    try {
+      for (const text of ['/start', '📊 Bugungi holat', '🆕 Yangi arizalar', '📞 Qayta aloqa', '🎓 Sinov darslari']) {
+        await http().post('/api/telegram/webhook').send({ update_id: 2, message: { text, chat: { id: Number(chatId) } } }).expect(201);
+      }
+    } finally {
+      tg.sendMessage = original;
+    }
+    expect(sent).toHaveLength(5);
+    for (const m of sent) expect(m.kb?.keyboard.flat().map((b) => b.text)).toContain('📊 Bugungi holat');
+    expect(sent[1].text).toContain('Yangi arizalar');
+    await http().delete('/api/telegram/me').set('Authorization', `Bearer ${owner}`).expect(200);
+  });
+
   it('ignores unknown or forged tokens', async () => {
     await botStart('staff_0123456789abcdef0123456789abcdef');
     expect(await chatOf(ownerId)).toBeNull();
