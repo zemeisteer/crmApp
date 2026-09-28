@@ -362,6 +362,8 @@ export interface Branch {
 }
 
 export interface Group {
+  // Seats taken (list endpoint only).
+  studentCount?: number;
   id: string;
   tenantId: string;
   branchId: string | null;

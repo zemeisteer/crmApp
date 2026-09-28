@@ -30,9 +30,26 @@ function addMinutes(hhmm: string, minutes: number) {
   return `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
 }
 
+// "Du/Chor, 16:00–17:30" from the stored days and times (demo style);
+// falls back to the free-text schedule of older groups.
+function shortScheduleOf(g: Group, t: (k: TranslationKey) => string) {
+  const days = (g.scheduleDays ?? "")
+    .split(",")
+    .map((d) => d.trim())
+    .filter(Boolean)
+    .map((d) => DAY_CODE_TO_NAME[d.toUpperCase()] ?? d)
+    .map((d) => WEEKDAYS.indexOf(d))
+    .filter((i) => i >= 0)
+    .sort((a, b) => a - b)
+    .map((i) => t(WEEKDAY_LABEL_KEYS[i]));
+  if (days.length === 0 || !g.startTime) return g.schedule ?? "";
+  return `${days.join("/")}, ${g.startTime}${g.endTime ? `–${g.endTime}` : ""}`;
+}
+
 function GroupsContent() {
   const { tenant } = useAuth();
   const { t } = useLanguage();
+  const shortSchedule = (g: Group) => shortScheduleOf(g, t);
   const [groups, setGroups] = useState<Group[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
   const [teachers, setTeachers] = useState<Teacher[]>([]);
@@ -298,7 +315,8 @@ function GroupsContent() {
                   <th style={{ paddingTop: 16 }}>{t("groups.colBranch")}</th>
                   <th style={{ paddingTop: 16 }}>{t("groups.colSchedule")}</th>
                   <th style={{ paddingTop: 16 }}>{t("groups.colMonthlyPrice")}</th>
-                  <th style={{ paddingTop: 16 }}>{t("groups.colMaxSeats")}</th>
+                  <th style={{ paddingTop: 16 }}>{t("grp.colStudents")}</th>
+                  <th style={{ paddingTop: 16 }}>{t("grp.colStatus")}</th>
                   <th style={{ paddingTop: 16 }}></th>
                 </tr>
               </thead>
@@ -343,9 +361,27 @@ function GroupsContent() {
                     </td>
                     <td>{g.subject}</td>
                     <td>{g.branch?.name || "—"}</td>
-                    <td>{g.schedule || "—"}</td>
+                    <td style={{ whiteSpace: "nowrap" }}>{shortSchedule(g) || "—"}</td>
                     <td>{g.monthlyPrice ? `${new Intl.NumberFormat("uz-UZ").format(g.monthlyPrice)} ${t("common.sumUnit")}` : "—"}</td>
-                    <td>{g.maxStudents}</td>
+                    <td>
+                      <span style={{ fontWeight: 700 }}>{g.studentCount ?? 0}</span>
+                      <span style={{ color: "#8A8D96" }}>/{g.maxStudents || "—"}</span>
+                    </td>
+                    <td>
+                      {(() => {
+                        const n = g.studentCount ?? 0;
+                        const max = g.maxStudents || 0;
+                        const b =
+                          g.status && g.status !== "ACTIVE"
+                            ? { text: g.status === "PLANNED" ? t("grp.stPlanned") : g.status === "COMPLETED" ? t("grp.stCompleted") : t("grp.stArchived"), color: "#8A8D96", bg: "#F2F1EC" }
+                            : max > 0 && n >= max
+                              ? { text: t("grp.stFull"), color: "#1FA463", bg: "#E9F8EF" }
+                              : max > 0 && n / max < 0.6
+                                ? { text: t("grp.stUnderfilled"), color: "#B45309", bg: "#FEF3C7" }
+                                : { text: t("grp.stActive"), color: ACCENT, bg: "#EEF0FF" };
+                        return <span style={{ fontSize: 12, fontWeight: 700, color: b.color, background: b.bg, padding: "4px 10px", borderRadius: 100, whiteSpace: "nowrap" }}>{b.text}</span>;
+                      })()}
+                    </td>
 
                     <td style={{ textAlign: "right" }}>
                       <button

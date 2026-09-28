@@ -1,7 +1,8 @@
 import { BadRequestException, ConflictException, ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { and, eq, inArray, isNotNull, isNull, ne } from 'drizzle-orm';
+import { and, eq, inArray, isNotNull, isNull, ne, sql } from 'drizzle-orm';
 import { DB, Database } from '../db/db.module';
-import { branches, courses, groups, schedules, subjects, teachers } from '../db/schema';
+import { branches, courses, enrollments, groups, schedules, students, subjects, teachers } from '../db/schema';
+import { seatHeldWhere } from '../common/seats';
 import { addMinutes, DEFAULT_LESSON_MINUTES, isoWeekdaysOf } from '../common/weekdays';
 import { isOverlapping } from '../schedule/schedule.service';
 import { CreateGroupDto, UpdateGroupDto } from './dto/group.dto';
@@ -48,11 +49,18 @@ export class GroupsService {
       conditions.push(eq(groups.branchId, filters.branchId));
     }
 
-    return this.db.query.groups.findMany({
+    const rows = await this.db.query.groups.findMany({
       where: and(...conditions),
       with: { teacher: true, branch: true, course: true },
       orderBy: (g, { desc }) => desc(g.createdAt),
     });
+    // Seats taken (same rule as capacity checks), for the list's
+    // "students" and fill-status columns.
+    const seats = rows.length === 0 ? [] : await this.db.select({ groupId: enrollments.groupId, n: sql<number>`count(*)::int` })
+      .from(enrollments).innerJoin(students, eq(students.id, enrollments.studentId))
+      .where(seatHeldWhere(inArray(enrollments.groupId, rows.map((g) => g.id))))
+      .groupBy(enrollments.groupId);
+    return rows.map((g) => ({ ...g, studentCount: seats.find((x) => x.groupId === g.id)?.n ?? 0 }));
   }
 
   trash(tenantId: string) {
