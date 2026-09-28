@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useLanguage } from "@/lib/i18n-context";
+import { usePopoverPlacement } from "@/lib/use-popover";
 import type { TranslationKey } from "@/lib/i18n";
 import { formatDate } from "@/lib/format-date";
 
@@ -48,6 +49,8 @@ export default function DatePicker({
   const selected = parseLocalStr(value);
   const [viewDate, setViewDate] = useState(() => selected || new Date());
   const ref = useRef<HTMLDivElement>(null);
+  // Opens upward / right-aligned when there is no room (phones, modals).
+  const place = usePopoverPlacement(ref, open, 330);
 
   useEffect(() => {
     if (open && ref.current) {
@@ -126,6 +129,7 @@ export default function DatePicker({
             borderRadius: 14,
             padding: 14,
             boxShadow: "0 14px 36px rgba(18,19,26,0.14), 0 2px 8px rgba(18,19,26,0.06)",
+            ...place,
           }}
         >
           {/* Header */}

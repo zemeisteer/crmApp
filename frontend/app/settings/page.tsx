@@ -345,8 +345,8 @@ function SettingsContent() {
         <div style={{ fontSize: 13, color: "#8A8D96", marginTop: 2 }}>{t("settings.subtitle")}</div>
       </div>
 
-      <div style={{ flex: 1, minHeight: 0, display: "flex", overflow: "hidden" }}>
-        <div style={{ width: 220, flexShrink: 0, borderRight: "1px solid #EAE8E2", padding: 18, display: "flex", flexDirection: "column", gap: 4, overflow: "auto" }}>
+      <div className="settings-layout" style={{ flex: 1, minHeight: 0, display: "flex", overflow: "hidden" }}>
+        <div className="settings-nav" style={{ width: 220, flexShrink: 0, borderRight: "1px solid #EAE8E2", padding: 18, display: "flex", flexDirection: "column", gap: 4, overflow: "auto" }}>
           {TAB_DEFS.map((td) => (
             <button
               key={td.key}

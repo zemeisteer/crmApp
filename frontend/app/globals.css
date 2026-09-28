@@ -376,3 +376,37 @@ tbody tr:hover {
 @media (max-width: 480px) {
   .hide-sm { display: none; }
 }
+
+/* ---- Phones: forms and filters ---- */
+@media (max-width: 768px) {
+  /* iOS zooms the page when a focused field's text is under 16px. */
+  input, select, textarea, .field-input { font-size: 16px !important; }
+
+  /* Filters with a fixed desktop width take the full row. */
+  .dashboard-content .ui-select[style*="width"],
+  .dashboard-content input.field-input:not([type="number"]):not([type="checkbox"]):not([type="radio"])[style*="width"] {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  /* Long names and words wrap instead of pushing the page wide. */
+  .dashboard-content h1, .dashboard-content h2, .modal-panel h2 { overflow-wrap: anywhere; }
+  .modal-panel { overflow-x: hidden; }
+  .modal-panel form > div, .modal-panel label { min-width: 0; }
+
+  /* Buttons never grow wider than the screen. */
+  .dashboard-content .btn { max-width: 100%; }
+
+  /* Settings: the side menu becomes a scrollable row of tabs. */
+  .settings-layout { flex-direction: column !important; overflow: visible !important; }
+  .settings-nav {
+    width: 100% !important;
+    flex-direction: row !important;
+    overflow-x: auto !important;
+    border-right: none !important;
+    border-bottom: 1px solid #EAE8E2;
+    padding: 10px 16px !important;
+    gap: 6px !important;
+  }
+  .settings-nav > button { flex-shrink: 0; white-space: nowrap; }
+}

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useLanguage } from "@/lib/i18n-context";
+import { usePopoverPlacement } from "@/lib/use-popover";
 
 const ACCENT = "#4F46E5";
 const HOURS = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, "0"));
@@ -22,6 +23,8 @@ export default function TimePicker({
   const effectivePlaceholder = placeholder ?? t("picker.selectTime");
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  // Opens upward / right-aligned when there is no room (phones, modals).
+  const place = usePopoverPlacement(ref, open, 260, 200);
   const [h, m] = value ? value.split(":") : ["", ""];
 
   useEffect(() => {
@@ -66,6 +69,7 @@ export default function TimePicker({
             boxShadow: "0 12px 32px rgba(18,19,26,0.14)",
             display: "flex",
             overflow: "hidden",
+            ...place,
           }}
         >
           <div style={{ flex: 1, maxHeight: 200, overflow: "auto", borderRight: "1px solid #F1F0EC" }}>

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useLanguage } from "@/lib/i18n-context";
+import { usePopoverPlacement } from "@/lib/use-popover";
 import type { TranslationKey } from "@/lib/i18n";
 
 const ACCENT = "#4F46E5";
@@ -29,6 +30,8 @@ export default function MonthPicker({
   const effectivePlaceholder = placeholder ?? t("picker.selectMonth");
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  // Opens upward / right-aligned when there is no room (phones, modals).
+  const place = usePopoverPlacement(ref, open, 260);
   const [y, m] = value ? value.split("-").map(Number) : [new Date().getFullYear(), new Date().getMonth() + 1];
   const [viewYear, setViewYear] = useState(y || new Date().getFullYear());
 
@@ -73,6 +76,7 @@ export default function MonthPicker({
             borderRadius: 14,
             padding: 14,
             boxShadow: "0 12px 32px rgba(18,19,26,0.14)",
+            ...place,
           }}
         >
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>

@@ -1287,6 +1287,7 @@ export const dict = {
   "hws.stToday": { UZ: "Bugun tugaydi", RU: "Сегодня срок", EN: "Due today" },
   "hws.stDone": { UZ: "Bajarildi", RU: "Выполнено", EN: "Done" },
   "hws.stOverdue": { UZ: "Muddati o'tdi", RU: "Просрочено", EN: "Overdue" },
+  "common.noOptions": { UZ: "Variantlar yo'q", RU: "Нет вариантов", EN: "No options" },
   "chart.current": { UZ: "joriy", RU: "текущий", EN: "current" },
   "chart.noData": { UZ: "Ma'lumot yo'q", RU: "Нет данных", EN: "No data" },
   "dashboard.marksUnit": { UZ: "belgi", RU: "отметок", EN: "marks" },

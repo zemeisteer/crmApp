@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useLanguage } from "@/lib/i18n-context";
+import { usePopoverPlacement } from "@/lib/use-popover";
 
 const ACCENT = "#4F46E5";
 
@@ -34,6 +35,8 @@ export default function MultiSelect({
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const ref = useRef<HTMLDivElement>(null);
+  // Opens upward / right-aligned when there is no room (phones, modals).
+  const place = usePopoverPlacement(ref, open, 300);
 
   useEffect(() => {
     function onClickOutside(e: MouseEvent) {
@@ -126,6 +129,7 @@ export default function MultiSelect({
             overflowY: "auto",
             padding: 5,
             boxShadow: "0 12px 36px rgba(18,19,26,0.14), 0 2px 6px rgba(18,19,26,0.06)",
+            ...place,
           }}
         >
           {searchable && (

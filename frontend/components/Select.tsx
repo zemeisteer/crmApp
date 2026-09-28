@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useLanguage } from "@/lib/i18n-context";
+import { usePopoverPlacement } from "@/lib/use-popover";
 
 const ACCENT = "#4F46E5";
 
@@ -29,6 +30,8 @@ export default function Select({
   const effectivePlaceholder = placeholder ?? t("picker.select");
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  // Opens upward / right-aligned when there is no room (phones, modals).
+  const place = usePopoverPlacement(ref, open, 240);
 
   useEffect(() => {
     function onClickOutside(e: MouseEvent) {
@@ -41,7 +44,7 @@ export default function Select({
   const selectedLabel = options.find((o) => o.value === value)?.label;
 
   return (
-    <div ref={ref} style={{ position: "relative", flexShrink: 0, ...style }}>
+    <div ref={ref} className="ui-select" style={{ position: "relative", flexShrink: 0, maxWidth: "100%", ...style }}>
       <button
         type="button"
         onClick={() => !disabled && setOpen((v) => !v)}
@@ -90,11 +93,12 @@ export default function Select({
             overflowY: "auto",
             padding: 5,
             boxShadow: "0 12px 36px rgba(18,19,26,0.14), 0 2px 6px rgba(18,19,26,0.06)",
+            ...place,
           }}
         >
           {options.length === 0 ? (
             <div style={{ padding: "10px 12px", fontSize: 12.5, color: "#8A8D96", textAlign: "center" }}>
-              Variantlar yo&apos;q
+              {t("common.noOptions")}
             </div>
           ) : (
             options.map((o) => {
