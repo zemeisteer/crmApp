@@ -1,8 +1,10 @@
 import { BadRequestException, ConflictException, Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { and, eq, isNull, sql } from 'drizzle-orm';
+import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
 import * as bcrypt from 'bcryptjs';
 import { DB, Database } from '../db/db.module';
-import { tenants, users, groups, students, teachers, payments, attendance, branches, announcements, auditLogs, organizationMemberships } from '../db/schema';
+import { tenants, users, groups, students, teachers, payments, attendance, branches, announcements, auditLogs, organizationMemberships, enrollments, placementTests } from '../db/schema';
+import { normalizeSiteContent, parseSiteContent } from './site-content';
+import { seatHeldWhere } from '../common/seats';
 import { LeadsService } from '../leads/leads.service';
 import { CreateTenantDto, UpdateTenantDto, UpdateTenantStatusDto, PublicApplyDto } from './dto/tenant.dto';
 
@@ -111,9 +113,10 @@ export class TenantsService {
     });
     if (!tenant) throw new NotFoundException('Markaz topilmadi');
 
-    // 1. Groups / Courses (only active groups without deletedAt)
+    // 1. Groups / Courses: open groups only (archived / finished ones are
+    // not advertised).
     const activeGroups = await this.db.query.groups.findMany({
-      where: and(eq(groups.tenantId, tenant.id), isNull(groups.deletedAt)),
+      where: and(eq(groups.tenantId, tenant.id), isNull(groups.deletedAt), inArray(groups.status, ['ACTIVE', 'PLANNED'])),
       with: {
         teacher: { columns: { id: true, fullName: true, subject: true } },
         branch: { columns: { id: true, name: true, address: true } },
@@ -139,6 +142,22 @@ export class TenantsService {
       orderBy: (a, { desc }) => desc(a.publishedAt),
       limit: 5,
     });
+
+    // Seats taken per group, for "N places left".
+    const seats = activeGroups.length === 0 ? [] : await this.db.select({ groupId: enrollments.groupId, n: sql<number>`count(*)::int` })
+      .from(enrollments).innerJoin(students, eq(students.id, enrollments.studentId))
+      .where(seatHeldWhere(inArray(enrollments.groupId, activeGroups.map((g) => g.id))))
+      .groupBy(enrollments.groupId);
+
+    // What the center wrote about itself, and its linked placement test
+    // (only while that test is open).
+    const site = parseSiteContent(tenant.siteContent);
+    let placementTest: { token: string; title: string } | null = null;
+    if (site.placementTestId) {
+      const [pt] = await this.db.select({ token: placementTests.token, title: placementTests.title }).from(placementTests)
+        .where(and(eq(placementTests.id, site.placementTestId), eq(placementTests.tenantId, tenant.id), eq(placementTests.active, true)));
+      placementTest = pt ?? null;
+    }
 
     // Extract unique subjects and course programs
     const subjectMap = new Map<string, { subject: string; courses: string[]; groupCount: number }>();
@@ -182,14 +201,35 @@ export class TenantsService {
         schedule: g.schedule,
         scheduleDays: g.scheduleDays,
         startTime: g.startTime,
+        endTime: g.endTime,
         monthlyPrice: g.monthlyPrice,
         teacherName: g.teacher?.fullName,
         branchName: g.branch?.name,
+        seatsLeft: g.maxStudents ? Math.max(0, g.maxStudents - (seats.find((x) => x.groupId === g.id)?.n ?? 0)) : null,
       })),
       teachers: activeTeachers,
       branches: activeBranches,
       announcements: publicAnnouncements,
+      site: { ...site, placementTestId: undefined },
+      placementTest,
     };
+  }
+
+  // Settings → Site: read and save what the center shows publicly.
+  async getSite(tenantId: string) {
+    const [t] = await this.db.select({ siteContent: tenants.siteContent }).from(tenants).where(eq(tenants.id, tenantId));
+    return parseSiteContent(t?.siteContent ?? null);
+  }
+
+  async updateSite(tenantId: string, raw: unknown) {
+    const clean = normalizeSiteContent(raw);
+    if (clean.placementTestId) {
+      const [pt] = await this.db.select({ id: placementTests.id }).from(placementTests)
+        .where(and(eq(placementTests.id, clean.placementTestId), eq(placementTests.tenantId, tenantId)));
+      if (!pt) clean.placementTestId = null;
+    }
+    await this.db.update(tenants).set({ siteContent: JSON.stringify(clean), updatedAt: new Date() }).where(eq(tenants.id, tenantId));
+    return clean;
   }
 
   async publicApply(subdomain: string, dto: PublicApplyDto) {

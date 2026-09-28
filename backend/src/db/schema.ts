@@ -220,6 +220,8 @@ export const tenants = pgTable('tenants', {
   teachingCategories: text('teaching_categories').array(),
   country: text('country').notNull().default('UZ'),
   timezone: text('timezone').notNull().default('Asia/Tashkent'),
+  // Public site content written by the center (JSON, see tenants/site-content.ts).
+  siteContent: text('site_content'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 }, (t) => ({

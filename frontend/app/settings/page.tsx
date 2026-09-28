@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Modal from "@/components/Modal";
 import DashboardShell from "@/components/DashboardShell";
+import SiteContentEditor from "@/components/settings/SiteContentEditor";
 import BranchesManager from "@/components/settings/BranchesManager";
 import Select from "@/components/Select";
 import TagListInput from "@/components/TagListInput";
@@ -48,7 +49,7 @@ function joinList(arr: string[]): string {
   return arr.map((v) => v.trim()).filter(Boolean).join(",");
 }
 
-type Tab = "profile" | "branches" | "staff" | "security" | "notifications" | "integrations" | "data";
+type Tab = "profile" | "branches" | "site" | "staff" | "security" | "notifications" | "integrations" | "data";
 
 const TAB_DEFS: { key: Tab; labelKey: TranslationKey; icon: React.ReactNode }[] = [
   {
@@ -58,6 +59,10 @@ const TAB_DEFS: { key: Tab; labelKey: TranslationKey; icon: React.ReactNode }[] 
   {
     key: "branches", labelKey: "settings.tabBranches",
     icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 6-9 12-9 12s-9-6-9-12a9 9 0 0 1 18 0Z" /><circle cx="12" cy="10" r="3" /></svg>,
+  },
+  {
+    key: "site", labelKey: "site.tab",
+    icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><path d="M2 12h20M12 2a15 15 0 0 1 0 20M12 2a15 15 0 0 0 0 20" /></svg>,
   },
   {
     key: "staff", labelKey: "settings.tabStaff",
@@ -505,6 +510,8 @@ function SettingsContent() {
           )}
 
           {tab === "branches" && <BranchesManager />}
+
+          {tab === "site" && <SiteContentEditor />}
 
           {tab === "staff" && (
             <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 22, maxWidth: 720 }}>

@@ -21,6 +21,15 @@ const DAY_KEYS: Record<string, TranslationKey> = {
   fri: "weekday.short.friday", sat: "weekday.short.saturday", sun: "weekday.short.sunday",
 };
 
+// YouTube watch / share links -> embed URL (other links are not embedded).
+function youtubeEmbed(url?: string | null) {
+  if (!url) return null;
+  const m = url.match(/(?:youtube\.com\/(?:watch\?v=|shorts\/|embed\/)|youtu\.be\/)([A-Za-z0-9_-]{6,})/);
+  return m ? `https://www.youtube-nocookie.com/embed/${m[1]}` : null;
+}
+
+const SOCIAL_ICON: Record<string, string> = { instagram: "📸", telegram: "✈️", youtube: "▶️", facebook: "📘", tiktok: "🎵" };
+
 const CSS = `
   .ps{--bg:#F7F7F5;--surface:#fff;--border:#EAE8E2;--text:#181A1F;--text-2:#4A4E58;--muted:#8A8D96;--chip:#F2F1EC;background:var(--bg);color:var(--text);min-height:100vh;font-family:'Inter',system-ui,sans-serif;}
   .ps h1,.ps h2,.ps h3{font-family:'Manrope',system-ui,sans-serif;margin:0;}
@@ -33,6 +42,11 @@ const CSS = `
   .ps-btn:hover{opacity:.92;}
   .ps-field{width:100%;box-sizing:border-box;border:1px solid var(--border);border-radius:11px;padding:11px 13px;font-size:14px;background:#fff;color:var(--text);font-family:inherit;}
   .ps-field:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb, var(--accent) 15%, transparent);}
+  .ps-faq summary{list-style:none;cursor:pointer;display:flex;justify-content:space-between;gap:12px;font-weight:700;font-size:15px;}
+  .ps-faq summary::-webkit-details-marker{display:none;}
+  .ps-faq[open] summary .ps-plus{transform:rotate(45deg);}
+  .ps-plus{transition:transform .2s;color:var(--accent);font-size:20px;line-height:1;}
+  .ps-float{position:fixed;right:16px;bottom:16px;z-index:30;display:none;gap:8px;}
   @media (max-width:980px){.ps-grid3{grid-template-columns:repeat(2,minmax(0,1fr));}.ps-grid4{grid-template-columns:repeat(2,minmax(0,1fr));}.ps-nav{display:none!important;}}
   @media (max-width:640px){
     .ps-wrap{padding:0 16px;}
@@ -41,6 +55,7 @@ const CSS = `
     .ps h2{font-size:24px!important;}
     .ps-hide-sm{display:none!important;}
     .ps-field{font-size:16px;}
+    .ps-float{display:flex;}
   }
 `;
 
@@ -171,6 +186,13 @@ export default function PublicSitePage() {
     { value: stats.teachersCount, label: L.statTeachers },
     { value: stats.branchesCount, label: L.statBranches },
   ].filter((i) => i.value > 0);
+  const site = data.site;
+  const placement = data.placementTest ?? null;
+  const prices = data.groups.map((g) => g.monthlyPrice).filter((p) => p > 0);
+  const priceText = prices.length ? (Math.min(...prices) === Math.max(...prices) ? money(prices[0]) : `${money(Math.min(...prices))} – ${money(Math.max(...prices))}`) : null;
+  const video = youtubeEmbed(site?.videoUrl);
+  const socials = site ? (Object.entries(site.socials).filter(([, v]) => v) as Array<[string, string]>) : [];
+  const telegramLink = tenant.telegramUsername ? `https://t.me/${tenant.telegramUsername.replace(/^@/, "")}` : site?.socials.telegram ?? null;
   const label: React.CSSProperties = { fontSize: 13, fontWeight: 700, color: accent, textTransform: "uppercase", letterSpacing: "0.04em" };
   const card: React.CSSProperties = { background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 16 };
 
@@ -216,17 +238,28 @@ export default function PublicSitePage() {
           <span style={{ width: 6, height: 6, borderRadius: "50%", background: accent }} />
           {L.category[tenant.category] ?? L.category.BOSHQA}
         </span>
-        <h1 style={{ fontSize: 48, lineHeight: 1.1, fontWeight: 800, letterSpacing: "-0.02em", maxWidth: 760 }}>{L.heroTitle.replace("{name}", tenant.name)}</h1>
-        <p style={{ fontSize: 17, lineHeight: 1.6, color: "var(--text-2)", maxWidth: 560, margin: 0 }}>{L.heroDesc}</p>
+        {site?.trialLesson && (
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "#E9F8EF", color: "#1FA463", fontSize: 13, fontWeight: 700, padding: "6px 12px", borderRadius: 100 }}>
+            🎁 {L.trialBadge}{site.trialText ? ` — ${site.trialText}` : ""}
+          </span>
+        )}
+        <h1 style={{ fontSize: 48, lineHeight: 1.1, fontWeight: 800, letterSpacing: "-0.02em", maxWidth: 760 }}>{site?.heroTitle || L.heroTitle.replace("{name}", tenant.name)}</h1>
+        <p style={{ fontSize: 17, lineHeight: 1.6, color: "var(--text-2)", maxWidth: 560, margin: 0 }}>{site?.heroSubtitle || L.heroDesc}</p>
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-          <button type="button" className="ps-btn" onClick={() => scrollToApply()} style={{ background: accent, color: "#fff", fontSize: 15, padding: "14px 24px" }}>{L.apply} →</button>
+          <button type="button" className="ps-btn" onClick={() => scrollToApply()} style={{ background: accent, color: "#fff", fontSize: 15, padding: "14px 24px" }}>{site?.trialLesson ? L.trialCta : L.apply} →</button>
           <a href="#courses" className="ps-btn" style={{ background: "#fff", border: "1px solid var(--border)", fontSize: 15, padding: "14px 22px" }}>{L.seeCourses}</a>
           {tenant.phone && (
             <a href={`tel:${tenant.phone}`} className="ps-btn" style={{ background: "transparent", fontSize: 15, padding: "14px 8px", color: "var(--text-2)" }}>📞 {tenant.phone}</a>
           )}
         </div>
-        {statItems.length > 0 && (
+        {(statItems.length > 0 || priceText) && (
           <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 8 }}>
+            {priceText && (
+              <div style={{ ...card, padding: "14px 20px", minWidth: 120 }}>
+                <div style={{ fontFamily: "'Manrope',sans-serif", fontWeight: 800, fontSize: 20 }}>{priceText}</div>
+                <div style={{ fontSize: 13, color: "var(--muted)" }}>{L.priceFrom}, so&apos;m / {L.perMonth}</div>
+              </div>
+            )}
             {statItems.map((i) => (
               <div key={i.label} style={{ ...card, padding: "14px 20px", minWidth: 120 }}>
                 <div style={{ fontFamily: "'Manrope',sans-serif", fontWeight: 800, fontSize: 26 }}>{i.value}</div>
@@ -236,6 +269,69 @@ export default function PublicSitePage() {
           </div>
         )}
       </section>
+
+      {/* PLACEMENT TEST */}
+      {placement && (
+        <section className="ps-wrap" style={{ paddingBottom: 48 }}>
+          <div style={{ background: `linear-gradient(135deg, ${accent}, #1B1440)`, color: "#fff", borderRadius: 20, padding: "28px 28px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 20, flexWrap: "wrap" }}>
+            <div style={{ maxWidth: 560 }}>
+              <div style={{ fontFamily: "'Manrope',sans-serif", fontWeight: 800, fontSize: 22 }}>🧭 {L.placementTitle}</div>
+              <div style={{ fontSize: 14.5, opacity: 0.85, marginTop: 6 }}>{L.placementDesc}</div>
+            </div>
+            <Link href={`/t/${placement.token}`} className="ps-btn" style={{ background: "#fff", color: accent, fontSize: 15, padding: "13px 22px" }}>{L.placementCta} →</Link>
+          </div>
+        </section>
+      )}
+
+      {/* ABOUT + WHY US */}
+      {(site?.about || (site?.advantages.length ?? 0) > 0) && (
+        <section className="ps-wrap" style={{ padding: "24px 32px 72px", display: "flex", flexDirection: "column", gap: 28 }}>
+          {site?.about && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 10, maxWidth: 760 }}>
+              <span style={label}>{L.aboutLabel}</span>
+              <p style={{ fontSize: 16, lineHeight: 1.75, color: "var(--text-2)", margin: 0, whiteSpace: "pre-wrap" }}>{site.about}</p>
+            </div>
+          )}
+          {(site?.advantages.length ?? 0) > 0 && (
+            <>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                <span style={label}>{L.whyLabel}</span>
+                <h2 style={{ fontSize: 32, fontWeight: 800, letterSpacing: "-0.02em" }}>{L.whyTitle}</h2>
+              </div>
+              <div className="ps-grid4">
+                {site!.advantages.map((a, i) => (
+                  <div key={i} style={{ ...card, padding: 22, display: "flex", flexDirection: "column", gap: 10 }}>
+                    <div style={{ width: 44, height: 44, borderRadius: 12, background: `color-mix(in srgb, ${accent} 12%, white)`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22 }}>{a.icon}</div>
+                    <div style={{ fontFamily: "'Manrope',sans-serif", fontWeight: 700, fontSize: 16 }}>{a.title}</div>
+                    {a.text && <div style={{ fontSize: 14, lineHeight: 1.6, color: "var(--text-2)" }}>{a.text}</div>}
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </section>
+      )}
+
+      {/* RESULTS */}
+      {(site?.results.length ?? 0) > 0 && (
+        <section style={{ background: "linear-gradient(135deg,#0F0B29,#1B1440)", padding: "72px 0" }}>
+          <div className="ps-wrap" style={{ display: "flex", flexDirection: "column", gap: 28 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <span style={{ ...label, color: "#A9A6FF" }}>{L.resultsLabel}</span>
+              <h2 style={{ fontSize: 32, fontWeight: 800, letterSpacing: "-0.02em", color: "#fff" }}>{L.resultsTitle}</h2>
+            </div>
+            <div className="ps-grid4">
+              {site!.results.map((r, i) => (
+                <div key={i} style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 16, padding: 20, color: "#fff" }}>
+                  <div style={{ fontFamily: "'Manrope',sans-serif", fontWeight: 800, fontSize: 24, color: "#C4B5FD" }}>{r.result}</div>
+                  <div style={{ fontWeight: 700, fontSize: 15, marginTop: 6 }}>{r.name}</div>
+                  {r.detail && <div style={{ fontSize: 13, color: "#B7B0E8", marginTop: 4 }}>{r.detail}</div>}
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* COURSES */}
       <section id="courses" style={{ background: "var(--surface)", borderTop: "1px solid var(--border)", borderBottom: "1px solid var(--border)", padding: "72px 0" }}>
@@ -264,6 +360,11 @@ export default function PublicSitePage() {
                     {g.level && <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)", background: "var(--chip)", padding: "3px 10px", borderRadius: 100 }}>{g.level}</span>}
                   </div>
                   <h3 style={{ fontSize: 17, fontWeight: 700 }}>{g.name}</h3>
+                  {g.seatsLeft !== null && g.seatsLeft !== undefined && (
+                    <span style={{ alignSelf: "flex-start", fontSize: 12, fontWeight: 700, padding: "3px 10px", borderRadius: 100, ...(g.seatsLeft === 0 ? { color: "#B23A47", background: "#FDEBEC" } : g.seatsLeft <= 3 ? { color: "#B45309", background: "#FEF3C7" } : { color: "#1FA463", background: "#E9F8EF" }) }}>
+                      {g.seatsLeft === 0 ? L.seatsFull : L.seatsLeft.replace("{n}", String(g.seatsLeft))}
+                    </span>
+                  )}
                   <div style={{ display: "flex", flexDirection: "column", gap: 5, fontSize: 13.5, color: "var(--text-2)" }}>
                     {(g.scheduleDays || g.startTime) && (
                       <div>🗓 {[shortDays(g.scheduleDays), g.startTime ? `${g.startTime}${g.endTime ? `–${g.endTime}` : ""}` : ""].filter(Boolean).join(", ")}</div>
@@ -291,6 +392,29 @@ export default function PublicSitePage() {
         </div>
       </section>
 
+      {/* GALLERY + VIDEO */}
+      {((site?.gallery.length ?? 0) > 0 || video) && (
+        <section className="ps-wrap" style={{ padding: "72px 32px 0", display: "flex", flexDirection: "column", gap: 24 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <span style={label}>{L.galleryLabel}</span>
+            <h2 style={{ fontSize: 32, fontWeight: 800, letterSpacing: "-0.02em" }}>{L.galleryTitle}</h2>
+          </div>
+          {video && (
+            <div style={{ position: "relative", paddingTop: "56.25%", borderRadius: 16, overflow: "hidden", background: "#000" }}>
+              <iframe src={video} title={L.videoTitle} allow="accelerometer; encrypted-media; picture-in-picture" allowFullScreen style={{ position: "absolute", inset: 0, width: "100%", height: "100%", border: 0 }} />
+            </div>
+          )}
+          {(site?.gallery.length ?? 0) > 0 && (
+            <div className="ps-grid3">
+              {site!.gallery.map((g) => (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img key={g} src={fileUrl(g) ?? ""} alt="" loading="lazy" style={{ width: "100%", aspectRatio: "4 / 3", objectFit: "cover", borderRadius: 14, border: "1px solid var(--border)" }} />
+              ))}
+            </div>
+          )}
+        </section>
+      )}
+
       {/* TEACHERS */}
       {teachers.length > 0 && (
         <section id="teachers" className="ps-wrap" style={{ padding: "72px 32px", display: "flex", flexDirection: "column", gap: 28 }}>
@@ -314,6 +438,51 @@ export default function PublicSitePage() {
         </section>
       )}
 
+      {/* TESTIMONIALS */}
+      {(site?.testimonials.length ?? 0) > 0 && (
+        <section style={{ background: "var(--surface)", borderTop: "1px solid var(--border)", borderBottom: "1px solid var(--border)", padding: "72px 0" }}>
+          <div className="ps-wrap" style={{ display: "flex", flexDirection: "column", gap: 28 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <span style={label}>{L.testimonialsLabel}</span>
+              <h2 style={{ fontSize: 32, fontWeight: 800, letterSpacing: "-0.02em" }}>{L.testimonialsTitle}</h2>
+            </div>
+            <div className="ps-grid3">
+              {site!.testimonials.map((r, i) => (
+                <div key={i} style={{ ...card, background: "var(--bg)", padding: 22, display: "flex", flexDirection: "column", gap: 14 }}>
+                  <div style={{ fontSize: 28, lineHeight: 1, color: accent }}>“</div>
+                  <div style={{ fontSize: 14.5, lineHeight: 1.65, color: "var(--text-2)", whiteSpace: "pre-wrap" }}>{r.text}</div>
+                  <div style={{ marginTop: "auto" }}>
+                    <div style={{ fontWeight: 700 }}>{r.name}</div>
+                    {r.role && <div style={{ fontSize: 13, color: "var(--muted)" }}>{r.role}</div>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* FAQ */}
+      {(site?.faq.length ?? 0) > 0 && (
+        <section className="ps-wrap" style={{ padding: "72px 32px", maxWidth: 860, display: "flex", flexDirection: "column", gap: 20 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <span style={label}>{L.faqLabel}</span>
+            <h2 style={{ fontSize: 30, fontWeight: 800, letterSpacing: "-0.02em" }}>{L.faqTitle}</h2>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {site!.faq.map((f, i) => (
+              <details key={i} className="ps-faq" style={{ ...card, padding: "16px 20px" }}>
+                <summary>
+                  <span>{f.q}</span>
+                  <span className="ps-plus">+</span>
+                </summary>
+                <div style={{ fontSize: 14.5, lineHeight: 1.7, color: "var(--text-2)", marginTop: 10, whiteSpace: "pre-wrap" }}>{f.a}</div>
+              </details>
+            ))}
+          </div>
+        </section>
+      )}
+
       {/* BRANCHES */}
       {branches.length > 0 && (
         <section id="branches" style={{ background: "#12131A", padding: "72px 0" }}>
@@ -321,6 +490,7 @@ export default function PublicSitePage() {
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               <span style={{ ...label, color: "#A9A6FF" }}>{L.branchesLabel}</span>
               <h2 style={{ fontSize: 32, fontWeight: 800, letterSpacing: "-0.02em", color: "#fff" }}>{L.branchesTitle}</h2>
+              {site?.workingHours && <div style={{ color: "#B7B0E8", fontSize: 14.5 }}>🕒 {L.hours}: {site.workingHours}</div>}
             </div>
             <div className="ps-grid2">
               {branches.map((b) => (
@@ -439,7 +609,29 @@ export default function PublicSitePage() {
           </div>
           <div>© {new Date().getFullYear()} {tenant.name} · {L.poweredBy}</div>
         </div>
+        {socials.length > 0 && (
+          <div className="ps-wrap" style={{ marginTop: 16, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center", fontSize: 13, color: "var(--muted)" }}>
+            <span>{L.followUs}:</span>
+            {socials.map(([k, v]) => (
+              <a key={k} href={v} target="_blank" rel="noreferrer" style={{ background: "#fff", border: "1px solid var(--border)", borderRadius: 100, padding: "6px 12px", fontWeight: 600, color: "var(--text)" }}>
+                {SOCIAL_ICON[k]} {k[0].toUpperCase() + k.slice(1)}
+              </a>
+            ))}
+          </div>
+        )}
       </footer>
+
+      {/* Phones: quick call / message buttons */}
+      {(tenant.phone || telegramLink) && (
+        <div className="ps-float">
+          {telegramLink && (
+            <a href={telegramLink} target="_blank" rel="noreferrer" className="ps-btn" style={{ background: "#229ED9", color: "#fff", padding: "12px 16px", fontSize: 14, boxShadow: "0 10px 24px rgba(0,0,0,0.18)" }}>✈️ {L.write}</a>
+          )}
+          {tenant.phone && (
+            <a href={`tel:${tenant.phone}`} className="ps-btn" style={{ background: accent, color: "#fff", padding: "12px 16px", fontSize: 14, boxShadow: "0 10px 24px rgba(0,0,0,0.18)" }}>📞 {L.call}</a>
+          )}
+        </div>
+      )}
     </div>
   );
 }

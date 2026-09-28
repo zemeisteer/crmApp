@@ -230,6 +230,8 @@ export interface PublicShowcaseGroup {
   monthlyPrice: number;
   teacherName?: string | null;
   branchName?: string | null;
+  // null when the group has no seat limit.
+  seatsLeft?: number | null;
 }
 
 export interface PublicShowcaseTeacher {
@@ -253,6 +255,24 @@ export interface PublicShowcaseAnnouncement {
   content: string;
   priority: string;
   publishedAt: string;
+}
+
+// What a center writes about itself for its public site (Settings → Site).
+export interface SiteContent {
+  heroTitle: string | null;
+  heroSubtitle: string | null;
+  about: string | null;
+  advantages: Array<{ icon: string; title: string; text: string }>;
+  results: Array<{ name: string; result: string; detail: string }>;
+  testimonials: Array<{ name: string; role: string; text: string }>;
+  faq: Array<{ q: string; a: string }>;
+  gallery: string[];
+  workingHours: string | null;
+  socials: { instagram: string | null; telegram: string | null; youtube: string | null; facebook: string | null; tiktok: string | null };
+  videoUrl: string | null;
+  trialLesson: boolean;
+  trialText: string | null;
+  placementTestId: string | null;
 }
 
 export interface PublicShowcaseData {
@@ -281,6 +301,9 @@ export interface PublicShowcaseData {
   teachers: PublicShowcaseTeacher[];
   branches: PublicShowcaseBranch[];
   announcements: PublicShowcaseAnnouncement[];
+  site?: Omit<SiteContent, "placementTestId">;
+  // The center's open placement test, when linked on the site.
+  placementTest?: { token: string; title: string } | null;
 }
 
 export interface PublicApplyDto {
@@ -1473,6 +1496,9 @@ export const tenantsApi = {
     language?: "UZ" | "RU" | "EN"; currency?: "UZS" | "USD" | "RUB"; teachingCategories?: string[];
   }) => request<Tenant>("/tenants/me", { method: "PATCH", body: JSON.stringify(data) }),
   uploadLogo: (file: File) => uploadFile<Tenant>("/tenants/me/logo", file),
+  getSite: () => request<SiteContent>("/tenants/me/site"),
+  updateSite: (data: SiteContent) => request<SiteContent>("/tenants/me/site", { method: "PATCH", body: JSON.stringify(data) }),
+  uploadSiteImage: (file: File) => uploadFile<{ path: string }>("/tenants/me/site-image", file),
   updateStatus: (id: string, data: { status?: string; plan?: string }) =>
     request<Tenant>(`/tenants/${id}/status`, { method: "PATCH", body: JSON.stringify(data) }),
   bySubdomain: (subdomain: string) =>

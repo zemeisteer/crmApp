@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Delete, Get, Param, Patch, Post, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Throttle } from '@nestjs/throttler';
 import { IsString } from 'class-validator';
@@ -68,6 +68,35 @@ export class TenantsController {
   @UseInterceptors(FileInterceptor('file', { storage: attachmentStorage, limits: { fileSize: ATTACHMENT_MAX_SIZE } }))
   updateLogo(@CurrentUser('tenantId') tenantId: string, @UploadedFile() file: Express.Multer.File) {
     return this.service.updateLogo(tenantId, file);
+  }
+
+  // Public site content (Settings → Site).
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  @Get('me/site')
+  getSite(@CurrentUser('tenantId') tenantId: string) {
+    return this.service.getSite(tenantId);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  @Patch('me/site')
+  updateSite(@CurrentUser('tenantId') tenantId: string, @Body() body: Record<string, unknown>) {
+    return this.service.updateSite(tenantId, body);
+  }
+
+  // A photo for the site gallery; the page stores the returned file name.
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  @Post('me/site-image')
+  @UseInterceptors(FileInterceptor('file', {
+    storage: attachmentStorage,
+    limits: { fileSize: 5 * 1024 * 1024 },
+    fileFilter: (_req, file, cb) => cb(null, /^image\/(jpeg|png|webp)$/.test(file.mimetype)),
+  }))
+  uploadSiteImage(@UploadedFile() file?: Express.Multer.File) {
+    if (!file) throw new BadRequestException('JPG, PNG yoki WEBP rasm yuklang (5 MB gacha)');
+    return { path: file.filename };
   }
 
   // GDPR-style self-service: an admin exports or deletes their own tenant's data.
