@@ -1442,7 +1442,29 @@ export const salaryApi = {
 
 // ---- Tenants (settings + superadmin) ----
 
+export interface TenantsOverview {
+  month: string;
+  totals: { centers: number; active: number; trial: number; suspended: number; students: number; monthRevenue: number };
+  items: Array<{
+    id: string;
+    name: string;
+    subdomain: string;
+    plan: string;
+    status: string;
+    trialEndsAt: string | null;
+    createdAt: string;
+    owner: { email: string; fullName: string } | null;
+    students: number;
+    groups: number;
+    teachers: number;
+    monthRevenue: number;
+    lastActivityAt: string | null;
+  }>;
+}
+
 export const tenantsApi = {
+  // Superadmin: every center with its size, income, owner and activity.
+  overview: () => request<TenantsOverview>("/tenants/overview"),
   listAll: () => request<Tenant[]>("/tenants"),
   get: (id: string) => request<Tenant>(`/tenants/${id}`),
   updateMe: (data: {

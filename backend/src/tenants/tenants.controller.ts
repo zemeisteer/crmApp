@@ -45,6 +45,14 @@ export class TenantsController {
     return this.service.findAll();
   }
 
+  // Superadmin dashboard: every center with its numbers.
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('SUPERADMIN')
+  @Get('overview')
+  overview() {
+    return this.service.overview();
+  }
+
   // Tenant admin: edit own center's profile (name, accent color) — registered
   // before ':id' routes so Nest doesn't match "me" as an :id param.
   @UseGuards(JwtAuthGuard, RolesGuard)

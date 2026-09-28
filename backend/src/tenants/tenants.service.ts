@@ -1,8 +1,8 @@
 import { BadRequestException, ConflictException, Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { and, eq, isNull } from 'drizzle-orm';
+import { and, eq, isNull, sql } from 'drizzle-orm';
 import * as bcrypt from 'bcryptjs';
 import { DB, Database } from '../db/db.module';
-import { tenants, users, groups, students, teachers, payments, attendance, branches, announcements } from '../db/schema';
+import { tenants, users, groups, students, teachers, payments, attendance, branches, announcements, auditLogs, organizationMemberships } from '../db/schema';
 import { LeadsService } from '../leads/leads.service';
 import { CreateTenantDto, UpdateTenantDto, UpdateTenantStatusDto, PublicApplyDto } from './dto/tenant.dto';
 
@@ -17,6 +17,63 @@ export class TenantsService {
     @Inject(DB) private readonly db: Database,
     private readonly leads: LeadsService,
   ) {}
+
+  // Superadmin: every center with its size, this month's income, owner and
+  // last activity, plus platform totals. One grouped query per metric.
+  async overview() {
+    const month = new Date().toISOString().slice(0, 7);
+    const list = await this.db.query.tenants.findMany({ orderBy: (t, { desc }) => desc(t.createdAt) });
+    const toMap = (rows: Array<{ tenantId: string; n: number }>) => new Map(rows.map((r) => [r.tenantId, r.n]));
+    const [studentCounts, groupCounts, teacherCounts] = await Promise.all([
+      this.db.select({ tenantId: students.tenantId, n: sql<number>`count(*)::int` }).from(students)
+        .where(and(isNull(students.deletedAt), eq(students.status, 'ACTIVE'))).groupBy(students.tenantId).then(toMap),
+      this.db.select({ tenantId: groups.tenantId, n: sql<number>`count(*)::int` }).from(groups)
+        .where(and(isNull(groups.deletedAt), eq(groups.status, 'ACTIVE'))).groupBy(groups.tenantId).then(toMap),
+      this.db.select({ tenantId: teachers.tenantId, n: sql<number>`count(*)::int` }).from(teachers)
+        .where(isNull(teachers.deletedAt)).groupBy(teachers.tenantId).then(toMap),
+    ]);
+    const revenueRows = await this.db.select({ tenantId: payments.tenantId, amount: sql<number>`coalesce(sum(${payments.amount}), 0)::int` })
+      .from(payments).where(and(eq(payments.status, 'PAID'), eq(payments.forMonth, month))).groupBy(payments.tenantId);
+    const revenue = new Map(revenueRows.map((r) => [r.tenantId, r.amount]));
+    const activityRows = await this.db.select({ tenantId: auditLogs.tenantId, last: sql<Date>`max(${auditLogs.createdAt})` })
+      .from(auditLogs).groupBy(auditLogs.tenantId);
+    const activity = new Map(activityRows.map((r) => [r.tenantId, r.last]));
+    const ownerRows = await this.db.select({ tenantId: organizationMemberships.tenantId, email: users.email, fullName: users.fullName, createdAt: organizationMemberships.createdAt })
+      .from(organizationMemberships).innerJoin(users, eq(users.id, organizationMemberships.userId))
+      .where(sql`${organizationMemberships.role} in ('OWNER', 'ADMIN')`)
+      .orderBy(organizationMemberships.createdAt);
+    const owners = new Map<string, { email: string; fullName: string }>();
+    for (const o of ownerRows) if (!owners.has(o.tenantId)) owners.set(o.tenantId, { email: o.email, fullName: o.fullName });
+
+    const items = list.map((t) => ({
+      id: t.id,
+      name: t.name,
+      subdomain: t.subdomain,
+      plan: t.plan,
+      status: t.status,
+      trialEndsAt: t.trialEndsAt,
+      createdAt: t.createdAt,
+      owner: owners.get(t.id) ?? null,
+      students: studentCounts.get(t.id) ?? 0,
+      groups: groupCounts.get(t.id) ?? 0,
+      teachers: teacherCounts.get(t.id) ?? 0,
+      monthRevenue: revenue.get(t.id) ?? 0,
+      lastActivityAt: activity.get(t.id) ?? null,
+    }));
+    const by = (s: string) => items.filter((i) => i.status === s).length;
+    return {
+      month,
+      totals: {
+        centers: items.length,
+        active: by('ACTIVE'),
+        trial: by('TRIAL'),
+        suspended: by('SUSPENDED'),
+        students: items.reduce((s, i) => s + i.students, 0),
+        monthRevenue: items.reduce((s, i) => s + i.monthRevenue, 0),
+      },
+      items,
+    };
+  }
 
   // Superadmin: list every tenant on the platform
   findAll() {

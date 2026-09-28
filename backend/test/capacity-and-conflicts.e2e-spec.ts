@@ -3,6 +3,9 @@ import { INestApplication, ValidationPipe } from '@nestjs/common';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from '../src/app.module.js';
+import { eq } from 'drizzle-orm';
+import { DB, Database } from '../src/db/db.module.js';
+import { organizationMemberships, users } from '../src/db/schema.js';
 
 // Regressions for two pre-existing defects found in the admissions audit:
 //  - direct enrollment (students.create groupIds / POST enroll) ignored
@@ -315,5 +318,21 @@ describe('Group capacity & schedule day alignment (e2e)', () => {
     // Taking the login away.
     const unlinked = (await http().delete(`/api/teachers/${tid}/account`).set(auth()).expect(200)).body;
     expect(unlinked.userId).toBeNull();
+  });
+
+  it('shows the superadmin every center with its numbers and nobody else', async () => {
+    await http().get('/api/tenants/overview').set(auth()).expect(403);
+    const email = `super-${suffix}@test.uz`;
+    const reg = (await http().post('/api/auth/register').send({ centerName: `Super ${suffix}`, subdomain: `super-${suffix}`, email, password: 'password123', fullName: 'Platform Admin' }).expect(201)).body;
+    // A platform superadmin has no center membership of their own.
+    const db = app.get<Database>(DB);
+    await db.update(users).set({ role: 'SUPERADMIN' }).where(eq(users.id, reg.user.id));
+    await db.delete(organizationMemberships).where(eq(organizationMemberships.userId, reg.user.id));
+    const tokenSa = (await http().post('/api/auth/login').send({ email, password: 'password123' }).expect(201)).body.accessToken as string;
+    const res = (await http().get('/api/tenants/overview').set({ Authorization: `Bearer ${tokenSa}` }).expect(200)).body;
+    const mine = res.items.find((i: { subdomain: string }) => i.subdomain === `cap-${suffix}`);
+    expect(mine).toMatchObject({ owner: { email: `cap-${suffix}@test.uz` } });
+    expect(mine.students).toBeGreaterThan(0);
+    expect(res.totals.centers).toBeGreaterThanOrEqual(2);
   });
 });
