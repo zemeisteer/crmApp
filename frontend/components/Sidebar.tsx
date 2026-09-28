@@ -1,5 +1,6 @@
 "use client";
 
+import { useLayoutEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
@@ -221,9 +222,26 @@ const SUPERADMIN_ITEM = {
   ),
 };
 
+const NAV_SCROLL_KEY = "sidebar-scroll";
+
 export default function Sidebar({ open, onClose }: { open?: boolean; onClose?: () => void }) {
   const pathname = usePathname();
   const { user, tenant, logout } = useAuth();
+  // Every page mounts its own shell, so the menu would jump back to the top
+  // on each click. Keep its scroll position across pages, and make sure the
+  // chosen item is in view.
+  const navRef = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const el = navRef.current;
+    if (!el) return;
+    try {
+      const saved = Number(sessionStorage.getItem(NAV_SCROLL_KEY));
+      if (saved > 0) el.scrollTop = saved;
+    } catch {
+      // storage unavailable (private mode): start at the top
+    }
+    el.querySelector<HTMLElement>("[data-active='true']")?.scrollIntoView({ block: "nearest" });
+  }, [pathname]);
   const { lang, setLang, t } = useLanguage();
   const initials = user?.fullName
     ? user.fullName
@@ -271,7 +289,15 @@ export default function Sidebar({ open, onClose }: { open?: boolean; onClose?: (
       </Link>
 
       <div
+        ref={navRef}
         className="sidebar-nav-scroll"
+        onScroll={(e) => {
+          try {
+            sessionStorage.setItem(NAV_SCROLL_KEY, String(e.currentTarget.scrollTop));
+          } catch {
+            // ignore
+          }
+        }}
         style={{
           flex: 1,
           overflowY: "auto",
@@ -290,6 +316,7 @@ export default function Sidebar({ open, onClose }: { open?: boolean; onClose?: (
             <Link
               key={item.href}
               href={item.href}
+              data-active={active}
               className="nav-item"
               style={active ? { background: ACCENT, color: "#fff" } : { color: "#C7C9D1" }}
             >
