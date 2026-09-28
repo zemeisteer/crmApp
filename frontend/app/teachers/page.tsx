@@ -11,7 +11,7 @@ import Select from "@/components/Select";
 import DatePicker from "@/components/DatePicker";
 import { useAuth } from "@/lib/auth-context";
 import { useLanguage } from "@/lib/i18n-context";
-import { teachersApi, groupsApi, studentsApi, paymentsApi, Teacher, Group, Student, Payment, ApiError } from "@/lib/api";
+import { teachersApi, groupsApi, salaryApi, Teacher, Group, ApiError } from "@/lib/api";
 import { localMonthStr } from "@/lib/date";
 import { PHONE_PATTERN, PHONE_TITLE, NAME_PATTERN, NAME_TITLE } from "@/lib/validation";
 import { matchesSubject } from "@/lib/subject";
@@ -58,8 +58,6 @@ function TeachersContent() {
   const [attendanceOpen, setAttendanceOpen] = useState(false);
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
-  const [students, setStudents] = useState<Student[]>([]);
-  const [payments, setPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -112,12 +110,10 @@ function TeachersContent() {
 
   function load() {
     setLoading(true);
-    Promise.all([teachersApi.list(), groupsApi.list(), studentsApi.list(), paymentsApi.list().catch(() => [])])
-      .then(([t, g, s, p]) => {
+    Promise.all([teachersApi.list(), groupsApi.list()])
+      .then(([t, g]) => {
         setTeachers(t);
         setGroups(g);
-        setStudents(s);
-        setPayments(p);
       })
       .finally(() => setLoading(false));
   }
@@ -173,32 +169,28 @@ function TeachersContent() {
 
   const currentMonth = localMonthStr();
 
+  // Month salary from the payroll engine (same numbers as Reports →
+  // payroll: missed lessons deducted, substitutions paid). Roles without
+  // payroll access see "—".
+  const [payroll, setPayroll] = useState<Map<string, number> | null>(null);
+  useEffect(() => {
+    salaryApi
+      .calculate(currentMonth)
+      .then((r) => setPayroll(new Map(r.teachers.map((x) => [x.teacherId, x.calculatedSalary]))))
+      .catch(() => setPayroll(null));
+  }, [currentMonth]);
+
   const teacherStats = useMemo(() => {
     return teachers.map((t) => {
       const teacherGroups = groups.filter((g) => g.teacherId === t.id);
-      const groupIds = teacherGroups.map((g) => g.id);
-      const enrolledStudentIds = new Set(
-        students.filter((s) => (s.enrollments || []).some((e) => groupIds.includes(e.groupId))).map((s) => s.id),
-      );
-      let monthSalary = 0;
-      if (t.salaryType === "PERCENT" && t.salaryValue) {
-        const groupRevenue = Array.from(enrolledStudentIds).reduce(
-          (sum, sid) => sum + payments.filter((p) => p.studentId === sid && p.forMonth === currentMonth && p.status === "PAID").reduce((a, p) => a + p.amount, 0),
-          0,
-        );
-        monthSalary = Math.round((groupRevenue * t.salaryValue) / 100);
-      } else if (t.salaryType === "PER_STUDENT" && t.salaryValue) {
-        monthSalary = enrolledStudentIds.size * t.salaryValue;
-      } else if (t.salaryType === "PER_LESSON" && t.salaryValue) {
-        monthSalary = teacherGroups.length * 12 * t.salaryValue;
-      } else if (t.salaryType === "FIXED" && t.salaryValue) {
-        monthSalary = t.salaryValue;
-      }
-      return { teacher: t, groupCount: teacherGroups.length, studentCount: enrolledStudentIds.size, monthSalary };
+      // Seats taken in the teacher's groups (removed students not counted).
+      const studentCount = teacherGroups.reduce((sum, g) => sum + (g.studentCount ?? 0), 0);
+      const monthSalary = payroll ? payroll.get(t.id) ?? 0 : null;
+      return { teacher: t, groupCount: teacherGroups.length, studentCount, monthSalary };
     });
-  }, [teachers, groups, students, payments, currentMonth]);
+  }, [teachers, groups, payroll]);
 
-  const totalMonthSalary = teacherStats.reduce((sum, t) => sum + t.monthSalary, 0);
+  const totalMonthSalary = payroll ? teacherStats.reduce((sum, t) => sum + (t.monthSalary ?? 0), 0) : null;
   const activeGroupsCount = groups.filter((g) => g.teacherId).length;
 
   const filtered = teacherStats.filter(({ teacher: t }) => {
@@ -251,7 +243,7 @@ function TeachersContent() {
               </div>
               <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 14, padding: 18 }}>
                 <div style={{ fontSize: 12, color: "#8A8D96" }}>{tr("teachers.statMonthSalary")}</div>
-                <div style={{ fontSize: 24, fontWeight: 800, fontFamily: "'Manrope', sans-serif", marginTop: 4 }}>{formatMoney(totalMonthSalary)} {tr("common.sumUnit")}</div>
+                <div style={{ fontSize: 24, fontWeight: 800, fontFamily: "'Manrope', sans-serif", marginTop: 4 }}>{totalMonthSalary === null ? "—" : `${formatMoney(totalMonthSalary)} ${tr("common.sumUnit")}`}</div>
               </div>
             </div>
 
