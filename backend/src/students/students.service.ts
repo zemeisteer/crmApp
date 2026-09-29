@@ -141,7 +141,19 @@ export class StudentsService {
   }
 
   async update(tenantId: string, userId: string, id: string, dto: UpdateStudentDto) {
-    await this.findOne(tenantId, id);
+    const before = await this.findOne(tenantId, id);
+
+    // Churn: remember when (and why) a student stops studying; coming back
+    // clears it.
+    const leaving = dto.status === 'LEFT' || dto.status === 'GRADUATED';
+    const leftFields =
+      dto.status !== undefined && dto.status !== before.status
+        ? leaving
+          ? { leftAt: new Date(), leftReason: dto.status === 'LEFT' ? dto.leftReason ?? null : null }
+          : { leftAt: null, leftReason: null }
+        : dto.leftReason !== undefined && before.status === 'LEFT'
+          ? { leftReason: dto.leftReason }
+          : {};
 
     if (dto.branchId) {
       const branch = await this.db.query.branches.findFirst({
@@ -165,6 +177,7 @@ export class StudentsService {
         ...(dto.status !== undefined ? { status: dto.status } : {}),
         ...(dto.notes !== undefined ? { notes: dto.notes || null } : {}),
         ...(dto.avatarUrl !== undefined ? { avatarUrl: dto.avatarUrl || null } : {}),
+        ...leftFields,
         updatedAt: new Date(),
       })
       .where(and(eq(students.id, id), eq(students.tenantId, tenantId)))

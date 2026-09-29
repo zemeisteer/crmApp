@@ -411,6 +411,9 @@ export const students = pgTable('students', {
   telegramUsername: text('telegram_username'),
   telegramChatId: text('telegram_chat_id'),
   status: text('status').notNull().default('ACTIVE'), // 'ACTIVE' | 'PAUSED' | 'GRADUATED' | 'LEFT'
+  // Set when the status becomes LEFT/GRADUATED (churn reports); reason is one of LEFT_REASONS.
+  leftAt: timestamp('left_at'),
+  leftReason: text('left_reason'),
   notes: text('notes'),
   avatarUrl: text('avatar_url'),
   startDate: timestamp('start_date').notNull().defaultNow(),
@@ -420,6 +423,7 @@ export const students = pgTable('students', {
 }, (t) => ({
   tenantIdx: index('students_tenant_idx').on(t.tenantId),
   branchIdx: index('students_branch_idx').on(t.branchId),
+  leftAtIdx: index('students_left_at_idx').on(t.tenantId, t.leftAt),
 }));
 
 export const enrollments = pgTable('enrollments', {

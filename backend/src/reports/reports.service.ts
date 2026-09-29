@@ -1,7 +1,8 @@
 import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { and, eq, gte, inArray, isNull, lt, sql } from 'drizzle-orm';
 import { DB, Database } from '../db/db.module';
-import { attendance, enrollments, groups, homework, homeworkCompletions, invoices, payments, students, teachers } from '../db/schema';
+import { attendance, enrollments, expenses, groups, homework, homeworkCompletions, invoices, payments, salaryPayments, students, teachers } from '../db/schema';
+import { directorReport, monthsEnding, type DrStudent } from './director-report';
 import { PaymentsService } from '../payments/payments.service';
 import { LeadsService } from '../leads/leads.service';
 import { DEFAULT_TIMEZONE, zonedParts, zonedTimeToUtc } from '../common/timezone';
@@ -467,6 +468,84 @@ export class ReportsService {
       ...(includeProfit
         ? { expenses: summary.totalExpenses, salaries: summary.totalSalaries, netProfit: summary.netProfit, expensesByCategory: summary.expensesByCategory }
         : {}),
+    };
+  }
+
+  // Director's report: 12-month money trend, debt built up over months and
+  // who left (and why). Profit lines only for PROFIT_ROLES.
+  async director(tenantId: string, viewer: ReportViewer, monthParam?: string) {
+    const tz = await this.leadsService.tenantTimezone(tenantId).catch(() => DEFAULT_TIMEZONE);
+    const now = zonedParts(new Date(), tz);
+    const currentMonth = `${now.year}-${String(now.month).padStart(2, '0')}`;
+    const month = monthParam ?? currentMonth;
+    if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) throw new BadRequestException("month YYYY-MM formatida bo'lishi kerak");
+    if (month > currentMonth) throw new BadRequestException("Kelajak oyi uchun hisobot yo'q");
+    const months = monthsEnding(month, 12);
+    const first = months[0];
+    const monthOf = (d: Date | null | undefined) => {
+      if (!d) return null;
+      const p = zonedParts(d, tz);
+      return `${p.year}-${String(p.month).padStart(2, '0')}`;
+    };
+
+    const rows = await this.db.query.students.findMany({
+      where: and(eq(students.tenantId, tenantId), isNull(students.deletedAt)),
+      columns: { id: true, fullName: true, phone: true, parentPhone: true, status: true, createdAt: true, leftAt: true, leftReason: true },
+      with: { enrollments: { columns: { status: true, joinedAt: true, leftAt: true }, with: { group: { columns: { name: true, monthlyPrice: true } } } } },
+    });
+    const list: DrStudent[] = rows.map((r) => ({
+      id: r.id,
+      fullName: r.fullName,
+      phone: r.phone,
+      parentPhone: r.parentPhone,
+      status: r.status,
+      createdMonth: monthOf(r.createdAt)!,
+      leftMonth: r.status === 'LEFT' || r.status === 'GRADUATED' ? monthOf(r.leftAt) : null,
+      leftAt: r.leftAt,
+      leftReason: r.leftReason,
+      enrollments: r.enrollments.map((e) => ({
+        status: e.status,
+        joinedMonth: monthOf(e.joinedAt)!,
+        leftMonth: monthOf(e.leftAt),
+        price: e.group?.monthlyPrice ?? 0,
+        groupName: e.group?.name ?? '—',
+      })),
+    }));
+
+    const paid = await this.db
+      .select({ studentId: payments.studentId, forMonth: payments.forMonth, amount: payments.amount, discount: payments.discount, paidAt: payments.paidAt })
+      .from(payments)
+      .where(and(eq(payments.tenantId, tenantId), eq(payments.status, 'PAID'), gte(payments.forMonth, first), sql`${payments.forMonth} <= ${month}`));
+
+    const includeProfit = PROFIT_ROLES.includes(viewer.role);
+    const expensesByMonth: Record<string, number> = {};
+    const salariesByMonth: Record<string, number> = {};
+    if (includeProfit) {
+      const ex = await this.db
+        .select({ m: sql<string>`substring(${expenses.date}, 1, 7)`, total: sql<number>`coalesce(sum(${expenses.amount}), 0)::int` })
+        .from(expenses)
+        .where(and(eq(expenses.tenantId, tenantId), gte(expenses.date, `${first}-01`), sql`${expenses.date} < ${`${month}-99`}`))
+        .groupBy(sql`substring(${expenses.date}, 1, 7)`);
+      for (const r of ex) expensesByMonth[r.m] = r.total;
+      const sal = await this.db
+        .select({ m: salaryPayments.forMonth, total: sql<number>`coalesce(sum(${salaryPayments.amount}), 0)::int` })
+        .from(salaryPayments)
+        .where(and(eq(salaryPayments.tenantId, tenantId), gte(salaryPayments.forMonth, first), sql`${salaryPayments.forMonth} <= ${month}`))
+        .groupBy(salaryPayments.forMonth);
+      for (const r of sal) salariesByMonth[r.m] = r.total;
+    }
+
+    return {
+      timezone: tz,
+      ...directorReport({
+        month,
+        currentMonth,
+        students: list,
+        payments: paid.map((p) => ({ ...p, discount: p.discount ?? 0 })),
+        expensesByMonth,
+        salariesByMonth,
+        includeProfit,
+      }),
     };
   }
 }

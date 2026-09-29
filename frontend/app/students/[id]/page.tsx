@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import DashboardShell from "@/components/DashboardShell";
 import StudentPortalPin from "@/components/students/StudentPortalPin";
+import StudentStatusModal, { STATUS_STYLE } from "@/components/students/StudentStatusModal";
 import Modal from "@/components/Modal";
 import Select from "@/components/Select";
 import MonthPicker from "@/components/MonthPicker";
@@ -88,6 +89,7 @@ function StudentDetailContent() {
   const [billingError, setBillingError] = useState<string | null>(null);
   const [billingSaving, setBillingSaving] = useState(false);
   const [qrCardOpen, setQrCardOpen] = useState(false);
+  const [statusOpen, setStatusOpen] = useState(false);
 
   useEffect(() => {
     telegramApi.status().then((s) => setBotUsername(s.botUsername)).catch(() => setBotUsername(null));
@@ -319,7 +321,16 @@ function StudentDetailContent() {
               </div>
             </div>
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+            <button
+              type="button"
+              className="btn"
+              onClick={() => setStatusOpen(true)}
+              title={t("stStatus.title")}
+              style={{ ...STATUS_STYLE[student.status ?? "ACTIVE"], border: "none", fontSize: 13, fontWeight: 700, padding: "9px 14px", borderRadius: 9 }}
+            >
+              {t(`stStatus.${student.status ?? "ACTIVE"}` as TranslationKey)} ▾
+            </button>
             <button
               type="button"
               className="btn"
@@ -684,6 +695,7 @@ function StudentDetailContent() {
       </Modal>
 
       {/* Student QR ID Card Modal */}
+      <StudentStatusModal student={student} open={statusOpen} onClose={() => setStatusOpen(false)} onSaved={(s) => { setStudent((prev) => (prev ? { ...prev, ...s } : prev)); load(); }} />
       <Modal open={qrCardOpen} onClose={() => setQrCardOpen(false)} title={t("std.idCardTitle")}>
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 16, padding: "10px 0" }}>
           <div

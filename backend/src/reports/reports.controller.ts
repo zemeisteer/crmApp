@@ -39,4 +39,16 @@ export class ReportsController {
       month,
     );
   }
+
+  // Director's report: money trend, debt over months, churn with reasons.
+  @Roles('ADMIN', 'OWNER', 'MANAGER', 'ACCOUNTANT')
+  @Get('director')
+  director(@CurrentUser() user: JwtPayload, @Query('month') month?: string) {
+    if (!user?.tenantId) throw new ForbiddenException('Tashkilot tanlanmagan');
+    return this.reports.director(
+      user.tenantId,
+      { role: user.role, permissions: getEffectivePermissions(user.role, user.permissions) },
+      month,
+    );
+  }
 }

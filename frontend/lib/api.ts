@@ -664,6 +664,8 @@ export interface Student {
   tenantId: string;
   branchId?: string | null;
   status?: "ACTIVE" | "PAUSED" | "GRADUATED" | "LEFT";
+  leftAt?: string | null;
+  leftReason?: string | null;
   notes?: string | null;
   avatarUrl?: string | null;
   fullName: string;
@@ -1969,7 +1971,42 @@ export interface DashboardData {
   };
 }
 
+export interface DirectorTrendRow {
+  month: string;
+  expected: number;
+  collected: number;
+  debt: number;
+  collectionRate: number | null;
+  newStudents: number;
+  left: number;
+  activeAtStart: number;
+  churnRate: number | null;
+  expenses?: number;
+  salaries?: number;
+  net?: number;
+}
+export interface DirectorReportData {
+  month: string;
+  timezone: string;
+  trend: DirectorTrendRow[];
+  debtors: {
+    window: string[];
+    totalDebt: number;
+    count: number;
+    multiMonth: number;
+    items: Array<{ studentId: string; fullName: string; phone: string | null; parentPhone: string | null; status: string; groups: string[]; totalDebt: number; monthsBehind: number; oldestMonth: string | null; currentMonthDebt: number; lastPaymentAt: string | null }>;
+  };
+  churn: {
+    left: number;
+    activeAtStart: number;
+    rate: number | null;
+    reasonsLast3Months: Record<string, number>;
+    leavers: Array<{ studentId: string; fullName: string; leftAt: string | null; reason: string | null; groups: string[]; monthsStudied: number | null }>;
+  };
+}
+
 export const reportsApi = {
+  director: (month?: string) => request<DirectorReportData>(`/reports/director${month ? `?month=${month}` : ""}`),
   overview: (month?: string) => request<ReportsOverview>(`/reports/overview${month ? `?month=${month}` : ""}`),
   dashboard: () => request<DashboardData>("/reports/dashboard"),
   // Students list columns: attendance % (last 30 days) and this month's payment state.

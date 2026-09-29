@@ -5,6 +5,7 @@ import DashboardShell from "@/components/DashboardShell";
 import Modal from "@/components/Modal";
 import Select from "@/components/Select";
 import MonthPicker from "@/components/MonthPicker";
+import DirectorReport from "@/components/reports/DirectorReport";
 import {
   ApiError,
   exportApi,
@@ -25,12 +26,12 @@ function formatMoney(n: number) {
   return new Intl.NumberFormat("uz-UZ").format(n);
 }
 
-type ReportsTab = "overview" | "payroll" | "retention";
+type ReportsTab = "director" | "overview" | "payroll" | "retention";
 type SmsTarget = { id: string; fullName: string; phone: string | null };
 
 function ReportsContent() {
   const { t } = useLanguage();
-  const [activeTab, setActiveTab] = useState<ReportsTab>("overview");
+  const [activeTab, setActiveTab] = useState<ReportsTab>("director");
 
   // Server-computed monthly report (replaces downloading every student,
   // payment and attendance row and aggregating in the browser).
@@ -179,7 +180,24 @@ function ReportsContent() {
 
         {/* Tab switchers */}
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <div style={{ display: "flex", background: "#F2F1EC", borderRadius: 9, padding: 3, gap: 2 }}>
+          <div style={{ display: "flex", background: "#F2F1EC", borderRadius: 9, padding: 3, gap: 2, flexWrap: "wrap" }}>
+            <button
+              type="button"
+              onClick={() => setActiveTab("director")}
+              style={{
+                border: "none",
+                background: activeTab === "director" ? "#fff" : "transparent",
+                color: activeTab === "director" ? "#181A1F" : "#8A8D96",
+                fontWeight: 700,
+                fontSize: 12.5,
+                padding: "6px 14px",
+                borderRadius: 7,
+                cursor: "pointer",
+                boxShadow: activeTab === "director" ? "0 1px 3px rgba(0,0,0,0.08)" : "none",
+              }}
+            >
+              👔 {t("dir.tab")}
+            </button>
             <button
               type="button"
               onClick={() => setActiveTab("overview")}
@@ -256,6 +274,7 @@ function ReportsContent() {
         {/* ========================================================================= */}
         {/* TAB 1: OVERVIEW & GENERAL FINANCE                                         */}
         {/* ========================================================================= */}
+        {activeTab === "director" && <DirectorReport month={reportMonth} onMonth={setReportMonth} onSms={openSmsToStudent} />}
         {activeTab === "overview" && reportBody("overview")}
 
         {/* ========================================================================= */}
