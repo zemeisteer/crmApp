@@ -2352,6 +2352,8 @@ export interface PortalAnnouncement {
   content: string;
   priority: string;
   createdAt: string;
+  targetGroupId?: string | null;
+  read?: boolean;
 }
 
 export interface PortalAvailableExam {
@@ -2439,6 +2441,8 @@ export const portalApi = {
       body: JSON.stringify(data),
     }),
   getAnnouncements: () => request<PortalAnnouncement[]>("/portal/announcements"),
+  readAnnouncement: (id: string) => request<{ marked: number }>(`/portal/announcements/${id}/read`, { method: "POST" }),
+  readAllAnnouncements: () => request<{ marked: number }>("/portal/announcements/read-all", { method: "POST" }),
 };
 
 // ---- Multi-Channel Notifications (SMS & Telegram) ----

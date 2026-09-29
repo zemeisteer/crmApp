@@ -11,6 +11,7 @@ import { ConfigService } from '@nestjs/config';
 import { and, desc, eq, gt, inArray, isNull, or, sql, type AnyColumn } from 'drizzle-orm';
 import { DB, Database } from '../db/db.module';
 import {
+  announcementReads,
   announcements,
   attendance,
   certificates,
@@ -692,26 +693,48 @@ export class PortalService {
     }
   }
 
-  async getAnnouncements(studentId: string, tenantId: string) {
+  // Announcements for the student (everyone's and their groups', never the
+  // teachers-only ones), newest first, each with its read state.
+  private async announcementsFor(studentId: string, tenantId: string) {
     const enrolls = await this.db.query.enrollments.findMany({
       where: eq(enrollments.studentId, studentId),
     });
     const groupIds = enrolls.map((e) => e.groupId);
-
-    const list = await this.db.query.announcements.findMany({
+    return this.db.query.announcements.findMany({
       where: and(
         eq(announcements.tenantId, tenantId),
+        sql`${announcements.targetAudience} <> 'TEACHERS'`,
         or(
           isNull(announcements.targetGroupId),
           groupIds.length > 0 ? inArray(announcements.targetGroupId, groupIds) : undefined,
         ),
       ),
       orderBy: [desc(announcements.createdAt)],
-      limit: 15,
+      limit: 30,
     });
-
-    return list;
   }
+
+  async getAnnouncements(studentId: string, tenantId: string) {
+    const list = await this.announcementsFor(studentId, tenantId);
+    const read = list.length === 0 ? [] : await this.db.select({ id: announcementReads.announcementId }).from(announcementReads)
+      .where(and(eq(announcementReads.studentId, studentId), inArray(announcementReads.announcementId, list.map((a) => a.id))));
+    const readIds = new Set(read.map((r) => r.id));
+    return list.map((a) => ({ ...a, read: readIds.has(a.id) }));
+  }
+
+  // Marks one announcement (id) or all of the student's (no id) as read.
+  async markAnnouncementsRead(studentId: string, tenantId: string, id?: string) {
+    const list = await this.announcementsFor(studentId, tenantId);
+    const ids = id ? list.filter((a) => a.id === id).map((a) => a.id) : list.map((a) => a.id);
+    if (id && ids.length === 0) throw new NotFoundException("E'lon topilmadi");
+    if (ids.length > 0) {
+      await this.db.insert(announcementReads)
+        .values(ids.map((announcementId) => ({ announcementId, studentId })))
+        .onConflictDoNothing();
+    }
+    return { marked: ids.length, unread: 0 };
+  }
+
 
   // ==================== PARENT PORTAL ====================
 

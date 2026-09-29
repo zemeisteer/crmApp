@@ -1039,6 +1039,17 @@ export const announcements = pgTable('announcements', {
   publishedAtIdx: index('announcements_published_at_idx').on(t.publishedAt),
 }));
 
+// Which announcements a student has read in the portal (a parent reading in
+// the child's cabinet marks it for that child too).
+export const announcementReads = pgTable('announcement_reads', {
+  announcementId: text('announcement_id').notNull().references(() => announcements.id, { onDelete: 'cascade' }),
+  studentId: text('student_id').notNull().references(() => students.id, { onDelete: 'cascade' }),
+  readAt: timestamp('read_at').notNull().defaultNow(),
+}, (t) => ({
+  uniq: uniqueIndex('announcement_reads_ann_student_idx').on(t.announcementId, t.studentId),
+  studentIdx: index('announcement_reads_student_idx').on(t.studentId),
+}));
+
 // Rooms / Classrooms (CRMAPP Master Spec Section 17)
 export const rooms = pgTable('rooms', {
   id: text('id').primaryKey().$defaultFn(() => createId()),

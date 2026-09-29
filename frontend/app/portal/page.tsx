@@ -1,7 +1,6 @@
 "use client";
 
 import PortalHome from "@/components/portal/PortalHome";
-import { formatDateTime } from "@/lib/format-date";
 import { useEffect, useState } from "react";
 import { useLanguage } from "@/lib/i18n-context";
 import PortalExamList from "@/components/portal/PortalExams";
@@ -9,6 +8,7 @@ import PortalLogin from "@/components/portal/PortalLogin";
 import { useCenterFromHost } from "@/lib/use-center-host";
 import { AttendanceTab, HomeworkTab, PaymentsTab, ScheduleTab, TabTitle } from "@/components/portal/PortalTabs";
 import PortalTutor from "@/components/portal/PortalTutor";
+import PortalMessages from "@/components/portal/PortalMessages";
 import type { Lang, TranslationKey } from "@/lib/i18n";
 import {
   portalApi,
@@ -30,10 +30,6 @@ import {
 } from "@/lib/api";
 
 const ACCENT = "#4F46E5";
-
-function formatMoney(n: number) {
-  return new Intl.NumberFormat("uz-UZ").format(n);
-}
 
 type PortalTab = "home" | "schedule" | "attendance" | "homework" | "ai" | "exams" | "payments" | "notifications";
 const NAV: Array<{ id: PortalTab; icon: string; label: TranslationKey; short: TranslationKey; bottom: boolean }> = [
@@ -229,7 +225,20 @@ export default function StudentPortalPage() {
       .finally(() => setLoading(false));
   }, [token]);
 
-  const notifCount = announcements.length + (payments && payments.debtAmount > 0 ? 1 : 0);
+  // Unread announcements, plus the debt reminder while money is owed.
+  const notifCount = announcements.filter((a) => !a.read).length + (payments && payments.debtAmount > 0 ? 1 : 0);
+
+  // One id, or every announcement when none is given. The badge updates at
+  // once; the server keeps the read state per student.
+  async function markRead(id?: string) {
+    setAnnouncements((prev) => prev.map((a) => (!id || a.id === id ? { ...a, read: true } : a)));
+    try {
+      if (id) await portalApi.readAnnouncement(id);
+      else await portalApi.readAllAnnouncements();
+    } catch {
+      setAnnouncements(await portalApi.getAnnouncements().catch(() => announcements));
+    }
+  }
 
   function handleLogout() {
     clearPortalToken();
@@ -707,193 +716,12 @@ export default function StudentPortalPage() {
         {/* TAB: NOTIFICATIONS                                                        */}
         {/* ========================================================================= */}
         {activeTab === "notifications" && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-            {/* Header Banner */}
-            <div
-              style={{
-                background: "#fff",
-                border: "1px solid #E2E8F0",
-                borderRadius: 18,
-                padding: "20px 24px",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                gap: 16,
-                boxShadow: "0 1px 3px rgba(0,0,0,0.03)",
-              }}
-            >
-              <div>
-                <h2 style={{ fontSize: 18, fontWeight: 800, color: "#0F172A", margin: "0 0 4px" }}>
-                  {t("ptl.notifTitle")}
-                </h2>
-                <p style={{ margin: 0, fontSize: 13, color: "#64748B" }}>
-                  {t("ptl.notifHint")}
-                </p>
-              </div>
-              <span
-                style={{
-                  background: "#EEF2FF",
-                  color: ACCENT,
-                  padding: "6px 14px",
-                  borderRadius: 100,
-                  fontSize: 12,
-                  fontWeight: 800,
-                  whiteSpace: "nowrap",
-                }}
-              >
-                {t("ptl.total")}: {announcements.length + (payments && payments.debtAmount > 0 ? 1 : 0)}
-              </span>
-            </div>
-
-            {/* Debt Reminder (if applicable) */}
-            {payments && payments.debtAmount > 0 && (
-              <div
-                style={{
-                  background: "#FFFBEB",
-                  border: "1.5px solid #FDE68A",
-                  borderRadius: 16,
-                  padding: "18px 22px",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  gap: 16,
-                  boxShadow: "0 2px 6px rgba(245,158,11,0.08)",
-                }}
-              >
-                <div style={{ display: "flex", alignItems: "flex-start", gap: 14 }}>
-                  <div
-                    style={{
-                      width: 40,
-                      height: 40,
-                      borderRadius: 12,
-                      background: "#FEF3C7",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      fontSize: 20,
-                      flexShrink: 0,
-                    }}
-                  >
-                    💳
-                  </div>
-                  <div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-                      <span
-                        style={{
-                          background: "#F59E0B",
-                          color: "#fff",
-                          fontSize: 10,
-                          fontWeight: 800,
-                          padding: "2px 8px",
-                          borderRadius: 100,
-                        }}
-                      >
-                        {t("ptl.payReminder")}
-                      </span>
-                      <span style={{ fontSize: 13, fontWeight: 800, color: "#92400E" }}>
-                        {t("ptl.payDue")}
-                      </span>
-                    </div>
-                    <p style={{ margin: 0, fontSize: 12.5, color: "#78350F", lineHeight: 1.5 }}>
-                      {t("ptl.debtNotice")} <strong>{formatMoney(payments.debtAmount)} {t("common.sumUnit")}</strong> ({payments.forMonth})
-                    </p>
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => setActiveTab("payments")}
-                  style={{
-                    background: "#D97706",
-                    color: "#fff",
-                    border: "none",
-                    borderRadius: 10,
-                    padding: "9px 18px",
-                    fontSize: 12.5,
-                    fontWeight: 700,
-                    cursor: "pointer",
-                    whiteSpace: "nowrap",
-                    flexShrink: 0,
-                  }}
-                >
-                  {t("ptl.pay")}
-                </button>
-              </div>
-            )}
-
-            {/* Announcements List */}
-            {announcements.length === 0 && (!payments || payments.debtAmount <= 0) ? (
-              <div
-                style={{
-                  background: "#fff",
-                  border: "1px solid #E2E8F0",
-                  borderRadius: 16,
-                  padding: "48px 24px",
-                  textAlign: "center",
-                  boxShadow: "0 1px 3px rgba(0,0,0,0.03)",
-                }}
-              >
-                <div style={{ fontSize: 36, marginBottom: 12 }}>🎉</div>
-                <h3 style={{ fontSize: 16, fontWeight: 700, color: "#1E293B", margin: "0 0 6px" }}>
-                  {t("ptl.noNotifs")}
-                </h3>
-                <p style={{ fontSize: 13, color: "#64748B", margin: 0 }}>
-                  {t("ptl.allRead")}
-                </p>
-              </div>
-            ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                {announcements.map((item) => {
-                  const isUrgent = item.priority === "URGENT";
-                  const isHigh = item.priority === "HIGH";
-
-                  return (
-                    <div
-                      key={item.id}
-                      style={{
-                        background: "#fff",
-                        border: isUrgent ? "1.5px solid #FECDD3" : isHigh ? "1.5px solid #FDE68A" : "1px solid #E2E8F0",
-                        borderRadius: 16,
-                        padding: "18px 22px",
-                        boxShadow: "0 1px 3px rgba(0,0,0,0.03)",
-                        display: "flex",
-                        flexDirection: "column",
-                        gap: 10,
-                      }}
-                    >
-                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                          <span
-                            style={{
-                              background: isUrgent ? "#F43F5E" : isHigh ? "#F59E0B" : "#EEF2FF",
-                              color: isUrgent || isHigh ? "#fff" : ACCENT,
-                              fontSize: 10.5,
-                              fontWeight: 800,
-                              padding: "3px 9px",
-                              borderRadius: 100,
-                            }}
-                          >
-                            {isUrgent ? t("ptl.urgent") : isHigh ? t("ptl.important") : t("ptl.announcement")}
-                          </span>
-                          <span style={{ fontSize: 11.5, color: "#94A3B8", fontWeight: 600 }}>
-                            {formatDateTime(item.createdAt, lang)}
-                          </span>
-                        </div>
-                      </div>
-
-                      <h3 style={{ fontSize: 15.5, fontWeight: 800, color: "#0F172A", margin: 0 }}>
-                        {item.title}
-                      </h3>
-
-                      <p style={{ fontSize: 13, color: "#334155", margin: 0, lineHeight: 1.6, whiteSpace: "pre-wrap" }}>
-                        {item.content}
-                      </p>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
+          <PortalMessages
+            announcements={announcements}
+            debt={payments && payments.debtAmount > 0 ? { amount: payments.debtAmount, forMonth: payments.forMonth } : null}
+            onPay={() => setActiveTab("payments")}
+            onRead={markRead}
+          />
         )}
       </main>
     </div>

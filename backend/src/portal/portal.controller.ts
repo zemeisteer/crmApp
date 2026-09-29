@@ -189,6 +189,20 @@ export class PortalController {
     return this.service.getAnnouncements(user.studentId, user.tenantId);
   }
 
+  // Read state is kept per student; a parent reading marks it for the child.
+  @UseGuards(PortalAuthGuard)
+  @Post('announcements/read-all')
+  readAllAnnouncements(@PortalUser() user: PortalUserPayload) {
+    return this.service.markAnnouncementsRead(user.studentId, user.tenantId);
+  }
+
+  @UseGuards(PortalAuthGuard)
+  @Post('announcements/:id/read')
+  readAnnouncement(@PortalUser() user: PortalUserPayload, @Param('id') id: string) {
+    return this.service.markAnnouncementsRead(user.studentId, user.tenantId, id);
+  }
+
+
   // ==================== PARENT PORTAL ====================
 
   @UseGuards(JwtAuthGuard, RolesGuard)

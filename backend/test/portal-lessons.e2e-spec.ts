@@ -90,4 +90,28 @@ describe('Portal past lessons and subdomain sign-in (e2e)', () => {
     const otherHw = (Array.isArray(staff) ? staff : staff.items).find((h: { groupId: string }) => h.groupId === other);
     await http().post(`/api/portal/homework/${otherHw.id}/submit`).set(s).send({ text: 'x' }).expect(404);
   });
+
+  it('keeps announcements read per student and hides teacher-only ones', async () => {
+    const p3 = `+99899${String(suffix).slice(-7)}`;
+    const kid = (await http().post('/api/students').set(auth()).send({ fullName: 'News Kid', phone: p3 }).expect(201)).body.id as string;
+    const { pin } = (await http().post(`/api/students/${kid}/portal-pin`).set(auth()).expect(201)).body;
+    const s = { Authorization: `Bearer ${(await http().post('/api/portal/auth/phone/verify').send({ phone: p3, pin }).expect(201)).body.accessToken}` };
+    const a1 = (await http().post('/api/announcements').set(auth()).send({ title: 'Bayram', content: 'Dam olish kuni', targetAudience: 'ALL' }).expect(201)).body;
+    await http().post('/api/announcements').set(auth()).send({ title: 'Imtihon', content: 'Juma kuni', targetAudience: 'STUDENTS' }).expect(201);
+    await http().post('/api/announcements').set(auth()).send({ title: 'Ustozlar yig\'ilishi', content: 'Faqat ustozlar', targetAudience: 'TEACHERS' }).expect(201);
+
+    let list = (await http().get('/api/portal/announcements').set(s).expect(200)).body as Array<{ id: string; title: string; read: boolean }>;
+    expect(list.map((a) => a.title).sort()).toEqual(['Bayram', 'Imtihon']);
+    expect(list.every((a) => !a.read)).toBe(true);
+
+    await http().post(`/api/portal/announcements/${a1.id}/read`).set(s).expect(201);
+    list = (await http().get('/api/portal/announcements').set(s).expect(200)).body;
+    expect(list.filter((a) => !a.read).map((a) => a.title)).toEqual(['Imtihon']);
+
+    const all = (await http().post('/api/portal/announcements/read-all').set(s).expect(201)).body;
+    expect(all.marked).toBe(2);
+    list = (await http().get('/api/portal/announcements').set(s).expect(200)).body;
+    expect(list.every((a) => a.read)).toBe(true);
+    await http().post('/api/portal/announcements/unknown/read').set(s).expect(404);
+  });
 });
