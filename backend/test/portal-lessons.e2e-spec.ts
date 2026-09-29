@@ -2,7 +2,11 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import request from 'supertest';
 import { App } from 'supertest/types';
+import { existsSync } from 'fs';
+import { unlink } from 'fs/promises';
+import { join } from 'path';
 import { AppModule } from '../src/app.module.js';
+import { UPLOAD_DIR } from '../src/common/upload.util.js';
 
 // The cabinet's past lessons (attendance, homework, results per lesson day)
 // and signing in on a center's own subdomain.
@@ -51,5 +55,39 @@ describe('Portal past lessons and subdomain sign-in (e2e)', () => {
     expect(past).toMatchObject({ groupName: 'Every Day', attendance: 'LATE' });
     const todays = res.lessons.find((l: { date: string }) => l.date === res.today);
     expect(todays.homework).toEqual([expect.objectContaining({ title: 'Workbook p.12', description: 'Ex. 1-3' })]);
+  });
+
+  it('lets the student hand in homework with a notebook photo and text', async () => {
+    const p2 = `+99898${String(suffix).slice(-7)}`;
+    const kid = (await http().post('/api/students').set(auth()).send({ fullName: 'Photo Kid', phone: p2 }).expect(201)).body.id as string;
+    const group = (await http().post('/api/groups').set(auth()).send({ name: 'Photo G', subject: 'Math' }).expect(201)).body.id as string;
+    const other = (await http().post('/api/groups').set(auth()).send({ name: 'Other G', subject: 'Math' }).expect(201)).body.id as string;
+    await http().post(`/api/students/${kid}/enroll/${group}`).set(auth()).expect(201);
+    await http().post('/api/homework').set(auth()).send({ groupIds: [group, other], title: 'Page 40', description: 'Solve 1-10' }).expect(201);
+    const { pin } = (await http().post(`/api/students/${kid}/portal-pin`).set(auth()).expect(201)).body;
+    const s = { Authorization: `Bearer ${(await http().post('/api/portal/auth/phone/verify').send({ phone: p2, pin }).expect(201)).body.accessToken}` };
+
+    const list = (await http().get('/api/portal/homework').set(s).expect(200)).body;
+    expect(list).toHaveLength(1);
+    const hwId = list[0].id as string;
+    expect(list[0].submission).toBeNull();
+
+    const jpeg = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0, 0x10, 0x4a, 0x46, 0x49, 0x46, 0, 1, 0xff, 0xd9]);
+    await http().post(`/api/portal/homework/${hwId}/submit`).set(s)
+      .field('text', 'Hammasi daftarda').attach('file', jpeg, { filename: 'daftar.jpg', contentType: 'image/jpeg' })
+      .expect(201);
+    const after = (await http().get('/api/portal/homework').set(s).expect(200)).body[0];
+    expect(after.completed).toBe(true);
+    expect(after.submission).toMatchObject({ status: 'SUBMITTED', text: 'Hammasi daftarda', file: expect.stringMatching(/\.jpg$/) });
+    expect(existsSync(join(UPLOAD_DIR, after.submission.file))).toBe(true);
+    await unlink(join(UPLOAD_DIR, after.submission.file));
+
+    // Text again keeps the photo; the other group's copy of the homework is not theirs.
+    await http().post(`/api/portal/homework/${hwId}/submit`).set(s).send({ text: 'Tuzatdim' }).expect(201);
+    const again = (await http().get('/api/portal/homework').set(s).expect(200)).body[0];
+    expect(again.submission).toMatchObject({ text: 'Tuzatdim', file: after.submission.file });
+    const staff = (await http().get(`/api/homework?groupId=${other}`).set(auth()).expect(200)).body;
+    const otherHw = (Array.isArray(staff) ? staff : staff.items).find((h: { groupId: string }) => h.groupId === other);
+    await http().post(`/api/portal/homework/${otherHw.id}/submit`).set(s).send({ text: 'x' }).expect(404);
   });
 });

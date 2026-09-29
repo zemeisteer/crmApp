@@ -6,8 +6,13 @@ import {
   Query,
   Param,
   Post,
+  UploadedFile,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { unlink } from 'fs/promises';
+import { ATTACHMENT_MAX_SIZE, attachmentStorage } from '../common/upload.util';
 import { Throttle } from '@nestjs/throttler';
 import { PortalService } from './portal.service';
 import { PortalAuthGuard } from './portal-auth.guard';
@@ -21,6 +26,9 @@ import { Roles } from '../common/roles.decorator';
 function onlyStudent(user: PortalUserPayload) {
   if (user.viewer === 'parent') throw new ForbiddenException("Bu amalni o'quvchining o'zi bajaradi");
 }
+
+// Photos from a phone camera, PDFs and office documents.
+const HOMEWORK_FILE_TYPES = /^(image\/(jpeg|png|webp|heic|heif)|application\/pdf|application\/msword|application\/vnd\.openxmlformats-officedocument\.wordprocessingml\.document)$/;
 
 @Controller('portal')
 export class PortalController {
@@ -97,14 +105,34 @@ export class PortalController {
     return this.service.getHomework(user.studentId, user.tenantId);
   }
 
+  // The student hands in homework: optional text and an optional photo of
+  // the notebook (or a PDF/doc). Plain JSON without a file still works.
   @UseGuards(PortalAuthGuard)
   @Post('homework/:id/submit')
-  submitHomework(
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: attachmentStorage,
+      limits: { fileSize: ATTACHMENT_MAX_SIZE },
+      fileFilter: (_req, file, cb) => cb(null, HOMEWORK_FILE_TYPES.test(file.mimetype)),
+    }),
+  )
+  async submitHomework(
     @PortalUser() user: PortalUserPayload,
     @Param('id') id: string,
+    @Body('text') text?: string,
+    @UploadedFile() file?: Express.Multer.File,
   ) {
-    onlyStudent(user);
-    return this.service.submitHomework(user.studentId, user.tenantId, id);
+    try {
+      onlyStudent(user);
+      return await this.service.submitHomework(user.studentId, user.tenantId, id, {
+        text: typeof text === 'string' ? text : undefined,
+        fileName: file?.filename,
+      });
+    } catch (err) {
+      // A refused submission leaves no stray upload behind.
+      if (file) await unlink(file.path).catch(() => undefined);
+      throw err;
+    }
   }
 
   @UseGuards(PortalAuthGuard)

@@ -469,42 +469,48 @@ export class PortalService {
       completedAt: h.completions[0]?.updatedAt,
       attachmentPath: h.attachmentPath,
       attachmentName: h.attachmentName,
+      maxScore: h.maxScore,
+      submission: h.completions[0]
+        ? {
+            status: h.completions[0].status,
+            text: h.completions[0].submissionText,
+            file: h.completions[0].submissionAttachmentUrl,
+            submittedAt: h.completions[0].submittedAt,
+            score: h.completions[0].score,
+            feedback: h.completions[0].feedback,
+          }
+        : null,
     }));
   }
 
-  async submitHomework(studentId: string, tenantId: string, homeworkId: string) {
+  async submitHomework(studentId: string, tenantId: string, homeworkId: string, body: { text?: string; fileName?: string } = {}) {
     const hw = await this.db.query.homework.findFirst({
       where: and(eq(homework.id, homeworkId), eq(homework.tenantId, tenantId)),
     });
     if (!hw) throw new NotFoundException('Vazifa topilmadi');
+    // Only homework of the student's own groups.
+    const [member] = await this.db.select({ id: enrollments.id }).from(enrollments)
+      .where(and(eq(enrollments.studentId, studentId), eq(enrollments.groupId, hw.groupId)));
+    if (!member) throw new NotFoundException('Vazifa topilmadi');
 
-    // Upsert completion
-    const existing = await this.db.query.homeworkCompletions.findFirst({
-      where: and(
-        eq(homeworkCompletions.homeworkId, homeworkId),
-        eq(homeworkCompletions.studentId, studentId),
-      ),
-    });
-
-    if (existing) {
-      const [updated] = await this.db
-        .update(homeworkCompletions)
-        .set({ completed: true, updatedAt: new Date() })
-        .where(eq(homeworkCompletions.id, existing.id))
-        .returning();
-      return { success: true, record: updated };
-    }
-
-    const [created] = await this.db
+    const text = body.text?.trim().slice(0, 5000) || null;
+    const now = new Date();
+    // A new submission replaces the text and, when a file came, the file;
+    // an earlier photo stays if only text is sent again.
+    const values = {
+      completed: true,
+      status: 'SUBMITTED',
+      submittedAt: now,
+      updatedAt: now,
+      ...(text !== null ? { submissionText: text } : {}),
+      ...(body.fileName ? { submissionAttachmentUrl: body.fileName } : {}),
+    };
+    const [record] = await this.db
       .insert(homeworkCompletions)
-      .values({
-        homeworkId,
-        studentId,
-        completed: true,
-      })
+      .values({ homeworkId, studentId, ...values })
+      .onConflictDoUpdate({ target: [homeworkCompletions.homeworkId, homeworkCompletions.studentId], set: values })
       .returning();
-
-    return { success: true, record: created };
+    return { success: true, record };
   }
 
   async getExams(studentId: string, tenantId: string) {

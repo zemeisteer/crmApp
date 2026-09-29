@@ -241,15 +241,14 @@ export default function StudentPortalPage() {
   const isParent = me?.viewer === "parent";
   const nav = NAV.filter((x) => !(isParent && x.id === "ai"));
 
-  async function handleHomeworkSubmit(id: string) {
+  async function handleHomeworkSubmit(id: string, data: { text?: string; file?: File | null }) {
     try {
-      await portalApi.submitHomework(id);
-      // update state locally
-      setHomework((prev) =>
-        prev.map((hw) => (hw.id === id ? { ...hw, completed: true } : hw)),
-      );
+      await portalApi.submitHomework(id, data);
+      // Reload to show the stored answer (text, photo) under the task.
+      setHomework(await portalApi.getHomework());
     } catch (err) {
       alert(err instanceof ApiError ? err.message : t("ptl.submitError"));
+      throw err;
     }
   }
 

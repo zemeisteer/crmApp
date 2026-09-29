@@ -2294,6 +2294,15 @@ export interface PortalHomework {
   completedAt?: string | null;
   attachmentPath?: string | null;
   attachmentName?: string | null;
+  maxScore?: number;
+  submission?: {
+    status: string;
+    text: string | null;
+    file: string | null;
+    submittedAt: string | null;
+    score: number | null;
+    feedback: string | null;
+  } | null;
 }
 
 export interface PortalExams {
@@ -2393,10 +2402,21 @@ export const portalApi = {
   getPastLessons: (days = 30) => request<{ from: string; today: string; lessons: PortalPastLesson[] }>(`/portal/lessons?days=${days}`),
   getAttendance: () => request<PortalAttendance>("/portal/attendance"),
   getHomework: () => request<PortalHomework[]>("/portal/homework"),
-  submitHomework: (homeworkId: string) =>
-    request<{ success: boolean }>(`/portal/homework/${homeworkId}/submit`, {
+  // Hands in homework: optional text and an optional photo/file.
+  submitHomework: async (homeworkId: string, data: { text?: string; file?: File | null } = {}) => {
+    const form = new FormData();
+    if (data.text) form.append("text", data.text);
+    if (data.file) form.append("file", data.file);
+    const token = getPortalToken();
+    const res = await fetch(`${API_URL}/portal/homework/${homeworkId}/submit`, {
       method: "POST",
-    }),
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      body: form,
+    });
+    const body = await res.json().catch(() => null);
+    if (!res.ok) throw new ApiError(body?.message || "Yuborilmadi", res.status, body);
+    return body as { success: boolean };
+  },
   getExams: () => request<PortalExams>("/portal/exams"),
   getAvailableExams: () => request<PortalAvailableExam[]>("/portal/exams/available"),
   startExam: (id: string) =>

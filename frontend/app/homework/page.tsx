@@ -148,6 +148,17 @@ function RosterModal({ homeworkItem, onClose }: { homeworkItem: Homework; onClos
                   <span style={{ fontWeight: 600 }}>{t("hw.studentAnswer")}</span> {r.submissionText}
                 </div>
               )}
+              {r.submissionAttachmentUrl && (
+                // The student's photo of the notebook (or a file) from the cabinet.
+                <a href={fileUrl(r.submissionAttachmentUrl) ?? "#"} target="_blank" rel="noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 12, fontWeight: 600, color: "#4F46E5" }}>
+                  {/\.(jpe?g|png|webp|gif)$/i.test(r.submissionAttachmentUrl) ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={fileUrl(r.submissionAttachmentUrl) ?? ""} alt="" style={{ width: 120, maxHeight: 120, objectFit: "cover", borderRadius: 8, border: "1px solid #DBEAFE" }} />
+                  ) : (
+                    <span>📎 {t("homework.file")}</span>
+                  )}
+                </a>
+              )}
 
               <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 2 }}>
                 <input

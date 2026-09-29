@@ -296,10 +296,18 @@ export function AttendanceTab({ attendance }: { attendance: PortalAttendance | n
 
 // ---------------------------------------------------------------- homework
 
-export function HomeworkTab({ homework, onSubmit, readOnly = false }: { homework: PortalHomework[]; onSubmit: (id: string) => Promise<void>; readOnly?: boolean }) {
+const isImage = (name: string | null | undefined) => !!name && /\.(jpe?g|png|webp|gif|heic|heif)$/i.test(name);
+
+// Two cards per row on wide screens; a card left alone in its row (the only
+// one, or the last of an odd count) takes the whole row.
+const HW_CSS = `
+.phw-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:14px;align-items:start}
+@media (min-width:880px){.phw-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.phw-grid>.phw-card:last-child:nth-child(odd){grid-column:1/-1}}
+`;
+
+export function HomeworkTab({ homework, onSubmit, readOnly = false }: { homework: PortalHomework[]; onSubmit: (id: string, data: { text?: string; file?: File | null }) => Promise<void>; readOnly?: boolean }) {
   const { t } = useLanguage();
   const [filter, setFilter] = useState<"all" | "todo" | "done">("all");
-  const [busy, setBusy] = useState<string | null>(null);
   const [now] = useState(() => Date.now());
   const list = homework
     .filter((h) => (filter === "all" ? true : filter === "done" ? h.completed : !h.completed))
@@ -308,6 +316,7 @@ export function HomeworkTab({ homework, onSubmit, readOnly = false }: { homework
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+      <style>{HW_CSS}</style>
       <TabTitle title={t("ptl.homework")} />
       <div style={{ display: "flex", gap: 6, background: "#EFEEE9", padding: 4, borderRadius: 12, alignSelf: "flex-start", maxWidth: "100%", overflowX: "auto" }}>
         {([
@@ -324,53 +333,152 @@ export function HomeworkTab({ homework, onSubmit, readOnly = false }: { homework
       {list.length === 0 ? (
         <Empty icon="📚" text={t("ptl.noHomework")} />
       ) : (
-        list.map((hw) => {
-          const due = hw.dueDate ? new Date(hw.dueDate) : null;
-          const overdue = !hw.completed && due !== null && due.getTime() < now;
-          return (
-            <div key={hw.id} style={{ ...card, borderColor: overdue ? "#FECACA" : "#EAE8E2", display: "flex", flexDirection: "column", gap: 10 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ fontSize: 15, fontWeight: 700, overflowWrap: "anywhere" }}>{hw.title}</div>
-                  <div style={{ fontSize: 12.5, color: "#8A8D96", marginTop: 3, display: "flex", flexWrap: "wrap", gap: "2px 10px" }}>
-                    <span>{hw.groupName || t("ptl.general")}</span>
-                    {due && <span style={{ color: overdue ? "#DC2626" : undefined }}>⏰ {due.toLocaleDateString()}</span>}
-                  </div>
-                </div>
-                <Pill tone={hw.completed ? "green" : overdue ? "red" : "grey"}>{hw.completed ? t("hws.stDone") : overdue ? t("hws.stOverdue") : t("pth.todo")}</Pill>
-              </div>
-              {hw.description && <div style={{ background: "#F7F7F5", borderRadius: 12, padding: 12, fontSize: 13.5, color: "#33363D", lineHeight: 1.55, whiteSpace: "pre-wrap" }}>{hw.description}</div>}
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-                {hw.attachmentPath && (
-                  <a href={fileUrl(hw.attachmentPath) || "#"} target="_blank" rel="noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "10px 14px", borderRadius: 11, border: "1px solid #C7D2FE", background: "#EEF0FF", color: "#4338CA", fontSize: 13, fontWeight: 700, textDecoration: "none", maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    📎 {hw.attachmentName || t("homework.file")}
-                  </a>
-                )}
-                {!hw.completed && !readOnly && (
-                  <button
-                    type="button"
-                    disabled={busy === hw.id}
-                    onClick={async () => {
-                      setBusy(hw.id);
-                      try {
-                        await onSubmit(hw.id);
-                      } finally {
-                        setBusy(null);
-                      }
-                    }}
-                    style={{ marginLeft: "auto", background: ACCENT, color: "#fff", border: "none", fontSize: 13.5, fontWeight: 700, padding: "10px 18px", borderRadius: 11, cursor: "pointer", minHeight: 42, opacity: busy === hw.id ? 0.7 : 1, boxShadow: "0 8px 18px -10px rgba(79,70,229,0.8)" }}
-                  >
-                    ✓ {t("ptl.submit")}
-                  </button>
-                )}
-              </div>
-            </div>
-          );
-        })
+        <div className="phw-grid">
+          {list.map((hw) => <HomeworkCard key={hw.id} hw={hw} now={now} readOnly={readOnly} onSubmit={onSubmit} />)}
+        </div>
       )}
     </div>
   );
 }
+
+function HomeworkCard({ hw, now, readOnly, onSubmit }: { hw: PortalHomework; now: number; readOnly: boolean; onSubmit: (id: string, data: { text?: string; file?: File | null }) => Promise<void> }) {
+  const { t } = useLanguage();
+  const [open, setOpen] = useState(false);
+  const [text, setText] = useState("");
+  const [file, setFile] = useState<File | null>(null);
+  const [preview, setPreview] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const due = hw.dueDate ? new Date(hw.dueDate) : null;
+  const overdue = !hw.completed && due !== null && due.getTime() < now;
+  const sub = hw.submission;
+  const graded = sub?.status === "GRADED";
+
+  useEffect(() => () => { if (preview) URL.revokeObjectURL(preview); }, [preview]);
+
+  async function pick(f: File | null) {
+    if (!f) return;
+    const { shrinkImage } = await import("@/lib/shrink-image");
+    const ready = await shrinkImage(f);
+    setFile(ready);
+    setPreview(ready.type.startsWith("image/") ? URL.createObjectURL(ready) : null);
+  }
+
+  async function send() {
+    setBusy(true);
+    try {
+      await onSubmit(hw.id, { text: text.trim() || undefined, file });
+      setOpen(false);
+      setText("");
+      setFile(null);
+      setPreview(null);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const statusPill = graded
+    ? <Pill tone="green">{sub?.score != null ? `${sub.score}/${hw.maxScore ?? 100}` : t("pls.hwGraded")}</Pill>
+    : hw.completed ? <Pill tone="accent">{t("pls.hwSubmitted")}</Pill>
+    : overdue ? <Pill tone="red">{t("hws.stOverdue")}</Pill>
+    : <Pill tone="grey">{t("pth.todo")}</Pill>;
+
+  return (
+    <div className="phw-card" style={{ ...card, borderColor: overdue ? "#FECACA" : "#EAE8E2", display: "flex", flexDirection: "column", gap: 12 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontSize: 16, fontWeight: 800, overflowWrap: "anywhere" }}>{hw.title}</div>
+          <div style={{ fontSize: 12.5, color: "#8A8D96", marginTop: 3, display: "flex", flexWrap: "wrap", gap: "2px 10px" }}>
+            <span>{hw.groupName || t("ptl.general")}</span>
+            {due && <span style={{ color: overdue ? "#DC2626" : undefined, fontWeight: overdue ? 700 : 400 }}>⏰ {t("phw.due")}: {due.toLocaleDateString()}</span>}
+            {hw.maxScore ? <span>🎯 {hw.maxScore} {t("phw.points")}</span> : null}
+          </div>
+        </div>
+        {statusPill}
+      </div>
+
+      <div>
+        <div style={{ fontSize: 11.5, fontWeight: 800, color: "#8A8D96", textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 6 }}>{t("phw.task")}</div>
+        <div style={{ background: "#F7F7F5", borderRadius: 12, padding: 12, fontSize: 14, color: "#33363D", lineHeight: 1.6, whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>
+          {hw.description || <span style={{ color: "#8A8D96" }}>{hw.attachmentPath ? t("phw.seeFile") : t("phw.noDescription")}</span>}
+        </div>
+      </div>
+
+      {hw.attachmentPath && (
+        isImage(hw.attachmentName ?? hw.attachmentPath) ? (
+          <a href={fileUrl(hw.attachmentPath) ?? "#"} target="_blank" rel="noreferrer">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={fileUrl(hw.attachmentPath) ?? ""} alt={hw.attachmentName ?? ""} style={{ width: "100%", maxHeight: 320, objectFit: "contain", borderRadius: 12, border: "1px solid #EAE8E2", background: "#FAFAF8" }} />
+          </a>
+        ) : (
+          <a href={fileUrl(hw.attachmentPath) || "#"} target="_blank" rel="noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "10px 14px", borderRadius: 11, border: "1px solid #C7D2FE", background: "#EEF0FF", color: "#4338CA", fontSize: 13, fontWeight: 700, textDecoration: "none", maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", alignSelf: "flex-start" }}>
+            📎 {hw.attachmentName || t("homework.file")} ↓
+          </a>
+        )
+      )}
+
+      {sub && (sub.text || sub.file || sub.feedback) && (
+        <div style={{ borderTop: "1px dashed #EAE8E2", paddingTop: 10, display: "flex", flexDirection: "column", gap: 8 }}>
+          <div style={{ fontSize: 11.5, fontWeight: 800, color: "#8A8D96", textTransform: "uppercase", letterSpacing: "0.04em" }}>{t("phw.myAnswer")}</div>
+          {sub.text && <div style={{ fontSize: 13.5, whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{sub.text}</div>}
+          {sub.file && (isImage(sub.file) ? (
+            <a href={fileUrl(sub.file) ?? "#"} target="_blank" rel="noreferrer">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={fileUrl(sub.file) ?? ""} alt="" style={{ maxWidth: "100%", maxHeight: 220, borderRadius: 10, border: "1px solid #EAE8E2" }} />
+            </a>
+          ) : (
+            <a href={fileUrl(sub.file) ?? "#"} target="_blank" rel="noreferrer" style={{ fontSize: 13, fontWeight: 700, color: ACCENT }}>📎 {t("phw.myFile")}</a>
+          ))}
+          {sub.feedback && (
+            <div style={{ background: "#ECFDF5", border: "1px solid #BBF7D0", borderRadius: 10, padding: 10, fontSize: 13, color: "#14532D" }}>
+              💬 <b>{t("phw.teacherSays")}:</b> {sub.feedback}
+            </div>
+          )}
+        </div>
+      )}
+
+      {!readOnly && !graded && (
+        open ? (
+          <div style={{ display: "flex", flexDirection: "column", gap: 10, background: "#FAFAFF", border: "1px solid #E0E7FF", borderRadius: 12, padding: 12 }}>
+            <textarea value={text} onChange={(e) => setText(e.target.value)} rows={3} maxLength={5000} placeholder={t("phw.textPh")} style={{ width: "100%", boxSizing: "border-box", borderRadius: 10, border: "1px solid #EAE8E2", padding: 10, fontSize: 14, fontFamily: "inherit", resize: "vertical" }} />
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <label style={fileBtn}>
+                📷 {t("phw.takePhoto")}
+                <input type="file" accept="image/*" capture="environment" hidden onChange={(e) => pick(e.target.files?.[0] ?? null)} />
+              </label>
+              <label style={fileBtn}>
+                📎 {t("phw.chooseFile")}
+                <input type="file" accept="image/*,application/pdf,.doc,.docx" hidden onChange={(e) => pick(e.target.files?.[0] ?? null)} />
+              </label>
+            </div>
+            {file && (
+              <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 12.5, color: "#4A4E58" }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                {preview ? <img src={preview} alt="" style={{ width: 64, height: 64, objectFit: "cover", borderRadius: 8 }} /> : <span>📄</span>}
+                <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>{file.name}</span>
+                <button type="button" onClick={() => { setFile(null); setPreview(null); }} style={{ background: "none", border: "none", color: "#B23A47", cursor: "pointer", fontWeight: 700 }}>✕</button>
+              </div>
+            )}
+            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+              <button type="button" onClick={() => setOpen(false)} style={{ background: "#F2F1EC", border: "none", borderRadius: 10, padding: "10px 14px", fontWeight: 700, cursor: "pointer" }}>{t("common.cancel")}</button>
+              <button type="button" disabled={busy || (!text.trim() && !file)} onClick={send} style={{ ...submitBtn, opacity: busy || (!text.trim() && !file) ? 0.6 : 1 }}>
+                {busy ? t("common.saving") : `✓ ${t("ptl.submit")}`}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", flexWrap: "wrap" }}>
+            <button type="button" onClick={() => setOpen(true)} style={submitBtn}>
+              {hw.completed ? `✎ ${t("phw.resubmit")}` : `📤 ${t("phw.handIn")}`}
+            </button>
+          </div>
+        )
+      )}
+    </div>
+  );
+}
+
+const fileBtn: React.CSSProperties = { display: "inline-flex", alignItems: "center", gap: 6, padding: "9px 12px", borderRadius: 10, border: "1px solid #C7D2FE", background: "#fff", color: "#4338CA", fontSize: 13, fontWeight: 700, cursor: "pointer" };
+const submitBtn: React.CSSProperties = { background: ACCENT, color: "#fff", border: "none", fontSize: 13.5, fontWeight: 700, padding: "10px 18px", borderRadius: 11, cursor: "pointer", minHeight: 42, boxShadow: "0 8px 18px -10px rgba(79,70,229,0.8)" };
 
 // ---------------------------------------------------------------- payments
 
