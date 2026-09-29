@@ -9,6 +9,7 @@ import StudentStatusModal, { STATUS_STYLE } from "@/components/students/StudentS
 import ParentBotLink from "@/components/students/ParentBotLink";
 import Modal from "@/components/Modal";
 import Select from "@/components/Select";
+import GroupPicker from "@/components/students/GroupPicker";
 import MonthPicker from "@/components/MonthPicker";
 import { studentsApi, groupsApi, paymentsApi, attendanceApi, billingApi, telegramApi, exportApi, reportsApi, Student, Group, Payment, AttendanceRecord, ApiError } from "@/lib/api";
 import { localMonthStr } from "@/lib/date";
@@ -187,7 +188,8 @@ function StudentDetailContent() {
     if (y === 0 && m === 0) return t("stu.lessThanMonth");
     return [y ? t("stu.years").replace("{n}", String(y)) : "", m ? t("stu.months").replace("{n}", String(m)) : ""].filter(Boolean).join(" ");
   })();
-  const availableGroups = groups.filter((g) => !enrolledGroupIds.has(g.id));
+  // All open groups the student is not in yet, in every direction.
+  const availableGroups = groups.filter((g) => !enrolledGroupIds.has(g.id) && g.status !== "ARCHIVED" && g.status !== "COMPLETED");
   const totalPaid = payments.reduce((sum, p) => (p.status === "PAID" ? sum + p.amount : sum), 0);
   const attendancePercent =
     attendance.length === 0
@@ -588,17 +590,13 @@ function StudentDetailContent() {
           )}
           <div>
             <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>{t("studentDetail.groupField")}</div>
-            <Select
-              options={[{ value: "", label: t("groups.selectPlaceholder") }, ...availableGroups.map((g) => ({ value: g.id, label: g.name }))]}
-              value={enrollGroupId}
-              onChange={setEnrollGroupId}
-            />
+            <GroupPicker groups={availableGroups} value={enrollGroupId} onChange={setEnrollGroupId} />
           </div>
           <button
             className="btn"
             type="submit"
-            disabled={saving}
-            style={{ background: ACCENT, color: "#fff", fontSize: 14, fontWeight: 700, padding: 12, borderRadius: 10, marginTop: 6 }}
+            disabled={saving || !enrollGroupId}
+            style={{ background: ACCENT, color: "#fff", fontSize: 14, fontWeight: 700, padding: 12, borderRadius: 10, marginTop: 6, opacity: enrollGroupId ? 1 : 0.6 }}
           >
             {saving ? t("common.saving") : t("common.add")}
           </button>
