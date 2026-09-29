@@ -6,9 +6,10 @@ import DashboardShell from "@/components/DashboardShell";
 import BarChart, { DonutChart } from "@/components/BarChart";
 import { useAuth } from "@/lib/auth-context";
 import { useLanguage } from "@/lib/i18n-context";
-import { reportsApi, announcementsApi, Announcement, type DashboardData, type ReportsOverview } from "@/lib/api";
+import { reportsApi, type DashboardData, type ReportsOverview } from "@/lib/api";
 import { buildInsights } from "@/lib/insights";
 import TeacherHome from "@/components/dashboard/TeacherHome";
+import AnnouncementBanners from "@/components/dashboard/AnnouncementBanners";
 import { MONTH_KEYS, MONTH_SHORT_KEYS, type TranslationKey } from "@/lib/i18n";
 import { formatDate } from "@/lib/format-date";
 
@@ -74,7 +75,6 @@ function DashboardContent() {
   // Aggregated on the server (GET /reports/dashboard) instead of loading
   // every group, student, payment and attendance row into the browser.
   const [data, setData] = useState<DashboardData | null>(null);
-  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [activityPeriod, setActivityPeriod] = useState<"day" | "week" | "month">("week");
@@ -85,11 +85,9 @@ function DashboardContent() {
   const [report, setReport] = useState<ReportsOverview | null>(null);
 
   useEffect(() => {
-    Promise.all([reportsApi.dashboard().catch(() => null), announcementsApi.list().catch(() => [])])
-      .then(([d, ann]) => {
-        setData(d);
-        setAnnouncements(ann);
-      })
+    reportsApi.dashboard()
+      .catch(() => null)
+      .then(setData)
       .finally(() => setLoading(false));
     reportsApi.overview().then(setReport).catch(() => setReport(null));
   }, []);
@@ -147,10 +145,6 @@ function DashboardContent() {
     };
   }, [finance]);
 
-  const activeBroadcasts = useMemo(() => {
-    return announcements.filter((a) => a.priority === "URGENT" || a.priority === "HIGH").slice(0, 2);
-  }, [announcements]);
-
   return (
     <>
       <div style={{ padding: "22px 32px", borderBottom: "1px solid #EAE8E2", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
@@ -170,63 +164,7 @@ function DashboardContent() {
           <div style={{ color: "#8A8D96", fontSize: 14 }}>{t("dashboard.loading")}</div>
         ) : (
           <>
-            {activeBroadcasts.length > 0 && (
-              <div className="flex flex-col gap-2.5">
-                {activeBroadcasts.map((b) => (
-                  <div
-                    key={b.id}
-                    className={`rounded-2xl p-4 flex items-center justify-between gap-4 border transition ${
-                      b.priority === "URGENT"
-                        ? "bg-rose-50 border-rose-200 text-rose-950"
-                        : "bg-amber-50 border-amber-200 text-amber-950"
-                    }`}
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div
-                        className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
-                          b.priority === "URGENT"
-                            ? "bg-rose-100 text-rose-600"
-                            : "bg-amber-100 text-amber-700"
-                        }`}
-                      >
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="m3 11 18-5v12L3 14v-3z" />
-                          <path d="M11.6 16.8a3 3 0 1 1-5.8-1.6" />
-                        </svg>
-                      </div>
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span
-                            className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${
-                              b.priority === "URGENT" ? "bg-rose-600 text-white" : "bg-amber-500 text-slate-900"
-                            }`}
-                          >
-                            {b.priority === "URGENT" ? "Shoshilinch" : "Muhim"}
-                          </span>
-                          <span className={`text-sm font-bold truncate ${b.priority === "URGENT" ? "text-rose-950" : "text-amber-950"}`}>
-                            {b.title}
-                          </span>
-                        </div>
-                        <p className={`text-xs truncate mt-0.5 max-w-xl font-medium ${b.priority === "URGENT" ? "text-rose-800" : "text-amber-900"}`}>
-                          {b.content}
-                        </p>
-                      </div>
-                    </div>
-
-                    <Link
-                      href="/announcements"
-                      className={`shrink-0 text-xs font-bold px-3 py-1.5 rounded-xl border transition ${
-                        b.priority === "URGENT"
-                          ? "bg-white border-rose-300 text-rose-700 hover:bg-rose-100"
-                          : "bg-white border-amber-300 text-amber-800 hover:bg-amber-100"
-                      }`}
-                    >
-                      Batafsil →
-                    </Link>
-                  </div>
-                ))}
-              </div>
-            )}
+            <AnnouncementBanners />
 
             {user?.role === "TEACHER" && data ? (
               <TeacherHome data={data} />

@@ -587,6 +587,7 @@ export default function StudentPortalPage() {
             payments={payments}
             announcements={announcements}
             onOpen={(tab) => go(tab)}
+            onReadAnnouncement={(id) => void markRead(id)}
             parent={isParent}
           />
         )}

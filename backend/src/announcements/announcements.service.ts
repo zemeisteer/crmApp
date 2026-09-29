@@ -1,9 +1,11 @@
 import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { and, desc, eq, ilike, or } from 'drizzle-orm';
+import { and, desc, eq, gt, ilike, inArray, isNull, ne, notExists, or } from 'drizzle-orm';
 import { DB, Database } from '../db/db.module';
-import { announcements, groups } from '../db/schema';
+import { announcementUserReads, announcements, groups } from '../db/schema';
 import { CreateAnnouncementDto, QueryAnnouncementDto } from './dto/announcement.dto';
 import { TelegramService } from '../telegram/telegram.service';
+
+const BANNER_DAYS = 3;
 
 @Injectable()
 export class AnnouncementsService {
@@ -96,6 +98,45 @@ export class AnnouncementsService {
     }
 
     return this.findOne(tenantId, created.id);
+  }
+
+  // Dashboard banners: urgent/important staff announcements from the last
+  // few days that this user has not read yet and did not write themselves.
+  // Reading (or dismissing) one hides it for good.
+  async banners(tenantId: string, userId: string) {
+    const since = new Date(Date.now() - BANNER_DAYS * 86_400_000);
+    return this.db
+      .select({
+        id: announcements.id,
+        title: announcements.title,
+        content: announcements.content,
+        priority: announcements.priority,
+        publishedAt: announcements.publishedAt,
+      })
+      .from(announcements)
+      .where(
+        and(
+          eq(announcements.tenantId, tenantId),
+          inArray(announcements.priority, ['URGENT', 'HIGH']),
+          inArray(announcements.targetAudience, ['ALL', 'TEACHERS']),
+          gt(announcements.publishedAt, since),
+          or(isNull(announcements.authorId), ne(announcements.authorId, userId)),
+          notExists(
+            this.db
+              .select({ one: announcementUserReads.userId })
+              .from(announcementUserReads)
+              .where(and(eq(announcementUserReads.announcementId, announcements.id), eq(announcementUserReads.userId, userId))),
+          ),
+        ),
+      )
+      .orderBy(desc(announcements.publishedAt))
+      .limit(3);
+  }
+
+  async markRead(tenantId: string, userId: string, id: string) {
+    await this.findOne(tenantId, id);
+    await this.db.insert(announcementUserReads).values({ announcementId: id, userId }).onConflictDoNothing();
+    return { success: true };
   }
 
   async remove(tenantId: string, id: string) {

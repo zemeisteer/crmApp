@@ -1,12 +1,15 @@
 "use client";
 
 import type { PortalAnnouncement, PortalAttendance, PortalHomework, PortalMe, PortalPayments, PortalSchedule } from "@/lib/api";
+import { useState } from "react";
 import { useLanguage } from "@/lib/i18n-context";
+import Modal from "@/components/Modal";
 import { MONTH_KEYS, type TranslationKey } from "@/lib/i18n";
 
 const ACCENT = "#4F46E5";
 const card: React.CSSProperties = { background: "#fff", border: "1px solid #E2E8F0", borderRadius: 16, padding: 16 };
 const money = (n: number) => new Intl.NumberFormat("uz-UZ").format(n);
+const NEWS_FRESH_MS = 3 * 86_400_000;
 const DAY_KEYS: TranslationKey[] = [
   "weekday.short.monday", "weekday.short.tuesday", "weekday.short.wednesday", "weekday.short.thursday",
   "weekday.short.friday", "weekday.short.saturday", "weekday.short.sunday",
@@ -22,6 +25,7 @@ export default function PortalHome({
   payments,
   announcements,
   onOpen,
+  onReadAnnouncement,
   parent = false,
 }: {
   me: PortalMe | null;
@@ -30,11 +34,18 @@ export default function PortalHome({
   homework: PortalHomework[];
   payments: PortalPayments | null;
   announcements: PortalAnnouncement[];
-  onOpen: (tab: "schedule" | "attendance" | "homework" | "payments") => void;
+  onOpen: (tab: "schedule" | "attendance" | "homework" | "payments" | "notifications") => void;
+  // Opening an announcement here marks it read, which takes it off home.
+  onReadAnnouncement: (id: string) => void;
   // Seen by a parent: about "your child", not a greeting to the student.
   parent?: boolean;
 }) {
   const { t } = useLanguage();
+  const [openNews, setOpenNews] = useState<PortalAnnouncement | null>(null);
+  // Home shows news only while it is fresh and unread; the rest stays in
+  // the Messages tab.
+  const [now] = useState(() => Date.now());
+  const fresh = announcements.filter((a) => !a.read && now - new Date(a.createdAt).getTime() < NEWS_FRESH_MS);
 
   // Next lesson from the weekly timetable (days 1 = Mon ... 7 = Sun).
   const next = (() => {
@@ -156,18 +167,50 @@ export default function PortalHome({
         )}
       </div>
 
-      {announcements.length > 0 && (
+      {fresh.length > 0 && (
         <div style={card}>
-          <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 700, fontSize: 16, marginBottom: 10 }}>{t("ptl.latestNews")}</div>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+            <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 700, fontSize: 16 }}>{t("ptl.latestNews")}</div>
+            <button type="button" onClick={() => onOpen("notifications")} style={{ background: "none", border: "none", color: ACCENT, fontWeight: 700, fontSize: 12.5, cursor: "pointer" }}>
+              {t("dashboard.viewAll")}
+            </button>
+          </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {announcements.slice(0, 3).map((a) => (
-              <div key={a.id} style={{ background: "#F8FAFC", border: "1px solid #EDF2F7", borderRadius: 12, padding: 12 }}>
-                <div style={{ fontSize: 13.5, fontWeight: 700 }}>{a.title}</div>
-                <div style={{ fontSize: 12.5, color: "#475569", marginTop: 4 }}>{a.content}</div>
-              </div>
-            ))}
+            {fresh.slice(0, 3).map((a) => {
+              const urgent = a.priority === "URGENT" || a.priority === "HIGH";
+              return (
+                <button
+                  key={a.id}
+                  type="button"
+                  onClick={() => {
+                    setOpenNews(a);
+                    onReadAnnouncement(a.id);
+                  }}
+                  style={{ display: "flex", alignItems: "center", gap: 10, textAlign: "left", width: "100%", fontFamily: "inherit", color: "inherit", cursor: "pointer", background: urgent ? "#FFF1F2" : "#F8FAFC", border: `1px solid ${urgent ? "#FECDD3" : "#EDF2F7"}`, borderRadius: 12, padding: "10px 12px" }}
+                >
+                  <span aria-hidden style={{ width: 8, height: 8, borderRadius: "50%", background: urgent ? "#E11D48" : ACCENT, flexShrink: 0 }} />
+                  <span style={{ flex: 1, minWidth: 0 }}>
+                    <span style={{ display: "block", fontSize: 13.5, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.title}</span>
+                    <span style={{ display: "block", fontSize: 12.5, color: "#64748B", marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.content}</span>
+                  </span>
+                  <span aria-hidden style={{ color: "#94A3B8", fontSize: 16 }}>›</span>
+                </button>
+              );
+            })}
           </div>
         </div>
+      )}
+
+      {openNews && (
+        <Modal open onClose={() => setOpenNews(null)} title={openNews.title} width={520}>
+          <div style={{ fontSize: 12.5, color: "#94A3B8", marginTop: -8, marginBottom: 12 }}>{new Date(openNews.createdAt).toLocaleString()}</div>
+          <div style={{ fontSize: 14.5, lineHeight: 1.6, color: "#2A2D35", whiteSpace: "pre-wrap" }}>{openNews.content}</div>
+          <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 18 }}>
+            <button type="button" onClick={() => setOpenNews(null)} style={{ background: ACCENT, color: "#fff", border: "none", fontSize: 13, fontWeight: 700, padding: "9px 16px", borderRadius: 9, cursor: "pointer" }}>
+              {t("ann.gotIt")}
+            </button>
+          </div>
+        </Modal>
       )}
     </div>
   );

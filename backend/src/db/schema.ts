@@ -1065,6 +1065,16 @@ export const announcementReads = pgTable('announcement_reads', {
   studentIdx: index('announcement_reads_student_idx').on(t.studentId),
 }));
 
+// Which announcements a staff user has read (or dismissed) on the dashboard.
+export const announcementUserReads = pgTable('announcement_user_reads', {
+  announcementId: text('announcement_id').notNull().references(() => announcements.id, { onDelete: 'cascade' }),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  readAt: timestamp('read_at').notNull().defaultNow(),
+}, (t) => ({
+  uniq: uniqueIndex('announcement_user_reads_ann_user_idx').on(t.announcementId, t.userId),
+  userIdx: index('announcement_user_reads_user_idx').on(t.userId),
+}));
+
 // IELTS-style mock tests (Listening, Reading, Writing, Speaking) solved in
 // the student portal. `content` is JSON (see mock-tests/ielts.ts).
 export const mockTests = pgTable('mock_tests', {

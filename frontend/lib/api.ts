@@ -2045,6 +2045,14 @@ export const certificatesApi = {
 
 // ---- Announcements & News (Spec Section 33) ----
 
+export interface AnnouncementBanner {
+  id: string;
+  title: string;
+  content: string;
+  priority: "URGENT" | "HIGH" | string;
+  publishedAt: string;
+}
+
 export const announcementsApi = {
   list: (query?: { targetAudience?: string; priority?: string; targetGroupId?: string; search?: string }) => {
     const q = new URLSearchParams();
@@ -2056,6 +2064,9 @@ export const announcementsApi = {
     return request<Announcement[]>(`/announcements${qs ? `?${qs}` : ""}`);
   },
   get: (id: string) => request<Announcement>(`/announcements/${id}`),
+  // Urgent/important ones from the last days this user has not read yet.
+  banners: () => request<AnnouncementBanner[]>("/announcements/banners"),
+  markRead: (id: string) => request<{ success: boolean }>(`/announcements/${id}/read`, { method: "POST" }),
   create: (data: {
     title: string;
     content: string;
