@@ -67,6 +67,17 @@ TalimCRM har bir o'quv markaz uchun alohida subdomen ochish imkoniyatiga ega (ma
 
 ## 4. Loyihani Serverga Yuklash va Muhit Sozlamalari
 
+**Tez yo'l (yangi Ubuntu server):** bitta skript Docker, firewall, swap, loyiha va tasodifiy parollar bilan `.env` ni tayyorlaydi:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/zemeisteer/crmApp/dev/scripts/production/bootstrap-server.sh -o bootstrap.sh
+sudo bash bootstrap.sh talimcrm.uz
+cd /opt/crmapp && nano .env          # Telegram, Gemini, Cloudflare kalitlari
+./scripts/production/preflight.sh    # .env, DNS va Docker tekshiruvi
+```
+
+So'ng 5-bo'limdan davom eting. Qo'lda sozlash:
+
 ```bash
 # Loyihani klon qilish
 git clone https://github.com/zemeisteer/crmApp.git /opt/crmapp
