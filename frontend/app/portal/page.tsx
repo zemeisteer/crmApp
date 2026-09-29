@@ -584,7 +584,7 @@ export default function StudentPortalPage() {
           />
         )}
 
-        {activeTab === "schedule" && <ScheduleTab schedule={schedule} />}
+        {activeTab === "schedule" && <ScheduleTab key={token ?? ""} schedule={schedule} />}
         {activeTab === "attendance" && <AttendanceTab attendance={attendance} />}
         {activeTab === "homework" && <HomeworkTab homework={homework} onSubmit={handleHomeworkSubmit} readOnly={isParent} />}
         {activeTab === "ai" && !isParent && <PortalTutor firstName={me?.fullName?.split(" ")[0]} />}

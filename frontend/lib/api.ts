@@ -2259,6 +2259,31 @@ export interface PortalAttendance {
   }>;
 }
 
+export interface PortalPastLesson {
+  date: string;
+  groupId: string;
+  groupName: string;
+  subject: string | null;
+  teacher: string | null;
+  startTime: string | null;
+  endTime: string | null;
+  topic: string | null;
+  cancelled: boolean;
+  attendance: "PRESENT" | "ABSENT" | "LATE" | "EXCUSED" | string | null;
+  homework: Array<{
+    id: string;
+    title: string;
+    description: string | null;
+    dueDate: string | null;
+    attachmentPath: string | null;
+    attachmentName: string | null;
+    status: string | null;
+    score: number | null;
+    maxScore: number;
+  }>;
+  exams: Array<{ id: string; title: string; maxScore: number; passingScore: number | null; score: number | null }>;
+}
+
 export interface PortalHomework {
   id: string;
   title: string;
@@ -2365,6 +2390,7 @@ export const portalApi = {
   aiAsk: (message: string) => request<PortalTutorAnswer>("/portal/ai/ask", { method: "POST", body: JSON.stringify({ message }) }),
   aiReset: () => request<{ ok: boolean }>("/portal/ai/reset", { method: "POST" }),
   getSchedule: () => request<PortalSchedule>("/portal/schedule"),
+  getPastLessons: (days = 30) => request<{ from: string; today: string; lessons: PortalPastLesson[] }>(`/portal/lessons?days=${days}`),
   getAttendance: () => request<PortalAttendance>("/portal/attendance"),
   getHomework: () => request<PortalHomework[]>("/portal/homework"),
   submitHomework: (homeworkId: string) =>

@@ -28,7 +28,10 @@ import {
   studentGuardians,
   students,
   telegramLinkTokens,
+  tenants,
 } from '../db/schema';
+import { DEFAULT_TIMEZONE, isValidTimeZone, zonedParts } from '../common/timezone';
+import { buildPastLessons } from './past-lessons';
 import { BillingService } from '../billing/billing.service';
 import { ExamsService } from '../exams/exams.service';
 import { TelegramService } from '../telegram/telegram.service';
@@ -326,6 +329,92 @@ export class PortalService {
     }));
 
     return { timetable, fallbackGroups };
+  }
+
+  // Past lessons of the student's groups over the last `days` days, each with
+  // the student's attendance mark, homework given that day and results of
+  // tests/exams held that day. Dates are the center's local calendar days.
+  async getPastLessons(studentId: string, tenantId: string, days = 30) {
+    const span = Math.min(90, Math.max(1, Math.floor(days) || 30));
+    const [tenant] = await this.db.select({ timezone: tenants.timezone }).from(tenants).where(eq(tenants.id, tenantId));
+    const tz = isValidTimeZone(tenant?.timezone) ? tenant!.timezone : DEFAULT_TIMEZONE;
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const localDate = (d: Date) => { const p = zonedParts(d, tz); return `${p.year}-${pad(p.month)}-${pad(p.day)}`; };
+    const now = new Date();
+    const today = localDate(now);
+    const fromInstant = new Date(now.getTime() - span * 86_400_000);
+    const from = localDate(fromInstant);
+
+    const enrolls = await this.db.query.enrollments.findMany({
+      where: and(eq(enrollments.studentId, studentId), or(eq(enrollments.tenantId, tenantId), isNull(enrollments.tenantId))),
+      with: { group: { with: { teacher: true } } },
+    });
+    const own = enrolls.filter((e) => e.group && e.group.tenantId === tenantId && !e.group.deletedAt);
+    if (own.length === 0) return { from, today, lessons: [] };
+    const groupIds = own.map((e) => e.groupId);
+    // Look one day further back so a timezone shift never drops the first day.
+    const since = new Date(fromInstant.getTime() - 86_400_000);
+
+    const [slots, marks, hw, examRows] = await Promise.all([
+      this.db.select({
+        groupId: schedules.groupId, dayOfWeek: schedules.dayOfWeek, date: schedules.date,
+        startTime: schedules.startTime, endTime: schedules.endTime, topic: schedules.topic, status: schedules.status,
+      }).from(schedules).where(and(eq(schedules.tenantId, tenantId), inArray(schedules.groupId, groupIds))),
+      this.db.select({ groupId: attendance.groupId, date: attendance.date, status: attendance.status }).from(attendance)
+        .where(and(eq(attendance.tenantId, tenantId), eq(attendance.studentId, studentId), inArray(attendance.groupId, groupIds), sql`${attendance.date} >= ${from}`)),
+      this.db.query.homework.findMany({
+        where: and(eq(homework.tenantId, tenantId), inArray(homework.groupId, groupIds), gt(homework.createdAt, since)),
+        with: { completions: { where: eq(homeworkCompletions.studentId, studentId) } },
+      }),
+      this.db.query.exams.findMany({
+        where: and(eq(examsTable.tenantId, tenantId), inArray(examsTable.groupId, groupIds), gt(examsTable.examDate, since)),
+      }),
+    ]);
+    const examIds = examRows.map((e) => e.id);
+    const [results, attempts] = examIds.length === 0 ? [[], []] : await Promise.all([
+      this.db.select({ examId: examResults.examId, score: examResults.score }).from(examResults)
+        .where(and(eq(examResults.studentId, studentId), inArray(examResults.examId, examIds))),
+      this.db.select({ examId: examAttempts.examId, score: examAttempts.score, completedAt: examAttempts.completedAt }).from(examAttempts)
+        .where(and(eq(examAttempts.tenantId, tenantId), eq(examAttempts.studentId, studentId), inArray(examAttempts.examId, examIds))),
+    ]);
+    // A teacher-entered result wins; otherwise the best finished online attempt.
+    const scoreOf = (examId: string) => {
+      const r = results.find((x) => x.examId === examId);
+      if (r) return r.score;
+      const done = attempts.filter((a) => a.examId === examId && a.completedAt);
+      return done.length ? Math.max(...done.map((a) => a.score)) : null;
+    };
+
+    const lessons = buildPastLessons({
+      from,
+      today,
+      groups: own.map((e) => ({
+        id: e.group.id,
+        name: e.group.name,
+        subject: e.group.subject,
+        scheduleDays: e.group.scheduleDays,
+        startTime: e.group.startTime,
+        endTime: e.group.endTime ?? null,
+        teacher: e.group.teacher?.fullName ?? null,
+        joinedOn: localDate(e.joinedAt),
+        leftOn: e.leftAt ? localDate(e.leftAt) : null,
+      })),
+      slots,
+      attendance: marks,
+      homework: hw.map((h) => {
+        const c = h.completions[0];
+        return {
+          id: h.id, groupId: h.groupId, givenOn: localDate(h.createdAt), title: h.title, description: h.description,
+          dueDate: h.dueDate, attachmentPath: h.attachmentPath, attachmentName: h.attachmentName,
+          status: c ? (c.completed && c.status === 'PENDING' ? 'SUBMITTED' : c.status) : null, score: c?.score ?? null, maxScore: h.maxScore,
+        };
+      }),
+      exams: examRows.filter((e) => e.examDate).map((e) => ({
+        id: e.id, groupId: e.groupId, heldOn: localDate(e.examDate!), title: e.title,
+        maxScore: e.maxScore, passingScore: e.passingScore, score: scoreOf(e.id),
+      })),
+    });
+    return { from, today, lessons };
   }
 
   async getAttendance(studentId: string, tenantId: string) {

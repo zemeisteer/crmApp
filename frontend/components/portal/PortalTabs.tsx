@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { fileUrl, type PortalAttendance, type PortalHomework, type PortalPayments, type PortalSchedule } from "@/lib/api";
+import { useEffect, useState } from "react";
+import { fileUrl, portalApi, type PortalAttendance, type PortalHomework, type PortalPastLesson, type PortalPayments, type PortalSchedule } from "@/lib/api";
 import { useLanguage } from "@/lib/i18n-context";
 import { MONTH_KEYS, type TranslationKey } from "@/lib/i18n";
 
@@ -55,6 +55,7 @@ function Pill({ children, tone }: { children: React.ReactNode; tone: "green" | "
 
 export function ScheduleTab({ schedule }: { schedule: PortalSchedule | null }) {
   const { t } = useLanguage();
+  const [view, setView] = useState<"week" | "past">("week");
   const timetable = schedule?.timetable ?? [];
   // Groups without timetable rows only (the rest are already in the week).
   const inTimetable = new Set(timetable.map((l) => l.group?.name).filter(Boolean));
@@ -69,7 +70,21 @@ export function ScheduleTab({ schedule }: { schedule: PortalSchedule | null }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
       <TabTitle title={t("ptl.schedule")} />
-      {days.length === 0 && fallback.length === 0 ? (
+      <div role="tablist" style={{ display: "flex", gap: 4, background: "#F2F1EC", padding: 4, borderRadius: 12, alignSelf: "flex-start" }}>
+        {(["week", "past"] as const).map((v) => (
+          <button
+            key={v}
+            type="button"
+            role="tab"
+            aria-selected={view === v}
+            onClick={() => setView(v)}
+            style={{ border: "none", cursor: "pointer", padding: "8px 14px", borderRadius: 9, fontSize: 13, fontWeight: 700, background: view === v ? "#fff" : "transparent", color: view === v ? ACCENT : "#6B6E78", boxShadow: view === v ? "0 1px 3px rgba(0,0,0,0.08)" : "none" }}
+          >
+            {v === "week" ? t("pls.week") : t("pls.past")}
+          </button>
+        ))}
+      </div>
+      {view === "past" ? <PastLessons /> : days.length === 0 && fallback.length === 0 ? (
         <Empty icon="🗓️" text={t("ptl.noSchedule")} />
       ) : (
         <>
@@ -112,6 +127,94 @@ export function ScheduleTab({ schedule }: { schedule: PortalSchedule | null }) {
             </div>
           ))}
         </>
+      )}
+    </div>
+  );
+}
+
+const ATT_PILL: Record<string, { key: TranslationKey; tone: "green" | "amber" | "red" | "grey" }> = {
+  PRESENT: { key: "ptl.present", tone: "green" },
+  LATE: { key: "ptl.late", tone: "amber" },
+  ABSENT: { key: "ptl.absent", tone: "red" },
+  EXCUSED: { key: "pls.excused", tone: "grey" },
+};
+
+// Past lessons, newest first: the student's mark, homework given that day and
+// test/exam results, so a missed lesson shows exactly what to catch up on.
+function PastLessons() {
+  const { t } = useLanguage();
+  const [days, setDays] = useState(30);
+  const [data, setData] = useState<PortalPastLesson[] | null>(null);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    let alive = true;
+    portalApi.getPastLessons(days)
+      .then((r) => { if (alive) { setData(r.lessons); setError(false); } })
+      .catch(() => { if (alive) setError(true); });
+    return () => { alive = false; };
+  }, [days]);
+
+  if (error) return <Empty icon="⚠️" text={t("common.errorGeneric")} />;
+  if (!data) return <div style={{ ...card, color: "#8A8D96", fontSize: 14 }}>{t("common.loading")}</div>;
+  if (data.length === 0) return <Empty icon="📚" text={t("pls.none")} />;
+
+  const hwStatus = (st: string | null): { key: TranslationKey; tone: "green" | "amber" | "grey" | "accent" } =>
+    st === "GRADED" ? { key: "pls.hwGraded", tone: "green" } : st === "SUBMITTED" ? { key: "pls.hwSubmitted", tone: "accent" } : { key: "pls.hwTodo", tone: "amber" };
+  const weekday = (date: string) => { const d = new Date(`${date}T00:00:00`).getDay(); return t(DAY_KEYS[d === 0 ? 6 : d - 1]); };
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      {data.map((l) => {
+        const att = l.attendance ? ATT_PILL[l.attendance] : null;
+        return (
+          <div key={`${l.groupId}-${l.date}`} style={{ ...card, display: "flex", flexDirection: "column", gap: 10, opacity: l.cancelled ? 0.65 : 1, borderLeft: `4px solid ${att?.tone === "red" ? "#DC2626" : att?.tone === "amber" ? "#F59E0B" : att ? "#1FA463" : "#EAE8E2"}` }}>
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "flex-start" }}>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: 12, fontWeight: 800, color: "#8A8D96", textTransform: "uppercase", letterSpacing: "0.03em" }}>
+                  {weekday(l.date)} · {l.date.slice(8, 10)}.{l.date.slice(5, 7)}{l.startTime ? ` · ${l.startTime}${l.endTime ? `–${l.endTime}` : ""}` : ""}
+                </div>
+                <div style={{ fontSize: 15, fontWeight: 700, marginTop: 2 }}>{l.groupName}</div>
+                <div style={{ fontSize: 12.5, color: "#6B6E78", marginTop: 2, display: "flex", flexWrap: "wrap", gap: "2px 10px" }}>
+                  {l.teacher && <span>👤 {l.teacher}</span>}
+                  {l.topic && <span>📖 {l.topic}</span>}
+                </div>
+              </div>
+              {l.cancelled ? <Pill tone="grey">{t("pls.cancelled")}</Pill> : att ? <Pill tone={att.tone}>{t(att.key)}</Pill> : <Pill tone="grey">{t("pls.noMark")}</Pill>}
+            </div>
+            {l.homework.map((h) => {
+              const st = hwStatus(h.status);
+              return (
+                <div key={h.id} style={{ background: "#F9F8F5", borderRadius: 12, padding: "10px 12px" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center" }}>
+                    <div style={{ fontSize: 13.5, fontWeight: 700 }}>📝 {h.title}</div>
+                    <Pill tone={st.tone}>{h.status === "GRADED" && h.score != null ? `${h.score}/${h.maxScore}` : t(st.key)}</Pill>
+                  </div>
+                  {h.description && <div style={{ fontSize: 13, color: "#4A4E58", marginTop: 4, whiteSpace: "pre-wrap" }}>{h.description}</div>}
+                  {h.attachmentPath && (
+                    <a href={fileUrl(h.attachmentPath) ?? undefined} target="_blank" rel="noreferrer" style={{ display: "inline-block", marginTop: 6, fontSize: 12.5, fontWeight: 700, color: ACCENT }}>📎 {h.attachmentName || t("pls.file")}</a>
+                  )}
+                </div>
+              );
+            })}
+            {l.exams.map((e) => {
+              const passed = e.score != null && e.passingScore != null ? e.score >= e.passingScore : null;
+              return (
+                <div key={e.id} style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center", background: "#F5F3FF", borderRadius: 12, padding: "10px 12px" }}>
+                  <div style={{ fontSize: 13.5, fontWeight: 700 }}>🏆 {e.title}</div>
+                  <Pill tone={e.score == null ? "grey" : passed === false ? "red" : "green"}>
+                    {e.score == null ? t("pls.noResult") : `${e.score}/${e.maxScore}`}
+                  </Pill>
+                </div>
+              );
+            })}
+          </div>
+        );
+      })}
+      {days < 90 && (
+        <button type="button" onClick={() => { setData(null); setDays(90); }} style={{ ...card, cursor: "pointer", fontSize: 13, fontWeight: 700, color: ACCENT, textAlign: "center" }}>
+          {t("pls.more")}
+        </button>
       )}
     </div>
   );

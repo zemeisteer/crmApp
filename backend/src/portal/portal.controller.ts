@@ -3,6 +3,7 @@ import {
   Controller,
   ForbiddenException,
   Get,
+  Query,
   Param,
   Post,
   UseGuards,
@@ -75,6 +76,13 @@ export class PortalController {
   @Get('schedule')
   getSchedule(@PortalUser() user: PortalUserPayload) {
     return this.service.getSchedule(user.studentId, user.tenantId);
+  }
+
+  // Past lessons with attendance, homework and results (?days=30, max 90).
+  @UseGuards(PortalAuthGuard)
+  @Get('lessons')
+  getPastLessons(@PortalUser() user: PortalUserPayload, @Query('days') days?: string) {
+    return this.service.getPastLessons(user.studentId, user.tenantId, days ? Number(days) : 30);
   }
 
   @UseGuards(PortalAuthGuard)
