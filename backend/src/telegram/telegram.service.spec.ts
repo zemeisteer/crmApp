@@ -38,6 +38,11 @@ describe('TelegramService (Secure Link Token)', () => {
       insert: vi.fn().mockReturnValue({
         values: vi.fn().mockResolvedValue([]),
       }),
+      // select(...).from(...)[.innerJoin/.where/.orderBy]: no parent chats
+      select: vi.fn(() => {
+        const chain: any = { from: () => chain, innerJoin: () => chain, where: () => chain, orderBy: () => chain, then: (res: (v: unknown[]) => unknown) => res([]) };
+        return chain;
+      }),
       update: vi.fn().mockReturnValue({
         set: vi.fn().mockReturnValue({
           where: vi.fn().mockResolvedValue([]),

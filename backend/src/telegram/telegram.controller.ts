@@ -67,7 +67,9 @@ export class TelegramController {
   generateLinkToken(
     @CurrentUser('tenantId') tenantId: string,
     @Body('studentId') studentId: string,
+    @Body('purpose') purpose?: string,
   ) {
-    return this.service.generateLinkToken(tenantId, studentId);
+    // 'PARENT' adds a parent's chat; anything else links the student's own.
+    return this.service.generateLinkToken(tenantId, studentId, purpose === 'PARENT' ? 'PARENT' : 'STUDENT');
   }
 }

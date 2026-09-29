@@ -66,6 +66,7 @@ describe('NotificationsService', () => {
     mockTelegram = {
       sendMessage: vi.fn().mockResolvedValue(true),
       notifyStudent: vi.fn().mockResolvedValue(true),
+      parentChatIds: vi.fn().mockResolvedValue([]),
     };
 
     mockEskiz = {

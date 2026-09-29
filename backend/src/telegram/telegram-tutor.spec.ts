@@ -37,6 +37,8 @@ describe('TelegramService AI tutor', () => {
       // count() for the quota, recent turns for the history
       select: vi.fn(() => ({
         from: () => ({
+          // parent chats: none in these tests
+          innerJoin: () => ({ where: () => ({ orderBy: async () => [] }) }),
           where: () => {
             const quota = Promise.resolve([{ n: usedToday }]);
             return Object.assign(quota, {

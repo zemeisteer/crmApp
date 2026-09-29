@@ -5,6 +5,7 @@ import { DB, Database } from '../db/db.module';
 import { enrollments, groups, reminderLog, students, teachers, tenants, users } from '../db/schema';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PaymentsService } from '../payments/payments.service';
+import { TelegramService } from '../telegram/telegram.service';
 import { DEFAULT_TIMEZONE, isValidTimeZone, zonedParts } from '../common/timezone';
 import { runsOn } from '../common/weekdays';
 
@@ -33,6 +34,7 @@ export class RemindersService {
     private readonly config: ConfigService,
     private readonly notifications: NotificationsService,
     private readonly payments: PaymentsService,
+    private readonly telegram: TelegramService,
   ) {}
 
   // One pass over every live center. `now` is injectable for tests.
@@ -103,11 +105,12 @@ export class RemindersService {
         .where(and(eq(enrollments.groupId, g.id), eq(enrollments.status, 'ACTIVE'), eq(students.status, 'ACTIVE'), isNull(students.deletedAt)));
       for (const k of kids) {
         if (!k.chat || !(await this.once(t.id, 'LESSON', k.id, key))) continue;
+        // Only the student's own chat (no studentId: parents are not pinged
+        // before every lesson).
         await this.notifications.send(t.id, {
           channel: 'TELEGRAM',
           event: 'LESSON_REMINDER',
           recipient: k.chat,
-          studentId: k.id,
           content: `⏰ Eslatma: bugun soat <b>${time}</b> da "${escape(g.name)}" darsi bor. Kechikmang!`,
         });
         sent++;
@@ -155,7 +158,8 @@ export class RemindersService {
     for (const d of due) {
       if (!(await this.once(t.id, 'PAYMENT', d.studentId, c.month))) continue;
       const text = `Hurmatli ota-ona / o'quvchi! ${d.studentName} uchun ${c.month} oyi to'lovi: ${money(d.debtAmount)} so'm. Iltimos, o'z vaqtida to'lang. ${t.name}`;
-      const chat = chats.get(d.studentId);
+      // Telegram to the student and linked parents (send() fans out by studentId).
+      const chat = chats.get(d.studentId) ?? (await this.telegram.parentChatIds(d.studentId))[0];
       if (chat) {
         await this.notifications.send(t.id, { channel: 'TELEGRAM', event: 'PAYMENT_DUE', recipient: chat, studentId: d.studentId, content: escape(text) });
       }

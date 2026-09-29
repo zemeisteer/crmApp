@@ -6,6 +6,7 @@ import Link from "next/link";
 import DashboardShell from "@/components/DashboardShell";
 import StudentPortalPin from "@/components/students/StudentPortalPin";
 import StudentStatusModal, { STATUS_STYLE } from "@/components/students/StudentStatusModal";
+import ParentBotLink from "@/components/students/ParentBotLink";
 import Modal from "@/components/Modal";
 import Select from "@/components/Select";
 import MonthPicker from "@/components/MonthPicker";
@@ -510,6 +511,7 @@ function StudentDetailContent() {
               ) : (
                 <span style={{ fontSize: 12, color: "#8A8D96" }}>{t("studentDetail.telegramNotConfigured")}</span>
               )}
+              {botUsername && <ParentBotLink studentId={student.id} />}
             </div>
           </div>
         </div>

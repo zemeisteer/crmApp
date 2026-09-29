@@ -19,6 +19,7 @@ import {
   students,
   teachers,
   telegramLinkTokens,
+  telegramParentChats,
   tenants,
   users,
 } from '../db/schema';
@@ -41,6 +42,18 @@ const MAIN_KEYBOARD = {
     [{ text: "💳 Balans va to'lov" }, { text: '📊 Davomat' }],
     [{ text: '🎯 Imtihonlar' }, { text: "📢 E'lonlar" }],
     [{ text: '🪪 Mening QR-kodim' }, { text: 'ℹ️ Markaz haqida' }],
+  ],
+  resize_keyboard: true,
+};
+
+// Parents: the child's information, no AI tutor or student QR card.
+const CHILDREN_BUTTON = '👨‍👩‍👧 Farzandlarim';
+const PARENT_KEYBOARD = {
+  keyboard: [
+    [{ text: '📅 Dars jadvali' }, { text: '📊 Davomat' }],
+    [{ text: "💳 Balans va to'lov" }, { text: '📝 Uy vazifalar' }],
+    [{ text: '🎯 Imtihonlar' }, { text: "📢 E'lonlar" }],
+    [{ text: CHILDREN_BUTTON }],
   ],
   resize_keyboard: true,
 };
@@ -75,6 +88,8 @@ const SOURCE_LABEL: Record<string, string> = {
   INSTAGRAM: 'Instagram', TELEGRAM: 'Telegram', WEBSITE: 'Sayt', REFERRAL: 'Tavsiya',
   WALK_IN: "O'zi keldi", PHONE: "Qo'ng'iroq", ADVERTISEMENT: 'Reklama', OTHER: 'Boshqa',
 };
+
+type MenuStudent = typeof students.$inferSelect & { tenant: typeof tenants.$inferSelect | null };
 
 type StaffUser = { id: string; fullName: string; tenantId: string | null; role: string };
 
@@ -168,7 +183,7 @@ export class TelegramService {
 
   // Generates a cryptographically secure, 15-minute single-use linking token.
   // Master Spec Section 32: Raw student IDs must NEVER be used directly in deep links.
-  async generateLinkToken(tenantId: string, studentId: string) {
+  async generateLinkToken(tenantId: string, studentId: string, purpose: 'STUDENT' | 'PARENT' = 'STUDENT') {
     const student = await this.db.query.students.findFirst({
       where: and(eq(students.id, studentId), eq(students.tenantId, tenantId)),
     });
@@ -182,12 +197,13 @@ export class TelegramService {
     await this.db.insert(telegramLinkTokens).values({
       tenantId,
       studentId,
+      purpose,
       token,
       expiresAt,
     });
 
     const linkUrl = this.botUsername
-      ? `https://t.me/${this.botUsername}?start=link_${token}`
+      ? `https://t.me/${this.botUsername}?start=${purpose === 'PARENT' ? 'parent' : 'link'}_${token}`
       : null;
 
     return {
@@ -493,10 +509,12 @@ export class TelegramService {
   }
 
 
+  // The student's own chat and every linked parent's chat.
   async notifyStudent(studentId: string, text: string) {
     const student = await this.db.query.students.findFirst({ where: eq(students.id, studentId) });
-    if (!student?.telegramChatId) return;
-    await this.sendMessage(student.telegramChatId, text);
+    if (!student) return;
+    const chats = new Set([student.telegramChatId, ...(await this.parentChatIds(studentId))].filter((c): c is string => Boolean(c)));
+    for (const chat of chats) await this.sendMessage(chat, text);
   }
 
   async notifyGroup(tenantId: string, groupId: string, text: string) {
@@ -521,7 +539,7 @@ export class TelegramService {
     const student = await this.db.query.students.findFirst({
       where: eq(students.id, studentId),
     });
-    if (!student?.telegramChatId) return;
+    if (!student) return;
 
     const percentage = Math.round((score / (maxScore || 100)) * 100);
     let grade = 'B';
@@ -533,7 +551,8 @@ export class TelegramService {
 
     const message = `🎯 <b>Imtihon natijangiz e'lon qilindi!</b>\n\n📌 <b>Imtihon:</b> ${examTitle}\n📊 <b>To'plagan ballingiz:</b> ${score} / ${maxScore} (${percentage}%)\n🏅 <b>Baholash:</b> ${grade}${note ? `\n💬 <b>Izoh:</b> ${note}` : ''}\n\n<i>TalimCRM tizimi orqali yuborildi.</i>`;
 
-    await this.sendMessage(student.telegramChatId, message);
+    // The student and their linked parents.
+    await this.notifyStudent(studentId, message);
   }
 
   // Sends an announcement to everyone in its audience who has linked
@@ -608,6 +627,11 @@ export class TelegramService {
           await this.handleStaffText(chatId, staff, '/start');
           return;
         }
+        const child = await this.parentChild(chatId);
+        if (child) {
+          await this.sendMessage(chatId, `Assalomu alaykum! 👋\n\nFarzandingiz <b>${escapeHtml(child.fullName)}</b> haqidagi ma'lumotlar uchun tugmalardan foydalaning.`, PARENT_KEYBOARD);
+          return;
+        }
         const existingStudent = await this.db.query.students.findFirst({
           where: eq(students.telegramChatId, chatId),
         });
@@ -632,6 +656,11 @@ export class TelegramService {
         return;
       }
 
+      if (rawPayload.startsWith('parent_')) {
+        await this.linkParentChat(chatId, rawPayload.replace('parent_', ''));
+        return;
+      }
+
       const token = rawPayload.startsWith('link_')
         ? rawPayload.replace('link_', '')
         : rawPayload;
@@ -639,6 +668,7 @@ export class TelegramService {
       const linkRecord = await this.db.query.telegramLinkTokens.findFirst({
         where: and(
           eq(telegramLinkTokens.token, token),
+          eq(telegramLinkTokens.purpose, 'STUDENT'),
           isNull(telegramLinkTokens.usedAt),
           gt(telegramLinkTokens.expiresAt, new Date()),
         ),
@@ -694,7 +724,14 @@ export class TelegramService {
       return;
     }
 
-    // 3. Look up the student linked with this chat ID
+    // 3. Parents see their (chosen) child.
+    const child = await this.parentChild(chatId);
+    if (child) {
+      await this.handleParentText(chatId, child, text);
+      return;
+    }
+
+    // 4. Look up the student linked with this chat ID
     const student = await this.db.query.students.findFirst({
       where: eq(students.telegramChatId, chatId),
       with: {
@@ -734,7 +771,12 @@ export class TelegramService {
       return;
     }
 
-    // 4. Dispatch interactive reply keyboard button presses or commands
+    await this.studentMenu(chatId, student, text, MAIN_KEYBOARD, false);
+  }
+
+  // Menu answers about one student - for the student, or for a parent
+  // (with the parent's keyboard).
+  private async studentMenu(chatId: string, student: MenuStudent, text: string, kb: typeof MAIN_KEYBOARD, forParent: boolean) {
     const lower = text.toLowerCase();
 
     // 3A: Schedule
@@ -755,7 +797,7 @@ export class TelegramService {
         await this.sendMessage(
           chatId,
           `📅 <b>Dars jadvali:</b>\n\n👤 O'quvchi: <b>${student.fullName}</b>\n\nSiz hozircha birorta faol guruhga biriktirilmagansiz.`,
-          MAIN_KEYBOARD,
+          kb,
         );
         return;
       }
@@ -771,7 +813,7 @@ export class TelegramService {
         msg += `\n`;
       }
 
-      await this.sendMessage(chatId, msg, MAIN_KEYBOARD);
+      await this.sendMessage(chatId, msg, kb);
       return;
     }
 
@@ -786,7 +828,7 @@ export class TelegramService {
         await this.sendMessage(
           chatId,
           "Siz faol guruhlarda emassiz, shuning uchun vazifalar mavjud emas.",
-          MAIN_KEYBOARD,
+          kb,
         );
         return;
       }
@@ -807,7 +849,7 @@ export class TelegramService {
         await this.sendMessage(
           chatId,
           "🎉 <b>Ajoyib!</b> Sizga berilgan faol uy vazifalari hozircha yo'q.",
-          MAIN_KEYBOARD,
+          kb,
         );
         return;
       }
@@ -831,7 +873,7 @@ export class TelegramService {
         msg += `Holat: <b>${statusIcon}</b>\n\n`;
       }
 
-      await this.sendMessage(chatId, msg, MAIN_KEYBOARD);
+      await this.sendMessage(chatId, msg, kb);
       return;
     }
 
@@ -863,7 +905,7 @@ export class TelegramService {
       }
 
       msg += `\n📲 <i>To'lovlarni Click, Payme yoki markaz ma'muriyati orqali amalga oshirishingiz mumkin.</i>`;
-      await this.sendMessage(chatId, msg, MAIN_KEYBOARD);
+      await this.sendMessage(chatId, msg, kb);
       return;
     }
 
@@ -902,7 +944,7 @@ export class TelegramService {
         }
       }
 
-      await this.sendMessage(chatId, msg, MAIN_KEYBOARD);
+      await this.sendMessage(chatId, msg, kb);
       return;
     }
 
@@ -922,7 +964,7 @@ export class TelegramService {
         await this.sendMessage(
           chatId,
           "Hozircha topshirilgan imtihon natijalari e'lon qilinmagan.",
-          MAIN_KEYBOARD,
+          kb,
         );
         return;
       }
@@ -937,7 +979,7 @@ export class TelegramService {
         msg += `\n`;
       }
 
-      await this.sendMessage(chatId, msg, MAIN_KEYBOARD);
+      await this.sendMessage(chatId, msg, kb);
       return;
     }
 
@@ -950,7 +992,7 @@ export class TelegramService {
       msg += `📍 <b>Tizim:</b> TalimCRM Education OS\n\n`;
       msg += `<i>Savollar yoki takliflar bo'lsa ma'muriyatga murojaat qiling.</i>`;
 
-      await this.sendMessage(chatId, msg, MAIN_KEYBOARD);
+      await this.sendMessage(chatId, msg, kb);
       return;
     }
 
@@ -983,7 +1025,7 @@ export class TelegramService {
       });
 
       if (recent.length === 0) {
-        await this.sendMessage(chatId, "Hozircha markazda yangi e'lonlar mavjud emas.", MAIN_KEYBOARD);
+        await this.sendMessage(chatId, "Hozircha markazda yangi e'lonlar mavjud emas.", kb);
         return;
       }
 
@@ -995,7 +1037,7 @@ export class TelegramService {
         msg += `${a.content}\n\n`;
       }
 
-      await this.sendMessage(chatId, msg, MAIN_KEYBOARD);
+      await this.sendMessage(chatId, msg, kb);
       return;
     }
 
@@ -1015,7 +1057,7 @@ export class TelegramService {
         );
       } catch (err) {
         this.logger.error(`Failed to generate QR code for student ${student.id}: ${err}`);
-        await this.sendMessage(chatId, `QR-kod generatsiya qilishda xatolik yuz berdi. ID: ${student.id}`, MAIN_KEYBOARD);
+        await this.sendMessage(chatId, `QR-kod generatsiya qilishda xatolik yuz berdi. ID: ${student.id}`, kb);
       }
       return;
     }
@@ -1023,9 +1065,97 @@ export class TelegramService {
     // Default response for unhandled text
     await this.sendMessage(
       chatId,
-      `Assalomu alaykum, <b>${escapeHtml(student.fullName)}</b>! Kerakli bo'limni tanlang.\n\n🤖 Darsdan savolingiz bo'lsa, "${AI_BUTTON}" tugmasini bosing.`,
-      MAIN_KEYBOARD,
+      forParent
+        ? `Farzandingiz <b>${escapeHtml(student.fullName)}</b> haqida: kerakli bo'limni tanlang.`
+        : `Assalomu alaykum, <b>${escapeHtml(student.fullName)}</b>! Kerakli bo'limni tanlang.\n\n🤖 Darsdan savolingiz bo'lsa, "${AI_BUTTON}" tugmasini bosing.`,
+      kb,
     );
   }
-}
 
+  // ---- Parents ----
+
+  // The child a parent's chat is looking at (the active one, else the first).
+  private async parentChild(chatId: string) {
+    const links = await this.db
+      .select({ studentId: telegramParentChats.studentId, active: telegramParentChats.active })
+      .from(telegramParentChats)
+      .innerJoin(students, eq(students.id, telegramParentChats.studentId))
+      .where(and(eq(telegramParentChats.chatId, chatId), isNull(students.deletedAt)))
+      .orderBy(asc(telegramParentChats.createdAt));
+    const pick = links.find((l) => l.active) ?? links[0];
+    if (!pick) return null;
+    return (await this.db.query.students.findFirst({ where: eq(students.id, pick.studentId), with: { tenant: true } })) ?? null;
+  }
+
+  async parentChatIds(studentId: string): Promise<string[]> {
+    const rows = await this.db.select({ chat: telegramParentChats.chatId }).from(telegramParentChats).where(eq(telegramParentChats.studentId, studentId));
+    return [...new Set(rows.map((r) => r.chat))];
+  }
+
+  private async linkParentChat(chatId: string, token: string) {
+    const rec = await this.db.query.telegramLinkTokens.findFirst({
+      where: and(
+        eq(telegramLinkTokens.token, token),
+        eq(telegramLinkTokens.purpose, 'PARENT'),
+        isNull(telegramLinkTokens.usedAt),
+        gt(telegramLinkTokens.expiresAt, new Date()),
+      ),
+      with: { student: true },
+    });
+    if (!rec?.student || rec.student.deletedAt) {
+      await this.sendMessage(chatId, "❌ Havola noto'g'ri, muddati (15 daqiqa) o'tgan yoki oldin ishlatilgan.\n\nMarkazdan yangi havola so'rang.");
+      return;
+    }
+    await this.db.update(telegramLinkTokens).set({ usedAt: new Date() }).where(eq(telegramLinkTokens.id, rec.id));
+    // A chat is one kind of account: a staff link on it is dropped.
+    await this.db.update(users).set({ telegramChatId: null }).where(eq(users.telegramChatId, chatId));
+    await this.db.insert(telegramParentChats).values({ tenantId: rec.tenantId, studentId: rec.student.id, chatId }).onConflictDoNothing();
+    await this.setActiveChild(chatId, rec.student.id);
+    await this.sendMessage(
+      chatId,
+      `✅ Siz <b>${escapeHtml(rec.student.fullName)}</b> ning ota-onasi sifatida ulandingiz.\n\nDavomat, to'lov va baholar haqida xabarlar shu yerga keladi. Boshqa farzandingizni ham ulash uchun markazdan uning havolasini oling.`,
+      PARENT_KEYBOARD,
+    );
+  }
+
+  private async setActiveChild(chatId: string, studentId: string) {
+    await this.db.update(telegramParentChats).set({ active: false }).where(eq(telegramParentChats.chatId, chatId));
+    await this.db.update(telegramParentChats).set({ active: true }).where(and(eq(telegramParentChats.chatId, chatId), eq(telegramParentChats.studentId, studentId)));
+  }
+
+  private async handleParentText(chatId: string, child: MenuStudent, text: string) {
+    if (text === CHILDREN_BUTTON || text === '/children') {
+      const kids = await this.db
+        .select({ id: students.id, fullName: students.fullName })
+        .from(telegramParentChats)
+        .innerJoin(students, eq(students.id, telegramParentChats.studentId))
+        .where(and(eq(telegramParentChats.chatId, chatId), isNull(students.deletedAt)))
+        .orderBy(asc(students.fullName));
+      const rows = kids.map((k) => [{ text: `👤 ${k.fullName}` }]);
+      await this.sendMessage(
+        chatId,
+        `👨‍👩‍👧 <b>Farzandlaringiz</b>\n\nHozir: <b>${escapeHtml(child.fullName)}</b>. Kimning ma'lumotini ko'rmoqchisiz?`,
+        { keyboard: [...rows, [{ text: '⬅️ Menyu' }]], resize_keyboard: true },
+      );
+      return;
+    }
+    if (text.startsWith('👤 ')) {
+      const name = text.slice(3).trim();
+      const [kid] = await this.db
+        .select({ id: students.id, fullName: students.fullName })
+        .from(telegramParentChats)
+        .innerJoin(students, eq(students.id, telegramParentChats.studentId))
+        .where(and(eq(telegramParentChats.chatId, chatId), eq(students.fullName, name), isNull(students.deletedAt)));
+      if (kid) {
+        await this.setActiveChild(chatId, kid.id);
+        await this.sendMessage(chatId, `✅ Endi <b>${escapeHtml(kid.fullName)}</b> ma'lumotlari ko'rsatiladi.`, PARENT_KEYBOARD);
+        return;
+      }
+    }
+    if (text === '⬅️ Menyu' || text === '/menu') {
+      await this.sendMessage(chatId, `Farzandingiz <b>${escapeHtml(child.fullName)}</b>: kerakli bo'limni tanlang.`, PARENT_KEYBOARD);
+      return;
+    }
+    await this.studentMenu(chatId, child, text, PARENT_KEYBOARD, true);
+  }
+}

@@ -212,12 +212,13 @@ export class NotificationsService {
           ? `Hurmatli ota-ona! Farzandingiz ${student.fullName} ${date} kuni "${groupName}" darsiga kelmadi. Sababi bo'lsa markazga xabar bering.`
           : `Hurmatli ota-ona! Farzandingiz ${student.fullName} ${date} kuni "${groupName}" darsiga kechikib keldi.`;
 
-      // 1. Telegram
-      if (student.telegramChatId) {
+      // 1. Telegram: the student's chat and linked parents' chats
+      const parentChats = await this.telegram.parentChatIds(student.id);
+      if (student.telegramChatId || parentChats.length > 0) {
         void this.send(tenantId, {
           channel: 'TELEGRAM',
           event: eventType,
-          recipient: student.telegramChatId,
+          recipient: student.telegramChatId ?? parentChats[0],
           studentId: student.id,
           content: text,
         });

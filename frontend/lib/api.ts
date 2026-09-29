@@ -1619,10 +1619,11 @@ export const platformBillingApi = {
 
 export const telegramApi = {
   status: () => request<{ configured: boolean; botUsername: string | null }>("/telegram/status"),
-  generateLinkToken: (studentId: string) =>
+  // purpose PARENT: a parent's chat (the student's own link stays).
+  generateLinkToken: (studentId: string, purpose: "STUDENT" | "PARENT" = "STUDENT") =>
     request<{ token: string; linkUrl: string | null; expiresAt: string; studentName: string }>("/telegram/link-token", {
       method: "POST",
-      body: JSON.stringify({ studentId }),
+      body: JSON.stringify({ studentId, purpose }),
     }),
   // The signed-in staff member's own Telegram, for CRM reminders.
   myStatus: () => request<{ configured: boolean; botUsername: string | null; linked: boolean }>("/telegram/me"),

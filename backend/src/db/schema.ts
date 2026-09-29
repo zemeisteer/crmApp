@@ -836,6 +836,8 @@ export const telegramLinkTokens = pgTable('telegram_link_tokens', {
   studentId: text('student_id').references(() => students.id, { onDelete: 'cascade' }),
   // Set instead of studentId when a staff member links their own Telegram.
   userId: text('user_id').references(() => users.id, { onDelete: 'cascade' }),
+  // 'STUDENT' links the student's own chat, 'PARENT' adds a parent's chat.
+  purpose: text('purpose').notNull().default('STUDENT'),
   token: text('token').notNull(),
   expiresAt: timestamp('expires_at').notNull(),
   usedAt: timestamp('used_at'),
@@ -871,6 +873,21 @@ export const studentAiMessages = pgTable('student_ai_messages', {
 }, (t) => ({
   studentIdx: index('student_ai_messages_student_idx').on(t.studentId, t.createdAt),
   tenantIdx: index('student_ai_messages_tenant_idx').on(t.tenantId),
+}));
+
+// A parent's Telegram chat, linked to one or more children (the student's
+// own chat stays on students.telegram_chat_id). `active` = the child the
+// parent is looking at in the bot.
+export const telegramParentChats = pgTable('telegram_parent_chats', {
+  id: text('id').primaryKey().$defaultFn(() => createId()),
+  tenantId: text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  studentId: text('student_id').notNull().references(() => students.id, { onDelete: 'cascade' }),
+  chatId: text('chat_id').notNull(),
+  active: boolean('active').notNull().default(false),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+}, (t) => ({
+  studentChatIdx: uniqueIndex('telegram_parent_chats_student_chat_idx').on(t.studentId, t.chatId),
+  chatIdx: index('telegram_parent_chats_chat_idx').on(t.chatId),
 }));
 
 // Admissions & Sales CRM — Leads management
