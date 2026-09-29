@@ -13,6 +13,7 @@ import PortalPractice from "@/components/portal/PortalPractice";
 import type { Lang, TranslationKey } from "@/lib/i18n";
 import {
   portalApi,
+  fileUrl,
   getPortalToken,
   setPortalToken,
   getToken,
@@ -45,6 +46,16 @@ const NAV: Array<{ id: PortalTab; icon: string; label: TranslationKey; short: Tr
   { id: "notifications", icon: "🔔", label: "ptn.notifications", short: "ptn.notifications", bottom: false },
 ];
 const PORTAL_CSS = `
+  .ptl-side{width:236px;flex:0 0 236px;background:#12131A;display:flex;flex-direction:column;padding:20px 14px 14px;box-sizing:border-box;height:100vh;position:sticky;top:0;align-self:flex-start;}
+  .ptl-side-nav{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:2px;margin-bottom:10px;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,0.12) transparent;}
+  .ptl-side-item{display:flex;align-items:center;gap:10px;width:100%;padding:10px 12px;border:none;border-radius:9px;background:transparent;color:#C7C9D1;font-size:14px;font-weight:600;font-family:inherit;text-align:left;cursor:pointer;white-space:nowrap;}
+  .ptl-side-item:hover{background:rgba(255,255,255,0.06);}
+  .ptl-side-item.on{background:#4F46E5;color:#fff;}
+  .ptl-count{background:#EF4444;color:#fff;font-size:10.5px;font-weight:800;padding:1px 6px;border-radius:100px;line-height:1.5;}
+  .ptl-ai-badge{font-size:9.5px;font-weight:800;background:linear-gradient(135deg,#8B7CF6,#4F46E5);color:#fff;padding:2px 6px;border-radius:5px;}
+  .ptl-head{display:none;}
+  .ptl-bell{position:relative;display:inline-flex;align-items:center;gap:4px;height:32px;padding:0 8px;border-radius:9px;border:1px solid #E2E8F0;background:#F8FAFC;color:#475569;cursor:pointer;}
+  .ptl-bell .ptl-count{position:absolute;top:-6px;right:-6px;}
   .ptl-bottom{display:none;}
   .ptl-kids{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:14px;}
   .ptl-kids button{border:1px solid #EAE8E2;background:#fff;color:#4A4E58;border-radius:100px;padding:7px 14px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;}
@@ -53,27 +64,55 @@ const PORTAL_CSS = `
   .ptl-parent-badge{font-size:12px;font-weight:800;color:#9D174D;background:#FDF2F8;border-radius:100px;padding:6px 10px;margin-right:2px;}
   .ptl-add-child{background:linear-gradient(135deg,#0F172A,#1E1B4B);color:#fff;border-radius:18px;padding:18px;margin-bottom:14px;}
   .ptl-ai-cta{width:100%;display:flex;align-items:center;gap:12px;margin-bottom:14px;padding:14px 16px;border:none;border-radius:16px;cursor:pointer;color:#fff;background:linear-gradient(135deg,#4F46E5,#7C3AED);box-shadow:0 14px 30px -18px rgba(79,70,229,0.9);font-family:inherit;}
-  @media (max-width:640px){
-    .ptl-top{display:none;}
+  @media (max-width:760px){
+    .ptl-side{display:none;}
+    .ptl-head{display:flex;align-items:center;justify-content:space-between;gap:10px;position:sticky;top:0;z-index:30;background:#fff;border-bottom:1px solid #E2E8F0;padding:10px 14px;}
     .ptl-bottom{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:40;background:rgba(255,255,255,0.97);backdrop-filter:blur(8px);border-top:1px solid #EAE8E2;padding:0 4px env(safe-area-inset-bottom);box-shadow:0 -6px 20px rgba(18,19,26,0.06);}
     .ptl-main{padding-bottom:96px!important;}
   }
 `;
 
+const svg = (children: React.ReactNode) => (
+  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden style={{ flexShrink: 0 }}>
+    {children}
+  </svg>
+);
+const ICONS: Record<PortalTab | "logout" | "logo", React.ReactNode> = {
+  home: svg(<><rect x="3" y="3" width="7" height="9" rx="1.5" /><rect x="14" y="3" width="7" height="5" rx="1.5" /><rect x="14" y="12" width="7" height="9" rx="1.5" /><rect x="3" y="16" width="7" height="5" rx="1.5" /></>),
+  schedule: svg(<><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></>),
+  homework: svg(<><path d="M9 4H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-3" /><rect x="8" y="2" width="8" height="4" rx="1" /><path d="M9 14l2 2 4-4" /></>),
+  ai: svg(<><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8L12 3Z" /><path d="M19 15l.7 2 2 .7-2 .7-.7 2-.7-2-2-.7 2-.7.7-2Z" /></>),
+  practice: svg(<><circle cx="12" cy="12" r="9" /><circle cx="12" cy="12" r="5" /><circle cx="12" cy="12" r="1" /></>),
+  exams: svg(<><path d="M9 11l3 3L22 4" /><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" /></>),
+  payments: svg(<><rect x="2" y="5" width="20" height="14" rx="2" /><path d="M2 10h20" /></>),
+  attendance: svg(<><path d="M16 3.13a4 4 0 0 1 0 7.75M21 21v-2a4 4 0 0 0-3-3.87M3 21v-2a4 4 0 0 1 4-4h6a4 4 0 0 1 4 4v2" /><circle cx="10" cy="7" r="4" /></>),
+  notifications: svg(<><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.73 21a2 2 0 0 1-3.46 0" /></>),
+  logout: svg(<><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><path d="M16 17l5-5-5-5" /><path d="M21 12H9" /></>),
+  logo: (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M22 10 12 5 2 10l10 5 10-5Z" />
+      <path d="M6 12v5c0 1.5 2.7 3 6 3s6-1.5 6-3v-5" />
+    </svg>
+  ),
+};
+
+const initials = (name?: string | null) =>
+  (name ?? "?").split(" ").filter(Boolean).map((w) => w[0]).slice(0, 2).join("").toUpperCase() || "?";
+
 // Portal users (students, parents) pick their own language here.
-function LangSwitch({ lang, setLang, dark }: { lang: Lang; setLang: (l: Lang) => void; dark?: boolean }) {
+function LangSwitch({ lang, setLang, dark, full }: { lang: Lang; setLang: (l: Lang) => void; dark?: boolean; full?: boolean }) {
   return (
-    <div style={{ display: "inline-flex", gap: 4 }}>
+    <div style={{ display: full ? "flex" : "inline-flex", gap: 4 }}>
       {(["UZ", "RU", "EN"] as Lang[]).map((l) => (
         <button
           key={l}
           type="button"
           onClick={() => setLang(l)}
           style={{
-            fontSize: 11, fontWeight: 700, padding: "5px 8px", borderRadius: 7, cursor: "pointer",
+            flex: full ? 1 : undefined, fontSize: 11, fontWeight: 700, padding: "5px 8px", borderRadius: 7, cursor: "pointer",
             border: "none",
-            background: lang === l ? ACCENT : dark ? "rgba(255,255,255,0.1)" : "#F1F5F9",
-            color: lang === l ? "#fff" : dark ? "#CBD5E1" : "#64748B",
+            background: lang === l ? ACCENT : dark ? "rgba(255,255,255,0.08)" : "#F1F5F9",
+            color: lang === l ? "#fff" : dark ? "#9A9CA5" : "#64748B",
           }}
         >
           {l}
@@ -251,6 +290,11 @@ export default function StudentPortalPage() {
     }
   }
 
+  function go(tab: PortalTab) {
+    setActiveTab(tab);
+    window.scrollTo(0, 0);
+  }
+
   function handleLogout() {
     clearPortalToken();
     setSessions([]);
@@ -402,138 +446,76 @@ export default function StudentPortalPage() {
         color: "#181A1F",
         fontFamily: "'Inter', sans-serif",
         display: "flex",
-        flexDirection: "column",
       }}
     >
-      {/* Top Navbar */}
-      <header
-        style={{
-          background: "#fff",
-          borderBottom: "1px solid #E2E8F0",
-          padding: "14px 20px",
-          position: "sticky",
-          top: 0,
-          zIndex: 30,
-          boxShadow: "0 1px 3px rgba(0,0,0,0.03)",
-        }}
-      >
-        <div
-          style={{
-            maxWidth: 1000,
-            margin: "0 auto",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: 10,
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0, flex: 1 }}>
-            <div
-              style={{
-                flexShrink: 0,
-                width: 40,
-                height: 40,
-                borderRadius: 12,
-                background: "#EEF2FF",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontSize: 20,
-              }}
-            >
-              🎓
-            </div>
-            <div style={{ minWidth: 0 }}>
-              <div style={{ fontSize: 14, fontWeight: 800, color: "#1E293B", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                {me?.tenant?.name || t("ptl.center")}
-              </div>
-              <div style={{ fontSize: 11.5, color: "#64748B", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                {me?.fullName || t("ptl.student")}
-              </div>
-            </div>
+      <style>{PORTAL_CSS}</style>
+      {/* Desktop: dark sidebar like the staff app. Phones: bottom bar. */}
+      <aside className="ptl-side">
+        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 6px 20px" }}>
+          {me?.tenant?.logoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={fileUrl(me.tenant.logoUrl) || ""} alt="" style={{ width: 30, height: 30, borderRadius: 8, objectFit: "cover", flexShrink: 0, background: "#fff" }} />
+          ) : (
+            <div style={{ width: 30, height: 30, borderRadius: 8, background: ACCENT, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{ICONS.logo}</div>
+          )}
+          <span style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 800, fontSize: 16, color: "#fff", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={me?.tenant?.name}>
+            {me?.tenant?.name || t("ptl.center")}
+          </span>
+        </div>
+        <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", color: "#5B5E68", padding: "0 10px 8px" }}>{t("ptl.cabinet")}</div>
+        <nav className="ptl-side-nav" aria-label="menu">
+          {nav.map((tab) => {
+            const on = activeTab === tab.id;
+            return (
+              <button key={tab.id} type="button" onClick={() => go(tab.id)} aria-current={on ? "page" : undefined} className={`ptl-side-item${on ? " on" : ""}`}>
+                {ICONS[tab.id]}
+                <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis" }}>{t(tab.label)}</span>
+                {tab.id === "notifications" && notifCount > 0 && <span className="ptl-count">{notifCount}</span>}
+                {tab.id === "ai" && <span className="ptl-ai-badge">AI</span>}
+              </button>
+            );
+          })}
+        </nav>
+        <div style={{ padding: "0 4px 10px" }}><LangSwitch lang={lang} setLang={setLang} dark full /></div>
+        <button type="button" onClick={handleLogout} className="ptl-side-item">
+          {ICONS.logout}
+          {t("ptl.logout")}
+        </button>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 8px 0", marginTop: 6, borderTop: "1px solid rgba(255,255,255,0.08)" }}>
+          <div style={{ width: 30, height: 30, borderRadius: "50%", background: ACCENT, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 12, flexShrink: 0 }}>
+            {initials(me?.fullName)}
           </div>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: "#fff", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{me?.fullName || t("ptl.student")}</div>
+            <div style={{ fontSize: 11, color: "#71737C" }}>{isParent ? t("ptp.parentView") : t("ptl.student")}</div>
+          </div>
+        </div>
+      </aside>
 
-          <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
-            <button
-              onClick={() => setActiveTab("notifications")}
-              style={{
-                position: "relative",
-                background: activeTab === "notifications" ? "#EEF2FF" : "#F8FAFC",
-                color: activeTab === "notifications" ? ACCENT : "#475569",
-                border: activeTab === "notifications" ? `1.5px solid ${ACCENT}` : "1px solid #E2E8F0",
-                fontSize: 12.5,
-                fontWeight: 700,
-                padding: "6px 12px",
-                borderRadius: 8,
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                gap: 6,
-              }}
-            >
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
-                <path d="M13.73 21a2 2 0 0 1-3.46 0" />
-              </svg>
-              <span className="hide-sm">{t("ptl.messages")}</span>
-              {notifCount > 0 && (
-                <span
-                  style={{
-                    background: "#EF4444",
-                    color: "#fff",
-                    fontSize: 10,
-                    fontWeight: 800,
-                    padding: "1px 6px",
-                    borderRadius: 100,
-                  }}
-                >
-                  {notifCount}
-                </span>
-              )}
-            </button>
-            <LangSwitch lang={lang} setLang={setLang} />
-            <button
-              onClick={handleLogout}
-              style={{
-                background: "#F1F5F9",
-                color: "#64748B",
-                border: "none",
-                fontSize: 12,
-                fontWeight: 600,
-                padding: "6px 12px",
-                borderRadius: 8,
-                cursor: "pointer",
-              }}
-            >
-              {t("ptl.logout")}
-            </button>
+      <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
+      {/* Phone header: center, messages, language, sign out */}
+      <header className="ptl-head">
+        <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0, flex: 1 }}>
+          <div style={{ flexShrink: 0, width: 36, height: 36, borderRadius: 11, background: "#EEF2FF", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>🎓</div>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontSize: 14, fontWeight: 800, color: "#1E293B", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{me?.tenant?.name || t("ptl.center")}</div>
+            <div style={{ fontSize: 11.5, color: "#64748B", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{me?.fullName || t("ptl.student")}</div>
           </div>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+          <button type="button" onClick={() => go("notifications")} aria-label={t("ptl.messages")} className="ptl-bell">
+            {ICONS.notifications}
+            {notifCount > 0 && <span className="ptl-count">{notifCount}</span>}
+          </button>
+          <LangSwitch lang={lang} setLang={setLang} />
+          <button type="button" onClick={handleLogout} aria-label={t("ptl.logout")} className="ptl-bell">{ICONS.logout}</button>
         </div>
       </header>
-
-      <style>{PORTAL_CSS}</style>
-      {/* Tabs: a pill row on wide screens, a bottom bar on phones */}
-      <div className="ptl-top" style={{ background: "#fff", borderBottom: "1px solid #EAE8E2" }}>
-        <div style={{ maxWidth: 1000, margin: "0 auto", display: "flex", padding: "10px 16px", gap: 6, overflowX: "auto" }}>
-          {nav.map((tab) => (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => setActiveTab(tab.id)}
-              style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "9px 14px", border: "none", borderRadius: 10, fontSize: 13.5, fontWeight: activeTab === tab.id ? 700 : 600, background: activeTab === tab.id ? "#EEF0FF" : "transparent", color: activeTab === tab.id ? ACCENT : "#6B6E78", cursor: "pointer", whiteSpace: "nowrap" }}
-            >
-              <span aria-hidden>{tab.icon}</span>
-              {t(tab.label)}
-              {tab.id === "notifications" && notifCount > 0 && <span style={{ background: "#EF4444", color: "#fff", fontSize: 10.5, fontWeight: 800, padding: "1px 6px", borderRadius: 100 }}>{notifCount}</span>}
-            </button>
-          ))}
-        </div>
-      </div>
       <nav className="ptl-bottom" aria-label="menu">
         {nav.filter((x) => x.bottom).map((tab) => {
           const on = activeTab === tab.id;
           return (
-            <button key={tab.id} type="button" onClick={() => { setActiveTab(tab.id); window.scrollTo(0, 0); }} aria-current={on ? "page" : undefined} style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 3, padding: "8px 2px 6px", border: "none", background: "transparent", color: on ? ACCENT : "#8A8D96", cursor: "pointer" }}>
+            <button key={tab.id} type="button" onClick={() => go(tab.id)} aria-current={on ? "page" : undefined} style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 3, padding: "8px 2px 6px", border: "none", background: "transparent", color: on ? ACCENT : "#8A8D96", cursor: "pointer" }}>
               <span aria-hidden style={{ fontSize: 19, lineHeight: 1, filter: on ? "none" : "grayscale(1)", opacity: on ? 1 : 0.75 }}>{tab.icon}</span>
               <span style={{ fontSize: 10.5, fontWeight: on ? 800 : 600, maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t(tab.short)}</span>
               <span style={{ width: 18, height: 3, borderRadius: 3, background: on ? ACCENT : "transparent" }} />
@@ -587,7 +569,7 @@ export default function StudentPortalPage() {
           </div>
         )}
         {activeTab === "home" && !isParent && (
-          <button type="button" onClick={() => setActiveTab("ai")} className="ptl-ai-cta">
+          <button type="button" onClick={() => go("ai")} className="ptl-ai-cta">
             <span style={{ fontSize: 26 }} aria-hidden>🤖</span>
             <span style={{ flex: 1, minWidth: 0, textAlign: "left" }}>
               <span style={{ display: "block", fontFamily: "'Manrope', sans-serif", fontWeight: 800, fontSize: 15.5 }}>{t("tutor.ctaTitle")}</span>
@@ -604,7 +586,7 @@ export default function StudentPortalPage() {
             homework={homework}
             payments={payments}
             announcements={announcements}
-            onOpen={(tab) => setActiveTab(tab)}
+            onOpen={(tab) => go(tab)}
             parent={isParent}
           />
         )}
@@ -737,11 +719,12 @@ export default function StudentPortalPage() {
           <PortalMessages
             announcements={announcements}
             debt={payments && payments.debtAmount > 0 ? { amount: payments.debtAmount, forMonth: payments.forMonth } : null}
-            onPay={() => setActiveTab("payments")}
+            onPay={() => go("payments")}
             onRead={markRead}
           />
         )}
       </main>
+      </div>
     </div>
   );
 }
