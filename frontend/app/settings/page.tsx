@@ -958,6 +958,8 @@ function NotificationsSettingsTab() {
         notifyOnAttendance: settings.notifyOnAttendance,
         notifyOnPayment: settings.notifyOnPayment,
         notifyOnHomework: settings.notifyOnHomework,
+        remindPaymentDay: settings.remindPaymentDay,
+        remindLessons: settings.remindLessons,
       };
       if (tokenInput.trim()) {
         payload.smsApiToken = tokenInput.trim();
@@ -1108,6 +1110,27 @@ function NotificationsSettingsTab() {
                   <span><b>{t("ntf.trHomeworkB")}</b> {t("ntf.trHomework")}</span>
                 </label>
               </div>
+            </div>
+
+            <div style={{ background: "#F8F8FF", border: "1px solid #E0E7FF", borderRadius: 12, padding: 14, display: "grid", gap: 12 }}>
+              <div>
+                <div style={{ fontSize: 13.5, fontWeight: 800 }}>⏰ {t("rem.title")}</div>
+                <div style={{ fontSize: 12.5, color: "#6B6E78", marginTop: 2, lineHeight: 1.5 }}>{t("rem.hint")}</div>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                <span style={{ fontSize: 13, fontWeight: 600, minWidth: 180 }}>💳 {t("rem.paymentDay")}</span>
+                <div style={{ width: 200 }}>
+                  <Select
+                    value={String(settings.remindPaymentDay ?? 5)}
+                    onChange={(v) => setSettings({ ...settings, remindPaymentDay: Number(v) })}
+                    options={[{ value: "0", label: t("rem.off") }, ...Array.from({ length: 28 }, (_, i) => ({ value: String(i + 1), label: t("rem.dayOf").replace("{n}", String(i + 1)) }))]}
+                  />
+                </div>
+              </div>
+              <label style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13, cursor: "pointer" }}>
+                <input type="checkbox" checked={settings.remindLessons ?? true} onChange={(e) => setSettings({ ...settings, remindLessons: e.target.checked })} style={{ accentColor: ACCENT }} />
+                <span><b>📅 {t("rem.lessons")}</b> {t("rem.lessonsHint")}</span>
+              </label>
             </div>
 
             <button

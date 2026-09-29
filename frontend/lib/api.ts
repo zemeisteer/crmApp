@@ -2423,6 +2423,9 @@ export interface NotificationSettings {
   notifyOnAttendance: boolean;
   notifyOnPayment: boolean;
   notifyOnHomework: boolean;
+  // Automatic reminders: day of month for debtors (0 = off), lessons.
+  remindPaymentDay?: number;
+  remindLessons?: boolean;
 }
 
 export const notificationsApi = {

@@ -2,9 +2,12 @@ import {
   IsArray,
   IsBoolean,
   IsIn,
+  IsInt,
   IsNumber,
   IsOptional,
   IsString,
+  Max,
+  Min,
   MinLength,
 } from 'class-validator';
 import { Type } from 'class-transformer';
@@ -28,6 +31,7 @@ export class SendNotificationDto {
     'EXAM_RESULT',
     'ANNOUNCEMENT',
     'MANUAL',
+    'LESSON_REMINDER',
   ])
   event?:
     | 'ATTENDANCE_ABSENT'
@@ -38,7 +42,8 @@ export class SendNotificationDto {
     | 'HOMEWORK_GRADED'
     | 'EXAM_RESULT'
     | 'ANNOUNCEMENT'
-    | 'MANUAL';
+    | 'MANUAL'
+    | 'LESSON_REMINDER';
 
   @IsOptional()
   @IsString()
@@ -81,6 +86,18 @@ export class UpdateNotificationSettingsDto {
   @IsOptional()
   @IsBoolean()
   notifyOnHomework?: boolean;
+
+  // Day of month debtors get an automatic reminder (0 = off).
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(28)
+  remindPaymentDay?: number;
+
+  // Telegram reminder ~2 hours before each lesson.
+  @IsOptional()
+  @IsBoolean()
+  remindLessons?: boolean;
 }
 
 export class QueryNotificationsDto {

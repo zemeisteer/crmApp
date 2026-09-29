@@ -62,6 +62,7 @@ export const notificationEventEnum = pgEnum('notification_event', [
   'EXAM_RESULT',
   'ANNOUNCEMENT',
   'MANUAL',
+  'LESSON_REMINDER',
 ]);
 
 export const tenantStatusEnum = pgEnum('tenant_status', [
@@ -224,6 +225,10 @@ export const tenants = pgTable('tenants', {
   siteContent: text('site_content'),
   // Questions a student may ask the AI tutor in Telegram per day (0 = off).
   studentAiDailyLimit: integer('student_ai_daily_limit').notNull().default(20),
+  // Automatic reminders: day of month debtors are reminded (0 = off), and
+  // Telegram reminders before lessons.
+  remindPaymentDay: integer('remind_payment_day').notNull().default(5),
+  remindLessons: boolean('remind_lessons').notNull().default(true),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 }, (t) => ({
@@ -838,6 +843,20 @@ export const telegramLinkTokens = pgTable('telegram_link_tokens', {
 }, (t) => ({
   tokenIdx: uniqueIndex('telegram_link_tokens_token_idx').on(t.token),
   tenantIdx: index('telegram_link_tokens_tenant_idx').on(t.tenantId),
+}));
+
+// One row per reminder sent, so a reminder goes out once even across
+// restarts or several servers (kind + target + key is unique).
+export const reminderLog = pgTable('reminder_log', {
+  id: text('id').primaryKey().$defaultFn(() => createId()),
+  tenantId: text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  kind: text('kind').notNull(), // 'PAYMENT' | 'LESSON' | 'LESSON_TEACHER'
+  targetId: text('target_id').notNull(), // student or teacher user id
+  key: text('key').notNull(), // e.g. '2026-09' or '2026-09-29:<groupId>'
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+}, (t) => ({
+  onceIdx: uniqueIndex('reminder_log_once_idx').on(t.kind, t.targetId, t.key),
+  tenantIdx: index('reminder_log_tenant_idx').on(t.tenantId, t.createdAt),
 }));
 
 // A student's conversation with the AI tutor in the Telegram bot (kept for

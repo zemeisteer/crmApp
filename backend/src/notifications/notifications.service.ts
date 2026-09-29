@@ -1,7 +1,8 @@
 import { Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { and, desc, eq, sql } from 'drizzle-orm';
+import { and, desc, eq, isNull, sql } from 'drizzle-orm';
 import { DB, Database } from '../db/db.module';
 import {
+  enrollments,
   notifications,
   payments,
   students,
@@ -38,6 +39,8 @@ export class NotificationsService {
         notifyOnAttendance: true,
         notifyOnPayment: true,
         notifyOnHomework: true,
+        remindPaymentDay: true,
+        remindLessons: true,
       },
     });
     if (!tenant) throw new NotFoundException('Markaz topilmadi');
@@ -59,6 +62,8 @@ export class NotificationsService {
     if (dto.notifyOnAttendance !== undefined) patch.notifyOnAttendance = dto.notifyOnAttendance;
     if (dto.notifyOnPayment !== undefined) patch.notifyOnPayment = dto.notifyOnPayment;
     if (dto.notifyOnHomework !== undefined) patch.notifyOnHomework = dto.notifyOnHomework;
+    if (dto.remindPaymentDay !== undefined) patch.remindPaymentDay = dto.remindPaymentDay;
+    if (dto.remindLessons !== undefined) patch.remindLessons = dto.remindLessons;
 
     await this.db.update(tenants).set(patch).where(eq(tenants.id, tenantId));
     return this.getSettings(tenantId);
@@ -302,10 +307,13 @@ export class NotificationsService {
   async notifyDebtors(tenantId: string, forMonth?: string, targetStudentIds?: string[]) {
     const month = forMonth || new Date().toISOString().slice(0, 7);
 
+    // Same rule as the payments page: only students who study now, only
+    // their ACTIVE enrollments (left students and closed groups owe nothing).
     const studentList = await this.db.query.students.findMany({
-      where: and(eq(students.tenantId, tenantId)),
+      where: and(eq(students.tenantId, tenantId), isNull(students.deletedAt), eq(students.status, 'ACTIVE')),
       with: {
         enrollments: {
+          where: eq(enrollments.status, 'ACTIVE'),
           with: {
             group: true,
           },
@@ -319,7 +327,8 @@ export class NotificationsService {
 
     const paidByStudent: Record<string, number> = {};
     for (const p of monthPayments) {
-      paidByStudent[p.studentId] = (paidByStudent[p.studentId] || 0) + p.amount;
+      // Discounts lower what is owed, as on the payments page.
+      paidByStudent[p.studentId] = (paidByStudent[p.studentId] || 0) + p.amount + (p.discount || 0);
     }
 
     let sentCount = 0;
@@ -328,7 +337,7 @@ export class NotificationsService {
         continue;
       }
 
-      const activeEnrollments = (student.enrollments || []).filter((e) => e.group);
+      const activeEnrollments = (student.enrollments || []).filter((e) => e.group && !e.group.deletedAt);
       const expectedAmount = activeEnrollments.reduce((sum, e) => sum + (e.group?.monthlyPrice || 0), 0);
       const paidAmount = paidByStudent[student.id] || 0;
       const debt = expectedAmount - paidAmount;
