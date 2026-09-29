@@ -6,6 +6,8 @@ export class CreateMockTestDto {
   // Start from the built-in sample test.
   @IsOptional() @IsBoolean() sample?: boolean;
   @IsOptional() @IsObject() content?: Record<string, unknown>;
+  @IsOptional() @IsIn(['B4', 'B5', 'B6', 'B7', 'B8', null]) level?: string | null;
+  @IsOptional() @IsIn(['ACADEMIC', 'GENERAL']) module?: string;
 }
 
 export class UpdateMockTestDto {
@@ -13,6 +15,9 @@ export class UpdateMockTestDto {
   @IsOptional() @IsString() @MaxLength(120) subject?: string;
   @IsOptional() @IsIn(['DRAFT', 'PUBLISHED']) status?: string;
   @IsOptional() @IsObject() content?: Record<string, unknown>;
+  // null clears the level (open to every level).
+  @IsOptional() @IsIn(['B4', 'B5', 'B6', 'B7', 'B8', null]) level?: string | null;
+  @IsOptional() @IsIn(['ACADEMIC', 'GENERAL']) module?: string;
 }
 
 export class ReviewMockAttemptDto {

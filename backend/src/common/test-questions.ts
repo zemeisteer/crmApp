@@ -15,6 +15,7 @@ export const QUESTION_TYPES = [
   'TRANSFORMATION',   // rewrite keeping the meaning (key word given)
   'WORD_FORMATION',   // form a word from the one in capitals
   'ESSAY',            // open writing, graded by the teacher
+  'MCQ_MULTI',        // choose TWO (or more) options; one mark per right letter
 ] as const;
 export type QuestionType = (typeof QUESTION_TYPES)[number];
 
@@ -105,6 +106,22 @@ export function normalizeQuestion(raw: unknown, opts: { requireAnswer?: boolean 
     return { ...base, correctAnswer: '', rubric: str(q.rubric) || answer || null };
   }
 
+  if (type === 'MCQ_MULTI') {
+    const rawOpts = Array.isArray(q.options) ? q.options : [];
+    const options = rawOpts
+      .map((o, i) => (typeof o === 'string'
+        ? { id: String.fromCharCode(65 + i), text: stripLetter(o.trim()) }
+        : { id: str((o as QuestionOption)?.id) || String.fromCharCode(65 + i), text: stripLetter(str((o as QuestionOption)?.text)) }))
+      .filter((o) => o.text);
+    if (options.length < 3) return null;
+    // "A, C" / "A and C" / ["A", "C"] -> "A,C"
+    const rawKey = Array.isArray(q.correctAnswer ?? q.answer) ? (q.correctAnswer ?? q.answer) as unknown[] : answer.split(/[\s,;&/]+|\band\b/i);
+    const ids = new Set(options.map((o) => o.id.toUpperCase()));
+    const letters = [...new Set(rawKey.map((x) => str(x).replace(/[()]/g, '').toUpperCase()).filter((x) => ids.has(x)))].sort();
+    if (letters.length === 0 && requireAnswer) return null;
+    return { ...base, options, correctAnswer: letters.join(','), points: Math.max(letters.length, 1) };
+  }
+
   if (CHOICE_TYPES.includes(type)) {
     let options: QuestionOption[];
     if (type === 'TRUE_FALSE') options = TF_OPTIONS;
@@ -191,6 +208,15 @@ export function gradeAnswer(q: TestQuestion, answer: string | undefined | null):
     const earned = pairs.length ? Math.round(((max * right) / pairs.length) * 100) / 100 : 0;
     return { earned, max, pending: false, correct: right === pairs.length && pairs.length > 0 };
   }
+  if (q.type === 'MCQ_MULTI') {
+    const key = q.correctAnswer.split(',').filter(Boolean);
+    const picked = [...new Set(given.toUpperCase().split(/[\s,]+/).filter(Boolean))];
+    const right = picked.filter((x) => key.includes(x)).length;
+    // Ticking more boxes than asked does not earn the extra marks.
+    const hits = Math.max(0, right - Math.max(0, picked.length - key.length));
+    const earned = key.length ? Math.round(((max * hits) / key.length) * 100) / 100 : 0;
+    return { earned, max, pending: false, correct: key.length > 0 && hits === key.length };
+  }
   if (!given) return { earned: 0, max, pending: false, correct: false };
   let ok: boolean;
   if (CHOICE_TYPES.includes(q.type)) {
@@ -223,6 +249,7 @@ export function publicQuestion(q: TestQuestion, seed = 0) {
   }
   if (q.type === 'WORD_ORDER') return { ...base, words: q.words ?? [] };
   if (CHOICE_TYPES.includes(q.type)) return { ...base, options: q.options ?? [] };
+  if (q.type === 'MCQ_MULTI') return { ...base, options: q.options ?? [], pick: Math.max(1, q.correctAnswer.split(',').filter(Boolean).length) };
   return base;
 }
 

@@ -1,9 +1,16 @@
-import { BadRequestException, ConflictException, Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { and, count, desc, eq, inArray } from 'drizzle-orm';
 import { DB, Database } from '../db/db.module';
 import { enrollments, mockAttempts, mockTests, students, tenants } from '../db/schema';
 import { AiService } from '../ai/ai.service';
 import {
+  bandToLevel,
+  isLevel,
+  LEVELS,
+  levelOpen,
+  missingKeys,
+  parseLevel,
+  type Level,
   normalizeContent,
   overallBand,
   publicContent,
@@ -101,16 +108,17 @@ export class MockTestsService {
     return { ...row, content: normalizeContent(parse(row.content, {})) };
   }
 
-  async create(tenantId: string, dto: { title?: string; subject?: string; sample?: boolean; content?: unknown }) {
+  async create(tenantId: string, dto: { title?: string; subject?: string; sample?: boolean; content?: unknown; level?: string | null; module?: string }) {
     const content = normalizeContent(dto.sample ? SAMPLE_IELTS.content : dto.content ?? {});
     const title = dto.title?.trim() || (dto.sample ? SAMPLE_IELTS.title : 'IELTS mock test');
     const [row] = await this.db.insert(mockTests).values({
       tenantId, title: title.slice(0, 200), subject: dto.subject?.trim().slice(0, 120) || 'Ingliz tili', content: JSON.stringify(content),
+      level: isLevel(dto.level) ? dto.level : null, module: dto.module === 'GENERAL' ? 'GENERAL' : 'ACADEMIC',
     }).returning();
     return { ...row, content };
   }
 
-  async update(tenantId: string, id: string, dto: { title?: string; subject?: string; status?: string; content?: unknown }) {
+  async update(tenantId: string, id: string, dto: { title?: string; subject?: string; status?: string; content?: unknown; level?: string | null; module?: string }) {
     await this.row(tenantId, id);
     const set: Partial<typeof mockTests.$inferInsert> = { updatedAt: new Date() };
     if (dto.title !== undefined) {
@@ -118,6 +126,8 @@ export class MockTestsService {
       set.title = dto.title.trim().slice(0, 200);
     }
     if (dto.subject !== undefined) set.subject = dto.subject.trim().slice(0, 120) || 'Ingliz tili';
+    if (dto.level !== undefined) set.level = isLevel(dto.level) ? dto.level : null;
+    if (dto.module !== undefined) set.module = dto.module === 'GENERAL' ? 'GENERAL' : 'ACADEMIC';
     if (dto.content !== undefined) set.content = JSON.stringify(normalizeContent(dto.content));
     if (dto.status !== undefined) {
       if (!['DRAFT', 'PUBLISHED'].includes(dto.status)) throw new BadRequestException("Holat noto'g'ri");
@@ -125,6 +135,8 @@ export class MockTestsService {
         const c = normalizeContent(dto.content ?? parse((await this.row(tenantId, id)).content, {}));
         const empty = sectionQuestions(c, 'listening').length + sectionQuestions(c, 'reading').length + c.writing.tasks.length + c.speaking.parts.length === 0;
         if (empty) throw new BadRequestException("Bo'sh testni e'lon qilib bo'lmaydi");
+        const missing = missingKeys(c);
+        if (missing > 0) throw new BadRequestException(`${missing} ta savolning javob kaliti yo'q — avval kiriting`);
       }
       set.status = dto.status;
     }
@@ -198,19 +210,42 @@ export class MockTestsService {
     return (t?.limit ?? 0) > 0;
   }
 
+  // The student's IELTS level: their latest overall mock band, else the
+  // level written on their English group ("6.5", "B2", "Intermediate"...).
+  async studentLevel(studentId: string, tenantId: string): Promise<Level | null> {
+    const done = await this.db.select({ results: mockAttempts.results }).from(mockAttempts)
+      .where(and(eq(mockAttempts.studentId, studentId), eq(mockAttempts.tenantId, tenantId), eq(mockAttempts.status, 'COMPLETED')))
+      .orderBy(desc(mockAttempts.completedAt)).limit(5);
+    const overall = done.map((d) => parse<Results>(d.results, {}).overall).find((b) => b != null);
+    if (overall != null) return bandToLevel(overall);
+    const enrolls = await this.db.query.enrollments.findMany({ where: eq(enrollments.studentId, studentId), with: { group: true } });
+    for (const e of enrolls) {
+      if (e.status !== 'ACTIVE' || e.group?.tenantId !== tenantId || !isEnglish(`${e.group.subject} ${e.group.name}`)) continue;
+      const lvl = parseLevel(e.group.level) ?? (/ielts/i.test(e.group.name) ? parseLevel(e.group.name) : null);
+      if (lvl) return lvl;
+    }
+    return null;
+  }
+
   // The practice area: the student's directions (their groups' subjects),
   // each with the published mock tests for it and the student's sittings.
+  // Tests above the student's level + 1 are shown locked.
   async forStudent(studentId: string, tenantId: string) {
     const enrolls = await this.db.query.enrollments.findMany({ where: eq(enrollments.studentId, studentId), with: { group: true } });
     const subjects = [...new Set(enrolls.filter((e) => e.group?.tenantId === tenantId && !e.group.deletedAt && e.status === 'ACTIVE').map((e) => e.group.subject.trim()).filter(Boolean))];
-    const tests = await this.db.select({ id: mockTests.id, title: mockTests.title, kind: mockTests.kind, subject: mockTests.subject, content: mockTests.content })
+    const tests = await this.db.select({ id: mockTests.id, title: mockTests.title, kind: mockTests.kind, subject: mockTests.subject, level: mockTests.level, module: mockTests.module, content: mockTests.content })
       .from(mockTests).where(and(eq(mockTests.tenantId, tenantId), eq(mockTests.status, 'PUBLISHED'))).orderBy(desc(mockTests.createdAt));
     const mine = tests.length === 0 ? [] : await this.db.select().from(mockAttempts)
       .where(and(eq(mockAttempts.studentId, studentId), inArray(mockAttempts.testId, tests.map((t) => t.id)))).orderBy(desc(mockAttempts.createdAt));
+    const level = await this.studentLevel(studentId, tenantId);
     const view = (t: (typeof tests)[number]) => {
       const c = normalizeContent(parse(t.content, {}));
+      const testLevel = isLevel(t.level) ? t.level : null;
       return {
-        id: t.id, title: t.title, kind: t.kind, subject: t.subject,
+        id: t.id, title: t.title, kind: t.kind, subject: t.subject, level: testLevel, module: t.module,
+        open: levelOpen(testLevel, level),
+        // Their own level and the next one up: the tests to work on now.
+        recommended: !!level && !!testLevel && [0, 1].includes(LEVELS.indexOf(testLevel) - LEVELS.indexOf(level)),
         sections: { listening: sectionQuestions(c, 'listening').length, reading: sectionQuestions(c, 'reading').length, writing: c.writing.tasks.length, speaking: c.speaking.parts.length },
         durations: { listening: c.listening.durationMin, reading: c.reading.durationMin, writing: c.writing.durationMin },
         attempts: mine.filter((a) => a.testId === t.id).map((a) => ({
@@ -219,8 +254,14 @@ export class MockTestsService {
         })),
       };
     };
-    const directions = subjects.map((subject) => ({ subject, english: isEnglish(subject), tests: tests.filter((t) => sameDirection(t.subject, subject)).map(view) }));
-    return { directions, aiFeedback: await this.aiAvailable(tenantId) };
+    // Open tests first, the student's own level before others.
+    const rank = (x: ReturnType<typeof view>) => (x.open ? 0 : 2) + (x.level === level ? 0 : 1);
+    const directions = subjects.map((subject) => ({
+      subject,
+      english: isEnglish(subject),
+      tests: tests.filter((t) => sameDirection(t.subject, subject)).map(view).sort((a, b) => rank(a) - rank(b)),
+    }));
+    return { directions, level, aiFeedback: await this.aiAvailable(tenantId) };
   }
 
   // Opens the unfinished sitting of this test, or starts a new one.
@@ -228,6 +269,9 @@ export class MockTestsService {
     const [test] = await this.db.select().from(mockTests)
       .where(and(eq(mockTests.id, testId), eq(mockTests.tenantId, tenantId), eq(mockTests.status, 'PUBLISHED')));
     if (!test) throw new NotFoundException('Test topilmadi');
+    if (!levelOpen(isLevel(test.level) ? test.level : null, await this.studentLevel(studentId, tenantId))) {
+      throw new ForbiddenException({ code: 'LEVEL_LOCKED', message: "Bu test darajangizdan ancha yuqori — avval o'z darajangizdagi testlarni ishlang" });
+    }
     const [open] = await this.db.select({ id: mockAttempts.id }).from(mockAttempts)
       .where(and(eq(mockAttempts.testId, testId), eq(mockAttempts.studentId, studentId), eq(mockAttempts.status, 'IN_PROGRESS')));
     if (open) return this.attemptForStudent(studentId, tenantId, open.id);
@@ -248,7 +292,7 @@ export class MockTestsService {
     return {
       id: a.id,
       status: a.status,
-      test: { id: test.id, title: test.title, kind: test.kind, subject: test.subject, content: publicContent(content) },
+      test: { id: test.id, title: test.title, kind: test.kind, subject: test.subject, level: test.level, module: test.module, content: publicContent(content) },
       answers: parse<Answers>(a.answers, {}),
       sectionStarted: parse<Record<string, string>>(a.sectionStarted, {}),
       sectionDone: done,
@@ -324,7 +368,7 @@ export class MockTestsService {
 
       const results = parse<Results>(a.results, {});
       if (section === 'listening' || section === 'reading') {
-        const r = scoreObjective(content, section, all[section] ?? {});
+        const r = scoreObjective(content, section, all[section] ?? {}, test.module === 'GENERAL' ? 'GENERAL' : 'ACADEMIC');
         results[section] = { status: 'DONE', band: r.band, raw: r.raw, max: r.max, marks: r.marks, gradedBy: 'AUTO', late };
       } else if (section === 'writing') {
         const tasks = content.writing.tasks.map((_, i) => ({ band: null, words: wordCount(all.writing?.[String(i)] ?? ''), feedback: null }));

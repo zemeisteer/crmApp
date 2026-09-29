@@ -1060,11 +1060,34 @@ export const mockTests = pgTable('mock_tests', {
   // Direction it belongs to: students see tests of their groups' subjects.
   subject: text('subject').notNull().default('Ingliz tili'),
   status: text('status').notNull().default('DRAFT'), // DRAFT | PUBLISHED
+  // Target band B4..B8 (see mock-tests/ielts.ts LEVELS); null: all levels.
+  level: text('level'),
+  module: text('module').notNull().default('ACADEMIC'), // ACADEMIC | GENERAL
+  // Where it came from, e.g. "Cambridge IELTS 18 — Test 2".
+  source: text('source'),
+  importId: text('import_id'),
   content: text('content').notNull().default('{}'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 }, (t) => ({
   tenantIdx: index('mock_tests_tenant_idx').on(t.tenantId),
+}));
+
+// A batch of uploaded materials (PDF books, audio) turned into mock tests in
+// the background: the tests are found in the PDFs, extracted by AI, and the
+// recordings matched to their parts.
+export const mockImports = pgTable('mock_imports', {
+  id: text('id').primaryKey().$defaultFn(() => createId()),
+  tenantId: text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  status: text('status').notNull().default('QUEUED'), // QUEUED | RUNNING | DONE | FAILED
+  files: text('files').notNull().default('[]'),
+  progress: text('progress').notNull().default('{}'),
+  result: text('result').notNull().default('{}'),
+  error: text('error'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+}, (t) => ({
+  tenantIdx: index('mock_imports_tenant_idx').on(t.tenantId),
 }));
 
 // One student's sitting of a mock test. JSON columns: answers per section,

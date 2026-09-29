@@ -1,5 +1,7 @@
-import { BadRequestException, Body, Controller, Delete, Get, Param, Patch, Post, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
+import { BadRequestException, Body, Controller, Delete, Get, Param, Patch, Post, UploadedFile, UploadedFiles, UseGuards, UseInterceptors } from '@nestjs/common';
+import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
+import { MockImportService } from './import/mock-import.service';
+import { unlink } from 'fs/promises';
 import { JwtAuthGuard } from '../common/jwt-auth.guard';
 import { RolesGuard } from '../common/roles.guard';
 import { TrialGuard } from '../common/trial.guard';
@@ -16,7 +18,37 @@ const ASSET_TYPES = /^(audio\/(mpeg|mp3|mp4|x-m4a|aac|wav|x-wav|ogg|webm)|image\
 @Roles('ADMIN', 'MANAGER', 'TEACHER')
 @Controller('mock-tests')
 export class MockTestsController {
-  constructor(private readonly service: MockTestsService) {}
+  constructor(
+    private readonly service: MockTestsService,
+    private readonly imports: MockImportService,
+  ) {}
+
+  // Materials -> tests: PDF books/booklets (answer keys, audioscripts) and
+  // recordings. The tests are found and extracted in the background.
+  @Post('import')
+  @UseInterceptors(FilesInterceptor('files', 40, {
+    storage: attachmentStorage,
+    limits: { fileSize: 150 * 1024 * 1024 },
+    fileFilter: (_req, file, cb) => cb(null, file.mimetype === 'application/pdf' || file.mimetype.startsWith('audio/')),
+  }))
+  async startImport(@CurrentUser('tenantId') tenantId: string, @UploadedFiles() files: Express.Multer.File[] = []) {
+    try {
+      return await this.imports.start(tenantId, files.map((f) => ({ path: f.filename, name: f.originalname, type: f.mimetype, size: f.size })));
+    } catch (err) {
+      await Promise.all(files.map((f) => unlink(f.path).catch(() => undefined)));
+      throw err;
+    }
+  }
+
+  @Get('imports')
+  importsList(@CurrentUser('tenantId') tenantId: string) {
+    return this.imports.list(tenantId);
+  }
+
+  @Get('imports/:importId')
+  importOne(@CurrentUser('tenantId') tenantId: string, @Param('importId') importId: string) {
+    return this.imports.get(tenantId, importId);
+  }
 
   @Get()
   list(@CurrentUser('tenantId') tenantId: string) {

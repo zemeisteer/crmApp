@@ -2,6 +2,18 @@ import { describe, expect, it } from 'vitest';
 import { acceptedAnswers, gradeAnswer, normalizeQuestion, publicQuestion, type TestQuestion } from './test-questions';
 
 describe('test questions', () => {
+  it('handles "choose TWO letters" questions', () => {
+    const q = normalizeQuestion({ type: 'MCQ_MULTI', prompt: 'Which TWO facilities are free?', options: ['pool', 'gym', 'sauna', 'parking', 'wifi'], correctAnswer: 'E and B' }) as TestQuestion;
+    expect(q).toMatchObject({ correctAnswer: 'B,E', points: 2 });
+    expect(gradeAnswer(q, 'E,B')).toMatchObject({ earned: 2, correct: true });
+    expect(gradeAnswer(q, 'B,C')).toMatchObject({ earned: 1, correct: false });
+    // Ticking three boxes for two answers loses the extra.
+    expect(gradeAnswer(q, 'A,B,E').earned).toBe(1);
+    expect(publicQuestion(q)).toMatchObject({ pick: 2 });
+    expect(JSON.stringify(publicQuestion(q))).not.toContain('B,E');
+    expect(normalizeQuestion({ type: 'MCQ_MULTI', prompt: 'x', options: ['a', 'b'], correctAnswer: 'A' })).toBeNull();
+  });
+
   it('reads multiple choice answers written in different ways', () => {
     const opts = ['lives', 'is living', 'has lived', 'lived'];
     for (const answer of ['C', 'c', 'C) has lived', 'has lived']) {

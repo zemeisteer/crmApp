@@ -295,6 +295,12 @@ Javobni FAQAT quyidagi JSON formatida ber (boshqa hech qanday so'z qo'shma):
     return this.aiConfigured();
   }
 
+  // Completion with an optional PDF attached (mock test imports).
+  async completeWithPdf(prompt: string, maxTokens: number, pdf?: Buffer): Promise<string> {
+    if (!this.aiConfigured()) throw new ServiceUnavailableException('AI yoqilmagan');
+    return this.complete(prompt, maxTokens, pdf);
+  }
+
   // Plain text completion for prompts built elsewhere (tutor reports).
   async completeText(prompt: string, maxTokens: number): Promise<string> {
     if (!this.aiConfigured()) throw new ServiceUnavailableException('AI yoqilmagan');
