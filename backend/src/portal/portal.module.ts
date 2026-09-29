@@ -6,11 +6,14 @@ import { PortalController } from './portal.controller';
 import { PortalAuthGuard } from './portal-auth.guard';
 import { BillingModule } from '../billing/billing.module';
 import { ExamsModule } from '../exams/exams.module';
+import { AiModule } from '../ai/ai.module';
+import { PortalTutorController } from './portal-tutor.controller';
 
 @Module({
   imports: [
     BillingModule,
     ExamsModule,
+    AiModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
@@ -23,7 +26,7 @@ import { ExamsModule } from '../exams/exams.module';
     }),
   ],
   providers: [PortalService, PortalAuthGuard],
-  controllers: [PortalController],
+  controllers: [PortalController, PortalTutorController],
   exports: [PortalService],
 })
 export class PortalModule {}

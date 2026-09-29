@@ -2238,6 +2238,18 @@ export interface PortalAvailableExam {
   maxScore: number;
 }
 
+export interface PortalTutorState {
+  enabled: boolean;
+  available: boolean;
+  limit: number;
+  left: number;
+  messages: Array<{ role: "user" | "assistant"; content: string; createdAt: string }>;
+}
+export type PortalTutorAnswer =
+  | { status: "ok"; reply: string; left: number; limit: number }
+  | { status: "limit"; limit: number }
+  | { status: "off" | "unavailable" | "error" };
+
 export const portalApi = {
   loginWithToken: (token: string) =>
     request<{ accessToken: string; student: any; tenant: any }>("/portal/auth/token", {
@@ -2255,6 +2267,10 @@ export const portalApi = {
       | { choose: Array<{ id: string; fullName: string; centerName: string }> }
     >("/portal/auth/phone/verify", { method: "POST", body: JSON.stringify(data) }),
   getMe: () => request<PortalMe>("/portal/me"),
+  // AI tutor (same conversation and daily limit as the Telegram bot)
+  aiState: () => request<PortalTutorState>("/portal/ai"),
+  aiAsk: (message: string) => request<PortalTutorAnswer>("/portal/ai/ask", { method: "POST", body: JSON.stringify({ message }) }),
+  aiReset: () => request<{ ok: boolean }>("/portal/ai/reset", { method: "POST" }),
   getSchedule: () => request<PortalSchedule>("/portal/schedule"),
   getAttendance: () => request<PortalAttendance>("/portal/attendance"),
   getHomework: () => request<PortalHomework[]>("/portal/homework"),

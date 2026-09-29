@@ -7,6 +7,7 @@ import { useLanguage } from "@/lib/i18n-context";
 import PortalExamList from "@/components/portal/PortalExams";
 import PortalLogin from "@/components/portal/PortalLogin";
 import { AttendanceTab, HomeworkTab, PaymentsTab, ScheduleTab, TabTitle } from "@/components/portal/PortalTabs";
+import PortalTutor from "@/components/portal/PortalTutor";
 import type { Lang, TranslationKey } from "@/lib/i18n";
 import {
   portalApi,
@@ -29,18 +30,20 @@ function formatMoney(n: number) {
   return new Intl.NumberFormat("uz-UZ").format(n);
 }
 
-type PortalTab = "home" | "schedule" | "attendance" | "homework" | "exams" | "payments" | "notifications";
+type PortalTab = "home" | "schedule" | "attendance" | "homework" | "ai" | "exams" | "payments" | "notifications";
 const NAV: Array<{ id: PortalTab; icon: string; label: TranslationKey; short: TranslationKey; bottom: boolean }> = [
   { id: "home", icon: "🏠", label: "ptn.home", short: "ptn.home", bottom: true },
   { id: "schedule", icon: "🗓️", label: "ptn.schedule", short: "ptn.schedule", bottom: true },
   { id: "homework", icon: "📚", label: "ptn.homework", short: "ptn.homework", bottom: true },
-  { id: "exams", icon: "📝", label: "ptn.exams", short: "ptn.exams", bottom: true },
-  { id: "payments", icon: "💳", label: "ptn.payments", short: "ptn.payments", bottom: true },
+  { id: "ai", icon: "🤖", label: "ptn.ai", short: "ptn.aiShort", bottom: true },
+  { id: "exams", icon: "📝", label: "ptn.exams", short: "ptn.examsShort", bottom: true },
+  { id: "payments", icon: "💳", label: "ptn.payments", short: "ptn.paymentsShort", bottom: true },
   { id: "attendance", icon: "✅", label: "ptn.attendance", short: "ptn.attendance", bottom: false },
   { id: "notifications", icon: "🔔", label: "ptn.notifications", short: "ptn.notifications", bottom: false },
 ];
 const PORTAL_CSS = `
   .ptl-bottom{display:none;}
+  .ptl-ai-cta{width:100%;display:flex;align-items:center;gap:12px;margin-bottom:14px;padding:14px 16px;border:none;border-radius:16px;cursor:pointer;color:#fff;background:linear-gradient(135deg,#4F46E5,#7C3AED);box-shadow:0 14px 30px -18px rgba(79,70,229,0.9);font-family:inherit;}
   @media (max-width:640px){
     .ptl-top{display:none;}
     .ptl-bottom{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:40;background:rgba(255,255,255,0.97);backdrop-filter:blur(8px);border-top:1px solid #EAE8E2;padding:0 4px env(safe-area-inset-bottom);box-shadow:0 -6px 20px rgba(18,19,26,0.06);}
@@ -481,6 +484,16 @@ export default function StudentPortalPage() {
         {/* TAB: HOME                                                                 */}
         {/* ========================================================================= */}
         {activeTab === "home" && (
+          <button type="button" onClick={() => setActiveTab("ai")} className="ptl-ai-cta">
+            <span style={{ fontSize: 26 }} aria-hidden>🤖</span>
+            <span style={{ flex: 1, minWidth: 0, textAlign: "left" }}>
+              <span style={{ display: "block", fontFamily: "'Manrope', sans-serif", fontWeight: 800, fontSize: 15.5 }}>{t("tutor.ctaTitle")}</span>
+              <span style={{ display: "block", fontSize: 13, opacity: 0.85, marginTop: 2 }}>{t("tutor.ctaText")}</span>
+            </span>
+            <span aria-hidden style={{ fontSize: 18 }}>→</span>
+          </button>
+        )}
+        {activeTab === "home" && (
           <PortalHome
             me={me}
             schedule={schedule}
@@ -495,6 +508,7 @@ export default function StudentPortalPage() {
         {activeTab === "schedule" && <ScheduleTab schedule={schedule} />}
         {activeTab === "attendance" && <AttendanceTab attendance={attendance} />}
         {activeTab === "homework" && <HomeworkTab homework={homework} onSubmit={handleHomeworkSubmit} />}
+        {activeTab === "ai" && <PortalTutor firstName={me?.fullName?.split(" ")[0]} />}
 
         {/* ========================================================================= */}
         {/* TAB: EXAMS                                                                */}

@@ -16,7 +16,6 @@ import {
   leads,
   organizationMemberships,
   payments,
-  studentAiMessages,
   students,
   teachers,
   telegramLinkTokens,
@@ -24,8 +23,8 @@ import {
   users,
 } from '../db/schema';
 import { DEFAULT_TIMEZONE, isValidTimeZone, zonedDayBounds, zonedParts } from '../common/timezone';
-import { AiService } from '../ai/ai.service';
-import { tutorReplyHtml, type TutorTurn } from '../ai/tutor-prompt';
+import { StudentTutorService, type TutorStudent } from '../ai/student-tutor.service';
+import { tutorReplyHtml } from '../ai/tutor-prompt';
 
 // Students' AI tutor: the button opens a conversation; every message goes
 // to the AI until the student returns to the menu (or 30 minutes pass).
@@ -34,7 +33,6 @@ const AI_EXIT = '⬅️ Menyu';
 const AI_RESET = '🧹 Yangi suhbat';
 const AI_KEYBOARD = { keyboard: [[{ text: AI_RESET }, { text: AI_EXIT }]], resize_keyboard: true };
 const AI_IDLE_MS = 30 * 60 * 1000;
-const AI_KEEP_DAYS = 30;
 
 const MAIN_KEYBOARD = {
   keyboard: [
@@ -93,7 +91,7 @@ export class TelegramService {
   constructor(
     @Inject(DB) private readonly db: Database,
     private readonly config: ConfigService,
-    private readonly ai: AiService,
+    private readonly tutor: StudentTutorService,
   ) {}
 
   // chatId -> when the AI tutor conversation lapses (in memory: a restart
@@ -109,26 +107,13 @@ export class TelegramService {
     }).catch(() => undefined);
   }
 
-  // Questions used today (tenant's day) and what is left of the limit.
-  private async tutorQuota(student: { id: string; tenant?: { studentAiDailyLimit?: number | null; timezone?: string | null } | null }) {
-    const limit = student.tenant?.studentAiDailyLimit ?? 20;
-    const tz = isValidTimeZone(student.tenant?.timezone) ? student.tenant!.timezone! : DEFAULT_TIMEZONE;
-    const { startOfToday } = zonedDayBounds(new Date(), tz);
-    const [row] = await this.db
-      .select({ n: count() })
-      .from(studentAiMessages)
-      .where(and(eq(studentAiMessages.studentId, student.id), eq(studentAiMessages.role, 'user'), gte(studentAiMessages.createdAt, startOfToday)));
-    const used = Number(row?.n ?? 0);
-    return { limit, used, left: Math.max(0, limit - used) };
-  }
-
-  private async startTutor(chatId: string, student: { id: string; fullName: string; tenant?: { studentAiDailyLimit?: number | null; timezone?: string | null } | null }) {
-    const quota = await this.tutorQuota(student);
+  private async startTutor(chatId: string, student: TutorStudent) {
+    const quota = await this.tutor.quota(student);
     if (quota.limit <= 0) {
       await this.sendMessage(chatId, "🤖 AI ustoz markazingizda hozircha yoqilmagan.", MAIN_KEYBOARD);
       return;
     }
-    if (!this.ai.isConfigured) {
+    if (!this.tutor.available) {
       await this.sendMessage(chatId, "🤖 AI ustoz hozircha ishlamayapti. Keyinroq urinib ko'ring.", MAIN_KEYBOARD);
       return;
     }
@@ -143,65 +128,30 @@ export class TelegramService {
     );
   }
 
-  private async askTutor(chatId: string, student: { id: string; tenantId: string; fullName: string; tenant?: { name?: string | null; studentAiDailyLimit?: number | null; timezone?: string | null } | null }, text: string) {
+  private async askTutor(chatId: string, student: TutorStudent, text: string) {
     this.tutorUntil.set(chatId, Date.now() + AI_IDLE_MS);
-    const quota = await this.tutorQuota(student);
-    if (quota.limit <= 0) {
-      this.tutorUntil.delete(chatId);
-      await this.sendMessage(chatId, "🤖 AI ustoz markazingizda hozircha yoqilmagan.", MAIN_KEYBOARD);
-      return;
-    }
-    if (quota.left <= 0) {
-      await this.sendMessage(chatId, `⏳ Bugungi ${quota.limit} ta savol limiti tugadi. Ertaga yana yozing — yoki savolingizni darsda ustozingizga bering.`, AI_KEYBOARD);
-      return;
-    }
-    const question = text.slice(0, 1500);
-
-    // Recent turns since the last "new conversation".
-    const recent = await this.db
-      .select({ role: studentAiMessages.role, content: studentAiMessages.content })
-      .from(studentAiMessages)
-      .where(eq(studentAiMessages.studentId, student.id))
-      .orderBy(desc(studentAiMessages.createdAt))
-      .limit(12);
-    const history: TutorTurn[] = [];
-    for (const r of recent) {
-      if (r.role === 'reset') break;
-      if (r.role === 'user' || r.role === 'assistant') history.unshift({ role: r.role, content: r.content });
-    }
-    const enrolls = await this.db.query.enrollments.findMany({
-      where: eq(enrollments.studentId, student.id),
-      with: { group: true },
-    });
-    const subjects = [...new Set(enrolls.map((e) => e.group?.subject).filter((x): x is string => Boolean(x)))];
-
     await this.sendTyping(chatId);
-    let reply: string;
-    try {
-      reply = await this.ai.tutorReply({
-        studentName: student.fullName,
-        centerName: student.tenant?.name || "O'quv markazi",
-        subjects,
-        history,
-        question,
-      });
-    } catch (err) {
-      this.logger.error(`AI tutor failed for student ${student.id}: ${(err as Error).message}`);
-      await this.sendMessage(chatId, "😕 Hozir javob bera olmadim. Birozdan keyin qayta yozib ko'ring.", AI_KEYBOARD);
-      return;
+    const res = await this.tutor.ask(student, text);
+    switch (res.status) {
+      case 'ok': {
+        const footer = res.left <= 5 ? `\n\n<i>Bugun yana ${res.left} ta savol berishingiz mumkin.</i>` : '';
+        await this.sendMessage(chatId, tutorReplyHtml(res.reply) + footer, AI_KEYBOARD);
+        return;
+      }
+      case 'off':
+        this.tutorUntil.delete(chatId);
+        await this.sendMessage(chatId, "🤖 AI ustoz markazingizda hozircha yoqilmagan.", MAIN_KEYBOARD);
+        return;
+      case 'unavailable':
+        this.tutorUntil.delete(chatId);
+        await this.sendMessage(chatId, "🤖 AI ustoz hozircha ishlamayapti. Keyinroq urinib ko'ring.", MAIN_KEYBOARD);
+        return;
+      case 'limit':
+        await this.sendMessage(chatId, `⏳ Bugungi ${res.limit} ta savol limiti tugadi. Ertaga yana yozing — yoki savolingizni darsda ustozingizga bering.`, AI_KEYBOARD);
+        return;
+      default:
+        await this.sendMessage(chatId, "😕 Hozir javob bera olmadim. Birozdan keyin qayta yozib ko'ring.", AI_KEYBOARD);
     }
-
-    await this.db.insert(studentAiMessages).values([
-      { tenantId: student.tenantId, studentId: student.id, role: 'user', content: question },
-      { tenantId: student.tenantId, studentId: student.id, role: 'assistant', content: reply.slice(0, 4000) },
-    ]);
-    await this.db
-      .delete(studentAiMessages)
-      .where(and(eq(studentAiMessages.studentId, student.id), lt(studentAiMessages.createdAt, new Date(Date.now() - AI_KEEP_DAYS * 86_400_000))));
-
-    const left = quota.left - 1;
-    const footer = left <= 5 ? `\n\n<i>Bugun yana ${left} ta savol berishingiz mumkin.</i>` : '';
-    await this.sendMessage(chatId, tutorReplyHtml(reply) + footer, AI_KEYBOARD);
   }
 
   private get token() {
@@ -771,7 +721,7 @@ export class TelegramService {
       return;
     }
     if (text === AI_RESET) {
-      await this.db.insert(studentAiMessages).values({ tenantId: student.tenantId, studentId: student.id, role: 'reset', content: '' });
+      await this.tutor.reset(student);
       this.tutorUntil.set(chatId, Date.now() + AI_IDLE_MS);
       await this.sendMessage(chatId, "🧹 Yangi suhbat boshlandi. Savolingizni yozing!", AI_KEYBOARD);
       return;

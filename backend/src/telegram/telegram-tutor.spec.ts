@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { TelegramService } from './telegram.service';
+import { StudentTutorService } from '../ai/student-tutor.service';
 import { tutorPrompt, tutorReplyHtml } from '../ai/tutor-prompt';
 
 // The students' AI tutor in the bot: opening it, asking, the daily limit
@@ -50,7 +51,7 @@ describe('TelegramService AI tutor', () => {
     };
     ai = { isConfigured: true, tutorReply: vi.fn().mockResolvedValue('**Present Perfect** — <have> + V3') };
     const config = { get: vi.fn((k: string) => (k === 'TELEGRAM_BOT_TOKEN' ? 'x' : null)) };
-    service = new TelegramService(db, config as any, ai as any);
+    service = new TelegramService(db, config as any, new StudentTutorService(db, ai as any));
     service.sendMessage = vi.fn().mockResolvedValue(undefined);
     (service as any).sendTyping = vi.fn().mockResolvedValue(undefined);
   });
@@ -114,6 +115,8 @@ describe('tutor prompt', () => {
 
   it('escapes HTML before adding bold', () => {
     expect(tutorReplyHtml('<script>x</script> **ok**')).toBe('&lt;script&gt;x&lt;/script&gt; <b>ok</b>');
-    expect(tutorReplyHtml("Vazifa: *'I ___ (see)'*. Hisob: 2 * 3 * 4 = 24")).toBe("Vazifa: <i>'I ___ (see)'</i>. Hisob: 2 * 3 * 4 = 24");
+    expect(tutorReplyHtml('Avval $2x + 5$ ni yozing')).toBe('Avval 2x + 5 ni yozing');
+    expect(tutorReplyHtml("**2 * 6 + 5 = 17** to'g'ri")).toBe("<b>2 × 6 + 5 = 17</b> to'g'ri");
+    expect(tutorReplyHtml("Vazifa: *'I ___ (see)'*. Hisob: 2 * 3 * 4 = 24")).toBe("Vazifa: <i>'I ___ (see)'</i>. Hisob: 2 × 3 × 4 = 24");
   });
 });

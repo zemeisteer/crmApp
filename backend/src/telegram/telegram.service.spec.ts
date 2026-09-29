@@ -53,7 +53,7 @@ describe('TelegramService (Secure Link Token)', () => {
       }),
     };
 
-    service = new TelegramService(mockDb, mockConfig, { isConfigured: false } as any);
+    service = new TelegramService(mockDb, mockConfig, { available: false } as any);
     // Mock sendMessage
     service.sendMessage = vi.fn().mockResolvedValue(undefined);
   });
