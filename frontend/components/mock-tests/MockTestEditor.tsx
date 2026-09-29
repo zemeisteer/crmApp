@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import QuestionEditor, { emptyQuestion } from "@/components/tests/QuestionEditor";
-import { ApiError, fileUrl, mockTestsApi, type MockContent, type MockSection, type MockTest } from "@/lib/api";
+import { ApiError, fileUrl, MOCK_LEVELS, mockTestsApi, type MockContent, type MockLevel, type MockSection, type MockTest } from "@/lib/api";
 import { hasAnswer, type TestQuestion } from "@/lib/tests";
 import { useLanguage } from "@/lib/i18n-context";
 import { SECTION_ICON, sectionKey } from "@/components/mock-tests/sections";
@@ -17,6 +17,8 @@ export default function MockTestEditor({ test, onSaved }: { test: MockTest; onSa
   const { t } = useLanguage();
   const [title, setTitle] = useState(test.title);
   const [subject, setSubject] = useState(test.subject);
+  const [level, setLevel] = useState<MockLevel | null>(test.level);
+  const [module, setModule] = useState(test.module);
   const [content, setContent] = useState<MockContent>(test.content);
   const [section, setSection] = useState<MockSection>("listening");
   const [dirty, setDirty] = useState(false);
@@ -32,7 +34,7 @@ export default function MockTestEditor({ test, onSaved }: { test: MockTest; onSa
     setBusy(true);
     setMsg(null);
     try {
-      const saved = await mockTestsApi.update(test.id, { title, subject, content, ...(status ? { status } : {}) });
+      const saved = await mockTestsApi.update(test.id, { title, subject, level, module, content, ...(status ? { status } : {}) });
       onSaved(saved);
       setContent(saved.content);
       setDirty(false);
@@ -77,6 +79,28 @@ export default function MockTestEditor({ test, onSaved }: { test: MockTest; onSa
             <input className="field-input" value={subject} onChange={(e) => { setSubject(e.target.value); setDirty(true); }} placeholder="Ingliz tili" />
           </div>
         </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12 }}>
+          <div>
+            <span style={label}>{t("mock.level")}</span>
+            <select className="field-input" value={level ?? ""} onChange={(e) => { setLevel((e.target.value || null) as MockLevel | null); setDirty(true); }}>
+              <option value="">{t("mock.levelAll")}</option>
+              {MOCK_LEVELS.map((l) => <option key={l} value={l}>{t(levelKey(l))}</option>)}
+            </select>
+          </div>
+          <div>
+            <span style={label}>{t("mock.module")}</span>
+            <select className="field-input" value={module} onChange={(e) => { setModule(e.target.value as "ACADEMIC" | "GENERAL"); setDirty(true); }}>
+              <option value="ACADEMIC">Academic</option>
+              <option value="GENERAL">General Training</option>
+            </select>
+          </div>
+          {test.source && (
+            <div>
+              <span style={label}>{t("mock.source")}</span>
+              <div style={{ fontSize: 13.5, padding: "10px 0", color: "#4A4E58" }}>📚 {test.source}</div>
+            </div>
+          )}
+        </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
           <span style={{ fontSize: 12, fontWeight: 800, padding: "3px 10px", borderRadius: 100, background: test.status === "PUBLISHED" ? "#E9F8EF" : "#F2F1EC", color: test.status === "PUBLISHED" ? "#1FA463" : "#6B6E78" }}>
             {test.status === "PUBLISHED" ? t("mock.published") : t("mock.draft")}
@@ -112,6 +136,21 @@ export default function MockTestEditor({ test, onSaved }: { test: MockTest; onSa
 
       {section === "listening" && (
         <>
+          <div style={{ ...card, display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+            <span style={{ fontWeight: 700, fontSize: 13.5 }}>🎧 {t("mock.sectionAudio")}</span>
+            {content.listening.audioPath ? (
+              <>
+                <audio controls src={fileUrl(content.listening.audioPath) ?? undefined} style={{ height: 36 }} />
+                <button type="button" style={{ ...ghost, color: "#B23A47" }} onClick={() => edit((c) => { c.listening.audioPath = null; return c; })}>✕</button>
+              </>
+            ) : (
+              <label style={{ ...ghost, display: "inline-flex", gap: 6 }}>
+                🎵 {t("mock.uploadAudio")}
+                <input type="file" accept="audio/*" hidden onChange={(e) => upload(e.target.files?.[0], (path) => edit((c) => { c.listening.audioPath = path; return c; }))} />
+              </label>
+            )}
+            <span style={{ fontSize: 12, color: "#8A8D96" }}>{t("mock.sectionAudioHint")}</span>
+          </div>
           {content.listening.parts.map((p, pi) => (
             <div key={pi} style={{ ...card, display: "grid", gap: 10 }}>
               <PartHeader title={p.title} onTitle={(v) => edit((c) => { c.listening.parts[pi].title = v; return c; })} onRemove={() => edit((c) => { c.listening.parts.splice(pi, 1); return c; })} />
@@ -129,6 +168,7 @@ export default function MockTestEditor({ test, onSaved }: { test: MockTest; onSa
                   </label>
                 )}
               </div>
+              <ImageField path={p.imagePath} onUpload={(f) => upload(f, (path) => edit((c) => { c.listening.parts[pi].imagePath = path; return c; }))} onClear={() => edit((c) => { c.listening.parts[pi].imagePath = null; return c; })} />
               <div>
                 <span style={label}>{t("mock.transcript")}</span>
                 <textarea className="field-input" rows={4} value={p.transcript ?? ""} onChange={(e) => edit((c) => { c.listening.parts[pi].transcript = e.target.value; return c; })} placeholder={t("mock.transcriptPh")} />
@@ -137,7 +177,7 @@ export default function MockTestEditor({ test, onSaved }: { test: MockTest; onSa
             </div>
           ))}
           {content.listening.parts.length < 4 && (
-            <button type="button" style={{ ...ghost, borderStyle: "dashed", color: ACCENT }} onClick={() => edit((c) => { c.listening.parts.push({ title: `Part ${c.listening.parts.length + 1}`, instruction: null, audioPath: null, transcript: null, questions: [] }); return c; })}>
+            <button type="button" style={{ ...ghost, borderStyle: "dashed", color: ACCENT }} onClick={() => edit((c) => { c.listening.parts.push({ title: `Part ${c.listening.parts.length + 1}`, instruction: null, audioPath: null, transcript: null, imagePath: null, questions: [] }); return c; })}>
               + {t("mock.addPart")}
             </button>
           )}
@@ -149,12 +189,13 @@ export default function MockTestEditor({ test, onSaved }: { test: MockTest; onSa
           {content.reading.passages.map((p, pi) => (
             <div key={pi} style={{ ...card, display: "grid", gap: 10 }}>
               <PartHeader title={p.title} onTitle={(v) => edit((c) => { c.reading.passages[pi].title = v; return c; })} onRemove={() => edit((c) => { c.reading.passages.splice(pi, 1); return c; })} />
+              <ImageField path={p.imagePath} onUpload={(f) => upload(f, (path) => edit((c) => { c.reading.passages[pi].imagePath = path; return c; }))} onClear={() => edit((c) => { c.reading.passages[pi].imagePath = null; return c; })} />
               <textarea className="field-input" rows={10} value={p.text} onChange={(e) => edit((c) => { c.reading.passages[pi].text = e.target.value; return c; })} placeholder={t("mock.passagePh")} />
               <QuestionsEditor start={content.reading.passages.slice(0, pi).reduce((n, x) => n + x.questions.length, 0)} questions={p.questions} onChange={(qs) => edit((c) => { c.reading.passages[pi].questions = qs; return c; })} />
             </div>
           ))}
           {content.reading.passages.length < 3 && (
-            <button type="button" style={{ ...ghost, borderStyle: "dashed", color: ACCENT }} onClick={() => edit((c) => { c.reading.passages.push({ title: `Passage ${c.reading.passages.length + 1}`, text: "", questions: [] }); return c; })}>
+            <button type="button" style={{ ...ghost, borderStyle: "dashed", color: ACCENT }} onClick={() => edit((c) => { c.reading.passages.push({ title: `Passage ${c.reading.passages.length + 1}`, text: "", imagePath: null, questions: [] }); return c; })}>
               + {t("mock.addPassage")}
             </button>
           )}
@@ -217,6 +258,29 @@ export default function MockTestEditor({ test, onSaved }: { test: MockTest; onSa
             </button>
           )}
         </>
+      )}
+    </div>
+  );
+}
+
+export const levelKey = (l: MockLevel) => `mock.lvl.${l}` as import("@/lib/i18n").TranslationKey;
+
+// Map / plan / diagram picture of a part or passage.
+function ImageField({ path, onUpload, onClear }: { path: string | null; onUpload: (f: File | undefined) => void; onClear: () => void }) {
+  const { t } = useLanguage();
+  return (
+    <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+      {path ? (
+        <>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={fileUrl(path) ?? ""} alt="" style={{ height: 70, borderRadius: 8, border: "1px solid #EAE8E2" }} />
+          <button type="button" style={{ ...ghost, color: "#B23A47" }} onClick={onClear}>✕</button>
+        </>
+      ) : (
+        <label style={{ ...ghost, display: "inline-flex", gap: 6 }}>
+          🗺 {t("mock.uploadMap")}
+          <input type="file" accept="image/*" hidden onChange={(e) => onUpload(e.target.files?.[0])} />
+        </label>
       )}
     </div>
   );

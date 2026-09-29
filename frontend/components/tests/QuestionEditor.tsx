@@ -10,7 +10,7 @@ const ACCENT = "#4F46E5";
 export const emptyQuestion = (type: QuestionType = "MCQ"): TestQuestion => ({
   type,
   prompt: "",
-  options: type === "MCQ" ? ["A", "B", "C", "D"].map((id) => ({ id, text: "" })) : type === "TRUE_FALSE" ? TF_OPTIONS : type === "TRUE_FALSE_NG" ? TFNG_OPTIONS : [],
+  options: type === "MCQ" ? ["A", "B", "C", "D"].map((id) => ({ id, text: "" })) : type === "MCQ_MULTI" ? ["A", "B", "C", "D", "E"].map((id) => ({ id, text: "" })) : type === "TRUE_FALSE" ? TF_OPTIONS : type === "TRUE_FALSE_NG" ? TFNG_OPTIONS : [],
   correctAnswer: "",
   pairs: type === "MATCHING" ? [{ left: "", right: "" }, { left: "", right: "" }] : null,
   words: type === "WORD_ORDER" ? [] : null,
@@ -20,7 +20,8 @@ export const emptyQuestion = (type: QuestionType = "MCQ"): TestQuestion => ({
 // Switching type keeps the shared fields and resets the type-specific ones.
 function retype(q: TestQuestion, type: QuestionType): TestQuestion {
   const fresh = emptyQuestion(type);
-  const keepOptions = type === "MCQ" && q.type === "MCQ";
+  const letters = (x: QuestionType) => x === "MCQ" || x === "MCQ_MULTI";
+  const keepOptions = letters(type) && letters(q.type);
   return {
     ...fresh,
     prompt: q.prompt,
@@ -31,7 +32,7 @@ function retype(q: TestQuestion, type: QuestionType): TestQuestion {
     level: q.level,
     points: type === "ESSAY" ? Math.max(q.points, 5) : q.points,
     options: keepOptions ? q.options : fresh.options,
-    correctAnswer: keepOptions ? q.correctAnswer : "",
+    correctAnswer: keepOptions && type === q.type ? q.correctAnswer : "",
   };
 }
 
@@ -43,6 +44,7 @@ export default function QuestionEditor({ value: q, onChange, showLevel, excludeT
 
   const promptPh: Record<QuestionType, string> = {
     MCQ: t("qe.ph.MCQ"),
+    MCQ_MULTI: t("qe.ph.MCQ_MULTI"),
     TRUE_FALSE: t("qe.ph.statement"),
     TRUE_FALSE_NG: t("qe.ph.statement"),
     FILL_BLANK: t("qe.ph.FILL_BLANK"),
@@ -102,7 +104,17 @@ export default function QuestionEditor({ value: q, onChange, showLevel, excludeT
 function AnswerFields({ q, set }: { q: TestQuestion; set: (p: Partial<TestQuestion>) => void }) {
   const { t } = useLanguage();
 
-  if (q.type === "MCQ") {
+  if (q.type === "MCQ" || q.type === "MCQ_MULTI") {
+    const multi = q.type === "MCQ_MULTI";
+    const picked = new Set(q.correctAnswer.split(",").filter(Boolean));
+    // Choose TWO: one mark per right letter.
+    const toggle = (id: string) => {
+      const next = new Set(picked);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      const key = [...next].sort().join(",");
+      set({ correctAnswer: key, points: Math.max(1, next.size) });
+    };
     const options = q.options ?? [];
     const relabel = (list: typeof options) => list.map((o, i) => ({ ...o, id: String.fromCharCode(65 + i) }));
     return (
@@ -110,10 +122,10 @@ function AnswerFields({ q, set }: { q: TestQuestion; set: (p: Partial<TestQuesti
         <div style={lbl}>{t("qe.optionsHint")}</div>
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
           {options.map((o, i) => {
-            const on = q.correctAnswer === o.id;
+            const on = multi ? picked.has(o.id) : q.correctAnswer === o.id;
             return (
               <div key={i} style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                <button type="button" title={t("qe.markCorrect")} onClick={() => set({ correctAnswer: o.id })} style={{ width: 34, height: 34, flexShrink: 0, borderRadius: 8, cursor: "pointer", fontWeight: 800, border: `1.5px solid ${on ? "#16A34A" : "#E2E8F0"}`, background: on ? "#DCFCE7" : "#fff", color: on ? "#15803D" : "#64748B" }}>
+                <button type="button" title={t("qe.markCorrect")} onClick={() => (multi ? toggle(o.id) : set({ correctAnswer: o.id }))} style={{ width: 34, height: 34, flexShrink: 0, borderRadius: 8, cursor: "pointer", fontWeight: 800, border: `1.5px solid ${on ? "#16A34A" : "#E2E8F0"}`, background: on ? "#DCFCE7" : "#fff", color: on ? "#15803D" : "#64748B" }}>
                   {on ? "✓" : o.id}
                 </button>
                 <input className="field-input" value={o.text} onChange={(e) => set({ options: options.map((x, j) => (j === i ? { ...x, text: e.target.value } : x)) })} placeholder={`${t("qe.option")} ${o.id}`} style={{ height: 36 }} />
@@ -123,6 +135,11 @@ function AnswerFields({ q, set }: { q: TestQuestion; set: (p: Partial<TestQuesti
                     onClick={() => {
                       // Letters shift after a removal; keep the same option marked.
                       const next = relabel(options.filter((_, j) => j !== i));
+                      if (multi) {
+                        const keep = options.map((x, j) => (j !== i && picked.has(x.id) ? j : -1)).filter((j) => j >= 0);
+                        set({ options: next, correctAnswer: keep.map((j) => next[j > i ? j - 1 : j].id).sort().join(",") });
+                        return;
+                      }
                       const c = options.findIndex((x) => x.id === q.correctAnswer);
                       set({ options: next, correctAnswer: c < 0 || c === i ? "" : next[c > i ? c - 1 : c].id });
                     }}

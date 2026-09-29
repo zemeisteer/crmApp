@@ -2706,11 +2706,14 @@ export type MockSection = "listening" | "reading" | "writing" | "speaking";
 export const MOCK_SECTIONS: MockSection[] = ["listening", "reading", "writing", "speaking"];
 
 export interface MockContent {
-  listening: { durationMin: number; parts: Array<{ title: string; instruction: string | null; audioPath: string | null; transcript: string | null; questions: import("./tests").TestQuestion[] }> };
-  reading: { durationMin: number; passages: Array<{ title: string; text: string; questions: import("./tests").TestQuestion[] }> };
+  listening: { durationMin: number; audioPath: string | null; parts: Array<{ title: string; instruction: string | null; audioPath: string | null; transcript: string | null; imagePath: string | null; questions: import("./tests").TestQuestion[] }> };
+  reading: { durationMin: number; passages: Array<{ title: string; text: string; imagePath: string | null; questions: import("./tests").TestQuestion[] }> };
   writing: { durationMin: number; tasks: Array<{ title: string; prompt: string; minWords: number; imagePath: string | null }> };
   speaking: { parts: Array<{ title: string; instruction: string | null; prepSeconds: number; answerSeconds: number; questions: string[] }> };
 }
+
+export type MockLevel = "B4" | "B5" | "B6" | "B7" | "B8";
+export const MOCK_LEVELS: MockLevel[] = ["B4", "B5", "B6", "B7", "B8"];
 
 export interface MockTestSummary {
   id: string;
@@ -2718,6 +2721,9 @@ export interface MockTestSummary {
   subject: string;
   kind: string;
   status: "DRAFT" | "PUBLISHED";
+  level: MockLevel | null;
+  module: "ACADEMIC" | "GENERAL";
+  source: string | null;
   createdAt: string;
   updatedAt: string;
   attempts: number;
@@ -2782,7 +2788,7 @@ export interface MockAttemptDetail {
   completedAt: string | null;
 }
 
-type MockPublicQuestion = import("./tests").PublicQuestion & { id: string; no: number };
+type MockPublicQuestion = import("./tests").PublicQuestion & { id: string; no: number; span: number };
 export interface PortalMockAttempt {
   id: string;
   status: "IN_PROGRESS" | "COMPLETED";
@@ -2791,9 +2797,11 @@ export interface PortalMockAttempt {
     title: string;
     kind: string;
     subject: string;
+    level: MockLevel | null;
+    module: "ACADEMIC" | "GENERAL";
     content: {
-      listening: { durationMin: number; parts: Array<{ title: string; instruction: string | null; audioPath: string | null; tts: string | null; questions: MockPublicQuestion[] }> };
-      reading: { durationMin: number; passages: Array<{ title: string; text: string; questions: MockPublicQuestion[] }> };
+      listening: { durationMin: number; audioPath: string | null; parts: Array<{ title: string; instruction: string | null; audioPath: string | null; imagePath: string | null; tts: string | null; questions: MockPublicQuestion[] }> };
+      reading: { durationMin: number; passages: Array<{ title: string; text: string; imagePath: string | null; questions: MockPublicQuestion[] }> };
       writing: MockContent["writing"];
       speaking: MockContent["speaking"];
     };
@@ -2809,6 +2817,7 @@ export interface PortalMockAttempt {
 
 export interface PortalPractice {
   aiFeedback: boolean;
+  level: MockLevel | null;
   directions: Array<{
     subject: string;
     english: boolean;
@@ -2817,6 +2826,10 @@ export interface PortalPractice {
       title: string;
       kind: string;
       subject: string;
+      level: MockLevel | null;
+      module: "ACADEMIC" | "GENERAL";
+      open: boolean;
+      recommended: boolean;
       sections: { listening: number; reading: number; writing: number; speaking: number };
       durations: { listening: number; reading: number; writing: number };
       attempts: Array<{ id: string; status: "IN_PROGRESS" | "COMPLETED"; createdAt: string; completedAt: string | null; sectionDone: Record<string, string>; results: MockResults }>;
@@ -2831,12 +2844,53 @@ async function postForm<T>(path: string, form: FormData, token: string | null): 
   return body as T;
 }
 
+export interface MockImport {
+  id: string;
+  status: "QUEUED" | "RUNNING" | "DONE" | "FAILED";
+  error: string | null;
+  createdAt: string;
+  updatedAt: string;
+  files: Array<{ name: string; type: string; size: number }>;
+  progress: { step: string; message: string; done: number; total: number };
+  result: {
+    book?: string | null;
+    tests?: Array<{ id: string; title: string; level: MockLevel | null; counts: Record<string, number>; warnings: string[] }>;
+    unmatchedAudio?: string[];
+  };
+}
+
+// Multipart upload with a progress callback (books and recordings are big).
+function uploadWithProgress<T>(path: string, form: FormData, onProgress?: (pct: number) => void): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", `${API_URL}${path}`);
+    const token = getToken();
+    if (token) xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+    xhr.upload.onprogress = (e) => { if (e.lengthComputable) onProgress?.(Math.round((e.loaded / e.total) * 100)); };
+    xhr.onload = () => {
+      let body: unknown = null;
+      try { body = JSON.parse(xhr.responseText); } catch { body = null; }
+      if (xhr.status >= 200 && xhr.status < 300) resolve(body as T);
+      else reject(new ApiError((body as { message?: string } | null)?.message || "Yuklanmadi", xhr.status, body as Record<string, unknown> | null));
+    };
+    xhr.onerror = () => reject(new ApiError("Tarmoq xatosi", 0));
+    xhr.send(form);
+  });
+}
+
 export const mockTestsApi = {
+  startImport: (files: File[], onProgress?: (pct: number) => void) => {
+    const form = new FormData();
+    files.forEach((f) => form.append("files", f));
+    return uploadWithProgress<MockImport>("/mock-tests/import", form, onProgress);
+  },
+  imports: () => request<MockImport[]>("/mock-tests/imports"),
+  importStatus: (id: string) => request<MockImport>(`/mock-tests/imports/${id}`),
   list: () => request<MockTestSummary[]>("/mock-tests"),
   get: (id: string) => request<MockTest>(`/mock-tests/${id}`),
   create: (data: { title?: string; subject?: string; sample?: boolean }) =>
     request<MockTest>("/mock-tests", { method: "POST", body: JSON.stringify(data) }),
-  update: (id: string, data: { title?: string; subject?: string; status?: "DRAFT" | "PUBLISHED"; content?: MockContent }) =>
+  update: (id: string, data: { title?: string; subject?: string; status?: "DRAFT" | "PUBLISHED"; content?: MockContent; level?: MockLevel | null; module?: "ACADEMIC" | "GENERAL" }) =>
     request<MockTest>(`/mock-tests/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
   remove: (id: string) => request<{ success: boolean }>(`/mock-tests/${id}`, { method: "DELETE" }),
   uploadAsset: (id: string, file: File) => {

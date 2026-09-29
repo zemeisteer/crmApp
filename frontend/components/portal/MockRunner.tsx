@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import QuestionInput from "@/components/tests/QuestionInput";
+import ExamMode from "@/components/portal/ExamMode";
 import FeedbackView, { bandColor } from "@/components/mock-tests/FeedbackView";
 import { SECTION_ICON, sectionKey } from "@/components/mock-tests/sections";
 import { ApiError, fileUrl, MOCK_SECTIONS, portalMockApi, type MockSection, type PortalMockAttempt } from "@/lib/api";
@@ -90,17 +91,14 @@ export default function MockRunner({ initial, readOnly, onExit }: { initial: Por
     setAnswers((prev) => ({ ...prev, [s]: { ...prev[s], [key]: v } }));
   };
 
+  // The clock starts when the student presses Start on the instructions.
   async function begin(s: MockSection) {
-    setBusy(true);
     setError(null);
     try {
       apply(await portalMockApi.startSection(a.id, s));
-      setSection(s);
-      window.scrollTo(0, 0);
     } catch (e) {
       setError(e instanceof ApiError ? e.message : t("common.errorGeneric"));
-    } finally {
-      setBusy(false);
+      throw e;
     }
   }
 
@@ -118,16 +116,6 @@ export default function MockRunner({ initial, readOnly, onExit }: { initial: Por
       setBusy(false);
     }
   }, [a.id, answers, apply, t]);
-
-  // Time up: hand the section in once.
-  const autoSent = useRef<string | null>(null);
-  useEffect(() => {
-    if (readOnly || !section || done(section) || left === null || left > 0 || section === "speaking") return;
-    if (autoSent.current === section) return;
-    autoSent.current = section;
-    void submit(section, true);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- fires when the clock hits zero
-  }, [left, section]);
 
   const overall = a.results.overall;
 
@@ -180,7 +168,7 @@ export default function MockRunner({ initial, readOnly, onExit }: { initial: Por
                       {r?.status === "PENDING" ? t("pmk.aiMarking") : r?.status === "REVIEW" ? t("pmk.teacherMarks") : r?.raw !== undefined ? `${r.raw}/${r.max} ${t("pmk.correct")}` : t("pmk.marked")}
                     </div>
                   ) : null}
-                  <button type="button" disabled={busy || (readOnly && !done(s) && !started(s))} onClick={() => (done(s) || started(s) || readOnly ? setSection(s) : begin(s))}
+                  <button type="button" disabled={busy || (readOnly && !done(s) && !started(s))} onClick={() => setSection(s)}
                     style={{ marginTop: "auto", background: done(s) ? "#fff" : ACCENT, color: done(s) ? "#181A1F" : "#fff", border: done(s) ? "1px solid #EAE8E2" : "none", borderRadius: 11, padding: "10px 14px", fontWeight: 700, cursor: "pointer" }}>
                     {done(s) ? `📊 ${t("pmk.review")}` : started(s) ? `▶ ${t("pmk.continue")}` : `▶ ${t("pmk.startSection")}`}
                   </button>
@@ -192,20 +180,30 @@ export default function MockRunner({ initial, readOnly, onExit }: { initial: Por
         </>
       )}
 
-      {section === "listening" && (
+      {section && !done(section) && !readOnly && (
+        <ExamMode
+          attempt={a}
+          section={section}
+          answers={section === "speaking" ? {} : answers[section]}
+          onAnswer={(k, v) => section !== "speaking" && setAnswer(section, k, v)}
+          onBegin={() => (started(section) ? Promise.resolve() : begin(section))}
+          onSubmit={(auto) => submit(section, true).then(() => { if (!auto) setSection(null); })}
+          left={left}
+          now={now}
+          onExit={() => setSection(null)}
+          onSpeakingSaved={() => portalMockApi.get(a.id).then(apply).catch(() => undefined)}
+        />
+      )}
+
+      {section === "listening" && (done("listening") || readOnly) && (
         <ObjectiveSection a={a} section="listening" answers={answers.listening} onAnswer={(k, v) => setAnswer("listening", k, v)} readOnly={readOnly || done("listening")}>
           {(pi) => <ListeningPlayer part={content.listening.parts[pi]} />}
         </ObjectiveSection>
       )}
-      {section === "reading" && <ObjectiveSection a={a} section="reading" answers={answers.reading} onAnswer={(k, v) => setAnswer("reading", k, v)} readOnly={readOnly || done("reading")} />}
-      {section === "writing" && <WritingSection a={a} answers={answers.writing} onAnswer={(k, v) => setAnswer("writing", k, v)} readOnly={readOnly || done("writing")} />}
-      {section === "speaking" && <SpeakingSection a={a} readOnly={readOnly || done("speaking")} onSaved={() => portalMockApi.get(a.id).then(apply).catch(() => undefined)} />}
+      {section === "reading" && (done("reading") || readOnly) && <ObjectiveSection a={a} section="reading" answers={answers.reading} onAnswer={(k, v) => setAnswer("reading", k, v)} readOnly={readOnly || done("reading")} />}
+      {section === "writing" && (done("writing") || readOnly) && <WritingSection a={a} answers={answers.writing} onAnswer={(k, v) => setAnswer("writing", k, v)} readOnly={readOnly || done("writing")} />}
+      {section === "speaking" && (done("speaking") || readOnly) && <SpeakingSection a={a} readOnly={readOnly || done("speaking")} onSaved={() => portalMockApi.get(a.id).then(apply).catch(() => undefined)} />}
 
-      {section && !done(section) && !readOnly && (
-        <button type="button" disabled={busy} onClick={() => submit(section)} style={{ alignSelf: "flex-end", background: "#1FA463", color: "#fff", border: "none", borderRadius: 12, padding: "12px 22px", fontWeight: 800, fontSize: 14.5, cursor: "pointer", boxShadow: "0 10px 20px -12px rgba(31,164,99,0.8)" }}>
-          ✓ {t("pmk.submitSection")}
-        </button>
-      )}
     </div>
   );
 }

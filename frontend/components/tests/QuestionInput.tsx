@@ -8,11 +8,17 @@ const ACCENT = "#4F46E5";
 // One question as a student answers it. The answer is always a string:
 // option id for choices, text for written types, JSON {leftIndex: right}
 // for matching.
-export default function QuestionInput({ q, value, onChange, disabled }: { q: PublicQuestion; value: string; onChange: (v: string) => void; disabled?: boolean }) {
+// `exam`: the wording of the real paper (TRUE / FALSE / NOT GIVEN, or
+// YES / NO / NOT GIVEN when the instruction asks for it) instead of the
+// interface language.
+export default function QuestionInput({ q, value, onChange, disabled, exam }: { q: PublicQuestion; value: string; onChange: (v: string) => void; disabled?: boolean; exam?: boolean }) {
   const { t } = useLanguage();
 
   if (q.type === "MCQ" || q.type === "TRUE_FALSE" || q.type === "TRUE_FALSE_NG") {
-    const labels: Record<string, string> = { true: t("pt.true"), false: t("pt.false"), ng: t("qt.notGiven") };
+    const yesNo = /\bYES\b/.test(`${q.instruction ?? ""} ${q.section ?? ""}`);
+    const labels: Record<string, string> = exam
+      ? { true: yesNo ? "YES" : "TRUE", false: yesNo ? "NO" : "FALSE", ng: "NOT GIVEN" }
+      : { true: t("pt.true"), false: t("pt.false"), ng: t("qt.notGiven") };
     const mcq = q.type === "MCQ";
     return (
       <div style={{ display: "grid", gridTemplateColumns: mcq ? "repeat(auto-fit, minmax(220px, 1fr))" : "repeat(auto-fit, minmax(96px, 1fr))", gap: 8 }}>
@@ -51,6 +57,33 @@ export default function QuestionInput({ q, value, onChange, disabled }: { q: Pub
                 </span>
               )}
               <span style={{ minWidth: 0, overflowWrap: "anywhere" }}>{mcq ? o.text : labels[o.id] ?? o.text}</span>
+            </button>
+          );
+        })}
+      </div>
+    );
+  }
+
+  if (q.type === "MCQ_MULTI") {
+    const pick = q.pick ?? 2;
+    const chosen = value.split(",").filter(Boolean);
+    const toggle = (id: string) => {
+      if (disabled) return;
+      const next = chosen.includes(id) ? chosen.filter((x) => x !== id) : chosen.length < pick ? [...chosen, id] : chosen;
+      onChange([...next].sort().join(","));
+    };
+    return (
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        <div style={{ fontSize: 12.5, color: "#64748B", fontWeight: 600 }}>{t("qi.chooseN").replace("{n}", String(pick))} · {chosen.length}/{pick}</div>
+        {(q.options ?? []).map((o) => {
+          const on = chosen.includes(o.id);
+          const full = !on && chosen.length >= pick;
+          return (
+            <button key={o.id} type="button" disabled={disabled || full} onClick={() => toggle(o.id)} aria-pressed={on}
+              style={{ display: "flex", alignItems: "center", gap: 10, textAlign: "left", minHeight: 46, fontSize: 14.5, padding: "9px 12px", borderRadius: 12, cursor: disabled || full ? "default" : "pointer", border: `1.5px solid ${on ? ACCENT : "#E2E8F0"}`, background: on ? "#EEF0FF" : "#fff", color: "#0F172A", opacity: full ? 0.55 : 1 }}>
+              <span style={{ width: 24, height: 24, flexShrink: 0, borderRadius: 6, border: `2px solid ${on ? ACCENT : "#CBD5E1"}`, background: on ? ACCENT : "#fff", color: "#fff", fontSize: 14, fontWeight: 800, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>{on ? "✓" : ""}</span>
+              <b style={{ color: "#64748B", width: 18 }}>{o.id}</b>
+              <span style={{ minWidth: 0, overflowWrap: "anywhere" }}>{o.text}</span>
             </button>
           );
         })}

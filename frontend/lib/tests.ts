@@ -13,6 +13,7 @@ export const QUESTION_TYPES = [
   "TRANSFORMATION",
   "WORD_FORMATION",
   "ESSAY",
+  "MCQ_MULTI",
 ] as const;
 export type QuestionType = (typeof QUESTION_TYPES)[number];
 
@@ -52,6 +53,11 @@ export interface PublicQuestion {
   left?: string[];
   right?: string[];
   words?: string[];
+  // "Choose TWO": how many options to tick.
+  pick?: number;
+  // Question numbers it takes on the paper (IELTS mock: 2 for choose TWO).
+  span?: number;
+  no?: number;
 }
 
 export const TYPE_INFO: Record<QuestionType, { icon: string; label: TranslationKey; hint: TranslationKey }> = {
@@ -66,6 +72,7 @@ export const TYPE_INFO: Record<QuestionType, { icon: string; label: TranslationK
   TRANSFORMATION: { icon: "🔁", label: "qt.TRANSFORMATION", hint: "qt.TRANSFORMATION.hint" },
   WORD_FORMATION: { icon: "🧩", label: "qt.WORD_FORMATION", hint: "qt.WORD_FORMATION.hint" },
   ESSAY: { icon: "📝", label: "qt.ESSAY", hint: "qt.ESSAY.hint" },
+  MCQ_MULTI: { icon: "☑️", label: "qt.MCQ_MULTI", hint: "qt.MCQ_MULTI.hint" },
 };
 
 export const isChoice = (t: QuestionType) => t === "MCQ" || t === "TRUE_FALSE" || t === "TRUE_FALSE_NG";

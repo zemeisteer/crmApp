@@ -4,6 +4,8 @@ import { useCallback, useEffect, useState } from "react";
 import DashboardShell from "@/components/DashboardShell";
 import MockTestEditor from "@/components/mock-tests/MockTestEditor";
 import MockAttempts from "@/components/mock-tests/MockAttempts";
+import ImportPanel from "@/components/mock-tests/ImportPanel";
+import { levelKey } from "@/components/mock-tests/MockTestEditor";
 import { ApiError, mockTestsApi, type MockTest, type MockTestSummary } from "@/lib/api";
 import { useLanguage } from "@/lib/i18n-context";
 import { useAuth } from "@/lib/auth-context";
@@ -21,6 +23,7 @@ function MockTestsContent() {
   const [open, setOpen] = useState<MockTest | null>(null);
   const [tab, setTab] = useState<"edit" | "results">("edit");
   const [busy, setBusy] = useState(false);
+  const [importing, setImporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(() => {
@@ -90,11 +93,13 @@ function MockTestsContent() {
           <p style={{ fontSize: 13, color: "#6B6E78", margin: "4px 0 0", maxWidth: 640 }}>{t("mock.intro")}</p>
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <button type="button" className="btn" onClick={() => setImporting(true)} style={{ background: "#181A1F", color: "#fff", border: "none", borderRadius: 10, padding: "10px 16px", fontWeight: 700, cursor: "pointer" }}>📥 {t("mimp.button")}</button>
           <button type="button" className="btn" disabled={busy} onClick={() => create(true)} style={{ background: ACCENT, color: "#fff", border: "none", borderRadius: 10, padding: "10px 16px", fontWeight: 700, cursor: "pointer" }}>✨ {t("mock.fromSample")}</button>
           <button type="button" className="btn" disabled={busy} onClick={() => create(false)} style={{ background: "#fff", color: "#181A1F", border: "1px solid #EAE8E2", borderRadius: 10, padding: "10px 16px", fontWeight: 700, cursor: "pointer" }}>+ {t("mock.blank")}</button>
         </div>
       </div>
       {error && <div style={{ background: "#FDEBEC", color: "#B23A47", padding: "10px 14px", borderRadius: 10, fontSize: 13, fontWeight: 600 }}>{error}</div>}
+      {importing && <ImportPanel onClose={() => { setImporting(false); load(); }} onOpenTest={(id) => { setImporting(false); load(); openTest(id); }} />}
 
       {tests === null ? (
         <div style={{ ...card, color: "#8A8D96" }}>{t("common.loading")}</div>
@@ -111,7 +116,7 @@ function MockTestsContent() {
               <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "flex-start" }}>
                 <div style={{ minWidth: 0 }}>
                   <div style={{ fontWeight: 800, fontSize: 15 }}>{x.title}</div>
-                  <div style={{ fontSize: 12, color: "#8A8D96" }}>{x.kind} · {x.subject}</div>
+                  <div style={{ fontSize: 12, color: "#8A8D96" }}>{x.kind}{x.module === "GENERAL" ? " GT" : ""} · {x.subject} · {x.level ? t(levelKey(x.level)) : t("mock.levelAll")}</div>
                 </div>
                 <span style={{ fontSize: 11.5, fontWeight: 800, padding: "3px 10px", borderRadius: 100, background: x.status === "PUBLISHED" ? "#E9F8EF" : "#F2F1EC", color: x.status === "PUBLISHED" ? "#1FA463" : "#6B6E78", whiteSpace: "nowrap" }}>
                   {x.status === "PUBLISHED" ? t("mock.published") : t("mock.draft")}
