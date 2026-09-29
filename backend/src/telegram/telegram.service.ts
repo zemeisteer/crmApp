@@ -1,4 +1,5 @@
 import { Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { ModuleRef } from '@nestjs/core';
 import { ConfigService } from '@nestjs/config';
 import { and, asc, count, desc, eq, gt, gte, inArray, isNotNull, isNull, lt, lte, or, sum } from 'drizzle-orm';
 import { randomBytes, timingSafeEqual } from 'crypto';
@@ -64,7 +65,7 @@ const STAFF_KEYBOARD = {
   keyboard: [
     [{ text: '📊 Bugungi holat' }, { text: '🆕 Yangi arizalar' }],
     [{ text: '📞 Qayta aloqa' }, { text: '🎓 Sinov darslari' }],
-    [{ text: '❓ Yordam' }],
+    [{ text: '📈 Kun yakuni' }, { text: '❓ Yordam' }],
   ],
   resize_keyboard: true,
 };
@@ -89,6 +90,11 @@ const SOURCE_LABEL: Record<string, string> = {
   WALK_IN: "O'zi keldi", PHONE: "Qo'ng'iroq", ADVERTISEMENT: 'Reklama', OTHER: 'Boshqa',
 };
 
+type AttendanceMark = 'PRESENT' | 'ABSENT' | 'LATE';
+type AttendanceSheet = { tenantId: string; groupId: string; groupName: string; date: string; people: Array<{ id: string; name: string; status: AttendanceMark }> };
+const MARK_ICON: Record<AttendanceMark, string> = { PRESENT: '✅', ABSENT: '❌', LATE: '⏰' };
+const NEXT_MARK: Record<AttendanceMark, AttendanceMark> = { PRESENT: 'ABSENT', ABSENT: 'LATE', LATE: 'PRESENT' };
+
 type MenuStudent = typeof students.$inferSelect & { tenant: typeof tenants.$inferSelect | null };
 
 type StaffUser = { id: string; fullName: string; tenantId: string | null; role: string };
@@ -107,7 +113,12 @@ export class TelegramService {
     @Inject(DB) private readonly db: Database,
     private readonly config: ConfigService,
     private readonly tutor: StudentTutorService,
+    private readonly moduleRef: ModuleRef,
   ) {}
+
+  // Attendance sheets open in teachers' chats: "<chatId>:<groupId>" -> marks
+  // (saved only on "Save", so a mis-tap never messages parents).
+  private readonly sheets = new Map<string, AttendanceSheet>();
 
   // chatId -> when the AI tutor conversation lapses (in memory: a restart
   // just returns the student to the menu).
@@ -350,7 +361,7 @@ export class TelegramService {
       if (lower.includes('darslarim') || lower === '/today') {
         const weekday = zonedParts(now, tz).weekday;
         const rows = await this.db
-          .select({ name: groups.name, subject: groups.subject, days: groups.scheduleDays, start: groups.startTime, end: groups.endTime })
+          .select({ id: groups.id, name: groups.name, subject: groups.subject, days: groups.scheduleDays, start: groups.startTime, end: groups.endTime })
           .from(groups)
           .innerJoin(teachers, eq(teachers.id, groups.teacherId))
           .where(and(eq(groups.tenantId, tenantId), eq(teachers.userId, staff.id), isNull(groups.deletedAt), eq(groups.status, 'ACTIVE')))
@@ -360,11 +371,25 @@ export class TelegramService {
         );
         const msg = today.length
           ? `📅 <b>Bugungi darslaringiz</b>\n\n` +
-            today.map((g) => `• <b>${escapeHtml(g.name)}</b> (${escapeHtml(g.subject)}) — ${g.start ?? '—'}${g.end ? `–${g.end}` : ''}`).join('\n')
+            today.map((g) => `• <b>${escapeHtml(g.name)}</b> (${escapeHtml(g.subject)}) — ${g.start ?? '—'}${g.end ? `–${g.end}` : ''}`).join('\n') +
+            `\n\nDavomat qilish uchun guruhni bosing 👇`
           : "📅 Bugun sizda dars yo'q.";
-        await this.sendMessage(chatId, msg, keyboard);
+        // Inline buttons open an attendance sheet for that lesson.
+        const markup = today.length
+          ? { inline_keyboard: today.map((g) => [{ text: `📋 Davomat: ${g.name}${g.start ? ` (${g.start})` : ''}`, callback_data: `ag:${g.id}` }]) }
+          : keyboard;
+        await this.sendMessage(chatId, msg, markup);
         return;
       }
+    }
+
+    if (!teacher && (lower.includes('kun yakuni') || lower === '/digest')) {
+      // Loaded lazily: RemindersModule depends on this module.
+      const { RemindersService } = await import('../reminders/reminders.service');
+      const [t] = await this.db.select().from(tenants).where(eq(tenants.id, tenantId));
+      const text = t ? await this.moduleRef.get(RemindersService, { strict: false }).digestText(t) : 'Markaz topilmadi';
+      await this.sendMessage(chatId, text, keyboard);
+      return;
     }
 
     if (!teacher && (lower.includes('holat') || lower === '/stats')) {
@@ -613,6 +638,10 @@ export class TelegramService {
 
   // Handles Telegram webhook payload with interactive commands & account linking
   async handleUpdate(update: any) {
+    if (update?.callback_query) {
+      await this.handleCallback(update.callback_query);
+      return;
+    }
     const message = update?.message;
     const text: string | undefined = message?.text?.trim();
     const chatId: string | undefined = message?.chat?.id?.toString();
@@ -1070,6 +1099,148 @@ export class TelegramService {
         : `Assalomu alaykum, <b>${escapeHtml(student.fullName)}</b>! Kerakli bo'limni tanlang.\n\n🤖 Darsdan savolingiz bo'lsa, "${AI_BUTTON}" tugmasini bosing.`,
       kb,
     );
+  }
+
+  // ---- Attendance from the bot (teachers) ----
+
+  async editMessage(chatId: string, messageId: number, text: string, replyMarkup?: unknown) {
+    if (!this.token) return;
+    await fetch(`https://api.telegram.org/bot${this.token}/editMessageText`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: chatId, message_id: messageId, text, parse_mode: 'HTML', ...(replyMarkup ? { reply_markup: replyMarkup } : {}) }),
+    }).catch((err: Error) => this.logger.error(`Telegram editMessageText error: ${err.message}`));
+  }
+
+  async answerCallback(callbackId: string, text?: string) {
+    if (!this.token) return;
+    await fetch(`https://api.telegram.org/bot${this.token}/answerCallbackQuery`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ callback_query_id: callbackId, ...(text ? { text } : {}) }),
+    }).catch(() => undefined);
+  }
+
+  private sheetView(sheet: AttendanceSheet) {
+    const n = (st: AttendanceMark) => sheet.people.filter((p) => p.status === st).length;
+    const text =
+      `📋 <b>${escapeHtml(sheet.groupName)}</b> — ${sheet.date} davomati\n` +
+      `✅ ${n('PRESENT')} · ❌ ${n('ABSENT')} · ⏰ ${n('LATE')}\n\n` +
+      `O'quvchini bosib o'zgartiring: ✅ keldi → ❌ kelmadi → ⏰ kechikdi. Oxirida "💾 Saqlash".`;
+    const rows = sheet.people.map((p, i) => [{ text: `${MARK_ICON[p.status]} ${p.name}`, callback_data: `am:${sheet.groupId}:${i}` }]);
+    rows.push([
+      { text: '💾 Saqlash', callback_data: `as:${sheet.groupId}` },
+      { text: '✖️ Bekor', callback_data: `ac:${sheet.groupId}` },
+    ]);
+    return { text, markup: { inline_keyboard: rows } };
+  }
+
+  private async handleCallback(cq: any) {
+    const chatId: string | undefined = cq?.message?.chat?.id?.toString();
+    const messageId: number | undefined = cq?.message?.message_id;
+    const data: string = typeof cq?.data === 'string' ? cq.data : '';
+    if (!chatId || !messageId || !cq.id) return;
+    const staff = await this.findStaff(chatId);
+    if (!staff?.tenantId) {
+      await this.answerCallback(cq.id, 'Ruxsat yo\'q');
+      return;
+    }
+    const [kind, groupId, arg] = data.split(':');
+    const key = `${chatId}:${groupId}`;
+
+    if (kind === 'ag') {
+      const [group] = await this.db
+        .select({ id: groups.id, name: groups.name, teacherUserId: teachers.userId })
+        .from(groups)
+        .leftJoin(teachers, eq(teachers.id, groups.teacherId))
+        .where(and(eq(groups.id, groupId), eq(groups.tenantId, staff.tenantId), isNull(groups.deletedAt)));
+      // Teachers: only their own groups (the web rule).
+      if (!group || (staff.role === 'TEACHER' && group.teacherUserId !== staff.id)) {
+        await this.answerCallback(cq.id, 'Bu guruh sizga biriktirilmagan');
+        return;
+      }
+      const { tz } = await this.tenantZone(staff.tenantId);
+      const p = zonedParts(new Date(), tz);
+      const date = `${p.year}-${String(p.month).padStart(2, '0')}-${String(p.day).padStart(2, '0')}`;
+      const kids = await this.db
+        .select({ id: students.id, name: students.fullName })
+        .from(enrollments)
+        .innerJoin(students, eq(students.id, enrollments.studentId))
+        .where(and(eq(enrollments.groupId, group.id), eq(enrollments.status, 'ACTIVE'), eq(students.status, 'ACTIVE'), isNull(students.deletedAt)))
+        .orderBy(asc(students.fullName));
+      if (kids.length === 0) {
+        await this.answerCallback(cq.id, "Guruhda faol o'quvchi yo'q");
+        return;
+      }
+      // Start from today's saved marks, else everyone present.
+      const saved = await this.db
+        .select({ studentId: attendance.studentId, status: attendance.status })
+        .from(attendance)
+        .where(and(eq(attendance.groupId, group.id), eq(attendance.date, date)));
+      const savedBy = new Map(saved.map((r) => [r.studentId, r.status as AttendanceMark]));
+      const sheet: AttendanceSheet = {
+        tenantId: staff.tenantId,
+        groupId: group.id,
+        groupName: group.name,
+        date,
+        people: kids.slice(0, 95).map((k) => ({ id: k.id, name: k.name, status: savedBy.get(k.id) ?? 'PRESENT' })),
+      };
+      this.sheets.set(key, sheet);
+      const view = this.sheetView(sheet);
+      await this.answerCallback(cq.id);
+      await this.sendMessage(chatId, view.text, view.markup);
+      return;
+    }
+
+    const sheet = this.sheets.get(key);
+    if (!sheet || sheet.tenantId !== staff.tenantId) {
+      await this.answerCallback(cq.id, "Ro'yxat eskirdi — \"Bugungi darslarim\" dan qayta oching");
+      return;
+    }
+    if (kind === 'am') {
+      const person = sheet.people[Number(arg)];
+      if (person) person.status = NEXT_MARK[person.status];
+      const view = this.sheetView(sheet);
+      await this.answerCallback(cq.id);
+      await this.editMessage(chatId, messageId, view.text, view.markup);
+      return;
+    }
+    if (kind === 'ac') {
+      this.sheets.delete(key);
+      await this.answerCallback(cq.id);
+      await this.editMessage(chatId, messageId, `✖️ ${escapeHtml(sheet.groupName)}: davomat saqlanmadi.`);
+      return;
+    }
+    if (kind === 'as') {
+      // Loaded lazily: AttendanceModule depends on this module's services.
+      const { AttendanceService } = await import('../attendance/attendance.service');
+      const service = this.moduleRef.get(AttendanceService, { strict: false });
+      try {
+        await service.mark(
+          sheet.tenantId,
+          { groupId: sheet.groupId, date: sheet.date, entries: sheet.people.map((p) => ({ studentId: p.id, status: p.status })) },
+          staff.role,
+          staff.id,
+        );
+      } catch (err) {
+        await this.answerCallback(cq.id, 'Saqlab bo\'lmadi');
+        await this.sendMessage(chatId, `⚠️ ${escapeHtml((err as Error).message)}`);
+        return;
+      }
+      this.sheets.delete(key);
+      const n = (st: AttendanceMark) => sheet.people.filter((p) => p.status === st).length;
+      const missed = sheet.people.filter((p) => p.status !== 'PRESENT');
+      await this.answerCallback(cq.id, 'Saqlandi ✅');
+      await this.editMessage(
+        chatId,
+        messageId,
+        `✅ <b>${escapeHtml(sheet.groupName)}</b> — ${sheet.date} davomati saqlandi.\n` +
+          `✅ ${n('PRESENT')} · ❌ ${n('ABSENT')} · ⏰ ${n('LATE')}` +
+          (missed.length ? `\n\n${missed.map((p) => `${MARK_ICON[p.status]} ${escapeHtml(p.name)}`).join('\n')}\n\nOta-onalarga xabar yuborildi.` : ''),
+      );
+      return;
+    }
+    await this.answerCallback(cq.id);
   }
 
   // ---- Parents ----

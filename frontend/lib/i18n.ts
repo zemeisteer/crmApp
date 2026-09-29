@@ -1504,6 +1504,8 @@ export const dict = {
   "pbot.intro": { UZ: "Havolani ota-onaga yuboring. Ochganda bot farzandining jadvali, davomati, to'lovi va baholarini ko'rsatadi, dars qoldirilsa xabar beradi. Bir necha farzandni ulash mumkin.", RU: "Отправьте ссылку родителю. Бот покажет расписание, посещаемость, оплату и оценки ребёнка и сообщит о пропусках. Можно подключить нескольких детей.", EN: "Send this to the parent. The bot shows the child's schedule, attendance, payments and grades, and tells them about missed lessons. Several children can be linked." },
   "pbot.copy": { UZ: "Nusxalash", RU: "Копировать", EN: "Copy" },
   "pbot.copied": { UZ: "Nusxalandi", RU: "Скопировано", EN: "Copied" },
+  "rem.digest": { UZ: "Kun yakuni:", RU: "Итоги дня:", EN: "End of day:" },
+  "rem.digestHint": { UZ: "har kuni 20:00 da egasi, admin va menejerga Telegramda qisqa hisobot (tushgan pul, kelmaganlar, belgilanmagan darslar, arizalar, qarzdorlar)", RU: "каждый день в 20:00 владельцу, админу и менеджеру в Telegram: поступления, пропуски, неотмеченные уроки, заявки, должники", EN: "every day at 20:00 to the owner, admins and managers on Telegram: money in, absences, unmarked lessons, leads, debtors" },
   "chart.current": { UZ: "joriy", RU: "текущий", EN: "current" },
   "chart.noData": { UZ: "Ma'lumot yo'q", RU: "Нет данных", EN: "No data" },
   "dashboard.marksUnit": { UZ: "belgi", RU: "отметок", EN: "marks" },

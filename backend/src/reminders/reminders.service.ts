@@ -1,12 +1,12 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { and, eq, inArray, isNull, ne } from 'drizzle-orm';
+import { and, count, eq, gte, inArray, isNull, lt, ne, sum } from 'drizzle-orm';
 import { DB, Database } from '../db/db.module';
-import { enrollments, groups, reminderLog, students, teachers, tenants, users } from '../db/schema';
+import { attendance, enrollments, groups, leads, organizationMemberships, payments, reminderLog, students, teachers, tenants, users } from '../db/schema';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PaymentsService } from '../payments/payments.service';
 import { TelegramService } from '../telegram/telegram.service';
-import { DEFAULT_TIMEZONE, isValidTimeZone, zonedParts } from '../common/timezone';
+import { DEFAULT_TIMEZONE, isValidTimeZone, zonedDayBounds, zonedParts } from '../common/timezone';
 import { runsOn } from '../common/weekdays';
 
 // Automatic reminders, run every few minutes by RemindersScanner:
@@ -40,11 +40,12 @@ export class RemindersService {
   // One pass over every live center. `now` is injectable for tests.
   async scan(now = new Date()) {
     const list = await this.db.select().from(tenants).where(ne(tenants.status, 'SUSPENDED'));
-    const out = { lessons: 0, payments: 0 };
+    const out = { lessons: 0, payments: 0, digests: 0 };
     for (const t of list) {
       try {
         out.lessons += await this.lessonReminders(t, now);
         out.payments += await this.paymentReminders(t, now);
+        out.digests += await this.dailyDigests(t, now);
       } catch (err) {
         this.logger.warn(`Reminders for tenant ${t.id} failed: ${(err as Error).message}`);
       }
@@ -170,6 +171,70 @@ export class RemindersService {
       sent++;
     }
     return sent;
+  }
+
+  // ---- Evening summary for owners / admins / managers ----
+
+  async dailyDigests(t: Tenant, now: Date) {
+    if (!t.dailyDigest) return 0;
+    const c = this.clock(t, now);
+    if (c.hour !== 20) return 0; // 20:00-20:59, center time
+    const people = await this.db
+      .select({ id: users.id, chat: users.telegramChatId })
+      .from(users)
+      .innerJoin(organizationMemberships, and(eq(organizationMemberships.userId, users.id), eq(organizationMemberships.tenantId, t.id)))
+      .where(and(eq(users.tenantId, t.id), eq(organizationMemberships.status, 'ACTIVE'), inArray(organizationMemberships.role, ['OWNER', 'ADMIN', 'MANAGER'])));
+    const to = people.filter((p): p is { id: string; chat: string } => Boolean(p.chat));
+    if (to.length === 0) return 0;
+    let text: string | null = null;
+    let sent = 0;
+    for (const p of to) {
+      if (!(await this.once(t.id, 'DIGEST', p.id, c.date))) continue;
+      text ??= await this.digestText(t, now);
+      await this.telegram.sendMessage(p.chat, text);
+      sent++;
+    }
+    return sent;
+  }
+
+  // The day in numbers (also shown on demand by the staff bot button).
+  async digestText(t: Tenant, now = new Date()) {
+    const c = this.clock(t, now);
+    const tz = isValidTimeZone(t.timezone) ? t.timezone : DEFAULT_TIMEZONE;
+    const { startOfToday, endOfToday } = zonedDayBounds(now, tz);
+
+    const [[paid], marks, [newLeads], [overdueFollowUps], debt, todaysGroups] = await Promise.all([
+      this.db.select({ n: count(), total: sum(payments.amount) }).from(payments)
+        .where(and(eq(payments.tenantId, t.id), eq(payments.status, 'PAID'), gte(payments.paidAt, startOfToday), lt(payments.paidAt, endOfToday))),
+      this.db.select({ groupId: attendance.groupId, status: attendance.status, n: count() }).from(attendance)
+        .where(and(eq(attendance.tenantId, t.id), eq(attendance.date, c.date)))
+        .groupBy(attendance.groupId, attendance.status),
+      this.db.select({ n: count() }).from(leads)
+        .where(and(eq(leads.tenantId, t.id), isNull(leads.archivedAt), gte(leads.createdAt, startOfToday), lt(leads.createdAt, endOfToday))),
+      this.db.select({ n: count() }).from(leads)
+        .where(and(eq(leads.tenantId, t.id), isNull(leads.archivedAt), lt(leads.followUpAt, now),
+          inArray(leads.status, ['NEW', 'CONTACTED', 'TRIAL_BOOKED', 'TRIAL_ATTENDED', 'QUALIFIED']))),
+      this.payments.getDebtors(t.id, c.month, true),
+      this.db.select({ id: groups.id, name: groups.name, days: groups.scheduleDays, start: groups.startTime }).from(groups)
+        .where(and(eq(groups.tenantId, t.id), eq(groups.status, 'ACTIVE'), isNull(groups.deletedAt))),
+    ]);
+    const lessons = todaysGroups.filter((g) => runsOn(g.days, c.weekday));
+    const markedGroups = new Set(marks.map((m) => m.groupId));
+    const unmarked = lessons.filter((g) => !markedGroups.has(g.id));
+    const absent = marks.filter((m) => m.status === 'ABSENT').reduce((s, m) => s + Number(m.n), 0);
+    const late = marks.filter((m) => m.status === 'LATE').reduce((s, m) => s + Number(m.n), 0);
+    const [, mm, dd] = c.date.split('-');
+
+    const lines = [
+      `📈 <b>Kun yakuni — ${dd}.${mm}</b> · ${escape(t.name)}`,
+      '',
+      `💰 Bugun tushdi: <b>${money(Number(paid?.total ?? 0))} so'm</b> (${Number(paid?.n ?? 0)} ta to'lov)`,
+      `📋 Darslar: ${lessons.length} ta` + (unmarked.length ? ` · ⚠️ davomat belgilanmagan: ${unmarked.map((g) => escape(g.name)).join(', ')}` : lessons.length ? ' · davomat to\'liq ✅' : ''),
+      `❌ Kelmaganlar: ${absent}` + (late ? ` · ⏰ kechikkan: ${late}` : ''),
+      `🆕 Yangi arizalar: ${Number(newLeads?.n ?? 0)}` + (Number(overdueFollowUps?.n ?? 0) ? ` · 📞 kechikkan qayta aloqa: ${Number(overdueFollowUps.n)}` : ''),
+      `💸 Qarzdorlar (${c.month}): ${debt.debtorCount} ta — ${money(debt.totalDebt)} so'm`,
+    ];
+    return lines.join('\n');
   }
 
   // SMS only with a real provider token: without one the provider "sends" a

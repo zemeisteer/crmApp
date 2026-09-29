@@ -36,7 +36,8 @@ export class TelegramPoller implements OnModuleInit, OnModuleDestroy {
     this.logger.log('Telegram polling started');
     while (this.running) {
       try {
-        const res = await fetch(`${api}/getUpdates?timeout=25&offset=${this.offset}`);
+        const allowed = encodeURIComponent(JSON.stringify(['message', 'callback_query']));
+        const res = await fetch(`${api}/getUpdates?timeout=25&offset=${this.offset}&allowed_updates=${allowed}`);
         const body = (await res.json()) as { ok: boolean; result?: { update_id: number }[]; description?: string };
         if (!body.ok) {
           this.logger.warn(`getUpdates failed: ${body.description ?? res.status}`);

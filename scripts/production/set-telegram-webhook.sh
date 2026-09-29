@@ -25,7 +25,7 @@ fi
 curl -fsS "https://api.telegram.org/bot${TOKEN}/setWebhook" \
   --data-urlencode "url=https://${DOMAIN}/api/telegram/webhook" \
   --data-urlencode "secret_token=${SECRET}" \
-  --data-urlencode 'allowed_updates=["message"]' \
+  --data-urlencode 'allowed_updates=["message","callback_query"]' \
   --data-urlencode "drop_pending_updates=true" | grep -q '"ok":true' \
   && echo "✅ Webhook ulandi: https://${DOMAIN}/api/telegram/webhook" \
   || { echo "XATO: Telegram webhookni qabul qilmadi." >&2; exit 1; }

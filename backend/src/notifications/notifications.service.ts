@@ -41,6 +41,7 @@ export class NotificationsService {
         notifyOnHomework: true,
         remindPaymentDay: true,
         remindLessons: true,
+        dailyDigest: true,
       },
     });
     if (!tenant) throw new NotFoundException('Markaz topilmadi');
@@ -64,6 +65,7 @@ export class NotificationsService {
     if (dto.notifyOnHomework !== undefined) patch.notifyOnHomework = dto.notifyOnHomework;
     if (dto.remindPaymentDay !== undefined) patch.remindPaymentDay = dto.remindPaymentDay;
     if (dto.remindLessons !== undefined) patch.remindLessons = dto.remindLessons;
+    if (dto.dailyDigest !== undefined) patch.dailyDigest = dto.dailyDigest;
 
     await this.db.update(tenants).set(patch).where(eq(tenants.id, tenantId));
     return this.getSettings(tenantId);

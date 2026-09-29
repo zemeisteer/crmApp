@@ -7,6 +7,7 @@ import { AppModule } from '../src/app.module.js';
 import { DB, type Database } from '../src/db/db.module.js';
 import { students, tenants, users } from '../src/db/schema.js';
 import { NotificationsService } from '../src/notifications/notifications.service.js';
+import { TelegramService } from '../src/telegram/telegram.service.js';
 import { RemindersService } from '../src/reminders/reminders.service.js';
 
 // Automatic reminders at a fixed moment: Monday 28 Sep 2026, 10:00 in
@@ -89,5 +90,34 @@ describe('Automatic reminders (e2e)', () => {
     expect(await r.paymentReminders(await tenantRow(), MON_10)).toBe(0); // once a month
 
     await http().patch('/api/notifications/settings').set(auth()).send({ remindPaymentDay: 40 }).expect(400);
+  });
+
+  it("sends owners the evening summary once at 20:00, and on demand", async () => {
+    const tg = app.get(TelegramService);
+    const tgSent: Array<{ chat: string; text: string }> = [];
+    tg.sendMessage = (async (chat: string, text: string) => { tgSent.push({ chat, text }); }) as typeof tg.sendMessage;
+    const ownerChat = `6${String(suffix).slice(-8)}`;
+    const me = (await http().get('/api/auth/me').set(auth()).expect(200)).body;
+    await db.update(users).set({ telegramChatId: ownerChat }).where(eq(users.id, me.id ?? me.user?.id));
+
+    const r = app.get(RemindersService);
+    expect(await r.dailyDigests(await tenantRow(), MON_10)).toBe(0); // not 20:00 yet
+    const MON_20 = new Date('2026-09-28T15:10:00Z'); // 20:10 Tashkent
+    expect(await r.dailyDigests(await tenantRow(), MON_20)).toBe(1);
+    const digest = tgSent.at(-1)!;
+    expect(digest.chat).toBe(ownerChat);
+    expect(digest.text).toContain('Kun yakuni');
+    expect(digest.text).toContain('Qarzdorlar');
+    expect(digest.text).toContain('Monday Math'); // today's lesson without attendance
+    expect(await r.dailyDigests(await tenantRow(), MON_20)).toBe(0); // once a day
+
+    // The staff menu button shows it any time.
+    await http().post('/api/telegram/webhook').send({ update_id: 3, message: { text: '📈 Kun yakuni', chat: { id: Number(ownerChat) } } }).expect(201);
+    const { TelegramController } = await import('../src/telegram/telegram.controller.js');
+    await app.get(TelegramController).idle();
+    expect(tgSent.at(-1)!.text).toContain('Kun yakuni');
+
+    await http().patch('/api/notifications/settings').set(auth()).send({ dailyDigest: false }).expect(200);
+    expect(await r.dailyDigests(await tenantRow(), new Date('2026-09-29T15:10:00Z'))).toBe(0);
   });
 });

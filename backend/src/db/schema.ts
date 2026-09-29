@@ -229,6 +229,8 @@ export const tenants = pgTable('tenants', {
   // Telegram reminders before lessons.
   remindPaymentDay: integer('remind_payment_day').notNull().default(5),
   remindLessons: boolean('remind_lessons').notNull().default(true),
+  // Evening summary (20:00) to owners/admins/managers linked to the bot.
+  dailyDigest: boolean('daily_digest').notNull().default(true),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 }, (t) => ({

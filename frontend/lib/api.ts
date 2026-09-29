@@ -2427,6 +2427,7 @@ export interface NotificationSettings {
   // Automatic reminders: day of month for debtors (0 = off), lessons.
   remindPaymentDay?: number;
   remindLessons?: boolean;
+  dailyDigest?: boolean;
 }
 
 export const notificationsApi = {

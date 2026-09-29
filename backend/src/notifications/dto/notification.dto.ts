@@ -98,6 +98,11 @@ export class UpdateNotificationSettingsDto {
   @IsOptional()
   @IsBoolean()
   remindLessons?: boolean;
+
+  // Evening summary to owners/admins/managers in the bot.
+  @IsOptional()
+  @IsBoolean()
+  dailyDigest?: boolean;
 }
 
 export class QueryNotificationsDto {

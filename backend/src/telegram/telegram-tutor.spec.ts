@@ -53,7 +53,7 @@ describe('TelegramService AI tutor', () => {
     };
     ai = { isConfigured: true, tutorReply: vi.fn().mockResolvedValue('**Present Perfect** — <have> + V3') };
     const config = { get: vi.fn((k: string) => (k === 'TELEGRAM_BOT_TOKEN' ? 'x' : null)) };
-    service = new TelegramService(db, config as any, new StudentTutorService(db, ai as any));
+    service = new TelegramService(db, config as any, new StudentTutorService(db, ai as any), {} as any);
     service.sendMessage = vi.fn().mockResolvedValue(undefined);
     (service as any).sendTyping = vi.fn().mockResolvedValue(undefined);
   });

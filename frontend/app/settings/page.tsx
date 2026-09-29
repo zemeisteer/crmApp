@@ -960,6 +960,7 @@ function NotificationsSettingsTab() {
         notifyOnHomework: settings.notifyOnHomework,
         remindPaymentDay: settings.remindPaymentDay,
         remindLessons: settings.remindLessons,
+        dailyDigest: settings.dailyDigest,
       };
       if (tokenInput.trim()) {
         payload.smsApiToken = tokenInput.trim();
@@ -1130,6 +1131,10 @@ function NotificationsSettingsTab() {
               <label style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13, cursor: "pointer" }}>
                 <input type="checkbox" checked={settings.remindLessons ?? true} onChange={(e) => setSettings({ ...settings, remindLessons: e.target.checked })} style={{ accentColor: ACCENT }} />
                 <span><b>📅 {t("rem.lessons")}</b> {t("rem.lessonsHint")}</span>
+              </label>
+              <label style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13, cursor: "pointer" }}>
+                <input type="checkbox" checked={settings.dailyDigest ?? true} onChange={(e) => setSettings({ ...settings, dailyDigest: e.target.checked })} style={{ accentColor: ACCENT }} />
+                <span><b>📈 {t("rem.digest")}</b> {t("rem.digestHint")}</span>
               </label>
             </div>
 
