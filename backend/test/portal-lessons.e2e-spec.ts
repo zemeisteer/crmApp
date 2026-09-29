@@ -53,8 +53,9 @@ describe('Portal past lessons and subdomain sign-in (e2e)', () => {
     const res = (await http().get('/api/portal/lessons?days=7').set(s).expect(200)).body;
     const past = res.lessons.find((l: { date: string }) => l.date === yesterday);
     expect(past).toMatchObject({ groupName: 'Every Day', attendance: 'LATE' });
-    const todays = res.lessons.find((l: { date: string }) => l.date === res.today);
-    expect(todays.homework).toEqual([expect.objectContaining({ title: 'Workbook p.12', description: 'Ex. 1-3' })]);
+    // Homework posted today belongs to the latest lesson so far (yesterday's).
+    expect(past.homework).toEqual([expect.objectContaining({ title: 'Workbook p.12', description: 'Ex. 1-3' })]);
+    expect(res.lessons.some((l: { date: string }) => l.date === res.today)).toBe(false);
   });
 
   it('lets the student hand in homework with a notebook photo and text', async () => {

@@ -40,6 +40,15 @@ describe('buildPastLessons', () => {
     expect(wed.exams).toEqual([{ id: 'e1', title: 'Unit test', maxScore: 100, passingScore: 60, score: 72 }]);
   });
 
+  it('puts homework posted on a day off under the latest lesson', () => {
+    const input = base();
+    // Sunday 20th: the latest lesson before it is Wednesday 16th.
+    input.homework = [{ id: 'h2', groupId: 'g1', givenOn: '2026-09-20', title: 'Weekend task', description: null, dueDate: null, attachmentPath: null, attachmentName: null, status: null, score: null, maxScore: 10 }];
+    const lessons = buildPastLessons(input);
+    expect(lessons.map((l) => l.date)).toEqual(['2026-09-21', '2026-09-16', '2026-09-14']);
+    expect(lessons[1].homework.map((h) => h.id)).toEqual(['h2']);
+  });
+
   it('adds make-up days and today only when something was recorded', () => {
     const input = base();
     input.attendance = [

@@ -9,6 +9,7 @@ import { useCenterFromHost } from "@/lib/use-center-host";
 import { AttendanceTab, HomeworkTab, PaymentsTab, ScheduleTab, TabTitle } from "@/components/portal/PortalTabs";
 import PortalTutor from "@/components/portal/PortalTutor";
 import PortalMessages from "@/components/portal/PortalMessages";
+import PortalPractice from "@/components/portal/PortalPractice";
 import type { Lang, TranslationKey } from "@/lib/i18n";
 import {
   portalApi,
@@ -31,12 +32,13 @@ import {
 
 const ACCENT = "#4F46E5";
 
-type PortalTab = "home" | "schedule" | "attendance" | "homework" | "ai" | "exams" | "payments" | "notifications";
+type PortalTab = "home" | "schedule" | "attendance" | "homework" | "ai" | "practice" | "exams" | "payments" | "notifications";
 const NAV: Array<{ id: PortalTab; icon: string; label: TranslationKey; short: TranslationKey; bottom: boolean }> = [
   { id: "home", icon: "🏠", label: "ptn.home", short: "ptn.home", bottom: true },
   { id: "schedule", icon: "🗓️", label: "ptn.schedule", short: "ptn.schedule", bottom: true },
   { id: "homework", icon: "📚", label: "ptn.homework", short: "ptn.homework", bottom: true },
   { id: "ai", icon: "🤖", label: "ptn.ai", short: "ptn.aiShort", bottom: true },
+  { id: "practice", icon: "🎯", label: "ptn.practice", short: "ptn.practiceShort", bottom: true },
   { id: "exams", icon: "📝", label: "ptn.exams", short: "ptn.examsShort", bottom: true },
   { id: "payments", icon: "💳", label: "ptn.payments", short: "ptn.paymentsShort", bottom: true },
   { id: "attendance", icon: "✅", label: "ptn.attendance", short: "ptn.attendance", bottom: false },
@@ -84,6 +86,8 @@ function LangSwitch({ lang, setLang, dark }: { lang: Lang; setLang: (l: Lang) =>
 export default function StudentPortalPage() {
   const { t, lang, setLang } = useLanguage();
   const hostCenter = useCenterFromHost();
+  const [loadError, setLoadError] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
   const [token, setTokenState] = useState<string | null>(null);
   const [sessions, setSessions] = useState<PortalSession[]>([]);
   const [addingChild, setAddingChild] = useState(false);
@@ -199,6 +203,7 @@ export default function StudentPortalPage() {
   useEffect(() => {
     if (!token) return;
     setLoading(true);
+    setLoadError(false);
 
     Promise.all([
       portalApi.getMe(),
@@ -218,12 +223,18 @@ export default function StudentPortalPage() {
         setPayments(p);
         setAnnouncements(ann);
       })
-      .catch(() => {
-        clearPortalToken();
-        setTokenState(null);
+      .catch((err) => {
+        // Only an expired/invalid session signs the student out; a busy
+        // server (429) or a network blip keeps them in to retry.
+        if (err instanceof ApiError && err.status === 401) {
+          clearPortalToken();
+          setTokenState(null);
+        } else {
+          setLoadError(true);
+        }
       })
       .finally(() => setLoading(false));
-  }, [token]);
+  }, [token, reloadKey]);
 
   // Unread announcements, plus the debt reminder while money is owed.
   const notifCount = announcements.filter((a) => !a.read).length + (payments && payments.debtAmount > 0 ? 1 : 0);
@@ -546,6 +557,12 @@ export default function StudentPortalPage() {
         {/* ========================================================================= */}
         {/* TAB: HOME                                                                 */}
         {/* ========================================================================= */}
+        {loadError && (
+          <div style={{ background: "#FFFBEB", border: "1px solid #FDE68A", color: "#92400E", borderRadius: 12, padding: "10px 14px", marginBottom: 14, display: "flex", gap: 10, alignItems: "center", justifyContent: "space-between", fontSize: 13.5 }}>
+            <span>⚠️ {t("ptl.loadError")}</span>
+            <button type="button" onClick={() => setReloadKey((k) => k + 1)} style={{ background: "#D97706", color: "#fff", border: "none", borderRadius: 9, padding: "7px 12px", fontWeight: 700, cursor: "pointer" }}>↻ {t("ptl.retry")}</button>
+          </div>
+        )}
         {(isParent || sessions.length > 1) && (
           <div className="ptl-kids">
             {isParent && <span className="ptl-parent-badge">👪 {t("ptp.parentView")}</span>}
@@ -600,6 +617,7 @@ export default function StudentPortalPage() {
         {/* ========================================================================= */}
         {/* TAB: EXAMS                                                                */}
         {/* ========================================================================= */}
+        {activeTab === "practice" && <PortalPractice key={token ?? ""} readOnly={isParent} />}
         {activeTab === "exams" && (
           <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
             <TabTitle title={t("ptl.examsCerts")} />

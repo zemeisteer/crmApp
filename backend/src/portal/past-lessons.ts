@@ -149,11 +149,16 @@ export function buildPastLessons(input: PastLessonInput): PastLesson[] {
     if (!g || a.date < input.from || a.date > input.today) continue;
     add(g, a.date).attendance = a.status;
   }
+  // Homework is often posted after the lesson (that evening or the next
+  // day): it belongs to the group's latest lesson on or before that day.
   for (const h of input.homework) {
     const g = groupById.get(h.groupId);
     if (!g || !inWindow(g, h.givenOn)) continue;
     const { groupId: _g, givenOn: _d, ...rest } = h;
-    add(g, h.givenOn).homework.push(rest);
+    const lesson = [...byKey.values()]
+      .filter((l) => l.groupId === g.id && l.date <= h.givenOn)
+      .sort((a, b) => b.date.localeCompare(a.date))[0];
+    (lesson ?? add(g, h.givenOn)).homework.push(rest);
   }
   for (const e of input.exams) {
     const g = groupById.get(e.groupId);

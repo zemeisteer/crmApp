@@ -2700,3 +2700,173 @@ export const invitationsApi = {
     }),
 };
 
+// ---- IELTS mock tests ----
+
+export type MockSection = "listening" | "reading" | "writing" | "speaking";
+export const MOCK_SECTIONS: MockSection[] = ["listening", "reading", "writing", "speaking"];
+
+export interface MockContent {
+  listening: { durationMin: number; parts: Array<{ title: string; instruction: string | null; audioPath: string | null; transcript: string | null; questions: import("./tests").TestQuestion[] }> };
+  reading: { durationMin: number; passages: Array<{ title: string; text: string; questions: import("./tests").TestQuestion[] }> };
+  writing: { durationMin: number; tasks: Array<{ title: string; prompt: string; minWords: number; imagePath: string | null }> };
+  speaking: { parts: Array<{ title: string; instruction: string | null; prepSeconds: number; answerSeconds: number; questions: string[] }> };
+}
+
+export interface MockTestSummary {
+  id: string;
+  title: string;
+  subject: string;
+  kind: string;
+  status: "DRAFT" | "PUBLISHED";
+  createdAt: string;
+  updatedAt: string;
+  attempts: number;
+  summary: { listening: number; reading: number; writing: number; speaking: number };
+}
+
+export interface MockTest extends Omit<MockTestSummary, "attempts" | "summary"> {
+  content: MockContent;
+}
+
+export interface ExaminerFeedback {
+  band: number;
+  criteria: Record<string, number>;
+  strengths: string[];
+  improvements: string[];
+  summary: string;
+  corrections?: Array<{ original: string; better: string }>;
+}
+
+export interface MockSectionResult {
+  status: "DONE" | "PENDING" | "REVIEW";
+  band: number | null;
+  raw?: number;
+  max?: number;
+  marks?: boolean[];
+  tasks?: Array<{ band: number | null; words: number; feedback: ExaminerFeedback | null }>;
+  feedback?: ExaminerFeedback | null;
+  teacherComment?: string | null;
+  gradedBy?: "AUTO" | "AI" | "TEACHER";
+  late?: boolean;
+}
+export type MockResults = Partial<Record<MockSection, MockSectionResult>> & { overall?: number | null };
+
+export interface MockSpeakingAnswer { audio: string | null; transcript: string; seconds: number | null }
+export interface MockAnswers {
+  listening?: Record<string, string>;
+  reading?: Record<string, string>;
+  writing?: Record<string, string>;
+  speaking?: Record<string, MockSpeakingAnswer>;
+}
+
+export interface MockAttemptRow {
+  id: string;
+  status: "IN_PROGRESS" | "COMPLETED";
+  studentId: string;
+  studentName: string;
+  results: MockResults;
+  sectionDone: Record<string, string>;
+  createdAt: string;
+  completedAt: string | null;
+}
+
+export interface MockAttemptDetail {
+  id: string;
+  status: "IN_PROGRESS" | "COMPLETED";
+  student: { id: string; fullName: string };
+  test: MockTest;
+  answers: MockAnswers;
+  results: MockResults;
+  sectionDone: Record<string, string>;
+  createdAt: string;
+  completedAt: string | null;
+}
+
+type MockPublicQuestion = import("./tests").PublicQuestion & { id: string; no: number };
+export interface PortalMockAttempt {
+  id: string;
+  status: "IN_PROGRESS" | "COMPLETED";
+  test: {
+    id: string;
+    title: string;
+    kind: string;
+    subject: string;
+    content: {
+      listening: { durationMin: number; parts: Array<{ title: string; instruction: string | null; audioPath: string | null; tts: string | null; questions: MockPublicQuestion[] }> };
+      reading: { durationMin: number; passages: Array<{ title: string; text: string; questions: MockPublicQuestion[] }> };
+      writing: MockContent["writing"];
+      speaking: MockContent["speaking"];
+    };
+  };
+  answers: MockAnswers;
+  sectionStarted: Record<string, string>;
+  sectionDone: Record<string, string>;
+  results: MockResults;
+  keys: Partial<Record<"listening" | "reading", string[]>>;
+  serverNow: string;
+  aiFeedback: boolean;
+}
+
+export interface PortalPractice {
+  aiFeedback: boolean;
+  directions: Array<{
+    subject: string;
+    english: boolean;
+    tests: Array<{
+      id: string;
+      title: string;
+      kind: string;
+      subject: string;
+      sections: { listening: number; reading: number; writing: number; speaking: number };
+      durations: { listening: number; reading: number; writing: number };
+      attempts: Array<{ id: string; status: "IN_PROGRESS" | "COMPLETED"; createdAt: string; completedAt: string | null; sectionDone: Record<string, string>; results: MockResults }>;
+    }>;
+  }>;
+}
+
+async function postForm<T>(path: string, form: FormData, token: string | null): Promise<T> {
+  const res = await fetch(`${API_URL}${path}`, { method: "POST", headers: token ? { Authorization: `Bearer ${token}` } : undefined, body: form });
+  const body = await res.json().catch(() => null);
+  if (!res.ok) throw new ApiError(body?.message || "Yuklanmadi", res.status, body);
+  return body as T;
+}
+
+export const mockTestsApi = {
+  list: () => request<MockTestSummary[]>("/mock-tests"),
+  get: (id: string) => request<MockTest>(`/mock-tests/${id}`),
+  create: (data: { title?: string; subject?: string; sample?: boolean }) =>
+    request<MockTest>("/mock-tests", { method: "POST", body: JSON.stringify(data) }),
+  update: (id: string, data: { title?: string; subject?: string; status?: "DRAFT" | "PUBLISHED"; content?: MockContent }) =>
+    request<MockTest>(`/mock-tests/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
+  remove: (id: string) => request<{ success: boolean }>(`/mock-tests/${id}`, { method: "DELETE" }),
+  uploadAsset: (id: string, file: File) => {
+    const form = new FormData();
+    form.append("file", file);
+    return postForm<{ path: string; name: string; type: string }>(`/mock-tests/${id}/asset`, form, getToken());
+  },
+  attempts: (id: string) => request<MockAttemptRow[]>(`/mock-tests/${id}/attempts`),
+  attempt: (attemptId: string) => request<MockAttemptDetail>(`/mock-tests/attempts/${attemptId}`),
+  review: (attemptId: string, data: { section: "writing" | "speaking"; band: number; task1?: number; task2?: number; comment?: string }) =>
+    request<MockAttemptDetail>(`/mock-tests/attempts/${attemptId}/review`, { method: "POST", body: JSON.stringify(data) }),
+  regrade: (attemptId: string, section: "writing" | "speaking") =>
+    request<MockAttemptDetail>(`/mock-tests/attempts/${attemptId}/regrade`, { method: "POST", body: JSON.stringify({ section }) }),
+};
+
+export const portalMockApi = {
+  list: () => request<PortalPractice>("/portal/mock-tests"),
+  start: (testId: string) => request<PortalMockAttempt>(`/portal/mock-tests/${testId}/start`, { method: "POST" }),
+  get: (attemptId: string) => request<PortalMockAttempt>(`/portal/mock-tests/attempts/${attemptId}`),
+  startSection: (attemptId: string, section: MockSection) =>
+    request<PortalMockAttempt>(`/portal/mock-tests/attempts/${attemptId}/sections/${section}/start`, { method: "POST" }),
+  save: (attemptId: string, section: MockSection, answers: Record<string, string>) =>
+    request<{ saved: boolean }>(`/portal/mock-tests/attempts/${attemptId}/sections/${section}/answers`, { method: "POST", body: JSON.stringify({ answers }) }),
+  submit: (attemptId: string, section: MockSection, answers?: Record<string, string>) =>
+    request<PortalMockAttempt>(`/portal/mock-tests/attempts/${attemptId}/sections/${section}/submit`, { method: "POST", body: JSON.stringify(answers ? { answers } : {}) }),
+  speaking: (attemptId: string, key: string, data: { audio?: Blob | null; transcript?: string; seconds?: number }) => {
+    const form = new FormData();
+    if (data.audio) form.append("audio", data.audio, `answer.${data.audio.type.includes("mp4") ? "m4a" : data.audio.type.includes("ogg") ? "ogg" : "webm"}`);
+    if (data.transcript) form.append("transcript", data.transcript);
+    if (data.seconds !== undefined) form.append("seconds", String(Math.round(data.seconds)));
+    return postForm<{ saved: boolean }>(`/portal/mock-tests/attempts/${attemptId}/speaking/${key}`, form, getPortalToken());
+  },
+};

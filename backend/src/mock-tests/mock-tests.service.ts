@@ -294,7 +294,7 @@ export class MockTestsService {
       const all = parse<Answers>(a.answers, {});
       const prev = all.speaking?.[key];
       all.speaking = {
-        ...(all.speaking ?? {}),
+        ...all.speaking,
         [key]: {
           audio: data.audio ?? prev?.audio ?? null,
           transcript: (data.transcript ?? prev?.transcript ?? '').trim().slice(0, 5000),
