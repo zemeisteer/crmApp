@@ -50,7 +50,9 @@ describe('Portal for parents (e2e)', () => {
 
     // Parents can see everything...
     await http().get('/api/portal/schedule').set(p).expect(200);
-    await http().get('/api/portal/payments').set(p).expect(200);
+    // Parents may pay; the cabinet only offers configured providers.
+    const pay = (await http().get('/api/portal/payments').set(p).expect(200)).body;
+    expect(pay.online).toEqual({ click: expect.any(Boolean), payme: expect.any(Boolean) });
     await http().get('/api/portal/homework').set(p).expect(200);
     // ...but the child's own work and AI conversation stay the child's.
     await http().post('/api/portal/homework/any-id/submit').set(p).expect(403);

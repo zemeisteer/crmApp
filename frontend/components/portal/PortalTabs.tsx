@@ -271,13 +271,18 @@ export function HomeworkTab({ homework, onSubmit, readOnly = false }: { homework
 
 // ---------------------------------------------------------------- payments
 
-export function PaymentsTab({ payments, checkoutLoading, onPay }: { payments: PortalPayments | null; checkoutLoading: string | null; onPay: (p: "CLICK" | "PAYME") => void }) {
+export function PaymentsTab({ payments, checkoutLoading, onPay, payError }: { payments: PortalPayments | null; checkoutLoading: string | null; onPay: (p: "CLICK" | "PAYME") => void; payError?: string | null }) {
   const { t } = useLanguage();
   const debt = payments?.debtAmount ?? 0;
   const expected = payments?.expectedTuition ?? 0;
   const paid = payments?.monthPaid ?? 0;
   const pct = expected > 0 ? Math.min(100, Math.round((paid / expected) * 100)) : 0;
   const history = payments?.history ?? [];
+  // Pay-online buttons only for providers the center has set up.
+  const providers = ([
+    ["CLICK", t("ptl.payClick"), "#0073FF", payments?.online?.click],
+    ["PAYME", t("ptl.payPayme"), "#18AC98", payments?.online?.payme],
+  ] as const).filter((x) => x[3]).map(([p, l, c]) => [p, l, c] as const);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
@@ -301,18 +306,19 @@ export function PaymentsTab({ payments, checkoutLoading, onPay }: { payments: Po
             </div>
           </>
         )}
-        {debt > 0 && (
+        {debt > 0 && providers.length === 0 && (
+          <div style={{ marginTop: 14, fontSize: 13, background: "rgba(255,255,255,0.14)", borderRadius: 12, padding: "10px 12px", lineHeight: 1.5 }}>🏫 {t("ptl.payAtCenter")}</div>
+        )}
+        {debt > 0 && providers.length > 0 && (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 8, marginTop: 16 }}>
-            {([
-              ["CLICK", t("ptl.payClick"), "#0073FF"],
-              ["PAYME", t("ptl.payPayme"), "#18AC98"],
-            ] as const).map(([p, l, c]) => (
+            {providers.map(([p, l, c]) => (
               <button key={p} type="button" onClick={() => onPay(p)} disabled={checkoutLoading !== null} style={{ background: "#fff", color: c, border: "none", minHeight: 46, borderRadius: 12, fontWeight: 800, fontSize: 14, cursor: "pointer", opacity: checkoutLoading && checkoutLoading !== p ? 0.6 : 1 }}>
                 {checkoutLoading === p ? t("common.loading") : `💳 ${l}`}
               </button>
             ))}
           </div>
         )}
+        {payError && <div role="alert" style={{ marginTop: 10, fontSize: 13, background: "rgba(255,255,255,0.92)", color: "#B91C1C", borderRadius: 10, padding: "8px 12px" }}>{payError}</div>}
       </div>
 
       <div style={{ ...card, padding: 0, overflow: "hidden" }}>

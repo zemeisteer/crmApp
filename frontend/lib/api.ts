@@ -2266,6 +2266,7 @@ export interface PortalPayments {
   debtAmount: number;
   status: "PAID" | "PARTIAL" | "UNPAID";
   history: Payment[];
+  online?: { click: boolean; payme: boolean };
 }
 
 export interface PortalAnnouncement {

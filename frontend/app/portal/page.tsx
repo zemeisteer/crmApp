@@ -104,9 +104,11 @@ export default function StudentPortalPage() {
   const [payments, setPayments] = useState<PortalPayments | null>(null);
   const [announcements, setAnnouncements] = useState<PortalAnnouncement[]>([]);
   const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
+  const [payError, setPayError] = useState<string | null>(null);
 
   async function handlePayOnline(provider: "CLICK" | "PAYME") {
     if (!payments || payments.debtAmount <= 0) return;
+    setPayError(null);
     setCheckoutLoading(provider);
     try {
       const res = await portalApi.createCheckoutLink({
@@ -117,8 +119,8 @@ export default function StudentPortalPage() {
       if (res.url) {
         window.open(res.url, "_blank");
       }
-    } catch (err) {
-      alert(err instanceof Error ? err.message : t("ptl.linkError"));
+    } catch {
+      setPayError(t("ptl.linkError"));
     } finally {
       setCheckoutLoading(null);
     }
@@ -696,7 +698,7 @@ export default function StudentPortalPage() {
           </div>
         )}
 
-        {activeTab === "payments" && <PaymentsTab payments={payments} checkoutLoading={checkoutLoading} onPay={handlePayOnline} />}
+        {activeTab === "payments" && <PaymentsTab payments={payments} checkoutLoading={checkoutLoading} onPay={handlePayOnline} payError={payError} />}
 
         {/* ========================================================================= */}
         {/* TAB: NOTIFICATIONS                                                        */}

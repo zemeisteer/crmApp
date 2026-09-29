@@ -1440,6 +1440,7 @@ export const dict = {
   "ptp.addChildHint": { UZ: "Boshqa farzandingiz uchun markaz bergan PIN yoki Telegram kod bilan kiring.", RU: "Войдите с PIN-кодом или кодом из Telegram другого ребёнка.", EN: "Sign in with your other child's PIN or Telegram code." },
   "ptp.studentTakes": { UZ: "Testni o'quvchining o'zi topshiradi", RU: "Тест проходит сам ученик", EN: "The student takes this test" },
   "ptp.yourChild": { UZ: "Farzandingiz", RU: "Ваш ребёнок", EN: "Your child" },
+  "ptl.payAtCenter": { UZ: "Onlayn to'lov hozircha ulanmagan. To'lovni markazda amalga oshiring.", RU: "Онлайн-оплата пока не подключена. Оплатите в центре.", EN: "Online payment isn't set up yet. Please pay at the center." },
   "chart.current": { UZ: "joriy", RU: "текущий", EN: "current" },
   "chart.noData": { UZ: "Ma'lumot yo'q", RU: "Нет данных", EN: "No data" },
   "dashboard.marksUnit": { UZ: "belgi", RU: "отметок", EN: "marks" },
