@@ -36,6 +36,7 @@ import { AnnouncementsModule } from './announcements/announcements.module';
 import { ScheduleModule } from './schedule/schedule.module';
 import { ExpensesModule } from './expenses/expenses.module';
 import { PortalModule } from './portal/portal.module';
+import { MockTestsModule } from './mock-tests/mock-tests.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { RemindersModule } from './reminders/reminders.module';
 import { InvitationsModule } from './invitations/invitations.module';
@@ -81,6 +82,7 @@ import { InvoicesModule } from './invoices/invoices.module';
     ScheduleModule,
     ExpensesModule,
     PortalModule,
+    MockTestsModule,
     NotificationsModule,
     RemindersModule,
     InvitationsModule,

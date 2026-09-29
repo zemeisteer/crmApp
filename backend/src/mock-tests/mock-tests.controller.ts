@@ -1,0 +1,80 @@
+import { BadRequestException, Body, Controller, Delete, Get, Param, Patch, Post, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { JwtAuthGuard } from '../common/jwt-auth.guard';
+import { RolesGuard } from '../common/roles.guard';
+import { TrialGuard } from '../common/trial.guard';
+import { Roles } from '../common/roles.decorator';
+import { CurrentUser } from '../common/current-user.decorator';
+import { attachmentStorage } from '../common/upload.util';
+import { MockTestsService } from './mock-tests.service';
+import { CreateMockTestDto, RegradeMockAttemptDto, ReviewMockAttemptDto, UpdateMockTestDto } from './dto/mock-tests.dto';
+
+// Recordings for Listening and pictures (charts) for Writing Task 1.
+const ASSET_TYPES = /^(audio\/(mpeg|mp3|mp4|x-m4a|aac|wav|x-wav|ogg|webm)|image\/(jpeg|png|webp|gif))$/;
+
+@UseGuards(JwtAuthGuard, RolesGuard, TrialGuard)
+@Roles('ADMIN', 'MANAGER', 'TEACHER')
+@Controller('mock-tests')
+export class MockTestsController {
+  constructor(private readonly service: MockTestsService) {}
+
+  @Get()
+  list(@CurrentUser('tenantId') tenantId: string) {
+    return this.service.list(tenantId);
+  }
+
+  @Post()
+  create(@CurrentUser('tenantId') tenantId: string, @Body() dto: CreateMockTestDto) {
+    return this.service.create(tenantId, dto);
+  }
+
+  @Get('attempts/:attemptId')
+  attempt(@CurrentUser('tenantId') tenantId: string, @Param('attemptId') attemptId: string) {
+    return this.service.attemptDetail(tenantId, attemptId);
+  }
+
+  @Post('attempts/:attemptId/review')
+  review(@CurrentUser('tenantId') tenantId: string, @Param('attemptId') attemptId: string, @Body() dto: ReviewMockAttemptDto) {
+    return this.service.review(tenantId, attemptId, dto).then(() => this.service.attemptDetail(tenantId, attemptId));
+  }
+
+  @Post('attempts/:attemptId/regrade')
+  regrade(@CurrentUser('tenantId') tenantId: string, @Param('attemptId') attemptId: string, @Body() dto: RegradeMockAttemptDto) {
+    return this.service.regrade(tenantId, attemptId, dto.section);
+  }
+
+  @Get(':id')
+  get(@CurrentUser('tenantId') tenantId: string, @Param('id') id: string) {
+    return this.service.get(tenantId, id);
+  }
+
+  @Get(':id/attempts')
+  attempts(@CurrentUser('tenantId') tenantId: string, @Param('id') id: string) {
+    return this.service.attempts(tenantId, id);
+  }
+
+  @Patch(':id')
+  update(@CurrentUser('tenantId') tenantId: string, @Param('id') id: string, @Body() dto: UpdateMockTestDto) {
+    return this.service.update(tenantId, id, dto);
+  }
+
+  @Roles('ADMIN', 'MANAGER')
+  @Delete(':id')
+  remove(@CurrentUser('tenantId') tenantId: string, @Param('id') id: string) {
+    return this.service.remove(tenantId, id);
+  }
+
+  // Uploads a file for the test; the editor puts the returned path into the
+  // content (a Listening part's audio, a Writing task's picture).
+  @Post(':id/asset')
+  @UseInterceptors(FileInterceptor('file', {
+    storage: attachmentStorage,
+    limits: { fileSize: 40 * 1024 * 1024 },
+    fileFilter: (_req, file, cb) => cb(null, ASSET_TYPES.test(file.mimetype)),
+  }))
+  async asset(@CurrentUser('tenantId') tenantId: string, @Param('id') id: string, @UploadedFile() file?: Express.Multer.File) {
+    if (!file) throw new BadRequestException('Audio (mp3, m4a, wav, ogg) yoki rasm yuklang');
+    await this.service.get(tenantId, id);
+    return { path: file.filename, name: file.originalname, type: file.mimetype };
+  }
+}

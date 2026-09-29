@@ -1050,6 +1050,43 @@ export const announcementReads = pgTable('announcement_reads', {
   studentIdx: index('announcement_reads_student_idx').on(t.studentId),
 }));
 
+// IELTS-style mock tests (Listening, Reading, Writing, Speaking) solved in
+// the student portal. `content` is JSON (see mock-tests/ielts.ts).
+export const mockTests = pgTable('mock_tests', {
+  id: text('id').primaryKey().$defaultFn(() => createId()),
+  tenantId: text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  title: text('title').notNull(),
+  kind: text('kind').notNull().default('IELTS'),
+  // Direction it belongs to: students see tests of their groups' subjects.
+  subject: text('subject').notNull().default('Ingliz tili'),
+  status: text('status').notNull().default('DRAFT'), // DRAFT | PUBLISHED
+  content: text('content').notNull().default('{}'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+}, (t) => ({
+  tenantIdx: index('mock_tests_tenant_idx').on(t.tenantId),
+}));
+
+// One student's sitting of a mock test. JSON columns: answers per section,
+// when each section started/finished, and results (bands, AI feedback).
+export const mockAttempts = pgTable('mock_attempts', {
+  id: text('id').primaryKey().$defaultFn(() => createId()),
+  tenantId: text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  testId: text('test_id').notNull().references(() => mockTests.id, { onDelete: 'cascade' }),
+  studentId: text('student_id').notNull().references(() => students.id, { onDelete: 'cascade' }),
+  status: text('status').notNull().default('IN_PROGRESS'), // IN_PROGRESS | COMPLETED
+  answers: text('answers').notNull().default('{}'),
+  sectionStarted: text('section_started').notNull().default('{}'),
+  sectionDone: text('section_done').notNull().default('{}'),
+  results: text('results').notNull().default('{}'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+  completedAt: timestamp('completed_at'),
+}, (t) => ({
+  tenantIdx: index('mock_attempts_tenant_idx').on(t.tenantId),
+  testStudentIdx: index('mock_attempts_test_student_idx').on(t.testId, t.studentId),
+}));
+
 // Rooms / Classrooms (CRMAPP Master Spec Section 17)
 export const rooms = pgTable('rooms', {
   id: text('id').primaryKey().$defaultFn(() => createId()),

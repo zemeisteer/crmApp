@@ -8,12 +8,15 @@ import { BillingModule } from '../billing/billing.module';
 import { ExamsModule } from '../exams/exams.module';
 import { AiModule } from '../ai/ai.module';
 import { PortalTutorController } from './portal-tutor.controller';
+import { PortalMockController } from './portal-mock.controller';
+import { MockTestsModule } from '../mock-tests/mock-tests.module';
 
 @Module({
   imports: [
     BillingModule,
     ExamsModule,
     AiModule,
+    MockTestsModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
@@ -26,7 +29,7 @@ import { PortalTutorController } from './portal-tutor.controller';
     }),
   ],
   providers: [PortalService, PortalAuthGuard],
-  controllers: [PortalController, PortalTutorController],
+  controllers: [PortalController, PortalTutorController, PortalMockController],
   exports: [PortalService],
 })
 export class PortalModule {}
