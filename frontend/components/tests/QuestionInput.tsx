@@ -2,8 +2,12 @@
 
 import { useLanguage } from "@/lib/i18n-context";
 import type { PublicQuestion } from "@/lib/tests";
+import Select from "@/components/Select";
 
 const ACCENT = "#4F46E5";
+// Exam look (computer-delivered IELTS): plain radio lists, square boxes.
+const EXAM_INK = "#111827";
+const EXAM_BLUE = "#1D4ED8";
 
 // One question as a student answers it. The answer is always a string:
 // option id for choices, text for written types, JSON {leftIndex: right}
@@ -20,6 +24,50 @@ export default function QuestionInput({ q, value, onChange, disabled, exam }: { 
       ? { true: yesNo ? "YES" : "TRUE", false: yesNo ? "NO" : "FALSE", ng: "NOT GIVEN" }
       : { true: t("pt.true"), false: t("pt.false"), ng: t("qt.notGiven") };
     const mcq = q.type === "MCQ";
+    // A long shared list (an imported matching task: headings, features,
+    // map letters) is picked from a dropdown, as on the computer test.
+    if (exam && mcq && (q.options ?? []).length > 5) {
+      return (
+        <Select
+          value={value}
+          onChange={onChange}
+          options={[...(value ? [{ value: "", label: `✕ ${t("common.clear")}` }] : []), ...(q.options ?? []).map((o) => ({ value: o.id, label: o.text && o.text !== o.id ? `${o.id}  ${o.text}` : o.id }))]}
+          placeholder="Select"
+          disabled={disabled}
+          wrap
+          sheetOnPhone
+          sheetTitle={q.no ? `${q.no}. ${q.prompt}` : q.prompt}
+          ariaLabel={q.no ? `Question ${q.no}` : q.prompt}
+          style={{ maxWidth: 460 }}
+        />
+      );
+    }
+    if (exam) {
+      return (
+        <div role="radiogroup" style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+          {(q.options ?? []).map((o) => {
+            const picked = value === o.id;
+            return (
+              <label
+                key={o.id}
+                style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "7px 10px", borderRadius: 4, cursor: disabled ? "default" : "pointer", background: picked ? "#EFF6FF" : "transparent", border: `1px solid ${picked ? "#BFDBFE" : "transparent"}`, color: EXAM_INK, lineHeight: 1.45 }}
+              >
+                <input
+                  type="radio"
+                  name={`q-${q.id ?? q.no ?? q.prompt.slice(0, 20)}`}
+                  checked={picked}
+                  disabled={disabled}
+                  onChange={() => onChange(o.id)}
+                  style={{ width: 18, height: 18, margin: "2px 0 0", accentColor: EXAM_BLUE, flexShrink: 0 }}
+                />
+                {mcq && <b style={{ minWidth: 16 }}>{o.id}</b>}
+                <span style={{ minWidth: 0, overflowWrap: "anywhere" }}>{mcq ? o.text : labels[o.id] ?? o.text}</span>
+              </label>
+            );
+          })}
+        </div>
+      );
+    }
     return (
       <div style={{ display: "grid", gridTemplateColumns: mcq ? "repeat(auto-fit, minmax(220px, 1fr))" : "repeat(auto-fit, minmax(96px, 1fr))", gap: 8 }}>
         {(q.options ?? []).map((o) => {
@@ -105,7 +153,45 @@ export default function QuestionInput({ q, value, onChange, disabled, exam }: { 
       onChange(JSON.stringify(next));
     };
     const used = new Set(Object.values(map));
-    // No dropdowns: each item shows the choices as buttons (easy on phones,
+    const rights = q.right ?? [];
+    // The paper's way (and the only tidy one for 5+ or long choices such as
+    // headings): a dropdown per item. On phones it opens as a bottom sheet.
+    if (exam || rights.length > 5 || rights.some((r) => r.length > 40)) {
+      const first = q.no ?? 1;
+      return (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {(q.left ?? []).map((l, i) => {
+            const chosen = map[String(i)] ?? "";
+            return (
+              <div key={i} className="qi-match-row" style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                <span style={{ display: "flex", gap: 8, alignItems: "baseline", flex: "1 1 200px", minWidth: 0, fontSize: exam ? "inherit" : 14.5, color: exam ? EXAM_INK : undefined }}>
+                  <b style={{ minWidth: 22, color: exam ? EXAM_INK : ACCENT }}>{exam ? first + i : `${i + 1})`}</b>
+                  <span style={{ overflowWrap: "anywhere" }}>{l}</span>
+                </span>
+                <Select
+                  value={chosen}
+                  onChange={(v) => {
+                    const next = { ...map };
+                    if (v) next[String(i)] = v;
+                    else delete next[String(i)];
+                    onChange(JSON.stringify(next));
+                  }}
+                  options={[...(chosen ? [{ value: "", label: `✕ ${t("common.clear")}` }] : []), ...rights.map((r) => ({ value: r, label: r }))]}
+                  placeholder={exam ? "Select" : t("qt.pick")}
+                  disabled={disabled}
+                  wrap
+                  sheetOnPhone
+                  sheetTitle={`${exam ? first + i : i + 1}. ${l}`}
+                  ariaLabel={`${exam ? `Question ${first + i}` : l}`}
+                  style={{ flex: "1 1 240px", minWidth: 0, maxWidth: 460 }}
+                />
+              </div>
+            );
+          })}
+        </div>
+      );
+    }
+    // Few short choices: each item shows them as buttons (easy on phones,
     // long answers wrap instead of being cut off). Tap again to clear.
     return (
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>

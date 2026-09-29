@@ -2925,8 +2925,9 @@ export const portalMockApi = {
   get: (attemptId: string) => request<PortalMockAttempt>(`/portal/mock-tests/attempts/${attemptId}`),
   startSection: (attemptId: string, section: MockSection) =>
     request<PortalMockAttempt>(`/portal/mock-tests/attempts/${attemptId}/sections/${section}/start`, { method: "POST" }),
-  save: (attemptId: string, section: MockSection, answers: Record<string, string>) =>
-    request<{ saved: boolean }>(`/portal/mock-tests/attempts/${attemptId}/sections/${section}/answers`, { method: "POST", body: JSON.stringify({ answers }) }),
+  // `keepalive`: still sent while the page is closing.
+  save: (attemptId: string, section: MockSection, answers: Record<string, string>, keepalive = false) =>
+    request<{ saved: boolean }>(`/portal/mock-tests/attempts/${attemptId}/sections/${section}/answers`, { method: "POST", body: JSON.stringify({ answers }), keepalive }),
   submit: (attemptId: string, section: MockSection, answers?: Record<string, string>) =>
     request<PortalMockAttempt>(`/portal/mock-tests/attempts/${attemptId}/sections/${section}/submit`, { method: "POST", body: JSON.stringify(answers ? { answers } : {}) }),
   speaking: (attemptId: string, key: string, data: { audio?: Blob | null; transcript?: string; seconds?: number }) => {

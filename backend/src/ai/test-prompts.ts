@@ -8,7 +8,7 @@ const TYPES_HELP = `Savol turlari (type):
 - "TRUE_FALSE_NG": True / False / Not Given. "correctAnswer": "true", "false" yoki "ng".
 - "FILL_BLANK": bo'sh joyni to'ldirish (qavsdagi so'zni to'g'ri shaklda yozish ham shu). "correctAnswer": to'g'ri javob.
 - "SHORT_ANSWER": qisqa yozma javob. "correctAnswer": to'g'ri javob.
-- "MATCHING": moslashtirish. "pairs": [{"left": "chap element", "right": "unga mos o'ng element"}, ...]. "correctAnswer": "".
+- "MATCHING": moslashtirish. "pairs": [{"left": "chap element", "right": "unga mos o'ng element"}, ...]. "correctAnswer": "". Hech biriga mos kelmaydigan ortiqcha variantlar bo'lsa (masalan IELTS sarlavhalar ro'yxatidagi ortiqchalari): "extra": ["...", ...].
 - "WORD_ORDER": so'zlarni tartiblash. "words": berilgan so'zlar ro'yxati (aralash tartibda), "correctAnswer": to'g'ri gap.
 - "ERROR_CORRECTION": xatoni topib tuzatish. "correctAnswer": to'g'rilangan gap VA to'g'rilangan so'z (xato so'z emas!), "|" bilan ("There are fewer people here today than yesterday.|fewer").
 - "TRANSFORMATION": gapni ma'nosini saqlab qayta yozish (kalit so'z bilan). "correctAnswer": bo'sh joyga tushadigan so'zlar.

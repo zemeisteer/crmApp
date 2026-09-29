@@ -28,9 +28,12 @@ describe('IELTS scoring', () => {
   it('scores the sample test and never shows keys to students', () => {
     const content = normalizeContent(SAMPLE_IELTS.content);
     expect(content.listening.parts.flatMap((p) => p.questions)).toHaveLength(12);
-    expect(content.reading.passages[0].questions).toHaveLength(8);
-    const res = scoreObjective(content, 'reading', { 0: 'true', 1: 'false', 2: 'false', 3: 'true', 4: 'ng', 5: 'Return', 6: 'wild', 7: 'B' });
-    expect(res).toMatchObject({ raw: 8, max: 8, band: 9 });
+    expect(content.reading.passages[0].questions).toHaveLength(9);
+    const headings = JSON.stringify({ 0: 'A move from the country to the town', 1: 'Why cities can suit bees', 2: 'The effect of chemicals', 3: 'How to become a beekeeper' });
+    const res = scoreObjective(content, 'reading', { 0: 'true', 1: 'false', 2: 'false', 3: 'true', 4: 'ng', 5: 'Return', 6: 'wild', 7: 'B', 8: headings });
+    // The headings task is four questions (9-12): three right here.
+    expect(res).toMatchObject({ raw: 11, max: 12 });
+    expect(res.marks[8]).toBe(false);
     const lis = scoreObjective(content, 'listening', { 0: 'carter', 3: 'twenty five', 4: 'the fourth', 5: 'B' });
     expect(lis.raw).toBe(4);
     expect(lis.marks.slice(0, 6)).toEqual([true, false, false, true, true, true]);
@@ -39,6 +42,10 @@ describe('IELTS scoring', () => {
     expect(pub).not.toContain('correctAnswer');
     expect(publicContent(content).listening.parts[0].questions[0]).toMatchObject({ id: '0', no: 1 });
     expect(publicContent(content).reading.passages[0].questions[0]).toMatchObject({ id: '0', no: 1 });
+    const match = publicContent(content).reading.passages[0].questions[8] as { no: number; span: number; right?: string[] };
+    expect(match).toMatchObject({ no: 9, span: 4 });
+    // Extra headings are offered too, so the last one is not a giveaway.
+    expect(match.right).toHaveLength(7);
   });
 
   it('drops broken questions and clamps settings', () => {

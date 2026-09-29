@@ -53,7 +53,7 @@ describe('IELTS mock tests (e2e)', () => {
     expect(created.status).toBe('DRAFT');
     expect(created.content.listening.parts[0].questions[0].correctAnswer).toBe('Carter');
     const list = (await http().get('/api/mock-tests').set(auth()).expect(200)).body;
-    expect(list.find((t: { id: string }) => t.id === testId).summary).toEqual({ listening: 12, reading: 8, writing: 2, speaking: 8 });
+    expect(list.find((t: { id: string }) => t.id === testId).summary).toEqual({ listening: 12, reading: 9, writing: 2, speaking: 8 });
     await http().patch(`/api/mock-tests/${testId}`).set(auth()).send({ status: 'PUBLISHED' }).expect(200);
     // An empty test cannot be published.
     const empty = (await http().post('/api/mock-tests').set(auth()).send({ title: 'Empty' }).expect(201)).body.id;
@@ -86,8 +86,10 @@ describe('IELTS mock tests (e2e)', () => {
     expect(res.keys.listening[0]).toBe('Carter');
     await http().post(`${base}/sections/listening/answers`).set(s).send({ answers: { 0: 'x' } }).expect(409);
 
-    res = (await http().post(`${base}/sections/reading/submit`).set(s).send({ answers: { 0: 'true', 1: 'false', 2: 'false', 3: 'true', 4: 'ng', 5: 'return', 6: 'wild', 7: 'B' } }).expect(201)).body;
-    expect(res.results.reading).toMatchObject({ raw: 8, band: 9 });
+    // Questions 9-12 are one matching task (paragraph headings).
+    const headings = JSON.stringify({ 0: 'A move from the country to the town', 1: 'Why cities can suit bees', 2: 'The effect of chemicals', 3: 'A possible cost to other insects' });
+    res = (await http().post(`${base}/sections/reading/submit`).set(s).send({ answers: { 0: 'true', 1: 'false', 2: 'false', 3: 'true', 4: 'ng', 5: 'return', 6: 'wild', 7: 'B', 8: headings } }).expect(201)).body;
+    expect(res.results.reading).toMatchObject({ raw: 12, max: 12, band: 9 });
 
     const essay = 'Some people argue that university should be free for everyone. '.repeat(30);
     res = (await http().post(`${base}/sections/writing/submit`).set(s).send({ answers: { 0: 'The table shows internet access. '.repeat(30), 1: essay } }).expect(201)).body;

@@ -5,6 +5,13 @@
 const fill = (prompt: string, answer: string) => ({ type: 'FILL_BLANK', prompt, correctAnswer: answer });
 const mcq = (prompt: string, options: string[], answer: string) => ({ type: 'MCQ', prompt, options, correctAnswer: answer });
 const tfng = (prompt: string, answer: 'true' | 'false' | 'ng') => ({ type: 'TRUE_FALSE_NG', prompt, correctAnswer: answer });
+const headings = (pairs: Array<[string, string]>, extra: string[]) => ({
+  type: 'MATCHING',
+  prompt: 'Choose the correct heading for each paragraph from the list of headings.',
+  instruction: 'Questions 9-12. The reading passage has four paragraphs, A-D. Choose the correct heading for each paragraph.',
+  pairs: pairs.map(([left, right]) => ({ left, right })),
+  extra,
+});
 
 export const SAMPLE_IELTS = {
   title: 'IELTS Academic — namuna mock test',
@@ -50,10 +57,10 @@ export const SAMPLE_IELTS = {
         {
           title: 'Passage 1 — The return of the urban bee',
           text:
-            "For most of the twentieth century, beekeeping was seen as a country activity. Hives needed space, and the fields of the countryside offered the flowers that bees depend on. In recent decades, however, a growing number of beekeepers have moved their hives into cities.\n\n" +
-            "The reasons are partly practical. Modern farms often grow a single crop over large areas, which provides food for bees for only a few weeks each year. City parks, gardens and even balconies, by contrast, contain a wide variety of plants that flower at different times, offering a longer season. Some studies have found that urban hives produce more honey than rural ones, although researchers warn that results vary greatly from city to city.\n\n" +
-            "Pesticides are another factor. In many towns, the use of chemicals in public parks has been reduced or banned, while farms continue to rely on them. Bees exposed to certain pesticides can become disoriented and fail to return to the hive.\n\n" +
-            "Not everyone welcomes the trend. Ecologists point out that honeybees compete with wild bees for the same flowers. If too many hives are placed in a small area, wild species, many of which are already in decline, may suffer. For this reason, some cities now ask beekeepers to register their hives, and a few have set a limit on the number allowed in each district.",
+            "A  For most of the twentieth century, beekeeping was seen as a country activity. Hives needed space, and the fields of the countryside offered the flowers that bees depend on. In recent decades, however, a growing number of beekeepers have moved their hives into cities.\n\n" +
+            "B  The reasons are partly practical. Modern farms often grow a single crop over large areas, which provides food for bees for only a few weeks each year. City parks, gardens and even balconies, by contrast, contain a wide variety of plants that flower at different times, offering a longer season. Some studies have found that urban hives produce more honey than rural ones, although researchers warn that results vary greatly from city to city.\n\n" +
+            "C  Pesticides are another factor. In many towns, the use of chemicals in public parks has been reduced or banned, while farms continue to rely on them. Bees exposed to certain pesticides can become disoriented and fail to return to the hive.\n\n" +
+            "D  Not everyone welcomes the trend. Ecologists point out that honeybees compete with wild bees for the same flowers. If too many hives are placed in a small area, wild species, many of which are already in decline, may suffer. For this reason, some cities now ask beekeepers to register their hives, and a few have set a limit on the number allowed in each district.",
           questions: [
             tfng('Beekeeping was mainly associated with rural areas in the twentieth century.', 'true'),
             tfng('Single-crop farms offer bees food throughout the year.', 'false'),
@@ -63,6 +70,15 @@ export const SAMPLE_IELTS = {
             fill('Bees affected by some pesticides may not ______ to the hive.', 'return'),
             fill('Honeybees compete with ______ bees for flowers.', 'wild'),
             mcq('What have some cities done in response to the trend?', ['Banned beekeeping completely', 'Asked beekeepers to register their hives', 'Paid beekeepers to move to the countryside', 'Planted fewer flowers'], 'B'),
+            headings(
+              [
+                ['Paragraph A', 'A move from the country to the town'],
+                ['Paragraph B', 'Why cities can suit bees'],
+                ['Paragraph C', 'The effect of chemicals'],
+                ['Paragraph D', 'A possible cost to other insects'],
+              ],
+              ['The history of honey in cooking', 'How to become a beekeeper', 'Bees and climate change'],
+            ),
           ],
         },
       ],

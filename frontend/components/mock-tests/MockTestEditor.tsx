@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import QuestionEditor, { emptyQuestion } from "@/components/tests/QuestionEditor";
+import Select from "@/components/Select";
 import { ApiError, fileUrl, MOCK_LEVELS, mockTestsApi, type MockContent, type MockLevel, type MockSection, type MockTest } from "@/lib/api";
 import { hasAnswer, type TestQuestion } from "@/lib/tests";
 import { useLanguage } from "@/lib/i18n-context";
@@ -83,17 +84,21 @@ export default function MockTestEditor({ test, onSaved }: { test: MockTest; onSa
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12 }}>
           <div>
             <span style={label}>{t("mock.level")}</span>
-            <select className="field-input" value={level ?? ""} onChange={(e) => { setLevel((e.target.value || null) as MockLevel | null); setDirty(true); }}>
-              <option value="">{t("mock.levelAll")}</option>
-              {MOCK_LEVELS.map((l) => <option key={l} value={l}>{t(levelKey(l))}</option>)}
-            </select>
+            <Select
+              value={level ?? ""}
+              onChange={(v) => { setLevel((v || null) as MockLevel | null); setDirty(true); }}
+              options={[{ value: "", label: t("mock.levelAll") }, ...MOCK_LEVELS.map((l) => ({ value: l, label: t(levelKey(l)) }))]}
+              sheetOnPhone
+            />
           </div>
           <div>
             <span style={label}>{t("mock.module")}</span>
-            <select className="field-input" value={module} onChange={(e) => { setModule(e.target.value as "ACADEMIC" | "GENERAL"); setDirty(true); }}>
-              <option value="ACADEMIC">Academic</option>
-              <option value="GENERAL">General Training</option>
-            </select>
+            <Select
+              value={module}
+              onChange={(v) => { setModule(v as "ACADEMIC" | "GENERAL"); setDirty(true); }}
+              options={[{ value: "ACADEMIC", label: "Academic" }, { value: "GENERAL", label: "General Training" }]}
+              sheetOnPhone
+            />
           </div>
           {test.source && (
             <div>

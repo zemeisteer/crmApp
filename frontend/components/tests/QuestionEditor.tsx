@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useLanguage } from "@/lib/i18n-context";
 import { TF_OPTIONS, TFNG_OPTIONS, type QuestionType, type TestQuestion } from "@/lib/tests";
 import TypePicker from "./TypePicker";
+import Select from "@/components/Select";
 
 const ACCENT = "#4F46E5";
 
@@ -71,11 +72,7 @@ export default function QuestionEditor({ value: q, onChange, showLevel, excludeT
         {showLevel && (
           <div>
             <div style={lbl}>{t("qe.level")}</div>
-            <select className="field-input" value={q.level ?? 1} onChange={(e) => set({ level: Number(e.target.value) as 1 | 2 | 3 })} style={{ height: 40 }}>
-              <option value={1}>1</option>
-              <option value={2}>2</option>
-              <option value={3}>3</option>
-            </select>
+            <Select value={String(q.level ?? 1)} onChange={(v) => set({ level: Number(v) as 1 | 2 | 3 })} options={["1", "2", "3"].map((v) => ({ value: v, label: v }))} />
           </div>
         )}
       </div>
@@ -205,6 +202,16 @@ function AnswerFields({ q, set }: { q: TestQuestion; set: (p: Partial<TestQuesti
             + {t("qe.addPair")}
           </button>
         )}
+        <div style={{ ...lbl, marginTop: 10 }}>{t("qe.extraChoices")}</div>
+        <textarea
+          className="field-input"
+          rows={2}
+          value={(q.extra ?? []).join("\n")}
+          onChange={(e) => set({ extra: e.target.value.split("\n") })}
+          onBlur={(e) => set({ extra: e.target.value.split("\n").map((x) => x.trim()).filter(Boolean) })}
+          placeholder={t("qe.extraChoicesPh")}
+          style={{ resize: "vertical", fontFamily: "inherit" }}
+        />
       </div>
     );
   }

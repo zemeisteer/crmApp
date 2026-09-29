@@ -23,6 +23,20 @@ const mmss = (ms: number) => {
 };
 const wordsOf = (s: string) => (s.trim().match(/[\p{L}\p{N}'’-]+/gu) ?? []).length;
 const numLabel = (q: PQ) => (q.span > 1 ? `${q.no}–${q.no + q.span - 1}` : String(q.no));
+// Marks answered: a matching task counts each chosen item.
+const answeredMarks = (q: PQ, v: string | undefined) => {
+  const val = (v ?? "").trim();
+  if (!val) return 0;
+  if (q.type === "MATCHING") {
+    try {
+      return Math.min(q.span, Object.values(JSON.parse(val) as Record<string, string>).filter(Boolean).length);
+    } catch {
+      return 0;
+    }
+  }
+  if (q.type === "MCQ_MULTI") return Math.min(q.span, val.split(",").filter(Boolean).length);
+  return q.span;
+};
 
 export interface ExamProps {
   attempt: PortalMockAttempt;
@@ -37,7 +51,31 @@ export interface ExamProps {
   onSpeakingSaved: () => void;
   // Starts the section clock on the server (first start only).
   onBegin: () => Promise<void>;
+  // Autosave state shown in the top bar.
+  saveState?: "idle" | "saving" | "saved" | "error";
 }
+
+const EXAM_CSS = `
+.exm-root{position:fixed;inset:0;z-index:200;background:#fff;display:flex;flex-direction:column}
+.exm-head{display:flex;align-items:center;gap:12px;padding:8px 16px;border-bottom:1px solid #D1D5DB;background:#F9FAFB}
+.exm-title{font-size:13px;color:#374151;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+.exm-split{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+.exm-split>*{min-height:0;height:100%}
+.exm-panes{display:none}
+@media(max-width:899px){
+  .exm-split{grid-template-columns:minmax(0,1fr)}
+  .exm-split[data-pane="text"]>.exm-q,.exm-split[data-pane="q"]>.exm-text{display:none}
+  .exm-split>.exm-q{border-left:none!important}
+  .exm-panes{display:flex;gap:4px;padding:6px 10px;border-bottom:1px solid #D1D5DB;background:#fff}
+  .exm-panes button{flex:1;border:1px solid #D1D5DB;background:#fff;border-radius:6px;padding:8px;font-weight:700;font-size:14px;cursor:pointer;color:#111827}
+  .exm-panes button[aria-selected="true"]{background:#1D4ED8;border-color:#1D4ED8;color:#fff}
+}
+@media(max-width:640px){
+  .exm-head{gap:8px;padding:6px 10px}
+  .exm-title,.exm-hide-sm{display:none}
+  .exm-logo{font-size:15px!important}
+}
+`;
 
 export default function ExamMode(props: ExamProps) {
   const { t } = useLanguage();
@@ -65,32 +103,60 @@ export default function ExamMode(props: ExamProps) {
 
   const title = { listening: "Listening", reading: "Reading", writing: "Writing", speaking: "Speaking" }[section];
 
+  // Full screen while the section runs, like the test centre's computer.
+  const [full, setFull] = useState(false);
+  useEffect(() => {
+    const sync = () => setFull(!!document.fullscreenElement);
+    document.addEventListener("fullscreenchange", sync);
+    return () => {
+      document.removeEventListener("fullscreenchange", sync);
+      if (document.fullscreenElement) void document.exitFullscreen().catch(() => undefined);
+    };
+  }, []);
+  const toggleFull = () => {
+    if (document.fullscreenElement) void document.exitFullscreen().catch(() => undefined);
+    else void document.documentElement.requestFullscreen?.().catch(() => undefined);
+  };
+  function start() {
+    // Must run in the click itself: browsers allow full screen only then.
+    if (!document.fullscreenElement) void document.documentElement.requestFullscreen?.().catch(() => undefined);
+    props.onBegin().then(() => setStarted(true)).catch(() => undefined);
+  }
+
+  const save = props.saveState ?? "idle";
   return (
-    <div style={{ position: "fixed", inset: 0, zIndex: 200, background: "#fff", display: "flex", flexDirection: "column", color: INK, fontFamily: "Arial, Helvetica, sans-serif", fontSize: font }}>
-      <header style={{ display: "flex", alignItems: "center", gap: 14, padding: "8px 16px", borderBottom: `1px solid ${LINE}`, background: "#F9FAFB", flexWrap: "wrap" }}>
-        <div style={{ fontWeight: 900, letterSpacing: 1, color: "#B91C1C", fontSize: 18 }}>IELTS</div>
-        <div style={{ fontSize: 13, color: "#374151", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>
+    <div className="exm-root" style={{ color: INK, fontFamily: "Arial, Helvetica, sans-serif", fontSize: font }}>
+      <style>{EXAM_CSS}</style>
+      <header className="exm-head">
+        <div className="exm-logo" style={{ fontWeight: 900, letterSpacing: 1, color: "#B91C1C", fontSize: 18 }}>IELTS</div>
+        <div className="exm-title">
           {attempt.test.title} · <b>{title}</b>{attempt.test.module === "GENERAL" && section === "reading" ? " (General Training)" : ""}
         </div>
         {started && effectiveLeft !== null && section !== "speaking" && (
-          <div style={{ fontWeight: 700, fontSize: 15, color: effectiveLeft < 5 * 60_000 ? "#B91C1C" : INK }} aria-live="polite">
-            {reviewEnds ? `${t("exm.review")} ` : ""}⏱ {mmss(effectiveLeft)} {t("exm.left")}
+          <div style={{ fontWeight: 800, fontSize: 15, whiteSpace: "nowrap", color: effectiveLeft < 5 * 60_000 ? "#B91C1C" : INK, marginLeft: "auto" }} aria-live="polite">
+            {reviewEnds ? <span className="exm-hide-sm">{t("exm.review")} </span> : ""}⏱ {mmss(effectiveLeft)}<span className="exm-hide-sm"> {t("exm.left")}</span>
           </div>
         )}
+        {started && section !== "speaking" && save !== "idle" && (
+          <span title={t("pmk.saved")} style={{ fontSize: 12, whiteSpace: "nowrap", color: save === "error" ? "#B91C1C" : "#6B7280" }}>
+            {save === "saving" ? "⏳" : save === "error" ? "⚠" : "✓"}<span className="exm-hide-sm"> {save === "saving" ? t("pmk.saving") : save === "error" ? t("exm.saveError") : t("pmk.saved")}</span>
+          </span>
+        )}
         {section === "listening" && started && (
-          <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13 }}>
+          <label className="exm-hide-sm" style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13 }}>
             🔊 <input type="range" min={0} max={1} step={0.05} value={volume} onChange={(e) => setVolume(Number(e.target.value))} style={{ width: 90 }} aria-label="volume" />
           </label>
         )}
-        <div style={{ display: "flex", gap: 4 }}>
+        <div style={{ display: "flex", gap: 4, marginLeft: started && effectiveLeft !== null && section !== "speaking" ? 0 : "auto" }}>
           <button type="button" onClick={() => setFont((f) => Math.max(13, f - 1))} style={smallBtn} aria-label="smaller text">A−</button>
           <button type="button" onClick={() => setFont((f) => Math.min(22, f + 1))} style={smallBtn} aria-label="bigger text">A+</button>
+          <button type="button" onClick={toggleFull} style={smallBtn} aria-label={t("exm.fullscreen")} title={t("exm.fullscreen")}>{full ? "⤡" : "⛶"}</button>
         </div>
-        <button type="button" onClick={props.onExit} style={{ ...smallBtn, padding: "5px 10px" }}>✕ {t("exm.pause")}</button>
+        <button type="button" onClick={props.onExit} style={{ ...smallBtn, padding: "5px 10px", whiteSpace: "nowrap" }}>✕<span className="exm-hide-sm"> {t("exm.pause")}</span></button>
       </header>
 
       {!started ? (
-        <Instructions section={section} attempt={attempt} onStart={() => { props.onBegin().then(() => setStarted(true)).catch(() => undefined); }} resuming={!!attempt.sectionStarted[section] && (left ?? 1) < sectionMs(attempt, section) - 5000} />
+        <Instructions section={section} attempt={attempt} onStart={start} resuming={!!attempt.sectionStarted[section] && (left ?? 1) < sectionMs(attempt, section) - 5000} />
       ) : section === "listening" ? (
         <ListeningExam {...props} volume={volume} onAudioDone={() => setReviewEnds((r) => r ?? props.now + REVIEW_MS)} />
       ) : section === "reading" ? (
@@ -174,10 +240,24 @@ function QuestionBlock({ q, prev, value, onAnswer, flagged, onFlag, sectionKey }
   const showSection = q.section && q.section !== prev?.section;
   const showInstr = q.instruction && (q.instruction !== prev?.instruction || showSection);
   const gap = q.type === "FILL_BLANK";
+  // Matching imported as one choice question per item: the shared list is
+  // printed once (like "List of Headings"), each item gets a dropdown.
+  const boxed = q.type === "MCQ" && (q.options ?? []).length > 5;
+  const showBox = boxed && !(prev && prev.type === "MCQ" && sameOptions(prev, q));
   return (
     <div id={`q-${sectionKey}-${q.id}`} style={{ scrollMarginTop: 16 }}>
       {showSection && <div style={{ fontWeight: 800, marginTop: 18, marginBottom: 4 }}>{q.section}</div>}
       {showInstr && <div style={{ fontStyle: "italic", marginBottom: 10, whiteSpace: "pre-wrap" }}>{q.instruction}</div>}
+      {showBox && (
+        <div style={{ border: `1px solid ${INK}`, padding: "10px 14px", margin: "6px 0 10px", maxWidth: 560 }}>
+          {(q.options ?? []).map((o) => (
+            <div key={o.id} style={{ display: "flex", gap: 10, lineHeight: 1.6 }}>
+              <b style={{ minWidth: 28 }}>{o.id}</b>
+              {o.text !== o.id && <span>{o.text}</span>}
+            </div>
+          ))}
+        </div>
+      )}
       <div style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "8px 0", borderLeft: flagged ? "3px solid #F59E0B" : "3px solid transparent", paddingLeft: 8 }}>
         <button type="button" onClick={onFlag} title="Review" aria-pressed={flagged}
           style={{ minWidth: 34, height: 28, border: `1px solid ${flagged ? "#F59E0B" : LINE}`, background: flagged ? "#FEF3C7" : "#fff", borderRadius: 4, fontWeight: 800, cursor: "pointer", fontSize: 13, flexShrink: 0 }}>
@@ -186,6 +266,11 @@ function QuestionBlock({ q, prev, value, onAnswer, flagged, onFlag, sectionKey }
         <div style={{ flex: 1, minWidth: 0 }}>
           {gap ? (
             <GapLine q={q} value={value} onChange={onAnswer} />
+          ) : boxed ? (
+            <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "6px 12px" }}>
+              <span style={{ flex: "1 1 220px", lineHeight: 1.5, whiteSpace: "pre-wrap" }}>{q.prompt}</span>
+              <div style={{ flex: "1 1 220px", maxWidth: 360 }}><QuestionInput q={q} value={value} onChange={onAnswer} exam /></div>
+            </div>
           ) : (
             <>
               <div style={{ marginBottom: 8, whiteSpace: "pre-wrap", lineHeight: 1.5 }}>{q.prompt}</div>
@@ -199,10 +284,12 @@ function QuestionBlock({ q, prev, value, onAnswer, flagged, onFlag, sectionKey }
 }
 
 // Bottom bar: parts and question numbers; click jumps to the question.
-function NavBar({ groups, current, onPart, answers, flags, sectionKey, onSubmit, submitLabel }: {
+function NavBar({ groups, current, onPart, onJump, answers, flags, sectionKey, onSubmit, submitLabel }: {
   groups: Array<{ label: string; questions: PQ[] }>;
   current: number;
   onPart: (i: number) => void;
+  // Called before jumping to a question (phones switch to the questions pane).
+  onJump?: () => void;
   answers: Text;
   flags: Set<string>;
   sectionKey: string;
@@ -210,6 +297,7 @@ function NavBar({ groups, current, onPart, answers, flags, sectionKey, onSubmit,
   submitLabel: string;
 }) {
   const jump = (gi: number, id: string) => {
+    onJump?.();
     onPart(gi);
     setTimeout(() => document.getElementById(`q-${sectionKey}-${id}`)?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
   };
@@ -217,7 +305,7 @@ function NavBar({ groups, current, onPart, answers, flags, sectionKey, onSubmit,
     <nav style={{ borderTop: `1px solid ${LINE}`, background: "#F9FAFB", padding: "6px 10px", display: "flex", alignItems: "center", gap: 10, overflowX: "auto" }}>
       <button type="button" disabled={current === 0} onClick={() => onPart(current - 1)} style={{ ...smallBtn, opacity: current === 0 ? 0.4 : 1 }} aria-label="previous part">◀</button>
       {groups.map((g, gi) => {
-        const answered = g.questions.filter((q) => (answers[q.id] ?? "").trim()).reduce((n, q) => n + q.span, 0);
+        const answered = g.questions.reduce((n, q) => n + answeredMarks(q, answers[q.id]), 0);
         const total = g.questions.reduce((n, q) => n + q.span, 0);
         return (
           <div key={gi} style={{ display: "flex", alignItems: "center", gap: 4, padding: "2px 6px", borderRadius: 6, background: gi === current ? "#DBEAFE" : "transparent", flexShrink: 0 }}>
@@ -225,7 +313,7 @@ function NavBar({ groups, current, onPart, answers, flags, sectionKey, onSubmit,
               {g.label} <span style={{ fontWeight: 500, color: "#4B5563" }}>{answered}/{total}</span>
             </button>
             {gi === current && g.questions.map((q) => {
-              const done = !!(answers[q.id] ?? "").trim();
+              const done = answeredMarks(q, answers[q.id]) >= q.span;
               const flag = flags.has(q.id);
               return (
                 <button key={q.id} type="button" onClick={() => jump(gi, q.id)} title={flag ? "Review" : undefined}
@@ -243,6 +331,20 @@ function NavBar({ groups, current, onPart, answers, flags, sectionKey, onSubmit,
   );
 }
 
+// Phones: the text and the questions (or the answer box) are two tabs
+// instead of two cramped columns.
+function PaneTabs({ pane, onPane, textLabel, qLabel }: { pane: "text" | "q"; onPane: (p: "text" | "q") => void; textLabel: string; qLabel: string }) {
+  return (
+    <div className="exm-panes" role="tablist">
+      <button type="button" role="tab" aria-selected={pane === "text"} onClick={() => onPane("text")}>{textLabel}</button>
+      <button type="button" role="tab" aria-selected={pane === "q"} onClick={() => onPane("q")}>{qLabel}</button>
+    </div>
+  );
+}
+
+const sameOptions = (a: PQ, b: PQ) =>
+  (a.options ?? []).length === (b.options ?? []).length && (a.options ?? []).every((o, i) => o.id === b.options?.[i]?.id && o.text === b.options?.[i]?.text);
+
 function useFlags() {
   const [flags, setFlags] = useState<Set<string>>(new Set());
   const toggle = useCallback((id: string) => setFlags((f) => { const n = new Set(f); if (n.has(id)) n.delete(id); else n.add(id); return n; }), []);
@@ -250,7 +352,7 @@ function useFlags() {
 }
 
 function confirmSubmit(t: (k: import("@/lib/i18n").TranslationKey) => string, questions: PQ[], answers: Text) {
-  const missing = questions.filter((q) => !(answers[q.id] ?? "").trim()).length;
+  const missing = questions.reduce((n, q) => n + q.span - answeredMarks(q, answers[q.id]), 0);
   return confirm(missing > 0 ? t("exm.confirmMissing").replace("{n}", String(missing)) : t("exm.confirm"));
 }
 
@@ -263,7 +365,7 @@ function ListeningExam(props: ExamProps & { volume: number; onAudioDone: () => v
   const [part, setPart] = useState(0);
   const { flags, toggle } = useFlags();
   const all = L.parts.flatMap((p) => p.questions);
-  const status = useListeningAudio(attempt, props.volume, props.onAudioDone);
+  const { status, progress } = useListeningAudio(attempt, props.volume, props.onAudioDone);
 
   return (
     <>
@@ -271,6 +373,14 @@ function ListeningExam(props: ExamProps & { volume: number; onAudioDone: () => v
         <b>{L.parts[part]?.title}</b>
         {L.parts[part]?.questions.length ? ` — ${t("exm.questions")} ${L.parts[part].questions[0].no}–${L.parts[part].questions.at(-1)!.no + L.parts[part].questions.at(-1)!.span - 1}` : ""}
         <span style={{ marginLeft: 12, color: "#1E40AF" }}>{status}</span>
+        {progress && (
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 8, marginLeft: 12, verticalAlign: "middle" }}>
+            <span style={{ width: 140, height: 6, borderRadius: 6, background: "#BFDBFE", overflow: "hidden", display: "inline-block" }}>
+              <span style={{ display: "block", height: "100%", width: `${Math.min(100, (progress.at / progress.total) * 100)}%`, background: BLUE }} />
+            </span>
+            <span style={{ fontSize: 12.5, color: "#1E40AF", fontVariantNumeric: "tabular-nums" }}>{mmss(progress.at * 1000)} / {mmss(progress.total * 1000)}</span>
+          </span>
+        )}
       </div>
       <main style={{ flex: 1, overflowY: "auto", padding: "12px 20px 40px" }}>
         <div style={{ maxWidth: 900, margin: "0 auto" }}>
@@ -297,6 +407,8 @@ function useListeningAudio(attempt: PortalMockAttempt, volume: number, onDone: (
   const { t } = useLanguage();
   const L = attempt.test.content.listening;
   const [status, setStatus] = useState("");
+  // Seconds played / total of the recording(s), for the progress bar.
+  const [progress, setProgress] = useState<{ at: number; total: number } | null>(null);
   const audio = useRef<HTMLAudioElement | null>(null);
   const doneRef = useRef(onDone);
   useEffect(() => { doneRef.current = onDone; }, [onDone]);
@@ -330,7 +442,18 @@ function useListeningAudio(attempt: PortalMockAttempt, volume: number, onDone: (
         u.volume = volume;
         const voice = synth.getVoices().find((v) => v.lang.startsWith("en-GB")) ?? synth.getVoices().find((v) => v.lang.startsWith("en"));
         if (voice) u.voice = voice;
-        u.onend = () => { i++; try { localStorage.setItem(key, String(i)); } catch { /* private mode */ } setTimeout(speak, 1500); };
+        let moved = false;
+        const onward = () => {
+          if (moved) return;
+          moved = true;
+          i++;
+          try { localStorage.setItem(key, String(i)); } catch { /* private mode */ }
+          setTimeout(speak, 1500);
+        };
+        // A browser without voices may never end the utterance.
+        const guard = setTimeout(onward, 4000 + wordsOf(scripts[i]) * 450);
+        u.onend = () => { clearTimeout(guard); onward(); };
+        u.onerror = () => { clearTimeout(guard); onward(); };
         synth.speak(u);
       };
       speak();
@@ -352,12 +475,15 @@ function useListeningAudio(attempt: PortalMockAttempt, volume: number, onDone: (
       let index = 0;
       while (index < sources.length && durations[index] > 0 && offset >= durations[index]) { offset -= durations[index]; index++; }
       if (index >= sources.length) { finish(); return; }
+      const total = durations.reduce((x, y) => x + y, 0);
+      const before = (i: number) => durations.slice(0, i).reduce((x, y) => x + y, 0);
       const play = (i: number, at: number) => {
         if (cancelled) return;
         if (i >= sources.length) { finish(); return; }
         const a = new Audio(sources[i]);
         audio.current = a;
         a.volume = volume;
+        a.ontimeupdate = () => { if (total > 0) setProgress({ at: before(i) + a.currentTime, total }); };
         a.onended = () => play(i + 1, 0);
         a.onerror = () => play(i + 1, 0);
         a.onloadedmetadata = () => { if (at > 0) a.currentTime = at; };
@@ -370,7 +496,7 @@ function useListeningAudio(attempt: PortalMockAttempt, volume: number, onDone: (
     // eslint-disable-next-line react-hooks/exhaustive-deps -- play once per mount
   }, []);
 
-  return status;
+  return { status, progress };
 }
 
 // -------------------------------------------------------------- Reading
@@ -383,22 +509,23 @@ function ReadingExam(props: ExamProps) {
   const { flags, toggle } = useFlags();
   const all = R.passages.flatMap((p) => p.questions);
   const p = R.passages[part];
+  const [pane, setPane] = useState<"text" | "q">("text");
   return (
     <>
       <div style={{ padding: "8px 16px", borderBottom: `1px solid ${LINE}`, background: "#EFF6FF", fontSize: 14 }}>
         <b>Part {part + 1}</b>
         {p?.questions.length ? ` — ${t("exm.readTheText")} ${p.questions[0].no}–${p.questions.at(-1)!.no + p.questions.at(-1)!.span - 1}` : ""}
       </div>
-      <div className="exm-split" style={{ flex: 1, minHeight: 0, display: "grid" }}>
-        <style>{`.exm-split{grid-template-columns:minmax(0,1fr)}@media(min-width:900px){.exm-split{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.exm-split>*{height:100%}}`}</style>
+      <PaneTabs pane={pane} onPane={setPane} textLabel={`📄 ${t("exm.paneText")}`} qLabel={`✏️ ${t("exm.paneQuestions")}`} />
+      <div className="exm-split" data-pane={pane}>
         <Passage key={part} title={p?.title ?? ""} text={p?.text ?? ""} imagePath={p?.imagePath ?? null} />
-        <main style={{ overflowY: "auto", padding: "8px 20px 40px", borderLeft: `1px solid ${LINE}` }}>
+        <main className="exm-q" style={{ overflowY: "auto", padding: "8px 20px 40px", borderLeft: `1px solid ${LINE}` }}>
           {p?.questions.map((q, i, list) => (
             <QuestionBlock key={q.id} q={q} prev={list[i - 1]} value={answers[q.id] ?? ""} onAnswer={(v) => onAnswer(q.id, v)} flagged={flags.has(q.id)} onFlag={() => toggle(q.id)} sectionKey="reading" />
           ))}
         </main>
       </div>
-      <NavBar groups={R.passages.map((x, i) => ({ label: `Part ${i + 1}`, questions: x.questions }))} current={part} onPart={setPart} answers={answers} flags={flags} sectionKey="reading"
+      <NavBar groups={R.passages.map((x, i) => ({ label: `Part ${i + 1}`, questions: x.questions }))} current={part} onPart={(i) => { setPart(i); }} onJump={() => setPane("q")} answers={answers} flags={flags} sectionKey="reading"
         submitLabel={t("exm.submit")} onSubmit={() => { if (confirmSubmit(t, all, answers)) props.onSubmit(false); }} />
     </>
   );
@@ -445,7 +572,7 @@ function Passage({ title, text, imagePath }: { title: string; text: string; imag
   }
 
   return (
-    <section style={{ overflowY: "auto", padding: "8px 24px 40px", position: "relative" }} onMouseUp={onUp} onTouchEnd={onUp}>
+    <section className="exm-text" style={{ overflowY: "auto", padding: "8px 24px 40px", position: "relative" }} onMouseUp={onUp} onTouchEnd={onUp}>
       <div ref={box} onClick={onClick}>
         <h2 style={{ fontSize: "1.2em", margin: "10px 0 14px" }}>{title}</h2>
         {imagePath && (
@@ -474,21 +601,22 @@ function WritingExam(props: ExamProps) {
   const tk = W.tasks[task];
   const text = answers[String(task)] ?? "";
   const words = wordsOf(text);
+  const [pane, setPane] = useState<"text" | "q">("text");
   return (
     <>
       <div style={{ padding: "8px 16px", borderBottom: `1px solid ${LINE}`, background: "#EFF6FF", fontSize: 14 }}>
         <b>{tk?.title}</b> — {t("exm.writeAtLeast").replace("{n}", String(tk?.minWords ?? 0))}
       </div>
-      <div className="exm-split" style={{ flex: 1, minHeight: 0, display: "grid" }}>
-        <style>{`.exm-split{grid-template-columns:minmax(0,1fr)}@media(min-width:900px){.exm-split{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.exm-split>*{height:100%}}`}</style>
-        <section style={{ overflowY: "auto", padding: "16px 24px" }}>
+      <PaneTabs pane={pane} onPane={setPane} textLabel={`📄 ${t("exm.paneTask")}`} qLabel={`✍️ ${t("exm.paneAnswer")} (${words})`} />
+      <div className="exm-split" data-pane={pane}>
+        <section className="exm-text" style={{ overflowY: "auto", padding: "16px 24px" }}>
           <div style={{ whiteSpace: "pre-wrap", lineHeight: 1.65 }}>{tk?.prompt}</div>
           {tk?.imagePath && (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={fileUrl(tk.imagePath) ?? ""} alt="" style={{ maxWidth: "100%", marginTop: 14, border: `1px solid ${LINE}` }} />
           )}
         </section>
-        <main style={{ display: "flex", flexDirection: "column", padding: 16, borderLeft: `1px solid ${LINE}`, minHeight: 320 }}>
+        <main className="exm-q" style={{ display: "flex", flexDirection: "column", padding: 16, borderLeft: `1px solid ${LINE}`, minHeight: 320 }}>
           <textarea value={text} onChange={(e) => onAnswer(String(task), e.target.value)} spellCheck={false} autoCorrect="off" autoCapitalize="off"
             style={{ flex: 1, minHeight: 280, width: "100%", boxSizing: "border-box", border: `1px solid #9CA3AF`, borderRadius: 4, padding: 12, fontSize: "inherit", fontFamily: "inherit", lineHeight: 1.7, resize: "none" }} />
           <div style={{ marginTop: 6, fontSize: 14, fontWeight: 700, color: words >= (tk?.minWords ?? 0) ? "#15803D" : "#B45309" }}>{t("exm.wordCount")}: {words}</div>
@@ -496,7 +624,7 @@ function WritingExam(props: ExamProps) {
       </div>
       <nav style={{ borderTop: `1px solid ${LINE}`, background: "#F9FAFB", padding: "6px 10px", display: "flex", gap: 8, alignItems: "center" }}>
         {W.tasks.map((x, i) => (
-          <button key={i} type="button" onClick={() => setTask(i)} style={{ ...smallBtn, background: i === task ? "#DBEAFE" : "#fff", padding: "6px 14px" }}>
+          <button key={i} type="button" onClick={() => { setTask(i); setPane("text"); }} style={{ ...smallBtn, background: i === task ? "#DBEAFE" : "#fff", padding: "6px 14px" }}>
             {x.title} <span style={{ fontWeight: 500 }}>({wordsOf(answers[String(i)] ?? "")})</span>
           </button>
         ))}
@@ -520,7 +648,11 @@ function SpeakingExam(props: ExamProps) {
   const queue = useMemo(() => S.parts.flatMap((p, pi) => p.questions.map((q, qi) => ({ pi, qi, q, prep: p.prepSeconds, limit: p.answerSeconds, part: p }))), [S]);
   const firstOpen = queue.findIndex((x) => !attempt.answers.speaking?.[`${x.pi}.${x.qi}`]);
   const [pos, setPos] = useState(firstOpen < 0 ? queue.length : firstOpen);
-  const [phase, setPhase] = useState<"ask" | "prep" | "rec" | "save" | "done">(firstOpen < 0 ? "done" : "ask");
+  const [phase, setPhase] = useState<"ask" | "prep" | "rec" | "type" | "save" | "done">(firstOpen < 0 ? "done" : "ask");
+  // No microphone (or no permission): answers are typed instead.
+  const [typed, setTyped] = useState(false);
+  const [typedText, setTypedText] = useState("");
+  const typedRef = useRef("");
   const [count, setCount] = useState(0);
   const [live, setLive] = useState("");
   const [notes, setNotes] = useState("");
@@ -550,19 +682,50 @@ function SpeakingExam(props: ExamProps) {
     u.rate = 0.95;
     const v = window.speechSynthesis.getVoices().find((x) => x.lang.startsWith("en-GB"));
     if (v) u.voice = v;
-    u.onend = () => res();
-    u.onerror = () => res();
+    // Some browsers never fire "end" (no voices installed): go on anyway
+    // after about the time the text takes to read.
+    let settled = false;
+    const done = () => { if (!settled) { settled = true; res(); } };
+    const guard = setTimeout(done, 2500 + wordsOf(text) * 450);
+    u.onend = () => { clearTimeout(guard); done(); };
+    u.onerror = () => { clearTimeout(guard); done(); };
     window.speechSynthesis.speak(u);
   });
+
+  function startTyping() {
+    if (!item) return;
+    typedRef.current = "";
+    setTypedText("");
+    setPhase("type");
+    countdown(item.limit, () => void saveTyped());
+  }
+
+  async function saveTyped() {
+    if (!item) return;
+    stopTick();
+    const text = typedRef.current.trim();
+    if (text) {
+      setPhase("save");
+      try {
+        await portalMockApi.speaking(attempt.id, `${item.pi}.${item.qi}`, { transcript: text, seconds: item.limit });
+        props.onSpeakingSaved();
+      } catch (e) {
+        setError(e instanceof ApiError ? e.message : t("common.errorGeneric"));
+      }
+    }
+    next();
+  }
 
   async function record() {
     if (!item) return;
     setError(null);
+    if (typed) { startTyping(); return; }
     try {
+      if (typeof MediaRecorder === "undefined") throw new Error("no recorder");
       stream.current = stream.current ?? await navigator.mediaDevices.getUserMedia({ audio: true });
     } catch {
-      setError(t("pmk.noMic"));
-      setPhase("ask");
+      setTyped(true);
+      startTyping();
       return;
     }
     const chunks: Blob[] = [];
@@ -678,6 +841,22 @@ function SpeakingExam(props: ExamProps) {
                   <button type="button" onClick={() => { stopTick(); if (rec.current?.state === "recording") rec.current.stop(); }} style={{ background: INK, color: "#fff", border: "none", borderRadius: 6, padding: "10px 20px", fontWeight: 700, cursor: "pointer" }}>
                     {t("exm.finishAnswer")} ▶
                   </button>
+                </>
+              )}
+              {phase === "type" && (
+                <>
+                  <div style={{ fontSize: 13.5, color: "#92400E", background: "#FEF3C7", borderRadius: 6, padding: "6px 10px" }}>⌨️ {t("exm.typeAnswer")} · {count}s</div>
+                  <textarea
+                    autoFocus
+                    value={typedText}
+                    onChange={(e) => { typedRef.current = e.target.value; setTypedText(e.target.value); }}
+                    placeholder={t("exm.typePh")}
+                    rows={6}
+                    style={{ width: "100%", maxWidth: 620, border: `1px solid #9CA3AF`, borderRadius: 4, padding: 10, fontFamily: "inherit", fontSize: "inherit", lineHeight: 1.6 }}
+                  />
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button type="button" onClick={() => void saveTyped()} style={{ background: INK, color: "#fff", border: "none", borderRadius: 6, padding: "10px 20px", fontWeight: 700, cursor: "pointer" }}>{t("exm.saveNext")} ▶</button>
+                  </div>
                 </>
               )}
               {phase === "save" && <div style={{ color: "#1E40AF", fontWeight: 700 }}>⏫ {t("pmk.uploading")}</div>}

@@ -33,6 +33,8 @@ export interface TestQuestion {
   options?: QuestionOption[];
   correctAnswer: string;
   pairs?: Array<{ left: string; right: string }> | null;
+  // MATCHING: extra choices that match nothing.
+  extra?: string[] | null;
   words?: string[] | null;
   rubric?: string | null;
   explanation?: string | null;

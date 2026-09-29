@@ -127,9 +127,12 @@ export function sectionQuestions(content: MockContent, section: 'listening' | 'r
     : content.reading.passages.flatMap((p) => p.questions);
 }
 
-// Marks a question is worth in IELTS: "choose TWO" counts two.
+// Marks a question is worth in IELTS: "choose TWO" counts two, and a
+// matching task one per item (headings for paragraphs A-E are 5 questions).
 export function marksOf(q: TestQuestion): number {
-  return q.type === 'MCQ_MULTI' ? Math.max(1, q.correctAnswer.split(',').filter(Boolean).length) : 1;
+  if (q.type === 'MCQ_MULTI') return Math.max(1, q.correctAnswer.split(',').filter(Boolean).length);
+  if (q.type === 'MATCHING') return Math.max(1, (q.pairs ?? []).length);
+  return 1;
 }
 
 // What the student receives: no keys; a listening transcript only when the

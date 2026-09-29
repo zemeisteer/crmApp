@@ -45,6 +45,9 @@ export interface TestQuestion {
   // MATCHING (see pairs) and ESSAY.
   correctAnswer: string;
   pairs?: MatchingPair[];
+  // MATCHING: extra choices that match nothing (IELTS lists more headings
+  // than paragraphs).
+  extra?: string[];
   words?: string[];
   rubric?: string | null;
   explanation?: string | null;
@@ -98,7 +101,9 @@ export function normalizeQuestion(raw: unknown, opts: { requireAnswer?: boolean 
       .filter((p) => p.left && (p.right || !requireAnswer));
     if (pairs.length < 2) return null;
     if (requireAnswer && pairs.some((p) => !p.right)) return null;
-    return { ...base, prompt: prompt || 'Match the items.', pairs, correctAnswer: '', points: Math.max(points, 1) };
+    const rights = new Set(pairs.map((p) => p.right));
+    const extra = [...new Set((Array.isArray(q.extra) ? q.extra : []).map(str).filter((x) => x && !rights.has(x)))].slice(0, 10);
+    return { ...base, prompt: prompt || 'Match the items.', pairs, ...(extra.length ? { extra } : {}), correctAnswer: '', points: Math.max(points, 1) };
   }
   if (!prompt) return null;
 
@@ -242,7 +247,7 @@ export function publicQuestion(q: TestQuestion, seed = 0) {
     points: q.points,
   };
   if (q.type === 'MATCHING') {
-    const rights = [...new Set((q.pairs ?? []).map((p) => p.right))];
+    const rights = [...new Set([...(q.pairs ?? []).map((p) => p.right), ...(q.extra ?? [])])].filter(Boolean);
     // Deterministic shuffle so the order is stable for one test.
     const shuffled = rights.map((r, i) => ({ r, k: Math.sin(seed + i + 1) })).sort((a, b) => a.k - b.k).map((x) => x.r);
     return { ...base, left: (q.pairs ?? []).map((p) => p.left), right: shuffled };

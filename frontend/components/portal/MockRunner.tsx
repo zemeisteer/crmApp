@@ -36,7 +36,7 @@ export default function MockRunner({ initial, readOnly, onExit }: { initial: Por
   });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [saved, setSaved] = useState<"idle" | "saving" | "saved">("idle");
+  const [saved, setSaved] = useState<"idle" | "saving" | "saved" | "error">("idle");
   // Server clock minus ours, so a wrong phone clock cannot add time.
   const skew = useRef(0);
   // Server-adjusted "now", ticking every second.
@@ -68,23 +68,43 @@ export default function MockRunner({ initial, readOnly, onExit }: { initial: Por
   const deadline = (s: MockSection) => (a.sectionStarted[s] ? Date.parse(a.sectionStarted[s]) + minutes(s) * 60_000 : null);
   const left = section && deadline(section) ? deadline(section)! - now : null;
 
-  // Autosave 1.5 s after the last change.
+  // Autosave 1.5 s after the last change; at once when the student leaves
+  // the section or the page, so nothing typed is lost.
   const dirty = useRef<Set<MockSection>>(new Set());
+  const latest = useRef(answers);
+  useEffect(() => { latest.current = answers; }, [answers]);
+  const flush = useCallback(async (keepalive = false) => {
+    const list = [...dirty.current].filter((s) => s !== "speaking" && !a.sectionDone[s]);
+    dirty.current.clear();
+    if (list.length === 0) return;
+    setSaved("saving");
+    let ok = true;
+    for (const s of list) {
+      try {
+        await portalMockApi.save(a.id, s, latest.current[s as "listening"], keepalive);
+      } catch {
+        ok = false;
+        dirty.current.add(s);
+      }
+    }
+    setSaved(ok ? "saved" : "error");
+  }, [a.id, a.sectionDone]);
   useEffect(() => {
     if (readOnly || dirty.current.size === 0) return;
-    const id = setTimeout(async () => {
-      const list = [...dirty.current];
-      dirty.current.clear();
-      setSaved("saving");
-      for (const s of list) {
-        if (s === "speaking" || done(s)) continue;
-        await portalMockApi.save(a.id, s, answers[s as "listening"]).catch(() => undefined);
-      }
-      setSaved("saved");
-    }, 1500);
+    const id = setTimeout(() => void flush(), 1500);
     return () => clearTimeout(id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- save when answers change
-  }, [answers]);
+  }, [answers, readOnly, flush]);
+  useEffect(() => {
+    if (readOnly) return;
+    const onHide = () => void flush(true);
+    window.addEventListener("pagehide", onHide);
+    const onVis = () => { if (document.visibilityState === "hidden") void flush(true); };
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      window.removeEventListener("pagehide", onHide);
+      document.removeEventListener("visibilitychange", onVis);
+    };
+  }, [readOnly, flush]);
 
   const setAnswer = (s: "listening" | "reading" | "writing", key: string, v: string) => {
     dirty.current.add(s);
@@ -132,7 +152,7 @@ export default function MockRunner({ initial, readOnly, onExit }: { initial: Por
             ⏱ {mmss(left)}
           </div>
         )}
-        {section && !done(section) && section !== "speaking" && <span style={{ fontSize: 12, color: "#8A8D96" }}>{saved === "saving" ? t("pmk.saving") : saved === "saved" ? `✓ ${t("pmk.saved")}` : ""}</span>}
+        {section && !done(section) && section !== "speaking" && <span style={{ fontSize: 12, color: saved === "error" ? "#B23A47" : "#8A8D96" }}>{saved === "saving" ? t("pmk.saving") : saved === "saved" ? `✓ ${t("pmk.saved")}` : saved === "error" ? `⚠ ${t("exm.saveError")}` : ""}</span>}
       </div>
       {error && <div style={{ ...card, color: "#B23A47", fontSize: 13 }}>{error}</div>}
 
@@ -190,7 +210,8 @@ export default function MockRunner({ initial, readOnly, onExit }: { initial: Por
           onSubmit={(auto) => submit(section, true).then(() => { if (!auto) setSection(null); })}
           left={left}
           now={now}
-          onExit={() => setSection(null)}
+          saveState={saved}
+          onExit={() => { void flush(); setSection(null); }}
           onSpeakingSaved={() => portalMockApi.get(a.id).then(apply).catch(() => undefined)}
         />
       )}
@@ -265,12 +286,13 @@ function ObjectiveSection({ a, section, answers, onAnswer, readOnly, children }:
         return (
           <div key={q.id} style={{ ...card, padding: 12, borderColor: mark === true ? "#BBF7D0" : mark === false ? "#FECACA" : "#EAE8E2" }}>
             <div style={{ display: "flex", gap: 8, alignItems: "flex-start", marginBottom: 8 }}>
-              <span style={{ minWidth: 26, height: 26, borderRadius: 8, background: "#EEF0FF", color: ACCENT, fontWeight: 800, fontSize: 12.5, display: "grid", placeItems: "center" }}>{q.no}</span>
+              <span style={{ minWidth: 26, height: 26, padding: "0 4px", borderRadius: 8, background: "#EEF0FF", color: ACCENT, fontWeight: 800, fontSize: 12.5, display: "grid", placeItems: "center" }}>{q.span > 1 ? `${q.no}–${q.no + q.span - 1}` : q.no}</span>
               <div style={{ fontSize: 14, lineHeight: 1.5, whiteSpace: "pre-wrap", flex: 1 }}>{q.prompt}</div>
               {mark !== undefined && <span style={{ fontSize: 16 }}>{mark ? "✅" : "❌"}</span>}
             </div>
-            <QuestionInput q={q} value={answers[q.id] ?? ""} onChange={(v) => onAnswer(q.id, v)} disabled={readOnly} />
-            {keys && mark === false && <div style={{ marginTop: 8, fontSize: 12.5, color: "#1FA463", fontWeight: 700 }}>✓ {t("pmk.answer")}: {keys[Number(q.id)]}</div>}
+            <QuestionInput q={q} value={answers[q.id] ?? ""} onChange={(v) => onAnswer(q.id, v)} disabled={readOnly} exam />
+            {keys && mark === false && !(answers[q.id] ?? "").trim() && <div style={{ marginTop: 8, fontSize: 12.5, color: "#B45309", fontWeight: 700 }}>— {t("exm.noAnswer")}</div>}
+            {keys && mark === false && <div style={{ marginTop: 6, fontSize: 12.5, color: "#1FA463", fontWeight: 700 }}>✓ {t("pmk.answer")}: {keys[Number(q.id)]}</div>}
           </div>
         );
       })}
@@ -281,7 +303,10 @@ function ObjectiveSection({ a, section, answers, onAnswer, readOnly, children }:
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       {r && (
         <div style={{ ...card, display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap" }}>
-          <div style={{ fontSize: 30, fontWeight: 800, color: bandColor(r.band) }}>{r.band}</div>
+          <div style={{ textAlign: "center" }}>
+            <div style={{ fontSize: 11, fontWeight: 800, color: "#8A8D96", letterSpacing: "0.06em" }}>BAND</div>
+            <div style={{ fontSize: 30, fontWeight: 800, color: bandColor(r.band), lineHeight: 1.1 }}>{r.band}</div>
+          </div>
           <div style={{ fontSize: 13.5 }}><b>{r.raw}/{r.max}</b> {t("pmk.correct")}{r.late ? ` · ${t("pmk.late")}` : ""}</div>
         </div>
       )}
