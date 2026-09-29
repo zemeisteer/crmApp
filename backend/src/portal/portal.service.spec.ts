@@ -161,22 +161,32 @@ describe('PortalService', () => {
 
   describe('getAttendance', () => {
     it('calculates attendance percentage and status distribution', async () => {
+      // Newest first, as the query orders them.
+      const en = { id: 'g1', name: 'English', subject: 'Ingliz tili' };
+      const math = { id: 'g2', name: 'Math', subject: 'Matematika' };
       const mockRecords = [
-        { id: 'att-1', date: '2026-09-01', status: 'PRESENT' },
-        { id: 'att-2', date: '2026-09-03', status: 'PRESENT' },
-        { id: 'att-3', date: '2026-09-05', status: 'LATE' },
-        { id: 'att-4', date: '2026-09-08', status: 'ABSENT' },
+        { id: 'att-5', groupId: 'g2', date: '2026-09-09', status: 'PRESENT', group: math },
+        { id: 'att-4', groupId: 'g1', date: '2026-09-08', status: 'ABSENT', group: en },
+        { id: 'att-3', groupId: 'g1', date: '2026-09-05', status: 'LATE', group: en },
+        { id: 'att-2', groupId: 'g1', date: '2026-09-03', status: 'PRESENT', group: en },
+        { id: 'att-1', groupId: 'g1', date: '2026-09-01', status: 'PRESENT', group: en },
       ];
 
       mockDb.query.attendance.findMany.mockResolvedValue(mockRecords);
 
       const res = await service.getAttendance('student-1', 'tenant-1');
-      expect(res.total).toBe(4);
-      expect(res.present).toBe(2);
+      expect(res.total).toBe(5);
+      expect(res.present).toBe(3);
       expect(res.late).toBe(1);
       expect(res.absent).toBe(1);
-      // (2 + 0.5) / 4 * 100 = 63%
-      expect(res.rate).toBe(63);
+      // (3 + 0.5) / 5 * 100 = 70%
+      expect(res.rate).toBe(70);
+      expect(res.streak).toBe(1);
+      expect(res.records[0]).toMatchObject({ groupName: 'Math', subject: 'Matematika' });
+      expect(res.byGroup).toEqual([
+        expect.objectContaining({ groupId: 'g1', groupName: 'English', total: 4, present: 2, late: 1, absent: 1, rate: 63 }),
+        expect.objectContaining({ groupId: 'g2', groupName: 'Math', total: 1, present: 1, rate: 100 }),
+      ]);
     });
   });
 

@@ -418,27 +418,41 @@ export class PortalService {
   }
 
   async getAttendance(studentId: string, tenantId: string) {
-    const records = await this.db.query.attendance.findMany({
+    const rows = await this.db.query.attendance.findMany({
       where: and(eq(attendance.studentId, studentId), eq(attendance.tenantId, tenantId)),
+      with: { group: { columns: { id: true, name: true, subject: true } } },
       orderBy: [desc(attendance.date), desc(attendance.createdAt)],
-      limit: 60,
+      // About a school year of lessons, enough for the month calendar.
+      limit: 250,
     });
+    const records = rows.map(({ group, ...r }) => ({ ...r, groupName: group?.name ?? null, subject: group?.subject ?? null }));
 
-    const total = records.length;
-    const present = records.filter((r) => r.status === 'PRESENT').length;
-    const absent = records.filter((r) => r.status === 'ABSENT').length;
-    const late = records.filter((r) => r.status === 'LATE').length;
-    const rate = total > 0 ? Math.round(((present + late * 0.5) / total) * 100) : 100;
-
-    return {
-      rate,
-      total,
-      present,
-      absent,
-      late,
-      records,
+    const tally = (list: typeof records) => {
+      const total = list.length;
+      const present = list.filter((r) => r.status === 'PRESENT').length;
+      const absent = list.filter((r) => r.status === 'ABSENT').length;
+      const late = list.filter((r) => r.status === 'LATE').length;
+      const rate = total > 0 ? Math.round(((present + late * 0.5) / total) * 100) : 100;
+      return { rate, total, present, absent, late };
     };
+
+    // Per group, for students in several directions.
+    const byGroupMap = new Map<string, typeof records>();
+    for (const r of records) byGroupMap.set(r.groupId, [...(byGroupMap.get(r.groupId) ?? []), r]);
+    const byGroup = [...byGroupMap.entries()]
+      .map(([groupId, list]) => ({ groupId, groupName: list[0].groupName, subject: list[0].subject, lastDate: list[0].date, ...tally(list) }))
+      .sort((a, b) => b.total - a.total);
+
+    // Lessons attended in a row, counting back from the latest one.
+    let streak = 0;
+    for (const r of records) {
+      if (r.status === 'ABSENT') break;
+      streak++;
+    }
+
+    return { ...tally(records), streak, byGroup, records };
   }
+
 
   async getHomework(studentId: string, tenantId: string) {
     const enrolls = await this.db.query.enrollments.findMany({

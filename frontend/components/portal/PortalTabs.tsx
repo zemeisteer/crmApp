@@ -222,6 +222,19 @@ function PastLessons() {
 
 // -------------------------------------------------------------- attendance
 
+const ATT_COLORS: Record<string, { dot: string; bg: string }> = {
+  PRESENT: { dot: "#1FA463", bg: "#E9F8EF" },
+  LATE: { dot: "#F59E0B", bg: "#FEF3C7" },
+  ABSENT: { dot: "#DC2626", bg: "#FEE2E2" },
+};
+
+const ATT_CSS = `
+.pat-stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+@media (min-width:720px){.pat-stats{grid-template-columns:repeat(4,minmax(0,1fr))}}
+.pat-cols{display:grid;grid-template-columns:minmax(0,1fr);gap:14px;align-items:start}
+@media (min-width:900px){.pat-cols{grid-template-columns:minmax(0,1.25fr) minmax(0,1fr)}}
+`;
+
 export function AttendanceTab({ attendance }: { attendance: PortalAttendance | null }) {
   const { t } = useLanguage();
   const present = attendance?.present ?? 0;
@@ -230,66 +243,181 @@ export function AttendanceTab({ attendance }: { attendance: PortalAttendance | n
   const total = attendance?.total ?? present + late + absent;
   const rate = total > 0 ? Math.round(((present + late) / total) * 100) : null;
   const records = attendance?.records ?? [];
-  const byMonth = new Map<string, typeof records>();
-  for (const r of records) {
-    const k = r.date.slice(0, 7);
-    byMonth.set(k, [...(byMonth.get(k) ?? []), r]);
-  }
-  const STATUS: Record<string, { label: string; tone: "green" | "amber" | "red"; dot: string }> = {
-    PRESENT: { label: t("ptl.present"), tone: "green", dot: "#1FA463" },
-    LATE: { label: t("ptl.late"), tone: "amber", dot: "#F59E0B" },
-    ABSENT: { label: t("ptl.absent"), tone: "red", dot: "#DC2626" },
-  };
+  const months = [...new Set(records.map((r) => r.date.slice(0, 7)))].sort().reverse();
+  const [month, setMonth] = useState<string | null>(null);
+  const shown = month ?? months[0] ?? null;
+  const STATUS_LABEL: Record<string, string> = { PRESENT: t("ptl.present"), LATE: t("ptl.late"), ABSENT: t("ptl.absent") };
+
+  const stat = (icon: string, value: React.ReactNode, label: string, color: string, bg: string) => (
+    <div style={{ ...card, padding: 14, display: "flex", alignItems: "center", gap: 12 }}>
+      <div style={{ width: 42, height: 42, borderRadius: 12, background: bg, display: "grid", placeItems: "center", fontSize: 20, flexShrink: 0 }}>{icon}</div>
+      <div style={{ minWidth: 0 }}>
+        <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 800, fontSize: 22, color, lineHeight: 1.1 }}>{value}</div>
+        <div style={{ fontSize: 12, color: "#6B6E78", marginTop: 2 }}>{label}</div>
+      </div>
+    </div>
+  );
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+      <style>{ATT_CSS}</style>
       <TabTitle title={t("ptl.attHistory")} />
-      <div style={{ ...card, display: "flex", alignItems: "center", gap: 18, flexWrap: "wrap" }}>
-        <svg width="84" height="84" viewBox="0 0 36 36" aria-hidden style={{ flexShrink: 0 }}>
-          <circle cx="18" cy="18" r="15" fill="none" stroke="#EEF0F3" strokeWidth="4" />
+
+      <div style={{ ...card, display: "flex", alignItems: "center", gap: 18, flexWrap: "wrap", background: "linear-gradient(135deg, #EEF0FF 0%, #fff 70%)" }}>
+        <svg width="96" height="96" viewBox="0 0 36 36" aria-hidden style={{ flexShrink: 0 }}>
+          <circle cx="18" cy="18" r="15" fill="none" stroke="#E4E7F5" strokeWidth="4" />
           {rate !== null && (
-            <circle cx="18" cy="18" r="15" fill="none" stroke={rate >= 80 ? ACCENT : "#EA7A3A"} strokeWidth="4" strokeDasharray={`${(rate / 100) * 94.2} 100`} strokeLinecap="round" transform="rotate(-90 18 18)" />
+            <circle cx="18" cy="18" r="15" fill="none" stroke={rate >= 80 ? ACCENT : rate >= 60 ? "#F59E0B" : "#DC2626"} strokeWidth="4" strokeDasharray={`${(rate / 100) * 94.2} 100`} strokeLinecap="round" transform="rotate(-90 18 18)" />
           )}
           <text x="18" y="21" textAnchor="middle" fontSize="8" fontWeight="800" fill="#181A1F">{rate === null ? "—" : `${rate}%`}</text>
         </svg>
-        <div style={{ flex: 1, minWidth: 200, display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 8 }}>
-          {[
-            { v: present, l: t("ptl.present"), c: "#1FA463" },
-            { v: late, l: t("ptl.late"), c: "#B45309" },
-            { v: absent, l: t("ptl.absent"), c: "#DC2626" },
-          ].map((x) => (
-            <div key={x.l} style={{ background: "#F7F7F5", borderRadius: 12, padding: "10px 8px", textAlign: "center" }}>
-              <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 800, fontSize: 20, color: x.c }}>{x.v}</div>
-              <div style={{ fontSize: 12, color: "#6B6E78" }}>{x.l}</div>
+        <div style={{ flex: 1, minWidth: 180 }}>
+          <div style={{ fontFamily: "'Manrope', sans-serif", fontSize: 18, fontWeight: 800 }}>{t("pat.overall")}</div>
+          <div style={{ fontSize: 13, color: "#6B6E78", marginTop: 4, lineHeight: 1.5 }}>
+            {rate === null ? t("ptl.noAtt") : rate >= 90 ? t("pat.great") : rate >= 75 ? t("pat.good") : t("pat.low")}
+          </div>
+          {(attendance?.streak ?? 0) > 1 && (
+            <div style={{ display: "inline-flex", marginTop: 8, gap: 6, alignItems: "center", fontSize: 12.5, fontWeight: 700, color: "#B45309", background: "#FEF3C7", padding: "4px 10px", borderRadius: 100 }}>
+              🔥 {t("pat.streak").replace("{n}", String(attendance?.streak))}
             </div>
-          ))}
+          )}
         </div>
+      </div>
+
+      <div className="pat-stats">
+        {stat("📚", total, t("pat.lessons"), "#181A1F", "#F2F1EC")}
+        {stat("✅", present, t("ptl.present"), "#1FA463", "#E9F8EF")}
+        {stat("⏰", late, t("ptl.late"), "#B45309", "#FEF3C7")}
+        {stat("❌", absent, t("ptl.absent"), "#DC2626", "#FEE2E2")}
       </div>
 
       {records.length === 0 ? (
         <Empty icon="📋" text={t("ptl.noAtt")} />
       ) : (
-        [...byMonth.entries()].map(([ym, rows]) => (
-          <div key={ym} style={{ ...card, padding: 0, overflow: "hidden" }}>
-            <div style={{ padding: "12px 16px", fontSize: 13, fontWeight: 800, color: "#4A4E58", borderBottom: "1px solid #F0EEE8", display: "flex", justifyContent: "space-between" }}>
-              <span>{monthLabel(ym, t)}</span>
-              <span style={{ color: "#8A8D96", fontWeight: 600 }}>{rows.filter((r) => r.status !== "ABSENT").length}/{rows.length}</span>
+        <div className="pat-cols">
+          {shown && <MonthCalendar month={shown} months={months} onMonth={setMonth} records={records} statusLabel={STATUS_LABEL} />}
+          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            {(attendance?.byGroup?.length ?? 0) > 0 && (
+              <div style={{ ...card, display: "flex", flexDirection: "column", gap: 12 }}>
+                <div style={{ fontSize: 14, fontWeight: 800 }}>{t("pat.byGroup")}</div>
+                {attendance!.byGroup!.map((g) => {
+                  const r = g.total > 0 ? Math.round(((g.present + g.late) / g.total) * 100) : 0;
+                  return (
+                    <div key={g.groupId}>
+                      <div style={{ display: "flex", justifyContent: "space-between", gap: 8, fontSize: 13.5 }}>
+                        <span style={{ fontWeight: 700, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          {g.groupName ?? "—"}{g.subject ? <span style={{ color: "#8A8D96", fontWeight: 500 }}> · {g.subject}</span> : null}
+                        </span>
+                        <span style={{ fontWeight: 800, color: r >= 80 ? "#1FA463" : r >= 60 ? "#B45309" : "#DC2626" }}>{r}%</span>
+                      </div>
+                      <div style={{ height: 8, borderRadius: 99, background: "#F2F1EC", overflow: "hidden", margin: "6px 0 4px", display: "flex" }}>
+                        <div style={{ width: `${(g.present / Math.max(1, g.total)) * 100}%`, background: "#1FA463" }} />
+                        <div style={{ width: `${(g.late / Math.max(1, g.total)) * 100}%`, background: "#F59E0B" }} />
+                        <div style={{ width: `${(g.absent / Math.max(1, g.total)) * 100}%`, background: "#DC2626" }} />
+                      </div>
+                      <div style={{ fontSize: 12, color: "#8A8D96" }}>
+                        ✅ {g.present} · ⏰ {g.late} · ❌ {g.absent} · {t("pat.of").replace("{n}", String(g.total))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+            <div style={{ ...card, padding: 0, overflow: "hidden" }}>
+              <div style={{ padding: "12px 16px", fontSize: 14, fontWeight: 800, borderBottom: "1px solid #F0EEE8" }}>{t("pat.recent")}</div>
+              {records.slice(0, 8).map((r) => {
+                const c = ATT_COLORS[r.status] ?? { dot: "#8A8D96", bg: "#F2F1EC" };
+                return (
+                  <div key={r.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, padding: "10px 16px", borderBottom: "1px solid #F7F6F2" }}>
+                    <span style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+                      <span style={{ width: 8, height: 8, borderRadius: "50%", background: c.dot, flexShrink: 0 }} />
+                      <span style={{ minWidth: 0 }}>
+                        <span style={{ display: "block", fontSize: 13.5, fontWeight: 600 }}>{new Date(`${r.date}T00:00:00`).toLocaleDateString(undefined, { day: "numeric", month: "short", weekday: "short" })}</span>
+                        {r.groupName && <span style={{ display: "block", fontSize: 12, color: "#8A8D96", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.groupName}</span>}
+                      </span>
+                    </span>
+                    <Pill tone={r.status === "PRESENT" ? "green" : r.status === "LATE" ? "amber" : "red"}>{STATUS_LABEL[r.status] ?? r.status}</Pill>
+                  </div>
+                );
+              })}
             </div>
-            {rows.map((r) => {
-              const s = STATUS[r.status] ?? { label: r.status, tone: "grey" as const, dot: "#8A8D96" };
-              return (
-                <div key={r.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, padding: "11px 16px", borderBottom: "1px solid #F7F6F2" }}>
-                  <span style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 14, fontWeight: 600 }}>
-                    <span style={{ width: 8, height: 8, borderRadius: "50%", background: s.dot }} />
-                    {new Date(r.date).toLocaleDateString(undefined, { day: "numeric", month: "short", weekday: "short" })}
-                  </span>
-                  <Pill tone={s.tone}>{s.label}</Pill>
-                </div>
-              );
-            })}
           </div>
-        ))
+        </div>
       )}
+    </div>
+  );
+}
+
+// A month grid (Mon-Sun): each lesson day is coloured by the mark; a day with
+// several lessons shows a dot per lesson.
+function MonthCalendar({ month, months, onMonth, records, statusLabel }: {
+  month: string;
+  months: string[];
+  onMonth: (m: string) => void;
+  records: PortalAttendance["records"];
+  statusLabel: Record<string, string>;
+}) {
+  const { t } = useLanguage();
+  const y = Number(month.slice(0, 4));
+  const m = Number(month.slice(5, 7));
+  const daysIn = new Date(y, m, 0).getDate();
+  const lead = (new Date(y, m - 1, 1).getDay() + 6) % 7; // Monday first
+  const byDay = new Map<number, PortalAttendance["records"]>();
+  for (const r of records) {
+    if (r.date.slice(0, 7) !== month) continue;
+    const d = Number(r.date.slice(8, 10));
+    byDay.set(d, [...(byDay.get(d) ?? []), r]);
+  }
+  const idx = months.indexOf(month);
+  const inMonth = records.filter((r) => r.date.slice(0, 7) === month);
+  const ok = inMonth.filter((r) => r.status !== "ABSENT").length;
+  const cells: Array<number | null> = [...Array(lead).fill(null), ...Array.from({ length: daysIn }, (_, i) => i + 1)];
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const navBtn = (disabled: boolean): React.CSSProperties => ({ width: 34, height: 34, borderRadius: 10, border: "1px solid #EAE8E2", background: "#fff", cursor: disabled ? "default" : "pointer", opacity: disabled ? 0.35 : 1, fontSize: 16, fontWeight: 700 });
+
+  return (
+    <div style={{ ...card, display: "flex", flexDirection: "column", gap: 12 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+        <button type="button" aria-label="prev" disabled={idx >= months.length - 1} onClick={() => onMonth(months[idx + 1])} style={navBtn(idx >= months.length - 1)}>‹</button>
+        <div style={{ textAlign: "center" }}>
+          <div style={{ fontFamily: "'Manrope', sans-serif", fontSize: 16, fontWeight: 800 }}>{monthLabel(month, t)}</div>
+          <div style={{ fontSize: 12, color: "#8A8D96" }}>{t("pat.monthSummary").replace("{a}", String(ok)).replace("{n}", String(inMonth.length))}</div>
+        </div>
+        <button type="button" aria-label="next" disabled={idx <= 0} onClick={() => onMonth(months[idx - 1])} style={navBtn(idx <= 0)}>›</button>
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(7, minmax(0, 1fr))", gap: 4, textAlign: "center" }}>
+        {DAY_KEYS.map((k) => (
+          <div key={k} style={{ fontSize: 11, fontWeight: 700, color: "#8A8D96", padding: "2px 0" }}>{t(k).slice(0, 2)}</div>
+        ))}
+        {cells.map((d, i) => {
+          if (d === null) return <div key={`e${i}`} />;
+          const recs = byDay.get(d) ?? [];
+          const worst = recs.some((r) => r.status === "ABSENT") ? "ABSENT" : recs.some((r) => r.status === "LATE") ? "LATE" : recs.length ? "PRESENT" : null;
+          const c = worst ? ATT_COLORS[worst] : null;
+          const iso = `${month}-${String(d).padStart(2, "0")}`;
+          return (
+            <div
+              key={d}
+              title={recs.map((r) => `${r.groupName ?? ""} ${statusLabel[r.status] ?? r.status}`.trim()).join("\n") || undefined}
+              style={{ aspectRatio: "1 / 1", borderRadius: 10, background: c?.bg ?? "#FAFAF8", border: iso === todayStr ? `2px solid ${ACCENT}` : "1px solid #F0EEE8", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 3 }}
+            >
+              <span style={{ fontSize: 13, fontWeight: c ? 800 : 500, color: c ? "#181A1F" : "#A3A6AE" }}>{d}</span>
+              {recs.length > 0 && (
+                <span style={{ display: "flex", gap: 2 }}>
+                  {recs.slice(0, 3).map((r) => <span key={r.id} style={{ width: 5, height: 5, borderRadius: "50%", background: ATT_COLORS[r.status]?.dot ?? "#8A8D96" }} />)}
+                </span>
+              )}
+            </div>
+          );
+        })}
+      </div>
+      <div style={{ display: "flex", gap: 12, flexWrap: "wrap", fontSize: 12, color: "#6B6E78", justifyContent: "center" }}>
+        {(["PRESENT", "LATE", "ABSENT"] as const).map((k) => (
+          <span key={k} style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+            <span style={{ width: 10, height: 10, borderRadius: 3, background: ATT_COLORS[k].bg, border: `2px solid ${ATT_COLORS[k].dot}` }} /> {statusLabel[k]}
+          </span>
+        ))}
+      </div>
     </div>
   );
 }

@@ -2252,10 +2252,15 @@ export interface PortalAttendance {
   present: number;
   absent: number;
   late: number;
+  streak?: number;
+  byGroup?: Array<{ groupId: string; groupName: string | null; subject: string | null; lastDate: string; rate: number; total: number; present: number; absent: number; late: number }>;
   records: Array<{
     id: string;
     date: string;
     status: AttendanceStatus;
+    groupId?: string;
+    groupName?: string | null;
+    subject?: string | null;
   }>;
 }
 
