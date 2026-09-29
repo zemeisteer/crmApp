@@ -45,7 +45,7 @@ describe('Attendance from the Telegram bot (e2e)', () => {
     db = app.get<Database>(DB);
     const tg = app.get(TelegramService);
     tg.sendMessage = (async (chat: string, text: string, kb?: Kb) => { sent.push({ chat, text, kb }); }) as typeof tg.sendMessage;
-    tg.editMessage = (async (chat: string, _m: number, text: string, kb?: Kb) => { edits.push({ chat, text, kb }); }) as typeof tg.editMessage;
+    tg.editMessage = (async (chat: string, _m: number, text: string, kb?: Kb) => { edits.push({ chat, text, kb }); return true; }) as typeof tg.editMessage;
     tg.answerCallback = (async (_id: string, text?: string) => { answers.push(text ?? ''); }) as typeof tg.answerCallback;
     owner = (await http().post('/api/auth/register')
       .send({ centerName: `TBot ${suffix}`, subdomain: `tbot-${suffix}`, email: `tbot-${suffix}@test.uz`, password: 'password123', fullName: 'Owner' })

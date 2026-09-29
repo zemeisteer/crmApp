@@ -76,6 +76,38 @@ describe('TelegramService AI tutor', () => {
     expect(db.inserted.at(-1)).toHaveLength(2); // question + answer stored
   });
 
+  it('shows "thinking..." at once and turns that message into the answer', async () => {
+    (service.sendMessage as any).mockResolvedValue(42);
+    const edit = vi.fn().mockResolvedValue(true);
+    service.editMessage = edit;
+    await send('🤖 AI ustoz');
+    const before = (service.sendMessage as any).mock.calls.length;
+
+    await send('2x + 5 = 17 ni qanday yechaman?');
+    const calls = (service.sendMessage as any).mock.calls.slice(before);
+    expect(calls).toHaveLength(1);
+    expect(calls[0][1]).toBe("🤔 O'ylayapman...");
+    expect(edit).toHaveBeenCalledTimes(1);
+    expect(edit.mock.calls[0][1]).toBe(42);
+    expect(edit.mock.calls[0][2]).toContain('<b>Present Perfect</b>');
+
+    // Answering the tutor's own question takes the same path.
+    await send('x = 6');
+    expect(edit).toHaveBeenCalledTimes(2);
+    expect((service.sendMessage as any).mock.calls.at(-1)[1]).toBe("🤔 O'ylayapman...");
+  });
+
+  it('sends the answer anew when the edit fails', async () => {
+    (service.sendMessage as any).mockResolvedValue(42);
+    service.editMessage = vi.fn().mockResolvedValue(false);
+    const del = vi.fn().mockResolvedValue(undefined);
+    service.deleteMessage = del;
+    await send('🤖 AI ustoz');
+    await send('Present Perfect nima?');
+    expect(del).toHaveBeenCalledWith('777', 42);
+    expect(lastText()).toContain('<b>Present Perfect</b>');
+  });
+
   it('stops at the daily limit without calling the AI', async () => {
     await send('🤖 AI ustoz');
     usedToday = 20;
