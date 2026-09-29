@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ApiError, portalApi } from "@/lib/api";
+import { ApiError, portalApi, type PortalSession } from "@/lib/api";
 import { useLanguage } from "@/lib/i18n-context";
 import PhoneInput from "@/components/PhoneInput";
 
@@ -10,7 +10,7 @@ type Step = "phone" | "verify" | "choose";
 // Portal sign-in: phone number, then either the one-time code sent to the
 // student's Telegram or the PIN the center gave them. A phone number alone
 // never signs anyone in.
-export default function PortalLogin({ onLoggedIn }: { onLoggedIn: (token: string) => void }) {
+export default function PortalLogin({ onLoggedIn }: { onLoggedIn: (sessions: PortalSession[], activeId?: string) => void }) {
   const { t } = useLanguage();
   const [step, setStep] = useState<Step>("phone");
   const [phone, setPhone] = useState("");
@@ -19,6 +19,7 @@ export default function PortalLogin({ onLoggedIn }: { onLoggedIn: (token: string
   const [method, setMethod] = useState<"code" | "pin">("code");
   const [secret, setSecret] = useState("");
   const [choices, setChoices] = useState<Array<{ id: string; fullName: string; centerName: string }>>([]);
+  const [sessions, setSessions] = useState<PortalSession[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -51,9 +52,10 @@ export default function PortalLogin({ onLoggedIn }: { onLoggedIn: (token: string
       const res = await portalApi.verifyPhoneLogin({ phone, [method]: secret.trim(), studentId });
       if ("choose" in res) {
         setChoices(res.choose);
+        setSessions(res.sessions ?? []);
         setStep("choose");
       } else {
-        onLoggedIn(res.accessToken);
+        onLoggedIn([res]);
       }
     } catch (err) {
       setError(err instanceof ApiError ? err.message : t("ptl.loginError"));
@@ -129,7 +131,7 @@ export default function PortalLogin({ onLoggedIn }: { onLoggedIn: (token: string
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           <div style={hint}>{t("plog.choose")}</div>
           {choices.map((c) => (
-            <button key={c.id} type="button" disabled={busy} onClick={() => verify(c.id)} style={{ ...tab, padding: "12px 14px", textAlign: "left", background: "rgba(255,255,255,0.08)" }}>
+            <button key={c.id} type="button" disabled={busy} onClick={() => (sessions.length ? onLoggedIn(sessions, c.id) : verify(c.id))} style={{ ...tab, padding: "12px 14px", textAlign: "left", background: "rgba(255,255,255,0.08)" }}>
               <div style={{ fontWeight: 700 }}>{c.fullName}</div>
               <div style={{ fontSize: 12, color: "#94A3B8" }}>{c.centerName}</div>
             </button>

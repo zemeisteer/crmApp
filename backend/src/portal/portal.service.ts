@@ -36,6 +36,15 @@ import { normalizePhone } from '../leads/phone';
 import { createHash, randomInt } from 'crypto';
 import * as bcrypt from 'bcryptjs';
 
+export type PortalViewer = 'student' | 'parent';
+
+// Same number regardless of formatting (+998 90 123-45-67 vs 901234567).
+function samePhone(a: string | null | undefined, normalized: string) {
+  const x = (a ?? '').replace(/\D/g, '');
+  const y = normalized.replace(/\D/g, '');
+  return x.length >= 9 && (x === y || x.slice(-9) === y.slice(-9));
+}
+
 @Injectable()
 export class PortalService {
   constructor(
@@ -47,7 +56,7 @@ export class PortalService {
     private readonly telegram: TelegramService,
   ) {}
 
-  private async signPortalToken(student: { id: string; tenantId: string; fullName: string }) {
+  private async signPortalToken(student: { id: string; tenantId: string; fullName: string }, viewer: PortalViewer = 'student') {
     return this.jwt.signAsync(
       {
         sub: student.id,
@@ -55,6 +64,7 @@ export class PortalService {
         tenantId: student.tenantId,
         fullName: student.fullName,
         role: 'STUDENT',
+        viewer,
       },
       {
         expiresIn: '30d',
@@ -196,18 +206,37 @@ export class PortalService {
 
     const active = allowed.filter((s) => s.tenant);
     if (active.length === 0) throw new UnauthorizedException("Kod noto'g'ri");
+    // A number that is not the student's own is the parent's.
+    const viewerOf = (s: { phone: string | null }): PortalViewer => (samePhone(s.phone, phone) ? 'student' : 'parent');
     const student = body.studentId ? active.find((s) => s.id === body.studentId) : active.length === 1 ? active[0] : null;
     if (!student) {
-      return { choose: active.map((s) => ({ id: s.id, fullName: s.fullName, centerName: s.tenant!.name })) };
+      // Siblings: one session per child (the caller keeps them and switches
+      // without signing in again). The code is used up here.
+      if (codeRowId) await this.db.update(portalLoginCodes).set({ usedAt: new Date() }).where(eq(portalLoginCodes.id, codeRowId));
+      const sessions = await Promise.all(active.map((s) => this.portalSession(s as typeof s & { tenant: NonNullable<typeof s.tenant> }, viewerOf(s))));
+      return { choose: active.map((s) => ({ id: s.id, fullName: s.fullName, centerName: s.tenant!.name })), sessions };
     }
     if (codeRowId) await this.db.update(portalLoginCodes).set({ usedAt: new Date() }).where(eq(portalLoginCodes.id, codeRowId));
-    return this.portalSession(student as typeof student & { tenant: NonNullable<typeof student.tenant> });
+    return this.portalSession(student as typeof student & { tenant: NonNullable<typeof student.tenant> }, viewerOf(student));
   }
 
-  private async portalSession(student: { id: string; tenantId: string; fullName: string; phone: string | null; tenant: { id: string; name: string; subdomain: string; logoUrl: string | null; phone: string | null; address: string | null } }) {
-    const accessToken = await this.signPortalToken(student);
+  // A parent's own account (role PARENT, linked as guardian): a portal
+  // session for each of their children.
+  async parentAccountSessions(tenantId: string, parentUserId: string) {
+    const links = await this.db.query.studentGuardians.findMany({
+      where: and(eq(studentGuardians.tenantId, tenantId), eq(studentGuardians.userId, parentUserId)),
+      with: { student: { with: { tenant: true } } },
+    });
+    const kids = links.map((l) => l.student).filter((s) => s && !s.deletedAt && s.tenant);
+    if (kids.length === 0) throw new NotFoundException("Sizga biriktirilgan o'quvchi topilmadi. Markaz bilan bog'laning.");
+    return { sessions: await Promise.all(kids.map((s) => this.portalSession(s as typeof s & { tenant: NonNullable<typeof s.tenant> }, 'parent'))) };
+  }
+
+  private async portalSession(student: { id: string; tenantId: string; fullName: string; phone: string | null; tenant: { id: string; name: string; subdomain: string; logoUrl: string | null; phone: string | null; address: string | null } }, viewer: PortalViewer = 'student') {
+    const accessToken = await this.signPortalToken(student, viewer);
     return {
       accessToken,
+      viewer,
       student: { id: student.id, fullName: student.fullName, phone: student.phone },
       tenant: {
         id: student.tenant.id,

@@ -193,7 +193,7 @@ export function AttendanceTab({ attendance }: { attendance: PortalAttendance | n
 
 // ---------------------------------------------------------------- homework
 
-export function HomeworkTab({ homework, onSubmit }: { homework: PortalHomework[]; onSubmit: (id: string) => Promise<void> }) {
+export function HomeworkTab({ homework, onSubmit, readOnly = false }: { homework: PortalHomework[]; onSubmit: (id: string) => Promise<void>; readOnly?: boolean }) {
   const { t } = useLanguage();
   const [filter, setFilter] = useState<"all" | "todo" | "done">("all");
   const [busy, setBusy] = useState<string | null>(null);
@@ -243,7 +243,7 @@ export function HomeworkTab({ homework, onSubmit }: { homework: PortalHomework[]
                     📎 {hw.attachmentName || t("homework.file")}
                   </a>
                 )}
-                {!hw.completed && (
+                {!hw.completed && !readOnly && (
                   <button
                     type="button"
                     disabled={busy === hw.id}

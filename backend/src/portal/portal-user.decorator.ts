@@ -4,6 +4,8 @@ export interface PortalUserPayload {
   studentId: string;
   tenantId: string;
   fullName: string;
+  // 'parent' when signed in with the parent's phone or a PARENT account.
+  viewer: 'student' | 'parent';
 }
 
 export const PortalUser = createParamDecorator(

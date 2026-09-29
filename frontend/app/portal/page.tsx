@@ -13,6 +13,10 @@ import {
   portalApi,
   getPortalToken,
   setPortalToken,
+  getToken,
+  getPortalSessions,
+  addPortalSessions,
+  type PortalSession,
   clearPortalToken,
   PortalMe,
   PortalSchedule,
@@ -43,6 +47,12 @@ const NAV: Array<{ id: PortalTab; icon: string; label: TranslationKey; short: Tr
 ];
 const PORTAL_CSS = `
   .ptl-bottom{display:none;}
+  .ptl-kids{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:14px;}
+  .ptl-kids button{border:1px solid #EAE8E2;background:#fff;color:#4A4E58;border-radius:100px;padding:7px 14px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;}
+  .ptl-kids button.on{background:#4F46E5;border-color:#4F46E5;color:#fff;}
+  .ptl-kids button.add{border-style:dashed;color:#4F46E5;}
+  .ptl-parent-badge{font-size:12px;font-weight:800;color:#9D174D;background:#FDF2F8;border-radius:100px;padding:6px 10px;margin-right:2px;}
+  .ptl-add-child{background:linear-gradient(135deg,#0F172A,#1E1B4B);color:#fff;border-radius:18px;padding:18px;margin-bottom:14px;}
   .ptl-ai-cta{width:100%;display:flex;align-items:center;gap:12px;margin-bottom:14px;padding:14px 16px;border:none;border-radius:16px;cursor:pointer;color:#fff;background:linear-gradient(135deg,#4F46E5,#7C3AED);box-shadow:0 14px 30px -18px rgba(79,70,229,0.9);font-family:inherit;}
   @media (max-width:640px){
     .ptl-top{display:none;}
@@ -77,6 +87,8 @@ function LangSwitch({ lang, setLang, dark }: { lang: Lang; setLang: (l: Lang) =>
 export default function StudentPortalPage() {
   const { t, lang, setLang } = useLanguage();
   const [token, setTokenState] = useState<string | null>(null);
+  const [sessions, setSessions] = useState<PortalSession[]>([]);
+  const [addingChild, setAddingChild] = useState(false);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<PortalTab>("home");
 
@@ -143,11 +155,45 @@ export default function StudentPortalPage() {
     }
 
     const stored = getPortalToken();
+    setSessions(getPortalSessions());
     if (stored) {
       setTokenState(stored);
+      setLoading(false);
+      return;
+    }
+    // A parent signed in with their own account: open their children.
+    const staff = getToken();
+    if (staff) {
+      portalApi
+        .parentAccount(staff)
+        .then((res) => activate(res.sessions))
+        .catch(() => undefined)
+        .finally(() => setLoading(false));
+      return;
     }
     setLoading(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Keep every signed-in child; show the chosen one.
+  function activate(list: PortalSession[], activeId?: string) {
+    if (list.length === 0) return;
+    const all = addPortalSessions(list);
+    const pick = list.find((s) => s.student.id === activeId) ?? list[0];
+    setPortalToken(pick.accessToken);
+    setSessions(all);
+    setTokenState(pick.accessToken);
+    setActiveTab("home");
+    setAddingChild(false);
+  }
+
+  function switchChild(s: PortalSession) {
+    if (s.accessToken === token) return;
+    setPortalToken(s.accessToken);
+    setTokenState(s.accessToken);
+    setActiveTab("home");
+    window.scrollTo(0, 0);
+  }
 
   // Load portal data once token exists
   useEffect(() => {
@@ -183,9 +229,13 @@ export default function StudentPortalPage() {
 
   function handleLogout() {
     clearPortalToken();
+    setSessions([]);
     setTokenState(null);
     setMe(null);
   }
+
+  const isParent = me?.viewer === "parent";
+  const nav = NAV.filter((x) => !(isParent && x.id === "ai"));
 
   async function handleHomeworkSubmit(id: string) {
     try {
@@ -272,9 +322,8 @@ export default function StudentPortalPage() {
           )}
 
           <PortalLogin
-            onLoggedIn={(accessToken) => {
-              setPortalToken(accessToken);
-              setTokenState(accessToken);
+            onLoggedIn={(list, activeId) => {
+              activate(list, activeId);
             }}
           />
 
@@ -441,7 +490,7 @@ export default function StudentPortalPage() {
       {/* Tabs: a pill row on wide screens, a bottom bar on phones */}
       <div className="ptl-top" style={{ background: "#fff", borderBottom: "1px solid #EAE8E2" }}>
         <div style={{ maxWidth: 1000, margin: "0 auto", display: "flex", padding: "10px 16px", gap: 6, overflowX: "auto" }}>
-          {NAV.map((tab) => (
+          {nav.map((tab) => (
             <button
               key={tab.id}
               type="button"
@@ -456,7 +505,7 @@ export default function StudentPortalPage() {
         </div>
       </div>
       <nav className="ptl-bottom" aria-label="menu">
-        {NAV.filter((x) => x.bottom).map((tab) => {
+        {nav.filter((x) => x.bottom).map((tab) => {
           const on = activeTab === tab.id;
           return (
             <button key={tab.id} type="button" onClick={() => { setActiveTab(tab.id); window.scrollTo(0, 0); }} aria-current={on ? "page" : undefined} style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 3, padding: "8px 2px 6px", border: "none", background: "transparent", color: on ? ACCENT : "#8A8D96", cursor: "pointer" }}>
@@ -483,7 +532,30 @@ export default function StudentPortalPage() {
         {/* ========================================================================= */}
         {/* TAB: HOME                                                                 */}
         {/* ========================================================================= */}
-        {activeTab === "home" && (
+        {(isParent || sessions.length > 1) && (
+          <div className="ptl-kids">
+            {isParent && <span className="ptl-parent-badge">👪 {t("ptp.parentView")}</span>}
+            {sessions.map((s) => (
+              <button key={s.student.id} type="button" onClick={() => switchChild(s)} aria-pressed={s.accessToken === token} className={s.accessToken === token ? "on" : ""}>
+                {s.student.fullName.split(" ")[0]}
+              </button>
+            ))}
+            <button type="button" onClick={() => setAddingChild((v) => !v)} className="add">＋ {t("ptp.addChild")}</button>
+          </div>
+        )}
+        {addingChild && (
+          <div className="ptl-add-child">
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, gap: 10 }}>
+              <div>
+                <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 800, fontSize: 16 }}>{t("ptp.addChild")}</div>
+                <div style={{ fontSize: 12.5, color: "#94A3B8", marginTop: 2 }}>{t("ptp.addChildHint")}</div>
+              </div>
+              <button type="button" onClick={() => setAddingChild(false)} aria-label={t("common.cancel")} style={{ background: "rgba(255,255,255,0.1)", border: "none", color: "#fff", borderRadius: 8, width: 32, height: 32, cursor: "pointer", fontSize: 16 }}>✕</button>
+            </div>
+            <PortalLogin onLoggedIn={(list, activeId) => activate(list, activeId)} />
+          </div>
+        )}
+        {activeTab === "home" && !isParent && (
           <button type="button" onClick={() => setActiveTab("ai")} className="ptl-ai-cta">
             <span style={{ fontSize: 26 }} aria-hidden>🤖</span>
             <span style={{ flex: 1, minWidth: 0, textAlign: "left" }}>
@@ -502,13 +574,14 @@ export default function StudentPortalPage() {
             payments={payments}
             announcements={announcements}
             onOpen={(tab) => setActiveTab(tab)}
+            parent={isParent}
           />
         )}
 
         {activeTab === "schedule" && <ScheduleTab schedule={schedule} />}
         {activeTab === "attendance" && <AttendanceTab attendance={attendance} />}
-        {activeTab === "homework" && <HomeworkTab homework={homework} onSubmit={handleHomeworkSubmit} />}
-        {activeTab === "ai" && <PortalTutor firstName={me?.fullName?.split(" ")[0]} />}
+        {activeTab === "homework" && <HomeworkTab homework={homework} onSubmit={handleHomeworkSubmit} readOnly={isParent} />}
+        {activeTab === "ai" && !isParent && <PortalTutor firstName={me?.fullName?.split(" ")[0]} />}
 
         {/* ========================================================================= */}
         {/* TAB: EXAMS                                                                */}
@@ -517,7 +590,7 @@ export default function StudentPortalPage() {
           <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
             <TabTitle title={t("ptl.examsCerts")} />
 
-            <PortalExamList onFinished={() => portalApi.getExams().then(setExams).catch(() => undefined)} />
+            <PortalExamList readOnly={isParent} onFinished={() => portalApi.getExams().then(setExams).catch(() => undefined)} />
 
             {/* Certificates */}
             {exams?.certificates && exams.certificates.length > 0 && (

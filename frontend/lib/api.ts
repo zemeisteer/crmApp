@@ -41,6 +41,40 @@ export function setPortalToken(token: string) {
 export function clearPortalToken() {
   if (typeof window === "undefined") return;
   localStorage.removeItem(PORTAL_TOKEN_KEY);
+  localStorage.removeItem(PORTAL_SESSIONS_KEY);
+}
+
+// A parent may have several children signed in at once: one session each,
+// switched without signing in again.
+export type PortalViewer = "student" | "parent";
+export interface PortalSession {
+  accessToken: string;
+  viewer?: PortalViewer;
+  student: { id: string; fullName: string };
+  tenant: { id: string; name: string };
+}
+const PORTAL_SESSIONS_KEY = "talimcrm_portal_sessions";
+
+export function getPortalSessions(): PortalSession[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const list = JSON.parse(localStorage.getItem(PORTAL_SESSIONS_KEY) || "[]");
+    return Array.isArray(list) ? list.filter((s) => s?.accessToken && s?.student?.id) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function addPortalSessions(list: PortalSession[]): PortalSession[] {
+  const byId = new Map(getPortalSessions().map((s) => [s.student.id, s]));
+  for (const s of list) byId.set(s.student.id, s);
+  const all = [...byId.values()];
+  try {
+    localStorage.setItem(PORTAL_SESSIONS_KEY, JSON.stringify(all));
+  } catch {
+    // storage full or blocked: the active token still works
+  }
+  return all;
 }
 
 export function clearToken() {
@@ -101,7 +135,8 @@ async function request<T>(
     "Content-Type": "application/json",
     ...(options.headers as Record<string, string> | undefined),
   };
-  if (token) headers["Authorization"] = `Bearer ${token}`;
+  // A caller may pass its own token (e.g. a staff token to a /portal door).
+  if (token && !headers["Authorization"]) headers["Authorization"] = `Bearer ${token}`;
 
   const res = await fetch(`${API_URL}${path}`, {
     ...options,
@@ -2124,6 +2159,7 @@ export const scheduleApi = {
 export interface PortalMe {
   id: string;
   fullName: string;
+  viewer?: PortalViewer;
   phone?: string | null;
   parentPhone?: string | null;
   tenant: {
@@ -2277,9 +2313,12 @@ export const portalApi = {
     }),
   verifyPhoneLogin: (data: { phone: string; code?: string; pin?: string; studentId?: string }) =>
     request<
-      | { accessToken: string; student: { id: string; fullName: string }; tenant: { id: string; name: string } }
-      | { choose: Array<{ id: string; fullName: string; centerName: string }> }
+      | PortalSession
+      | { choose: Array<{ id: string; fullName: string; centerName: string }>; sessions?: PortalSession[] }
     >("/portal/auth/phone/verify", { method: "POST", body: JSON.stringify(data) }),
+  // A parent signed in with their own account: sessions for their children.
+  parentAccount: (staffToken: string) =>
+    request<{ sessions: PortalSession[] }>("/portal/auth/parent-account", { method: "POST", headers: { Authorization: `Bearer ${staffToken}` } }),
   getMe: () => request<PortalMe>("/portal/me"),
   // AI tutor (same conversation and daily limit as the Telegram bot)
   aiState: () => request<PortalTutorState>("/portal/ai"),

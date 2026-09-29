@@ -33,6 +33,7 @@ export class PortalAuthGuard implements CanActivate {
         studentId: payload.studentId,
         tenantId: payload.tenantId,
         fullName: payload.fullName,
+        viewer: payload.viewer === 'parent' ? 'parent' : 'student',
       };
       return true;
     } catch {

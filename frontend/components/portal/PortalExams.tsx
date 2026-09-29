@@ -11,7 +11,7 @@ type Running = Awaited<ReturnType<typeof portalApi.startExam>>;
 
 // Exams of the student's groups that they can take on their own device
 // (one attempt each). Shown at the top of the portal's results tab.
-export default function PortalExams({ onFinished }: { onFinished?: () => void }) {
+export default function PortalExams({ onFinished, readOnly = false }: { onFinished?: () => void; readOnly?: boolean }) {
   const { t } = useLanguage();
   const [list, setList] = useState<PortalAvailableExam[] | null>(null);
   const [running, setRunning] = useState<Running | null>(null);
@@ -121,7 +121,7 @@ export default function PortalExams({ onFinished }: { onFinished?: () => void })
               {e.taken ? (
                 <span style={{ fontSize: 13, fontWeight: 700, color: "#15803D" }}>✓ {e.score}/{e.maxScore}</span>
               ) : (
-                <button type="button" onClick={() => start(e.id)} disabled={busy} style={primary}>{t("pex.start")} →</button>
+                readOnly ? <span style={{ fontSize: 12.5, color: "#8A8D96" }}>{t("ptp.studentTakes")}</span> : <button type="button" onClick={() => start(e.id)} disabled={busy} style={primary}>{t("pex.start")} →</button>
               )}
             </div>
           ))}

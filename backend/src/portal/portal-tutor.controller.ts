@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, Get, Inject, NotFoundException, Post, UseGuards } from '@nestjs/common';
+import { BadRequestException, Body, Controller, ForbiddenException, Get, Inject, NotFoundException, Post, UseGuards } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { and, eq } from 'drizzle-orm';
 import { DB, Database } from '../db/db.module';
@@ -18,6 +18,8 @@ export class PortalTutorController {
   ) {}
 
   private async student(user: PortalUserPayload) {
+    // The conversation and the daily limit are the student's own.
+    if (user.viewer === 'parent') throw new ForbiddenException("AI ustoz o'quvchining o'zi uchun");
     const s = await this.db.query.students.findFirst({
       where: and(eq(students.id, user.studentId), eq(students.tenantId, user.tenantId)),
       columns: { id: true, tenantId: true, fullName: true },

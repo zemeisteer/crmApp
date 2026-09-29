@@ -22,6 +22,7 @@ export default function PortalHome({
   payments,
   announcements,
   onOpen,
+  parent = false,
 }: {
   me: PortalMe | null;
   schedule: PortalSchedule | null;
@@ -30,6 +31,8 @@ export default function PortalHome({
   payments: PortalPayments | null;
   announcements: PortalAnnouncement[];
   onOpen: (tab: "schedule" | "attendance" | "homework" | "payments") => void;
+  // Seen by a parent: about "your child", not a greeting to the student.
+  parent?: boolean;
 }) {
   const { t } = useLanguage();
 
@@ -63,8 +66,8 @@ export default function PortalHome({
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "4px 2px" }}>
         <div>
-          <div style={{ fontSize: 13, color: "#64748B" }}>{t("ptl.welcome")}</div>
-          <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 800, fontSize: 20 }}>{me?.fullName?.split(" ")[0] ?? ""}</div>
+          <div style={{ fontSize: 13, color: "#64748B" }}>{parent ? t("ptp.yourChild") : t("ptl.welcome")}</div>
+          <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 800, fontSize: 20 }}>{parent ? me?.fullName ?? "" : me?.fullName?.split(" ")[0] ?? ""}</div>
         </div>
         <div style={{ width: 42, height: 42, borderRadius: "50%", background: ACCENT, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800 }}>
           {(me?.fullName ?? "?").slice(0, 1).toUpperCase()}

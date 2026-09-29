@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  ForbiddenException,
   Get,
   Param,
   Post,
@@ -14,6 +15,11 @@ import { JwtAuthGuard } from '../common/jwt-auth.guard';
 import { RolesGuard } from '../common/roles.guard';
 import { CurrentUser } from '../common/current-user.decorator';
 import { Roles } from '../common/roles.decorator';
+
+// Doing the work (homework, tests) is the student's own; parents watch.
+function onlyStudent(user: PortalUserPayload) {
+  if (user.viewer === 'parent') throw new ForbiddenException("Bu amalni o'quvchining o'zi bajaradi");
+}
 
 @Controller('portal')
 export class PortalController {
@@ -48,11 +54,19 @@ export class PortalController {
     });
   }
 
+  // A parent signed in with their own account: sessions for their children.
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('PARENT')
+  @Post('auth/parent-account')
+  parentAccount(@CurrentUser('tenantId') tenantId: string, @CurrentUser('sub') userId: string) {
+    return this.service.parentAccountSessions(tenantId, userId);
+  }
+
   // Protected portal queries
   @UseGuards(PortalAuthGuard)
   @Get('me')
-  getMe(@PortalUser() user: PortalUserPayload) {
-    return this.service.getMe(user.studentId, user.tenantId);
+  async getMe(@PortalUser() user: PortalUserPayload) {
+    return { ...(await this.service.getMe(user.studentId, user.tenantId)), viewer: user.viewer };
   }
 
   @UseGuards(PortalAuthGuard)
@@ -79,6 +93,7 @@ export class PortalController {
     @PortalUser() user: PortalUserPayload,
     @Param('id') id: string,
   ) {
+    onlyStudent(user);
     return this.service.submitHomework(user.studentId, user.tenantId, id);
   }
 
@@ -97,12 +112,14 @@ export class PortalController {
   @UseGuards(PortalAuthGuard)
   @Get('exams/:id/start')
   startExam(@PortalUser() user: PortalUserPayload, @Param('id') id: string) {
+    onlyStudent(user);
     return this.service.startExam(user.studentId, user.tenantId, id);
   }
 
   @UseGuards(PortalAuthGuard)
   @Post('exams/:id/submit')
   submitExam(@PortalUser() user: PortalUserPayload, @Param('id') id: string, @Body() body: { answers?: Record<string, string> }) {
+    onlyStudent(user);
     const answers = body?.answers && typeof body.answers === 'object' ? body.answers : {};
     return this.service.submitExam(user.studentId, user.tenantId, id, answers);
   }
