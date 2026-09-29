@@ -1073,6 +1073,7 @@ export const dict = {
   "spin.button": { UZ: "🔐 Portal PIN", RU: "🔐 PIN портала", EN: "🔐 Portal PIN" },
   "spin.title": { UZ: "O'quvchi portali uchun PIN", RU: "PIN для портала ученика", EN: "Student portal PIN" },
   "spin.intro": { UZ: "O'quvchi yoki ota-ona portalga telefon raqami va shu PIN bilan kiradi (Telegram ulangan bo'lsa, kod botga ham keladi).", RU: "Ученик или родитель входит в портал по номеру телефона и этому PIN (если подключён Telegram, код придёт и в бот).", EN: "The student or parent signs in with the phone number and this PIN (with Telegram linked, a code also comes to the bot)." },
+  "spin.portalLink": { UZ: "Kabinet manzili", RU: "Адрес кабинета", EN: "Cabinet address" },
   "spin.has": { UZ: "PIN berilgan", RU: "PIN выдан", EN: "PIN issued" },
   "spin.none": { UZ: "PIN hali berilmagan", RU: "PIN ещё не выдан", EN: "No PIN yet" },
   "spin.issue": { UZ: "PIN yaratish", RU: "Создать PIN", EN: "Create PIN" },

@@ -127,11 +127,14 @@ export class PortalService {
 
   // Students whose own or parent phone is this number (exact match on the
   // normalized number; older records may lack the 998 prefix).
-  private async studentsByPhone(phone: string) {
+  // On a center's own subdomain (<sub>.<ROOT_DOMAIN>/portal) only that
+  // center's students count; on the main site every center does.
+  private async studentsByPhone(phone: string, subdomain?: string) {
     const digits = phone.replace(/\D/g, '');
     const local = digits.slice(-9);
     const clean = (col: AnyColumn) => sql`regexp_replace(coalesce(${col}, ''), '\\D', '', 'g')`;
-    return this.db.query.students.findMany({
+    const center = subdomain?.trim().toLowerCase();
+    const rows = await this.db.query.students.findMany({
       where: and(
         isNull(students.deletedAt),
         or(
@@ -141,6 +144,7 @@ export class PortalService {
       ),
       with: { tenant: true },
     });
+    return center ? rows.filter((s) => s.tenant?.subdomain?.toLowerCase() === center) : rows;
   }
 
   private async pinsFor(studentIds: string[]) {
@@ -149,10 +153,10 @@ export class PortalService {
     return new Map(rows.map((r) => [r.studentId, r.pinHash]));
   }
 
-  async startPhoneLogin(rawPhone: string) {
+  async startPhoneLogin(rawPhone: string, subdomain?: string) {
     const phone = normalizePhone(rawPhone);
     if (!phone) throw new BadRequestException("Telefon raqami noto'g'ri");
-    const matched = await this.studentsByPhone(phone);
+    const matched = await this.studentsByPhone(phone, subdomain);
     const chats = [...new Set(matched.map((s) => s.telegramChatId).filter((c): c is string => Boolean(c)))];
     const pins = await this.pinsFor(matched.map((s) => s.id));
     const pinAvailable = pins.size > 0;
@@ -175,10 +179,10 @@ export class PortalService {
 
   // Step 2: check the Telegram code or the PIN. When the number belongs to
   // several students (siblings), the caller picks one from `choose`.
-  async verifyPhoneLogin(rawPhone: string, body: { code?: string; pin?: string; studentId?: string }) {
+  async verifyPhoneLogin(rawPhone: string, body: { code?: string; pin?: string; studentId?: string; subdomain?: string }) {
     const phone = normalizePhone(rawPhone);
     if (!phone) throw new BadRequestException("Telefon raqami noto'g'ri");
-    const matched = await this.studentsByPhone(phone);
+    const matched = await this.studentsByPhone(phone, body.subdomain);
     let allowed: typeof matched = [];
     let codeRowId: string | null = null;
 

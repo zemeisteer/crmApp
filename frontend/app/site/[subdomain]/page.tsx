@@ -291,6 +291,8 @@ export default function PublicSitePage() {
                 </button>
               ))}
             </div>
+            {/* The cabinet lives on the same address: <sub>.<ROOT_DOMAIN>/portal */}
+            <Link href="/portal" style={{ fontSize: 14, fontWeight: 600, padding: "0 6px", whiteSpace: "nowrap" }}>🎓 {L.cabinet}</Link>
             <Link href="/login" className="ps-hide-sm" style={{ fontSize: 14, fontWeight: 600, padding: "0 6px" }}>{L.login}</Link>
             <button type="button" className="ps-btn ps-primary ps-hide-sm" onClick={() => scrollToApply()} style={{ fontSize: 14, padding: "0 18px", minHeight: 40 }}>{L.apply}</button>
           </div>

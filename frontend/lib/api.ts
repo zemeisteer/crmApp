@@ -2345,12 +2345,13 @@ export const portalApi = {
       method: "POST",
       body: JSON.stringify({ token }),
     }),
-  startPhoneLogin: (phone: string) =>
+  // `subdomain`: signing in on a center's own address counts only that center.
+  startPhoneLogin: (phone: string, subdomain?: string) =>
     request<{ telegramSent: boolean; pinAvailable: boolean }>("/portal/auth/phone/start", {
       method: "POST",
-      body: JSON.stringify({ phone }),
+      body: JSON.stringify({ phone, subdomain }),
     }),
-  verifyPhoneLogin: (data: { phone: string; code?: string; pin?: string; studentId?: string }) =>
+  verifyPhoneLogin: (data: { phone: string; code?: string; pin?: string; studentId?: string; subdomain?: string }) =>
     request<
       | PortalSession
       | { choose: Array<{ id: string; fullName: string; centerName: string }>; sessions?: PortalSession[] }

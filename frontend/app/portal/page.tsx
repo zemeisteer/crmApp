@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { useLanguage } from "@/lib/i18n-context";
 import PortalExamList from "@/components/portal/PortalExams";
 import PortalLogin from "@/components/portal/PortalLogin";
+import { useCenterFromHost } from "@/lib/use-center-host";
 import { AttendanceTab, HomeworkTab, PaymentsTab, ScheduleTab, TabTitle } from "@/components/portal/PortalTabs";
 import PortalTutor from "@/components/portal/PortalTutor";
 import type { Lang, TranslationKey } from "@/lib/i18n";
@@ -86,6 +87,7 @@ function LangSwitch({ lang, setLang, dark }: { lang: Lang; setLang: (l: Lang) =>
 
 export default function StudentPortalPage() {
   const { t, lang, setLang } = useLanguage();
+  const hostCenter = useCenterFromHost();
   const [token, setTokenState] = useState<string | null>(null);
   const [sessions, setSessions] = useState<PortalSession[]>([]);
   const [addingChild, setAddingChild] = useState(false);
@@ -298,6 +300,7 @@ export default function StudentPortalPage() {
               🎓
             </div>
             <div style={{ display: "flex", justifyContent: "center", marginBottom: 10 }}><LangSwitch lang={lang} setLang={setLang} dark /></div>
+            {hostCenter?.name && <div style={{ fontSize: 13, fontWeight: 700, color: "#A5B4FC", marginBottom: 4 }}>{hostCenter.name}</div>}
             <h1 style={{ fontSize: 22, fontWeight: 800, margin: "0 0 6px 0" }}>
               {t("ptl.cabinet")}
             </h1>
@@ -324,6 +327,7 @@ export default function StudentPortalPage() {
           )}
 
           <PortalLogin
+            subdomain={hostCenter?.subdomain}
             onLoggedIn={(list, activeId) => {
               activate(list, activeId);
             }}
@@ -554,7 +558,7 @@ export default function StudentPortalPage() {
               </div>
               <button type="button" onClick={() => setAddingChild(false)} aria-label={t("common.cancel")} style={{ background: "rgba(255,255,255,0.1)", border: "none", color: "#fff", borderRadius: 8, width: 32, height: 32, cursor: "pointer", fontSize: 16 }}>✕</button>
             </div>
-            <PortalLogin onLoggedIn={(list, activeId) => activate(list, activeId)} />
+            <PortalLogin subdomain={hostCenter?.subdomain} onLoggedIn={(list, activeId) => activate(list, activeId)} />
           </div>
         )}
         {activeTab === "home" && !isParent && (

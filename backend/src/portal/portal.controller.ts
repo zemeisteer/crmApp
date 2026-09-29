@@ -35,8 +35,8 @@ export class PortalController {
   // (or the center-issued PIN is used), then verified here.
   @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @Post('auth/phone/start')
-  startPhoneLogin(@Body('phone') phone: string) {
-    return this.service.startPhoneLogin(String(phone ?? ''));
+  startPhoneLogin(@Body('phone') phone: string, @Body('subdomain') subdomain?: string) {
+    return this.service.startPhoneLogin(String(phone ?? ''), typeof subdomain === 'string' ? subdomain : undefined);
   }
 
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
@@ -46,8 +46,10 @@ export class PortalController {
     @Body('code') code?: string,
     @Body('pin') pin?: string,
     @Body('studentId') studentId?: string,
+    @Body('subdomain') subdomain?: string,
   ) {
     return this.service.verifyPhoneLogin(String(phone ?? ''), {
+      subdomain: typeof subdomain === 'string' ? subdomain : undefined,
       code: typeof code === 'string' ? code : undefined,
       pin: typeof pin === 'string' ? pin : undefined,
       studentId: typeof studentId === 'string' ? studentId : undefined,

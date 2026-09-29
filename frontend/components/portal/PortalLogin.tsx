@@ -10,7 +10,7 @@ type Step = "phone" | "verify" | "choose";
 // Portal sign-in: phone number, then either the one-time code sent to the
 // student's Telegram or the PIN the center gave them. A phone number alone
 // never signs anyone in.
-export default function PortalLogin({ onLoggedIn }: { onLoggedIn: (sessions: PortalSession[], activeId?: string) => void }) {
+export default function PortalLogin({ onLoggedIn, subdomain }: { onLoggedIn: (sessions: PortalSession[], activeId?: string) => void; subdomain?: string }) {
   const { t } = useLanguage();
   const [step, setStep] = useState<Step>("phone");
   const [phone, setPhone] = useState("");
@@ -32,7 +32,7 @@ export default function PortalLogin({ onLoggedIn }: { onLoggedIn: (sessions: Por
     }
     setBusy(true);
     try {
-      const res = await portalApi.startPhoneLogin(phone);
+      const res = await portalApi.startPhoneLogin(phone, subdomain);
       setTelegramSent(res.telegramSent);
       setPinAvailable(res.pinAvailable);
       setMethod(res.telegramSent ? "code" : "pin");
@@ -49,7 +49,7 @@ export default function PortalLogin({ onLoggedIn }: { onLoggedIn: (sessions: Por
     setError(null);
     setBusy(true);
     try {
-      const res = await portalApi.verifyPhoneLogin({ phone, [method]: secret.trim(), studentId });
+      const res = await portalApi.verifyPhoneLogin({ phone, [method]: secret.trim(), studentId, subdomain });
       if ("choose" in res) {
         setChoices(res.choose);
         setSessions(res.sessions ?? []);

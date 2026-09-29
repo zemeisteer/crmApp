@@ -43,3 +43,8 @@ export function centerSiteUrl(subdomain: string) {
   }
   return `https://${centerHost(subdomain)}`;
 }
+
+/** The student/parent cabinet on the center's own address. */
+export function centerPortalUrl(subdomain: string) {
+  return `${centerSiteUrl(subdomain)}/portal`;
+}

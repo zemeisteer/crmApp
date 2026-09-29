@@ -135,9 +135,16 @@ describe('PortalService', () => {
         tenantId: 'tenant-1',
         deletedAt: null,
         telegramChatId: null,
-        tenant: { id: 'tenant-1', name: 'Apex Academy' },
+        tenant: { id: 'tenant-1', name: 'Apex Academy', subdomain: 'apex' },
       };
     };
+
+    it("on a center's subdomain, only that center's students can sign in", async () => {
+      mockDb.query.students.findMany.mockResolvedValue([student('482915')]);
+      await expect(service.verifyPhoneLogin('+998901234567', { pin: '482915', subdomain: 'other' })).rejects.toThrow();
+      const result = await service.verifyPhoneLogin('+998901234567', { pin: '482915', subdomain: 'APEX' });
+      expect((result as { accessToken: string }).accessToken).toBe('mock-portal-token');
+    });
 
     it('signs in with the PIN the center issued', async () => {
       mockDb.query.students.findMany.mockResolvedValue([student('482915')]);
