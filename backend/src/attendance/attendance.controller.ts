@@ -5,7 +5,7 @@ import { TrialGuard } from '../common/trial.guard';
 import { Roles } from '../common/roles.decorator';
 import { CurrentUser } from '../common/current-user.decorator';
 import { AttendanceService } from './attendance.service';
-import { MarkAttendanceDto, QrCheckInDto, QueryAttendanceDto } from './dto/attendance.dto';
+import { LessonTopicsQueryDto, MarkAttendanceDto, QrCheckInDto, QueryAttendanceDto } from './dto/attendance.dto';
 
 @UseGuards(JwtAuthGuard, RolesGuard, TrialGuard)
 @Controller('attendance')
@@ -20,6 +20,16 @@ export class AttendanceController {
     @Query() query: QueryAttendanceDto,
   ) {
     return this.service.findAll(tenantId, query, { role, userId });
+  }
+
+  @Get('topics')
+  topics(
+    @CurrentUser('tenantId') tenantId: string,
+    @CurrentUser('role') role: string,
+    @CurrentUser('sub') userId: string,
+    @Query() query: LessonTopicsQueryDto,
+  ) {
+    return this.service.topics(tenantId, query.groupId, { role, userId });
   }
 
   @Roles('ADMIN', 'TEACHER', 'MANAGER', 'RECEPTIONIST')

@@ -1431,8 +1431,9 @@ export const attendanceApi = {
     const suffix = qs.toString() ? `?${qs.toString()}` : "";
     return request<AttendanceRecord[]>(`/attendance${suffix}`);
   },
-  mark: (data: { groupId: string; date: string; entries: { studentId: string; status: AttendanceStatus }[] }) =>
+  mark: (data: { groupId: string; date: string; entries: { studentId: string; status: AttendanceStatus }[]; topic?: string }) =>
     request<AttendanceRecord[]>("/attendance", { method: "POST", body: JSON.stringify(data) }),
+  topics: (groupId: string) => request<Array<{ date: string; topic: string }>>(`/attendance/topics?groupId=${encodeURIComponent(groupId)}`),
   qrCheckIn: (data: { code: string; date?: string; groupId?: string }) =>
     request<QrCheckInResponse>("/attendance/qr-checkin", { method: "POST", body: JSON.stringify(data) }),
 };
@@ -2285,6 +2286,7 @@ export interface PortalPastLesson {
     status: string | null;
     score: number | null;
     maxScore: number;
+    feedback?: string | null;
   }>;
   exams: Array<{ id: string; title: string; maxScore: number; passingScore: number | null; score: number | null }>;
 }

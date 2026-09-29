@@ -94,15 +94,18 @@ function GroupDetailContent() {
   const [attendanceDate, setAttendanceDate] = useState(today);
   const [draft, setDraft] = useState<Record<string, AttendanceStatus>>({});
   const [markSaving, setMarkSaving] = useState(false);
+  const [topics, setTopics] = useState<Array<{ date: string; topic: string }>>([]);
+  const [topic, setTopic] = useState("");
 
   function load() {
     setLoading(true);
-    Promise.all([groupsApi.get(id), studentsApi.list(), paymentsApi.list().catch(() => []), attendanceApi.list({ groupId: id })])
-      .then(([g, s, p, a]) => {
+    Promise.all([groupsApi.get(id), studentsApi.list(), paymentsApi.list().catch(() => []), attendanceApi.list({ groupId: id }), attendanceApi.topics(id).catch(() => [])])
+      .then(([g, s, p, a, tp]) => {
         setGroup(g as any);
         setAllStudents(s);
         setPayments(p);
         setAttendance(a);
+        setTopics(tp);
       })
       .catch((err) => {
         if (err instanceof ApiError && err.status === 404) setNotFound(true);
@@ -120,8 +123,9 @@ function GroupDetailContent() {
       next[e.student.id] = existing?.status || "PRESENT";
     }
     setDraft(next);
+    setTopic(topics.find((x) => x.date === attendanceDate)?.topic ?? "");
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [group, attendance, attendanceDate]);
+  }, [group, attendance, attendanceDate, topics]);
 
   if (loading) {
     return <div style={{ padding: 32, color: "#8A8D96", fontSize: 14 }}>{t("common.loading")}</div>;
@@ -176,6 +180,7 @@ function GroupDetailContent() {
         groupId: id,
         date: attendanceDate,
         entries: enrolled.map((e) => ({ studentId: e.student.id, status: draft[e.student.id] || "PRESENT" })),
+        topic,
       });
       load();
     } finally {
@@ -366,6 +371,18 @@ function GroupDetailContent() {
                   );
                 })}
               </div>
+              <label style={{ display: "block", marginTop: 14 }}>
+                <span style={{ display: "block", fontSize: 12.5, fontWeight: 700, color: "#4A4E58", marginBottom: 6 }}>📖 {t("groupDetail.lessonTopic")}</span>
+                <textarea
+                  className="field-input"
+                  value={topic}
+                  onChange={(e) => setTopic(e.target.value)}
+                  maxLength={2000}
+                  rows={2}
+                  placeholder={t("groupDetail.lessonTopicPh")}
+                  style={{ width: "100%", resize: "vertical", fontFamily: "inherit", fontSize: 13.5 }}
+                />
+              </label>
               <button
                 className="btn"
                 onClick={onSaveAttendance}

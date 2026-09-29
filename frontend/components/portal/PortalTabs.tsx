@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import { fileUrl, portalApi, type PortalAttendance, type PortalHomework, type PortalPastLesson, type PortalPayments, type PortalSchedule } from "@/lib/api";
 import { useLanguage } from "@/lib/i18n-context";
-import { MONTH_KEYS, type TranslationKey } from "@/lib/i18n";
+import { MONTH_KEYS, MONTH_SHORT_KEYS, type TranslationKey } from "@/lib/i18n";
+import Modal from "@/components/Modal";
 
 // The student cabinet's tabs in the same look as PortalHome: light cards,
 // big tap targets, lists instead of tables so nothing scrolls sideways on
@@ -139,13 +140,32 @@ const ATT_PILL: Record<string, { key: TranslationKey; tone: "green" | "amber" | 
   EXCUSED: { key: "pls.excused", tone: "grey" },
 };
 
-// Past lessons, newest first: the student's mark, homework given that day and
-// test/exam results, so a missed lesson shows exactly what to catch up on.
+// Past lessons, newest first, as a grid of compact cards. A card opens the
+// full lesson: topic, the student's mark, homework given that day (with the
+// teacher's comment) and test/exam results, so a missed lesson shows exactly
+// what to catch up on.
+const PAST_CSS = `
+.pls-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:12px}
+@media (min-width:720px){.pls-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.pls-card{display:flex;gap:12px;text-align:left;width:100%;font-family:inherit;color:inherit;cursor:pointer;transition:box-shadow .15s,transform .15s,border-color .15s}
+.pls-card:hover{border-color:#C7D2FE;box-shadow:0 10px 24px -16px rgba(79,70,229,.55);transform:translateY(-1px)}
+.pls-card:focus-visible{outline:2px solid #4F46E5;outline-offset:2px}
+.pls-clamp{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+`;
+
+const ATT_ACCENT: Record<string, { bar: string; bg: string; fg: string }> = {
+  green: { bar: "#1FA463", bg: "#E9F8EF", fg: "#15803D" },
+  amber: { bar: "#F59E0B", bg: "#FEF3C7", fg: "#B45309" },
+  red: { bar: "#DC2626", bg: "#FEE2E2", fg: "#B91C1C" },
+  grey: { bar: "#CBD5E1", bg: "#F2F1EC", fg: "#6B6E78" },
+};
+
 function PastLessons() {
   const { t } = useLanguage();
   const [days, setDays] = useState(30);
   const [data, setData] = useState<PortalPastLesson[] | null>(null);
   const [error, setError] = useState(false);
+  const [open, setOpen] = useState<PortalPastLesson | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -159,64 +179,168 @@ function PastLessons() {
   if (!data) return <div style={{ ...card, color: "#8A8D96", fontSize: 14 }}>{t("common.loading")}</div>;
   if (data.length === 0) return <Empty icon="📚" text={t("pls.none")} />;
 
-  const hwStatus = (st: string | null): { key: TranslationKey; tone: "green" | "amber" | "grey" | "accent" } =>
-    st === "GRADED" ? { key: "pls.hwGraded", tone: "green" } : st === "SUBMITTED" ? { key: "pls.hwSubmitted", tone: "accent" } : { key: "pls.hwTodo", tone: "amber" };
-  const weekday = (date: string) => { const d = new Date(`${date}T00:00:00`).getDay(); return t(DAY_KEYS[d === 0 ? 6 : d - 1]); };
-
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-      {data.map((l) => {
-        const att = l.attendance ? ATT_PILL[l.attendance] : null;
-        return (
-          <div key={`${l.groupId}-${l.date}`} style={{ ...card, display: "flex", flexDirection: "column", gap: 10, opacity: l.cancelled ? 0.65 : 1, borderLeft: `4px solid ${att?.tone === "red" ? "#DC2626" : att?.tone === "amber" ? "#F59E0B" : att ? "#1FA463" : "#EAE8E2"}` }}>
-            <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "flex-start" }}>
-              <div style={{ minWidth: 0 }}>
-                <div style={{ fontSize: 12, fontWeight: 800, color: "#8A8D96", textTransform: "uppercase", letterSpacing: "0.03em" }}>
-                  {weekday(l.date)} · {l.date.slice(8, 10)}.{l.date.slice(5, 7)}{l.startTime ? ` · ${l.startTime}${l.endTime ? `–${l.endTime}` : ""}` : ""}
-                </div>
-                <div style={{ fontSize: 15, fontWeight: 700, marginTop: 2 }}>{l.groupName}</div>
-                <div style={{ fontSize: 12.5, color: "#6B6E78", marginTop: 2, display: "flex", flexWrap: "wrap", gap: "2px 10px" }}>
-                  {l.teacher && <span>👤 {l.teacher}</span>}
-                  {l.topic && <span>📖 {l.topic}</span>}
-                </div>
+    <>
+      <style>{PAST_CSS}</style>
+      <div className="pls-grid">
+        {data.map((l) => {
+          const mark = lessonMark(l);
+          const tone = ATT_ACCENT[mark.tone];
+          const hwCount = l.homework.length;
+          const scored = l.exams.filter((e) => e.score != null);
+          return (
+            <button key={`${l.groupId}-${l.date}`} type="button" className="pls-card" onClick={() => setOpen(l)} style={{ ...card, padding: 14, opacity: l.cancelled ? 0.7 : 1 }}>
+              <div style={{ width: 52, flexShrink: 0, borderRadius: 12, background: tone.bg, color: tone.fg, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "8px 0" }}>
+                <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 800, fontSize: 20, lineHeight: 1 }}>{l.date.slice(8, 10)}</div>
+                <div style={{ fontSize: 11, fontWeight: 700, marginTop: 3 }}>{t(MONTH_SHORT_KEYS[Number(l.date.slice(5, 7)) - 1])}</div>
               </div>
-              {l.cancelled ? <Pill tone="grey">{t("pls.cancelled")}</Pill> : att ? <Pill tone={att.tone}>{t(att.key)}</Pill> : <Pill tone="grey">{t("pls.noMark")}</Pill>}
-            </div>
-            {l.homework.map((h) => {
-              const st = hwStatus(h.status);
-              return (
-                <div key={h.id} style={{ background: "#F9F8F5", borderRadius: 12, padding: "10px 12px" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center" }}>
-                    <div style={{ fontSize: 13.5, fontWeight: 700 }}>📝 {h.title}</div>
-                    <Pill tone={st.tone}>{h.status === "GRADED" && h.score != null ? `${h.score}/${h.maxScore}` : t(st.key)}</Pill>
+              <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 4 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "flex-start" }}>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: 14.5, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l.groupName}</div>
+                    <div style={{ fontSize: 12, color: "#8A8D96", marginTop: 1 }}>
+                      {weekdayOf(l.date, t)}{l.startTime ? ` · ${l.startTime}${l.endTime ? `–${l.endTime}` : ""}` : ""}
+                    </div>
                   </div>
-                  {h.description && <div style={{ fontSize: 13, color: "#4A4E58", marginTop: 4, whiteSpace: "pre-wrap" }}>{h.description}</div>}
-                  {h.attachmentPath && (
-                    <a href={fileUrl(h.attachmentPath) ?? undefined} target="_blank" rel="noreferrer" style={{ display: "inline-block", marginTop: 6, fontSize: 12.5, fontWeight: 700, color: ACCENT }}>📎 {h.attachmentName || t("pls.file")}</a>
-                  )}
+                  <Pill tone={mark.tone}>{t(mark.key)}</Pill>
                 </div>
-              );
-            })}
-            {l.exams.map((e) => {
-              const passed = e.score != null && e.passingScore != null ? e.score >= e.passingScore : null;
-              return (
-                <div key={e.id} style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center", background: "#F5F3FF", borderRadius: 12, padding: "10px 12px" }}>
-                  <div style={{ fontSize: 13.5, fontWeight: 700 }}>🏆 {e.title}</div>
-                  <Pill tone={e.score == null ? "grey" : passed === false ? "red" : "green"}>
-                    {e.score == null ? t("pls.noResult") : `${e.score}/${e.maxScore}`}
-                  </Pill>
+                <div className="pls-clamp" style={{ fontSize: 13, color: l.topic ? "#2A2D35" : "#A3A6AE", fontStyle: l.topic ? "normal" : "italic" }}>
+                  📖 {l.topic || t("pls.noTopic")}
                 </div>
-              );
-            })}
-          </div>
-        );
-      })}
+                {(hwCount > 0 || scored.length > 0) && (
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 2 }}>
+                    {hwCount > 0 && <span style={chip}>📝 {t("pls.hwCount").replace("{n}", String(hwCount))}</span>}
+                    {scored.map((e) => <span key={e.id} style={{ ...chip, background: "#F5F3FF", color: "#5B21B6" }}>🏆 {e.score}/{e.maxScore}</span>)}
+                  </div>
+                )}
+              </div>
+            </button>
+          );
+        })}
+      </div>
       {days < 90 && (
         <button type="button" onClick={() => { setData(null); setDays(90); }} style={{ ...card, cursor: "pointer", fontSize: 13, fontWeight: 700, color: ACCENT, textAlign: "center" }}>
           {t("pls.more")}
         </button>
       )}
-    </div>
+      {open && <LessonDetails lesson={open} onClose={() => setOpen(null)} />}
+    </>
+  );
+}
+
+const chip: React.CSSProperties = { fontSize: 11.5, fontWeight: 700, padding: "3px 8px", borderRadius: 7, background: "#F2F1EC", color: "#4A4E58", whiteSpace: "nowrap" };
+
+function weekdayOf(date: string, t: (k: TranslationKey) => string) {
+  const d = new Date(`${date}T00:00:00`).getDay();
+  return t(DAY_KEYS[d === 0 ? 6 : d - 1]);
+}
+
+function lessonMark(l: PortalPastLesson): { key: TranslationKey; tone: "green" | "amber" | "red" | "grey" } {
+  if (l.cancelled) return { key: "pls.cancelled", tone: "grey" };
+  const att = l.attendance ? ATT_PILL[l.attendance] : null;
+  return att ?? { key: "pls.noMark", tone: "grey" };
+}
+
+function hwStatus(st: string | null): { key: TranslationKey; tone: "green" | "amber" | "grey" | "accent" } {
+  return st === "GRADED" ? { key: "pls.hwGraded", tone: "green" } : st === "SUBMITTED" ? { key: "pls.hwSubmitted", tone: "accent" } : { key: "pls.hwTodo", tone: "amber" };
+}
+
+function Section({ icon, title, children }: { icon: string; title: string; children: React.ReactNode }) {
+  return (
+    <section style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      <div style={{ fontSize: 12, fontWeight: 800, color: "#8A8D96", textTransform: "uppercase", letterSpacing: "0.04em" }}>{icon} {title}</div>
+      {children}
+    </section>
+  );
+}
+
+function LessonDetails({ lesson: l, onClose }: { lesson: PortalPastLesson; onClose: () => void }) {
+  const { t } = useLanguage();
+  const mark = lessonMark(l);
+  const tone = ATT_ACCENT[mark.tone];
+  const date = `${weekdayOf(l.date, t)}, ${Number(l.date.slice(8, 10))} ${t(MONTH_KEYS[Number(l.date.slice(5, 7)) - 1])}`;
+  return (
+    <Modal open onClose={onClose} title={l.groupName} width={560}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 18, marginTop: -8 }}>
+        <div style={{ fontSize: 13, color: "#6B6E78", display: "flex", flexWrap: "wrap", gap: "4px 12px" }}>
+          <span>🗓️ {date}</span>
+          {l.startTime && <span>⏰ {l.startTime}{l.endTime ? `–${l.endTime}` : ""}</span>}
+          {l.teacher && <span>👤 {l.teacher}</span>}
+        </div>
+
+        <Section icon="✅" title={t("pls.attendance")}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, background: tone.bg, color: tone.fg, borderRadius: 12, padding: "10px 12px", fontSize: 13.5, fontWeight: 700 }}>
+            <span style={{ width: 10, height: 10, borderRadius: "50%", background: tone.bar, flexShrink: 0 }} />
+            {t(mark.key)}
+          </div>
+          {l.attendance === "ABSENT" && <div style={{ fontSize: 12.5, color: "#B45309" }}>💡 {t("pls.missedHint")}</div>}
+        </Section>
+
+        <Section icon="📖" title={t("pls.topic")}>
+          <div style={{ fontSize: 14, color: l.topic ? "#181A1F" : "#A3A6AE", fontStyle: l.topic ? "normal" : "italic", whiteSpace: "pre-wrap", lineHeight: 1.5 }}>
+            {l.topic || t("pls.noTopic")}
+          </div>
+        </Section>
+
+        {l.homework.length > 0 && (
+          <Section icon="📝" title={t("pls.homeworkGiven")}>
+            {l.homework.map((h) => {
+              const st = hwStatus(h.status);
+              return (
+                <div key={h.id} style={{ background: "#F9F8F5", borderRadius: 12, padding: "12px 14px", display: "flex", flexDirection: "column", gap: 6 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center" }}>
+                    <div style={{ fontSize: 14, fontWeight: 700 }}>{h.title}</div>
+                    <Pill tone={st.tone}>{h.status === "GRADED" && h.score != null ? `${h.score}/${h.maxScore}` : t(st.key)}</Pill>
+                  </div>
+                  {h.description && <div style={{ fontSize: 13, color: "#4A4E58", whiteSpace: "pre-wrap", lineHeight: 1.5 }}>{h.description}</div>}
+                  {h.dueDate && <div style={{ fontSize: 12, color: "#8A8D96" }}>{t("pls.due")}: {new Date(h.dueDate).toLocaleDateString()}</div>}
+                  {h.attachmentPath && (
+                    <a href={fileUrl(h.attachmentPath) ?? undefined} target="_blank" rel="noreferrer" style={{ fontSize: 12.5, fontWeight: 700, color: ACCENT }}>📎 {h.attachmentName || t("pls.file")}</a>
+                  )}
+                  {h.feedback && (
+                    <div style={{ borderLeft: `3px solid ${ACCENT}`, background: "#EEF0FF", borderRadius: 8, padding: "8px 10px", fontSize: 13 }}>
+                      <div style={{ fontSize: 11.5, fontWeight: 800, color: ACCENT, marginBottom: 2 }}>{t("pls.feedback")}</div>
+                      {h.feedback}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </Section>
+        )}
+
+        {l.exams.length > 0 && (
+          <Section icon="🏆" title={t("pls.results")}>
+            {l.exams.map((e) => {
+              const passed = e.score != null && e.passingScore != null ? e.score >= e.passingScore : null;
+              const pct = e.score != null && e.maxScore > 0 ? Math.round((e.score / e.maxScore) * 100) : null;
+              return (
+                <div key={e.id} style={{ background: "#F5F3FF", borderRadius: 12, padding: "12px 14px", display: "flex", flexDirection: "column", gap: 8 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center" }}>
+                    <div style={{ fontSize: 14, fontWeight: 700 }}>{e.title}</div>
+                    <Pill tone={e.score == null ? "grey" : passed === false ? "red" : "green"}>
+                      {e.score == null ? t("pls.noResult") : `${e.score}/${e.maxScore}`}
+                    </Pill>
+                  </div>
+                  {pct != null && (
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <div style={{ flex: 1, height: 6, borderRadius: 6, background: "#E4E0FB", overflow: "hidden" }}>
+                        <div style={{ width: `${Math.min(100, pct)}%`, height: "100%", background: passed === false ? "#DC2626" : "#7C3AED" }} />
+                      </div>
+                      <span style={{ fontSize: 12, fontWeight: 700, color: "#5B21B6" }}>{pct}%{passed != null ? ` · ${t(passed ? "pls.passed" : "pls.failed")}` : ""}</span>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </Section>
+        )}
+
+        {l.homework.length === 0 && l.exams.length === 0 && (
+          <div style={{ fontSize: 13, color: "#8A8D96", background: "#F9F8F5", borderRadius: 12, padding: "12px 14px" }}>{t("pls.nothing")}</div>
+        )}
+      </div>
+    </Modal>
   );
 }
 

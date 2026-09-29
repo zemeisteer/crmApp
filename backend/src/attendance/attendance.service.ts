@@ -1,7 +1,7 @@
 import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { and, eq, inArray, isNull } from 'drizzle-orm';
+import { and, desc, eq, inArray, isNull } from 'drizzle-orm';
 import { DB, Database } from '../db/db.module';
-import { attendance, enrollments, groups, payments, students, teachers } from '../db/schema';
+import { attendance, enrollments, groups, lessonTopics, payments, students, teachers } from '../db/schema';
 import { MarkAttendanceDto, QrCheckInDto, QueryAttendanceDto } from './dto/attendance.dto';
 import { TelegramService } from '../telegram/telegram.service';
 import { WebhooksService } from '../webhooks/webhooks.service';
@@ -89,9 +89,34 @@ export class AttendanceService {
       }
     }
 
+    if (dto.topic !== undefined) await this.saveTopic(tenantId, dto.groupId, dto.date, dto.topic);
+
     const flat = rows.flat();
     void this.webhooks.dispatch(tenantId, 'attendance.marked', { groupId: dto.groupId, date: dto.date, entries: flat });
     return flat;
+  }
+
+  private async saveTopic(tenantId: string, groupId: string, date: string, raw: string) {
+    const topic = raw.trim();
+    if (!topic) {
+      await this.db.delete(lessonTopics).where(and(eq(lessonTopics.tenantId, tenantId), eq(lessonTopics.groupId, groupId), eq(lessonTopics.date, date)));
+      return;
+    }
+    await this.db
+      .insert(lessonTopics)
+      .values({ tenantId, groupId, date, topic })
+      .onConflictDoUpdate({ target: [lessonTopics.groupId, lessonTopics.date], set: { topic, updatedAt: new Date() } });
+  }
+
+  // Lesson topics of one group, newest first (teachers: own groups only).
+  async topics(tenantId: string, groupId: string, viewer?: { role?: string; userId?: string }) {
+    const scope = await teacherGroupIds(this.db, tenantId, viewer?.role, viewer?.userId);
+    if (scope && !scope.includes(groupId)) return [];
+    return this.db
+      .select({ date: lessonTopics.date, topic: lessonTopics.topic })
+      .from(lessonTopics)
+      .where(and(eq(lessonTopics.tenantId, tenantId), eq(lessonTopics.groupId, groupId)))
+      .orderBy(desc(lessonTopics.date));
   }
 
   async findAll(tenantId: string, query: QueryAttendanceDto, viewer?: { role?: string; userId?: string }) {

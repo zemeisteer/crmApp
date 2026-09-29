@@ -29,6 +29,25 @@ describe('buildPastLessons', () => {
     expect(lessons[0]).toMatchObject({ startTime: '10:00', topic: 'Past Simple' });
   });
 
+  it('shows the dated topic on a day known only from a mark before the join date', () => {
+    const input = base();
+    input.groups[0].joinedOn = '2026-09-22';
+    input.attendance = [{ groupId: 'g1', date: '2026-09-21', status: 'PRESENT' }];
+    input.slots = [{ groupId: 'g1', dayOfWeek: null, date: '2026-09-21', startTime: '14:00', endTime: '15:30', topic: 'Reading: T/F/NG', status: 'SCHEDULED' }];
+    const [mon] = buildPastLessons(input);
+    expect(mon).toMatchObject({ date: '2026-09-21', topic: 'Reading: T/F/NG', attendance: 'PRESENT' });
+  });
+
+  it('uses the topic recorded for the day over the weekly slot topic', () => {
+    const input = base();
+    input.slots = [{ groupId: 'g1', dayOfWeek: 1, date: null, startTime: '14:00', endTime: '15:30', topic: 'Weekly', status: 'SCHEDULED' }];
+    input.topics = [{ groupId: 'g1', date: '2026-09-21', topic: 'Conditionals' }, { groupId: 'g1', date: '2026-08-01', topic: 'Too old' }];
+    const lessons = buildPastLessons(input);
+    expect(lessons.find((l) => l.date === '2026-09-21')?.topic).toBe('Conditionals');
+    expect(lessons.find((l) => l.date === '2026-09-14')?.topic).toBe('Weekly');
+    expect(lessons.some((l) => l.date === '2026-08-01')).toBe(false);
+  });
+
   it('attaches attendance, homework and exam results to their day', () => {
     const input = base();
     input.attendance = [{ groupId: 'g1', date: '2026-09-21', status: 'LATE' }];

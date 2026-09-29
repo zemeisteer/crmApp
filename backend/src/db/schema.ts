@@ -532,6 +532,21 @@ export const attendance = pgTable('attendance', {
   uniq: uniqueIndex('attendance_student_group_date_idx').on(t.studentId, t.groupId, t.date),
 }));
 
+// What was covered in a lesson: one row per group and local date, entered
+// together with attendance.
+export const lessonTopics = pgTable('lesson_topics', {
+  id: text('id').primaryKey().$defaultFn(() => createId()),
+  tenantId: text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  groupId: text('group_id').notNull().references(() => groups.id, { onDelete: 'cascade' }),
+  date: text('date').notNull(), // "2026-09-19"
+  topic: text('topic').notNull(),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+}, (t) => ({
+  groupDateIdx: uniqueIndex('lesson_topics_group_date_idx').on(t.groupId, t.date),
+  tenantIdx: index('lesson_topics_tenant_idx').on(t.tenantId),
+}));
+
 export const salaryPayments = pgTable('salary_payments', {
   id: text('id').primaryKey().$defaultFn(() => createId()),
   tenantId: text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),

@@ -1,5 +1,5 @@
 import { Type } from 'class-transformer';
-import { ArrayMinSize, IsArray, IsIn, IsOptional, IsString, ValidateNested } from 'class-validator';
+import { ArrayMinSize, IsArray, IsIn, IsOptional, IsString, MaxLength, ValidateNested } from 'class-validator';
 
 export class AttendanceEntryDto {
   @IsString()
@@ -21,6 +21,17 @@ export class MarkAttendanceDto {
   @ValidateNested({ each: true })
   @Type(() => AttendanceEntryDto)
   entries: AttendanceEntryDto[];
+
+  // What was covered in this lesson; an empty string clears it.
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  topic?: string;
+}
+
+export class LessonTopicsQueryDto {
+  @IsString()
+  groupId: string;
 }
 
 export class QueryAttendanceDto {

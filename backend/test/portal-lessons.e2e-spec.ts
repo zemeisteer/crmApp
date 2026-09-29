@@ -41,7 +41,8 @@ describe('Portal past lessons and subdomain sign-in (e2e)', () => {
       .expect(201)).body.id as string;
     await http().post(`/api/students/${kid}/enroll/${group}`).set(auth()).expect(201);
     const yesterday = localDay(-1);
-    await http().post('/api/attendance').set(auth()).send({ groupId: group, date: yesterday, entries: [{ studentId: kid, status: 'LATE' }] }).expect(201);
+    await http().post('/api/attendance').set(auth()).send({ groupId: group, date: yesterday, entries: [{ studentId: kid, status: 'LATE' }], topic: '  Present Perfect  ' }).expect(201);
+    expect((await http().get(`/api/attendance/topics?groupId=${group}`).set(auth()).expect(200)).body).toEqual([{ date: yesterday, topic: 'Present Perfect' }]);
     await http().post('/api/homework').set(auth()).send({ groupIds: [group], title: 'Workbook p.12', description: 'Ex. 1-3' }).expect(201);
     const { pin } = (await http().post(`/api/students/${kid}/portal-pin`).set(auth()).expect(201)).body;
 
@@ -52,10 +53,16 @@ describe('Portal past lessons and subdomain sign-in (e2e)', () => {
 
     const res = (await http().get('/api/portal/lessons?days=7').set(s).expect(200)).body;
     const past = res.lessons.find((l: { date: string }) => l.date === yesterday);
-    expect(past).toMatchObject({ groupName: 'Every Day', attendance: 'LATE' });
+    expect(past).toMatchObject({ groupName: 'Every Day', attendance: 'LATE', topic: 'Present Perfect' });
     // Homework posted today belongs to the latest lesson so far (yesterday's).
     expect(past.homework).toEqual([expect.objectContaining({ title: 'Workbook p.12', description: 'Ex. 1-3' })]);
     expect(res.lessons.some((l: { date: string }) => l.date === res.today)).toBe(false);
+
+    // An empty topic clears it; leaving it out keeps it.
+    await http().post('/api/attendance').set(auth()).send({ groupId: group, date: yesterday, entries: [{ studentId: kid, status: 'LATE' }] }).expect(201);
+    expect((await http().get(`/api/attendance/topics?groupId=${group}`).set(auth()).expect(200)).body).toHaveLength(1);
+    await http().post('/api/attendance').set(auth()).send({ groupId: group, date: yesterday, entries: [{ studentId: kid, status: 'LATE' }], topic: ' ' }).expect(201);
+    expect((await http().get(`/api/attendance/topics?groupId=${group}`).set(auth()).expect(200)).body).toEqual([]);
   });
 
   it('lets the student hand in homework with a notebook photo and text', async () => {

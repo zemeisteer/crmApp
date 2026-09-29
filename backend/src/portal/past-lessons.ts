@@ -40,6 +40,7 @@ export interface PastLessonHomework {
   status: string | null; // completion status for this student
   score: number | null;
   maxScore: number;
+  feedback?: string | null; // the teacher's comment on this student's work
 }
 
 export interface PastLessonExam {
@@ -58,6 +59,8 @@ export interface PastLessonInput {
   groups: PastLessonGroup[];
   slots: PastLessonSlot[];
   attendance: Array<{ groupId: string; date: string; status: string }>;
+  // What the teacher recorded as covered on that day (wins over a slot topic).
+  topics?: Array<{ groupId: string; date: string; topic: string }>;
   homework: PastLessonHomework[];
   exams: PastLessonExam[];
 }
@@ -149,6 +152,13 @@ export function buildPastLessons(input: PastLessonInput): PastLesson[] {
     if (!g || a.date < input.from || a.date > input.today) continue;
     add(g, a.date).attendance = a.status;
   }
+  for (const tp of input.topics ?? []) {
+    const g = groupById.get(tp.groupId);
+    if (!g || tp.date < input.from || tp.date > input.today) continue;
+    const existing = byKey.get(`${g.id}|${tp.date}`);
+    if (existing) existing.topic = tp.topic;
+    else if (inWindow(g, tp.date)) add(g, tp.date).topic = tp.topic;
+  }
   // Homework is often posted after the lesson (that evening or the next
   // day): it belongs to the group's latest lesson on or before that day.
   for (const h of input.homework) {
@@ -165,6 +175,14 @@ export function buildPastLessons(input: PastLessonInput): PastLesson[] {
     if (!g || !inWindow(g, e.heldOn)) continue;
     const { groupId: _g, heldOn: _d, ...rest } = e;
     add(g, e.heldOn).exams.push(rest);
+  }
+
+  // A day that became a lesson through a record (e.g. a mark from before
+  // the recorded join date) still shows the topic set for that date.
+  for (const l of byKey.values()) {
+    if (l.topic) continue;
+    const dated = input.slots.find((s) => s.groupId === l.groupId && s.date === l.date && s.topic);
+    if (dated) l.topic = dated.topic;
   }
 
   return [...byKey.values()].sort((a, b) => b.date.localeCompare(a.date) || (a.startTime ?? '').localeCompare(b.startTime ?? ''));

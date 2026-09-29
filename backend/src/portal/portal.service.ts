@@ -30,6 +30,7 @@ import {
   students,
   telegramLinkTokens,
   tenants,
+  lessonTopics,
 } from '../db/schema';
 import { DEFAULT_TIMEZONE, isValidTimeZone, zonedParts } from '../common/timezone';
 import { buildPastLessons } from './past-lessons';
@@ -356,7 +357,7 @@ export class PortalService {
     // Look one day further back so a timezone shift never drops the first day.
     const since = new Date(fromInstant.getTime() - 86_400_000);
 
-    const [slots, marks, hw, examRows] = await Promise.all([
+    const [slots, marks, hw, examRows, topicRows] = await Promise.all([
       this.db.select({
         groupId: schedules.groupId, dayOfWeek: schedules.dayOfWeek, date: schedules.date,
         startTime: schedules.startTime, endTime: schedules.endTime, topic: schedules.topic, status: schedules.status,
@@ -370,6 +371,8 @@ export class PortalService {
       this.db.query.exams.findMany({
         where: and(eq(examsTable.tenantId, tenantId), inArray(examsTable.groupId, groupIds), gt(examsTable.examDate, since)),
       }),
+      this.db.select({ groupId: lessonTopics.groupId, date: lessonTopics.date, topic: lessonTopics.topic }).from(lessonTopics)
+        .where(and(eq(lessonTopics.tenantId, tenantId), inArray(lessonTopics.groupId, groupIds), sql`${lessonTopics.date} >= ${from}`)),
     ]);
     const examIds = examRows.map((e) => e.id);
     const [results, attempts] = examIds.length === 0 ? [[], []] : await Promise.all([
@@ -402,12 +405,14 @@ export class PortalService {
       })),
       slots,
       attendance: marks,
+      topics: topicRows,
       homework: hw.map((h) => {
         const c = h.completions[0];
         return {
           id: h.id, groupId: h.groupId, givenOn: localDate(h.createdAt), title: h.title, description: h.description,
           dueDate: h.dueDate, attachmentPath: h.attachmentPath, attachmentName: h.attachmentName,
           status: c ? (c.completed && c.status === 'PENDING' ? 'SUBMITTED' : c.status) : null, score: c?.score ?? null, maxScore: h.maxScore,
+          feedback: c?.feedback ?? null,
         };
       }),
       exams: examRows.filter((e) => e.examDate).map((e) => ({
