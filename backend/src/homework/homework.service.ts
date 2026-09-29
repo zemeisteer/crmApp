@@ -1,4 +1,4 @@
-import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { and, eq, inArray, isNull } from 'drizzle-orm';
 import { unlink } from 'fs/promises';
 import { join } from 'path';
@@ -12,6 +12,7 @@ import {
   groups,
   students,
   examResults,
+  teachers,
 } from '../db/schema';
 import {
   CreateHomeworkDto,
@@ -89,8 +90,18 @@ export class HomeworkService {
     });
   }
 
-  async setCompletion(tenantId: string, id: string, dto: SetCompletionDto) {
-    await this.findOne(tenantId, id);
+  // Teachers act only on homework of their own groups (as elsewhere).
+  private async assertTeacherOwns(tenantId: string, hw: { group?: { teacherId: string | null } | null }, viewer?: { role?: string; userId?: string }) {
+    if (viewer?.role !== 'TEACHER') return;
+    const me = viewer.userId
+      ? await this.db.query.teachers.findFirst({ where: and(eq(teachers.userId, viewer.userId), eq(teachers.tenantId, tenantId), isNull(teachers.deletedAt)), columns: { id: true } })
+      : null;
+    if (!me || hw.group?.teacherId !== me.id) throw new ForbiddenException('Bu guruh sizga biriktirilmagan');
+  }
+
+  async setCompletion(tenantId: string, id: string, dto: SetCompletionDto, viewer?: { role?: string; userId?: string }) {
+    const owned = await this.findOne(tenantId, id);
+    await this.assertTeacherOwns(tenantId, owned, viewer);
     const student = await this.db.query.students.findFirst({
       where: and(eq(students.id, dto.studentId), eq(students.tenantId, tenantId)),
     });
@@ -164,8 +175,10 @@ export class HomeworkService {
     return created;
   }
 
-  async grade(tenantId: string, id: string, dto: GradeHomeworkDto) {
+  async grade(tenantId: string, id: string, dto: GradeHomeworkDto, viewer?: { role?: string; userId?: string }) {
     const hw = await this.findOne(tenantId, id);
+    await this.assertTeacherOwns(tenantId, hw, viewer);
+    if (dto.score > (hw.maxScore || 100)) throw new BadRequestException(`Baho ${hw.maxScore || 100} dan oshmasin`);
     const student = await this.db.query.students.findFirst({
       where: and(eq(students.id, dto.studentId), eq(students.tenantId, tenantId)),
     });

@@ -58,10 +58,12 @@ export class HomeworkController {
   @Post(':id/completions')
   setCompletion(
     @CurrentUser('tenantId') tenantId: string,
+    @CurrentUser('role') role: string,
+    @CurrentUser('sub') userId: string,
     @Param('id') id: string,
     @Body() dto: SetCompletionDto,
   ) {
-    return this.service.setCompletion(tenantId, id, dto);
+    return this.service.setCompletion(tenantId, id, dto, { role, userId });
   }
 
   @Post(':id/submit')
@@ -77,10 +79,12 @@ export class HomeworkController {
   @Post(':id/grade')
   grade(
     @CurrentUser('tenantId') tenantId: string,
+    @CurrentUser('role') role: string,
+    @CurrentUser('sub') userId: string,
     @Param('id') id: string,
     @Body() dto: GradeHomeworkDto,
   ) {
-    return this.service.grade(tenantId, id, dto);
+    return this.service.grade(tenantId, id, dto, { role, userId });
   }
 
   @Roles('ADMIN', 'TEACHER')

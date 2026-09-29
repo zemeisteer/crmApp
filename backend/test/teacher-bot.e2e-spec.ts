@@ -5,7 +5,7 @@ import { App } from 'supertest/types';
 import { and, eq } from 'drizzle-orm';
 import { AppModule } from '../src/app.module.js';
 import { DB, type Database } from '../src/db/db.module.js';
-import { attendance, users } from '../src/db/schema.js';
+import { attendance, homeworkCompletions, users } from '../src/db/schema.js';
 import { TelegramService } from '../src/telegram/telegram.service.js';
 import { TelegramController } from '../src/telegram/telegram.controller.js';
 
@@ -90,5 +90,49 @@ describe('Attendance from the Telegram bot (e2e)', () => {
     expect(answers.at(-1)).toContain('biriktirilmagan');
     await tap(`ag:${g}`, otherChat);
     expect(answers.at(-1)).toContain("Ruxsat yo'q");
+  });
+
+  it('reviews submitted homework with quick grades, and shows salary', async () => {
+    const tid = (await http().post('/api/teachers').set(auth()).send({ fullName: 'HW Teacher', subject: 'English' }).expect(201)).body.id as string;
+    const acc = (await http().post(`/api/teachers/${tid}/account`).set(auth()).send({ email: `hwt-${suffix}@test.uz`, password: 'secret123' }).expect(201)).body;
+    const hwChat = String(300_000_000 + (suffix % 100_000_000));
+    await db.update(users).set({ telegramChatId: hwChat }).where(eq(users.id, acc.user.id));
+    const g = (await http().post('/api/groups').set(auth()).send({ name: 'HW Group', subject: 'English', teacherId: tid }).expect(201)).body.id as string;
+    const foreign = (await http().post('/api/groups').set(auth()).send({ name: 'Foreign', subject: 'English' }).expect(201)).body.id as string;
+    const kid = (await http().post('/api/students').set(auth()).send({ fullName: 'Hw Kid', groupIds: [g] }).expect(201)).body.id as string;
+    const kid2 = (await http().post('/api/students').set(auth()).send({ fullName: 'Hw Kid Two', groupIds: [g] }).expect(201)).body.id as string;
+    const hw = (await http().post('/api/homework').set(auth()).send({ groupIds: [g], title: 'Essay 1', maxScore: 10 }).expect(201)).body;
+    const hwId = (Array.isArray(hw) ? hw[0] : hw).id as string;
+    await http().post(`/api/homework/${hwId}/submit`).set(auth()).send({ studentId: kid, submissionText: 'My city is Tashkent.' }).expect(201);
+    await http().post(`/api/homework/${hwId}/submit`).set(auth()).send({ studentId: kid2, submissionText: 'Second essay' }).expect(201);
+
+    await hook({ message: { text: '📝 Vazifalar', chat: { id: Number(hwChat) } } });
+    expect(sent.at(-1)!.text).toContain('Essay 1');
+    expect(sent.at(-1)!.kb?.inline_keyboard?.flat().map((b) => b.callback_data)).toEqual([`hw:${hwId}`]);
+
+    await tap(`hw:${hwId}`, hwChat);
+    const card = sent.at(-1)!;
+    expect(card.text).toContain('Hw Kid');
+    expect(card.text).toContain('My city is Tashkent.');
+    expect(card.kb?.inline_keyboard?.[0].map((b) => b.text)).toEqual(['10', '8', '6', '4', '0']);
+
+    await tap(`hg:${hwId}:${kid}:8`, hwChat);
+    const [row] = await db.select().from(homeworkCompletions).where(and(eq(homeworkCompletions.homeworkId, hwId), eq(homeworkCompletions.studentId, kid)));
+    expect(row).toMatchObject({ status: 'GRADED', score: 8 });
+    expect(edits.at(-1)!.text).toContain('Hw Kid Two'); // next one
+    await tap(`hk:${hwId}:${kid2}`, hwChat); // skip it
+    expect(edits.at(-1)!.text).toContain("o'tkazib yuborilgan");
+
+    // A grade above the maximum, and another teacher's homework, are refused.
+    const teacherToken = (await http().post('/api/auth/login').send({ email: `hwt-${suffix}@test.uz`, password: 'secret123' }).expect(201)).body.accessToken;
+    await http().post(`/api/homework/${hwId}/grade`).set({ Authorization: `Bearer ${teacherToken}` }).send({ studentId: kid2, score: 11 }).expect(400);
+    const fhw = (await http().post('/api/homework').set(auth()).send({ groupIds: [foreign], title: 'Not yours' }).expect(201)).body;
+    const fId = (Array.isArray(fhw) ? fhw[0] : fhw).id as string;
+    await http().post(`/api/homework/${fId}/grade`).set({ Authorization: `Bearer ${teacherToken}` }).send({ studentId: kid, score: 5 }).expect(403);
+    await tap(`hw:${fId}`, hwChat);
+    expect(answers.at(-1)).toContain('biriktirilmagan');
+
+    await hook({ message: { text: '💰 Maoshim', chat: { id: Number(hwChat) } } });
+    expect(sent.at(-1)!.text).toMatch(/Maoshingiz|Maosh/);
   });
 });

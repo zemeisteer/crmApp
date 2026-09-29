@@ -71,7 +71,7 @@ const STAFF_KEYBOARD = {
 };
 
 const TEACHER_KEYBOARD = {
-  keyboard: [[{ text: '📅 Bugungi darslarim' }], [{ text: '❓ Yordam' }]],
+  keyboard: [[{ text: '📅 Bugungi darslarim' }], [{ text: '📝 Vazifalar' }, { text: '💰 Maoshim' }], [{ text: '❓ Yordam' }]],
   resize_keyboard: true,
 };
 
@@ -383,6 +383,37 @@ export class TelegramService {
       }
     }
 
+    if (teacher && (lower.includes('vazifa') || lower === '/homework')) {
+      await this.teacherHomework(chatId, staff, tenantId, keyboard);
+      return;
+    }
+
+    if (teacher && (lower.includes('maosh') || lower === '/salary')) {
+      const { SalaryService } = await import('../salary/salary.service');
+      const salary = this.moduleRef.get(SalaryService, { strict: false });
+      const p = zonedParts(now, tz);
+      const month = `${p.year}-${String(p.month).padStart(2, '0')}`;
+      const prevDate = new Date(Date.UTC(p.year, p.month - 2, 1));
+      const prev = `${prevDate.getUTCFullYear()}-${String(prevDate.getUTCMonth() + 1).padStart(2, '0')}`;
+      const [cur, last] = await Promise.all([salary.forTeacherUser(tenantId, staff.id, month), salary.forTeacherUser(tenantId, staff.id, prev)]);
+      if (!cur && !last) {
+        await this.sendMessage(chatId, "💰 Maosh ma'lumoti topilmadi. Markaz sizni o'qituvchilar ro'yxatiga bog'lashi kerak.", keyboard);
+        return;
+      }
+      const money = (n: number) => new Intl.NumberFormat('uz-UZ').format(Math.round(n));
+      const line = (label: string, it: typeof cur) =>
+        it
+          ? `<b>${label}</b>\n` +
+            `• Hisoblangan: ${money(it.calculatedSalary)} so'm` +
+            (it.details.deduction ? ` (ushlab qolindi: ${money(it.details.deduction)})` : '') +
+            `\n• Darslar: ${it.details.lessonCount ?? it.details.plannedLessons ?? 0}` +
+            (it.details.absentLessons ? ` · qoldirilgan: ${it.details.absentLessons}` : '') +
+            `\n• ${it.isPaid ? `✅ To'langan: ${money(it.paidAmount)} so'm` : `⏳ To'lanmagan${it.paidAmount ? ` (qisman: ${money(it.paidAmount)})` : ''}`}`
+          : `<b>${label}</b>\n• —`;
+      await this.sendMessage(chatId, `💰 <b>Maoshingiz</b>\n\n${line(`${month} (joriy oy, hozircha)`, cur)}\n\n${line(prev, last)}`, keyboard);
+      return;
+    }
+
     if (!teacher && (lower.includes('kun yakuni') || lower === '/digest')) {
       // Loaded lazily: RemindersModule depends on this module.
       const { RemindersService } = await import('../reminders/reminders.service');
@@ -471,8 +502,8 @@ export class TelegramService {
       chatId,
       `Assalomu alaykum, <b>${escapeHtml(staff.fullName)}</b>! Bu chat <b>${escapeHtml(name)}</b> ${teacher ? "o'qituvchisi" : 'xodimi'} sifatida ulangan.\n\n` +
         (teacher
-          ? "📅 Bugungi darslarim — bugungi guruhlaringiz."
-          : "📊 Bugungi holat — arizalar, sinov darslari va to'lovlar\n🆕 Yangi arizalar — hali bog'lanilmaganlar\n📞 Qayta aloqa — bugun qo'ng'iroq qilinadiganlar\n🎓 Sinov darslari — yaqin 7 kun") +
+          ? "📅 Bugungi darslarim — bugungi guruhlar va davomat\n📝 Vazifalar — topshirilganlarni tekshirish va baholash\n💰 Maoshim — shu va o'tgan oy maoshi"
+          : "📊 Bugungi holat — arizalar, sinov darslari va to'lovlar\n🆕 Yangi arizalar — hali bog'lanilmaganlar\n📞 Qayta aloqa — bugun qo'ng'iroq qilinadiganlar\n🎓 Sinov darslari — yaqin 7 kun\n📈 Kun yakuni — bugungi raqamlar") +
         `\n\nUlanishni o'chirish: CRM → Sozlamalar → Telegram eslatmalari.`,
       keyboard,
     );
@@ -1145,7 +1176,9 @@ export class TelegramService {
       await this.answerCallback(cq.id, 'Ruxsat yo\'q');
       return;
     }
-    const [kind, groupId, arg] = data.split(':');
+    // kind:id[:rest] - rest may itself hold ':' (e.g. hg:<homework>:<student>:<score>)
+    const [kind, groupId, ...rest] = data.split(':');
+    const arg = rest.length ? rest.join(':') : undefined;
     const key = `${chatId}:${groupId}`;
 
     if (kind === 'ag') {
@@ -1189,6 +1222,11 @@ export class TelegramService {
       const view = this.sheetView(sheet);
       await this.answerCallback(cq.id);
       await this.sendMessage(chatId, view.text, view.markup);
+      return;
+    }
+
+    if (kind === 'hw' || kind === 'hg' || kind === 'hk') {
+      await this.homeworkCallback(cq, chatId, messageId, staff, kind, groupId, arg);
       return;
     }
 
@@ -1241,6 +1279,110 @@ export class TelegramService {
       return;
     }
     await this.answerCallback(cq.id);
+  }
+
+  // ---- Homework review from the bot (teachers) ----
+
+  // Submissions a teacher skipped in this chat: "<chatId>:<homeworkId>" -> studentIds.
+  private readonly skipped = new Map<string, Set<string>>();
+
+  private async teacherHomework(chatId: string, staff: StaffUser, tenantId: string, keyboard: unknown) {
+    const since = new Date(Date.now() - 30 * 86_400_000);
+    const rows = await this.db
+      .select({ id: homework.id, title: homework.title, maxScore: homework.maxScore, dueDate: homework.dueDate, group: groups.name, groupId: groups.id })
+      .from(homework)
+      .innerJoin(groups, eq(groups.id, homework.groupId))
+      .innerJoin(teachers, eq(teachers.id, groups.teacherId))
+      .where(and(eq(homework.tenantId, tenantId), eq(teachers.userId, staff.id), isNull(groups.deletedAt), gte(homework.createdAt, since)))
+      .orderBy(desc(homework.createdAt))
+      .limit(8);
+    if (rows.length === 0) {
+      await this.sendMessage(chatId, "📝 So'nggi 30 kunda guruhlaringizga vazifa berilmagan.", keyboard);
+      return;
+    }
+    const counts = await this.db
+      .select({ hw: homeworkCompletions.homeworkId, status: homeworkCompletions.status, n: count() })
+      .from(homeworkCompletions)
+      .where(inArray(homeworkCompletions.homeworkId, rows.map((r) => r.id)))
+      .groupBy(homeworkCompletions.homeworkId, homeworkCompletions.status);
+    const c = (hw: string, st: string) => Number(counts.find((x) => x.hw === hw && x.status === st)?.n ?? 0);
+    const text =
+      `📝 <b>Vazifalar</b> (so'nggi 30 kun)\n\n` +
+      rows.map((r) => `• <b>${escapeHtml(r.title)}</b> — ${escapeHtml(r.group)}\n   📥 tekshirish: ${c(r.id, 'SUBMITTED')} · ✅ baholangan: ${c(r.id, 'GRADED')}`).join('\n') +
+      `\n\nTekshirish uchun vazifani bosing 👇`;
+    const buttons = rows.filter((r) => c(r.id, 'SUBMITTED') > 0).map((r) => [{ text: `📥 ${r.title.slice(0, 40)} (${c(r.id, 'SUBMITTED')})`, callback_data: `hw:${r.id}` }]);
+    await this.sendMessage(chatId, text, buttons.length ? { inline_keyboard: buttons } : keyboard);
+  }
+
+  // The next submission to check (not yet graded, not skipped here).
+  private async showNextSubmission(chatId: string, messageId: number | null, staff: StaffUser, homeworkId: string) {
+    const [hw] = await this.db
+      .select({ id: homework.id, title: homework.title, maxScore: homework.maxScore, group: groups.name, teacherUserId: teachers.userId })
+      .from(homework)
+      .innerJoin(groups, eq(groups.id, homework.groupId))
+      .leftJoin(teachers, eq(teachers.id, groups.teacherId))
+      .where(and(eq(homework.id, homeworkId), eq(homework.tenantId, staff.tenantId!)));
+    if (!hw || (staff.role === 'TEACHER' && hw.teacherUserId !== staff.id)) return 'forbidden' as const;
+    const skip = this.skipped.get(`${chatId}:${homeworkId}`) ?? new Set<string>();
+    const pending = await this.db
+      .select({ studentId: homeworkCompletions.studentId, name: students.fullName, text: homeworkCompletions.submissionText, url: homeworkCompletions.submissionAttachmentUrl, at: homeworkCompletions.submittedAt })
+      .from(homeworkCompletions)
+      .innerJoin(students, eq(students.id, homeworkCompletions.studentId))
+      .where(and(eq(homeworkCompletions.homeworkId, homeworkId), eq(homeworkCompletions.status, 'SUBMITTED')))
+      .orderBy(asc(homeworkCompletions.submittedAt));
+    const next = pending.find((p) => !skip.has(p.studentId));
+    const max = hw.maxScore || 100;
+    if (!next) {
+      const done = `✅ <b>${escapeHtml(hw.title)}</b>: tekshiriladigan ish qolmadi.` + (pending.length ? ` (${pending.length} tasi o'tkazib yuborilgan)` : '');
+      if (messageId) await this.editMessage(chatId, messageId, done);
+      else await this.sendMessage(chatId, done);
+      return 'done' as const;
+    }
+    const clip = (v: string | null, n: number) => (v && v.length > n ? `${v.slice(0, n)}…` : v ?? '');
+    const text =
+      `📥 <b>${escapeHtml(hw.title)}</b> — ${escapeHtml(hw.group)}\n` +
+      `👤 <b>${escapeHtml(next.name)}</b> · qolgan: ${pending.length - skip.size}\n\n` +
+      (next.text ? `${escapeHtml(clip(next.text, 900))}\n` : "<i>Matn yo'q</i>\n") +
+      (next.url ? `\n📎 ${escapeHtml(next.url)}\n` : '') +
+      `\nBaho (maks. ${max}):`;
+    const steps = [1, 0.8, 0.6, 0.4, 0].map((f) => Math.round(max * f));
+    const markup = {
+      inline_keyboard: [
+        steps.map((score) => ({ text: String(score), callback_data: `hg:${homeworkId}:${next.studentId}:${score}` })),
+        [{ text: "⏭ O'tkazib yuborish", callback_data: `hk:${homeworkId}:${next.studentId}` }],
+      ],
+    };
+    if (messageId) await this.editMessage(chatId, messageId, text, markup);
+    else await this.sendMessage(chatId, text, markup);
+    return 'shown' as const;
+  }
+
+  private async homeworkCallback(cq: any, chatId: string, messageId: number, staff: StaffUser, kind: string, homeworkId: string, arg: string | undefined) {
+    if (kind === 'hw') {
+      this.skipped.delete(`${chatId}:${homeworkId}`);
+      const r = await this.showNextSubmission(chatId, null, staff, homeworkId);
+      await this.answerCallback(cq.id, r === 'forbidden' ? 'Bu guruh sizga biriktirilmagan' : undefined);
+      return;
+    }
+    const [studentId, scoreRaw] = (arg ?? '').split(':');
+    if (kind === 'hk') {
+      const k = `${chatId}:${homeworkId}`;
+      this.skipped.set(k, new Set([...(this.skipped.get(k) ?? []), studentId]));
+      await this.answerCallback(cq.id);
+      await this.showNextSubmission(chatId, messageId, staff, homeworkId);
+      return;
+    }
+    // hg: grade through HomeworkService (teacher scope, student + parents told).
+    const { HomeworkService } = await import('../homework/homework.service');
+    const service = this.moduleRef.get(HomeworkService, { strict: false });
+    try {
+      await service.grade(staff.tenantId!, homeworkId, { studentId, score: Number(scoreRaw) }, { role: staff.role, userId: staff.id });
+    } catch (err) {
+      await this.answerCallback(cq.id, (err as Error).message.slice(0, 180));
+      return;
+    }
+    await this.answerCallback(cq.id, `Baho qo'yildi: ${scoreRaw}`);
+    await this.showNextSubmission(chatId, messageId, staff, homeworkId);
   }
 
   // ---- Parents ----
