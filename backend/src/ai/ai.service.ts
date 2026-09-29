@@ -295,6 +295,12 @@ Javobni FAQAT quyidagi JSON formatida ber (boshqa hech qanday so'z qo'shma):
     return this.aiConfigured();
   }
 
+  // Plain text completion for prompts built elsewhere (tutor reports).
+  async completeText(prompt: string, maxTokens: number): Promise<string> {
+    if (!this.aiConfigured()) throw new ServiceUnavailableException('AI yoqilmagan');
+    return this.complete(prompt, maxTokens);
+  }
+
   // One reply of the students' AI tutor (Telegram bot).
   async tutorReply(ctx: TutorContext): Promise<string> {
     if (!this.aiConfigured()) throw new ServiceUnavailableException('AI yoqilmagan');

@@ -1595,7 +1595,21 @@ export const telegramApi = {
 
 // ---- AI ----
 
+export interface TutorReport {
+  group: { id: string; name: string; subject: string };
+  days: number;
+  totalQuestions: number;
+  activeStudents: number;
+  studentCount: number;
+  students: Array<{ studentId: string; fullName: string; questions: number; lastAt: string | null; recent: Array<{ text: string; at: string }> }>;
+}
+
 export const aiApi = {
+  // What a group's students asked the AI tutor (teachers: own groups only)
+  tutorReport: (groupId: string, days: number) =>
+    request<TutorReport>(`/ai/tutor-report?groupId=${encodeURIComponent(groupId)}&days=${days}`),
+  tutorTopics: (groupId: string, days: number) =>
+    request<{ summary: string | null; questions: number }>("/ai/tutor-report/topics", { method: "POST", body: JSON.stringify({ groupId, days }) }),
   groupInsights: (groupId: string) =>
     request<{ insight: string }>("/ai/insights", { method: "POST", body: JSON.stringify({ groupId }) }),
   generateMaterial: (data: { subject: string; level?: string; topic: string; type: string; customInstructions?: string }) =>

@@ -10,6 +10,7 @@ import DatePicker from "@/components/DatePicker";
 import GroupExamResults from "@/components/groups/GroupExamResults";
 import GroupInfoCard from "@/components/groups/GroupInfoCard";
 import GroupAttendanceHistory from "@/components/groups/GroupAttendanceHistory";
+import GroupTutorReport from "@/components/groups/GroupTutorReport";
 import { groupsApi, studentsApi, paymentsApi, attendanceApi, Group, Student, Gender, Payment, AttendanceRecord, AttendanceStatus, ApiError } from "@/lib/api";
 import { PHONE_PATTERN, PHONE_TITLE, NAME_PATTERN, NAME_TITLE, phoneOrEmpty } from "@/lib/validation";
 import { localDateStr, localMonthStr } from "@/lib/date";
@@ -442,6 +443,7 @@ function GroupDetailContent() {
         </div>
 
         <GroupExamResults groupId={id} students={(group.enrollments ?? []).map((e) => e.student)} />
+        <GroupTutorReport groupId={id} />
       </div>
 
       <Modal

@@ -1,8 +1,21 @@
+import { Type } from 'class-transformer';
 import { IsIn, IsInt, IsOptional, IsString, Max, MaxLength, Min, MinLength } from 'class-validator';
 
 export class GroupInsightsDto {
   @IsString()
   groupId: string;
+}
+
+export class TutorReportDto {
+  @IsString()
+  groupId: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(90)
+  days?: number;
 }
 
 export class GenerateMaterialDto {

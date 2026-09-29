@@ -123,7 +123,7 @@ export class TelegramService {
       chatId,
       `🤖 <b>AI ustoz</b>\n\nSalom, ${first}! Darsdagi tushunmagan mavzu, qoida yoki masalani yozing — qadamma-qadam tushuntirib beraman.\n\n` +
         `Masalan: <i>"Present Perfect qachon ishlatiladi?"</i> yoki <i>"2x + 5 = 17 ni qanday yechaman?"</i>\n\n` +
-        `📌 Bugun ${quota.left} ta savol berishingiz mumkin. Menyuga qaytish uchun "${AI_EXIT}" ni bosing.`,
+        `📌 Bugun ${quota.left} ta savol berishingiz mumkin. Savollaringizni markaz ustozlari ko'rishi mumkin.\nMenyuga qaytish uchun "${AI_EXIT}" ni bosing.`,
       AI_KEYBOARD,
     );
   }

@@ -14,10 +14,11 @@ describe('Portal AI tutor (e2e)', () => {
   let owner: string;
   const auth = () => ({ Authorization: `Bearer ${owner}` });
   const questions: string[] = [];
+  const prompts: string[] = [];
 
-  const portalLogin = async (name: string, digits: string) => {
+  const portalLogin = async (name: string, digits: string, groupIds?: string[]) => {
     const phone = `+99891${digits}`;
-    const id = (await http().post('/api/students').set(auth()).send({ fullName: name }).expect(201)).body.id as string;
+    const id = (await http().post('/api/students').set(auth()).send({ fullName: name, groupIds }).expect(201)).body.id as string;
     await http().patch(`/api/students/${id}`).set(auth()).send({ phone }).expect(200);
     const { pin } = (await http().post(`/api/students/${id}/portal-pin`).set(auth()).expect(201)).body;
     const token = (await http().post('/api/portal/auth/phone/verify').send({ phone, pin }).expect(201)).body.accessToken as string;
@@ -33,6 +34,10 @@ describe('Portal AI tutor (e2e)', () => {
     // No real AI in tests: a stub that remembers what it was asked.
     const ai = app.get(AiService);
     Object.defineProperty(ai, 'isConfigured', { get: () => true });
+    ai.completeText = async (prompt: string) => {
+      prompts.push(prompt);
+      return "**Eng ko'p so'ralgan mavzular** — Present Perfect (2)";
+    };
     ai.tutorReply = async (ctx) => {
       questions.push(ctx.question);
       return `Javob: ${ctx.question} (${ctx.history.length})`;
@@ -83,5 +88,36 @@ describe('Portal AI tutor (e2e)', () => {
     expect((await http().get('/api/portal/ai').set(other()).expect(200)).body.messages).toEqual([]);
     await http().get('/api/portal/ai').expect(401);
     await http().get('/api/portal/ai').set(auth()).expect(401); // staff token is not a portal token
+  });
+
+  it("shows staff what a group asked; teachers only for their own groups", async () => {
+    const tid = (await http().post('/api/teachers').set(auth()).send({ fullName: 'Report Teacher', subject: 'English' }).expect(201)).body.id as string;
+    const mine = (await http().post('/api/groups').set(auth()).send({ name: 'Report Group', subject: 'English', teacherId: tid }).expect(201)).body.id as string;
+    const other = (await http().post('/api/groups').set(auth()).send({ name: 'Other Group', subject: 'Math' }).expect(201)).body.id as string;
+    const kid = await portalLogin('Zarina Report', String(suffix + 2).slice(-7), [mine]);
+    await http().post('/api/portal/ai/ask').set(kid()).send({ message: 'Present Perfect va Past Simple farqi?' }).expect(201);
+    await http().post('/api/portal/ai/ask').set(kid()).send({ message: 'have been qachon ishlatiladi?' }).expect(201);
+
+    const report = (await http().get(`/api/ai/tutor-report?groupId=${mine}&days=7`).set(auth()).expect(200)).body;
+    expect(report).toMatchObject({ days: 7, totalQuestions: 2, activeStudents: 1, studentCount: 1 });
+    expect(report.students[0]).toMatchObject({ fullName: 'Zarina Report', questions: 2 });
+    expect(report.students[0].recent[0].text).toBe('have been qachon ishlatiladi?');
+    await http().get(`/api/ai/tutor-report?groupId=${mine}&days=500`).set(auth()).expect(400);
+
+    const topics = (await http().post('/api/ai/tutor-report/topics').set(auth()).send({ groupId: mine, days: 7 }).expect(201)).body;
+    expect(topics).toMatchObject({ questions: 2 });
+    expect(topics.summary).toContain('Present Perfect');
+    expect(prompts.at(-1)).toContain('have been qachon ishlatiladi?');
+    expect(prompts.at(-1)).not.toContain('Zarina'); // no names go to the AI
+
+    const email = `rt-${suffix}@test.uz`;
+    await http().post(`/api/teachers/${tid}/account`).set(auth()).send({ email, password: 'secret123' }).expect(201);
+    const teacher = (await http().post('/api/auth/login').send({ email, password: 'secret123' }).expect(201)).body.accessToken as string;
+    const t = () => ({ Authorization: `Bearer ${teacher}` });
+    expect((await http().get(`/api/ai/tutor-report?groupId=${mine}`).set(t()).expect(200)).body.totalQuestions).toBe(2);
+    await http().get(`/api/ai/tutor-report?groupId=${other}`).set(t()).expect(403);
+    await http().post('/api/ai/tutor-report/topics').set(t()).send({ groupId: other }).expect(403);
+    // A portal (student) token is not a staff token.
+    await http().get(`/api/ai/tutor-report?groupId=${mine}`).set(kid()).expect(403);
   });
 });
