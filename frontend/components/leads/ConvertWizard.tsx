@@ -68,7 +68,20 @@ export default function ConvertWizard({ lead, open, onClose }: { lead: Lead; ope
     setBranchId(lead.preferredBranchId ?? "");
     setGroupIds([]);
     setCreateInvoice(false);
-    groupsApi.list().then(setGroups).catch(() => setGroups([]));
+    // Start from the group of the trial lesson (attended first), if it can
+    // still take students - the usual next step after a good trial.
+    const trials = [...(lead.trials ?? [])].filter((tr) => tr.groupId).sort((a, b) => b.scheduledAt.localeCompare(a.scheduledAt));
+    const trialGroup = (trials.find((tr) => tr.status === "ATTENDED") ?? trials.find((tr) => tr.status !== "CANCELLED"))?.groupId ?? null;
+    groupsApi
+      .list()
+      .then((list) => {
+        setGroups(list);
+        const g = trialGroup
+          ? list.find((x) => x.id === trialGroup && x.status !== "ARCHIVED" && x.status !== "COMPLETED" && (typeof x.studentCount !== "number" || !x.maxStudents || x.studentCount < x.maxStudents))
+          : null;
+        if (g) setGroupIds([g.id]);
+      })
+      .catch(() => setGroups([]));
     branchesApi.list().then(setBranches).catch(() => setBranches([]));
     leadsApi.studentMatch(lead.id).then((r) => {
       setCandidates(r.candidates);

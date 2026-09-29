@@ -51,6 +51,8 @@ export default function Modal({
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
           <h2 style={{ fontSize: 18.5, fontWeight: 800, color: "#181A1F" }}>{title}</h2>
           <button
+            type="button"
+            aria-label="Close"
             onClick={onClose}
             className="btn"
             style={{

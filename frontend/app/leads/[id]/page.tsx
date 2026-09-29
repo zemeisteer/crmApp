@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { nextLessonDate } from "@/lib/date";
 import { useParams } from "next/navigation";
 import DashboardShell from "@/components/DashboardShell";
 import Modal from "@/components/Modal";
@@ -154,6 +155,16 @@ function LeadProfile() {
     }
   }
 
+  // A trial in a group: its next lesson day, start time and teacher.
+  function fillFromGroup(groupId: string, withDate: boolean) {
+    const g = groups.find((x) => x.id === groupId);
+    if (!g) return;
+    if (g.startTime) setTrialTime(g.startTime.slice(0, 5));
+    if (g.teacherId) setTrialTeacher(g.teacherId);
+    const next = withDate ? nextLessonDate(g.scheduleDays, g.startTime) : null;
+    if (next) setTrialDate(next);
+  }
+
   function openDialog(d: Dialog) {
     setNote("");
     setConflicts([]);
@@ -164,6 +175,7 @@ function LeadProfile() {
       setTrialDuration(String(d.reschedule?.durationMinutes ?? 60));
       setTrialGroup(d.reschedule?.groupId ?? d.groupId ?? "");
       setTrialTeacher(d.reschedule?.teacherId ?? "");
+      if (!d.reschedule && d.groupId) fillFromGroup(d.groupId, true);
     }
     if (d?.kind === "sms" && lead) {
       setSmsText(`Assalomu alaykum, ${lead.fullName}! `);
@@ -646,7 +658,10 @@ function LeadProfile() {
                       <label style={label}>{t("adm.trialGroup")}</label>
                       <Select
                         value={trialGroup}
-                        onChange={setTrialGroup}
+                        onChange={(v) => {
+                          setTrialGroup(v);
+                          if (v) fillFromGroup(v, true);
+                        }}
                         options={[{ value: "", label: t("common.notSelected") }, ...groups.filter((g) => g.status !== "ARCHIVED" && g.status !== "COMPLETED").map((g) => ({ value: g.id, label: g.name }))]}
                       />
                     </div>
