@@ -9,7 +9,8 @@ import { Roles } from '../common/roles.decorator';
 import { CurrentUser } from '../common/current-user.decorator';
 import { attachmentStorage } from '../common/upload.util';
 import { MockTestsService } from './mock-tests.service';
-import { CreateMockTestDto, RegradeMockAttemptDto, ReviewMockAttemptDto, UpdateMockTestDto } from './dto/mock-tests.dto';
+import { CreateMockTestDto, GenerateMockQuestionsDto, RegradeMockAttemptDto, ReviewMockAttemptDto, ReviewPracticeDto, UpdateMockTestDto } from './dto/mock-tests.dto';
+import { AiService } from '../ai/ai.service';
 
 // Recordings for Listening and pictures (charts) for Writing Task 1.
 const ASSET_TYPES = /^(audio\/(mpeg|mp3|mp4|x-m4a|aac|wav|x-wav|ogg|webm)|image\/(jpeg|png|webp|gif))$/;
@@ -21,7 +22,15 @@ export class MockTestsController {
   constructor(
     private readonly service: MockTestsService,
     private readonly imports: MockImportService,
+    private readonly ai: AiService,
   ) {}
+
+  // Questions for a practice test part, written by the AI (the editor adds
+  // them; the teacher checks them before publishing).
+  @Post('generate-questions')
+  generateQuestions(@Body() dto: GenerateMockQuestionsDto) {
+    return this.ai.generateExamQuestions({ subject: dto.subject, topic: dto.topic?.trim() || dto.subject, count: dto.count ?? 8, request: dto.request ?? null });
+  }
 
   // Materials -> tests: PDF books/booklets (answer keys, audioscripts) and
   // recordings. The tests are found and extracted in the background.
@@ -68,6 +77,11 @@ export class MockTestsController {
   @Post('attempts/:attemptId/review')
   review(@CurrentUser('tenantId') tenantId: string, @Param('attemptId') attemptId: string, @Body() dto: ReviewMockAttemptDto) {
     return this.service.review(tenantId, attemptId, dto).then(() => this.service.attemptDetail(tenantId, attemptId));
+  }
+
+  @Post('attempts/:attemptId/review-practice')
+  reviewPractice(@CurrentUser('tenantId') tenantId: string, @Param('attemptId') attemptId: string, @Body() dto: ReviewPracticeDto) {
+    return this.service.reviewPractice(tenantId, attemptId, dto);
   }
 
   @Post('attempts/:attemptId/regrade')

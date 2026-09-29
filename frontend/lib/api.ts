@@ -2740,12 +2740,50 @@ export interface MockTestSummary {
   createdAt: string;
   updatedAt: string;
   attempts: number;
-  summary: { listening: number; reading: number; writing: number; speaking: number };
+  // IELTS: questions per section; PRACTICE: sections, questions, tasks.
+  summary: { listening: number; reading: number; writing: number; speaking: number } | { sections: number; questions: number; tasks: number };
 }
 
 export interface MockTest extends Omit<MockTestSummary, "attempts" | "summary"> {
   content: MockContent;
 }
+
+// Practice tests for any direction: timed sections of parts (optional text
+// or picture + questions) and writing tasks. Results are percentages.
+export interface PracticeContent {
+  sections: Array<{
+    title: string;
+    durationMin: number;
+    instruction: string | null;
+    parts: Array<{ title: string; text: string | null; imagePath: string | null; questions: import("./tests").TestQuestion[] }>;
+    tasks: Array<{ title: string; prompt: string; minWords: number; rubric: string | null; imagePath: string | null }>;
+  }>;
+}
+export interface PracticeTest extends Omit<MockTest, "content"> {
+  content: PracticeContent;
+}
+export type PracticeTemplate = "SAT" | "ENGLISH" | "MATH" | "PROGRAMMING" | "GENERAL";
+export interface PracticeTaskResult { score: number | null; words: number; comment: string | null }
+export interface PracticeSectionResult {
+  status: "DONE" | "PENDING" | "REVIEW";
+  raw: number;
+  max: number;
+  percent: number | null;
+  marks: boolean[];
+  tasks?: PracticeTaskResult[];
+  teacherComment?: string | null;
+  gradedBy?: "AUTO" | "AI" | "TEACHER";
+  late?: boolean;
+}
+export interface PracticeResults {
+  [section: string]: PracticeSectionResult | number | null | undefined;
+  overallPercent?: number | null;
+}
+export const practiceResult = (r: PracticeResults | undefined, key: string) => {
+  const v = r?.[key];
+  return v && typeof v === "object" ? v : undefined;
+};
+export const isPracticeTest = (t: { kind: string }) => t.kind === "PRACTICE";
 
 export interface ExaminerFeedback {
   band: number;
@@ -2801,7 +2839,28 @@ export interface MockAttemptDetail {
   completedAt: string | null;
 }
 
-type MockPublicQuestion = import("./tests").PublicQuestion & { id: string; no: number; span: number };
+export type MockPublicQuestion = import("./tests").PublicQuestion & { id: string; no: number; span: number };
+
+export interface PortalPracticeSection {
+  key: string;
+  title: string;
+  durationMin: number;
+  instruction: string | null;
+  parts: Array<{ title: string; text: string | null; imagePath: string | null; questions: MockPublicQuestion[] }>;
+  tasks: Array<{ title: string; prompt: string; minWords: number; imagePath: string | null }>;
+}
+export interface PortalPracticeAttempt {
+  id: string;
+  status: "IN_PROGRESS" | "COMPLETED";
+  test: { id: string; title: string; kind: "PRACTICE"; subject: string; level: null; module: string; content: { sections: PortalPracticeSection[] } };
+  answers: Record<string, Record<string, string>>;
+  sectionStarted: Record<string, string>;
+  sectionDone: Record<string, string>;
+  results: PracticeResults;
+  keys: Record<string, string[]>;
+  serverNow: string;
+  aiFeedback: boolean;
+}
 export interface PortalMockAttempt {
   id: string;
   status: "IN_PROGRESS" | "COMPLETED";
@@ -2828,12 +2887,18 @@ export interface PortalMockAttempt {
   aiFeedback: boolean;
 }
 
+export type PortalAnyAttempt = PortalMockAttempt | PortalPracticeAttempt;
+export const isPracticeAttempt = (a: PortalAnyAttempt): a is PortalPracticeAttempt => a.test.kind === "PRACTICE";
+
 export interface PortalPractice {
   aiFeedback: boolean;
   level: MockLevel | null;
+  // AI-made practice sets left today (null when the AI is off).
+  aiPractice: { limit: number; used: number; left: number } | null;
   directions: Array<{
     subject: string;
     english: boolean;
+    template: PracticeTemplate;
     tests: Array<{
       id: string;
       title: string;
@@ -2845,7 +2910,11 @@ export interface PortalPractice {
       recommended: boolean;
       sections: { listening: number; reading: number; writing: number; speaking: number };
       durations: { listening: number; reading: number; writing: number };
-      attempts: Array<{ id: string; status: "IN_PROGRESS" | "COMPLETED"; createdAt: string; completedAt: string | null; sectionDone: Record<string, string>; results: MockResults }>;
+      // The student's own AI-made set.
+      mine: boolean;
+      // Practice tests: their sections.
+      practice: Array<{ key: string; title: string; durationMin: number; questions: number; tasks: number }> | null;
+      attempts: Array<{ id: string; status: "IN_PROGRESS" | "COMPLETED"; createdAt: string; completedAt: string | null; sectionDone: Record<string, string>; results: MockResults & PracticeResults }>;
     }>;
   }>;
 }
@@ -2901,9 +2970,9 @@ export const mockTestsApi = {
   importStatus: (id: string) => request<MockImport>(`/mock-tests/imports/${id}`),
   list: () => request<MockTestSummary[]>("/mock-tests"),
   get: (id: string) => request<MockTest>(`/mock-tests/${id}`),
-  create: (data: { title?: string; subject?: string; sample?: boolean }) =>
+  create: (data: { title?: string; subject?: string; sample?: boolean; kind?: "IELTS" | "PRACTICE"; template?: PracticeTemplate }) =>
     request<MockTest>("/mock-tests", { method: "POST", body: JSON.stringify(data) }),
-  update: (id: string, data: { title?: string; subject?: string; status?: "DRAFT" | "PUBLISHED"; content?: MockContent; level?: MockLevel | null; module?: "ACADEMIC" | "GENERAL" }) =>
+  update: (id: string, data: { title?: string; subject?: string; status?: "DRAFT" | "PUBLISHED"; content?: MockContent | PracticeContent; level?: MockLevel | null; module?: "ACADEMIC" | "GENERAL" }) =>
     request<MockTest>(`/mock-tests/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
   remove: (id: string) => request<{ success: boolean }>(`/mock-tests/${id}`, { method: "DELETE" }),
   uploadAsset: (id: string, file: File) => {
@@ -2915,18 +2984,32 @@ export const mockTestsApi = {
   attempt: (attemptId: string) => request<MockAttemptDetail>(`/mock-tests/attempts/${attemptId}`),
   review: (attemptId: string, data: { section: "writing" | "speaking"; band: number; task1?: number; task2?: number; comment?: string }) =>
     request<MockAttemptDetail>(`/mock-tests/attempts/${attemptId}/review`, { method: "POST", body: JSON.stringify(data) }),
-  regrade: (attemptId: string, section: "writing" | "speaking") =>
+  regrade: (attemptId: string, section: string) =>
     request<MockAttemptDetail>(`/mock-tests/attempts/${attemptId}/regrade`, { method: "POST", body: JSON.stringify({ section }) }),
+  // AI-written questions for a practice test part (checked by the teacher).
+  generateQuestions: (data: { subject: string; topic?: string; count?: number; request?: string }) =>
+    request<import("./tests").TestQuestion[]>("/mock-tests/generate-questions", { method: "POST", body: JSON.stringify(data) }),
+  // Practice tests: points (0-10) per writing task of a section.
+  reviewPractice: (attemptId: string, data: { section: string; scores: number[]; comment?: string }) =>
+    request<MockAttemptDetail>(`/mock-tests/attempts/${attemptId}/review-practice`, { method: "POST", body: JSON.stringify(data) }),
 };
 
 export const portalMockApi = {
   list: () => request<PortalPractice>("/portal/mock-tests"),
-  start: (testId: string) => request<PortalMockAttempt>(`/portal/mock-tests/${testId}/start`, { method: "POST" }),
+  start: (testId: string) => request<PortalAnyAttempt>(`/portal/mock-tests/${testId}/start`, { method: "POST" }),
   get: (attemptId: string) => request<PortalMockAttempt>(`/portal/mock-tests/attempts/${attemptId}`),
+  getAny: (attemptId: string) => request<PortalAnyAttempt>(`/portal/mock-tests/attempts/${attemptId}`),
+  // A practice set the AI makes for the student; it comes back started.
+  generate: (data: { subject: string; topic?: string; count?: number }) =>
+    request<PortalAnyAttempt>("/portal/mock-tests/generate", { method: "POST", body: JSON.stringify(data) }),
   startSection: (attemptId: string, section: MockSection) =>
     request<PortalMockAttempt>(`/portal/mock-tests/attempts/${attemptId}/sections/${section}/start`, { method: "POST" }),
+  startPractice: (attemptId: string, section: string) =>
+    request<PortalPracticeAttempt>(`/portal/mock-tests/attempts/${attemptId}/sections/${section}/start`, { method: "POST" }),
+  submitPractice: (attemptId: string, section: string, answers: Record<string, string>) =>
+    request<PortalPracticeAttempt>(`/portal/mock-tests/attempts/${attemptId}/sections/${section}/submit`, { method: "POST", body: JSON.stringify({ answers }) }),
   // `keepalive`: still sent while the page is closing.
-  save: (attemptId: string, section: MockSection, answers: Record<string, string>, keepalive = false) =>
+  save: (attemptId: string, section: MockSection | string, answers: Record<string, string>, keepalive = false) =>
     request<{ saved: boolean }>(`/portal/mock-tests/attempts/${attemptId}/sections/${section}/answers`, { method: "POST", body: JSON.stringify({ answers }), keepalive }),
   submit: (attemptId: string, section: MockSection, answers?: Record<string, string>) =>
     request<PortalMockAttempt>(`/portal/mock-tests/attempts/${attemptId}/sections/${section}/submit`, { method: "POST", body: JSON.stringify(answers ? { answers } : {}) }),

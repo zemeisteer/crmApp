@@ -15,12 +15,22 @@ const EXAM_BLUE = "#1D4ED8";
 // `exam`: the wording of the real paper (TRUE / FALSE / NOT GIVEN, or
 // YES / NO / NOT GIVEN when the instruction asks for it) instead of the
 // interface language.
-export default function QuestionInput({ q, value, onChange, disabled, exam }: { q: PublicQuestion; value: string; onChange: (v: string) => void; disabled?: boolean; exam?: boolean }) {
+export default function QuestionInput({ q, value, onChange, disabled, exam, examWording = exam }: {
+  q: PublicQuestion;
+  value: string;
+  onChange: (v: string) => void;
+  disabled?: boolean;
+  exam?: boolean;
+  // With the exam look: the paper's English words (TRUE / NOT GIVEN,
+  // "Select"); off for practice tests in other subjects.
+  examWording?: boolean;
+}) {
   const { t } = useLanguage();
+  const pickLabel = examWording ? "Select" : t("qt.pick");
 
   if (q.type === "MCQ" || q.type === "TRUE_FALSE" || q.type === "TRUE_FALSE_NG") {
     const yesNo = /\bYES\b/.test(`${q.instruction ?? ""} ${q.section ?? ""}`);
-    const labels: Record<string, string> = exam
+    const labels: Record<string, string> = examWording
       ? { true: yesNo ? "YES" : "TRUE", false: yesNo ? "NO" : "FALSE", ng: "NOT GIVEN" }
       : { true: t("pt.true"), false: t("pt.false"), ng: t("qt.notGiven") };
     const mcq = q.type === "MCQ";
@@ -32,7 +42,7 @@ export default function QuestionInput({ q, value, onChange, disabled, exam }: { 
           value={value}
           onChange={onChange}
           options={[...(value ? [{ value: "", label: `✕ ${t("common.clear")}` }] : []), ...(q.options ?? []).map((o) => ({ value: o.id, label: o.text && o.text !== o.id ? `${o.id}  ${o.text}` : o.id }))]}
-          placeholder="Select"
+          placeholder={pickLabel}
           disabled={disabled}
           wrap
           sheetOnPhone
@@ -177,7 +187,7 @@ export default function QuestionInput({ q, value, onChange, disabled, exam }: { 
                     onChange(JSON.stringify(next));
                   }}
                   options={[...(chosen ? [{ value: "", label: `✕ ${t("common.clear")}` }] : []), ...rights.map((r) => ({ value: r, label: r }))]}
-                  placeholder={exam ? "Select" : t("qt.pick")}
+                  placeholder={exam ? pickLabel : t("qt.pick")}
                   disabled={disabled}
                   wrap
                   sheetOnPhone

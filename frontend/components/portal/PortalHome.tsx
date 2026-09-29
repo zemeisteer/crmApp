@@ -141,7 +141,7 @@ export default function PortalHome({
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {[...openHw, ...homework.filter((h) => h.completed)].slice(0, 4).map((h) => {
               const due = h.dueDate ? new Date(h.dueDate) : null;
-              const late = !h.completed && due && due.getTime() < Date.now();
+              const late = !h.completed && due && due.getTime() < now;
               return (
                 <div key={h.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, padding: "10px 12px", borderRadius: 12, border: "1px solid #EDF2F7" }}>
                   <div style={{ minWidth: 0 }}>

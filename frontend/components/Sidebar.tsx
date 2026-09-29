@@ -134,7 +134,6 @@ const NAV_ITEMS: NavItem[] = [
   {
     href: "/mock-tests",
     labelKey: "nav.mockTests" as TranslationKey,
-    badge: "IELTS",
     roles: ["SUPERADMIN", "ADMIN", "MANAGER", "TEACHER"],
     icon: (
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

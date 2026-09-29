@@ -3,7 +3,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { unlink } from 'fs/promises';
 import { attachmentStorage } from '../common/upload.util';
 import { MockTestsService } from '../mock-tests/mock-tests.service';
-import type { Section } from '../mock-tests/ielts';
+import { GeneratePracticeDto } from '../mock-tests/dto/mock-tests.dto';
 import { PortalAuthGuard } from './portal-auth.guard';
 import { PortalUser, PortalUserPayload } from './portal-user.decorator';
 
@@ -23,6 +23,13 @@ export class PortalMockController {
     return this.service.forStudent(user.studentId, user.tenantId);
   }
 
+  // A practice set the AI makes for the student (their direction, a topic).
+  @Post('generate')
+  generate(@PortalUser() user: PortalUserPayload, @Body() dto: GeneratePracticeDto) {
+    only(user);
+    return this.service.generateForStudent(user.studentId, user.tenantId, dto);
+  }
+
   @Post(':testId/start')
   start(@PortalUser() user: PortalUserPayload, @Param('testId') testId: string) {
     only(user);
@@ -35,19 +42,19 @@ export class PortalMockController {
   }
 
   @Post('attempts/:id/sections/:section/start')
-  startSection(@PortalUser() user: PortalUserPayload, @Param('id') id: string, @Param('section') section: Section) {
+  startSection(@PortalUser() user: PortalUserPayload, @Param('id') id: string, @Param('section') section: string) {
     only(user);
     return this.service.startSection(user.studentId, user.tenantId, id, section);
   }
 
   @Post('attempts/:id/sections/:section/answers')
-  save(@PortalUser() user: PortalUserPayload, @Param('id') id: string, @Param('section') section: Section, @Body('answers') answers: unknown) {
+  save(@PortalUser() user: PortalUserPayload, @Param('id') id: string, @Param('section') section: string, @Body('answers') answers: unknown) {
     only(user);
     return this.service.saveAnswers(user.studentId, user.tenantId, id, section, answers);
   }
 
   @Post('attempts/:id/sections/:section/submit')
-  submit(@PortalUser() user: PortalUserPayload, @Param('id') id: string, @Param('section') section: Section, @Body('answers') answers?: unknown) {
+  submit(@PortalUser() user: PortalUserPayload, @Param('id') id: string, @Param('section') section: string, @Body('answers') answers?: unknown) {
     only(user);
     return this.service.submitSection(user.studentId, user.tenantId, id, section, answers);
   }

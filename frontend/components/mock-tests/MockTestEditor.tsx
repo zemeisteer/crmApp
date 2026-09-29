@@ -272,7 +272,7 @@ export default function MockTestEditor({ test, onSaved }: { test: MockTest; onSa
 export { levelKey };
 
 // Map / plan / diagram picture of a part or passage.
-function ImageField({ path, onUpload, onClear }: { path: string | null; onUpload: (f: File | undefined) => void; onClear: () => void }) {
+export function ImageField({ path, onUpload, onClear }: { path: string | null; onUpload: (f: File | undefined) => void; onClear: () => void }) {
   const { t } = useLanguage();
   return (
     <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
@@ -292,7 +292,7 @@ function ImageField({ path, onUpload, onClear }: { path: string | null; onUpload
   );
 }
 
-function PartHeader({ title, onTitle, onRemove }: { title: string; onTitle: (v: string) => void; onRemove: () => void }) {
+export function PartHeader({ title, onTitle, onRemove }: { title: string; onTitle: (v: string) => void; onRemove: () => void }) {
   const { t } = useLanguage();
   return (
     <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
@@ -303,7 +303,7 @@ function PartHeader({ title, onTitle, onRemove }: { title: string; onTitle: (v: 
 }
 
 // Questions of one part/passage: a compact numbered list, one open editor.
-function QuestionsEditor({ questions, onChange, start = 0 }: { questions: TestQuestion[]; onChange: (qs: TestQuestion[]) => void; start?: number }) {
+export function QuestionsEditor({ questions, onChange, start = 0 }: { questions: TestQuestion[]; onChange: (qs: TestQuestion[]) => void; start?: number }) {
   const { t } = useLanguage();
   const [open, setOpen] = useState<number | null>(null);
   const set = (i: number, q: TestQuestion) => onChange(questions.map((x, j) => (j === i ? q : x)));

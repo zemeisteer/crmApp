@@ -1075,8 +1075,9 @@ export const announcementUserReads = pgTable('announcement_user_reads', {
   userIdx: index('announcement_user_reads_user_idx').on(t.userId),
 }));
 
-// IELTS-style mock tests (Listening, Reading, Writing, Speaking) solved in
-// the student portal. `content` is JSON (see mock-tests/ielts.ts).
+// Mock and practice tests solved in the student portal. kind IELTS: the
+// four IELTS sections (content: mock-tests/ielts.ts); PRACTICE: timed
+// sections for any direction (mock-tests/practice.ts).
 export const mockTests = pgTable('mock_tests', {
   id: text('id').primaryKey().$defaultFn(() => createId()),
   tenantId: text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
@@ -1091,11 +1092,14 @@ export const mockTests = pgTable('mock_tests', {
   // Where it came from, e.g. "Cambridge IELTS 18 — Test 2".
   source: text('source'),
   importId: text('import_id'),
+  // Set on a practice test the AI made for one student: only they see it.
+  ownerStudentId: text('owner_student_id').references(() => students.id, { onDelete: 'cascade' }),
   content: text('content').notNull().default('{}'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 }, (t) => ({
   tenantIdx: index('mock_tests_tenant_idx').on(t.tenantId),
+  ownerStudentIdx: index('mock_tests_owner_student_idx').on(t.ownerStudentId),
 }));
 
 // A batch of uploaded materials (PDF books, audio) turned into mock tests in

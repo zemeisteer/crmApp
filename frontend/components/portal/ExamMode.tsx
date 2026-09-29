@@ -13,15 +13,15 @@ import { useLanguage } from "@/lib/i18n-context";
 type Text = Record<string, string>;
 type PQ = PortalMockAttempt["test"]["content"]["reading"]["passages"][number]["questions"][number];
 const REVIEW_MS = 2 * 60_000;
-const INK = "#111827";
-const LINE = "#D1D5DB";
-const BLUE = "#1D4ED8";
+export const INK = "#111827";
+export const LINE = "#D1D5DB";
+export const BLUE = "#1D4ED8";
 
-const mmss = (ms: number) => {
+export const mmss = (ms: number) => {
   const s = Math.max(0, Math.ceil(ms / 1000));
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 };
-const wordsOf = (s: string) => (s.trim().match(/[\p{L}\p{N}'’-]+/gu) ?? []).length;
+export const wordsOf = (s: string) => (s.trim().match(/[\p{L}\p{N}'’-]+/gu) ?? []).length;
 const numLabel = (q: PQ) => (q.span > 1 ? `${q.no}–${q.no + q.span - 1}` : String(q.no));
 // Marks answered: a matching task counts each chosen item.
 const answeredMarks = (q: PQ, v: string | undefined) => {
@@ -55,7 +55,7 @@ export interface ExamProps {
   saveState?: "idle" | "saving" | "saved" | "error";
 }
 
-const EXAM_CSS = `
+export const EXAM_CSS = `
 .exm-root{position:fixed;inset:0;z-index:200;background:#fff;display:flex;flex-direction:column}
 .exm-head{display:flex;align-items:center;gap:12px;padding:8px 16px;border-bottom:1px solid #D1D5DB;background:#F9FAFB}
 .exm-title{font-size:13px;color:#374151;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
@@ -103,57 +103,31 @@ export default function ExamMode(props: ExamProps) {
 
   const title = { listening: "Listening", reading: "Reading", writing: "Writing", speaking: "Speaking" }[section];
 
-  // Full screen while the section runs, like the test centre's computer.
-  const [full, setFull] = useState(false);
-  useEffect(() => {
-    const sync = () => setFull(!!document.fullscreenElement);
-    document.addEventListener("fullscreenchange", sync);
-    return () => {
-      document.removeEventListener("fullscreenchange", sync);
-      if (document.fullscreenElement) void document.exitFullscreen().catch(() => undefined);
-    };
-  }, []);
-  const toggleFull = () => {
-    if (document.fullscreenElement) void document.exitFullscreen().catch(() => undefined);
-    else void document.documentElement.requestFullscreen?.().catch(() => undefined);
-  };
+  const fs = useFullscreen();
   function start() {
-    // Must run in the click itself: browsers allow full screen only then.
-    if (!document.fullscreenElement) void document.documentElement.requestFullscreen?.().catch(() => undefined);
+    fs.enter();
     props.onBegin().then(() => setStarted(true)).catch(() => undefined);
   }
 
-  const save = props.saveState ?? "idle";
   return (
     <div className="exm-root" style={{ color: INK, fontFamily: "Arial, Helvetica, sans-serif", fontSize: font }}>
       <style>{EXAM_CSS}</style>
-      <header className="exm-head">
-        <div className="exm-logo" style={{ fontWeight: 900, letterSpacing: 1, color: "#B91C1C", fontSize: 18 }}>IELTS</div>
-        <div className="exm-title">
-          {attempt.test.title} · <b>{title}</b>{attempt.test.module === "GENERAL" && section === "reading" ? " (General Training)" : ""}
-        </div>
-        {started && effectiveLeft !== null && section !== "speaking" && (
-          <div style={{ fontWeight: 800, fontSize: 15, whiteSpace: "nowrap", color: effectiveLeft < 5 * 60_000 ? "#B91C1C" : INK, marginLeft: "auto" }} aria-live="polite">
-            {reviewEnds ? <span className="exm-hide-sm">{t("exm.review")} </span> : ""}⏱ {mmss(effectiveLeft)}<span className="exm-hide-sm"> {t("exm.left")}</span>
-          </div>
-        )}
-        {started && section !== "speaking" && save !== "idle" && (
-          <span title={t("pmk.saved")} style={{ fontSize: 12, whiteSpace: "nowrap", color: save === "error" ? "#B91C1C" : "#6B7280" }}>
-            {save === "saving" ? "⏳" : save === "error" ? "⚠" : "✓"}<span className="exm-hide-sm"> {save === "saving" ? t("pmk.saving") : save === "error" ? t("exm.saveError") : t("pmk.saved")}</span>
-          </span>
-        )}
-        {section === "listening" && started && (
+      <ExamHeader
+        brand="IELTS"
+        title={<>{attempt.test.title} · <b>{title}</b>{attempt.test.module === "GENERAL" && section === "reading" ? " (General Training)" : ""}</>}
+        left={started && section !== "speaking" ? effectiveLeft : null}
+        leftPrefix={reviewEnds ? t("exm.review") : undefined}
+        saveState={started && section !== "speaking" ? props.saveState : undefined}
+        extra={section === "listening" && started ? (
           <label className="exm-hide-sm" style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13 }}>
             🔊 <input type="range" min={0} max={1} step={0.05} value={volume} onChange={(e) => setVolume(Number(e.target.value))} style={{ width: 90 }} aria-label="volume" />
           </label>
-        )}
-        <div style={{ display: "flex", gap: 4, marginLeft: started && effectiveLeft !== null && section !== "speaking" ? 0 : "auto" }}>
-          <button type="button" onClick={() => setFont((f) => Math.max(13, f - 1))} style={smallBtn} aria-label="smaller text">A−</button>
-          <button type="button" onClick={() => setFont((f) => Math.min(22, f + 1))} style={smallBtn} aria-label="bigger text">A+</button>
-          <button type="button" onClick={toggleFull} style={smallBtn} aria-label={t("exm.fullscreen")} title={t("exm.fullscreen")}>{full ? "⤡" : "⛶"}</button>
-        </div>
-        <button type="button" onClick={props.onExit} style={{ ...smallBtn, padding: "5px 10px", whiteSpace: "nowrap" }}>✕<span className="exm-hide-sm"> {t("exm.pause")}</span></button>
-      </header>
+        ) : null}
+        onFont={(d) => setFont((f) => Math.max(13, Math.min(22, f + d)))}
+        full={fs.full}
+        onToggleFull={fs.toggle}
+        onExit={props.onExit}
+      />
 
       {!started ? (
         <Instructions section={section} attempt={attempt} onStart={start} resuming={!!attempt.sectionStarted[section] && (left ?? 1) < sectionMs(attempt, section) - 5000} />
@@ -170,7 +144,70 @@ export default function ExamMode(props: ExamProps) {
   );
 }
 
-const smallBtn: React.CSSProperties = { border: `1px solid ${LINE}`, background: "#fff", borderRadius: 6, padding: "5px 8px", fontSize: 13, fontWeight: 700, cursor: "pointer", color: INK };
+export const smallBtn: React.CSSProperties = { border: `1px solid ${LINE}`, background: "#fff", borderRadius: 6, padding: "5px 8px", fontSize: 13, fontWeight: 700, cursor: "pointer", color: INK };
+
+// Full screen while a section runs, like the test centre's computer. Enter
+// only from a click (browsers allow it only then); leave on unmount.
+export function useFullscreen() {
+  const [full, setFull] = useState(false);
+  useEffect(() => {
+    const sync = () => setFull(!!document.fullscreenElement);
+    document.addEventListener("fullscreenchange", sync);
+    return () => {
+      document.removeEventListener("fullscreenchange", sync);
+      if (document.fullscreenElement) void document.exitFullscreen().catch(() => undefined);
+    };
+  }, []);
+  const enter = () => {
+    if (!document.fullscreenElement) void document.documentElement.requestFullscreen?.().catch(() => undefined);
+  };
+  const toggle = () => {
+    if (document.fullscreenElement) void document.exitFullscreen().catch(() => undefined);
+    else enter();
+  };
+  return { full, enter, toggle };
+}
+
+// The exam's top bar: brand, title, clock, save state, text size, full
+// screen and leave. Compact on phones.
+export function ExamHeader({ brand, title, left, leftPrefix, saveState, extra, onFont, full, onToggleFull, onExit }: {
+  brand: string;
+  title: React.ReactNode;
+  left: number | null;
+  leftPrefix?: string;
+  saveState?: "idle" | "saving" | "saved" | "error";
+  extra?: React.ReactNode;
+  onFont: (delta: number) => void;
+  full: boolean;
+  onToggleFull: () => void;
+  onExit: () => void;
+}) {
+  const { t } = useLanguage();
+  const save = saveState ?? "idle";
+  return (
+    <header className="exm-head">
+      <div className="exm-logo" style={{ fontWeight: 900, letterSpacing: 1, color: "#B91C1C", fontSize: 18, whiteSpace: "nowrap", maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis" }}>{brand}</div>
+      <div className="exm-title">{title}</div>
+      {left !== null && (
+        <div style={{ fontWeight: 800, fontSize: 15, whiteSpace: "nowrap", color: left < 5 * 60_000 ? "#B91C1C" : INK, marginLeft: "auto" }} aria-live="polite">
+          {leftPrefix ? <span className="exm-hide-sm">{leftPrefix} </span> : ""}⏱ {mmss(left)}<span className="exm-hide-sm"> {t("exm.left")}</span>
+        </div>
+      )}
+      {save !== "idle" && (
+        <span title={t("pmk.saved")} style={{ fontSize: 12, whiteSpace: "nowrap", color: save === "error" ? "#B91C1C" : "#6B7280" }}>
+          {save === "saving" ? "⏳" : save === "error" ? "⚠" : "✓"}<span className="exm-hide-sm"> {save === "saving" ? t("pmk.saving") : save === "error" ? t("exm.saveError") : t("pmk.saved")}</span>
+        </span>
+      )}
+      {extra}
+      <div style={{ display: "flex", gap: 4, marginLeft: left !== null ? 0 : "auto" }}>
+        <button type="button" onClick={() => onFont(-1)} style={smallBtn} aria-label="smaller text">A−</button>
+        <button type="button" onClick={() => onFont(1)} style={smallBtn} aria-label="bigger text">A+</button>
+        <button type="button" onClick={onToggleFull} style={smallBtn} aria-label={t("exm.fullscreen")} title={t("exm.fullscreen")}>{full ? "⤡" : "⛶"}</button>
+      </div>
+      <button type="button" onClick={onExit} style={{ ...smallBtn, padding: "5px 10px", whiteSpace: "nowrap" }}>✕<span className="exm-hide-sm"> {t("exm.pause")}</span></button>
+    </header>
+  );
+}
 
 function sectionMs(a: PortalMockAttempt, s: MockSection) {
   return (s === "speaking" ? 15 : a.test.content[s].durationMin) * 60_000;
@@ -234,8 +271,8 @@ function GapLine({ q, value, onChange }: { q: PQ; value: string; onChange: (v: s
   );
 }
 
-function QuestionBlock({ q, prev, value, onAnswer, flagged, onFlag, sectionKey }: {
-  q: PQ; prev?: PQ; value: string; onAnswer: (v: string) => void; flagged: boolean; onFlag: () => void; sectionKey: string;
+export function QuestionBlock({ q, prev, value, onAnswer, flagged, onFlag, sectionKey, examWording = true }: {
+  q: PQ; prev?: PQ; value: string; onAnswer: (v: string) => void; flagged: boolean; onFlag: () => void; sectionKey: string; examWording?: boolean;
 }) {
   const showSection = q.section && q.section !== prev?.section;
   const showInstr = q.instruction && (q.instruction !== prev?.instruction || showSection);
@@ -248,6 +285,9 @@ function QuestionBlock({ q, prev, value, onAnswer, flagged, onFlag, sectionKey }
     <div id={`q-${sectionKey}-${q.id}`} style={{ scrollMarginTop: 16 }}>
       {showSection && <div style={{ fontWeight: 800, marginTop: 18, marginBottom: 4 }}>{q.section}</div>}
       {showInstr && <div style={{ fontStyle: "italic", marginBottom: 10, whiteSpace: "pre-wrap" }}>{q.instruction}</div>}
+      {q.passage && q.passage !== prev?.passage && (
+        <div style={{ border: `1px solid ${LINE}`, background: "#F9FAFB", padding: "12px 14px", margin: "6px 0 10px", whiteSpace: "pre-wrap", lineHeight: 1.65 }}>{q.passage}</div>
+      )}
       {showBox && (
         <div style={{ border: `1px solid ${INK}`, padding: "10px 14px", margin: "6px 0 10px", maxWidth: 560 }}>
           {(q.options ?? []).map((o) => (
@@ -269,12 +309,12 @@ function QuestionBlock({ q, prev, value, onAnswer, flagged, onFlag, sectionKey }
           ) : boxed ? (
             <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "6px 12px" }}>
               <span style={{ flex: "1 1 220px", lineHeight: 1.5, whiteSpace: "pre-wrap" }}>{q.prompt}</span>
-              <div style={{ flex: "1 1 220px", maxWidth: 360 }}><QuestionInput q={q} value={value} onChange={onAnswer} exam /></div>
+              <div style={{ flex: "1 1 220px", maxWidth: 360 }}><QuestionInput q={q} value={value} onChange={onAnswer} exam examWording={examWording} /></div>
             </div>
           ) : (
             <>
               <div style={{ marginBottom: 8, whiteSpace: "pre-wrap", lineHeight: 1.5 }}>{q.prompt}</div>
-              <QuestionInput q={q} value={value} onChange={onAnswer} exam />
+              <QuestionInput q={q} value={value} onChange={onAnswer} exam examWording={examWording} />
             </>
           )}
         </div>
@@ -284,7 +324,7 @@ function QuestionBlock({ q, prev, value, onAnswer, flagged, onFlag, sectionKey }
 }
 
 // Bottom bar: parts and question numbers; click jumps to the question.
-function NavBar({ groups, current, onPart, onJump, answers, flags, sectionKey, onSubmit, submitLabel }: {
+export function NavBar({ groups, current, onPart, onJump, answers, flags, sectionKey, onSubmit, submitLabel }: {
   groups: Array<{ label: string; questions: PQ[] }>;
   current: number;
   onPart: (i: number) => void;
@@ -333,7 +373,7 @@ function NavBar({ groups, current, onPart, onJump, answers, flags, sectionKey, o
 
 // Phones: the text and the questions (or the answer box) are two tabs
 // instead of two cramped columns.
-function PaneTabs({ pane, onPane, textLabel, qLabel }: { pane: "text" | "q"; onPane: (p: "text" | "q") => void; textLabel: string; qLabel: string }) {
+export function PaneTabs({ pane, onPane, textLabel, qLabel }: { pane: "text" | "q"; onPane: (p: "text" | "q") => void; textLabel: string; qLabel: string }) {
   return (
     <div className="exm-panes" role="tablist">
       <button type="button" role="tab" aria-selected={pane === "text"} onClick={() => onPane("text")}>{textLabel}</button>
@@ -345,13 +385,13 @@ function PaneTabs({ pane, onPane, textLabel, qLabel }: { pane: "text" | "q"; onP
 const sameOptions = (a: PQ, b: PQ) =>
   (a.options ?? []).length === (b.options ?? []).length && (a.options ?? []).every((o, i) => o.id === b.options?.[i]?.id && o.text === b.options?.[i]?.text);
 
-function useFlags() {
+export function useFlags() {
   const [flags, setFlags] = useState<Set<string>>(new Set());
   const toggle = useCallback((id: string) => setFlags((f) => { const n = new Set(f); if (n.has(id)) n.delete(id); else n.add(id); return n; }), []);
   return { flags, toggle };
 }
 
-function confirmSubmit(t: (k: import("@/lib/i18n").TranslationKey) => string, questions: PQ[], answers: Text) {
+export function confirmSubmit(t: (k: import("@/lib/i18n").TranslationKey) => string, questions: PQ[], answers: Text) {
   const missing = questions.reduce((n, q) => n + q.span - answeredMarks(q, answers[q.id]), 0);
   return confirm(missing > 0 ? t("exm.confirmMissing").replace("{n}", String(missing)) : t("exm.confirm"));
 }
@@ -533,7 +573,7 @@ function ReadingExam(props: ExamProps) {
 
 // The passage with highlighting: select text, press "Highlight"; click a
 // highlight to remove it (as in the computer exam).
-function Passage({ title, text, imagePath }: { title: string; text: string; imagePath: string | null }) {
+export function Passage({ title, text, imagePath }: { title: string; text: string; imagePath: string | null }) {
   const { t } = useLanguage();
   const box = useRef<HTMLDivElement>(null);
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
