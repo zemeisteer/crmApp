@@ -119,5 +119,7 @@ describe('Portal AI tutor (e2e)', () => {
     await http().post('/api/ai/tutor-report/topics').set(t()).send({ groupId: other }).expect(403);
     // A portal (student) token is not a staff token.
     await http().get(`/api/ai/tutor-report?groupId=${mine}`).set(kid()).expect(403);
+    await http().get('/api/leads').set(kid()).expect(403);
+    await http().get('/api/students').set(kid()).expect(403);
   });
 });

@@ -7,6 +7,7 @@ import {
 import { Reflector } from '@nestjs/core';
 import { PERMISSIONS_KEY } from './permissions.decorator';
 import { getEffectivePermissions } from './permissions';
+import { END_USER_ROLES } from './roles.guard';
 
 @Injectable()
 export class PermissionsGuard implements CanActivate {
@@ -18,11 +19,12 @@ export class PermissionsGuard implements CanActivate {
       [context.getHandler(), context.getClass()],
     );
 
-    if (!requiredPermissions || requiredPermissions.length === 0) {
-      return true;
-    }
-
     const { user } = context.switchToHttp().getRequest();
+    if (!requiredPermissions || requiredPermissions.length === 0) {
+      // Like RolesGuard: a route without @RequirePermissions is back-office
+      // only, so a forgotten decorator never opens it to students/parents.
+      return !user || !END_USER_ROLES.includes(user.role);
+    }
     if (!user) return false;
 
     // SUPERADMIN and ADMIN automatically have all permissions
