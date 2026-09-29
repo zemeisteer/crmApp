@@ -14,7 +14,8 @@ import {
 import { useLanguage } from "@/lib/i18n-context";
 import { extractUniqueSubjects, matchesSubject } from "@/lib/subject";
 import { formatDateTime } from "@/lib/format-date";
-import { placementLevelName, placementLink } from "@/lib/placement";
+import { placementLevelName, placementLink, placementShareText, telegramShareUrl } from "@/lib/placement";
+import { useAuth } from "@/lib/auth-context";
 import { hasAnswer, type TestQuestion } from "@/lib/tests";
 import { printTest } from "@/lib/print-test";
 import QuestionList from "@/components/tests/QuestionView";
@@ -31,6 +32,10 @@ type Draft = TestQuestion & { include: boolean };
 // computer; results show up in the "Tests & results" tab.
 export default function PlacementTestModal({ groups, onClose }: { groups: Group[]; onClose: () => void }) {
   const { t, lang } = useLanguage();
+  const { tenant } = useAuth();
+  const linkOf = (token: string) => placementLink(token, tenant?.subdomain);
+  const telegramOf = (x: { token: string; title: string; subject: string }, questionCount?: number) =>
+    telegramShareUrl(linkOf(x.token), placementShareText({ centerName: tenant?.name, title: x.title, subject: x.subject, questionCount }, t));
   const subjects = useMemo(() => extractUniqueSubjects(groups), [groups]);
   const [tab, setTab] = useState<"new" | "list">("new");
 
@@ -358,9 +363,9 @@ export default function PlacementTestModal({ groups, onClose }: { groups: Group[
             <div style={{ fontSize: 14, fontWeight: 800, marginBottom: 4 }}>✅ {t("placement.readyTitle")}</div>
             <div style={{ fontSize: 12.5, color: "#4A4E58", marginBottom: 10 }}>{t("placement.readyHint")}</div>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              <input readOnly value={placementLink(created.token)} className="field-input" style={{ flex: 1, minWidth: 220, height: 38, fontSize: 13, background: "#fff" }} onFocus={(e) => e.target.select()} />
-              <button type="button" className="btn" onClick={() => copy(placementLink(created.token))} style={primary}>{copied ? `✓ ${t("placement.copied")}` : t("placement.copyLink")}</button>
-              <a className="btn" href={`https://t.me/share/url?url=${encodeURIComponent(placementLink(created.token))}&text=${encodeURIComponent(created.title)}`} target="_blank" rel="noreferrer" style={{ ...ghost, textDecoration: "none" }}>
+              <input readOnly value={linkOf(created.token)} className="field-input" style={{ flex: 1, minWidth: 220, height: 38, fontSize: 13, background: "#fff" }} onFocus={(e) => e.target.select()} />
+              <button type="button" className="btn" onClick={() => copy(linkOf(created.token))} style={primary}>{copied ? `✓ ${t("placement.copied")}` : t("placement.copyLink")}</button>
+              <a className="btn" href={telegramOf(created, created.questions.length)} target="_blank" rel="noreferrer" style={{ ...ghost, textDecoration: "none" }}>
                 ✈️ Telegram
               </a>
             </div>
@@ -410,9 +415,14 @@ export default function PlacementTestModal({ groups, onClose }: { groups: Group[
                   <button type="button" className="btn" onClick={() => rename(x)} style={{ ...ghost, padding: "6px 10px" }} title={t("placement.rename")}>
                     ✎
                   </button>
-                  <button type="button" className="btn" onClick={() => copy(placementLink(x.token))} style={{ ...ghost, padding: "6px 10px" }} disabled={!x.active}>
+                  <button type="button" className="btn" onClick={() => copy(linkOf(x.token))} style={{ ...ghost, padding: "6px 10px" }} disabled={!x.active}>
                     🔗 {t("placement.copyLink")}
                   </button>
+                  {x.active && (
+                    <a className="btn" href={telegramOf(x, x.questionCount)} target="_blank" rel="noreferrer" style={{ ...ghost, padding: "6px 10px", textDecoration: "none" }}>
+                      ✈️ Telegram
+                    </a>
+                  )}
                   <button type="button" className="btn" onClick={() => toggleActive(x)} style={{ ...ghost, padding: "6px 10px", color: x.active ? "#B23A47" : "#1FA463" }}>
                     {x.active ? t("placement.close") : t("placement.reopen")}
                   </button>

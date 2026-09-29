@@ -12,7 +12,7 @@ import TimePicker from "@/components/TimePicker";
 import LeadFormModal from "@/components/leads/LeadFormModal";
 import ConvertWizard from "@/components/leads/ConvertWizard";
 import PlacementAttemptModal from "@/components/students/PlacementAttemptModal";
-import { placementLevelName, placementLink } from "@/lib/placement";
+import { placementLevelName, placementLink, placementShareText, telegramShareUrl } from "@/lib/placement";
 import {
   ApiError,
   groupsApi,
@@ -83,7 +83,7 @@ function activityTitle(a: LeadActivity, t: (k: TranslationKey) => string) {
 function LeadProfile() {
   const { id } = useParams<{ id: string }>();
   const { t, lang } = useLanguage();
-  const { can } = useAuth();
+  const { can, tenant } = useAuth();
 
   const [lead, setLead] = useState<Lead | null>(null);
   const [timeline, setTimeline] = useState<LeadActivity[]>([]);
@@ -341,13 +341,13 @@ function LeadProfile() {
                 <div style={{ display: "grid", gap: 10 }}>
                   <p style={{ fontSize: 13, color: "#8A8D96", margin: 0 }}>{t("adm.testNone")}</p>
                   {shareTest && (
-                    <div>
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                       <button
                         type="button"
                         className="btn"
                         style={ghostBtn}
                         onClick={() => {
-                          navigator.clipboard?.writeText(placementLink(shareTest.token)).then(() => {
+                          navigator.clipboard?.writeText(placementLink(shareTest.token, tenant?.subdomain)).then(() => {
                             setCopied(true);
                             setTimeout(() => setCopied(false), 2000);
                           }).catch(() => undefined);
@@ -355,6 +355,18 @@ function LeadProfile() {
                       >
                         🔗 {copied ? t("adm.testCopied") : `${t("adm.testCopy")}: ${shareTest.title}`}
                       </button>
+                      <a
+                        className="btn"
+                        style={{ ...ghostBtn, textDecoration: "none" }}
+                        target="_blank"
+                        rel="noreferrer"
+                        href={telegramShareUrl(
+                          placementLink(shareTest.token, tenant?.subdomain),
+                          placementShareText({ centerName: tenant?.name, title: shareTest.title, subject: shareTest.subject, questionCount: shareTest.questionCount }, t),
+                        )}
+                      >
+                        ✈️ Telegram
+                      </a>
                     </div>
                   )}
                 </div>
