@@ -5,7 +5,6 @@ describe('lead lifecycle policy', () => {
   const legal: [string, string][] = [
     ['NEW', 'CONTACTED'],
     ['CONTACTED', 'TRIAL_BOOKED'],
-    ['CONTACTED', 'QUALIFIED'],
     ['CONTACTED', 'LOST'],
     ['TRIAL_BOOKED', 'TRIAL_ATTENDED'],
     ['TRIAL_BOOKED', 'LOST'],
@@ -22,6 +21,14 @@ describe('lead lifecycle policy', () => {
         expect(canTransition(from, to), `${from} -> ${to}`).toBe(expected);
       }
     }
+  });
+
+  it('lets a contacted lead skip the trial only after a level test', () => {
+    expect(canTransition('CONTACTED', 'QUALIFIED')).toBe(false);
+    expect(canTransition('CONTACTED', 'QUALIFIED', { tookPlacementTest: true })).toBe(true);
+    expect(allowedTransitions('CONTACTED', { tookPlacementTest: true })).toEqual(['TRIAL_BOOKED', 'LOST', 'QUALIFIED']);
+    // The test result only matters at CONTACTED.
+    expect(canTransition('NEW', 'QUALIFIED', { tookPlacementTest: true })).toBe(false);
   });
 
   it('rejects skipping stages', () => {

@@ -68,15 +68,23 @@ describe('Admissions & Sales CRM Suite (e2e)', () => {
     return http().post('/api/leads').set(auth(token)).send(body);
   }
 
-  // Qualifying straight from CONTACTED skips the trial and needs a reason.
   async function move(token: string, id: string, toStatus: string) {
-    const note = toStatus === 'QUALIFIED' ? 'Level already known' : undefined;
-    return http().post(`/api/leads/${id}/transition`).set(auth(token)).send({ toStatus, note }).expect(201);
+    return http().post(`/api/leads/${id}/transition`).set(auth(token)).send({ toStatus }).expect(201);
+  }
+
+  // The real funnel: contacted -> trial lesson booked -> attended -> qualified.
+  let trialHour = 8;
+  async function passTrial(token: string, id: string) {
+    const { date } = futureTashkentDay(20);
+    const hour = String(trialHour++ % 24).padStart(2, '0');
+    const t = await http().post(`/api/leads/${id}/trials`).set(auth(token)).send({ scheduledAt: `${date}T${hour}:00:00+05:00` }).expect(201);
+    await http().post(`/api/leads/${id}/trials/${t.body.id}/attend`).set(auth(token)).send({}).expect(201);
   }
 
   async function qualifiedLead(fullName: string, phone: string) {
     const res = await createLead(tokenA, { fullName, phone, source: 'WALK_IN' }).expect(201);
     await move(tokenA, res.body.id, 'CONTACTED');
+    await passTrial(tokenA, res.body.id);
     await move(tokenA, res.body.id, 'QUALIFIED');
     return res.body.id as string;
   }
@@ -506,6 +514,7 @@ describe('Admissions & Sales CRM Suite (e2e)', () => {
     await mk('C New', '+998901000251');
     const enrolled = await mk('C Enrolled', '+998901000252');
     await move(tokenC, enrolled, 'CONTACTED');
+    await passTrial(tokenC, enrolled);
     await move(tokenC, enrolled, 'QUALIFIED');
     await http().post(`/api/leads/${enrolled}/convert`).set(auth(tokenC)).send({}).expect(201);
     const lost = await mk('C Lost', '+998901000253');
@@ -522,10 +531,10 @@ describe('Admissions & Sales CRM Suite (e2e)', () => {
     const res = await http().get(`/api/leads/analytics?from=${from}&to=${to}`).set(auth(tokenC)).expect(200);
     const c = res.body.cohort;
     expect(c.total).toBe(4);
-    expect(c.reached).toMatchObject({ NEW: 4, CONTACTED: 3, TRIAL_BOOKED: 1, TRIAL_ATTENDED: 1, QUALIFIED: 1, ENROLLED: 1 });
+    expect(c.reached).toMatchObject({ NEW: 4, CONTACTED: 3, TRIAL_BOOKED: 2, TRIAL_ATTENDED: 2, QUALIFIED: 1, ENROLLED: 1 });
     expect(c.lost).toBe(1);
     expect(c.rates.conversion).toEqual({ numerator: 1, denominator: 4, rate: 25 });
-    expect(c.rates.trialAttended).toEqual({ numerator: 1, denominator: 1, rate: 100 });
+    expect(c.rates.trialAttended).toEqual({ numerator: 2, denominator: 2, rate: 100 });
     expect(c.lostReasons).toEqual([{ reason: 'TOO_EXPENSIVE', count: 1 }]);
     expect(c.bySource).toEqual([{ source: 'TELEGRAM', numerator: 1, denominator: 4, rate: 25 }]);
     expect(res.body.snapshot.byStatus).toMatchObject({ NEW: 1, ENROLLED: 1, LOST: 1, TRIAL_ATTENDED: 1 });

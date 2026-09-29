@@ -178,6 +178,21 @@ describe('LeadsService', () => {
       expect(mockDb.update).not.toHaveBeenCalled();
     });
 
+    it('refuses CONTACTED -> QUALIFIED without a trial or a level test', async () => {
+      selectResults.push([{ ...baseLead, status: 'CONTACTED' }], []); // lead, no placement attempt
+
+      await expect(service.transition('tenant-1', admin, 'lead-1', 'QUALIFIED')).rejects.toThrow(ConflictException);
+      expect(mockDb.update).not.toHaveBeenCalled();
+    });
+
+    it('allows CONTACTED -> QUALIFIED once the lead took the level test', async () => {
+      selectResults.push([{ ...baseLead, status: 'CONTACTED' }], [{ id: 'attempt-1' }]);
+      updateResults.push([{ ...baseLead, status: 'QUALIFIED' }]);
+
+      const result = await service.transition('tenant-1', admin, 'lead-1', 'QUALIFIED');
+      expect(result.status).toBe('QUALIFIED');
+    });
+
     it('returns 409 when a concurrent change wins the conditional update', async () => {
       selectResults.push([baseLead]);
       updateResults.push([]); // status no longer matched

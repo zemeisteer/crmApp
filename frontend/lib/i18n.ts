@@ -1072,7 +1072,7 @@ export const dict = {
   "spin.newPin": { UZ: "Yangi PIN (faqat hozir ko'rinadi, o'quvchiga bering):", RU: "Новый PIN (виден только сейчас, передайте ученику):", EN: "New PIN (shown only now, give it to the student):" },
   "spin.phoneNote": { UZ: "Kirish uchun telefon", RU: "Телефон для входа", EN: "Phone to sign in with" },
   "spin.noPhone": { UZ: "O'quvchi yoki ota-ona telefoni kiritilmagan — portalga kirish uchun telefon kerak.", RU: "Не указан телефон ученика или родителя — он нужен для входа.", EN: "No student or parent phone — one is needed to sign in." },
-  "adm.skipTrial": { UZ: "Sinovsiz tayyor", RU: "Готов без пробного", EN: "Qualified without trial" },
+  "adm.skipTrial": { UZ: "Test natijasi bo'yicha tayyor", RU: "Готов по результату теста", EN: "Qualified by level test" },
   "adm.skipTrialReason": { UZ: "Nega sinov darsisiz \"Tayyor\"ga o'tkazilyapti? Sababini yozing:", RU: "Почему без пробного урока? Укажите причину:", EN: "Why skip the trial lesson? Enter a reason:" },
   "groups.required": { UZ: "Majburiy maydon", RU: "Обязательное поле", EN: "Required" },
   "groups.errDays": { UZ: "Kamida bitta dars kunini tanlang", RU: "Выберите хотя бы один день", EN: "Pick at least one lesson day" },

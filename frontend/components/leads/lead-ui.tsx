@@ -14,10 +14,11 @@ export const LOST_REASONS: LeadLostReason[] = ["TOO_EXPENSIVE", "NO_RESPONSE", "
 
 // Stage moves that need no extra data. Everything else (trial booking,
 // attendance, loss, enrollment) has its own dialog with the details the
-// backend requires.
+// backend requires. A contacted lead moves on by booking a trial lesson;
+// only a lead who took the level test may be qualified straight away (the
+// detail page offers that when the backend allows it).
 export const SIMPLE_MOVES: Partial<Record<LeadStatus, LeadStatus[]>> = {
   NEW: ["CONTACTED"],
-  CONTACTED: ["QUALIFIED"],
   TRIAL_ATTENDED: ["QUALIFIED"],
 };
 

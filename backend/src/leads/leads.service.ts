@@ -35,6 +35,7 @@ import {
   LEAD_STATUSES,
   REOPEN_TARGET,
   type LeadStatus,
+  type TransitionContext,
 } from './lead-lifecycle';
 import { maskPhone, normalizeEmail, normalizePhone } from './phone';
 import {
@@ -256,7 +257,7 @@ export class LeadsService {
       createdBy: createdBy ?? null,
       utm: meta.utm ?? null,
     };
-    return { ...lead, assignedManagerActive, allowedTransitions: allowedTransitions(lead.status), origin, placementAttempts: attempts };
+    return { ...lead, assignedManagerActive, allowedTransitions: allowedTransitions(lead.status, { tookPlacementTest: attempts.length > 0 }), origin, placementAttempts: attempts };
   }
 
   async timeline(tenantId: string, id: string) {
@@ -730,12 +731,12 @@ export class LeadsService {
     return updated;
   }
 
-  assertTransition(from: LeadStatus, to: LeadStatus) {
-    if (!canTransition(from, to)) {
+  assertTransition(from: LeadStatus, to: LeadStatus, ctx: TransitionContext = {}) {
+    if (!canTransition(from, to, ctx)) {
       throw new ConflictException({
         code: 'INVALID_TRANSITION',
         message: `"${from}" holatidan "${to}" holatiga o'tib bo'lmaydi`,
-        from, to, allowed: allowedTransitions(from),
+        from, to, allowed: allowedTransitions(from, ctx),
       });
     }
   }
@@ -748,17 +749,23 @@ export class LeadsService {
     const updated = await this.db.transaction(async (tx) => {
       const lead = await this.getLeadRow(tx, tenantId, id, { lock: true });
       this.assertMutable(lead);
-      this.assertTransition(lead.status, to);
-      // Contacted -> qualified without a trial lesson is a normal choice
-      // (e.g. the level test already showed where the student fits); it is
-      // only marked on the timeline, no reason is demanded.
+      // Contacted -> qualified skips the trial lesson, which is only allowed
+      // once the level test has shown where the student fits.
       const skippedTrial = lead.status === 'CONTACTED' && to === 'QUALIFIED';
+      const tookPlacementTest = skippedTrial ? await this.hasPlacementAttempt(tx, tenantId, lead.id) : false;
+      this.assertTransition(lead.status, to, { tookPlacementTest });
       return this.applyTransition(tx, tenantId, lead, to, actor.userId, {
-        type: 'STATUS_CHANGE', body: note?.trim() || null, metadata: skippedTrial ? { skippedTrial: true } : undefined,
+        type: 'STATUS_CHANGE', body: note?.trim() || null, metadata: skippedTrial ? { skippedTrial: true, viaPlacementTest: true } : undefined,
       });
     });
     if (to === 'QUALIFIED') this.events.emit('LeadQualified', { tenantId, leadId: id, actorUserId: actor.userId });
     return updated;
+  }
+
+  private async hasPlacementAttempt(exec: Executor, tenantId: string, leadId: string) {
+    const [row] = await exec.select({ id: placementAttempts.id }).from(placementAttempts)
+      .where(and(eq(placementAttempts.tenantId, tenantId), eq(placementAttempts.leadId, leadId))).limit(1);
+    return !!row;
   }
 
   async lose(tenantId: string, actor: Actor, id: string, dto: LoseLeadDto) {

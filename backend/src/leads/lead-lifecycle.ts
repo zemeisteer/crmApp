@@ -38,7 +38,10 @@ export type LeadLostReason = (typeof LEAD_LOST_REASONS)[number];
 
 const TRANSITIONS: Record<LeadStatus, readonly LeadStatus[]> = {
   NEW: ['CONTACTED'],
-  CONTACTED: ['TRIAL_BOOKED', 'QUALIFIED', 'LOST'],
+  // Contacted leads go through a trial lesson before they are qualified.
+  // The one exception is a lead who already took the level test (see
+  // TransitionContext): the test result stands in for the trial.
+  CONTACTED: ['TRIAL_BOOKED', 'LOST'],
   TRIAL_BOOKED: ['TRIAL_ATTENDED', 'LOST'],
   TRIAL_ATTENDED: ['QUALIFIED', 'LOST'],
   QUALIFIED: ['ENROLLED', 'LOST'],
@@ -61,12 +64,20 @@ const DEDICATED_FLOW: Partial<Record<LeadStatus, string>> = {
   LOST: 'POST /leads/:id/lose',
 };
 
-export function allowedTransitions(from: LeadStatus): readonly LeadStatus[] {
-  return TRANSITIONS[from] ?? [];
+// Facts about the lead that unlock an otherwise closed move.
+export interface TransitionContext {
+  // The lead finished a placement (level) test.
+  tookPlacementTest?: boolean;
 }
 
-export function canTransition(from: LeadStatus, to: LeadStatus): boolean {
-  return allowedTransitions(from).includes(to);
+export function allowedTransitions(from: LeadStatus, ctx: TransitionContext = {}): readonly LeadStatus[] {
+  const base = TRANSITIONS[from] ?? [];
+  if (from === 'CONTACTED' && ctx.tookPlacementTest) return [...base, 'QUALIFIED'];
+  return base;
+}
+
+export function canTransition(from: LeadStatus, to: LeadStatus, ctx: TransitionContext = {}): boolean {
+  return allowedTransitions(from, ctx).includes(to);
 }
 
 export function dedicatedFlowFor(to: LeadStatus): string | undefined {

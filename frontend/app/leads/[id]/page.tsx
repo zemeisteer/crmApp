@@ -254,22 +254,17 @@ function LeadProfile() {
 
         {editable && (
           <div className="adm-actions">
-            {simpleMoves.map((to) => {
-              // Contacted -> qualified skips the trial lesson: a secondary button.
-              const skip = lead.status === "CONTACTED" && to === "QUALIFIED";
-              return (
-                <button
-                  key={to}
-                  type="button"
-                  className="btn"
-                  style={skip ? ghostBtn : primaryBtn}
-                  disabled={busy}
-                  onClick={() => run(() => leadsApi.transition(lead.id, to))}
-                >
-                  → {skip ? t("adm.skipTrial") : t(statusKey(to))}
-                </button>
-              );
-            })}
+            {simpleMoves.map((to) => (
+              <button key={to} type="button" className="btn" style={primaryBtn} disabled={busy} onClick={() => run(() => leadsApi.transition(lead.id, to))}>
+                → {t(statusKey(to))}
+              </button>
+            ))}
+            {lead.status === "CONTACTED" && allowed.includes("QUALIFIED") && (
+              // Allowed only after a level test: the result stands in for the trial.
+              <button type="button" className="btn" style={ghostBtn} disabled={busy} onClick={() => run(() => leadsApi.transition(lead.id, "QUALIFIED"))}>
+                → {t("adm.skipTrial")}
+              </button>
+            )}
             {canBookTrial && (
               <button type="button" className="btn" style={primaryBtn} onClick={() => openDialog({ kind: "trial" })}>{t("adm.bookTrial")}</button>
             )}

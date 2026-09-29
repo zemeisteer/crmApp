@@ -367,6 +367,12 @@ function LeadsContent() {
                               ⏰ {formatDateTime(l.followUpAt, lang)}
                             </div>
                           )}
+                          {can("admissions.update") && !l.archivedAt && (l.status === "CONTACTED" || l.status === "TRIAL_BOOKED") && (
+                            // Trial booking and attendance need their dialogs on the lead page.
+                            <Link href={`/leads/${l.id}`} className="btn" style={{ ...ghostBtn, fontSize: 12, padding: "5px 10px", textDecoration: "none", textAlign: "center" }}>
+                              → {t(l.status === "CONTACTED" ? "adm.bookTrial" : "adm.trialAttend")}
+                            </Link>
+                          )}
                           {can("admissions.update") && !l.archivedAt && (SIMPLE_MOVES[l.status] ?? []).map((to) => (
                             <button key={to} type="button" className="btn" style={{ ...ghostBtn, fontSize: 12, padding: "5px 10px" }} onClick={() => quickMove(l, to)}>
                               → {t(statusKey(to))}

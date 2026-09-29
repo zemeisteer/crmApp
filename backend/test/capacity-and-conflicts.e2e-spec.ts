@@ -242,11 +242,13 @@ describe('Group capacity & schedule day alignment (e2e)', () => {
     expect(rows.find((r) => r.studentId === kid)).toMatchObject({ status: 'PAID', remainingAmount: 0 });
   });
 
-  it('qualifies a contacted lead without a trial lesson, no reason asked', async () => {
+  it('does not qualify a contacted lead that had neither a trial lesson nor a level test', async () => {
     const lead = (await http().post('/api/leads').set(auth()).send({ fullName: 'Skip Trial', phone: `+99893${String(suffix).slice(-7)}`, source: 'PHONE' }).expect(201)).body;
     await http().post(`/api/leads/${lead.id}/transition`).set(auth()).send({ toStatus: 'CONTACTED' }).expect(201);
-    const res = await http().post(`/api/leads/${lead.id}/transition`).set(auth()).send({ toStatus: 'QUALIFIED' }).expect(201);
-    expect(res.body.status).toBe('QUALIFIED');
+    const res = await http().post(`/api/leads/${lead.id}/transition`).set(auth()).send({ toStatus: 'QUALIFIED' }).expect(409);
+    expect(res.body.code).toBe('INVALID_TRANSITION');
+    const fresh = (await http().get(`/api/leads/${lead.id}`).set(auth()).expect(200)).body;
+    expect(fresh.allowedTransitions).not.toContain('QUALIFIED');
   });
 
   it('marks teacher attendance and takes missed lessons off the payroll', async () => {
