@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Modal from "@/components/Modal";
 import { ApiError, mockTestsApi, type MockImport } from "@/lib/api";
 import { useLanguage } from "@/lib/i18n-context";
-import { levelKey } from "@/components/mock-tests/MockTestEditor";
+import { levelKey } from "@/components/mock-tests/levels";
 
 const ACCENT = "#4F46E5";
 const ghost: React.CSSProperties = { background: "#fff", border: "1px solid #EAE8E2", borderRadius: 9, padding: "7px 11px", fontSize: 12.5, fontWeight: 700, cursor: "pointer" };

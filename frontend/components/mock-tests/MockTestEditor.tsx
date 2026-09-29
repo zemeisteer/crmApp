@@ -6,6 +6,7 @@ import { ApiError, fileUrl, MOCK_LEVELS, mockTestsApi, type MockContent, type Mo
 import { hasAnswer, type TestQuestion } from "@/lib/tests";
 import { useLanguage } from "@/lib/i18n-context";
 import { SECTION_ICON, sectionKey } from "@/components/mock-tests/sections";
+import { levelKey } from "@/components/mock-tests/levels";
 
 const ACCENT = "#4F46E5";
 const card: React.CSSProperties = { background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 16 };
@@ -263,7 +264,7 @@ export default function MockTestEditor({ test, onSaved }: { test: MockTest; onSa
   );
 }
 
-export const levelKey = (l: MockLevel) => `mock.lvl.${l}` as import("@/lib/i18n").TranslationKey;
+export { levelKey };
 
 // Map / plan / diagram picture of a part or passage.
 function ImageField({ path, onUpload, onClear }: { path: string | null; onUpload: (f: File | undefined) => void; onClear: () => void }) {

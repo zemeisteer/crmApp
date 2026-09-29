@@ -5,7 +5,7 @@ import DashboardShell from "@/components/DashboardShell";
 import MockTestEditor from "@/components/mock-tests/MockTestEditor";
 import MockAttempts from "@/components/mock-tests/MockAttempts";
 import ImportPanel from "@/components/mock-tests/ImportPanel";
-import { levelKey } from "@/components/mock-tests/MockTestEditor";
+import { levelKey } from "@/components/mock-tests/levels";
 import { ApiError, mockTestsApi, type MockTest, type MockTestSummary } from "@/lib/api";
 import { useLanguage } from "@/lib/i18n-context";
 import { useAuth } from "@/lib/auth-context";

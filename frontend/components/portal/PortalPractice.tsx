@@ -6,6 +6,7 @@ import { useLanguage } from "@/lib/i18n-context";
 import { bandColor } from "@/components/mock-tests/FeedbackView";
 import { SECTION_ICON, sectionKey } from "@/components/mock-tests/sections";
 import MockRunner from "@/components/portal/MockRunner";
+import { levelKey } from "@/components/mock-tests/levels";
 import { PORTAL_ACCENT as ACCENT, portalCard as card, TabTitle } from "@/components/portal/PortalTabs";
 
 // The practice area: the student's directions (their groups' subjects), each
@@ -42,6 +43,12 @@ export default function PortalPractice({ readOnly = false }: { readOnly?: boolea
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
       <TabTitle title={t("pmk.title")} hint={t("pmk.hint")} />
+      {data?.level && (
+        <div style={{ ...card, padding: "10px 14px", display: "flex", gap: 10, alignItems: "center", background: "#EEF0FF", borderColor: "#C7D2FE" }}>
+          <span style={{ fontSize: 20 }}>🎯</span>
+          <span style={{ fontSize: 13.5 }}>{t("pmk.yourLevel")}: <b>{t(levelKey(data.level))}</b> — {t("pmk.levelHint")}</span>
+        </div>
+      )}
       {error && <div style={{ ...card, color: "#B23A47", fontSize: 13 }}>{error}</div>}
       {!data ? (
         <div style={{ ...card, color: "#8A8D96" }}>{t("common.loading")}</div>
@@ -67,6 +74,11 @@ export default function PortalPractice({ readOnly = false }: { readOnly?: boolea
                   return (
                     <div key={x.id} style={{ ...card, display: "flex", flexDirection: "column", gap: 12, background: "linear-gradient(160deg, #fff 60%, #F5F3FF)" }}>
                       <div>
+                        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 6 }}>
+                          <span style={{ fontSize: 11, fontWeight: 800, padding: "2px 8px", borderRadius: 100, background: "#F2F1EC", color: "#4A4E58" }}>{x.level ? t(levelKey(x.level)) : t("mock.levelAll")}</span>
+                          {x.module === "GENERAL" && <span style={{ fontSize: 11, fontWeight: 800, padding: "2px 8px", borderRadius: 100, background: "#F2F1EC", color: "#4A4E58" }}>General Training</span>}
+                          {x.recommended && <span style={{ fontSize: 11, fontWeight: 800, padding: "2px 8px", borderRadius: 100, background: "#E9F8EF", color: "#1FA463" }}>✓ {t("pmk.forYou")}</span>}
+                        </div>
                         <div style={{ fontSize: 16, fontWeight: 800 }}>{x.title}</div>
                         <div style={{ fontSize: 12, color: "#8A8D96", marginTop: 2 }}>
                           ⏱ ~{x.durations.listening + x.durations.reading + x.durations.writing + 14} {t("pmk.min")}
@@ -88,7 +100,10 @@ export default function PortalPractice({ readOnly = false }: { readOnly?: boolea
                         <div style={{ fontSize: 13.5 }}>{t("pmk.overall")}: <b style={{ color: bandColor(last.results.overall), fontSize: 18 }}>{last.results.overall}</b></div>
                       )}
                       <div style={{ display: "flex", gap: 8, marginTop: "auto", flexWrap: "wrap" }}>
-                        {!readOnly && (
+                        {!readOnly && !x.open && (
+                          <div style={{ flex: 1, fontSize: 12.5, fontWeight: 700, color: "#8A8D96", background: "#F7F7F5", borderRadius: 11, padding: "10px 12px", textAlign: "center" }}>🔒 {t("pmk.locked")}</div>
+                        )}
+                        {!readOnly && x.open && (
                           <button type="button" disabled={busy === x.id} onClick={() => open(x.id)} style={{ flex: 1, background: ACCENT, color: "#fff", border: "none", borderRadius: 11, padding: "10px 14px", fontWeight: 700, cursor: "pointer" }}>
                             {running ? `▶ ${t("pmk.continue")}` : last ? `↻ ${t("pmk.again")}` : `▶ ${t("pmk.start")}`}
                           </button>
