@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { useRouter } from "next/navigation";
+import { centerRedirectBase } from "./domain";
 import {
   authApi,
   getToken,
@@ -71,16 +72,41 @@ export function isWorkspaceSelection(
   return "requiresWorkspaceSelection" in res && res.requiresWorkspaceSelection === true;
 }
 
+// Pages that never send staff to another address.
+const STAY_PATHS = ["/", "/login", "/register", "/onboarding", "/pricing", "/privacy", "/terms", "/portal", "/t/", "/site/", "/invite", "/verify", "/reset-password", "/forgot-password", "/auth/"];
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [tenant, setTenant] = useState<Tenant | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
+  // Staff work on their center's own address (<center>.<domain>). Opened
+  // anywhere else, the session is carried there with a one-time code and
+  // closed here, so there is one login, on the right address. Students and
+  // parents use /portal; the superadmin stays on the main site.
+  async function moveToCenter(u: User, tn: Tenant | null, path: string): Promise<boolean> {
+    if (!tn?.subdomain || u.role === "SUPERADMIN" || u.role === "STUDENT" || u.role === "PARENT") return false;
+    const base = centerRedirectBase(tn.subdomain);
+    if (!base) return false;
+    try {
+      const { code } = await authApi.handoff();
+      authApi.logout().catch(() => undefined);
+      clearToken();
+      window.location.replace(`${base}/auth/handoff?next=${encodeURIComponent(path)}#code=${code}`);
+      return true;
+    } catch {
+      return false; // stay here: the app still works on this address
+    }
+  }
+
   function loadMe() {
     return authApi
       .me()
-      .then(({ user, tenant }) => {
+      .then(async ({ user, tenant }) => {
+        const path = window.location.pathname;
+        // Only from the back-office pages; public pages stay where they are.
+        if (!STAY_PATHS.some((p) => (p === "/" ? path === "/" : path.startsWith(p))) && (await moveToCenter(user, tenant, path + window.location.search))) return;
         setUser(user);
         setTenant(tenant);
       })
@@ -109,7 +135,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       (res.user.role === "STUDENT" || res.user.role === "PARENT"
         ? "/portal"
         : "/dashboard");
-    router.push(destination);
+    // New centers finish onboarding first (their address may still change).
+    if (destination.startsWith("/onboarding")) {
+      router.push(destination);
+      return;
+    }
+    void moveToCenter(res.user, res.tenant, destination).then((moved) => {
+      if (!moved) router.push(destination);
+    });
   }
 
   async function login(emailOrPhone: string, password: string): Promise<LoginResponse> {

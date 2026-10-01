@@ -58,7 +58,7 @@ export default function PracticeAttempts({ test }: { test: PracticeTest }) {
                 <tr key={r.id}>
                   <td style={{ fontWeight: 700 }}>{r.studentName}</td>
                   <td style={{ fontSize: 12.5, color: "#6B6E78" }}>{formatDateTime(r.completedAt ?? r.createdAt, lang)}{r.status === "IN_PROGRESS" ? ` · ${t("mock.inProgress")}` : ""}</td>
-                  {sections.map((_, i) => <td key={i} style={{ padding: 0 }}>{cell(results, `s${i}`, !!r.sectionDone[`s${i}`])}</td>)}
+                  {sections.map((_, i) => <td key={i} style={{ padding: "14px 8px" }}>{cell(results, `s${i}`, !!r.sectionDone[`s${i}`])}</td>)}
                   <td style={{ textAlign: "center", fontWeight: 800, color: percentColor(results.overallPercent) }}>{results.overallPercent != null ? `${results.overallPercent}%` : "—"}</td>
                   <td><button type="button" style={ghost} onClick={async () => setOpen(await mockTestsApi.attempt(r.id))}>{t("mock.review")}</button></td>
                 </tr>

@@ -24,9 +24,10 @@ export default function MockAttempts({ test }: { test: MockTest }) {
   }, [test.id]);
   useEffect(load, [load]);
 
-  const cell = (b: number | null | undefined, status?: string) => (
-    <td style={{ textAlign: "center", fontWeight: 800, color: bandColor(b) }}>
-      {b != null ? b : status === "PENDING" ? "⏳" : status === "REVIEW" ? <span style={{ fontSize: 11, color: "#B45309" }}>{t("mock.needsReview")}</span> : "—"}
+  // One table cell per score (never a <td> inside a <td>).
+  const cell = (key: string, b: number | null | undefined, status?: string, done = true) => (
+    <td key={key} style={{ textAlign: "center", fontWeight: 800, fontSize: 15, color: done ? bandColor(b) : "#C9C7C0", padding: "14px 12px", whiteSpace: "nowrap" }}>
+      {!done ? "·" : b != null ? b : status === "PENDING" ? "⏳" : status === "REVIEW" ? <span style={{ fontSize: 11, color: "#B45309" }}>{t("mock.needsReview")}</span> : "—"}
     </td>
   );
 
@@ -37,24 +38,39 @@ export default function MockAttempts({ test }: { test: MockTest }) {
       ) : rows.length === 0 ? (
         <div style={{ padding: 30, textAlign: "center", color: "#8A8D96" }}>{t("mock.noAttempts")}</div>
       ) : (
-        <table className="table" style={{ margin: 0, minWidth: 720 }}>
+        <table className="table" style={{ margin: 0, minWidth: 860, width: "100%", tableLayout: "fixed" }}>
+          <colgroup>
+            <col style={{ width: "24%" }} />
+            <col style={{ width: "24%" }} />
+            {MOCK_SECTIONS.map((s) => <col key={s} style={{ width: "9%" }} />)}
+            <col style={{ width: "8%" }} />
+            <col style={{ width: "8%" }} />
+          </colgroup>
           <thead>
             <tr>
-              <th>{t("mock.student")}</th>
-              <th>{t("mock.date")}</th>
-              {MOCK_SECTIONS.map((s) => <th key={s} style={{ textAlign: "center" }}>{SECTION_ICON[s]}</th>)}
-              <th style={{ textAlign: "center" }}>{t("mock.overall")}</th>
+              <th style={{ padding: "12px 16px" }}>{t("mock.student")}</th>
+              <th style={{ padding: "12px 12px" }}>{t("mock.date")}</th>
+              {MOCK_SECTIONS.map((s) => (
+                <th key={s} style={{ textAlign: "center", padding: "12px 8px" }} title={t(sectionKey(s))}>
+                  <div style={{ fontSize: 16, lineHeight: 1 }}>{SECTION_ICON[s]}</div>
+                  <div style={{ fontSize: 10.5, fontWeight: 600, color: "#8A8D96", marginTop: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t(sectionKey(s))}</div>
+                </th>
+              ))}
+              <th style={{ textAlign: "center", padding: "12px 8px" }}>{t("mock.overall")}</th>
               <th />
             </tr>
           </thead>
           <tbody>
             {rows.map((r) => (
               <tr key={r.id}>
-                <td style={{ fontWeight: 700 }}>{r.studentName}</td>
-                <td style={{ fontSize: 12.5, color: "#6B6E78" }}>{formatDateTime(r.completedAt ?? r.createdAt, lang)}{r.status === "IN_PROGRESS" ? ` · ${t("mock.inProgress")}` : ""}</td>
-                {MOCK_SECTIONS.map((s) => <td key={s} style={{ padding: 0 }}>{r.sectionDone[s] ? cell(r.results[s]?.band, r.results[s]?.status) : <span style={{ display: "block", textAlign: "center", color: "#C9C7C0" }}>·</span>}</td>)}
-                {cell(r.results.overall)}
-                <td><button type="button" style={ghost} onClick={async () => setOpen(await mockTestsApi.attempt(r.id))}>{t("mock.review")}</button></td>
+                <td style={{ fontWeight: 700, padding: "14px 16px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={r.studentName}>{r.studentName}</td>
+                <td style={{ fontSize: 12.5, color: "#6B6E78", padding: "14px 12px" }}>
+                  {formatDateTime(r.completedAt ?? r.createdAt, lang)}
+                  {r.status === "IN_PROGRESS" && <div style={{ display: "inline-block", marginLeft: 6, fontSize: 11, fontWeight: 700, color: "#B45309", background: "#FEF3C7", borderRadius: 100, padding: "2px 8px" }}>{t("mock.inProgress")}</div>}
+                </td>
+                {MOCK_SECTIONS.map((s) => cell(s, r.results[s]?.band, r.results[s]?.status, Boolean(r.sectionDone[s])))}
+                {cell("overall", r.results.overall)}
+                <td style={{ textAlign: "right", padding: "10px 16px" }}><button type="button" style={ghost} onClick={async () => setOpen(await mockTestsApi.attempt(r.id))}>{t("mock.review")}</button></td>
               </tr>
             ))}
           </tbody>

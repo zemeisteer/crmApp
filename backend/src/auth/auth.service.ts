@@ -12,9 +12,9 @@ import * as bcrypt from 'bcryptjs';
 import { generateSecret as generateTotpSecret, generateURI as generateTotpUri, verify as verifyTotp } from 'otplib';
 import * as qrcode from 'qrcode';
 import { randomBytes, createHash } from 'crypto';
-import { eq, and, gt } from 'drizzle-orm';
+import { eq, and, gt, isNull, lt } from 'drizzle-orm';
 import { DB, Database } from '../db/db.module';
-import { tenants, users, sessions, organizationMemberships } from '../db/schema';
+import { tenants, users, sessions, organizationMemberships, authHandoffCodes } from '../db/schema';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { EmailService } from '../email/email.service';
@@ -298,6 +298,34 @@ export class AuthService {
         ? [{ tenantId: tenant.id, name: tenant.name, subdomain: tenant.subdomain, role: user.role, logoUrl: tenant.logoUrl, onboardingStep: tenant.onboardingStep }]
         : [],
     };
+  }
+
+  // ---- Moving a session to the center's own address ----
+  // The app on <center>.<domain> is a different site for the browser, so the
+  // login does not follow. A signed-in user asks for a one-time code, the
+  // browser carries it in the URL fragment, and the other address exchanges
+  // it for its own session. 60 seconds, single use, stored hashed.
+
+  async createHandoff(userId: string, tenantId: string | null) {
+    if (!tenantId) throw new BadRequestException('Markaz tanlanmagan');
+    const tenant = await this.db.query.tenants.findFirst({ where: eq(tenants.id, tenantId), columns: { id: true, subdomain: true } });
+    if (!tenant) throw new NotFoundException('Markaz topilmadi');
+    const code = randomBytes(32).toString('hex');
+    await this.db.delete(authHandoffCodes).where(lt(authHandoffCodes.expiresAt, new Date()));
+    await this.db.insert(authHandoffCodes).values({ codeHash: hashToken(code), userId, tenantId: tenant.id, expiresAt: new Date(Date.now() + 60_000) });
+    return { code, subdomain: tenant.subdomain };
+  }
+
+  async exchangeHandoff(code: string, meta: { userAgent?: string; ip?: string }) {
+    if (typeof code !== 'string' || code.length < 32) throw new UnauthorizedException('Kod yaroqsiz');
+    // Claim it atomically: only the first exchange gets a row back.
+    const [row] = await this.db
+      .update(authHandoffCodes)
+      .set({ usedAt: new Date() })
+      .where(and(eq(authHandoffCodes.codeHash, hashToken(code)), isNull(authHandoffCodes.usedAt), gt(authHandoffCodes.expiresAt, new Date())))
+      .returning();
+    if (!row) throw new UnauthorizedException('Kod eskirgan yoki ishlatilgan');
+    return this.selectWorkspace(row.userId, row.tenantId, meta);
   }
 
   async selectWorkspace(userId: string, targetTenantId: string, meta: { userAgent?: string; ip?: string }) {

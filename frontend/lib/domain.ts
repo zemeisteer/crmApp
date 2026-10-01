@@ -48,3 +48,18 @@ export function centerSiteUrl(subdomain: string) {
 export function centerPortalUrl(subdomain: string) {
   return `${centerSiteUrl(subdomain)}/portal`;
 }
+
+/**
+ * The address a center's staff should work on, when this page is open
+ * somewhere else: null if already there, or if the app runs on an address
+ * we do not manage (an IP, a custom domain), where nothing should move.
+ */
+export function centerRedirectBase(subdomain: string): string | null {
+  if (typeof window === "undefined" || !subdomain) return null;
+  const host = window.location.hostname.toLowerCase();
+  const local = host === "localhost" || host.endsWith(".localhost");
+  const managed = local || host === ROOT_DOMAIN || host === `www.${ROOT_DOMAIN}` || host.endsWith(`.${ROOT_DOMAIN}`);
+  if (!managed) return null;
+  if (subdomainFromHost(window.location.host) === subdomain.toLowerCase()) return null;
+  return centerSiteUrl(subdomain);
+}

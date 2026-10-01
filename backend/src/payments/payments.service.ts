@@ -106,6 +106,8 @@ export class PaymentsService {
       throw new NotFoundException("O'quvchi topilmadi");
     }
 
+    if ((dto.discount ?? 0) < 0) throw new BadRequestException("Chegirma manfiy bo'lishi mumkin emas");
+
     let targetInvoice: typeof invoices.$inferSelect | undefined;
 
     if (dto.invoiceId) {
@@ -169,7 +171,10 @@ export class PaymentsService {
       });
 
       const newPaid = targetInvoice.amountPaid + allocAmount;
-      const newRemaining = Math.max(0, targetInvoice.remainingAmount - allocAmount);
+      // A discount given with the payment closes that part of the invoice
+      // too; otherwise the waived sum would stay on it as debt.
+      const waived = Math.min(dto.discount ?? 0, Math.max(0, targetInvoice.remainingAmount - allocAmount));
+      const newRemaining = Math.max(0, targetInvoice.remainingAmount - allocAmount - waived);
       const newStatus = newRemaining === 0 ? 'PAID' : 'PARTIALLY_PAID';
 
       await this.db
@@ -208,7 +213,9 @@ export class PaymentsService {
       );
     }
     void this.webhooks.dispatch(tenantId, 'payment.created', payment);
-    return payment;
+    // With the student and groups, so the receipt shown right after saving
+    // has a name and a course instead of an id.
+    return this.findOne(tenantId, payment.id);
   }
 
   async summary(tenantId: string) {

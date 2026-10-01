@@ -320,6 +320,18 @@ function PaymentReceiptModal({
               </span>
             </div>
 
+            {payment.discount > 0 && (
+              <>
+                <div style={{ display: "flex", justifyContent: "space-between", borderTop: "1px dashed #CBD5E1", paddingTop: 12, marginTop: 6 }}>
+                  <span style={{ color: "#64748B" }}>{t("pay.price")}:</span>
+                  <span style={{ fontWeight: 600 }}>{formatMoney(payment.amount + payment.discount)} {t("common.sumUnit")}</span>
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between" }}>
+                  <span style={{ color: "#64748B" }}>{t("pay.discount")}:</span>
+                  <span style={{ fontWeight: 700, color: "#10B981" }}>− {formatMoney(payment.discount)} {t("common.sumUnit")}</span>
+                </div>
+              </>
+            )}
             <div
               style={{
                 borderTop: "1px dashed #CBD5E1",
@@ -340,11 +352,6 @@ function PaymentReceiptModal({
               <span style={{ fontWeight: 600 }}>{t("payments.receipt.amountWords")}:</span> {amountWords}
             </div>
 
-            {payment.discount > 0 && (
-              <div style={{ fontSize: 12, color: "#10B981", fontWeight: 600 }}>
-                Chegirma berildi: {formatMoney(payment.discount)} {t("common.sumUnit")}
-              </div>
-            )}
           </div>
 
           {/* Footer & Signature lines */}
@@ -764,12 +771,19 @@ function PaymentsContent() {
       setError(t("payments.selectStudentError"));
       return;
     }
+    // "Summa" is the price; a discount is taken off it, the rest is paid.
+    const price = Number(amount);
+    const off = discount ? Number(discount) : 0;
+    if (off < 0 || off > price) {
+      setError(t("pay.discountTooBig"));
+      return;
+    }
     setSaving(true);
     try {
       const created = await paymentsApi.create({
         studentId,
-        amount: Number(amount),
-        discount: discount ? Number(discount) : undefined,
+        amount: price - off,
+        discount: off > 0 ? off : undefined,
         method,
         status: "PAID",
         forMonth,
@@ -2118,6 +2132,16 @@ function PaymentsContent() {
               placeholder="0"
             />
           </Field>
+          {Number(discount) > 0 && Number(amount) > 0 && (
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: Number(discount) > Number(amount) ? "#FDEBEC" : "#ECFDF5", borderRadius: 10, padding: "10px 14px", fontSize: 13.5 }}>
+              <span style={{ color: "#4A4E58" }}>
+                {formatMoney(Number(amount))} − {formatMoney(Number(discount))} =
+              </span>
+              <span style={{ fontWeight: 800, color: Number(discount) > Number(amount) ? "#B23A47" : "#047857" }}>
+                {t("pay.toPay")}: {formatMoney(Math.max(0, Number(amount) - Number(discount)))} {t("common.sumUnit")}
+              </span>
+            </div>
+          )}
           <Field label={t("payments.fieldMethod")}>
             <Select
               options={[

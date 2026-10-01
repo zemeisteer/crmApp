@@ -892,6 +892,20 @@ export const studentAiMessages = pgTable('student_ai_messages', {
   tenantIdx: index('student_ai_messages_tenant_idx').on(t.tenantId),
 }));
 
+// One-time codes that move a staff session to the center's own address
+// (the browser keeps a separate login per host). Stored hashed, 60 seconds.
+export const authHandoffCodes = pgTable('auth_handoff_codes', {
+  id: text('id').primaryKey().$defaultFn(() => createId()),
+  codeHash: text('code_hash').notNull(),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  tenantId: text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  expiresAt: timestamp('expires_at').notNull(),
+  usedAt: timestamp('used_at'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+}, (t) => ({
+  hashIdx: uniqueIndex('auth_handoff_codes_hash_idx').on(t.codeHash),
+}));
+
 // A parent's Telegram chat, linked to one or more children (the student's
 // own chat stays on students.telegram_chat_id). `active` = the child the
 // parent is looking at in the bot.

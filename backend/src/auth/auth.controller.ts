@@ -7,6 +7,7 @@ import { LoginDto } from './dto/login.dto';
 import { ForgotPasswordDto, RefreshTokenDto, ResetPasswordDto } from './dto/forgot-password.dto';
 import { ConfirmTwoFactorDto, VerifyTwoFactorDto } from './dto/two-factor.dto';
 import { JwtAuthGuard } from '../common/jwt-auth.guard';
+import { RolesGuard } from '../common/roles.guard';
 import { CurrentUser } from '../common/current-user.decorator';
 
 function meta(req: Request, userAgent?: string) {
@@ -96,6 +97,20 @@ export class AuthController {
   @Get('workspaces')
   listWorkspaces(@CurrentUser('sub') userId: string) {
     return this.authService.listWorkspaces(userId);
+  }
+
+  // A one-time code for opening the same session on the center's address.
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
+  @Post('handoff')
+  handoff(@CurrentUser('sub') userId: string, @CurrentUser('tenantId') tenantId: string | null) {
+    return this.authService.createHandoff(userId, tenantId);
+  }
+
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
+  @Post('handoff/exchange')
+  handoffExchange(@Body('code') code: string, @Req() req: Request, @Headers('user-agent') ua?: string) {
+    return this.authService.exchangeHandoff(code, meta(req, ua));
   }
 
   @UseGuards(JwtAuthGuard)

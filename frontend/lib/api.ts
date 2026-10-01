@@ -1208,6 +1208,11 @@ export const authApi = {
 
   workspaces: () => request<WorkspaceItem[]>("/auth/workspaces"),
 
+  // Carrying the session to the center's own address (see app/auth/handoff).
+  handoff: () => request<{ code: string; subdomain: string }>("/auth/handoff", { method: "POST" }),
+  handoffExchange: (code: string) =>
+    request<AuthResponse>("/auth/handoff/exchange", { method: "POST", body: JSON.stringify({ code }) }),
+
   selectWorkspace: (tenantId: string) =>
     request<AuthResponse>("/auth/select-workspace", {
       method: "POST",
