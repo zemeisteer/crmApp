@@ -4,11 +4,19 @@
 |---|---|---|
 | **1-bosqich** — migratsiyalar, auth, to'lovlar, qarz, AI/import, CI | `78d9cef` | push qilingan (`1e28f7e`); GitHub CI `36840295303` **o'tgan** |
 | **2-bosqich** — a'zolik, narx tarixi, test bazasi, AI repetitor limiti | `1e28f7e` | push qilingan (`9d4a369`); GitHub CI `36856454988` **yiqilgan** (migratsiya qadami) |
-| **3-bosqich** — migratsiya buyrug'i birligi, staging tayyorligi | `9d4a3690716d6ce5f74909e5797277eadac3a028` | **faqat lokal**, commit va push qilinmagan |
+| **3-bosqich** — migratsiya buyrug'i birligi, staging tayyorligi | `9d4a369` | push qilingan (`8f97529`); GitHub CI `36860153468`: backend va frontend **o'tgan**, `images` ishi **yiqilgan** (smoke skriptining o'zidagi xato) |
+| **4-bosqich** — smoke skriptini tuzatish, `SETUP.md` ni tiklash | `8f975293cee669160a45d02a410797fdcd51c9b4` | **faqat lokal**, commit va push qilinmagan |
 
-**Muhim:** 2-bosqichdagi "245 unit / 186 E2E" — lokal natijalar. `9d4a369` CI'dan **o'tmagan**: backend ishi migratsiya qadamida to'xtagan, sxema tekshiruvlari, testlar va build o'tkazib yuborilgan. 3-bosqich shu xatoni tuzatadi; uning natijalari ham hozircha faqat lokal (0.4-bo'lim).
+**`8f97529` bo'yicha CI'da tasdiqlangan** (yurish `36860153468`, PostgreSQL 16):
+- migratsiya va yangilash tekshiruvlari o'tdi — 3-bosqichdagi enum tuzatishi CI'da ishlaydi;
+- backend: 245 unit, 186 E2E; backend va frontend build;
+- production Docker image'lar **qurildi** va konteynerlar **ishga tushdi**.
 
-**Tayyorlik bahosi:** cheklangan pilot uchun kod tayyor, lekin **avval** 3-bosqich push qilinib CI yashil bo'lishi va staging tekshiruvi (0.6-bo'lim) o'tishi kerak.
+**`8f97529` da yiqilgan:** `images` ishi, smoke testning 3-qadamida — API va qayta ishga tushirish tekshiruvlariga yetmasdan. Sabab ilovada emas, skriptda (0.7-bo'lim).
+
+**4-bosqich** shu skriptni tuzatadi. U hali push qilinmagan va **GitHub CI'dan o'tmagan**; to'liq Docker smoke testi hali biror joyda `SMOKE OK` ga yetmagan.
+
+**Tayyorlik bahosi:** kod cheklangan pilotga tayyor; **avval** 4-bosqich push qilinib `images` ishi yashil bo'lishi va staging tekshiruvi (0.6-bo'lim) o'tishi kerak.
 
 ---
 
@@ -96,13 +104,11 @@ Ilova darajasida (migratsiyadan keyin o'chirilgan xodim kira olmasligi): `test/s
 | `npm run build` (frontend) | muvaffaqiyatli |
 | `npm audit --omit=dev --audit-level=high` (frontend) | `found 0 vulnerabilities` |
 
-**Tekshirilmagan:**
-- **PostgreSQL 16.** Lokalda faqat 18.3 bor. Xato mexanizmi versiyaga bog'liq bo'lmagan stsenariyda (3) qayta chiqarildi va tuzatish shu stsenariyda tekshirildi, lekin CI'dagi aynan 16-versiyada yurishi faqat push'dan keyin ko'rinadi.
-- **GitHub CI.** 3-bosqich push qilinmagan.
+**Keyin CI'da tasdiqlandi** (`8f97529`, yurish `36860153468`): shu tekshiruvlar PostgreSQL 16 da ham o'tdi — migratsiya, yangilash, 245 unit, 186 E2E, ikkala build.
 
-### 0.5. Docker — **bloklangan, tekshirilmagan**
+### 0.5. Docker — qisman tasdiqlangan
 
-Bu mashinada Docker yo'q (`docker: command not found`), shuning uchun image qurish va konteynerda ishga tushirish **bajarilmadi**. Muvaffaqiyat da'vo qilinmaydi.
+Bu mashinada Docker yo'q (`docker: command not found`), lokalda image qurib bo'lmaydi. CI'da (`8f97529`) image'lar qurildi va konteynerlar ishga tushdi, lekin smoke test 3-qadamda skript xatosi bilan to'xtadi (0.7-bo'lim). **To'liq smoke test hali o'tmagan.**
 
 Ko'rib chiqildi (o'qish orqali):
 - `backend/Dockerfile`: `npm ci`; runner bosqichiga `drizzle/` va `scripts/migrate.cjs` ko'chiriladi; `CMD node scripts/migrate.cjs && node dist/main.js` — migratsiya muvaffaqiyatsiz bo'lsa API ishga tushmaydi, tartib kafolatlangan.
@@ -112,14 +118,14 @@ Ko'rib chiqildi (o'qish orqali):
 Tayyorlab qo'yildi (ishga tushirilmagan):
 - `docker-compose.smoke.yml` — o'sha Dockerfile'lar va `runner` target'lari; PostgreSQL xotirada (tmpfs), nginx/sertifikat/zaxira yo'q; barcha tashqi integratsiyalar bo'sh, eslatmalar o'chiq; portlar faqat `127.0.0.1`.
 - `scripts/production/smoke-test.sh` — image'larni quradi; stack sog'lom bo'lishini kutadi; migratsiyalar API'dan **oldin** tugaganini log tartibidan tekshiradi; `--status` bo'yicha hammasi qo'llanganini; `/api/health`, frontend `/login`, API orqali ro'yxatdan o'tish → `/auth/me`; backend qayta ishga tushganda "up to date" va hech bir migratsiya ikki marta qo'llanmaganini; tashqi kalitlar bo'shligini. Oxirida hammasini o'chiradi.
-- CI'ga `images` ishi qo'shildi — shu skriptni GitHub runner'da yuritadi. **U ham hali yurmagan.**
+- CI'ga `images` ishi qo'shildi — shu skriptni GitHub runner'da yuritadi.
 
 Docker bor mashinada: `bash scripts/production/smoke-test.sh` (kutiladigan oxirgi satr: `SMOKE OK`).
 
 ### 0.6. Staging'gacha qolgan to'siqlar
 
-1. 3-bosqichni push qilish va CI yashil bo'lishi: backend (PostgreSQL 16 da migratsiya), frontend, va yangi `images` ishi.
-2. Docker smoke testi o'tishi (CI'da yoki Docker bor mashinada).
+1. 4-bosqichni push qilish va CI'da `images` ishi `SMOKE OK` ga yetishi (backend va frontend `8f97529` da allaqachon yashil).
+2. Smoke test keyingi qadamlarida (4–6: API, qayta ishga tushirish, tashqi kalitlar) yangi muammo chiqsa — tuzatish. Bu qadamlar haqiqiy konteynerda hali bir marta ham yurmagan.
 3. Quyidagi staging ro'yxati. Tashqi integratsiyalar **tekshirilmagan** — mock testlar o'tgani ularni tasdiqlamaydi.
 
 **Staging nazorat ro'yxati**
@@ -131,6 +137,65 @@ Docker bor mashinada: `bash scripts/production/smoke-test.sh` (kutiladigan oxirg
 - [ ] **Tarixiy narx:** o'tgan oyda sariq ogohlantirish; narx tasdiqlangach jami qarz o'zgaradi; qarzdorlar ro'yxati = moliya xulosasi = direktor hisoboti.
 - [ ] **Telegram** (haqiqiy bot, haqiqiy chat): webhook, `/start`, o'quvchi AI savoli va limit, to'lov xabari, qarz eslatmasi.
 - [ ] **Click / Payme** (test merchant): to'lov havolasi → muvaffaqiyatli to'lov → bitta yozuv, hisob-faktura yopiladi; **webhook ikki marta** kelganda ikkinchi to'lov yaratilmaydi; bekor qilingan to'lov hech narsani yopmaydi.
+
+---
+
+### 0.7. 4-bosqich: smoke skriptidagi xato va tuzatish
+
+**CI'dagi xato** (`images` ishi, 3-qadam):
+
+```
+scripts/production/smoke-test.sh: line 33: echo: write error: Broken pipe
+SMOKE FAILED: no migration output on first start
+```
+
+**Sabab — skriptda, ilovada emas.** Skript `set -euo pipefail` bilan ishlaydi va shunday tekshirar edi:
+
+```bash
+echo "$LOGS" | grep -q "migrate: applied 0000_"
+```
+
+`grep -q` birinchi mos satrni topishi bilan chiqadi; `echo` esa hali yozayotgan bo'ladi, `SIGPIPE` oladi ("Broken pipe"), va `pipefail` tufayli butun quvur **muvaffaqiyatsiz** deb hisoblanadi — matn topilgan bo'lsa ham. Ya'ni migratsiya loglari bor edi; skript ularni topib, "topilmadi" deb xabar bergan.
+
+**Tuzatish:**
+- Matn tekshiruvlari `scripts/production/smoke-lib.sh` ga chiqarildi (`has_text`, `count_lines`, `first_line`, `last_line`, `json_string`). Matn here-string bilan beriladi; erta chiqadigan o'quvchi (`grep -q`, `head`) hech qayerda quvur ortida turmaydi.
+- Skript to'liq ko'rib chiqildi: `echo | grep -q` (5 joy), `curl | grep -q` (2 joy), `... | head -1`, `exec ... | grep -c` — hammasi almashtirildi.
+- HTTP so'rovlari: avval `curl` ning chiqish kodi tekshiriladi, keyin saqlangan javob o'qiladi; xato bo'lsa HTTP holati yoki `curl` xabari chiqadi.
+- Buyruq natijasini o'zgaruvchiga olish joylari xato bo'lsa aniq xabar bilan to'xtaydi.
+- **Frontend tayyorligi** endi haqiqatan tekshiriladi: smoke compose'da frontend uchun healthcheck (`/login` sahifasi), skriptda bir daqiqagacha qayta urinish va javob HTML ekani.
+- `set -euo pipefail` saqlangan; umumiy `|| true` yo'q; hech bir tekshiruv olib tashlanmagan. Qo'shilgan: logdagi qo'llangan migratsiyalar soni = fayllar soni; qayta ishga tushgandan keyin kutilayotgan migratsiya yo'qligi.
+- `count_lines` da yagona istisno: `grep -c` ning "mos satr yo'q" kodi (1) — bu javob 0, xato emas; haqiqiy xato (2) baribir to'xtatadi.
+
+**Tekshiruv (lokal):**
+
+| Tekshiruv | Natija |
+|---|---|
+| `bash -n` (3 fayl) | sintaksis to'g'ri |
+| ShellCheck | **o'rnatilmagan — yuritilmadi** |
+| `bash scripts/production/smoke-lib.test.sh` — 9,5 MB, 90 005 satrli sun'iy log, mos satr boshida | 19 tekshiruv o'tdi |
+| ↳ eski usul (`echo \| grep -q`) o'sha logda | **exit 141** (SIGPIPE) — CI xatosi qayta chiqdi |
+| ↳ `has_text` erta mos satrda | topadi, 25 martadan 25 marta |
+| ↳ yo'q matn | "yo'q" deb to'g'ri qaytaradi |
+| Skript mantig'i soxta `docker` va soxta HTTP server bilan | pastda |
+
+Soxta muhitda skriptning boshidan oxirigacha yurishi (haqiqiy konteyner **emas**):
+
+| Holat | Natija |
+|---|---|
+| hammasi joyida | `SMOKE OK`, tozalash chaqirildi |
+| kutilayotgan migratsiya bor | `SMOKE FAILED: applied 34/34, pending 1` |
+| qayta ishga tushganda migratsiya ikki marta | `SMOKE FAILED: a migration was applied twice` |
+| tashqi kalit o'rnatilgan | `SMOKE FAILED: external integrations are configured ...` |
+| oxirgi migratsiya logda yo'q | `SMOKE FAILED: the latest migration ... was not applied` |
+| API migratsiyadan oldin boshlangan | `SMOKE FAILED: the API started (log line 1) before migrations finished (line 35)` |
+| migratsiya logi umuman yo'q | `SMOKE FAILED: no migration output on first start` |
+| backend javob bermaydi | `SMOKE FAILED: backend health: ... curl: (7) Failed to connect` |
+
+Har bir holatda tozalash (`down --volumes`) bajarildi.
+
+**To'liq Docker smoke testi o'tdimi? — Yo'q, tekshirilmagan.** Bu mashinada Docker yo'q; yuqoridagilar skript mantig'ini tekshiradi, konteynerlarni emas. Haqiqiy natija faqat push'dan keyingi `images` ishida ko'rinadi. CI'ga yordamchi funksiyalar testi ham qo'shildi (`smoke-lib.test.sh`).
+
+**Hujjat:** oldingi o'zgarish `SETUP.md` dan migratsiya bo'limi bilan birga keraksiz ravishda **frontend o'rnatish, Telegram, email, zaxira, testlar, arxitektura** bo'limlarini ham o'chirib yuborgan edi. Ular `9d4a369` dagi matndan tiklandi. Saqlangan: `npm run db:migrate` yagona buyruq, Docker migratsiyani o'zi qo'llaydi. Tiklanmagan: `drizzle-kit migrate` / `db:push` oddiy o'rnatish sifatida, va `migrate-memberships.ts` ko'rsatmasi (u barcha akkauntlarga a'zolik berib, o'chirilgan xodimlarni qaytarar edi). O'sha skriptning o'ziga ham himoya qo'yildi: maxsus bayroqsiz ishlamaydi. Kalitlar o'rniga to'ldirgichlar.
 
 ---
 

@@ -50,6 +50,98 @@ Bu `scripts/migrate.cjs` — CI, Docker konteyneri (har ishga tushganda), E2E te
 - **Jadvallari bor, lekin migratsiya yozuvi yo'q baza** (ilgari `db:push` bilan qurilgan): `db:migrate` to'xtaydi va so'raydi. Sxema qaysi migratsiyaga mosligini ko'rsating: `node scripts/migrate.cjs --baseline <teg>` (to'liq dolzarb bo'lsa tegsiz), keyin yana `npm run db:migrate`.
 - `npm run db:push` faqat tashlab yuboriladigan tajriba bazasi uchun; u migratsiya yozuvini yaratmaydi.
 
+Agar baza serveri ilgari UTC bo'lmagan vaqt zonasida ishlagan bo'lsa (masalan `Asia/Tashkent`), eski `created_at` qiymatlari 5 soat oldinga siljigan bo'ladi. Avval dry-run bilan ko'ring, keyin `--apply` bilan qo'llang (`--before` — UTC tuzatishli versiya deploy qilingan vaqt):
+
+```bash
+node scripts/fix-local-timestamps.cjs --offset-minutes=300 --before=2026-09-24T17:00:00Z
+```
+
+### Telegram bot (xodimlarga eslatmalar)
+
+1. Telegram'da **@BotFather** → `/newbot` → nom va username bering. U bergan tokenni oling.
+2. `backend/.env`ga yozing va backendni qayta ishga tushiring:
+
+```
+TELEGRAM_BOT_TOKEN=<BotFather bergan token>
+TELEGRAM_BOT_USERNAME=sizning_botingiz_bot
+TELEGRAM_POLLING=true      # lokal kompyuterda
+```
+
+3. Xodimlar CRM'dagi **Lidlar** sahifasida "Telegram eslatmalari" → **Ulash** ni bosadi, botda **Start** ni bosadi. Shundan so'ng yangi arizalar, qayta aloqa va sinov darslari haqidagi eslatmalar Telegram'ga ham keladi.
+
+Production (ochiq domen) uchun `TELEGRAM_POLLING=false` qiling, `TELEGRAM_WEBHOOK_SECRET`ga tasodifiy satr yozing va webhook'ni shu sir bilan ulang:
+`https://api.telegram.org/bot<TOKEN>/setWebhook?url=https://<domen>/api/telegram/webhook&secret_token=<TELEGRAM_WEBHOOK_SECRET>`
+Serverda buni `scripts/production/set-telegram-webhook.sh` bajaradi (`docs/DEPLOYMENT_GUIDE.md`).
+
+### Email (Resend)
+
+Parolni tiklash, email tasdiqlash va lid eslatmalari xatlari uchun:
+
+1. resend.com'da ro'yxatdan o'ting → **Domains** bo'limida domeningizni qo'shib, u ko'rsatgan DNS yozuvlarini domen sozlamalariga kiriting.
+2. **API Keys** → **Create API Key** (ruxsat: *Sending access*).
+3. `backend/.env`ga yozing va backendni qayta ishga tushiring:
+
+```
+RESEND_API_KEY=<Resend API kaliti>
+EMAIL_FROM="TalimCRM <noreply@sizningdomen.uz>"
+```
+
+Domen hali tasdiqlanmagan bo'lsa, sinov uchun `EMAIL_FROM=onboarding@resend.dev` ishlatish mumkin, lekin Resend bunda faqat o'z hisobingiz emailiga yuboradi. `RESEND_API_KEY` bo'sh bo'lsa SMTP sozlamalari ishlatiladi, ikkalasi ham bo'sh bo'lsa xatlar yuborilmaydi (faqat logga yoziladi).
+
+### Zaxira nusxalash
+
+```bash
+npm run db:backup   # backups/talimcrm_<sana>.sql.gz yaratadi
+```
+
+Buni cron/Task Scheduler orqali kunlik ishga tushiring va nusxalarni bazadan alohida joyda (S3 va h.k.) saqlang — tafsilotlar `scripts/backup.sh` ichida. Serverda (Docker) zaxira va tiklash: `scripts/production/backup.sh`, `scripts/production/restore.sh` — `docs/DEPLOYMENT_GUIDE.md`.
+
+### Testlar va tekshiruv
+
+```bash
+npm run test                   # unit testlar
+npm run test:e2e               # HTTP orqali to'liq tekshiruv, haqiqiy PostgreSQL'da
+npm run db:verify-migrations   # yangi o'rnatish va yangilash yo'llari (vaqtinchalik bazalarda)
+```
+
+- `test:e2e` ishlab chiqish bazasiga tegmaydi: o'zining `<baza>_e2e` bazasida ishlaydi va uni har safar qayta quradi. Nomi `_e2e` yoki `_test` bilan tugamaydigan baza rad etiladi. Tafsilot: `backend/README.md` → "The end-to-end database".
+- Testlarda AI, email, Telegram va SMS kalitlari bo'shatiladi — tashqariga hech narsa ketmaydi.
+- PostgreSQL foydalanuvchisiga `CREATEDB` huquqi kerak.
+- Markazga kira olmaydigan xodim akkauntlarini ko'rish: `node scripts/list-unlinked-accounts.cjs` (faqat o'qiydi). A'zolik ommaviy tiklanmaydi — keraklisini markaz rahbari Xodimlar bo'limida qayta qo'shadi.
+
+### API va Arxitektura tuzilishi (qisqacha)
+
+- **Auth & Onboarding:**
+  - "Start for free" (qisqa ro'yxatdan o'tish) yangi markaz va OWNER foydalanuvchi yaratadi.
+  - 8 bosqichli Onboarding (`/onboarding`, `OnboardingModule`): profil, yo'nalishlar, Workspace URL (subdomain), fanlar, kurslar, birinchi filial, jamoani taklif qilish.
+  - Ko'p markazlilik: `organization_memberships` orqali bitta foydalanuvchi bir nechta ta'lim markaziga a'zo bo'lishi va kirishda ishchi maydonni tanlashi mumkin (`/api/auth/select-workspace`).
+  - Xavfsiz taklifnomalar: `invitations` orqali o'qituvchi, talaba va xodimlar uchun bir martalik, muddati cheklangan (7 kun), 32-baytli kriptografik token bilan hisobni faollashtirish (`/invite/[token]`).
+- **Fanlar va Kurslar:**
+  - Qat'iy markaz yo'nalishidan voz kechilgan: fanlar (`subjects`) va kurslar (`courses`) to'liq moslashuvchan iyerarxiyada ishlaydi.
+- **Asosiy CRM modullari:**
+  - Tenant, guruh/o'quvchi/o'qituvchi CRUD (soft-delete + tiklash bilan), to'lov, davomat, maosh, uy vazifasi, filial, Excel export/import, PDF kvitansiya, faoliyat jurnali (audit log), AI tahlil/materiallar, Telegram bot, Click/Payme (markaz ↔ o'quvchi va markaz ↔ platforma), platform (superadmin) boshqaruvi. To'liq ro'yxat uchun `src/*/*.controller.ts` fayllariga qarang.
+
+Barcha tenant-scoped so'rovlar JWT'dagi `tenantId` bo'yicha avtomatik filtrlaydi (multi-tenancy izolyatsiyasi) — bu backendning eng muhim xavfsizlik qatlami, o'zgartirganda ehtiyot bo'ling. Bu `test:e2e` bilan avtomatik tekshiriladi. Kirish huquqi faqat faol a'zolik (`organization_memberships`) dan keladi — `users.tenantId` / `users.role` hech narsaga ruxsat bermaydi.
+
+### Nima uchun Prisma emas, Drizzle?
+
+Boshida Prisma bilan boshlangan edi, lekin build-sandbox muhitida Prisma'ning binary query-engine fayllarini yuklab olib bo'lmadi. Shuning uchun Drizzle ORM'ga o'tildi — u sof TypeScript, binary kerak emas.
+
+## 2. Frontend
+
+```bash
+cd frontend
+npm install
+```
+
+`.env.local` allaqachon bor: `NEXT_PUBLIC_API_URL=http://localhost:4000/api`.
+
+```bash
+npm run dev
+```
+
+Frontend `http://localhost:3000` da ishga tushadi.
+
 ## 3. Docker orqali ishga tushirish (ixtiyoriy)
 
 ```bash

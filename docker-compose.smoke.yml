@@ -98,3 +98,10 @@ services:
       HOSTNAME: "0.0.0.0"
     ports:
       - "127.0.0.1:13000:3000"
+    # Ready means it serves the login page, not that the process started.
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/login >/dev/null || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 24
+      start_period: 5s

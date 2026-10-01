@@ -120,5 +120,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      # The script's own text checks, on a log far larger than a pipe
+      # buffer (the first version failed on exactly that).
+      - name: Test the smoke-test helpers
+        run: bash scripts/production/smoke-lib.test.sh
       - name: Build and smoke-test the production images
         run: bash scripts/production/smoke-test.sh

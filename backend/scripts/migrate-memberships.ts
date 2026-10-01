@@ -6,7 +6,22 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import { eq } from 'drizzle-orm';
 import { users, tenants, organizationMemberships } from '../src/db/schema';
 
+// OBSOLETE - kept only as a record of the one-time move to memberships.
+// It gives EVERY user that still points at a center an ACTIVE membership,
+// which would hand access back to staff who were removed on purpose.
+// Migration 0032 restores the one unambiguous case (a center's founder);
+// everyone else is listed by `node scripts/list-unlinked-accounts.cjs` and
+// re-added by an owner. It refuses to run unless told it is a brand-new
+// import where nobody has ever been removed.
 async function main() {
+  if (!process.argv.includes('--no-one-was-ever-removed')) {
+    console.error(
+      'Refusing to run: this would give every account an ACTIVE membership in its old center,\n' +
+        'including staff who were removed. Use `node scripts/list-unlinked-accounts.cjs` to see\n' +
+        'who has no access, and add the right people back under Staff.',
+    );
+    process.exit(1);
+  }
   const pool = new Pool({ connectionString: process.env.DATABASE_URL });
   const db = drizzle(pool, { schema: { users, tenants, organizationMemberships } });
 
