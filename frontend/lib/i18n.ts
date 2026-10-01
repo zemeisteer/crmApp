@@ -1820,6 +1820,8 @@ export const dict = {
   "handoff.moving": { UZ: "Markaz sahifasiga o'tilmoqda…", RU: "Переход на страницу центра…", EN: "Opening your center…" },
   "handoff.failed": { UZ: "Kirish havolasi eskirgan. Qaytadan kiring.", RU: "Ссылка для входа устарела. Войдите снова.", EN: "This sign-in link has expired. Please sign in again." },
   "handoff.login": { UZ: "Kirish", RU: "Войти", EN: "Sign in" },
+  "auth.loginCenterSubtitle": { UZ: "{name} hisobingizga kiring.", RU: "Войдите в аккаунт {name}.", EN: "Sign in to your {name} account." },
+  "auth.otherCenter": { UZ: "Boshqa markazga kirish", RU: "Войти в другой центр", EN: "Sign in to another center" },
   "chart.current": { UZ: "joriy", RU: "текущий", EN: "current" },
   "chart.noData": { UZ: "Ma'lumot yo'q", RU: "Нет данных", EN: "No data" },
   "dashboard.marksUnit": { UZ: "belgi", RU: "отметок", EN: "marks" },

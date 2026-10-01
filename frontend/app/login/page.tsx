@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuth, isWorkspaceSelection } from "@/lib/auth-context";
 import { useLanguage } from "@/lib/i18n-context";
 import { ApiError, WorkspaceItem } from "@/lib/api";
-import { centerHost } from "@/lib/domain";
+import { centerHost, centerRedirectBase, forgetCenter, lastCenter, mainSiteUrl, subdomainFromHost } from "@/lib/domain";
+import { useCenterFromHost } from "@/lib/use-center-host";
 
 const ACCENT = "#4F46E5";
 
@@ -38,6 +39,23 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  // On a center's own address the login belongs to that center. The main
+  // address sends a returning staff member to the center they last used
+  // (unless they came here on purpose with ?main=1).
+  const hostCenter = useCenterFromHost();
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search);
+    if (q.has("main")) {
+      forgetCenter();
+      return;
+    }
+    // Only from the main address; a center's own login stays put.
+    if (subdomainFromHost(window.location.host)) return;
+    const last = lastCenter();
+    const base = last ? centerRedirectBase(last) : null;
+    if (base) window.location.replace(`${base}/login`);
+  }, []);
 
   // 2FA state
   const [pendingToken, setPendingToken] = useState<string | null>(null);
@@ -438,12 +456,20 @@ export default function LoginPage() {
         <form onSubmit={onSubmit} style={{ width: "100%", maxWidth: 390, display: "flex", flexDirection: "column", gap: 24 }}>
           {/* Header */}
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {hostCenter && (
+              <div style={{ display: "inline-flex", alignSelf: "flex-start", alignItems: "center", gap: 8, background: "#EEF0FF", color: ACCENT, fontWeight: 800, fontSize: 13.5, padding: "7px 12px", borderRadius: 100 }}>
+                🏫 {hostCenter.name ?? hostCenter.subdomain}
+              </div>
+            )}
             <h2 style={{ fontSize: 28, fontWeight: 800, color: "#111827", letterSpacing: "-0.03em" }}>
               {t("auth.login")}
             </h2>
             <p style={{ fontSize: 14.5, color: "#6B7280" }}>
-              {t("auth.loginSubtitle")}
+              {hostCenter ? t("auth.loginCenterSubtitle").replace("{name}", hostCenter.name ?? hostCenter.subdomain) : t("auth.loginSubtitle")}
             </p>
+            {hostCenter && (
+              <a href={`${mainSiteUrl()}/login?main=1`} style={{ fontSize: 12.5, color: "#6B7280", textDecoration: "underline" }}>{t("auth.otherCenter")}</a>
+            )}
           </div>
 
           {error && (

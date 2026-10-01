@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { centerRedirectBase } from "./domain";
+import { centerRedirectBase, rememberCenter } from "./domain";
 import {
   authApi,
   getToken,
@@ -93,6 +93,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const { code } = await authApi.handoff();
       authApi.logout().catch(() => undefined);
       clearToken();
+      rememberCenter(tn.subdomain);
       window.location.replace(`${base}/auth/handoff?next=${encodeURIComponent(path)}#code=${code}`);
       return true;
     } catch {

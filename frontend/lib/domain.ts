@@ -63,3 +63,40 @@ export function centerRedirectBase(subdomain: string): string | null {
   if (subdomainFromHost(window.location.host) === subdomain.toLowerCase()) return null;
   return centerSiteUrl(subdomain);
 }
+
+const LAST_CENTER_KEY = "talimcrm_last_center";
+
+/** Remembered on the address a staff member leaves, so its /login can send them straight to their center next time. */
+export function rememberCenter(subdomain: string) {
+  try {
+    localStorage.setItem(LAST_CENTER_KEY, subdomain.toLowerCase());
+  } catch {
+    // storage blocked: the main login page simply stays
+  }
+}
+
+export function forgetCenter() {
+  try {
+    localStorage.removeItem(LAST_CENTER_KEY);
+  } catch {
+    // nothing to forget
+  }
+}
+
+export function lastCenter(): string | null {
+  try {
+    const v = localStorage.getItem(LAST_CENTER_KEY);
+    return v && /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(v) ? v : null;
+  } catch {
+    return null;
+  }
+}
+
+/** The main site (no center) on this deployment: http://localhost:3000 in development. */
+export function mainSiteUrl() {
+  if (typeof window !== "undefined") {
+    const { protocol, hostname, port } = window.location;
+    if (hostname === "localhost" || hostname.endsWith(".localhost")) return `${protocol}//localhost${port ? `:${port}` : ""}`;
+  }
+  return `https://${ROOT_DOMAIN}`;
+}
