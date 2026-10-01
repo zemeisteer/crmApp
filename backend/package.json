@@ -24,6 +24,8 @@
     "db:push": "drizzle-kit push --force",
     "db:apply-sql": "node scripts/apply-sql-migration.cjs",
     "db:migrate-sql": "node scripts/migrate.cjs",
+    "db:check-migrations": "node scripts/migrate.cjs --check",
+    "db:verify-migrations": "node scripts/verify-migrations.cjs",
     "db:check-drift": "tsx scripts/check-schema-drift.ts",
     "db:backup": "bash scripts/backup.sh"
   },
