@@ -216,8 +216,9 @@ export class AuthService {
   // A user may belong to several centers with a different role in each.
   // Role and permissions always come from the ACTIVE membership of the
   // workspace in use - at login, on every request (JwtStrategy), on refresh
-  // and on handoff - never from the user's global row, except for accounts
-  // that have no membership rows at all (created before memberships).
+  // and on handoff - never from the user's global row. A center with no
+  // membership row for the user is closed to them, whatever `users.tenantId`
+  // and `users.role` say: those columns do not grant anything.
 
   async resolveWorkspace(
     user: { id: string; role: string; tenantId: string | null; permissions?: string[] | null },
@@ -230,20 +231,17 @@ export class AuthService {
     }
     const rows = await this.db.query.organizationMemberships.findMany({ where: eq(organizationMemberships.userId, user.id) });
     if (!tenantId) {
-      // No workspace: fine only for an account that belongs to none.
+      // No workspace: only an account that belongs to no center at all.
       if (rows.length > 0 || user.tenantId) throw new UnauthorizedException('Markaz tanlanmagan');
       return { role: user.role, permissions: user.permissions || [], tenant: null };
     }
     const membership = rows.find((m) => m.tenantId === tenantId);
-    const legacy = rows.length === 0 && user.tenantId === tenantId;
-    if (!legacy && (!membership || membership.status !== 'ACTIVE')) {
+    if (!membership || membership.status !== 'ACTIVE') {
       throw new UnauthorizedException("Siz ushbu markazga a'zo emassiz");
     }
     const tenant = await this.db.query.tenants.findFirst({ where: eq(tenants.id, tenantId) });
     if (!tenant) throw new NotFoundException('Markaz topilmadi');
-    return legacy
-      ? { role: user.role, permissions: user.permissions || [], tenant }
-      : { role: membership!.role, permissions: membership!.permissions || [], tenant };
+    return { role: membership.role, permissions: membership.permissions || [], tenant };
   }
 
   // After the password (and the 2FA code): one session, bound to a
@@ -303,18 +301,17 @@ export class AuthService {
       };
     }
 
-    // No ACTIVE membership. An account that has (suspended/removed)
-    // membership rows may not fall back to its old global role.
+    // No ACTIVE membership anywhere. Neither suspended/removed rows nor the
+    // user's old `tenantId` / `role` columns open a center: a person removed
+    // from their only center has nothing to sign in to until someone adds
+    // them again.
     const anyMembership = await this.db.query.organizationMemberships.findFirst({ where: eq(organizationMemberships.userId, user.id), columns: { id: true } });
-    if (anyMembership) throw new UnauthorizedException("Sizning markazdagi a'zoligingiz faol emas");
+    if (anyMembership || user.tenantId) throw new UnauthorizedException("Sizning markazdagi a'zoligingiz faol emas");
 
-    let tenant: typeof tenants.$inferSelect | null = null;
-    if (user.tenantId) {
-      tenant = (await this.db.query.tenants.findFirst({ where: eq(tenants.id, user.tenantId) })) ?? null;
-    }
-
+    // An account that never belonged to a center: a session with no
+    // workspace, which reads nothing tenant-scoped.
     const { accessToken, refreshToken } = await this.issueFullSession(
-      { id: user.id, email: user.email, role: user.role, tenantId: user.tenantId, permissions: user.permissions || [] },
+      { id: user.id, email: user.email, role: user.role, tenantId: null, permissions: user.permissions || [] },
       meta,
     );
 
@@ -324,10 +321,8 @@ export class AuthService {
       accessToken,
       refreshToken,
       user: { id: user.id, email: user.email, fullName: user.fullName, role: user.role, permissions: user.permissions || [] },
-      tenant,
-      workspaces: tenant
-        ? [{ tenantId: tenant.id, name: tenant.name, subdomain: tenant.subdomain, role: user.role, logoUrl: tenant.logoUrl, onboardingStep: tenant.onboardingStep }]
-        : [],
+      tenant: null,
+      workspaces: [],
     };
   }
 

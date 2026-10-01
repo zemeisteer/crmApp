@@ -1,4 +1,4 @@
-import { IsIn, IsInt, IsOptional, IsString, Min } from 'class-validator';
+import { IsIn, IsInt, IsOptional, IsString, Matches, MaxLength, Min } from 'class-validator';
 
 export class CreateGroupDto {
   @IsString()
@@ -84,4 +84,19 @@ export class UpdateGroupDto {
   @IsOptional() @IsInt() @Min(0) monthlyPrice?: number;
   @IsOptional() @IsString() description?: string;
   @IsOptional() @IsInt() @Min(1) durationMonths?: number;
+}
+
+// "From <month> on this group cost <monthlyPrice>" - a past price put on record.
+export class ConfirmGroupPriceDto {
+  @Matches(/^[0-9]{4}-(0[1-9]|1[0-2])$/, { message: "month YYYY-MM formatida bo'lishi kerak" })
+  month: string;
+
+  @IsInt()
+  @Min(0)
+  monthlyPrice: number;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  note?: string;
 }

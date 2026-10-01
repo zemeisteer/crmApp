@@ -13,7 +13,7 @@ export interface DrEnrollment {
 }
 
 /** What the ledger says a student owed for a month. */
-export type DrDue = (studentId: string, month: string) => { expected: number; discount: number; debt: number };
+export type DrDue = (studentId: string, month: string) => { expected: number; discount: number; debt: number; unverifiedDebt?: number };
 
 export interface DrStudent {
   id: string;
@@ -72,13 +72,14 @@ export function directorReport(input: {
   }
   const debtOf = (s: DrStudent, mm: string) => {
     const d = input.due(s.id, mm);
-    return { expected: Math.max(0, d.expected - d.discount), debt: d.debt };
+    return { expected: Math.max(0, d.expected - d.discount), debt: d.debt, unverified: d.unverifiedDebt ?? 0 };
   };
 
   // ---- trend
   const trend = trendMonths.map((mm) => {
     let expected = 0;
     let debt = 0;
+    let unverifiedDebt = 0;
     let activeAtStart = 0;
     let newStudents = 0;
     let left = 0;
@@ -86,6 +87,7 @@ export function directorReport(input: {
       const d = debtOf(s, mm);
       expected += d.expected;
       debt += d.debt;
+      unverifiedDebt += d.unverified;
       if (s.deleted) continue;
       if (s.createdMonth < mm && (!s.leftMonth || s.leftMonth >= mm)) activeAtStart++;
       if (s.createdMonth === mm) newStudents++;
@@ -99,6 +101,9 @@ export function directorReport(input: {
       expected,
       collected,
       debt,
+      // Estimates with no recorded price for that month: shown apart, never
+      // added to `debt` or the collection rate.
+      unverifiedDebt,
       collectionRate: pct(expected - debt, expected),
       newStudents,
       left,
@@ -157,6 +162,7 @@ export function directorReport(input: {
     debtors: {
       window: debtMonths,
       totalDebt: debtors.reduce((s, d) => s + d.totalDebt, 0),
+      unverifiedDebt: students.reduce((sum, s) => sum + debtMonths.reduce((x, mm) => x + debtOf(s, mm).unverified, 0), 0),
       count: debtors.length,
       multiMonth: debtors.filter((d) => d.monthsBehind >= 2).length,
       items: debtors,

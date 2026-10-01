@@ -51,6 +51,7 @@ const expect = (cond, what) => {
 const SEED = `
   INSERT INTO tenants (id, name, subdomain) VALUES ('t_keep', 'Keep Center', 'keep-center');
   INSERT INTO users (id, tenant_id, email, password_hash, full_name, role) VALUES ('u_keep', 't_keep', 'keep@test.uz', 'x', 'Keep Owner', 'OWNER');
+  INSERT INTO users (id, tenant_id, email, password_hash, full_name, role) VALUES ('u_gone', 't_keep', 'gone@test.uz', 'x', 'Removed Admin', 'ADMIN');
   INSERT INTO groups (id, tenant_id, name, subject, monthly_price) VALUES ('g_keep', 't_keep', 'Keep Group', 'Math', 450000);
   INSERT INTO students (id, tenant_id, full_name, phone) VALUES ('s_keep', 't_keep', 'Keep Student', '+998900000001');
   INSERT INTO enrollments (id, student_id, group_id) VALUES ('e_keep', 's_keep', 'g_keep');
@@ -107,6 +108,14 @@ async function rows(url) {
   const pay = (await c3.query("SELECT idempotency_key FROM payments WHERE id = 'p_keep'")).rows[0];
   await c3.end();
   expect(hist.length === 1 && hist[0].monthly_price === 450000, 'the existing group gets one price-history row at its current price');
+  const c4 = new Client({ connectionString: up });
+  await c4.connect();
+  const src = (await c4.query("SELECT source FROM group_price_history WHERE group_id = 'g_keep'")).rows[0].source;
+  const members = (await c4.query("SELECT user_id, role, status FROM organization_memberships WHERE tenant_id = 't_keep' ORDER BY user_id")).rows;
+  await c4.end();
+  expect(src === 'ASSUMED', 'that row is labelled as an assumption, not a recorded price');
+  expect(members.length === 1 && members[0].user_id === 'u_keep' && members[0].role === 'OWNER' && members[0].status === 'ACTIVE', 'the founder (OWNER with no membership) gets a membership');
+  expect(!members.some((m) => m.user_id === 'u_gone'), 'an ambiguous account without a membership is not given access');
   expect(pay.idempotency_key === null, 'existing payments stay as they were (no retry key)');
   expect(/No schema drift/.test(drift(up)), 'upgraded schema matches schema.ts');
   expect(/up to date/.test(runner(up)), 're-running after the upgrade changes nothing');

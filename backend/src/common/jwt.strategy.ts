@@ -41,7 +41,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 
     const user = await this.db.query.users.findFirst({
       where: eq(users.id, payload.sub),
-      columns: { id: true, role: true, tenantId: true, permissions: true },
+      columns: { id: true, role: true },
     });
     if (!user) throw new UnauthorizedException();
     if (user.role === 'SUPERADMIN') return { ...payload, role: 'SUPERADMIN' as const };
@@ -52,14 +52,11 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       .select({ role: organizationMemberships.role, status: organizationMemberships.status, permissions: organizationMemberships.permissions })
       .from(organizationMemberships)
       .where(and(eq(organizationMemberships.userId, user.id), eq(organizationMemberships.tenantId, payload.tenantId)));
-    if (membership) {
-      if (membership.status !== 'ACTIVE') throw new UnauthorizedException("Sizning markazdagi a'zoligingiz faol emas");
-      return { ...payload, role: membership.role, permissions: membership.permissions || [] };
-    }
-    // Accounts from before memberships: their own center only, and only
-    // while they have no membership rows at all.
-    const [any] = await this.db.select({ id: organizationMemberships.id }).from(organizationMemberships).where(eq(organizationMemberships.userId, user.id)).limit(1);
-    if (!any && user.tenantId === payload.tenantId) return { ...payload, role: user.role, permissions: user.permissions || [] };
-    throw new UnauthorizedException("Siz ushbu markazga a'zo emassiz");
+    // No membership row means no access. The user's own `tenantId` / `role`
+    // columns are never a way in: an account whose membership was deleted
+    // looks exactly like one that never had any.
+    if (!membership) throw new UnauthorizedException("Siz ushbu markazga a'zo emassiz");
+    if (membership.status !== 'ACTIVE') throw new UnauthorizedException("Sizning markazdagi a'zoligingiz faol emas");
+    return { ...payload, role: membership.role, permissions: membership.permissions || [] };
   }
 }

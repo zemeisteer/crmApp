@@ -5,6 +5,7 @@ import { StaffService } from './staff.service';
 describe('StaffService', () => {
   let service: StaffService;
   let mockDb: any;
+  let mockAudit: any;
 
   beforeEach(() => {
     mockDb = {
@@ -35,7 +36,9 @@ describe('StaffService', () => {
       }),
     };
 
-    service = new StaffService(mockDb);
+    mockDb.transaction = vi.fn().mockImplementation((fn: (tx: any) => unknown) => fn(mockDb));
+    mockAudit = { log: vi.fn() };
+    service = new StaffService(mockDb, mockAudit);
   });
 
   describe('findAll', () => {
@@ -131,7 +134,7 @@ describe('StaffService', () => {
       await expect(service.remove('tenant-1', 'user-1', 'user-1')).rejects.toThrow(BadRequestException);
     });
 
-    it('deletes ONLY organization_memberships and NEVER deletes global users', async () => {
+    it('keeps the membership as a tombstone, ends its sessions, and never touches the global user', async () => {
       mockDb.query.organizationMemberships.findFirst.mockResolvedValue({
         id: 'mem-target',
         userId: 'user-anvar',
@@ -143,9 +146,13 @@ describe('StaffService', () => {
       const res = await service.remove('tenant-a', 'user-anvar', 'user-admin');
 
       expect(res.success).toBe(true);
-      expect(mockDb.delete).toHaveBeenCalledTimes(1);
-      // Ensure it deleted membership and did NOT call delete on users table
+      // The membership row is updated, not deleted...
+      const set = mockDb.update.mock.results[0].value.set;
+      expect(set).toHaveBeenCalledWith(expect.objectContaining({ status: 'SUSPENDED', removedByUserId: 'user-admin', removedAt: expect.any(Date) }));
+      // ...and only sessions and handoff codes of this center are deleted.
+      expect(mockDb.delete).toHaveBeenCalledTimes(2);
       expect(mockDb.query.users.findFirst).not.toHaveBeenCalled();
+      expect(mockAudit.log).toHaveBeenCalledWith(expect.objectContaining({ action: 'delete', entityType: 'staff', entityId: 'user-anvar' }));
     });
   });
 });

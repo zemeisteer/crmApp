@@ -332,6 +332,8 @@ export class TenantsService {
       .insert(users)
       .values({ tenantId: tenant.id, email: dto.adminEmail, passwordHash, fullName: dto.adminFullName, role: 'ADMIN', emailVerified: true })
       .returning();
+    // Access comes from the membership, never from the user row alone.
+    await this.db.insert(organizationMemberships).values({ userId: user.id, tenantId: tenant.id, role: 'ADMIN', status: 'ACTIVE' });
 
     return { tenant, admin: { id: user.id, email: user.email, fullName: user.fullName } };
   }

@@ -8,6 +8,8 @@ import { and, asc, desc, eq, inArray, isNull, lt, ne, notExists, sql } from 'dri
 import { DB, Database } from '../db/db.module';
 import { enrollments, invoices, paymentAllocations, payments, students } from '../db/schema';
 import { AuditService } from '../audit/audit.service';
+import { LedgerService } from '../ledger/ledger.service';
+import { priceAt } from '../ledger/ledger';
 import { LedgerTx, lockStudentLedger } from '../payments/allocation';
 import { CreateInvoiceDto, QueryInvoicesDto } from './dto/invoice.dto';
 
@@ -53,6 +55,7 @@ export class InvoicesService {
   constructor(
     @Inject(DB) private readonly db: Database,
     private readonly audit: AuditService,
+    private readonly ledger: LedgerService,
   ) {}
 
   async markOverdueInvoices(tenantId: string) {
@@ -198,7 +201,14 @@ export class InvoicesService {
   }
 
   async generateMonthly(tenantId: string, forMonth?: string, userId?: string) {
-    const month = forMonth || new Date().toISOString().slice(0, 7);
+    const currentMonth = await this.ledger.currentMonth(tenantId);
+    const month = forMonth || currentMonth;
+    // An invoice is a confirmed obligation, so for a past month it is issued
+    // only at a price that is on record for that month - never at today's
+    // price by default. Groups whose price then is unknown are left out and
+    // reported, to be confirmed first (Groups -> price history).
+    const pricesOf = month < currentMonth ? await this.ledger.priceRecords(tenantId, await this.ledger.monthOfFn(tenantId)) : null;
+    const skippedUnverified = new Map<string, { groupId: string; groupName: string; students: number }>();
     const [yearStr, monthStr] = month.split('-');
     const year = parseInt(yearStr, 10);
     const monthNum = parseInt(monthStr, 10);
@@ -226,9 +236,19 @@ export class InvoicesService {
     for (const student of activeStudents) {
       for (const enrollment of student.enrollments || []) {
         const group = enrollment.group;
-        if (!group || group.deletedAt || (group.monthlyPrice || 0) <= 0) {
-          continue;
+        if (!group || group.deletedAt) continue;
+        let price = group.monthlyPrice || 0;
+        if (pricesOf) {
+          const known = priceAt(pricesOf.get(group.id) ?? [], month);
+          if (!known.verified) {
+            const s = skippedUnverified.get(group.id) ?? { groupId: group.id, groupName: group.name, students: 0 };
+            s.students++;
+            skippedUnverified.set(group.id, s);
+            continue;
+          }
+          price = known.price;
         }
+        if (price <= 0) continue;
 
         // One invoice per enrollment and month. Checked and inserted under
         // the student's ledger lock, so pressing "generate" twice (or two
@@ -252,9 +272,9 @@ export class InvoicesService {
               tenantId,
               studentId: student.id,
               enrollmentId: enrollment.id,
-              amount: group.monthlyPrice,
+              amount: price,
               amountPaid: 0,
-              remainingAmount: group.monthlyPrice,
+              remainingAmount: price,
               currency: 'UZS',
               dueDate,
               forMonth: month,
@@ -283,6 +303,7 @@ export class InvoicesService {
       forMonth: month,
       generatedCount: generated.length,
       invoices: generated,
+      skippedUnverified: [...skippedUnverified.values()],
     };
   }
 

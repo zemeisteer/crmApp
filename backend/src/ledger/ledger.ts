@@ -10,6 +10,10 @@
 //  2. For an enrollment with no invoice that month: the enrollment's own
 //     dates decide whether the month is owed, and the group's price is the
 //     one in force in that month (group_price_history).
+//  3. If the price of that month was never recorded (the group existed
+//     before prices were versioned), the later price is only an estimate:
+//     it is reported separately as `unverified` and is not debt until
+//     someone confirms what the group cost then, or issues an invoice.
 //
 // Where history was never recorded the rule is "no invented debt": an ended
 // enrollment or a paused student without a date, and the month in which a
@@ -23,7 +27,11 @@ export interface LedgerEnrollment {
   joinedMonth: string; // YYYY-MM in the center's time zone
   leftMonth: string | null;
   groupDeletedMonth: string | null;
-  /** Prices of the group, oldest first; `from` is the month a price started. */
+  /**
+   * Prices of the group that are on record, oldest first; `from` is the
+   * first month a price is known to have applied. Months before the first
+   * entry have no recorded price.
+   */
   prices: Array<{ from: string; price: number }>;
 }
 
@@ -51,21 +59,38 @@ export interface LedgerPayment {
 }
 
 export interface MonthDue {
-  /** Tuition of the month before discounts. */
+  /**
+   * Tuition of the month before discounts that is backed by a record: the
+   * month's invoices, plus enrollments without an invoice at a price that
+   * is known to have applied in that month.
+   */
   expected: number;
   discount: number;
   paid: number;
+  /** What is still owed of `expected`. This is the debt to collect. */
   debt: number;
   /** Part of `expected` that comes from enrollments, not invoices. */
   estimated: number;
-  groups: Array<{ id: string; name: string; monthlyPrice: number }>;
+  /**
+   * Tuition of enrollments without an invoice whose price in that month was
+   * never recorded (the group's later price is all that is known). An
+   * estimate to review, kept out of `expected` and `debt`.
+   */
+  unverified: number;
+  /** What would still be owed of `unverified` if that price were right. */
+  unverifiedDebt: number;
+  groups: Array<{ id: string; name: string; monthlyPrice: number; verified: boolean }>;
 }
 
-export function priceAt(prices: LedgerEnrollment['prices'], month: string): number {
-  if (prices.length === 0) return 0;
-  let price = prices[0].price; // before the first record: the earliest known price
-  for (const p of prices) if (p.from <= month) price = p.price;
-  return price;
+/**
+ * The group's price in `month`. `verified` is false for a month before the
+ * first record: the earliest known price is then only a guess.
+ */
+export function priceAt(prices: LedgerEnrollment['prices'], month: string): { price: number; verified: boolean } {
+  if (prices.length === 0) return { price: 0, verified: false };
+  let found: number | null = null;
+  for (const p of prices) if (p.from <= month) found = p.price;
+  return found === null ? { price: prices[0].price, verified: false } : { price: found, verified: true };
 }
 
 /** Was this enrollment being studied (and so owed) for the whole of `month`? */
@@ -99,16 +124,18 @@ export function monthDue(s: LedgerStudent, month: string, invoices: LedgerInvoic
     const e = inv.enrollmentId ? byEnrollment.get(inv.enrollmentId) : undefined;
     if (inv.enrollmentId) covered.add(inv.enrollmentId);
     else general = true;
-    if (e && !groups.some((g) => g.id === e.groupId)) groups.push({ id: e.groupId, name: e.groupName, monthlyPrice: inv.amount });
+    if (e && !groups.some((g) => g.id === e.groupId)) groups.push({ id: e.groupId, name: e.groupName, monthlyPrice: inv.amount, verified: true });
   }
 
   let estimated = 0;
+  let unverified = 0;
   if (!general) {
     for (const e of s.enrollments) {
       if (covered.has(e.id) || !enrollmentOwes(s, e, month)) continue;
-      const price = priceAt(e.prices, month);
-      estimated += price;
-      if (!groups.some((g) => g.id === e.groupId)) groups.push({ id: e.groupId, name: e.groupName, monthlyPrice: price });
+      const { price, verified } = priceAt(e.prices, month);
+      if (verified) estimated += price;
+      else unverified += price;
+      if (!groups.some((g) => g.id === e.groupId)) groups.push({ id: e.groupId, name: e.groupName, monthlyPrice: price, verified });
     }
   }
 
@@ -123,12 +150,18 @@ export function monthDue(s: LedgerStudent, month: string, invoices: LedgerInvoic
     if (p.allocated === null) looseDiscount += p.discount;
   }
 
+  // Money goes to what is on record first; only what is left over counts
+  // against the unverified estimate.
+  const credits = credit + looseDiscount;
+  const recorded = invoiceDebt + estimated;
   return {
     expected: invoiced + estimated,
     discount: waived + looseDiscount,
     paid,
-    debt: Math.max(0, invoiceDebt + estimated - credit - looseDiscount),
+    debt: Math.max(0, recorded - credits),
     estimated,
+    unverified,
+    unverifiedDebt: Math.max(0, unverified - Math.max(0, credits - recorded)),
     groups,
   };
 }

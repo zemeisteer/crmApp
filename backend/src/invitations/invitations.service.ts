@@ -195,6 +195,8 @@ export class InvitationsService {
           .set({
             role: invitation.role as any,
             status: 'ACTIVE',
+            removedAt: null,
+            removedByUserId: null,
             updatedAt: new Date(),
           })
           .where(eq(organizationMemberships.id, existingMembership.id));

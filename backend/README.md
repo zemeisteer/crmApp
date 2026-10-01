@@ -57,6 +57,33 @@ $ npm run test:e2e
 $ npm run test:cov
 ```
 
+### The end-to-end database
+
+`npm run test:e2e` never uses the development database. It works in a
+database of its own on the same PostgreSQL server:
+
+| Setting | Database used |
+|---|---|
+| nothing extra (`DATABASE_URL=.../talimcrm`) | `talimcrm_e2e` — created, **dropped and rebuilt on every run** |
+| `DATABASE_URL` already ends in `_test` (CI) | that database, created if missing, never dropped |
+| `E2E_DATABASE_URL=...` | the one you name; its name must end in `_e2e` or `_test` |
+
+Rules (see `test/e2e-database.cjs`, `test/global-setup.ts`):
+
+- A database whose name does not end in `_e2e` or `_test` is refused before
+  anything connects. `NODE_ENV=production` is refused too.
+- The schema is built by the production migration runner
+  (`scripts/migrate.cjs`), not `db:push`.
+- Only `_e2e` databases are ever dropped. `E2E_KEEP_DB=1` keeps the data
+  between runs.
+- The PostgreSQL user needs `CREATEDB` (the local `postgres` user has it).
+- AI, e-mail, Telegram and SMS keys are blanked for the run
+  (`vitest.config.e2e.ts`): suites stub what they need, nothing leaves the
+  machine.
+
+`npm run db:verify-migrations` likewise works only in scratch databases
+named `<db>_..._migcheck`, which it creates and drops itself.
+
 ## Deployment
 
 When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.

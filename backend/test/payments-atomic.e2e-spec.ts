@@ -196,11 +196,14 @@ describe('Atomic, retry-safe manual payments (e2e)', () => {
   });
 
   it('a payment and the monthly invoice run meeting at the same moment agree afterwards', async () => {
+    // The month it is now: invoices for a past month are issued only at a
+    // price on record for that month, and this group is new.
+    const month = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Tashkent', year: 'numeric', month: '2-digit' }).format(new Date()).slice(0, 7);
     const g = await group(120_000, 'Race');
     const kids = await Promise.all(Array.from({ length: 6 }, () => student([g])));
     const [gen] = await Promise.all([
       http().post('/api/invoices/generate-monthly').set(auth()).send({ forMonth: month }),
-      ...kids.map((k) => pay({ studentId: k, amount: 120_000 }).expect(201)),
+      ...kids.map((k) => pay({ studentId: k, amount: 120_000, forMonth: month }).expect(201)),
       http().post('/api/invoices/generate-monthly').set(auth()).send({ forMonth: month }),
     ]);
     expect(gen.status).toBe(201);

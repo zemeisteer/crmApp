@@ -10,6 +10,7 @@ import DatePicker from "@/components/DatePicker";
 import MonthPicker from "@/components/MonthPicker";
 import {
   paymentsApi,
+  groupsApi,
   studentsApi,
   branchesApi,
   expensesApi,
@@ -768,6 +769,26 @@ function PaymentsContent() {
   // Sending the same form again (double click, lost answer) is one payment.
   const paymentKey = useRef<{ sig: string; key: string } | null>(null);
 
+  // Putting on record what a group cost in the month being viewed.
+  const canConfirmPrice = ["OWNER", "ADMIN", "ACCOUNTANT", "SUPERADMIN"].includes(user?.role ?? "");
+  const [confirmPrices, setConfirmPrices] = useState<Record<string, string>>({});
+  const [confirmingGroup, setConfirmingGroup] = useState<string | null>(null);
+  async function onConfirmPrice(groupId: string) {
+    const price = Number(confirmPrices[groupId]);
+    if (!debtorsData || !Number.isInteger(price) || price < 0) return;
+    setConfirmingGroup(groupId);
+    setError(null);
+    try {
+      await groupsApi.confirmPrice(groupId, { month: debtorsData.forMonth, monthlyPrice: price });
+      setConfirmPrices((p) => ({ ...p, [groupId]: "" }));
+      loadAll();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : t("common.errorGeneric"));
+    } finally {
+      setConfirmingGroup(null);
+    }
+  }
+
   async function onPaymentSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
@@ -1475,6 +1496,45 @@ function PaymentsContent() {
               </div>
             </div>
 
+            {/* Estimates at a price nobody recorded for that month: kept apart from the debt. */}
+            {debtorsData && (debtorsData.unverifiedCount || 0) > 0 && (
+              <div style={{ background: "#FFFBEB", border: "1px solid #FDE68A", borderRadius: 12, padding: "14px 16px", display: "grid", gap: 10 }}>
+                <div style={{ fontWeight: 800, fontSize: 14, color: "#92400E" }}>{t("pay.unverified.title")}</div>
+                <div style={{ fontSize: 13, color: "#78350F", lineHeight: 1.5 }}>
+                  {t("pay.unverified.body").replace("{count}", String(debtorsData.unverifiedCount)).replace("{amount}", formatMoney(debtorsData.totalUnverifiedDebt || 0))}
+                </div>
+                {canConfirmPrice ? (
+                  (debtorsData.unverifiedGroups || []).map((g) => (
+                    <div key={g.id} style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                      <div style={{ fontSize: 13, fontWeight: 700, minWidth: 160 }}>
+                        {g.name} <span style={{ fontWeight: 500, color: "#92400E" }}>({t("pay.unverified.now").replace("{price}", formatMoney(g.assumedPrice))})</span>
+                      </div>
+                      <input
+                        className="field-input"
+                        type="number"
+                        min={0}
+                        style={{ width: 170 }}
+                        placeholder={t("pay.unverified.priceFrom").replace("{month}", debtorsData.forMonth)}
+                        aria-label={`${g.name}: ${t("pay.unverified.priceFrom").replace("{month}", debtorsData.forMonth)}`}
+                        value={confirmPrices[g.id] ?? ""}
+                        onChange={(e) => setConfirmPrices((p) => ({ ...p, [g.id]: e.target.value }))}
+                      />
+                      <button
+                        type="button"
+                        disabled={confirmingGroup === g.id || !(confirmPrices[g.id] ?? "").trim()}
+                        onClick={() => onConfirmPrice(g.id)}
+                        style={{ background: ACCENT, color: "#fff", border: "none", borderRadius: 8, padding: "8px 14px", fontSize: 13, fontWeight: 700, cursor: "pointer", opacity: confirmingGroup === g.id || !(confirmPrices[g.id] ?? "").trim() ? 0.6 : 1 }}
+                      >
+                        {t("pay.unverified.confirm")}
+                      </button>
+                    </div>
+                  ))
+                ) : (
+                  <div style={{ fontSize: 12.5, color: "#92400E" }}>{t("pay.unverified.noRight")}</div>
+                )}
+              </div>
+            )}
+
             {/* Filters */}
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
               <input
@@ -1489,6 +1549,7 @@ function PaymentsContent() {
                   { value: "ALL", label: t("common.all") },
                   { value: "UNPAID", label: t("payments.debtors.statusUnpaid") },
                   { value: "PARTIAL", label: t("payments.debtors.statusPartial") },
+                  ...((debtorsData?.unverifiedCount || 0) > 0 ? [{ value: "UNVERIFIED", label: t("pay.unverified.status") }] : []),
                   { value: "PAID", label: t("payments.debtors.statusPaid") },
                 ]}
                 value={debtorStatusFilter}
@@ -1615,7 +1676,12 @@ function PaymentsContent() {
                               {formatMoney(d.debtAmount)} {t("common.sumUnit")}
                             </span>
                           ) : (
-                            <span style={{ color: "#10B981" }}>0 {t("common.sumUnit")}</span>
+                            <span style={{ color: d.status === "UNVERIFIED" ? "#8A8D96" : "#10B981" }}>0 {t("common.sumUnit")}</span>
+                          )}
+                          {(d.unverifiedDebt || 0) > 0 && (
+                            <div style={{ fontSize: 11.5, fontWeight: 600, color: "#B45309" }}>
+                              ≈ {formatMoney(d.unverifiedDebt || 0)} {t("common.sumUnit")} ({t("pay.unverified.estimate")})
+                            </div>
                           )}
                         </td>
                         <td>
@@ -1641,6 +1707,11 @@ function PaymentsContent() {
                           {d.status === "UNPAID" && (
                             <span className="badge badge-danger">
                               {t("payments.debtors.statusUnpaid")}
+                            </span>
+                          )}
+                          {d.status === "UNVERIFIED" && (
+                            <span style={{ background: "#FEF3C7", color: "#92400E", fontSize: 11, fontWeight: 700, padding: "3px 8px", borderRadius: 6 }}>
+                              {t("pay.unverified.status")}
                             </span>
                           )}
                         </td>

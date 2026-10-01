@@ -289,6 +289,11 @@ export const organizationMemberships = pgTable('organization_memberships', {
   role: roleEnum('role').notNull().default('ADMIN'),
   status: membershipStatusEnum('status').notNull().default('ACTIVE'),
   permissions: text('permissions').array(),
+  // Set when a member is removed from the center. The row stays (SUSPENDED)
+  // as the record that access was taken away; adding the person again
+  // clears it.
+  removedAt: timestamp('removed_at'),
+  removedByUserId: text('removed_by_user_id').references((): AnyPgColumn => users.id, { onDelete: 'set null' }),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 }, (t) => ({
@@ -417,6 +422,14 @@ export const groupPriceHistory = pgTable('group_price_history', {
   groupId: text('group_id').notNull().references(() => groups.id, { onDelete: 'cascade' }),
   monthlyPrice: integer('monthly_price').notNull(),
   effectiveFrom: timestamp('effective_from').notNull().defaultNow(),
+  // RECORDED: the price was set (or confirmed by an authorized person) to
+  // apply from `effectiveFrom`. ASSUMED: all that is known is that the
+  // group cost this much when the row was written (`createdAt`); what it
+  // cost before that was never recorded, so earlier months are estimates.
+  source: text('source').notNull().default('RECORDED'),
+  // Set on a price confirmed or corrected by hand, with an optional reason.
+  confirmedByUserId: text('confirmed_by_user_id').references(() => users.id, { onDelete: 'set null' }),
+  note: text('note'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
 }, (t) => ({
   groupIdx: index('group_price_history_group_idx').on(t.groupId, t.effectiveFrom),

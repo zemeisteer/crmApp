@@ -180,11 +180,29 @@ describe('TelegramService (Secure Link Token)', () => {
     );
   });
 
+  it('a linked account without an active membership is not treated as staff', async () => {
+    // Removed from the center (or never a member): the chat is just a chat.
+    mockDb.query.users.findFirst.mockResolvedValue({ id: 'u1', fullName: 'Former Admin', tenantId: 't1', role: 'ADMIN' });
+    mockDb.query.students.findFirst.mockResolvedValue(null);
+
+    await service.handleUpdate({ message: { text: '/start', chat: { id: 556 } } });
+
+    const sent = (service.sendMessage as any).mock.calls.map((c: unknown[]) => JSON.stringify(c[2] ?? ''));
+    expect(sent.join(' ')).not.toContain('Bugungi holat');
+  });
+
   it('answers a linked center admin with staff buttons, not the student cabinet', async () => {
-    mockDb.query.users.findFirst.mockResolvedValue({ id: 'u1', fullName: 'Admin Aka', tenantId: null, role: 'ADMIN' });
+    mockDb.query.users.findFirst.mockResolvedValue({ id: 'u1', fullName: 'Admin Aka', tenantId: 't1', role: 'ADMIN' });
+    // The first lookup is the active membership in that center.
+    const none = mockDb.select.getMockImplementation();
+    mockDb.select.mockImplementationOnce(() => {
+      const chain: any = { from: () => chain, where: () => chain, then: (res: (v: unknown[]) => unknown) => res([{ role: 'ADMIN' }]) };
+      return chain;
+    });
 
     await service.handleUpdate({ message: { text: '/start', chat: { id: 555 } } });
 
+    expect(mockDb.select.getMockImplementation()).toBe(none);
     expect(mockDb.query.students.findFirst).not.toHaveBeenCalled();
     const [, , keyboard] = (service.sendMessage as any).mock.calls[0];
     const labels = keyboard.keyboard.flat().map((b: { text: string }) => b.text);

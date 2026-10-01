@@ -8,12 +8,16 @@ import {
 import { and, eq, or } from 'drizzle-orm';
 import * as bcrypt from 'bcryptjs';
 import { DB, Database } from '../db/db.module';
-import { organizationMemberships, users } from '../db/schema';
+import { authHandoffCodes, organizationMemberships, sessions, users } from '../db/schema';
+import { AuditService } from '../audit/audit.service';
 import { CreateStaffDto, UpdateStaffDto } from './dto/staff.dto';
 
 @Injectable()
 export class StaffService {
-  constructor(@Inject(DB) private readonly db: Database) {}
+  constructor(
+    @Inject(DB) private readonly db: Database,
+    private readonly audit: AuditService,
+  ) {}
 
   async findAll(tenantId: string) {
     const memberships = await this.db.query.organizationMemberships.findMany({
@@ -59,13 +63,15 @@ export class StaffService {
         if (existingMembership.status === 'ACTIVE') {
           throw new ConflictException("Ushbu xodim allaqachon markazga a'zo");
         }
-        // Reactivate suspended membership
+        // Adding them again is the deliberate way back in.
         const [updated] = await this.db
           .update(organizationMemberships)
           .set({
             role: dto.role as any,
             permissions: dto.permissions || [],
             status: 'ACTIVE',
+            removedAt: null,
+            removedByUserId: null,
             updatedAt: new Date(),
           })
           .where(eq(organizationMemberships.id, existingMembership.id))
@@ -213,11 +219,20 @@ export class StaffService {
       }
     }
 
-    // MULTI-TENANT SAFE: Remove ONLY the organization membership for this tenant!
-    // NEVER delete the global User record.
-    await this.db
-      .delete(organizationMemberships)
-      .where(eq(organizationMemberships.id, membership.id));
+    // Only this center's membership; the person's account and their other
+    // centers are untouched. The row is kept as a tombstone (SUSPENDED,
+    // removedAt) rather than deleted, and everything that could carry the
+    // old access forward goes with it: sessions bound to this center and
+    // any handoff code issued for it.
+    await this.db.transaction(async (tx) => {
+      await tx
+        .update(organizationMemberships)
+        .set({ status: 'SUSPENDED', removedAt: new Date(), removedByUserId: requesterId, updatedAt: new Date() })
+        .where(eq(organizationMemberships.id, membership.id));
+      await tx.delete(sessions).where(and(eq(sessions.userId, membership.userId), eq(sessions.tenantId, tenantId)));
+      await tx.delete(authHandoffCodes).where(and(eq(authHandoffCodes.userId, membership.userId), eq(authHandoffCodes.tenantId, tenantId)));
+    });
+    this.audit.log({ tenantId, userId: requesterId, action: 'delete', entityType: 'staff', entityId: membership.userId, meta: { role: membership.role, membershipId: membership.id } });
 
     return { success: true };
   }

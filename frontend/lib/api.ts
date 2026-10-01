@@ -828,12 +828,16 @@ export interface DebtorItem {
   studentName: string;
   phone: string | null;
   parentPhone: string | null;
-  groups: Array<{ id: string; name: string; monthlyPrice: number }>;
+  groups: Array<{ id: string; name: string; monthlyPrice: number; verified?: boolean }>;
   expectedAmount: number;
   discountAmount: number;
   paidAmount: number;
+  /** Debt on record (invoices, or a price known for that month). */
   debtAmount: number;
-  status: "PAID" | "PARTIAL" | "UNPAID";
+  /** An estimate at a price that was never recorded for that month; not debt. */
+  unverifiedAmount?: number;
+  unverifiedDebt?: number;
+  status: "PAID" | "PARTIAL" | "UNPAID" | "UNVERIFIED";
   /** As the student is now; the debt itself is that month's. */
   studentStatus?: "ACTIVE" | "PAUSED" | "GRADUATED" | "LEFT" | "REMOVED";
   /** Part of the expected sum has no invoice behind it. */
@@ -851,6 +855,9 @@ export interface DebtorsResponse {
   partialCount: number;
   unpaidCount: number;
   estimatedCount?: number;
+  totalUnverifiedDebt?: number;
+  unverifiedCount?: number;
+  unverifiedGroups?: Array<{ id: string; name: string; assumedPrice: number }>;
   debtors: DebtorItem[];
 }
 
@@ -1267,7 +1274,21 @@ export const authApi = {
 
 // ---- Groups ----
 
+export interface GroupPriceRecord {
+  id: string;
+  monthlyPrice: number;
+  effectiveFrom: string;
+  source: "RECORDED" | "ASSUMED";
+  note: string | null;
+  confirmedByUserId: string | null;
+  createdAt: string;
+}
+
 export const groupsApi = {
+  priceHistory: (id: string) => request<GroupPriceRecord[]>(`/groups/${id}/price-history`),
+  // "From <month> on this group cost <monthlyPrice>": puts a past price on record.
+  confirmPrice: (id: string, data: { month: string; monthlyPrice: number; note?: string }) =>
+    request<GroupPriceRecord[]>(`/groups/${id}/price-history`, { method: "POST", body: JSON.stringify(data) }),
   list: (params?: { courseId?: string; status?: string; branchId?: string }) => {
     const qs = new URLSearchParams();
     if (params?.courseId) qs.set("courseId", params.courseId);

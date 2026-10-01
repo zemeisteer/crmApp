@@ -1,7 +1,8 @@
 import { BadRequestException, ConflictException, ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { and, eq, inArray, isNotNull, isNull, ne, sql } from 'drizzle-orm';
 import { DB, Database } from '../db/db.module';
-import { branches, courses, enrollments, groupPriceHistory, groups, schedules, students, subjects, teachers } from '../db/schema';
+import { branches, courses, enrollments, groupPriceHistory, groups, schedules, students, subjects, teachers, tenants } from '../db/schema';
+import { DEFAULT_TIMEZONE, isValidTimeZone, zonedParts, zonedTimeToUtc } from '../common/timezone';
 import { seatHeldWhere } from '../common/seats';
 import { addMinutes, DEFAULT_LESSON_MINUTES, isoWeekdaysOf } from '../common/weekdays';
 import { isOverlapping } from '../schedule/schedule.service';
@@ -289,12 +290,55 @@ export class GroupsService {
     if (group.monthlyPrice !== current.monthlyPrice) {
       const [known] = await this.db.select({ id: groupPriceHistory.id }).from(groupPriceHistory).where(eq(groupPriceHistory.groupId, id)).limit(1);
       if (!known) {
-        await this.db.insert(groupPriceHistory).values({ tenantId, groupId: id, monthlyPrice: current.monthlyPrice, effectiveFrom: current.createdAt });
+        // The old price is known to be the price until now; since when, nobody recorded.
+        await this.db.insert(groupPriceHistory).values({ tenantId, groupId: id, monthlyPrice: current.monthlyPrice, effectiveFrom: current.createdAt, source: 'ASSUMED' });
       }
       await this.db.insert(groupPriceHistory).values({ tenantId, groupId: id, monthlyPrice: group.monthlyPrice });
     }
     this.audit.log({ tenantId, userId, action: 'update', entityType: 'group', entityId: id, meta: dto });
     return group;
+  }
+
+  // What the group has cost over time, newest first, with where each entry
+  // comes from.
+  async priceHistory(tenantId: string, id: string) {
+    await this.findOne(tenantId, id);
+    const rows = await this.db
+      .select({
+        id: groupPriceHistory.id, monthlyPrice: groupPriceHistory.monthlyPrice, effectiveFrom: groupPriceHistory.effectiveFrom,
+        source: groupPriceHistory.source, note: groupPriceHistory.note, confirmedByUserId: groupPriceHistory.confirmedByUserId, createdAt: groupPriceHistory.createdAt,
+      })
+      .from(groupPriceHistory)
+      .where(and(eq(groupPriceHistory.groupId, id), eq(groupPriceHistory.tenantId, tenantId)));
+    return rows.sort((a, b) => b.effectiveFrom.getTime() - a.effectiveFrom.getTime() || b.createdAt.getTime() - a.createdAt.getTime());
+  }
+
+  // Someone who knows says what the group cost from a past month on. This
+  // is what turns an estimated month into a recorded one; it never edits or
+  // removes earlier entries (a wrong one is corrected by confirming again),
+  // and it does not touch invoices or payments.
+  async confirmPrice(tenantId: string, userId: string, id: string, dto: { month: string; monthlyPrice: number; note?: string }) {
+    const group = await this.findOne(tenantId, id);
+    const [t] = await this.db.select({ timezone: tenants.timezone }).from(tenants).where(eq(tenants.id, tenantId));
+    const tz = isValidTimeZone(t?.timezone) ? t.timezone : DEFAULT_TIMEZONE;
+    const now = zonedParts(new Date(), tz);
+    const current = `${now.year}-${String(now.month).padStart(2, '0')}`;
+    if (dto.month > current) throw new BadRequestException("Kelajak oyi uchun narxni tasdiqlab bo'lmaydi — guruh narxini o'zgartiring");
+    const [y, m] = dto.month.split('-').map(Number);
+    const [row] = await this.db.insert(groupPriceHistory).values({
+      tenantId,
+      groupId: id,
+      monthlyPrice: dto.monthlyPrice,
+      effectiveFrom: zonedTimeToUtc(y, m, 1, 0, 0, tz),
+      source: 'RECORDED',
+      confirmedByUserId: userId,
+      note: dto.note?.trim().slice(0, 500) || null,
+    }).returning();
+    this.audit.log({
+      tenantId, userId, action: 'update', entityType: 'group_price', entityId: id,
+      meta: { groupName: group.name, month: dto.month, monthlyPrice: dto.monthlyPrice, note: row.note, historyId: row.id },
+    });
+    return this.priceHistory(tenantId, id);
   }
 
   async remove(tenantId: string, userId: string, id: string) {

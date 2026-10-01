@@ -29,12 +29,20 @@ export interface DebtorItem {
   studentStatus: string;
   /** Part of the expected sum has no invoice and comes from enrollments. */
   estimated: boolean;
-  groups: Array<{ id: string; name: string; monthlyPrice: number }>;
+  groups: Array<{ id: string; name: string; monthlyPrice: number; verified: boolean }>;
   expectedAmount: number;
   discountAmount: number;
   paidAmount: number;
+  /** Debt on record: invoices, or enrollments at a price known for that month. */
   debtAmount: number;
-  status: 'PAID' | 'PARTIAL' | 'UNPAID';
+  /**
+   * Tuition whose price in that month was never recorded, and what would be
+   * owed of it. An estimate to review - not part of debtAmount or the totals.
+   */
+  unverifiedAmount: number;
+  unverifiedDebt: number;
+  /** UNVERIFIED: nothing on record is owed, only the estimate above. */
+  status: 'PAID' | 'PARTIAL' | 'UNPAID' | 'UNVERIFIED';
 }
 
 export interface DebtorsResponse {
@@ -49,6 +57,11 @@ export interface DebtorsResponse {
   unpaidCount: number;
   /** Students whose expected sum is (partly) not backed by an invoice. */
   estimatedCount: number;
+  /** Estimates with no recorded price: kept apart from the totals above. */
+  totalUnverifiedDebt: number;
+  unverifiedCount: number;
+  /** Groups whose price in this month has to be confirmed to settle them. */
+  unverifiedGroups: Array<{ id: string; name: string; assumedPrice: number }>;
   debtors: DebtorItem[];
 }
 
@@ -61,6 +74,8 @@ export interface FinanceSummaryResponse {
   netProfit: number;
   totalExpectedRevenue: number;
   totalOutstandingDebt: number;
+  /** Estimated debt with no recorded price; not in totalOutstandingDebt. */
+  unverifiedDebt: number;
   debtorCount: number;
   collectionRate: number;
   revenueByMethod: Record<string, number>;
@@ -281,15 +296,26 @@ export class PaymentsService {
     let partialCount = 0;
     let unpaidCount = 0;
     let estimatedCount = 0;
+    let totalUnverifiedDebt = 0;
+    let unverifiedCount = 0;
+    const unverifiedGroups = new Map<string, { id: string; name: string; assumedPrice: number }>();
 
     for (const student of ledger.students) {
       const due = ledger.due(student, month);
       // Nothing expected and nothing paid: not part of this month.
-      if (due.expected === 0 && due.paid === 0) continue;
+      if (due.expected === 0 && due.paid === 0 && due.unverified === 0) continue;
       const effectiveExpected = Math.max(0, due.expected - due.discount);
+      if (due.unverifiedDebt > 0) {
+        totalUnverifiedDebt += due.unverifiedDebt;
+        unverifiedCount++;
+        for (const g of due.groups) if (!g.verified) unverifiedGroups.set(g.id, { id: g.id, name: g.name, assumedPrice: g.monthlyPrice });
+      }
 
-      let status: 'PAID' | 'PARTIAL' | 'UNPAID';
-      if (due.debt === 0) {
+      let status: DebtorItem['status'];
+      if (due.debt === 0 && due.unverifiedDebt > 0) {
+        // Not a debtor on record, and not "paid" either.
+        status = 'UNVERIFIED';
+      } else if (due.debt === 0) {
         status = 'PAID';
         paidCount++;
       } else if (due.paid > 0) {
@@ -318,13 +344,16 @@ export class PaymentsService {
         discountAmount: due.discount,
         paidAmount: due.paid,
         debtAmount: due.debt,
+        unverifiedAmount: due.unverified,
+        unverifiedDebt: due.unverifiedDebt,
         estimated: due.estimated > 0,
         status,
       });
     }
 
+    // "Only debtors" keeps the estimates in view too: they need a decision.
     const debtors = onlyDebtors
-      ? allDebtorItems.filter((d) => d.debtAmount > 0)
+      ? allDebtorItems.filter((d) => d.debtAmount > 0 || d.unverifiedDebt > 0)
       : allDebtorItems;
 
     return {
@@ -338,6 +367,9 @@ export class PaymentsService {
       partialCount,
       unpaidCount,
       estimatedCount,
+      totalUnverifiedDebt,
+      unverifiedCount,
+      unverifiedGroups: [...unverifiedGroups.values()],
       debtors,
     };
   }
@@ -403,6 +435,7 @@ export class PaymentsService {
       netProfit,
       totalExpectedRevenue,
       totalOutstandingDebt,
+      unverifiedDebt: debtorsData.totalUnverifiedDebt,
       debtorCount,
       collectionRate,
       revenueByMethod,

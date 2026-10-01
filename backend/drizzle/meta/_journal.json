@@ -225,6 +225,20 @@
       "when": 1793200000000,
       "tag": "0031_ai_usage_import_queue",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1793300000000,
+      "tag": "0032_membership_tombstones",
+      "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1793400000000,
+      "tag": "0033_price_provenance",
+      "breakpoints": true
     }
   ]
 }

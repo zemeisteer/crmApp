@@ -27,13 +27,13 @@ const pay = (amount: number, allocated: number | null = null, discount = 0) => (
 describe('priceAt', () => {
   const prices = [{ from: '2026-01', price: 500 }, { from: '2026-04', price: 650 }];
   it('uses the price that was in force in that month, not the latest', () => {
-    expect(priceAt(prices, '2026-03')).toBe(500);
-    expect(priceAt(prices, '2026-04')).toBe(650);
-    expect(priceAt(prices, '2026-09')).toBe(650);
+    expect(priceAt(prices, '2026-03')).toEqual({ price: 500, verified: true });
+    expect(priceAt(prices, '2026-04')).toEqual({ price: 650, verified: true });
+    expect(priceAt(prices, '2026-09')).toEqual({ price: 650, verified: true });
   });
-  it('falls back to the earliest known price before the first record', () => {
-    expect(priceAt(prices, '2025-11')).toBe(500);
-    expect(priceAt([], '2026-01')).toBe(0);
+  it('before the first record the earliest price is only a guess', () => {
+    expect(priceAt(prices, '2025-11')).toEqual({ price: 500, verified: false });
+    expect(priceAt([], '2026-01')).toEqual({ price: 0, verified: false });
   });
 });
 
@@ -82,7 +82,7 @@ describe('monthDue', () => {
     const s = st({ status: 'LEFT', leftMonth: '2026-02', enrollments: [enr({ status: 'CANCELLED', leftMonth: '2026-02', prices: [{ from: '2026-01', price: 900 }] })] });
     const due = monthDue(s, '2026-02', [inv(500, 200)], [pay(200, 200)]);
     expect(due).toMatchObject({ expected: 500, paid: 200, debt: 300, estimated: 0 });
-    expect(due.groups).toEqual([{ id: 'g1', name: 'English', monthlyPrice: 500 }]);
+    expect(due.groups).toEqual([{ id: 'g1', name: 'English', monthlyPrice: 500, verified: true }]);
   });
 
   it('several groups: invoiced ones by invoice, the rest by enrollment', () => {
@@ -111,6 +111,39 @@ describe('monthDue', () => {
 
   it('paying more than was owed never produces negative debt', () => {
     expect(monthDue(st(), '2026-03', [], [pay(800)])).toMatchObject({ expected: 500, paid: 800, debt: 0 });
+  });
+
+  describe('a month whose price was never recorded', () => {
+    // The group cost 400 back then; all that is on record is 600 from June.
+    const legacy = () => st({ enrollments: [enr({ prices: [{ from: '2026-06', price: 600 }] })] });
+
+    it('is an unverified estimate, not debt', () => {
+      const due = monthDue(legacy(), '2026-03', [], []);
+      expect(due).toMatchObject({ expected: 0, debt: 0, estimated: 0, unverified: 600, unverifiedDebt: 600 });
+      expect(due.groups).toEqual([{ id: 'g1', name: 'English', monthlyPrice: 600, verified: false }]);
+      // From the month the price is on record it is ordinary debt again.
+      expect(monthDue(legacy(), '2026-06', [], [])).toMatchObject({ expected: 600, debt: 600, unverified: 0, unverifiedDebt: 0 });
+    });
+
+    it('an invoice for that month is confirmed whatever the price history says', () => {
+      const due = monthDue(legacy(), '2026-03', [inv(400)], []);
+      expect(due).toMatchObject({ expected: 400, debt: 400, unverified: 0, unverifiedDebt: 0 });
+    });
+
+    it('once the old price is confirmed the month is recorded at that price', () => {
+      const s = st({ enrollments: [enr({ prices: [{ from: '2026-01', price: 400 }, { from: '2026-06', price: 600 }] })] });
+      expect(monthDue(s, '2026-03', [], [])).toMatchObject({ expected: 400, debt: 400, unverified: 0 });
+    });
+
+    it('mixed: money goes to what is on record first, the rest against the estimate', () => {
+      const s = st({ enrollments: [enr(), enr({ id: 'e2', groupId: 'g2', groupName: 'Math', prices: [{ from: '2026-06', price: 600 }] })] });
+      // English invoiced 500; Math has no recorded price in March.
+      expect(monthDue(s, '2026-03', [inv(500)], [])).toMatchObject({ expected: 500, debt: 500, unverified: 600, unverifiedDebt: 600 });
+      // A loose 700 payment: 500 settles the invoice, 200 is left for the estimate.
+      expect(monthDue(s, '2026-03', [inv(500)], [pay(700)])).toMatchObject({ debt: 0, paid: 700, unverifiedDebt: 400 });
+      // What the student paid then (400) says more than today's price: nothing on record is owed.
+      expect(monthDue(st({ enrollments: [s.enrollments[1]] }), '2026-03', [], [pay(400)])).toMatchObject({ debt: 0, unverifiedDebt: 200 });
+    });
   });
 
   it('a student with nothing in force and nothing invoiced owes nothing', () => {

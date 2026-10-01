@@ -6,6 +6,7 @@ import { eq } from 'drizzle-orm';
 import { AppModule } from '../src/app.module.js';
 import { DB, type Database } from '../src/db/db.module.js';
 import { enrollments, groupPriceHistory, groups, invoices, paymentAllocations, payments, students, tenants } from '../src/db/schema.js';
+import { NotificationsService } from '../src/notifications/notifications.service.js';
 
 // What was owed for a past month must not change because of what happened
 // later: a price rise, a pause, a student leaving or being removed.
@@ -170,6 +171,122 @@ describe('Historical debt (e2e)', () => {
     }
     // Without a month: the current month at the center, not on the server.
     expect((await http().get('/api/payments/debtors').set(auth()).expect(200)).body.forMonth).toBe(current);
+  });
+
+  describe('a past month whose price was never recorded', () => {
+    // A group from before prices were versioned: it cost 400 000 then and
+    // costs 600 000 now. Migration 0030 left one row - today's price, dated
+    // back to the group's creation - which 0033 labels ASSUMED.
+    let legacy: string;
+    let solid: string;
+    let kid: string;
+    let both: string;
+    const legacyGroup = async (name: string, price: number, since: string) => {
+      const id = await newGroup(name, price, since);
+      await db.update(groupPriceHistory).set({ source: 'ASSUMED', effectiveFrom: mid(since), createdAt: new Date() }).where(eq(groupPriceHistory.groupId, id));
+      return id;
+    };
+
+    it('is shown as an unverified estimate, never as debt', async () => {
+      legacy = await legacyGroup('Legacy Price G', 600_000, m3);
+      solid = await newGroup('Recorded Price G', 250_000, m3);
+      kid = await newStudent('Old Price Kid', [legacy], m3);
+      both = await newStudent('Mixed Kid', [legacy, solid], m3);
+
+      const before = await debtors(m2);
+      const row = before.debtors.find((d: { studentId: string }) => d.studentId === kid);
+      // Not "owes 600 000": nothing on record says what that month cost.
+      expect(row).toMatchObject({ expectedAmount: 0, debtAmount: 0, unverifiedAmount: 600_000, unverifiedDebt: 600_000, status: 'UNVERIFIED' });
+      expect(row.groups).toEqual([expect.objectContaining({ name: 'Legacy Price G', monthlyPrice: 600_000, verified: false })]);
+      // Mixed: the recorded group is debt, the other one stays an estimate.
+      expect(before.debtors.find((d: { studentId: string }) => d.studentId === both))
+        .toMatchObject({ expectedAmount: 250_000, debtAmount: 250_000, unverifiedDebt: 600_000, status: 'UNPAID', estimated: true });
+      expect(before.unverifiedGroups).toContainEqual({ id: legacy, name: 'Legacy Price G', assumedPrice: 600_000 });
+      expect(before.unverifiedCount).toBeGreaterThanOrEqual(2);
+
+      // The totals are the recorded debt only; the estimate has its own line.
+      expect(before.totalDebt).toBe(before.debtors.reduce((s: number, d: { debtAmount: number }) => s + d.debtAmount, 0));
+      expect(before.totalUnverifiedDebt).toBe(before.debtors.reduce((s: number, d: { unverifiedDebt: number }) => s + d.unverifiedDebt, 0));
+      expect(before.debtorCount).toBe(before.debtors.filter((d: { debtAmount: number }) => d.debtAmount > 0).length);
+
+      // From the month the price is on record (now), it is ordinary debt.
+      expect(await of(current, kid)).toMatchObject({ expectedAmount: 600_000, debtAmount: 600_000, unverifiedDebt: 0, status: 'UNPAID' });
+    });
+
+    it('summary, director report and reminders treat it the same way', async () => {
+      const list = await debtors(m2);
+      const fin = (await http().get(`/api/payments/finance-summary?forMonth=${m2}`).set(auth()).expect(200)).body;
+      expect(fin.totalOutstandingDebt).toBe(list.totalDebt);
+      expect(fin.unverifiedDebt).toBe(list.totalUnverifiedDebt);
+      const dir = (await http().get(`/api/reports/director?month=${m2}`).set(auth()).expect(200)).body;
+      const row = dir.trend.find((t: { month: string }) => t.month === m2);
+      expect(row.debt).toBe(list.totalDebt);
+      expect(row.unverifiedDebt).toBe(list.totalUnverifiedDebt);
+      expect(dir.debtors.items.find((d: { studentId: string }) => d.studentId === kid)).toBeUndefined(); // not a debtor on record
+
+      // Nobody is asked to pay an estimate.
+      const notifications = app.get(NotificationsService);
+      const sent: Array<{ studentId?: string }> = [];
+      const send = vi.spyOn(notifications, 'send').mockImplementation((async (_t: string, m: { studentId?: string }) => { sent.push(m); }) as never);
+      await db.update(students).set({ telegramChatId: `8${String(suffix).slice(-8)}` }).where(eq(students.id, kid));
+      await db.update(students).set({ telegramChatId: `7${String(suffix).slice(-8)}` }).where(eq(students.id, both));
+      const res = await notifications.notifyDebtors(tenantId, m2, [kid, both]);
+      send.mockRestore();
+      expect(res.processedDebtors).toBe(1);
+      expect([...new Set(sent.map((x) => x.studentId))]).toEqual([both]);
+    });
+
+    it('an invoice run for that month does not turn the estimate into an invoice', async () => {
+      const gen = (await http().post('/api/invoices/generate-monthly').set(auth()).send({ forMonth: m2 }).expect(201)).body;
+      expect(gen.skippedUnverified).toContainEqual({ groupId: legacy, groupName: 'Legacy Price G', students: 2 });
+      const mine = gen.invoices.filter((i: { studentId: string }) => [kid, both].includes(i.studentId));
+      // Only the group with a recorded price was invoiced.
+      expect(mine.map((i: { studentId: string; amount: number }) => [i.studentId, i.amount])).toEqual([[both, 250_000]]);
+      expect(await of(m2, kid)).toMatchObject({ debtAmount: 0, unverifiedDebt: 600_000, status: 'UNVERIFIED' });
+    });
+
+    it('an authorized person confirms what it cost; the month becomes recorded debt at that price', async () => {
+      // Front desk may neither confirm nor see money history.
+      const email = `debt-rec-${suffix}@test.uz`;
+      await http().post('/api/staff').set(auth()).send({ fullName: 'Front Desk', email, password: 'password123', role: 'RECEPTIONIST' }).expect(201);
+      const desk = (await http().post('/api/auth/login').send({ email, password: 'password123' }).expect(201)).body.accessToken;
+      await http().post(`/api/groups/${legacy}/price-history`).set({ Authorization: `Bearer ${desk}` }).send({ month: m3, monthlyPrice: 400_000 }).expect(403);
+      await http().post(`/api/groups/${legacy}/price-history`).set(auth()).send({ month: '2026-13', monthlyPrice: 400_000 }).expect(400);
+      await http().post(`/api/groups/${legacy}/price-history`).set(auth()).send({ month: shift(current, 1), monthlyPrice: 400_000 }).expect(400);
+
+      const history = (await http().post(`/api/groups/${legacy}/price-history`).set(auth())
+        .send({ month: m3, monthlyPrice: 400_000, note: 'Old price list' }).expect(201)).body;
+      expect(history.map((h: { monthlyPrice: number; source: string }) => [h.monthlyPrice, h.source]).sort()).toEqual([[400_000, 'RECORDED'], [600_000, 'ASSUMED']]);
+      expect(history.find((h: { source: string }) => h.source === 'RECORDED')).toMatchObject({ note: 'Old price list', confirmedByUserId: expect.any(String) });
+
+      // The old months at the confirmed price; today's price untouched.
+      expect(await of(m2, kid)).toMatchObject({ expectedAmount: 400_000, debtAmount: 400_000, unverifiedDebt: 0, status: 'UNPAID', estimated: true });
+      expect(await of(m2, both)).toMatchObject({ expectedAmount: 650_000, debtAmount: 650_000, unverifiedDebt: 0 });
+      expect(await of(current, kid)).toMatchObject({ expectedAmount: 600_000, debtAmount: 600_000 });
+      expect((await http().get(`/api/groups/${legacy}`).set(auth()).expect(200)).body.monthlyPrice).toBe(600_000);
+      expect((await debtors(m2)).unverifiedGroups.map((g: { id: string }) => g.id)).not.toContain(legacy);
+
+      // And now an invoice may be issued for it - at 400 000, not 600 000.
+      const gen = (await http().post('/api/invoices/generate-monthly').set(auth()).send({ forMonth: m2 }).expect(201)).body;
+      expect(gen.invoices.find((i: { studentId: string }) => i.studentId === kid)).toMatchObject({ amount: 400_000 });
+      expect(await of(m2, kid)).toMatchObject({ expectedAmount: 400_000, debtAmount: 400_000, estimated: false });
+
+      // A correction is a new entry; the earlier ones stay in the history.
+      const fixed = (await http().post(`/api/groups/${legacy}/price-history`).set(auth()).send({ month: m3, monthlyPrice: 450_000 }).expect(201)).body;
+      expect(fixed).toHaveLength(3);
+      expect(await of(m3, kid)).toMatchObject({ expectedAmount: 450_000 });
+      // ...and it does not rewrite the invoice already issued for m2.
+      expect(await of(m2, kid)).toMatchObject({ expectedAmount: 400_000, debtAmount: 400_000 });
+
+      // The confirmation is in the audit log.
+      let logged = false;
+      for (let i = 0; i < 20 && !logged; i++) {
+        const logs = (await http().get('/api/audit-logs?entityType=group_price').set(auth()).expect(200)).body;
+        logged = JSON.stringify(logs).includes('Old price list');
+        if (!logged) await new Promise((r) => setTimeout(r, 100));
+      }
+      expect(logged).toBe(true);
+    });
   });
 
   it("the month it is now follows the center's time zone", async () => {

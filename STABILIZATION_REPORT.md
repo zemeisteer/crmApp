@@ -1,112 +1,103 @@
 # TalimCRM — barqarorlashtirish hisoboti
 
-- **Ko'rib chiqilgan commit:** `78d9cef` (`feat(auth): the login page lives on the center's address too`)
-- **Boshlang'ich branch:** `dev`
-- **Yakuniy commit:** shu hisobot bilan birga `dev` ga push qilingan (quyidagi "Commitlar" bo'limi)
-- **Sana:** 2026-10-01
-- **Muhit:** Windows 11, Node 22, PostgreSQL (lokal), AI / e-mail / Telegram / SMS testlarda o'chirilgan
+Hisobot ikki bosqichni qamraydi:
 
-## 1. Xulosa
-
-Pilot uchun xavfli bo'lgan oltita yo'nalish tuzatildi va har biri test bilan yopildi.
-Mavjud funksiyalar, dizayn va tarixiy ma'lumotlar o'zgartirilmadi; migratsiyalar faqat qo'shadi.
-
-| Tekshiruv | Boshida | Hozir |
+| | Boshlang'ich commit | Holat |
 |---|---|---|
-| Unit testlar | 224 | **236 o'tdi** (37 fayl) |
-| E2E testlar (haqiqiy PostgreSQL) | 139 | **173 o'tdi** (30 fayl) |
-| Migratsiyalar (jurnalda) | 21 ta (0000–0020) | **32 ta** (0000–0031) |
+| **1-bosqich** (migratsiyalar, auth, to'lovlar, qarz, AI/import, CI) | `78d9cef` | `dev` ga push qilingan (`1e28f7e`), GitHub CI yashil |
+| **2-bosqich** (a'zolik, narx tarixi, test bazasi, AI repetitor limiti) | `1e28f7ec9d17559bbfce0a8929a0872bcdf316a6` | **faqat lokal**, commit va push qilinmagan — ko'rib chiqish uchun |
 
-**Tayyorlik bahosi:** 1–2 markaz bilan **cheklangan pilotga tayyor**, 7-bo'limdagi shartlar bilan.
-Onlayn to'lov (Click/Payme) haqiqiy merchant bilan sinalmaguncha pilotda faqat kassa to'lovlari tavsiya etiladi.
+**Ma'lum asos:** GitHub CI yurishi `36840295303` (`1e28f7e`) o'tgan — 236 unit, 173 E2E, migratsiya/yangilanish tekshiruvlari, sxema farqi, typecheck, lint va ikkala build.
+**2-bosqich o'zgarishlari** shu asosdan keyin qilingan va **faqat lokal tekshirilgan** (5-bo'lim). Ular uchun CI hali yurmagan.
 
-## 2. Topilmalar
+**Tayyorlik bahosi:** 1–2 markaz bilan cheklangan pilotga tayyor, 7-bo'limdagi shartlar bilan.
 
-### Tasdiqlangan va tuzatilgan
+---
 
-| # | Muammo | Oqibati |
+## 1. 2-bosqich: tasdiqlangan topilmalar
+
+| # | Muammo | Tasdiq |
 |---|---|---|
-| 1 | `_journal.json` 0020 da tugagan, 0021–0027 SQL fayllari jurnalda yo'q edi | CI (`drizzle-kit migrate`) ularni qo'llamas, production runner esa qo'llar edi — ikki xil sxema |
-| 2 | Handoff almashinuvi refresh token qaytarmas edi; frontend `"undefined"` satrini saqlar edi | Markaz manziliga o'tgandan keyin sessiya 15 daqiqada uzilar edi |
-| 3 | `/me`, refresh va 2FA `users.tenantId` / `users.role` dan o'qir edi | Ikki markazda ishlaydigan xodim refreshdan keyin boshqa markazga, boshqa rol bilan tushib qolar edi |
-| 4 | A'zolik faqat login paytida tekshirilar edi | Markazdan chiqarilgan xodim token muddati tugaguncha ishlay olar edi |
-| 5 | `PaymentsService.create()` — alohida yozuvlar, tranzaksiya, qulf va takror himoyasi yo'q | Ikki kassir yoki ikki marta bosish hisob-fakturani ortiqcha to'ldirar yoki to'lovni ikki marta yozar edi |
-| 6 | Bir oyda bir nechta hisob-faktura bo'lsa, "birinchi topilgani" tanlanar edi | Natija tasodifiy |
-| 7 | Click/Payme yakunlash ham alohida yozuvlardan iborat edi | O'rtada uzilsa: tranzaksiya PAID, to'lov esa yo'q |
-| 8 | `getDebtors()` o'tgan oylarni ham hozirgi ACTIVE o'quvchilar va hozirgi narxdan hisoblar edi | Ketgan/to'xtatgan o'quvchining eski qarzi yo'qolar, narx o'zgarsa o'tgan oylar qayta yozilar edi |
-| 9 | Qarz to'rt joyda to'rt xil formulada hisoblanar edi (to'lovlar sahifasi, direktor hisoboti, kabinet, eslatmalar) | Raqamlar bir-biriga to'g'ri kelmas edi |
-| 10 | "Joriy oy" server vaqti (UTC) bo'yicha olinar edi | Oy almashgan kechasi noto'g'ri oy |
-| 11 | AI mashq limiti: avval sanab, keyin yozish | Bir vaqtdagi so'rovlar limitdan o'tib ketar edi |
-| 12 | PDF import ishlari faqat xotirada; server ishga tushganda barcha `QUEUED/RUNNING` ishlar `FAILED` qilinar edi | Ikkinchi server birinchisining ishlarini o'ldirar edi; qayta urinish yo'q |
-| 13 | AI Speaking bahosi transkriptdan qo'yilishi interfeysda aytilmagan edi | Talaffuz baholangandek taassurot |
-| 14 | CI: `npm install`, `npm audit ... \|\| true` | Lockfile'dan chetlash va zaifliklar CI'ni to'xtatmas edi |
-| 15 | `next 16.3.5` — critical (GHSA-vcvr-r3jv-pc5j) | 16.3.8 ga ko'tarildi |
-| 16 | E2E testlar `.env` dagi haqiqiy Resend kalitidan foydalanar edi (logda 403 javoblar) | Testlar tashqi xizmatga chiqar edi |
+| 1 | Xodimni o'chirish (`StaffService.remove`) a'zolik qatorini **butunlay o'chirar** edi. A'zolik qatori qolmagan akkaunt esa `JwtStrategy`, `resolveWorkspace` va `completeLogin` da "eski (legacy) akkaunt" deb qabul qilinib, `users.tenantId` / `users.role` bo'yicha **yana ichkariga kiritilar edi** | Kod va yangi test bilan tasdiqlandi: yagona a'zoligi o'chirilgan xodim eski tokeni, refresh va yangi login bilan markazga qayta kira olar edi |
+| 2 | Telegram bot (`findStaff`) a'zolik holatini tekshirmas, a'zolik bo'lmasa `users.role` ga tayanar edi | To'xtatilgan yoki o'chirilgan xodim botda xodim menyusini olar edi |
+| 3 | Platforma admini yaratgan markazning admini (`tenants.createByAdmin`) umuman a'zoliksiz yaratilar edi | U faqat o'sha "legacy" qoidasi tufayli ishlar edi |
+| 4 | 0030 migratsiyasi mavjud guruhning **hozirgi** narxini guruh yaratilgan kundan beri amalda deb yozgan; `priceAt()` birinchi yozuvdan oldingi oylar uchun ham eng eski narxni qaytarar edi | Ilgari 400 000 turgan, hozir 600 000 turadigan guruhning hisob-fakturasiz eski oyi "600 000 qarz" bo'lib chiqar edi |
+| 5 | O'tgan oy uchun "oylik hisob-faktura yaratish" ham hozirgi narxda chiqarar edi | Taxmin tasdiqlangan majburiyatga aylanar edi |
+| 6 | E2E testlar ishlab chiqish bazasida yurar edi | Lokal bazada 2 080 ta test markazi va 3 848 ta foydalanuvchi to'planib qolgan |
+| 7 | AI repetitor (chat) limiti "avval sanab, keyin yozish" edi | Bir vaqtdagi so'rovlar limitdan o'tar edi |
 
-### Sprintdan oldin allaqachon to'g'ri bo'lgan
+Tasdiqlanmagan: oraliq 401 xatosi qayta chiqmadi (4-bo'lim).
 
-- Handoff kodlari: sha256 bilan saqlanadi, bir martalik, atomik olinadi, 60 soniya.
-- Click/Payme webhook'ida bir xil tranzaksiyani ikki marta yakunlashdan himoya.
-- To'lov bilan berilgan chegirma hisob-fakturani yopadi (`fbf731d`).
-- O'quvchi/ota-ona tokenlari boshqaruv paneliga kira olmaydi (RolesGuard).
-- Speaking prompt'i talaffuzni baholamaydi (faqat yorliq yetishmas edi).
-- E2E testlarda AI kalitlari bo'sh.
+## 2. 2-bosqich: tuzatishlar
 
-### Tasdiqlanmagan
+### 2.1. A'zolik yo'q — kirish yo'q
+- Markazga kirish **faqat ACTIVE a'zolik qatoridan** keladi. `users.tenantId` va `users.role` endi hech narsaga ruxsat bermaydi — "a'zoligi yo'q = eski akkaunt" qoidasi `JwtStrategy`, `resolveWorkspace` va `completeLogin` dan olib tashlandi.
+- Shu bilan barcha yo'llar yopildi: mavjud access token, refresh, parol bilan login, 2FA login, markaz tanlash, handoff yaratish va almashtirish, `/me` va himoyalangan endpointlar.
+- Xodimni o'chirish endi qatorni o'chirmaydi: `SUSPENDED` + `removed_at` + `removed_by_user_id` ("tombstone"). Shu tranzaksiyada o'sha markazga bog'langan sessiyalar va handoff kodlari o'chiriladi. Audit jurnaliga yoziladi.
+- Qayta qo'shish (Xodimlar → qo'shish yoki taklifnoma) — ataylab qaytarishning yagona yo'li; `removed_at` tozalanadi.
+- Telegram bot faqat faol a'zoga javob beradi.
+- Platforma admini yaratgan markaz adminiga haqiqiy a'zolik beriladi.
+- SUPERADMIN o'zgarmagan (a'zoliksiz ishlaydi). O'quvchi/ota-ona kabineti alohida tokenlarda — o'zgarmagan.
 
-- **Haqiqiy sxema farqi yo'q.** Qat'iy solishtirish faqat kosmetik farq topdi: 35 ta FK nomi (`_fkey` / `_fk`) va ikki enum qiymatlari tartibi. Tuzatish talab qilinmaydi.
-- SUPERADMIN / STUDENT / PARENT xatti-harakatida xato topilmadi; o'zgarmagan holda saqlandi va testlar bilan qoplangan.
+**Migratsiya 0032 (qo'shuvchi):** ikki ustun, va bitta aniq holat uchun to'ldirish — **markaz asoschisi**: hech qayerda a'zoligi yo'q `OWNER` akkaunt, markazida boshqa OWNER a'zoligi (faol yoki nofaol) va boshqa shunday akkaunt bo'lmasa. OWNER'ni xodimlar API'si orqali o'chirib bo'lmaydi, shuning uchun bu holat noaniq emas.
+Qolgan a'zoliksiz akkauntlar (ADMIN, MANAGER, TEACHER...) ataylab o'chirilgan xodim bo'lishi mumkin — ularga **kirish qaytarilmaydi**. Ro'yxati: `node scripts/list-unlinked-accounts.cjs` (faqat o'qiydi). Kerak bo'lganlarini markaz rahbari qayta qo'shadi.
 
-## 3. O'zgarishlar va sabablari
+### 2.2. Yozilmagan tarixiy narx — tasdiqlangan qarz emas
+- `group_price_history.source`: `RECORDED` (ilovada o'rnatilgan yoki qo'lda tasdiqlangan narx) va `ASSUMED` (0030 yozgan qator).
+- `ASSUMED` qator faqat bitta faktni bildiradi: **yozilgan paytda** guruh shuncha turgan. U o'sha oydan boshlab hisobga olinadi, guruh yaratilgan kundan emas.
+- Narxi yozilmagan oy uchun hisob-fakturasiz o'qish **taxmin** bo'lib, alohida ko'rsatiladi:
+  - o'quvchi qatorida `unverifiedAmount` / `unverifiedDebt`, holati `UNVERIFIED`;
+  - jami: `totalUnverifiedDebt`, `unverifiedCount`, `unverifiedGroups`;
+  - `debtAmount`, `totalDebt`, `debtorCount`, yig'im foizi — **faqat tasdiqlangan** qarz.
+- Bir xil ajratish hamma joyda: qarzdorlar ro'yxati, moliya xulosasi (`unverifiedDebt`), direktor hisoboti (har oy va jami `unverifiedDebt`), bosh sahifa, kabinet.
+- Eslatmalar (avtomatik va qo'lda) faqat tasdiqlangan qarz bo'yicha yuboriladi.
+- O'tgan oy uchun hisob-faktura faqat **yozilgan narxda** chiqariladi; narxi noma'lum guruhlar o'tkazib yuboriladi va `skippedUnverified` da qaytariladi.
+- **Tasdiqlash oqimi:** `POST /groups/:id/price-history` `{ month, monthlyPrice, note? }` — "shu oydan boshlab guruh shuncha turgan". Ruxsat: OWNER, ADMIN, ACCOUNTANT. Yangi `RECORDED` qator yoziladi (kim tasdiqlagani bilan), audit jurnaliga tushadi. Eski yozuvlar o'chirilmaydi — tuzatish ham yangi qator. Hisob-faktura va to'lovlarga tegmaydi. `GET /groups/:id/price-history` — tarix.
+- To'lovlar sahifasida: sariq ogohlantirish, guruh bo'yicha narx kiritish va "Tasdiqlash" tugmasi, "Tasdiqlanmagan" belgisi.
 
-### 1-bosqich — migratsiyalar
-- Jurnal 0021–0027 bilan to'ldirildi; `0028_schema_snapshot` — bo'sh (`SELECT 1`) migratsiya, faqat to'liq snapshot uchun. Qayta raqamlash va reset yo'q.
-- `scripts/migrate.cjs` tartibni jurnaldan oladi, `drizzle-kit` bilan migratsiya qilingan bazani o'ziga qabul qiladi, yozuvi yo'q lekin jadvallari bor bazani `--baseline` siz rad etadi.
-- `scripts/verify-migrations.cjs` — bo'sh baza, mavjud ma'lumotli bazani yangilash, qabul qilish va rad etishni vaqtinchalik bazalarda tekshiradi.
+**Migratsiya 0033 (qo'shuvchi):** uch ustun; 0030 yozgan qatorlar (`gph_<guruh id>`) `ASSUMED` deb belgilanadi — narx va sanalar o'zgarmaydi. 0030 ning o'zi qayta yozilmagan. Ilovada keyin qilingan narx o'zgarishlari (`RECORDED`) saqlanadi. Tarixiy summa o'ylab topilmaydi.
 
-### 2-bosqich — markazga bog'langan sessiya
-- `sessions.tenant_id` (0029): refresh tanlangan markaz va uning rolini saqlaydi.
-- `JwtStrategy` har so'rovda a'zolikni tekshiradi: rol va ruxsatlar joriy a'zolikdan olinadi, to'xtatilgan a'zo darhol 401 oladi.
-- Handoff refresh token qaytaradi; frontend token bo'lmagan qiymatni saqlamaydi; o'tishdan keyingi manzil faqat shu saytdagi yo'l (`safeNextPath`).
+**Yangilanishdan keyin kutiladigan o'zgarish:** hisob-fakturasiz o'tgan oylar qarzi "taxmin"ga o'tadi va tasdiqlanmaguncha jami qarzga kirmaydi. Joriy oy o'zgarmaydi.
 
-### 3-bosqich — to'lovlar
-- Bitta to'lov = bitta tranzaksiya: o'quvchi bo'yicha advisory qulf + hisob-faktura qatorlariga `FOR UPDATE`.
-- `Idempotency-Key` (so'rov tanasida yoki sarlavhada), markaz doirasida unikal. Takror — birinchi to'lov qaytadi; boshqa mazmun bilan — `409`.
-- Qoidalar: summa + chegirma qoldiqdan oshmaydi; bekor qilingan hisob-fakturaga to'lov yo'q; oy mos kelishi shart; `PENDING` to'lov hech narsani yopmaydi.
-- Hisob-faktura ko'rsatilmasa: shu oyning ochiq hisob-fakturalari **muddati eng eskisidan** boshlab to'ldiriladi, ortgani keyingisiga o'tadi; hammasidan ortgani to'lovda avans bo'lib qoladi.
-- Click/Payme yakunlash ham bitta tranzaksiyada, shu qoidalar bilan. Xabar va webhook faqat commit'dan keyin.
-- Oylik hisob-faktura chiqarish ham shu qulf ostida — ikki marta bosilsa bitta chiqadi.
+### 2.3. E2E uchun alohida baza
+- `npm run test:e2e` endi ishlab chiqish bazasiga ulanmaydi: `DATABASE_URL` dagi nomga `_e2e` qo'shiladi (`talimcrm` → `talimcrm_e2e`) yoki `E2E_DATABASE_URL` olinadi.
+- Himoya: nomi `_e2e` yoki `_test` bilan tugamaydigan baza **ulanishdan oldin** rad etiladi; `NODE_ENV=production` ham.
+- `_e2e` baza har yurishda o'chirilib qayta quriladi (`E2E_KEEP_DB=1` — saqlash). CI'dagi `_test` baza hech qachon o'chirilmaydi. Boshqa hech narsa o'chirilmaydi.
+- Sxema production runner (`scripts/migrate.cjs`) bilan quriladi.
+- AI, e-mail, Telegram va SMS kalitlari yurish uchun bo'shatiladi.
+- Hujjat: `backend/README.md` → "The end-to-end database".
 
-### 4-bosqich — tarixiy qarz
-- Yagona hisoblagich `src/ledger/`. Manbalar ishonch tartibida:
-  1. shu oyning hisob-fakturalari (summa chiqarilgan paytda muhrlangan);
-  2. hisob-fakturasi yo'q a'zolik uchun — a'zolik sanalari va **o'sha oydagi** guruh narxi (`group_price_history`).
-- To'xtatgan, ketgan, bitirgan va o'chirilgan o'quvchi oldingi oylar qarzini saqlaydi.
-- To'lovlar sahifasi, moliya xulosasi, bosh sahifa, direktor hisoboti, eslatmalar va o'quvchi kabineti endi bitta manbadan o'qiydi.
-- Avtomatik eslatmalar faqat hozir o'qiyotgan o'quvchilarga boradi.
+### 2.4. AI repetitor limiti
+- Savol AI'ga yuborilishidan **oldin** bitta shartli `INSERT ... ON CONFLICT DO UPDATE` bilan band qilinadi (`ai_usage`, tur `TUTOR`). Sxema o'zgarmagan.
+- Web kabinet va Telegram bot bitta servis va bitta hisoblagichdan foydalanadi.
+- Kun — markaz vaqt zonasi bo'yicha.
+- Javob saqlanmasa (AI xatosi yoki yozishdagi xato) birlik **bir marta** qaytariladi; hisoblagich noldan pastga tushmaydi.
 
-**Eski ma'lumotlar bo'yicha ehtiyotkor qoidalar (hech bir yozuv o'zgartirilmaydi):**
-- Hisob-fakturaga bog'lanmagan eski to'lovlar o'z oyi uchun hisobga olinadi — faqat o'qishda.
-- Narx tarixi yangilanishdan boshlab yuritiladi. Mavjud guruhlar uchun yagona ma'lum narx — hozirgisi, guruh yaratilganidan beri amalda deb yoziladi.
-- Sana saqlanmagan holatlarda **qarz to'qib chiqarilmaydi**: sanasiz tugagan a'zolik, yangilanishdan oldin to'xtatilgan o'quvchi, hamda ketish/to'xtatish oyining o'zi — hisob-faktura bo'lmasa — hisoblanmaydi.
-- Aniq raqam kerak bo'lsa: har oy hisob-faktura chiqarish.
+## 3. Yangi regressiya testlari
 
-### 5-bosqich — AI limiti va import
-- AI mashq limiti bitta shartli `INSERT ... ON CONFLICT DO UPDATE` bilan band qilinadi. Mashq yaratilmasa (AI xatosi, bo'sh javob) birlik qaytariladi.
-- Import ishi — `mock_imports` jadvalidagi qator: `FOR UPDATE SKIP LOCKED` bilan olinadi, 30 soniyada bir "tirikman" belgisi, 3 daqiqa jim turgan ishni boshqa server oladi, 3 urinish (30 s / 60 s tanaffus).
-- Testlar `(import_id, import_index)` bo'yicha unikal — qayta urinish dublikat yaratmaydi; topilgan reja saqlanadi va qayta ishlatiladi.
-- Yuklangan PDF ish tugaganda (muvaffaqiyatli yoki butunlay muvaffaqiyatsiz) o'chiriladi; ishga tushish boshqa serverning ishlariga tegmaydi.
-- AI Speaking bahosi yonida: "faqat transkript bo'yicha, talaffuz baholanmagan, yakuniy bahoni o'qituvchi qo'yadi".
+| Fayl | Testlar | Mazmuni |
+|---|---|---|
+| `test/staff-removal.e2e-spec.ts` (yangi) | 6 | haqiqiy `DELETE /staff/:id` orqali: yagona a'zoligi o'chirilgan xodim eski token, refresh, yangi login, markaz tanlash, oldin olingan handoff kodi bilan kira olmaydi; qatori butunlay yo'q akkaunt ham; 2FA kodi ham ochmaydi; A markazdan o'chirish B markazdagi ishni buzmaydi; to'xtatilgan a'zo yopiq; qayta qo'shish va taklifnoma ishlaydi; platforma admini yaratgan admin a'zolikka ega |
+| `test/debt-history.e2e-spec.ts` | +4 (jami 10) | 400 000 → 600 000 guruh: eski oy "600 000 qarz" emas, `UNVERIFIED`; aralash oy; xulosa = direktor hisoboti; eslatma yuborilmaydi; hisob-faktura chiqarilmaydi; tasdiqlashdan keyin 400 000; tuzatish; audit; ruxsatsiz rol 403 |
+| `test/portal-tutor.e2e-spec.ts` | +3 (jami 6) | sayt + bot orqali 12 ta bir vaqtdagi savol, limit 4 → aynan 4 ta; AI xatosi → hisoblanmaydi, noldan pastga tushmaydi; markaz yarim tunida kun almashishi, boshqa vaqt zonasi |
+| `src/ledger/ledger.spec.ts` | +4 | yozilmagan narx, hisob-faktura ustunligi, tasdiqlangan narx, aralash holat |
+| `src/common/e2e-database.spec.ts` (yangi) | 4 | test bazasini tanlash va rad etish qoidalari |
+| `src/staff`, `src/telegram` spec | yangilandi | tombstone; faol a'zoligi yo'q akkaunt botda xodim emas |
+| `scripts/verify-migrations.cjs` | +3 tekshiruv | asoschi a'zolik oladi; noaniq akkaunt olmaydi; eski narx qatori `ASSUMED` |
 
-### 6-bosqich — CI
-- `npm ci` (CI va ikkala Dockerfile).
-- Audit siyosati: production paketlarida HIGH/CRITICAL — build to'xtaydi; build/test vositalari — faqat hisobot. `npm audit fix --force` ishlatilmaydi.
-- CI'ga qo'shildi: lint, jurnal tekshiruvi, production runner'ning yangilanish testi.
-- Yangi doimiy test: `test/core-journey.e2e-spec.ts` (pilot yo'li boshidan oxirigacha).
+Moslashtirilgan mavjud testlar: `payments-atomic` (poyga testi joriy oyga o'tkazildi) va `reminders` (narx tarixi orqaga surildi) — ikkalasi yozilmagan o'tgan oy narxiga tayangan edi.
 
-## 4. Bajarilgan buyruqlar va haqiqiy natijalar
+## 4. Oraliq 401 xatosi
 
-Hammasi 2026-10-01 da, yakuniy kod ustida bajarilgan.
+- **Qayta chiqmadi.** Alohida bazada to'liq E2E to'plami ketma-ket yuritildi (5-bo'lim) — birorta ham 401 yo'q.
+- Tekshirilgan sabablar va natija:
+  - *Identifikator to'qnashuvi:* `teacher-${suffix}@test.uz` faqat bitta faylda ishlatiladi; `users.email` unikal; bazada takror email yo'q — tasdiqlanmadi.
+  - *Throttling:* login limiti (8/daqiqa) oshganda javob **429**, 401 emas (yangi testlarda aynan shunday ko'rindi) — sabab emas.
+  - *Autentifikatsiya hayot sikli:* login JWT tekshirmaydi; a'zolik `staff.create` da ketma-ket yaratiladi — xato topilmadi.
+  - *Umumiy holat:* ilgarigi ikkala xato ishlab chiqish serveri va 2 000+ eski test markazi bilan **umumiy bazada** chiqqan. Bu holat endi yo'q.
+- **Xulosa:** aniq sabab ko'rsatilmadi. Xato qayta urinish yoki zaiflashtirilgan tekshiruv bilan yashirilmagan; test javob matnini chiqaradigan holatda qoldirilgan.
+
+## 5. Bajarilgan buyruqlar va haqiqiy natijalar (2-bosqich, lokal, 2026-10-01)
 
 **Backend** (`backend/`)
 
@@ -114,12 +105,12 @@ Hammasi 2026-10-01 da, yakuniy kod ustida bajarilgan.
 |---|---|
 | `npx tsc --noEmit` | xatosiz |
 | `npm run lint` | 0 xato (faqat ogohlantirishlar) |
-| `npm run db:check-migrations` | `32 migrations, journal and files agree` |
+| `npm run db:check-migrations` | `34 migrations, journal and files agree` |
 | `npm run db:check-drift` | `No schema drift` |
 | `npx drizzle-kit generate --name ci-check` | `No schema changes` |
-| `npm run db:verify-migrations` | `Migration chain verified` (20 tekshiruv) |
-| `npm test` | **236 / 236** |
-| `npm run test:e2e` | **173 / 173** |
+| `npm run db:verify-migrations` | `Migration chain verified` (22 tekshiruv) |
+| `npm test` | **245 / 245** (38 fayl) |
+| `npm run test:e2e` (baza: `talimcrm_e2e`) | **186 / 186** (31 fayl); ketma-ket 8 marta toza. Undan oldingi 6 yurishda faqat yuqorida aytilgan ikki moslashtirilgan test yiqilgan (401 emas) |
 | `npm run build` | muvaffaqiyatli |
 | `npm audit --omit=dev --audit-level=high` | exit 0 (2 ta moderate: `exceljs` → `uuid`) |
 
@@ -129,78 +120,91 @@ Hammasi 2026-10-01 da, yakuniy kod ustida bajarilgan.
 |---|---|
 | `npx tsc --noEmit` | xatosiz |
 | `npm run lint` | 0 xato, 107 ogohlantirish |
-| `npm run build` | muvaffaqiyatli (next 16.3.8) |
+| `npm run build` | muvaffaqiyatli |
 | `npm audit --omit=dev --audit-level=high` | `found 0 vulnerabilities` |
 
-**Yangi testlar nimani isbotlaydi**
+**Test bazasi himoyasi:** `E2E_DATABASE_URL=.../talimcrm` → `refusing to use database "talimcrm"`; `NODE_ENV=production` → `refusing to run with NODE_ENV=production`.
 
-| Fayl | Testlar | Mazmuni |
-|---|---|---|
-| `auth-workspaces.e2e-spec.ts` | 5 | ikki markaz/ikki rol, refresh, 2FA, a'zolik to'xtatilishi, handoff muddati va takrori |
-| `payments-atomic.e2e-spec.ts` | 7 | 10 ta bir vaqtdagi to'lov → aynan 5 tasi; 8 ta bir xil kalit → 1 to'lov, 1 xabar; o'rtadagi uzilish → hech narsa qolmaydi; Click + kassa poygasi |
-| `debt-history.e2e-spec.ts` | 6 | narx o'zgarishi, to'xtatish/ketish/o'chirish, hisob-faktura muhri, eski to'lovlar, ro'yxat = xulosa = direktor hisoboti, vaqt zonasi |
-| `ai-quota-imports.e2e-spec.ts` | 8 | 12 so'rov → aynan 5 mashq; qaytarish; qayta urinish dublikatsiz; boshqa serverning ishiga tegmaslik; bir vaqtda bitta ish |
-| `core-journey.e2e-spec.ts` | 8 | markaz → xodim logini → lid → sinov darsi → qabul → davomat → hisob-faktura → to'lov → o'quvchi va ota-ona kabineti |
+**Brauzerda (localhost, sinov markazi):** login → to'lovlar → qarzdorlar, avgust: sariq ogohlantirish, o'quvchi "Tasdiqlanmagan", jami qarz 0. Narx 250 000 deb tasdiqlangach: jami qarz 250 000, holat "To'lanmagan". Oktabr (joriy oy) o'zgarmagan: 3 qarzdor, 1 300 000.
 
-**Brauzerda (localhost, test akkaunt):**
-- Asosiy login → markaz manziliga o'tish, haqiqiy refresh token, `/auth/refresh` 201, `/me` o'sha markaz.
-- To'lovlar sahifasi → qarzdorlar ro'yxati ochildi; to'lov formasida "saqlash" ikki marta bosildi → bitta `POST`, bitta to'lov, qarzdorlar 4 → 3.
+**Tekshirilmagan:** Docker image'lar — bu mashinada Docker yo'q. GitHub CI — 2-bosqich push qilinmagan.
 
-## 5. Yangilash tartibi
+## 6. Yangilash tartibi
 
-1. **Zaxira nusxa:** `npm run db:backup` (yoki `pg_dump`).
-2. Holatni ko'rish: `node scripts/migrate.cjs --status`.
-3. Migratsiya: `node scripts/migrate.cjs` (konteyner ishga tushganda o'zi bajaradi). Qo'llanadi: 0021–0031.
-4. Agar baza jadvallarga ega, lekin migratsiya yozuvi yo'q bo'lsa, runner to'xtaydi. Bazaning haqiqiy holatiga mos tegni ko'rsating: `node scripts/migrate.cjs --baseline <teg>`, keyin 3-qadam.
-5. Tekshirish: `npm run db:check-drift` → `No schema drift`.
+1. Zaxira nusxa: `npm run db:backup` (yoki `pg_dump`).
+2. `node scripts/migrate.cjs --status`, keyin `node scripts/migrate.cjs` (konteyner ishga tushganda o'zi bajaradi). Qo'llanadi: 0021–0033.
+3. Bazada jadvallar bor, lekin migratsiya yozuvi yo'q bo'lsa: `node scripts/migrate.cjs --baseline <teg>`.
+4. `npm run db:check-drift` → `No schema drift`.
+5. **Yangi:** `node scripts/list-unlinked-accounts.cjs` — markazga kira olmaydigan xodim akkauntlari. Ishlashi kerak bo'lganlarini markaz rahbari Xodimlar bo'limida qayta qo'shadi.
+6. **Yangi:** To'lovlar → Qarzdorlar, o'tgan oylar: sariq ogohlantirish chiqsa, guruhlarning o'sha paytdagi narxini tasdiqlang.
 
-Migratsiyalar nima qiladi:
-- 0029 — mavjud sessiyalarga foydalanuvchining asosiy markazi yoziladi (xodimlar qayta login qilmaydi).
-- 0030 — har bir guruhga bitta narx-tarix qatori (hozirgi narx bilan); to'lovlarga ikki bo'sh ustun.
-- 0031 — eski runner'dan tugallanmay qolgan importlar `FAILED` deb yopiladi (eski kod buni har ishga tushishda qilar edi).
+| Migratsiya | Nima qiladi |
+|---|---|
+| 0029 | sessiyalarga markaz yoziladi |
+| 0030 | guruhlarga narx-tarix qatori; to'lovlarga takror himoyasi ustunlari |
+| 0031 | AI hisoblagichi, import navbati |
+| 0032 | a'zolik "tombstone" ustunlari; asoschi (OWNER) a'zoligi to'ldiriladi |
+| 0033 | narx manbasi; 0030 qatorlari `ASSUMED` deb belgilanadi |
 
-Yangi ixtiyoriy sozlamalar: `IMPORT_CONCURRENCY` (standart 1), `IMPORT_POLL_MS` (standart 15000; 0 — fon tekshiruvi yo'q), `IMPORT_QUEUE` (standart `default`).
+Sozlamalar: `IMPORT_CONCURRENCY`, `IMPORT_POLL_MS`, `IMPORT_QUEUE`; testlar uchun `E2E_DATABASE_URL`, `E2E_KEEP_DB`.
 
-Bir nechta server bo'lsa: `uploads` papkasi umumiy diskda bo'lishi shart.
+## 7. Qolgan cheklovlar
 
-## 6. Qolgan to'siqlar va xavflar
-
-**Pilotdan oldin tekshirish shart**
-1. **GitHub CI natijasi ko'rilmagan** (`gh` autentifikatsiya qilinmagan). Push'dan keyingi birinchi ishga tushishni ko'zdan kechirish kerak — ayniqsa Linux'da `npm ci` va `db:verify-migrations` qadamlari.
-2. **Docker image'lar lokal qurilmagan** (bu mashinada Docker yo'q). `npm ci` ga o'tgan Dockerfile'lar serverda birinchi marta quriladi.
-3. **Click/Payme haqiqiy merchant bilan sinalmagan**; Telegram bot haqiqiy chat bilan sinalmagan.
+**Cheklangan pilotni to'xtatib turgan narsalar**
+1. 2-bosqich o'zgarishlari commit/push qilinmagan va CI'dan o'tmagan.
+2. Docker image'lar qurib ko'rilmagan.
+3. Staging'da tekshirilmagan: domen/subdomen logini, zaxiradan tiklash, Telegram, Click/Payme (8-bo'lim).
 
 **Ma'lum cheklovlar**
-4. **Beqaror test:** `capacity-and-conflicts.e2e` dagi o'qituvchi logini ~16 to'liq yurishdan 2 tasida 401 qaytardi, alohida va keyingi 8 yurishda o'tdi. Sababi aniqlanmagan; test endi javob matnini chiqaradi.
-5. `Idempotency-Key` yubormaydigan tashqi API mijozlari takrordan himoyalanmagan (kalit ixtiyoriy; frontend har doim yuboradi).
-6. Ortiqcha to'lov (avans) keyingi oyga avtomatik o'tkazilmaydi.
-7. Narx tarixi va to'xtatish sanasi faqat yangilanishdan keyin aniq (3-bo'lim, 4-bosqich).
-8. AI repetitor (chat) kunlik limiti hali "sanab, keyin yozish" usulida — bu sprint doirasiga kirmagan; eng yomon holatda bir necha ortiqcha savol.
-9. Yangilanish kuni AI mashq hisoblagichi noldan boshlanadi (o'sha kuni yaratilganlar hisobga kirmaydi).
-10. Lokal ishlab chiqish serveri va e2e testlar bitta bazadan foydalanadi. Import navbati ajratilgan, lekin alohida test bazasi tavsiya etiladi.
-11. Backend'da 2 ta moderate (`exceljs` → `uuid`): taklif qilingan yagona "tuzatish" — `exceljs` ni eski major versiyaga tushirish, shu sabab qo'llanmadi.
+4. Oraliq 401 ning sababi aniqlanmagan (4-bo'lim).
+5. Lokal ishlab chiqish bazasida eski test ma'lumotlari qolgan (2 080 markaz). O'chirilmadi — bu sizning bazangiz; xohlasangiz alohida tozalash mumkin.
+6. To'xtatish sanasi faqat yangilanishdan keyin yoziladi; undan oldin to'xtatilgan o'quvchining eski oylari hisoblanmaydi.
+7. Narxni tasdiqlash "shu oydan boshlab" ishlaydi; narx bir necha marta o'zgargan bo'lsa, har bir o'zgarish oyi alohida tasdiqlanadi.
+8. `Idempotency-Key` yubormaydigan tashqi API mijozlari takrordan himoyalanmagan.
+9. Ortiqcha to'lov (avans) keyingi oyga avtomatik o'tmaydi.
+10. Yangilanish kuni AI hisoblagichlari (mashq va repetitor) noldan boshlanadi.
+11. Backend'da 2 ta moderate (`exceljs` → `uuid`); yagona taklif — major versiyani tushirish, qo'llanmadi.
+12. Brauzer tekshiruvi uchun sinov markazida (`rep-a-...`) bitta a'zolik sanasi orqaga surildi va bitta narx tasdiqlandi — faqat lokal sinov ma'lumoti.
 
-## 7. Pilot nazorat ro'yxati
+## 8. Staging nazorat ro'yxati
 
-- [ ] GitHub CI yashil (backend va frontend).
-- [ ] Bazadan zaxira nusxa olindi va tiklash sinab ko'rildi.
-- [ ] `node scripts/migrate.cjs --status` → hammasi qo'llangan; `db:check-drift` toza.
-- [ ] `.env`: `JWT_SECRET`, `DATABASE_URL`, domen va CORS sozlamalari production qiymatlarida.
-- [ ] Markaz vaqt zonasi to'g'ri (`Asia/Tashkent`).
-- [ ] Har oy boshida "Oylik hisob-fakturalarni yaratish" bosiladi.
-- [ ] Bitta sinov o'quvchi bilan: lid → qabul → davomat → hisob-faktura → to'lov → kabinet.
-- [ ] Ikki xodim, ikki rol: har biri faqat o'ziga ruxsat etilgan sahifalarni ko'radi.
-- [ ] Xodimni markazdan chiqarish → u darhol tizimdan chiqadi.
-- [ ] Onlayn to'lov yoqilsa: Click va Payme test merchant bilan bitta to'liq to'lov.
-- [ ] Telegram bot haqiqiy chat bilan: to'lov xabari va eslatma.
-- [ ] AI yoqilgan bo'lsa: bitta PDF import va bitta AI mashq.
+**Domen va subdomen logini**
+- [ ] `https://<domen>/login` → markaz manziliga o'tadi (`https://<markaz>.<domen>/dashboard`), sahifa yangilanganda sessiya saqlanadi.
+- [ ] 20 daqiqadan keyin ham ishlaydi (refresh markazni saqlaydi).
+- [ ] Ikki markazli xodim: tanlash oynasi, har markazda o'z roli.
+- [ ] Xodimni o'chirish → uning ochiq oynasi keyingi so'rovda chiqib ketadi; qayta login 401.
+- [ ] Wildcard SSL va CORS: `*.<domen>` dan API so'rovlari o'tadi.
 
-## 8. Commitlar (`dev`)
+**Zaxira va tiklash**
+- [ ] `npm run db:backup` → fayl hosil bo'ladi.
+- [ ] Bo'sh bazaga tiklash → `node scripts/migrate.cjs --status` hammasi qo'llangan, `db:check-drift` toza.
+- [ ] Tiklangan bazada login va to'lovlar sahifasi ochiladi.
 
-| Commit | Mazmuni |
+**Telegram**
+- [ ] Webhook o'rnatilgan (`set-telegram-webhook.sh`), bot `/start` ga javob beradi.
+- [ ] O'quvchi: bog'lash, AI savol, limit tugaganda xabar.
+- [ ] Xodim: bog'lash, kunlik xulosa; markazdan o'chirilgach bot xodim menyusini bermaydi.
+- [ ] To'lov xabari va qarz eslatmasi haqiqiy chatga keladi; "tasdiqlanmagan" qarz bo'yicha eslatma kelmaydi.
+
+**Click / Payme**
+- [ ] Test merchant kalitlari bilan to'lov havolasi ochiladi.
+- [ ] Muvaffaqiyatli to'lov: bitta to'lov yozuvi, hisob-faktura yopiladi, kvitansiya.
+- [ ] Webhook ikki marta kelganda ikkinchi to'lov yaratilmaydi.
+- [ ] Bekor qilingan / muvaffaqiyatsiz to'lov hech narsani yopmaydi.
+
+---
+
+## 9. 1-bosqich (ma'lumot uchun, `78d9cef` → `1e28f7e`, CI yashil)
+
+| Yo'nalish | Nima qilingan |
 |---|---|
-| `3aefdeb` | migratsiyalar: jurnal, yagona ro'yxat, yangilanish tekshiruvi |
-| `8623ba5` | auth: sessiya tanlangan markazda qoladi, a'zolik har so'rovda |
-| `a599a2e` | to'lovlar, tarixiy qarz, AI limiti, import navbati |
-| `e0051b7` | CI, audit siyosati, next 16.3.8 |
-| (shu commit) | asosiy yo'l testi va ushbu hisobot |
+| Migratsiyalar | Jurnal 0021–0027 bilan to'ldirildi; `migrate.cjs` jurnal tartibida, `drizzle-kit` bazasini qabul qiladi, yozuvsiz bazani `--baseline` siz rad etadi; `verify-migrations.cjs` |
+| Sessiya | `sessions.tenant_id`; refresh markaz va rolni saqlaydi; a'zolik har so'rovda tekshiriladi; handoff refresh token beradi; `safeNextPath` |
+| To'lovlar | bitta tranzaksiya, o'quvchi bo'yicha advisory qulf + `FOR UPDATE`; `Idempotency-Key` (boshqa mazmun — 409); bir necha hisob-fakturada muddati eng eskisidan; Click/Payme ham shu qoidada; xabarlar commit'dan keyin |
+| Tarixiy qarz | yagona hisoblagich `src/ledger/`: avval oyning hisob-fakturalari, keyin a'zolik sanalari va o'sha oydagi narx; to'xtatgan/ketgan/o'chirilgan o'quvchi eski qarzini saqlaydi; barcha ekranlar bitta manbadan |
+| AI va import | AI mashq limiti atomik, yaratilmasa qaytariladi; import — bazadagi navbat (`SKIP LOCKED`, heartbeat, 3 urinish, dublikatsiz); Speaking bahosi "faqat transkript bo'yicha" deb belgilangan |
+| CI | `npm ci`; production paketlarida HIGH/CRITICAL build'ni to'xtatadi; lint, jurnal va yangilanish tekshiruvlari; `next` 16.3.8 |
+
+1-bosqich testlari: `auth-workspaces` (5), `payments-atomic` (7), `debt-history` (6), `ai-quota-imports` (8), `core-journey` (8).
+
+Commitlar: `3aefdeb`, `8623ba5`, `a599a2e`, `e0051b7`, `1e28f7e`.

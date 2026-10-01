@@ -34,20 +34,30 @@ describe('TelegramService AI tutor', () => {
         enrollments: { findMany: vi.fn().mockResolvedValue([{ group: { subject: 'Ingliz tili' } }]) },
         attendance: { findMany: vi.fn().mockResolvedValue([]) },
       },
-      // count() for the quota, recent turns for the history
+      // the day's counter for the quota, recent turns for the history
       select: vi.fn(() => ({
         from: () => ({
           // parent chats: none in these tests
           innerJoin: () => ({ where: () => ({ orderBy: async () => [] }) }),
           where: () => {
-            const quota = Promise.resolve([{ n: usedToday }]);
+            const quota = Promise.resolve([{ used: usedToday }]);
             return Object.assign(quota, {
               orderBy: () => ({ limit: async () => [{ role: 'assistant', content: 'Oldingi javob' }, { role: 'user', content: 'Oldingi savol' }] }),
             });
           },
         }),
       })),
-      insert: vi.fn(() => ({ values: vi.fn(async (v: unknown) => inserted.push(v)) })),
+      // Messages are plain inserts; the day's counter is reserved with
+      // insert ... on conflict do update ... returning (empty at the limit).
+      insert: vi.fn(() => ({
+        values: vi.fn((v: unknown) => {
+          const isCounter = typeof v === 'object' && v !== null && 'kind' in v;
+          const done = Promise.resolve().then(() => (isCounter ? undefined : inserted.push(v)));
+          return Object.assign(done, {
+            onConflictDoUpdate: () => ({ returning: async () => (usedToday < limit ? [{ used: ++usedToday }] : []) }),
+          });
+        }),
+      })),
       delete: vi.fn(() => ({ where: vi.fn().mockResolvedValue([]) })),
       update: vi.fn(() => ({ set: () => ({ where: vi.fn().mockResolvedValue([]) }) })),
     };

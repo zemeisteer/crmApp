@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { and, asc, eq, inArray, sql } from 'drizzle-orm';
+import { and, eq, inArray, sql } from 'drizzle-orm';
 import { DB, Database } from '../db/db.module';
 import { groupPriceHistory, invoices, payments, students, tenants } from '../db/schema';
 import { DEFAULT_TIMEZONE, isValidTimeZone, zonedParts } from '../common/timezone';
@@ -39,6 +39,45 @@ export class LedgerService {
   }
 
   /**
+   * Each group's prices on record, oldest first, as { first month the price
+   * is known to apply, price }. A RECORDED row applies from its
+   * `effectiveFrom`. An ASSUMED row (seeded when price history began) only
+   * says what the group cost when it was written, so it counts from that
+   * moment - not from the group's creation it was back-dated to.
+   */
+  async priceRecords(tenantId: string, monthOf: (d: Date | null | undefined) => string | null, groupId?: string) {
+    const history = await this.db
+      .select({
+        groupId: groupPriceHistory.groupId, price: groupPriceHistory.monthlyPrice, source: groupPriceHistory.source,
+        effectiveFrom: groupPriceHistory.effectiveFrom, createdAt: groupPriceHistory.createdAt,
+      })
+      .from(groupPriceHistory)
+      .where(and(eq(groupPriceHistory.tenantId, tenantId), ...(groupId ? [eq(groupPriceHistory.groupId, groupId)] : [])));
+    const rows = history
+      .map((h) => ({ groupId: h.groupId, price: h.price, at: h.source === 'ASSUMED' ? h.createdAt : h.effectiveFrom, written: h.createdAt }))
+      .map((h) => ({ ...h, from: monthOf(h.at)! }))
+      // Within a month the row written last wins (a correction replaces).
+      .sort((a, b) => (a.from < b.from ? -1 : a.from > b.from ? 1 : a.written.getTime() - b.written.getTime()));
+    const prices = new Map<string, Array<{ from: string; price: number }>>();
+    for (const h of rows) {
+      const list = prices.get(h.groupId) ?? [];
+      list.push({ from: h.from, price: h.price });
+      prices.set(h.groupId, list);
+    }
+    return prices;
+  }
+
+  /** YYYY-MM of an instant at the center. */
+  async monthOfFn(tenantId: string) {
+    const tz = await this.timezone(tenantId);
+    return (d: Date | null | undefined) => {
+      if (!d) return null;
+      const p = zonedParts(d, tz);
+      return monthKey(p.year, p.month);
+    };
+  }
+
+  /**
    * Everything needed to say what each student owes for the given months.
    * Students are loaded whatever their status, removed ones included: what
    * they owed for a past month does not change when they leave.
@@ -68,17 +107,8 @@ export class LedgerService {
       orderBy: (s, { desc }) => desc(s.createdAt),
     });
 
-    const history = await this.db
-      .select({ groupId: groupPriceHistory.groupId, price: groupPriceHistory.monthlyPrice, from: groupPriceHistory.effectiveFrom })
-      .from(groupPriceHistory)
-      .where(eq(groupPriceHistory.tenantId, tenantId))
-      .orderBy(asc(groupPriceHistory.effectiveFrom), asc(groupPriceHistory.createdAt));
-    const prices = new Map<string, Array<{ from: string; price: number }>>();
-    for (const h of history) {
-      const list = prices.get(h.groupId) ?? [];
-      list.push({ from: monthOf(h.from)!, price: h.price });
-      prices.set(h.groupId, list);
-    }
+    const prices = await this.priceRecords(tenantId, monthOf);
+    const currentMonth = monthKey(now.year, now.month);
 
     const list: LedgerStudentRow[] = rows.map((r) => ({
       id: r.id,
@@ -102,8 +132,8 @@ export class LedgerService {
         joinedMonth: monthOf(e.joinedAt)!,
         leftMonth: monthOf(e.leftAt),
         groupDeletedMonth: monthOf(e.group?.deletedAt),
-        // A group with no recorded history has had one price: today's.
-        prices: prices.get(e.groupId) ?? [{ from: '0000-00', price: e.group?.monthlyPrice ?? 0 }],
+        // No history at all: today's price is known for now, nothing earlier.
+        prices: prices.get(e.groupId) ?? [{ from: currentMonth, price: e.group?.monthlyPrice ?? 0 }],
       })),
     }));
 
@@ -148,7 +178,7 @@ export class LedgerService {
 
     return {
       timezone: tz,
-      currentMonth: monthKey(now.year, now.month),
+      currentMonth,
       students: list,
       due: (s, month) => monthDue(s, month, invByKey.get(`${s.id}|${month}`) ?? [], payByKey.get(`${s.id}|${month}`) ?? []),
     };

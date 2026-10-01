@@ -45,7 +45,7 @@ describe('InvoicesService', () => {
       log: vi.fn(),
     };
 
-    service = new InvoicesService(mockDb, mockAudit);
+    service = new InvoicesService(mockDb, mockAudit, { currentMonth: vi.fn().mockResolvedValue(new Date().toISOString().slice(0, 7)), priceRecords: vi.fn().mockResolvedValue(new Map()), monthOfFn: vi.fn() } as any);
   });
 
   describe('create', () => {

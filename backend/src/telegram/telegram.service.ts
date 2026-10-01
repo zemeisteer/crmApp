@@ -334,15 +334,14 @@ export class TelegramService {
       where: eq(users.telegramChatId, chatId),
       columns: { id: true, fullName: true, tenantId: true, role: true },
     });
-    if (!u) return null;
-    if (u.tenantId) {
-      const [m] = await this.db
-        .select({ role: organizationMemberships.role })
-        .from(organizationMemberships)
-        .where(and(eq(organizationMemberships.userId, u.id), eq(organizationMemberships.tenantId, u.tenantId)));
-      if (m) return { ...u, role: m.role };
-    }
-    return u;
+    if (!u || !u.tenantId) return null;
+    // Only while they are an active member of that center: a removed or
+    // suspended member's chat gets nothing.
+    const [m] = await this.db
+      .select({ role: organizationMemberships.role })
+      .from(organizationMemberships)
+      .where(and(eq(organizationMemberships.userId, u.id), eq(organizationMemberships.tenantId, u.tenantId), eq(organizationMemberships.status, 'ACTIVE')));
+    return m ? { ...u, role: m.role } : null;
   }
 
   private async tenantZone(tenantId: string) {

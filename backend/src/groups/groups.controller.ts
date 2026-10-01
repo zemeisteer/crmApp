@@ -15,7 +15,7 @@ import { TrialGuard } from '../common/trial.guard';
 import { Roles } from '../common/roles.decorator';
 import { CurrentUser } from '../common/current-user.decorator';
 import { GroupsService } from './groups.service';
-import { CreateGroupDto, UpdateGroupDto } from './dto/group.dto';
+import { ConfirmGroupPriceDto, CreateGroupDto, UpdateGroupDto } from './dto/group.dto';
 
 @UseGuards(JwtAuthGuard, RolesGuard, TrialGuard)
 @Controller('groups')
@@ -82,6 +82,25 @@ export class GroupsController {
     @Body() dto: UpdateGroupDto,
   ) {
     return this.service.update(tenantId, userId, id, dto);
+  }
+
+  // Price history: who may see money figures may read it; confirming what
+  // a past month cost is for those who run the center and its books.
+  @Roles('ADMIN', 'OWNER', 'MANAGER', 'ACCOUNTANT')
+  @Get(':id/price-history')
+  priceHistory(@CurrentUser('tenantId') tenantId: string, @Param('id') id: string) {
+    return this.service.priceHistory(tenantId, id);
+  }
+
+  @Roles('ADMIN', 'OWNER', 'ACCOUNTANT')
+  @Post(':id/price-history')
+  confirmPrice(
+    @CurrentUser('tenantId') tenantId: string,
+    @CurrentUser('sub') userId: string,
+    @Param('id') id: string,
+    @Body() dto: ConfirmGroupPriceDto,
+  ) {
+    return this.service.confirmPrice(tenantId, userId, id, dto);
   }
 
   @Roles('ADMIN')

@@ -1,9 +1,9 @@
 import { ForbiddenException, Inject, Injectable, Logger, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
-import { and, count, desc, eq, gte, inArray, isNull, lt } from 'drizzle-orm';
+import { and, desc, eq, gte, inArray, isNull, lt, sql } from 'drizzle-orm';
 import { DB, Database } from '../db/db.module';
-import { enrollments, groups, studentAiMessages, students } from '../db/schema';
+import { aiUsage, enrollments, groups, studentAiMessages, students } from '../db/schema';
 import { teacherGroupIds } from '../common/teacher-scope';
-import { DEFAULT_TIMEZONE, isValidTimeZone, zonedDayBounds } from '../common/timezone';
+import { DEFAULT_TIMEZONE, isValidTimeZone, zonedParts } from '../common/timezone';
 import { AiService } from './ai.service';
 import { tutorTopicsPrompt, type TutorTurn } from './tutor-prompt';
 
@@ -23,6 +23,7 @@ export type TutorAnswer =
   | { status: 'limit'; limit: number };
 
 const KEEP_DAYS = 30;
+const TUTOR_USAGE = 'TUTOR';
 export const TUTOR_MAX_QUESTION = 1500;
 
 @Injectable()
@@ -38,17 +39,50 @@ export class StudentTutorService {
     return this.ai.isConfigured;
   }
 
-  // Questions used today (in the center's time zone) and what is left.
-  async quota(student: TutorStudent) {
-    const limit = student.tenant?.studentAiDailyLimit ?? 20;
+  // Today's date at the student's center: the quota's day.
+  private localDay(student: TutorStudent, now: Date) {
     const tz = isValidTimeZone(student.tenant?.timezone) ? student.tenant!.timezone! : DEFAULT_TIMEZONE;
-    const { startOfToday } = zonedDayBounds(new Date(), tz);
+    const p = zonedParts(now, tz);
+    return `${p.year}-${String(p.month).padStart(2, '0')}-${String(p.day).padStart(2, '0')}`;
+  }
+
+  // Questions used today (in the center's time zone) and what is left. The
+  // counter is one row per student and local day, shared by the web cabinet
+  // and the Telegram bot.
+  async quota(student: TutorStudent, now = new Date()) {
+    const limit = student.tenant?.studentAiDailyLimit ?? 20;
     const [row] = await this.db
-      .select({ n: count() })
-      .from(studentAiMessages)
-      .where(and(eq(studentAiMessages.studentId, student.id), eq(studentAiMessages.role, 'user'), gte(studentAiMessages.createdAt, startOfToday)));
-    const used = Number(row?.n ?? 0);
+      .select({ used: aiUsage.used })
+      .from(aiUsage)
+      .where(and(eq(aiUsage.studentId, student.id), eq(aiUsage.kind, TUTOR_USAGE), eq(aiUsage.day, this.localDay(student, now))));
+    const used = row?.used ?? 0;
     return { limit, used, left: Math.max(0, limit - used) };
+  }
+
+  // Takes one of today's questions, or returns null when none is left. A
+  // single statement: the counter is created or raised only while it is
+  // below the limit, so questions sent at the same moment (two tabs, the
+  // site and the bot) cannot pass it.
+  private async reserve(student: TutorStudent, limit: number, day: string): Promise<number | null> {
+    const rows = await this.db
+      .insert(aiUsage)
+      .values({ tenantId: student.tenantId, studentId: student.id, kind: TUTOR_USAGE, day, used: 1 })
+      .onConflictDoUpdate({
+        target: [aiUsage.studentId, aiUsage.kind, aiUsage.day],
+        set: { used: sql`${aiUsage.used} + 1`, updatedAt: new Date() },
+        setWhere: sql`${aiUsage.used} < ${limit}`,
+      })
+      .returning({ used: aiUsage.used });
+    return rows[0]?.used ?? null;
+  }
+
+  // A question that got no answer is not charged. Never below zero.
+  private async refund(student: TutorStudent, day: string) {
+    await this.db
+      .update(aiUsage)
+      .set({ used: sql`greatest(${aiUsage.used} - 1, 0)`, updatedAt: new Date() })
+      .where(and(eq(aiUsage.studentId, student.id), eq(aiUsage.kind, TUTOR_USAGE), eq(aiUsage.day, day)))
+      .catch((err) => this.logger.error(`tutor quota refund failed for ${student.id}: ${(err as Error).message}`));
   }
 
   // The current conversation (since the last "new conversation"), oldest first.
@@ -67,46 +101,53 @@ export class StudentTutorService {
     return out.slice(-max);
   }
 
-  async ask(student: TutorStudent, text: string): Promise<TutorAnswer> {
-    const quota = await this.quota(student);
-    if (quota.limit <= 0) return { status: 'off' };
+  // The day's question is reserved before the AI is asked and given back
+  // (once) if no answer was stored - the AI failed, or saving it did.
+  async ask(student: TutorStudent, text: string, now = new Date()): Promise<TutorAnswer> {
+    const limit = student.tenant?.studentAiDailyLimit ?? 20;
+    if (limit <= 0) return { status: 'off' };
     if (!this.ai.isConfigured) return { status: 'unavailable' };
-    if (quota.left <= 0) return { status: 'limit', limit: quota.limit };
+    const day = this.localDay(student, now);
+    const used = await this.reserve(student, limit, day);
+    if (used === null) return { status: 'limit', limit };
 
-    const question = text.trim().slice(0, TUTOR_MAX_QUESTION);
-    const history: TutorTurn[] = (await this.conversation(student.id, 10)).map(({ role, content }) => ({ role, content }));
-    const enrolls = await this.db.query.enrollments.findMany({
-      where: eq(enrollments.studentId, student.id),
-      with: { group: true },
-    });
-    const subjects = [...new Set(enrolls.map((e) => e.group?.subject).filter((x): x is string => Boolean(x)))];
-
-    let reply: string;
     try {
-      reply = await this.ai.tutorReply({
+      const question = text.trim().slice(0, TUTOR_MAX_QUESTION);
+      const history: TutorTurn[] = (await this.conversation(student.id, 10)).map(({ role, content }) => ({ role, content }));
+      const enrolls = await this.db.query.enrollments.findMany({
+        where: eq(enrollments.studentId, student.id),
+        with: { group: true },
+      });
+      const subjects = [...new Set(enrolls.map((e) => e.group?.subject).filter((x): x is string => Boolean(x)))];
+
+      const reply = await this.ai.tutorReply({
         studentName: student.fullName,
         centerName: student.tenant?.name || "O'quv markazi",
         subjects,
         history,
         question,
       });
+
+      // Explicit times: rows of one insert would otherwise share now() and the
+      // question/answer order would be undefined.
+      const at = Date.now();
+      await this.db.insert(studentAiMessages).values([
+        { tenantId: student.tenantId, studentId: student.id, role: 'user', content: question, createdAt: new Date(at) },
+        { tenantId: student.tenantId, studentId: student.id, role: 'assistant', content: reply.slice(0, 4000), createdAt: new Date(at + 1) },
+      ]);
+      // From here the question is answered and stays charged, whatever
+      // happens to the housekeeping below.
+      void this.db
+        .delete(studentAiMessages)
+        .where(and(eq(studentAiMessages.studentId, student.id), lt(studentAiMessages.createdAt, new Date(Date.now() - KEEP_DAYS * 86_400_000))))
+        .catch(() => undefined);
+
+      return { status: 'ok', reply, left: Math.max(0, limit - used), limit };
     } catch (err) {
       this.logger.error(`AI tutor failed for student ${student.id}: ${(err as Error).message}`);
+      await this.refund(student, day);
       return { status: 'error' };
     }
-
-    // Explicit times: rows of one insert would otherwise share now() and the
-    // question/answer order would be undefined.
-    const at = Date.now();
-    await this.db.insert(studentAiMessages).values([
-      { tenantId: student.tenantId, studentId: student.id, role: 'user', content: question, createdAt: new Date(at) },
-      { tenantId: student.tenantId, studentId: student.id, role: 'assistant', content: reply.slice(0, 4000), createdAt: new Date(at + 1) },
-    ]);
-    await this.db
-      .delete(studentAiMessages)
-      .where(and(eq(studentAiMessages.studentId, student.id), lt(studentAiMessages.createdAt, new Date(Date.now() - KEEP_DAYS * 86_400_000))));
-
-    return { status: 'ok', reply, left: quota.left - 1, limit: quota.limit };
   }
 
   async reset(student: Pick<TutorStudent, 'id' | 'tenantId'>) {
