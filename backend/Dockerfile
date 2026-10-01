@@ -5,7 +5,7 @@ FROM node:22-alpine AS base
 FROM base AS deps
 WORKDIR /app
 COPY package.json package-lock.json ./
-RUN npm install --legacy-peer-deps
+RUN npm ci --legacy-peer-deps
 
 # Step 2: Build the NestJS app
 FROM base AS builder
@@ -21,7 +21,7 @@ ENV NODE_ENV=production
 RUN apk add --no-cache curl wget
 
 COPY package.json package-lock.json ./
-RUN npm install --omit=dev --legacy-peer-deps
+RUN npm ci --omit=dev --legacy-peer-deps
 
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/drizzle ./drizzle

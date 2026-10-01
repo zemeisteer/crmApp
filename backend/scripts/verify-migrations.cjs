@@ -89,7 +89,7 @@ async function rows(url) {
   await c.end();
   const before = await rows(up);
   const out = runner(up);
-  expect(/applied 0021_/.test(out) && /applied 0027_/.test(out), 'pending migrations 0021-0027 are applied');
+  expect(/applied 0021_/.test(out) && /applied 0027_/.test(out) && /applied 0031_/.test(out), 'every pending migration (0021 onwards) is applied');
   const after = await rows(up);
   for (const t of TABLES) {
     // Old columns keep their values; new columns only add keys.
@@ -100,6 +100,14 @@ async function rows(url) {
     });
     expect(before[t].length === after[t].length && same, `${t}: ${before[t].length} existing row(s) unchanged`);
   }
+  // Backfills only add: the group's price history starts from its one known price.
+  const c3 = new Client({ connectionString: up });
+  await c3.connect();
+  const hist = (await c3.query("SELECT monthly_price FROM group_price_history WHERE group_id = 'g_keep'")).rows;
+  const pay = (await c3.query("SELECT idempotency_key FROM payments WHERE id = 'p_keep'")).rows[0];
+  await c3.end();
+  expect(hist.length === 1 && hist[0].monthly_price === 450000, 'the existing group gets one price-history row at its current price');
+  expect(pay.idempotency_key === null, 'existing payments stay as they were (no retry key)');
   expect(/No schema drift/.test(drift(up)), 'upgraded schema matches schema.ts');
   expect(/up to date/.test(runner(up)), 're-running after the upgrade changes nothing');
 

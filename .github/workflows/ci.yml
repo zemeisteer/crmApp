@@ -25,6 +25,9 @@ jobs:
     defaults:
       run:
         working-directory: backend
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/talimcrm_test
+      JWT_SECRET: ci-test-secret
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -32,35 +35,54 @@ jobs:
           node-version: 22
           cache: npm
           cache-dependency-path: backend/package-lock.json
-      - run: npm install --legacy-peer-deps
-      - name: Security audit (high/critical only — don't fail CI on low-severity noise)
-        run: npm audit --audit-level=critical || true
+      # Exactly what package-lock.json says, or fail: no silent version drift
+      # between a developer's machine, CI and the production image.
+      # (--legacy-peer-deps: tsconfck declares an optional peer on
+      # TypeScript 5 while the project is on TypeScript 6.)
+      - run: npm ci --legacy-peer-deps
+
+      # Audit policy:
+      #  - Packages that ship in the production image (--omit=dev) must have
+      #    no HIGH or CRITICAL advisory. This step fails the build.
+      #  - MODERATE and lower are reviewed by hand (today: exceljs -> uuid,
+      #    whose only offered "fix" is a major downgrade of exceljs).
+      #  - Build/test tooling is reported below but does not fail the build:
+      #    it never runs in production.
+      #  Never `npm audit fix --force`: upgrades are made one by one, tested.
+      - name: Security audit - production dependencies (blocking, high and critical)
+        run: npm audit --omit=dev --audit-level=high
+      - name: Security audit - build and test tooling (report only)
+        run: npm audit --audit-level=high
+        continue-on-error: true
+
       - run: npx tsc --noEmit
+      - run: npm run lint
+
+      # The migration list itself: every SQL file is in the journal, in
+      # order, and the journal names no missing file.
+      - name: Check the migration journal
+        run: npm run db:check-migrations
       # Build the test database exactly as production is built: from the
       # versioned migrations, never `db:push`. Then fail if schema.ts declares
       # anything the migrations don't create, and if db:generate would still
       # produce a new migration.
       - name: Apply versioned migrations to an empty database
         run: npm run db:migrate
-        env:
-          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/talimcrm_test
       - name: Check schema drift (schema.ts vs migrated database)
         run: npm run db:check-drift
-        env:
-          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/talimcrm_test
       - name: Check every schema change has a migration
         run: |
           npx drizzle-kit generate --name ci-check | tee generate.log
           grep -q "No schema changes" generate.log
+      # The production runner (scripts/migrate.cjs) on scratch databases:
+      # empty -> current, an existing database with rows -> current with the
+      # rows untouched, a drizzle-kit database adopted, an unknown one refused.
+      - name: Verify the upgrade path of the production migration runner
+        run: npm run db:verify-migrations
+
       - run: npm run test
-        env:
-          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/talimcrm_test
-          JWT_SECRET: ci-test-secret
-      - name: End-to-end tests (multi-tenant isolation)
+      - name: End-to-end tests (real PostgreSQL; AI, e-mail, Telegram and SMS are off)
         run: npm run test:e2e
-        env:
-          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/talimcrm_test
-          JWT_SECRET: ci-test-secret
       - run: npm run build
 
   frontend:
@@ -75,6 +97,10 @@ jobs:
           node-version: 22
           cache: npm
           cache-dependency-path: frontend/package-lock.json
-      - run: npm install
+      - run: npm ci
+      # Same policy as the backend: nothing HIGH or CRITICAL in what ships.
+      - name: Security audit - production dependencies (blocking, high and critical)
+        run: npm audit --omit=dev --audit-level=high
       - run: npx tsc --noEmit
+      - run: npm run lint
       - run: npm run build
