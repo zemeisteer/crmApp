@@ -73,10 +73,11 @@ export class AuthService {
     return this.jwt.signAsync({ sub: userId, pending2fa: true }, { expiresIn: '5m' });
   }
 
-  private async issueSession(userId: string, meta: { userAgent?: string; ip?: string }) {
+  private async issueSession(userId: string, tenantId: string | null, meta: { userAgent?: string; ip?: string }) {
     const refreshToken = randomBytes(32).toString('hex');
     await this.db.insert(sessions).values({
       userId,
+      tenantId,
       refreshTokenHash: hashToken(refreshToken),
       userAgent: meta.userAgent,
       ip: meta.ip,
@@ -93,7 +94,7 @@ export class AuthService {
     meta: { userAgent?: string; ip?: string } = {},
   ) {
     const accessToken = await this.signAccessToken(user);
-    const refreshToken = await this.issueSession(user.id, meta);
+    const refreshToken = await this.issueSession(user.id, user.tenantId, meta);
     return { accessToken, refreshToken };
   }
 
@@ -208,6 +209,46 @@ export class AuthService {
       return { twoFactorRequired: true, pendingToken };
     }
 
+    return this.completeLogin(user, meta);
+  }
+
+  // ---- Workspaces ----
+  // A user may belong to several centers with a different role in each.
+  // Role and permissions always come from the ACTIVE membership of the
+  // workspace in use - at login, on every request (JwtStrategy), on refresh
+  // and on handoff - never from the user's global row, except for accounts
+  // that have no membership rows at all (created before memberships).
+
+  async resolveWorkspace(
+    user: { id: string; role: string; tenantId: string | null; permissions?: string[] | null },
+    tenantId: string | null,
+  ): Promise<{ role: string; permissions: string[]; tenant: typeof tenants.$inferSelect | null }> {
+    if (user.role === 'SUPERADMIN') {
+      const tenant = tenantId ? (await this.db.query.tenants.findFirst({ where: eq(tenants.id, tenantId) })) ?? null : null;
+      if (tenantId && !tenant) throw new NotFoundException('Markaz topilmadi');
+      return { role: 'SUPERADMIN', permissions: ['*'], tenant };
+    }
+    const rows = await this.db.query.organizationMemberships.findMany({ where: eq(organizationMemberships.userId, user.id) });
+    if (!tenantId) {
+      // No workspace: fine only for an account that belongs to none.
+      if (rows.length > 0 || user.tenantId) throw new UnauthorizedException('Markaz tanlanmagan');
+      return { role: user.role, permissions: user.permissions || [], tenant: null };
+    }
+    const membership = rows.find((m) => m.tenantId === tenantId);
+    const legacy = rows.length === 0 && user.tenantId === tenantId;
+    if (!legacy && (!membership || membership.status !== 'ACTIVE')) {
+      throw new UnauthorizedException("Siz ushbu markazga a'zo emassiz");
+    }
+    const tenant = await this.db.query.tenants.findFirst({ where: eq(tenants.id, tenantId) });
+    if (!tenant) throw new NotFoundException('Markaz topilmadi');
+    return legacy
+      ? { role: user.role, permissions: user.permissions || [], tenant }
+      : { role: membership!.role, permissions: membership!.permissions || [], tenant };
+  }
+
+  // After the password (and the 2FA code): one session, bound to a
+  // workspace; several centers -> the caller picks one.
+  private async completeLogin(user: typeof users.$inferSelect, meta: { userAgent?: string; ip?: string }) {
     const memberships = await this.db.query.organizationMemberships.findMany({
       where: and(
         eq(organizationMemberships.userId, user.id),
@@ -243,7 +284,9 @@ export class AuthService {
       };
     }
 
-    if (memberships.length === 1) {
+    if (memberships.length >= 1) {
+      // Several centers: the session starts in the first one and the caller
+      // is told to choose (select-workspace re-binds this same session).
       const m = memberships[0];
       const { accessToken, refreshToken } = await this.issueFullSession(
         { id: user.id, email: user.email, role: m.role, tenantId: m.tenant.id, permissions: m.permissions || [] },
@@ -251,7 +294,7 @@ export class AuthService {
       );
       return {
         twoFactorRequired: false as const,
-        requiresWorkspaceSelection: false as const,
+        requiresWorkspaceSelection: memberships.length > 1,
         accessToken,
         refreshToken,
         user: { id: user.id, email: user.email, fullName: user.fullName, role: m.role, permissions: m.permissions || [] },
@@ -260,22 +303,10 @@ export class AuthService {
       };
     }
 
-    if (memberships.length > 1) {
-      const first = memberships[0];
-      const { accessToken, refreshToken } = await this.issueFullSession(
-        { id: user.id, email: user.email, role: first.role, tenantId: first.tenant.id, permissions: first.permissions || [] },
-        meta,
-      );
-      return {
-        twoFactorRequired: false as const,
-        requiresWorkspaceSelection: true as const,
-        workspaces,
-        accessToken,
-        refreshToken,
-        user: { id: user.id, email: user.email, fullName: user.fullName, role: first.role, permissions: first.permissions || [] },
-        tenant: first.tenant,
-      };
-    }
+    // No ACTIVE membership. An account that has (suspended/removed)
+    // membership rows may not fall back to its old global role.
+    const anyMembership = await this.db.query.organizationMemberships.findFirst({ where: eq(organizationMemberships.userId, user.id), columns: { id: true } });
+    if (anyMembership) throw new UnauthorizedException("Sizning markazdagi a'zoligingiz faol emas");
 
     let tenant: typeof tenants.$inferSelect | null = null;
     if (user.tenantId) {
@@ -308,12 +339,14 @@ export class AuthService {
 
   async createHandoff(userId: string, tenantId: string | null) {
     if (!tenantId) throw new BadRequestException('Markaz tanlanmagan');
-    const tenant = await this.db.query.tenants.findFirst({ where: eq(tenants.id, tenantId), columns: { id: true, subdomain: true } });
-    if (!tenant) throw new NotFoundException('Markaz topilmadi');
+    const user = await this.db.query.users.findFirst({ where: eq(users.id, userId) });
+    if (!user) throw new UnauthorizedException('Foydalanuvchi topilmadi');
+    // Only for a workspace the caller really works in right now.
+    const { tenant } = await this.resolveWorkspace(user, tenantId);
     const code = randomBytes(32).toString('hex');
     await this.db.delete(authHandoffCodes).where(lt(authHandoffCodes.expiresAt, new Date()));
-    await this.db.insert(authHandoffCodes).values({ codeHash: hashToken(code), userId, tenantId: tenant.id, expiresAt: new Date(Date.now() + 60_000) });
-    return { code, subdomain: tenant.subdomain };
+    await this.db.insert(authHandoffCodes).values({ codeHash: hashToken(code), userId, tenantId: tenant!.id, expiresAt: new Date(Date.now() + 60_000) });
+    return { code, subdomain: tenant!.subdomain };
   }
 
   async exchangeHandoff(code: string, meta: { userAgent?: string; ip?: string }) {
@@ -325,32 +358,21 @@ export class AuthService {
       .where(and(eq(authHandoffCodes.codeHash, hashToken(code)), isNull(authHandoffCodes.usedAt), gt(authHandoffCodes.expiresAt, new Date())))
       .returning();
     if (!row) throw new UnauthorizedException('Kod eskirgan yoki ishlatilgan');
+    // A full session of its own at the destination (access + refresh),
+    // bound to that workspace; the membership is checked again here.
     return this.selectWorkspace(row.userId, row.tenantId, meta);
   }
 
-  async selectWorkspace(userId: string, targetTenantId: string, meta: { userAgent?: string; ip?: string }) {
+  // Opens `targetTenantId` for the user. With the caller's refresh token the
+  // same session is re-bound to the workspace (and rotated); without one a
+  // new session is opened. Either way the answer carries a refresh token
+  // that keeps this workspace.
+  async selectWorkspace(userId: string, targetTenantId: string, meta: { userAgent?: string; ip?: string }, currentRefreshToken?: string) {
+    if (!targetTenantId || typeof targetTenantId !== 'string') throw new BadRequestException('Markaz tanlanmagan');
     const user = await this.db.query.users.findFirst({ where: eq(users.id, userId) });
     if (!user) throw new UnauthorizedException('Foydalanuvchi topilmadi');
 
-    let membershipRole: string = user.role;
-    let membershipPermissions: string[] | null = user.permissions || [];
-
-    if (user.role !== 'SUPERADMIN') {
-      const membership = await this.db.query.organizationMemberships.findFirst({
-        where: and(
-          eq(organizationMemberships.userId, userId),
-          eq(organizationMemberships.tenantId, targetTenantId),
-          eq(organizationMemberships.status, 'ACTIVE'),
-        ),
-      });
-      if (!membership) {
-        throw new UnauthorizedException("Siz ushbu markazga a'zo emassiz");
-      }
-      membershipRole = membership.role;
-      membershipPermissions = membership.permissions || [];
-    }
-
-    const tenant = await this.db.query.tenants.findFirst({ where: eq(tenants.id, targetTenantId) });
+    const { role, permissions, tenant } = await this.resolveWorkspace(user, targetTenantId);
     if (!tenant) throw new NotFoundException('Markaz topilmadi');
 
     if (user.role === 'SUPERADMIN') {
@@ -372,20 +394,27 @@ export class AuthService {
       });
     }
 
-    const accessToken = await this.signAccessToken({
-      id: user.id,
-      email: user.email,
-      role: membershipRole,
-      tenantId: tenant.id,
-      permissions: membershipPermissions,
-    });
+    const accessToken = await this.signAccessToken({ id: user.id, email: user.email, role, tenantId: tenant.id, permissions });
+
+    let refreshToken: string | null = null;
+    if (typeof currentRefreshToken === 'string' && currentRefreshToken) {
+      const rotated = randomBytes(32).toString('hex');
+      const [updated] = await this.db
+        .update(sessions)
+        .set({ tenantId: tenant.id, refreshTokenHash: hashToken(rotated), lastUsedAt: new Date(), userAgent: meta.userAgent, ip: meta.ip })
+        .where(and(eq(sessions.refreshTokenHash, hashToken(currentRefreshToken)), eq(sessions.userId, user.id)))
+        .returning({ id: sessions.id });
+      if (updated) refreshToken = rotated;
+    }
+    refreshToken ??= await this.issueSession(user.id, tenant.id, meta);
 
     return {
       accessToken,
+      refreshToken,
       tenant,
-      role: membershipRole,
-      permissions: membershipPermissions || [],
-      user: { id: user.id, email: user.email, fullName: user.fullName, role: membershipRole, permissions: membershipPermissions || [] },
+      role,
+      permissions,
+      user: { id: user.id, email: user.email, fullName: user.fullName, role, permissions },
     };
   }
 
@@ -443,20 +472,9 @@ export class AuthService {
     const result = await verifyTotp({ secret: user.twoFactorSecret, token: code });
     if (!result.valid) throw new UnauthorizedException("Kod noto'g'ri");
 
-    let tenant: typeof tenants.$inferSelect | null = null;
-    if (user.tenantId) {
-      tenant = (await this.db.query.tenants.findFirst({ where: eq(tenants.id, user.tenantId) })) ?? null;
-    }
-    const { accessToken, refreshToken } = await this.issueFullSession(
-      { id: user.id, email: user.email, role: user.role, tenantId: user.tenantId, permissions: user.permissions || [] },
-      meta,
-    );
-    return {
-      accessToken,
-      refreshToken,
-      user: { id: user.id, email: user.email, fullName: user.fullName, role: user.role, permissions: user.permissions || [] },
-      tenant,
-    };
+    // Same as a password login from here: membership role, and the
+    // workspace choice when there are several.
+    return this.completeLogin(user, meta);
   }
 
   // ---- Two-factor setup (TOTP, authenticator app — no external account needed) ----
@@ -492,6 +510,7 @@ export class AuthService {
   // ---- Sessions ----
 
   async refresh(refreshToken: string, meta: { userAgent?: string; ip?: string }) {
+    if (typeof refreshToken !== 'string' || !refreshToken) throw new UnauthorizedException("Refresh token noto'g'ri yoki eskirgan");
     const hash = hashToken(refreshToken);
     const session = await this.db.query.sessions.findFirst({ where: eq(sessions.refreshTokenHash, hash) });
     if (!session) throw new UnauthorizedException("Refresh token noto'g'ri yoki eskirgan");
@@ -499,11 +518,22 @@ export class AuthService {
     const user = await this.db.query.users.findFirst({ where: eq(users.id, session.userId) });
     if (!user) throw new UnauthorizedException();
 
+    // The session's own workspace - never the user's default center - and
+    // only while that membership is still active.
+    let ws: Awaited<ReturnType<AuthService['resolveWorkspace']>>;
+    try {
+      ws = await this.resolveWorkspace(user, session.tenantId);
+    } catch (err) {
+      await this.db.delete(sessions).where(eq(sessions.id, session.id));
+      throw err instanceof NotFoundException ? new UnauthorizedException('Markaz topilmadi') : err;
+    }
+
     const accessToken = await this.signAccessToken({
       id: user.id,
       email: user.email,
-      role: user.role,
-      tenantId: user.tenantId,
+      role: ws.role,
+      tenantId: ws.tenant?.id ?? null,
+      permissions: ws.permissions,
     });
     const newRefreshToken = randomBytes(32).toString('hex');
     await this.db
@@ -585,28 +615,25 @@ export class AuthService {
     return { message: 'Email tasdiqlandi.' };
   }
 
-  async me(userId: string) {
+  // Who the caller is in the workspace their token names (role and
+  // permissions of that membership), not their default center.
+  async me(userId: string, tenantId: string | null = null) {
     const user = await this.db.query.users.findFirst({
       where: eq(users.id, userId),
     });
     if (!user) throw new UnauthorizedException();
-    let tenant: typeof tenants.$inferSelect | null = null;
-    if (user.tenantId) {
-      tenant = (await this.db.query.tenants.findFirst({
-        where: eq(tenants.id, user.tenantId),
-      })) ?? null;
-    }
+    const ws = await this.resolveWorkspace(user, tenantId);
     return {
       user: {
         id: user.id,
         email: user.email,
         fullName: user.fullName,
-        role: user.role,
-        permissions: user.permissions || [],
+        role: ws.role,
+        permissions: ws.permissions,
         emailVerified: user.emailVerified,
         twoFactorEnabled: user.twoFactorEnabled,
       },
-      tenant,
+      tenant: ws.tenant,
     };
   }
 }

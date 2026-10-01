@@ -23,7 +23,7 @@ interface AuthContextValue {
   can: (permission: string) => boolean;
   login: (emailOrPhone: string, password: string) => Promise<LoginResponse>;
   selectWorkspace: (tenantId: string) => Promise<void>;
-  completeTwoFactorLogin: (pendingToken: string, code: string) => Promise<void>;
+  completeTwoFactorLogin: (pendingToken: string, code: string) => Promise<LoginResponse>;
   setAuthSession: (res: AuthResponse, redirectUrl?: string) => void;
   register: (data: {
     centerName: string;
@@ -170,9 +170,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setAuthSession(res);
   }
 
-  async function completeTwoFactorLogin(pendingToken: string, code: string) {
+  // After the code: the same steps as a password login, including the
+  // center picker when the account belongs to several.
+  async function completeTwoFactorLogin(pendingToken: string, code: string): Promise<LoginResponse> {
     const res = await authApi.verifyTwoFactorLogin(pendingToken, code);
+    if ("pendingToken" in res) return res;
+    if (isWorkspaceSelection(res)) {
+      setToken(res.accessToken);
+      setRefreshToken(res.refreshToken);
+      return res;
+    }
     setAuthSession(res);
+    return res;
   }
 
   async function register(data: {

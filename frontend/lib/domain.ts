@@ -100,3 +100,16 @@ export function mainSiteUrl() {
   }
   return `https://${ROOT_DOMAIN}`;
 }
+
+/**
+ * A path on this site to continue to after signing in, or /dashboard: never
+ * another origin ("//host", "/\host", "https://..."), control characters or
+ * the handoff page itself.
+ */
+export function safeNextPath(wanted: string | null | undefined): string {
+  const fallback = "/dashboard";
+  if (!wanted || wanted.length > 512) return fallback;
+  if (!wanted.startsWith("/") || wanted.startsWith("//") || wanted.includes("\\")) return fallback;
+  if (/[\u0000-\u001f]/.test(wanted) || wanted.startsWith("/auth/")) return fallback;
+  return wanted;
+}

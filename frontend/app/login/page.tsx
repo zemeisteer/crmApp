@@ -99,7 +99,11 @@ export default function LoginPage() {
     setError(null);
     setLoading(true);
     try {
-      await completeTwoFactorLogin(pendingToken!, code);
+      const res = await completeTwoFactorLogin(pendingToken!, code);
+      if (isWorkspaceSelection(res)) {
+        setPendingToken(null);
+        setWorkspaces(res.workspaces);
+      }
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Xatolik yuz berdi");
     } finally {

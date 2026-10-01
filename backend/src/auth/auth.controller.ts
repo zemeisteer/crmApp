@@ -118,15 +118,16 @@ export class AuthController {
   selectWorkspace(
     @CurrentUser('sub') userId: string,
     @Body('tenantId') tenantId: string,
+    @Body('refreshToken') refreshToken: string | undefined,
     @Req() req: Request,
     @Headers('user-agent') ua?: string,
   ) {
-    return this.authService.selectWorkspace(userId, tenantId, meta(req, ua));
+    return this.authService.selectWorkspace(userId, tenantId, meta(req, ua), refreshToken);
   }
 
   @UseGuards(JwtAuthGuard)
   @Get('me')
-  me(@CurrentUser('sub') userId: string) {
-    return this.authService.me(userId);
+  me(@CurrentUser('sub') userId: string, @CurrentUser('tenantId') tenantId: string | null) {
+    return this.authService.me(userId, tenantId ?? null);
   }
 }

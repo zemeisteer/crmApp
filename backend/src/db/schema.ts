@@ -269,6 +269,9 @@ export const sessions = pgTable('sessions', {
   id: text('id').primaryKey().$defaultFn(() => createId()),
   userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   refreshTokenHash: text('refresh_token_hash').notNull(),
+  // The workspace this session works in: refresh keeps it (and re-checks
+  // the membership) instead of falling back to the user's default center.
+  tenantId: text('tenant_id').references(() => tenants.id, { onDelete: 'cascade' }),
   userAgent: text('user_agent'),
   ip: text('ip'),
   createdAt: timestamp('created_at').notNull().defaultNow(),

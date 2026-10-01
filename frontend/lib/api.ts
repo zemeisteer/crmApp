@@ -6,24 +6,37 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api";
 const TOKEN_KEY = "talimcrm_token";
 const REFRESH_KEY = "talimcrm_refresh";
 
-export function getToken(): string | null {
+// Only real tokens are ever stored or read: a missing field in a response
+// must not become the string "undefined" in storage (it would then be sent
+// as a refresh token and sign the user out).
+const isToken = (v: unknown): v is string => typeof v === "string" && v.length > 20 && v !== "undefined" && v !== "null";
+
+function readToken(key: string): string | null {
   if (typeof window === "undefined") return null;
-  return localStorage.getItem(TOKEN_KEY);
+  const v = localStorage.getItem(key);
+  if (v !== null && !isToken(v)) {
+    localStorage.removeItem(key);
+    return null;
+  }
+  return v;
 }
 
-export function setToken(token: string) {
+export function getToken(): string | null {
+  return readToken(TOKEN_KEY);
+}
+
+export function setToken(token: string | null | undefined) {
   if (typeof window === "undefined") return;
-  localStorage.setItem(TOKEN_KEY, token);
+  if (isToken(token)) localStorage.setItem(TOKEN_KEY, token);
 }
 
 export function getRefreshToken(): string | null {
-  if (typeof window === "undefined") return null;
-  return localStorage.getItem(REFRESH_KEY);
+  return readToken(REFRESH_KEY);
 }
 
-export function setRefreshToken(token: string) {
+export function setRefreshToken(token: string | null | undefined) {
   if (typeof window === "undefined") return;
-  localStorage.setItem(REFRESH_KEY, token);
+  if (isToken(token)) localStorage.setItem(REFRESH_KEY, token);
 }
 
 const PORTAL_TOKEN_KEY = "talimcrm_portal_token";
@@ -1213,14 +1226,16 @@ export const authApi = {
   handoffExchange: (code: string) =>
     request<AuthResponse>("/auth/handoff/exchange", { method: "POST", body: JSON.stringify({ code }) }),
 
+  // Sends this session's refresh token so the same session moves to the
+  // chosen workspace (and refresh keeps it there).
   selectWorkspace: (tenantId: string) =>
     request<AuthResponse>("/auth/select-workspace", {
       method: "POST",
-      body: JSON.stringify({ tenantId }),
+      body: JSON.stringify({ tenantId, refreshToken: getRefreshToken() ?? undefined }),
     }),
 
   verifyTwoFactorLogin: (pendingToken: string, code: string) =>
-    request<AuthResponse>("/auth/2fa/verify-login", { method: "POST", body: JSON.stringify({ pendingToken, code }) }),
+    request<LoginResponse>("/auth/2fa/verify-login", { method: "POST", body: JSON.stringify({ pendingToken, code }) }),
 
   setupTwoFactor: () => request<{ secret: string; qrDataUrl: string }>("/auth/2fa/setup", { method: "POST" }),
   confirmTwoFactor: (code: string) => request<{ message: string }>("/auth/2fa/confirm", { method: "POST", body: JSON.stringify({ code }) }),

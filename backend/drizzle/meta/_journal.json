@@ -204,6 +204,13 @@
       "when": 1792900000000,
       "tag": "0028_schema_snapshot",
       "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1793000000000,
+      "tag": "0029_session_workspace",
+      "breakpoints": true
     }
   ]
 }
