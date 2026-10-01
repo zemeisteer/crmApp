@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
 import { DbModule } from './db/db.module';
+import { LedgerModule } from './ledger/ledger.module';
 import { AuthCommonModule } from './common/auth-common.module';
 import { EmailModule } from './email/email.module';
 import { AuditModule } from './audit/audit.module';
@@ -49,6 +50,7 @@ import { InvoicesModule } from './invoices/invoices.module';
     ConfigModule.forRoot({ isGlobal: true }),
     ThrottlerModule.forRoot([{ name: 'default', ttl: 60_000, limit: 100 }]),
     DbModule,
+    LedgerModule,
     AuthCommonModule,
     EmailModule,
     AuditModule,

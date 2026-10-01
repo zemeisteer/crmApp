@@ -37,6 +37,9 @@ describe('InvoicesService', () => {
         }),
       }),
     };
+    // The service works inside a transaction holding the student's lock.
+    mockDb.execute = vi.fn().mockResolvedValue(undefined);
+    mockDb.transaction = vi.fn().mockImplementation((fn: (tx: any) => unknown) => fn(mockDb));
 
     mockAudit = {
       log: vi.fn(),

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import DashboardShell from "@/components/DashboardShell";
@@ -11,7 +11,7 @@ import Modal from "@/components/Modal";
 import Select from "@/components/Select";
 import GroupPicker from "@/components/students/GroupPicker";
 import MonthPicker from "@/components/MonthPicker";
-import { studentsApi, groupsApi, paymentsApi, attendanceApi, billingApi, telegramApi, exportApi, reportsApi, Student, Group, Payment, AttendanceRecord, ApiError } from "@/lib/api";
+import { studentsApi, groupsApi, paymentsApi, retryKey, attendanceApi, billingApi, telegramApi, exportApi, reportsApi, Student, Group, Payment, AttendanceRecord, ApiError } from "@/lib/api";
 import { localMonthStr } from "@/lib/date";
 import { useLanguage } from "@/lib/i18n-context";
 import { MONTH_KEYS, type TranslationKey } from "@/lib/i18n";
@@ -77,6 +77,8 @@ function StudentDetailContent() {
   const [amount, setAmount] = useState("");
   const [method, setMethod] = useState("CASH");
   const [forMonth, setForMonth] = useState(() => localMonthStr());
+  // Sending the same form again (double click, lost answer) is one payment.
+  const paymentKey = useRef<{ sig: string; key: string } | null>(null);
   const [paymentError, setPaymentError] = useState<string | null>(null);
 
   const [saving, setSaving] = useState(false);
@@ -223,13 +225,9 @@ function StudentDetailContent() {
     setPaymentError(null);
     setSaving(true);
     try {
-      await paymentsApi.create({
-        studentId: id,
-        amount: Number(amount),
-        method,
-        status: "PAID",
-        forMonth,
-      });
+      const body = { studentId: id, amount: Number(amount), method, status: "PAID" as const, forMonth };
+      await paymentsApi.create(body, retryKey(paymentKey, body));
+      paymentKey.current = null;
       setPaymentOpen(false);
       setAmount("");
       setForMonth(localMonthStr());

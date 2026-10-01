@@ -1,5 +1,7 @@
-import { BadRequestException, Inject, Injectable, Logger, NotFoundException, OnModuleInit, ServiceUnavailableException } from '@nestjs/common';
-import { and, desc, eq, inArray } from 'drizzle-orm';
+import { BadRequestException, Inject, Injectable, Logger, NotFoundException, OnModuleDestroy, OnModuleInit, ServiceUnavailableException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { randomUUID } from 'crypto';
+import { and, desc, eq, sql } from 'drizzle-orm';
 import { readFile, unlink } from 'fs/promises';
 import { join } from 'path';
 import { DB, Database } from '../../db/db.module';
@@ -29,36 +31,90 @@ const parse = <T>(s: string | null | undefined, fallback: T): T => {
     return fallback;
   }
 };
+// The plan kept on the row by an earlier attempt, if it is usable.
+const normalizeStoredPlan = (raw: string | null): BookPlan | null => {
+  const plan = parse<BookPlan | null>(raw, null);
+  return plan && Array.isArray(plan.tests) && plan.tests.length > 0 ? plan : null;
+};
 const byNo = (qs: unknown) => (Array.isArray(qs) ? [...qs].sort((a: any, b: any) => (Number(a?.no) || 0) - (Number(b?.no) || 0)) : []);
 
-// Uploaded materials -> mock tests (drafts). The work runs in the background
-// and reports progress on the import row; the page polls it.
+// How many times a job is started before it is given up, how long a silent
+// job is left alone before another server takes it over, and how often a
+// working server says "still here".
+const MAX_ATTEMPTS = 3;
+const STALE_MS = 3 * 60_000;
+const HEARTBEAT_MS = 30_000;
+const BACKOFF_MS = 30_000;
+
+// Trying again cannot help (nothing to import, the files are gone).
+class PermanentImportError extends Error {}
+// Another server has taken the job over: stop without touching it.
+class LostLockError extends Error {}
+
+// Uploaded materials -> mock tests (drafts). A job is a row in mock_imports:
+// any server claims it (one at a time, FOR UPDATE SKIP LOCKED), keeps a
+// heartbeat on it while working and reports progress on the row; the page
+// polls it. A job that failed is retried with a back-off, one whose server
+// died is taken over after its heartbeat stops, and a test already created
+// is never created again (see mock_tests.import_index).
 @Injectable()
-export class MockImportService implements OnModuleInit {
+export class MockImportService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(MockImportService.name);
+  /** This server, for the lock on the jobs it works on. */
+  readonly instanceId = randomUUID();
+  private readonly concurrency: number;
+  private readonly pollMs: number;
+  private readonly queue: string;
+  private timer?: NodeJS.Timeout;
+  private active = 0;
+  private stopped = false;
+  private readonly inFlight = new Set<Promise<void>>();
+  private readonly kicks = new Set<Promise<void>>();
 
   constructor(
     @Inject(DB) private readonly db: Database,
     private readonly ai: AiService,
-  ) {}
+    private readonly config: ConfigService,
+  ) {
+    // Imports read whole books and call the AI many times: a small, fixed
+    // number at once per server keeps memory and AI rate limits in check.
+    this.concurrency = Math.max(1, Math.min(4, Number(this.config.get('IMPORT_CONCURRENCY')) || 1));
+    // 0: no background polling on this server (it still runs what it starts).
+    const poll = this.config.get<string>('IMPORT_POLL_MS');
+    this.pollMs = poll === undefined || poll === '' ? 15_000 : Math.max(0, Number(poll) || 0);
+    // Only jobs of this queue are taken: environments (or a test run) that
+    // share a database do not run each other's imports.
+    this.queue = this.config.get<string>('IMPORT_QUEUE')?.trim() || 'default';
+  }
 
-  // Jobs live in this process: after a restart unfinished ones are marked
-  // failed so the page does not wait forever.
-  async onModuleInit() {
+  // Nothing is failed at startup: jobs of other servers are theirs, and a
+  // job whose server is gone is picked up by the poll once it goes silent.
+  onModuleInit() {
+    if (this.pollMs <= 0) return;
+    this.timer = setInterval(() => void this.kick(), this.pollMs);
+    this.timer.unref();
+    void this.kick();
+  }
+
+  // A clean stop hands this server's jobs back to the queue at once instead
+  // of making them wait for the heartbeat to go stale.
+  async onModuleDestroy() {
+    this.stopped = true;
+    if (this.timer) clearInterval(this.timer);
     await this.db.update(mockImports)
-      .set({ status: 'FAILED', error: "Server qayta ishga tushdi — importni qaytadan boshlang", updatedAt: new Date() })
-      .where(inArray(mockImports.status, ['QUEUED', 'RUNNING']))
+      .set({ status: 'QUEUED', lockedBy: null, lockedAt: null, attempts: sql`greatest(${mockImports.attempts} - 1, 0)`, updatedAt: new Date() })
+      .where(and(eq(mockImports.lockedBy, this.instanceId), eq(mockImports.status, 'RUNNING')))
       .catch(() => undefined);
   }
 
-  async start(tenantId: string, files: ImportFile[]) {
+  async start(tenantId: string, files: ImportFile[], userId?: string) {
     if (!files.some((f) => f.type === 'application/pdf')) throw new BadRequestException('Kamida bitta PDF (test kitobi yoki varag\'i) yuklang');
     if (!this.ai.isConfigured) {
       throw new ServiceUnavailableException("Materiallarni avtomatik o'qish uchun AI kerak (serverda GEMINI_API_KEY yoki ANTHROPIC_API_KEY).");
     }
     const progress: ImportProgress = { step: 'queued', message: 'Navbatda', done: 0, total: 0 };
-    const [row] = await this.db.insert(mockImports).values({ tenantId, files: JSON.stringify(files), progress: JSON.stringify(progress) }).returning();
-    void this.run(row.id).catch((err) => this.logger.error(`mock import ${row.id} crashed: ${(err as Error).message}`));
+    const [row] = await this.db.insert(mockImports).values({ tenantId, createdBy: userId ?? null, queue: this.queue, files: JSON.stringify(files), progress: JSON.stringify(progress) }).returning();
+    void this.kick();
     return this.view(row);
   }
 
@@ -76,95 +132,240 @@ export class MockImportService implements OnModuleInit {
   private view(r: typeof mockImports.$inferSelect) {
     return {
       id: r.id, status: r.status, error: r.error, createdAt: r.createdAt, updatedAt: r.updatedAt,
+      createdBy: r.createdBy, attempts: r.attempts,
       files: parse<ImportFile[]>(r.files, []).map(({ name, type, size }) => ({ name, type, size })),
       progress: parse<ImportProgress>(r.progress, { step: 'queued', message: '', done: 0, total: 0 }),
       result: parse<ImportResult>(r.result, {}),
     };
   }
 
+  // Progress goes on the row only while this server still holds the job.
   private async report(id: string, progress: ImportProgress, extra: Partial<typeof mockImports.$inferInsert> = {}) {
-    await this.db.update(mockImports).set({ progress: JSON.stringify(progress), updatedAt: new Date(), ...extra }).where(eq(mockImports.id, id));
+    const rows = await this.db.update(mockImports)
+      .set({ progress: JSON.stringify(progress), updatedAt: new Date(), lockedAt: new Date(), ...extra })
+      .where(and(eq(mockImports.id, id), eq(mockImports.lockedBy, this.instanceId), eq(mockImports.status, 'RUNNING')))
+      .returning({ id: mockImports.id });
+    if (rows.length === 0) throw new LostLockError(`import ${id}: lock lost`);
+  }
+
+  // ---------------------------------------------------------------- queue
+
+  /** Starts waiting jobs while this server has a free slot. */
+  kick(): Promise<void> {
+    const run = this.fill().finally(() => this.kicks.delete(run));
+    this.kicks.add(run);
+    return run;
+  }
+
+  private async fill() {
+    while (!this.stopped && this.active < this.concurrency) {
+      // The slot is taken before the claim, so two kicks cannot overfill it.
+      this.active++;
+      let id: string | null = null;
+      try {
+        id = await this.claim();
+      } catch (err) {
+        this.logger.error(`import queue: claim failed: ${(err as Error).message}`);
+      }
+      if (!id) {
+        this.active--;
+        return;
+      }
+      const job = this.work(id).finally(() => {
+        this.active--;
+        this.inFlight.delete(job);
+        void this.kick();
+      });
+      this.inFlight.add(job);
+    }
+  }
+
+  /** Waits for the jobs this server is working on (tests, graceful stops). */
+  async idle() {
+    while (this.kicks.size > 0 || this.inFlight.size > 0) await Promise.allSettled([...this.kicks, ...this.inFlight]);
+  }
+
+  // Takes the oldest job that is waiting (and due) or whose server has gone
+  // silent. One statement; SKIP LOCKED keeps two servers off the same row.
+  private async claim(): Promise<string | null> {
+    // ISO strings, not Date objects: the columns are UTC timestamps without
+    // a zone, and the driver would write a Date in the server's local time.
+    const now = new Date().toISOString();
+    const stale = new Date(Date.now() - STALE_MS).toISOString();
+    const res = await this.db.execute(sql`
+      UPDATE mock_imports
+         SET status = 'RUNNING', locked_by = ${this.instanceId}, locked_at = ${now}::timestamp, attempts = attempts + 1, updated_at = ${now}::timestamp
+       WHERE id = (
+         SELECT id FROM mock_imports
+          WHERE queue = ${this.queue}
+            AND ((status = 'QUEUED' AND (next_run_at IS NULL OR next_run_at <= ${now}::timestamp))
+              OR (status = 'RUNNING' AND (locked_at IS NULL OR locked_at < ${stale}::timestamp)))
+          ORDER BY created_at
+          LIMIT 1
+          FOR UPDATE SKIP LOCKED)
+      RETURNING id`);
+    return (res.rows[0] as { id?: string } | undefined)?.id ?? null;
+  }
+
+  private async work(id: string) {
+    const beat = setInterval(() => {
+      void this.db.update(mockImports).set({ lockedAt: new Date() })
+        .where(and(eq(mockImports.id, id), eq(mockImports.lockedBy, this.instanceId), eq(mockImports.status, 'RUNNING')))
+        .catch(() => undefined);
+    }, HEARTBEAT_MS);
+    beat.unref();
+    try {
+      await this.run(id);
+    } catch (err) {
+      if (err instanceof LostLockError) {
+        this.logger.warn(`mock import ${id}: taken over by another server, stopping here`);
+        return;
+      }
+      await this.failed(id, err as Error).catch((e) => this.logger.error(`mock import ${id}: could not record failure: ${(e as Error).message}`));
+    } finally {
+      clearInterval(beat);
+    }
+  }
+
+  // A failed attempt goes back to the queue with a growing pause; after the
+  // last one (or when retrying cannot help) the job is closed for good.
+  private async failed(id: string, err: Error) {
+    const msg = (err.message || 'Import xatosi').slice(0, 500);
+    const [row] = await this.db.select().from(mockImports).where(eq(mockImports.id, id));
+    if (!row || row.lockedBy !== this.instanceId) return;
+    const mine = and(eq(mockImports.id, id), eq(mockImports.lockedBy, this.instanceId));
+    if (!(err instanceof PermanentImportError) && row.attempts < MAX_ATTEMPTS) {
+      const wait = BACKOFF_MS * 2 ** (row.attempts - 1);
+      this.logger.warn(`mock import ${id} attempt ${row.attempts}/${MAX_ATTEMPTS} failed: ${msg}; retrying in ${Math.round(wait / 1000)}s`);
+      const progress: ImportProgress = { step: 'queued', message: `Xatolik — qayta uriniladi (${row.attempts}/${MAX_ATTEMPTS})`, done: 0, total: 0 };
+      await this.db.update(mockImports)
+        .set({ status: 'QUEUED', lockedBy: null, lockedAt: null, nextRunAt: new Date(Date.now() + wait), error: msg, progress: JSON.stringify(progress), updatedAt: new Date() })
+        .where(mine);
+      return;
+    }
+    this.logger.warn(`mock import ${id} failed: ${msg}`);
+    const closed = await this.db.update(mockImports)
+      .set({ status: 'FAILED', lockedBy: null, lockedAt: null, error: msg, updatedAt: new Date() })
+      .where(mine).returning({ id: mockImports.id });
+    if (closed.length > 0) await this.cleanup(row, true);
+  }
+
+  // Uploaded files of a finished job. The book is not needed once read;
+  // recordings stay only if a created test plays them.
+  private async cleanup(row: typeof mockImports.$inferSelect, failed: boolean) {
+    const files = parse<ImportFile[]>(row.files, []);
+    const drop = files.filter((f) => f.type === 'application/pdf');
+    if (failed) {
+      const tests = await this.db.select({ content: mockTests.content }).from(mockTests).where(eq(mockTests.importId, row.id));
+      const used = tests.map((t) => t.content).join('\n');
+      drop.push(...files.filter((f) => f.type.startsWith('audio/') && !used.includes(f.path)));
+    }
+    await Promise.all(drop.map((f) => unlink(join(UPLOAD_DIR, f.path)).catch(() => undefined)));
   }
 
   // ------------------------------------------------------------------ job
 
-  async run(id: string) {
+  private async run(id: string) {
     const [row] = await this.db.select().from(mockImports).where(eq(mockImports.id, id));
     if (!row) return;
     const files = parse<ImportFile[]>(row.files, []);
     const pdfFiles = files.filter((f) => f.type === 'application/pdf').sort((a, b) => natural(a.name, b.name));
     const audioFiles = files.filter((f) => f.type.startsWith('audio/'));
-    try {
-      await this.report(id, { step: 'reading', message: "PDF o'qilmoqda", done: 0, total: 0 }, { status: 'RUNNING' });
-      const book = await mergePdfs(await Promise.all(pdfFiles.map((f) => readFile(join(UPLOAD_DIR, f.path)))));
-      const texts = await pageTexts(book.pdf).catch(() => [] as string[]);
 
+    await this.report(id, { step: 'reading', message: "PDF o'qilmoqda", done: 0, total: 0 });
+    const buffers = await Promise.all(pdfFiles.map((f) => readFile(join(UPLOAD_DIR, f.path)))).catch((err) => {
+      // Uploads must be on storage every server shares.
+      throw new PermanentImportError(`Yuklangan fayl topilmadi (${(err as NodeJS.ErrnoException).code ?? 'o\'qilmadi'}) — importni qaytadan boshlang`);
+    });
+    const book = await mergePdfs(buffers);
+    const texts = await pageTexts(book.pdf).catch(() => [] as string[]);
+
+    // The plan is found once and kept: a retry extracts the same tests in
+    // the same order, which is what makes "test N of this import" stable.
+    let plan = normalizeStoredPlan(row.plan);
+    if (!plan) {
       await this.report(id, { step: 'locating', message: `${book.pages} sahifadan testlar qidirilmoqda`, done: 0, total: book.pages });
-      const plan = await this.locate(id, book.pdf, book.pages, texts);
-      if (plan.tests.length === 0) throw new Error("Materiallarda IELTS test topilmadi (Listening/Reading/Writing/Speaking bo'limlari aniqlanmadi)");
-
-      const audio = matchAudio(audioFiles.map((f) => f.name), plan.tests.length);
-      const pathOf = (name: string | null) => (name ? audioFiles.find((f) => f.name === name)?.path ?? null : null);
-
-      const result: ImportResult = { book: plan.book, tests: [], unmatchedAudio: audio.unmatched };
-      const steps = plan.tests.reduce((n, t) => n + (['listening', 'reading', 'writing', 'speaking'] as const).filter((s) => t[s].length > 0).length, 0);
-      let done = 0;
-      for (let ti = 0; ti < plan.tests.length; ti++) {
-        const t = plan.tests[ti];
-        const a = audio.assignments[ti];
-        const warnings: string[] = [];
-        const step = async (label: string) => this.report(id, { step: 'extracting', message: `${t.title}: ${label}`, done: done++, total: steps });
-        const hasAudio = !!a.section || a.parts.some(Boolean);
-
-        const raw: Record<string, any> = { listening: { durationMin: 30, audioPath: pathOf(a.section), parts: [] }, reading: { durationMin: 60, passages: [] }, writing: { durationMin: 60, tasks: [] }, speaking: { parts: [] } };
-        if (t.listening.length) {
-          await step('Listening');
-          const json = await this.extract(book.pdf, [...t.listening, ...t.answerKey, ...(hasAudio ? [] : t.audioscript)], listeningPrompt(hasAudio), warnings, 'Listening');
-          raw.listening.parts = (Array.isArray(json?.parts) ? json.parts : []).map((p: any, i: number) => ({ ...p, audioPath: pathOf(a.parts[i] ?? null), questions: byNo(p?.questions) }));
-        }
-        if (t.reading.length) {
-          await step('Reading');
-          const json = await this.extract(book.pdf, [...t.reading, ...t.answerKey], readingPrompt(), warnings, 'Reading');
-          raw.reading.passages = (Array.isArray(json?.passages) ? json.passages : []).map((p: any) => ({ ...p, questions: byNo(p?.questions) }));
-        }
-        if (t.writing.length) {
-          await step('Writing');
-          const json = await this.extract(book.pdf, t.writing, writingPrompt(), warnings, 'Writing');
-          raw.writing.tasks = Array.isArray(json?.tasks) ? json.tasks : [];
-        }
-        if (t.speaking.length) {
-          await step('Speaking');
-          const json = await this.extract(book.pdf, t.speaking, speakingPrompt(), warnings, 'Speaking');
-          raw.speaking.parts = Array.isArray(json?.parts) ? json.parts : [];
-        }
-
-        await this.report(id, { step: 'saving', message: `${t.title}: saqlanmoqda`, done, total: steps });
-        const content = normalizeContent(raw);
-        warnings.push(...this.checks(content, t, hasAudio));
-        const title = `${plan.book ? `${plan.book} — ` : ''}${t.title}`.slice(0, 200);
-        const [test] = await this.db.insert(mockTests).values({
-          tenantId: row.tenantId, title, source: plan.book, level: t.level, module: plan.module, importId: id, content: JSON.stringify(content),
-        }).returning();
-        result.tests!.push({
-          id: test.id, title, level: t.level, warnings,
-          counts: {
-            listening: sectionQuestions(content, 'listening').length,
-            reading: sectionQuestions(content, 'reading').length,
-            writing: content.writing.tasks.length,
-            speaking: content.speaking.parts.length,
-          },
-        });
-      }
-      if (audio.unmatched.length) result.unmatchedAudio = audio.unmatched;
-      await this.report(id, { step: 'done', message: `${result.tests!.length} ta test yaratildi`, done: steps, total: steps }, { status: 'DONE', result: JSON.stringify(result) });
-    } catch (err) {
-      const msg = (err as Error).message || 'Import xatosi';
-      this.logger.warn(`mock import ${id} failed: ${msg}`);
-      await this.db.update(mockImports).set({ status: 'FAILED', error: msg.slice(0, 500), updatedAt: new Date() }).where(eq(mockImports.id, id));
-    } finally {
-      // The book is not needed once read; recordings stay (tests use them).
-      await Promise.all(pdfFiles.map((f) => unlink(join(UPLOAD_DIR, f.path)).catch(() => undefined)));
+      plan = await this.locate(id, book.pdf, book.pages, texts);
+      if (plan.tests.length === 0) throw new PermanentImportError("Materiallarda IELTS test topilmadi (Listening/Reading/Writing/Speaking bo'limlari aniqlanmadi)");
+      await this.report(id, { step: 'locating', message: `${plan.tests.length} ta test topildi`, done: book.pages, total: book.pages }, { plan: JSON.stringify(plan) });
     }
+
+    const audio = matchAudio(audioFiles.map((f) => f.name), plan.tests.length);
+    const pathOf = (name: string | null) => (name ? audioFiles.find((f) => f.name === name)?.path ?? null : null);
+
+    // Tests an earlier attempt already saved are kept, not made again.
+    const earlier = parse<ImportResult>(row.result, {});
+    const saved = await this.db.select({ id: mockTests.id, title: mockTests.title, level: mockTests.level, importIndex: mockTests.importIndex, content: mockTests.content })
+      .from(mockTests).where(eq(mockTests.importId, id));
+    const summary = (test: { id: string; title: string; level: string | null; content: string }, warnings: string[]) => {
+      const content = normalizeContent(parse(test.content, {}));
+      return {
+        id: test.id, title: test.title, level: test.level, warnings,
+        counts: {
+          listening: sectionQuestions(content, 'listening').length,
+          reading: sectionQuestions(content, 'reading').length,
+          writing: content.writing.tasks.length,
+          speaking: content.speaking.parts.length,
+        },
+      };
+    };
+
+    const result: ImportResult = { book: plan.book, tests: [], unmatchedAudio: audio.unmatched };
+    const steps = plan.tests.reduce((n, t) => n + (['listening', 'reading', 'writing', 'speaking'] as const).filter((s) => t[s].length > 0).length, 0);
+    let done = 0;
+    for (let ti = 0; ti < plan.tests.length; ti++) {
+      const t = plan.tests[ti];
+      const stepsOf = (['listening', 'reading', 'writing', 'speaking'] as const).filter((s) => t[s].length > 0).length;
+      const have = saved.find((x) => x.importIndex === ti);
+      if (have) {
+        result.tests!.push(summary(have, earlier.tests?.find((x) => x.id === have.id)?.warnings ?? []));
+        done += stepsOf;
+        continue;
+      }
+      const a = audio.assignments[ti];
+      const warnings: string[] = [];
+      const step = async (label: string) => this.report(id, { step: 'extracting', message: `${t.title}: ${label}`, done: done++, total: steps });
+      const hasAudio = !!a.section || a.parts.some(Boolean);
+
+      const raw: Record<string, any> = { listening: { durationMin: 30, audioPath: pathOf(a.section), parts: [] }, reading: { durationMin: 60, passages: [] }, writing: { durationMin: 60, tasks: [] }, speaking: { parts: [] } };
+      if (t.listening.length) {
+        await step('Listening');
+        const json = await this.extract(book.pdf, [...t.listening, ...t.answerKey, ...(hasAudio ? [] : t.audioscript)], listeningPrompt(hasAudio), warnings, 'Listening');
+        raw.listening.parts = (Array.isArray(json?.parts) ? json.parts : []).map((p: any, i: number) => ({ ...p, audioPath: pathOf(a.parts[i] ?? null), questions: byNo(p?.questions) }));
+      }
+      if (t.reading.length) {
+        await step('Reading');
+        const json = await this.extract(book.pdf, [...t.reading, ...t.answerKey], readingPrompt(), warnings, 'Reading');
+        raw.reading.passages = (Array.isArray(json?.passages) ? json.passages : []).map((p: any) => ({ ...p, questions: byNo(p?.questions) }));
+      }
+      if (t.writing.length) {
+        await step('Writing');
+        const json = await this.extract(book.pdf, t.writing, writingPrompt(), warnings, 'Writing');
+        raw.writing.tasks = Array.isArray(json?.tasks) ? json.tasks : [];
+      }
+      if (t.speaking.length) {
+        await step('Speaking');
+        const json = await this.extract(book.pdf, t.speaking, speakingPrompt(), warnings, 'Speaking');
+        raw.speaking.parts = Array.isArray(json?.parts) ? json.parts : [];
+      }
+
+      await this.report(id, { step: 'saving', message: `${t.title}: saqlanmoqda`, done, total: steps });
+      const content = normalizeContent(raw);
+      warnings.push(...this.checks(content, t, hasAudio));
+      const title = `${plan.book ? `${plan.book} — ` : ''}${t.title}`.slice(0, 200);
+      // (import, index) is unique: if another server got here first, its
+      // test is the one that counts.
+      const [made] = await this.db.insert(mockTests).values({
+        tenantId: row.tenantId, title, source: plan.book, level: t.level, module: plan.module, importId: id, importIndex: ti, content: JSON.stringify(content),
+      }).onConflictDoNothing({ target: [mockTests.importId, mockTests.importIndex] }).returning();
+      const test = made ?? (await this.db.select().from(mockTests).where(and(eq(mockTests.importId, id), eq(mockTests.importIndex, ti))))[0];
+      result.tests!.push(summary(test, warnings));
+      // Saved as it goes, so a retry knows what is done and with what notes.
+      await this.report(id, { step: 'saving', message: `${t.title}: saqlandi`, done, total: steps }, { result: JSON.stringify(result) });
+    }
+    if (audio.unmatched.length) result.unmatchedAudio = audio.unmatched;
+    await this.report(id, { step: 'done', message: `${result.tests!.length} ta test yaratildi`, done: steps, total: steps }, { status: 'DONE', result: JSON.stringify(result), error: null, lockedAt: null });
+    await this.cleanup(row, false);
   }
 
   // Finds the tests: from page text when the PDF has it, otherwise the AI

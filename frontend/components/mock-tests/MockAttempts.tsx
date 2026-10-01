@@ -166,6 +166,7 @@ function ReviewModal({ detail, onClose, onChanged }: { detail: MockAttemptDetail
                 })}
               </div>
             ))}
+            {sp?.gradedBy === "AI" && <div style={{ fontSize: 12.5, color: "#6B6E78", background: "#F7F7F5", border: "1px solid #EAE8E2", borderRadius: 10, padding: "9px 12px" }}>ℹ️ {t("mock.speakingTranscriptOnly")}</div>}
             {sp?.feedback && <FeedbackView fb={sp.feedback} />}
             <div style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 13 }}>
               <b>{t("mock.band")}</b><input className="field-input" style={{ width: 70 }} value={sBand} onChange={(e) => setSBand(e.target.value)} inputMode="decimal" />

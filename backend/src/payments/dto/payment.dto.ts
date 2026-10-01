@@ -1,4 +1,4 @@
-import { IsIn, IsInt, IsOptional, IsString, Min } from 'class-validator';
+import { IsIn, IsInt, IsISO8601, IsOptional, IsString, Length, Matches, Min } from 'class-validator';
 
 export class CreatePaymentDto {
   @IsString()
@@ -21,7 +21,7 @@ export class CreatePaymentDto {
   @IsIn(['PAID', 'PENDING', 'FAILED'])
   status?: string;
 
-  @IsString()
+  @Matches(/^[0-9]{4}-(0[1-9]|1[0-2])$/, { message: "forMonth YYYY-MM formatida bo'lishi kerak" })
   forMonth: string; // "2026-09"
 
   @IsOptional()
@@ -29,6 +29,14 @@ export class CreatePaymentDto {
   invoiceId?: string;
 
   @IsOptional()
-  @IsString()
+  @IsISO8601()
   paidAt?: string;
+
+  // A fresh random value per payment form; sending the same one again
+  // (double click, retry after a timeout) returns the first payment. The
+  // Idempotency-Key header works too.
+  @IsOptional()
+  @IsString()
+  @Length(8, 120)
+  idempotencyKey?: string;
 }

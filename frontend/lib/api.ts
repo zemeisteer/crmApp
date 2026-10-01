@@ -834,6 +834,10 @@ export interface DebtorItem {
   paidAmount: number;
   debtAmount: number;
   status: "PAID" | "PARTIAL" | "UNPAID";
+  /** As the student is now; the debt itself is that month's. */
+  studentStatus?: "ACTIVE" | "PAUSED" | "GRADUATED" | "LEFT" | "REMOVED";
+  /** Part of the expected sum has no invoice behind it. */
+  estimated?: boolean;
 }
 
 export interface DebtorsResponse {
@@ -846,6 +850,7 @@ export interface DebtorsResponse {
   paidCount: number;
   partialCount: number;
   unpaidCount: number;
+  estimatedCount?: number;
   debtors: DebtorItem[];
 }
 
@@ -1356,9 +1361,26 @@ export const paymentsApi = {
   },
   financeSummary: (forMonth?: string) =>
     request<FinanceSummary>(`/payments/finance-summary${forMonth ? `?forMonth=${forMonth}` : ""}`),
-  create: (data: Partial<Payment>) =>
-    request<Payment>("/payments", { method: "POST", body: JSON.stringify(data) }),
+  // `idempotencyKey` (see retryKey below) makes a double click or a retry
+  // after a lost answer return the first payment instead of a second one.
+  create: (data: Partial<Payment>, idempotencyKey?: string) =>
+    request<Payment>("/payments", { method: "POST", body: JSON.stringify(idempotencyKey ? { ...data, idempotencyKey } : data) }),
 };
+
+// The key for a payment form: the same while the same contents are being
+// sent again, a new one as soon as anything in the form changes. Keep
+// `holder` in a ref and clear it after a successful save.
+export function retryKey(holder: { current: { sig: string; key: string } | null }, payload: unknown): string {
+  const sig = JSON.stringify(payload);
+  if (holder.current?.sig !== sig) {
+    const random =
+      typeof crypto !== "undefined" && "randomUUID" in crypto
+        ? crypto.randomUUID()
+        : `${Date.now()}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`;
+    holder.current = { sig, key: random };
+  }
+  return holder.current.key;
+}
 
 // ---- Invoices ----
 

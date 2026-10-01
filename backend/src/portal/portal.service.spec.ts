@@ -7,6 +7,7 @@ describe('PortalService', () => {
   let mockDb: any;
   let mockJwt: any;
   let mockConfig: any;
+  let mockLedger: any;
 
   beforeEach(() => {
     mockDb = {
@@ -79,7 +80,11 @@ describe('PortalService', () => {
       getConfig: vi.fn().mockReturnValue({ clickEnabled: true, paymeEnabled: false }),
     };
 
-    service = new PortalService(mockDb, mockJwt, mockConfig, mockBilling as any, {} as any, { sendMessage: vi.fn() } as any);
+    mockLedger = {
+      currentMonth: vi.fn().mockResolvedValue(new Date().toISOString().slice(0, 7)),
+      load: vi.fn().mockResolvedValue({ students: [], due: vi.fn() }),
+    };
+    service = new PortalService(mockDb, mockJwt, mockConfig, mockBilling as any, {} as any, { sendMessage: vi.fn() } as any, mockLedger);
   });
 
   describe('loginWithToken', () => {
@@ -194,17 +199,10 @@ describe('PortalService', () => {
     it('returns payment history and computes current tuition debt for active groups', async () => {
       const currentMonth = new Date().toISOString().slice(0, 7);
 
-      mockDb.query.students.findFirst.mockResolvedValue({
-        id: 'student-1',
-        enrollments: [
-          {
-            group: {
-              id: 'group-1',
-              monthlyPrice: 600000,
-              deletedAt: null,
-            },
-          },
-        ],
+      // The ledger (shared with the center's payments page) says what is owed.
+      mockLedger.load.mockResolvedValue({
+        students: [{ id: 'student-1' }],
+        due: () => ({ expected: 600000, discount: 0, paid: 400000, debt: 200000 }),
       });
 
       mockDb.query.payments.findMany.mockResolvedValue([

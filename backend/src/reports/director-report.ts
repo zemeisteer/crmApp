@@ -2,19 +2,18 @@
 // builds up over months, and who leaves (and why). Pure functions over
 // already-loaded rows, so the rules are easy to test.
 //
-// Expected tuition of a past month is rebuilt from enrollment dates with the
-// group's current price (prices are not versioned): an enrollment counts in
-// a month if it started before the month ended and had not ended before the
-// month began. The current month uses the live state, exactly like the
-// payments page, so both show the same debt.
+// What a student owed for a month comes from the shared ledger
+// (ledger/ledger.ts): that month's invoices first, then the enrollments that
+// were in force then at the price of that time - the same figures as the
+// payments page, for the current month and for past ones.
 
 export interface DrEnrollment {
   status: string; // ACTIVE | PAUSED | COMPLETED | CANCELLED
-  joinedMonth: string; // YYYY-MM in the center's time zone
-  leftMonth: string | null;
-  price: number;
   groupName: string;
 }
+
+/** What the ledger says a student owed for a month. */
+export type DrDue = (studentId: string, month: string) => { expected: number; discount: number; debt: number };
 
 export interface DrStudent {
   id: string;
@@ -26,6 +25,8 @@ export interface DrStudent {
   leftMonth: string | null;
   leftAt: Date | null;
   leftReason: string | null;
+  /** Removed from the center: still owes what was owed, not part of churn. */
+  deleted?: boolean;
   enrollments: DrEnrollment[];
 }
 
@@ -47,58 +48,31 @@ export const monthsEnding = (month: string, n: number) => Array.from({ length: n
 
 const pct = (a: number, b: number) => (b > 0 ? Math.round((a / b) * 1000) / 10 : null);
 
-/** Tuition a student was expected to pay for `month` (before discounts). */
-export function expectedFor(s: DrStudent, month: string, currentMonth: string): number {
-  if (month > currentMonth) return 0;
-  if (month === currentMonth) {
-    // Live state, as on the payments page.
-    if (s.status !== 'ACTIVE') return 0;
-    return s.enrollments.filter((e) => e.status === 'ACTIVE').reduce((sum, e) => sum + e.price, 0);
-  }
-  if (s.leftMonth && s.leftMonth < month) return 0;
-  return s.enrollments
-    .filter((e) => e.status !== 'PAUSED')
-    // An ended enrollment without an end date is left out: no invented debt.
-    .filter((e) => e.status === 'ACTIVE' || e.leftMonth)
-    .filter((e) => e.joinedMonth <= month && (!e.leftMonth || e.leftMonth >= month))
-    .reduce((sum, e) => sum + e.price, 0);
-}
-
 export function directorReport(input: {
   month: string;
   currentMonth: string;
   students: DrStudent[];
   payments: DrPayment[];
+  due: DrDue;
   expensesByMonth: Record<string, number>;
   salariesByMonth: Record<string, number>;
   includeProfit: boolean;
   trendMonths?: number;
   debtWindow?: number;
 }) {
-  const { month, currentMonth, students, payments } = input;
+  const { month, students, payments } = input;
   const trendMonths = monthsEnding(month, input.trendMonths ?? 12);
   const debtMonths = monthsEnding(month, input.debtWindow ?? 6);
 
-  // student -> month -> { paid, discount }
-  const paid = new Map<string, Map<string, { paid: number; discount: number }>>();
   const collectedByMonth: Record<string, number> = {};
   const lastPaid = new Map<string, Date>();
   for (const p of payments) {
-    const m = paid.get(p.studentId) ?? new Map();
-    const cur = m.get(p.forMonth) ?? { paid: 0, discount: 0 };
-    cur.paid += p.amount;
-    cur.discount += p.discount;
-    m.set(p.forMonth, cur);
-    paid.set(p.studentId, m);
     collectedByMonth[p.forMonth] = (collectedByMonth[p.forMonth] ?? 0) + p.amount;
     if (p.paidAt && (!lastPaid.get(p.studentId) || lastPaid.get(p.studentId)! < p.paidAt)) lastPaid.set(p.studentId, p.paidAt);
   }
   const debtOf = (s: DrStudent, mm: string) => {
-    const exp = expectedFor(s, mm, currentMonth);
-    if (exp === 0) return { expected: 0, debt: 0 };
-    const pm = paid.get(s.id)?.get(mm) ?? { paid: 0, discount: 0 };
-    const effective = Math.max(0, exp - pm.discount);
-    return { expected: effective, debt: Math.max(0, effective - pm.paid) };
+    const d = input.due(s.id, mm);
+    return { expected: Math.max(0, d.expected - d.discount), debt: d.debt };
   };
 
   // ---- trend
@@ -112,6 +86,7 @@ export function directorReport(input: {
       const d = debtOf(s, mm);
       expected += d.expected;
       debt += d.debt;
+      if (s.deleted) continue;
       if (s.createdMonth < mm && (!s.leftMonth || s.leftMonth >= mm)) activeAtStart++;
       if (s.createdMonth === mm) newStudents++;
       if (s.leftMonth === mm && s.status === 'LEFT') left++;
@@ -157,7 +132,7 @@ export function directorReport(input: {
 
   // ---- churn in the month, with reasons over the last 3 months
   const leavers = students
-    .filter((s) => s.status === 'LEFT' && s.leftMonth === month)
+    .filter((s) => !s.deleted && s.status === 'LEFT' && s.leftMonth === month)
     .map((s) => ({
       studentId: s.id,
       fullName: s.fullName,
@@ -169,7 +144,7 @@ export function directorReport(input: {
   const recent = new Set(monthsEnding(month, 3));
   const reasons: Record<string, number> = {};
   for (const s of students) {
-    if (s.status === 'LEFT' && s.leftMonth && recent.has(s.leftMonth)) {
+    if (!s.deleted && s.status === 'LEFT' && s.leftMonth && recent.has(s.leftMonth)) {
       const r = s.leftReason ?? 'UNKNOWN';
       reasons[r] = (reasons[r] ?? 0) + 1;
     }

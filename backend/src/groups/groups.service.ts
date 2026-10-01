@@ -1,7 +1,7 @@
 import { BadRequestException, ConflictException, ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { and, eq, inArray, isNotNull, isNull, ne, sql } from 'drizzle-orm';
 import { DB, Database } from '../db/db.module';
-import { branches, courses, enrollments, groups, schedules, students, subjects, teachers } from '../db/schema';
+import { branches, courses, enrollments, groupPriceHistory, groups, schedules, students, subjects, teachers } from '../db/schema';
 import { seatHeldWhere } from '../common/seats';
 import { addMinutes, DEFAULT_LESSON_MINUTES, isoWeekdaysOf } from '../common/weekdays';
 import { isOverlapping } from '../schedule/schedule.service';
@@ -136,6 +136,7 @@ export class GroupsService {
         status: dto.status || 'ACTIVE',
       })
       .returning();
+    await this.db.insert(groupPriceHistory).values({ tenantId, groupId: group.id, monthlyPrice: group.monthlyPrice, effectiveFrom: group.createdAt });
     await this.ensureSubject(tenantId, dto.subject);
     await this.syncWeeklyLessons(tenantId, group);
     this.audit.log({ tenantId, userId, action: 'create', entityType: 'group', entityId: group.id, meta: { name: group.name } });
@@ -283,6 +284,15 @@ export class GroupsService {
       .where(and(eq(groups.id, id), eq(groups.tenantId, tenantId)))
       .returning();
     if (slotChanged || dto.branchId !== undefined) await this.syncWeeklyLessons(tenantId, group);
+    // A new price applies from this month on; earlier months keep the old
+    // one in debt and revenue figures.
+    if (group.monthlyPrice !== current.monthlyPrice) {
+      const [known] = await this.db.select({ id: groupPriceHistory.id }).from(groupPriceHistory).where(eq(groupPriceHistory.groupId, id)).limit(1);
+      if (!known) {
+        await this.db.insert(groupPriceHistory).values({ tenantId, groupId: id, monthlyPrice: current.monthlyPrice, effectiveFrom: current.createdAt });
+      }
+      await this.db.insert(groupPriceHistory).values({ tenantId, groupId: id, monthlyPrice: group.monthlyPrice });
+    }
     this.audit.log({ tenantId, userId, action: 'update', entityType: 'group', entityId: id, meta: dto });
     return group;
   }

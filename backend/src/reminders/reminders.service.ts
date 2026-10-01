@@ -143,7 +143,9 @@ export class RemindersService {
     if (c.day < t.remindPaymentDay || c.hour < 10 || c.hour >= 20) return 0;
 
     const debt = await this.payments.getDebtors(t.id, c.month, true);
-    const due = debt.debtors.filter((d) => d.debtAmount > 0);
+    // Only students who study now are messaged; what the others still owe
+    // stays on the payments page for the office to follow up.
+    const due = debt.debtors.filter((d) => d.debtAmount > 0 && d.studentStatus === 'ACTIVE');
     if (due.length === 0) return 0;
     const chats = new Map(
       (

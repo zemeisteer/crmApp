@@ -40,9 +40,9 @@ export class MockTestsController {
     limits: { fileSize: 150 * 1024 * 1024 },
     fileFilter: (_req, file, cb) => cb(null, file.mimetype === 'application/pdf' || file.mimetype.startsWith('audio/')),
   }))
-  async startImport(@CurrentUser('tenantId') tenantId: string, @UploadedFiles() files: Express.Multer.File[] = []) {
+  async startImport(@CurrentUser('tenantId') tenantId: string, @CurrentUser('sub') userId: string, @UploadedFiles() files: Express.Multer.File[] = []) {
     try {
-      return await this.imports.start(tenantId, files.map((f) => ({ path: f.filename, name: f.originalname, type: f.mimetype, size: f.size })));
+      return await this.imports.start(tenantId, files.map((f) => ({ path: f.filename, name: f.originalname, type: f.mimetype, size: f.size })), userId);
     } catch (err) {
       await Promise.all(files.map((f) => unlink(f.path).catch(() => undefined)));
       throw err;

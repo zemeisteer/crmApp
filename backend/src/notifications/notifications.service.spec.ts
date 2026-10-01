@@ -84,6 +84,7 @@ describe('NotificationsService', () => {
       mockTelegram,
       mockEskiz,
       mockPlaymobile,
+      { currentMonth: vi.fn(), load: vi.fn() } as any,
     );
   });
 

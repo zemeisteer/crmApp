@@ -1,18 +1,34 @@
-import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { and, desc, eq, isNull, like } from 'drizzle-orm';
+import { BadRequestException, ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { createHash } from 'crypto';
+import { and, eq, isNull, like } from 'drizzle-orm';
 import { DB, Database } from '../db/db.module';
-import { enrollments, expenses, invoices, paymentAllocations, payments, salaryPayments, students } from '../db/schema';
+import { expenses, invoices, payments, salaryPayments, students } from '../db/schema';
+import { LedgerService } from '../ledger/ledger.service';
+import { allocateToInvoices, LedgerTx, lockInvoice, lockOpenInvoices, lockStudentLedger } from './allocation';
 import { CreatePaymentDto } from './dto/payment.dto';
 import { TelegramService } from '../telegram/telegram.service';
 import { WebhooksService } from '../webhooks/webhooks.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { AuditService } from '../audit/audit.service';
 
+const MONTH = /^[0-9]{4}-(0[1-9]|1[0-2])$/;
+
+// node-postgres error, possibly wrapped by drizzle.
+function isUniqueViolation(err: unknown, constraint: string) {
+  const top = err as { code?: string; constraint?: string; cause?: { code?: string; constraint?: string } };
+  const pg = top?.cause ?? top;
+  return (pg?.code === '23505' && pg.constraint === constraint) || (top?.code === '23505' && top.constraint === constraint);
+}
+
 export interface DebtorItem {
   studentId: string;
   studentName: string;
   phone: string | null;
   parentPhone: string | null;
+  /** ACTIVE | PAUSED | GRADUATED | LEFT | REMOVED - as the student is now. */
+  studentStatus: string;
+  /** Part of the expected sum has no invoice and comes from enrollments. */
+  estimated: boolean;
   groups: Array<{ id: string; name: string; monthlyPrice: number }>;
   expectedAmount: number;
   discountAmount: number;
@@ -31,6 +47,8 @@ export interface DebtorsResponse {
   paidCount: number;
   partialCount: number;
   unpaidCount: number;
+  /** Students whose expected sum is (partly) not backed by an invoice. */
+  estimatedCount: number;
   debtors: DebtorItem[];
 }
 
@@ -57,11 +75,13 @@ export class PaymentsService {
     private readonly webhooks: WebhooksService,
     private readonly notifications: NotificationsService,
     private readonly audit: AuditService,
+    private readonly ledger: LedgerService,
   ) {}
 
   findAll(tenantId: string) {
     return this.db.query.payments.findMany({
       where: eq(payments.tenantId, tenantId),
+      columns: { idempotencyKey: false, requestHash: false },
       with: { student: true, invoice: true, allocations: true },
       orderBy: (p, { desc }) => desc(p.paidAt),
     });
@@ -70,6 +90,7 @@ export class PaymentsService {
   async findOne(tenantId: string, id: string) {
     const payment = await this.db.query.payments.findFirst({
       where: and(eq(payments.id, id), eq(payments.tenantId, tenantId)),
+      columns: { idempotencyKey: false, requestHash: false },
       with: {
         student: {
           with: {
@@ -94,100 +115,114 @@ export class PaymentsService {
     return payment;
   }
 
-  async create(tenantId: string, dto: CreatePaymentDto, userId?: string) {
-    const student = await this.db.query.students.findFirst({
-      where: and(
-        eq(students.id, dto.studentId),
-        eq(students.tenantId, tenantId),
-        isNull(students.deletedAt),
-      ),
-    });
-    if (!student) {
-      throw new NotFoundException("O'quvchi topilmadi");
+  // One payment = one transaction. The student's ledger lock and the
+  // invoices' row locks make two cashiers (or one double click) work one
+  // after the other, each from the balance the other left; the idempotency
+  // key makes a retried request return the first payment instead of a
+  // second one. Notifications go out only after the commit.
+  async create(tenantId: string, dto: CreatePaymentDto, userId?: string, headerKey?: string) {
+    const discount = dto.discount ?? 0;
+    if (discount < 0) throw new BadRequestException("Chegirma manfiy bo'lishi mumkin emas");
+    if (dto.amount + discount <= 0) throw new BadRequestException("To'lov summasi 0 dan katta bo'lishi kerak");
+    const paidAt = dto.paidAt ? new Date(dto.paidAt) : null;
+    if (paidAt && Number.isNaN(paidAt.getTime())) throw new BadRequestException("To'lov sanasi noto'g'ri");
+    const status = dto.status ?? 'PAID';
+    const method = dto.method ?? 'CASH';
+
+    const key = (dto.idempotencyKey ?? headerKey)?.trim() || null;
+    if (key && (key.length < 8 || key.length > 120)) throw new BadRequestException("Idempotency-Key 8-120 belgidan iborat bo'lishi kerak");
+    const requestHash = key
+      ? createHash('sha256')
+          .update(JSON.stringify([dto.studentId, dto.amount, discount, method, status, dto.forMonth, dto.invoiceId ?? null, dto.paidAt ?? null]))
+          .digest('hex')
+      : null;
+    const replay = async (db: Database | LedgerTx) => {
+      if (!key) return null;
+      const [prior] = await db
+        .select({ id: payments.id, requestHash: payments.requestHash })
+        .from(payments)
+        .where(and(eq(payments.tenantId, tenantId), eq(payments.idempotencyKey, key)));
+      if (!prior) return null;
+      if (prior.requestHash !== requestHash) {
+        throw new ConflictException("Bu Idempotency-Key boshqa to'lov uchun ishlatilgan");
+      }
+      return prior.id;
+    };
+
+    let created: { payment: typeof payments.$inferSelect; invoiceIds: string[] } | { replayOf: string };
+    try {
+      created = await this.db.transaction(async (tx) => {
+        const student = await tx.query.students.findFirst({
+          where: and(eq(students.id, dto.studentId), eq(students.tenantId, tenantId), isNull(students.deletedAt)),
+          columns: { id: true },
+        });
+        if (!student) throw new NotFoundException("O'quvchi topilmadi");
+
+        await lockStudentLedger(tx, student.id);
+        const replayOf = await replay(tx);
+        if (replayOf) return { replayOf };
+
+        let forMonth = dto.forMonth;
+        let targets: Array<typeof invoices.$inferSelect> = [];
+        if (dto.invoiceId) {
+          const inv = await lockInvoice(tx, tenantId, student.id, dto.invoiceId);
+          if (!inv) throw new NotFoundException('Hisob-faktura topilmadi');
+          if (inv.status === 'CANCELLED') {
+            throw new BadRequestException("Bekor qilingan hisob-faktura uchun to'lov qabul qilib bo'lmaydi");
+          }
+          if (inv.forMonth !== dto.forMonth) {
+            throw new BadRequestException(`Hisob-faktura ${inv.forMonth} oyi uchun, to'lov esa ${dto.forMonth} oyi uchun kiritilgan`);
+          }
+          if (dto.amount + discount > inv.remainingAmount) {
+            throw new BadRequestException(
+              `To'lov summasi chegirma bilan (${dto.amount + discount}) hisob-fakturaning qoldiq summasidan (${inv.remainingAmount}) oshib ketishi mumkin emas`,
+            );
+          }
+          forMonth = inv.forMonth;
+          targets = [inv];
+        } else if (status === 'PAID') {
+          // No invoice named: the month's open invoices, oldest due first.
+          targets = await lockOpenInvoices(tx, tenantId, student.id, forMonth);
+        }
+
+        const [payment] = await tx
+          .insert(payments)
+          .values({
+            tenantId,
+            studentId: student.id,
+            invoiceId: targets[0]?.id ?? null,
+            amount: dto.amount,
+            discount,
+            method: method as (typeof payments.$inferInsert)['method'],
+            status: status as (typeof payments.$inferInsert)['status'],
+            forMonth,
+            receiptNumber: `RCP-${new Date().toISOString().slice(0, 7).replace('-', '')}-${Math.floor(100000 + Math.random() * 900000)}`,
+            idempotencyKey: key,
+            requestHash,
+            paidAt: paidAt ?? new Date(),
+          })
+          .returning();
+
+        // Only money that has actually been received settles an invoice.
+        const { invoiceIds } =
+          status === 'PAID'
+            ? await allocateToInvoices(tx, { tenantId, paymentId: payment.id, amount: dto.amount, discount }, targets)
+            : { invoiceIds: [] as string[] };
+        return { payment, invoiceIds };
+      });
+    } catch (err) {
+      // The same key used at the same moment for another student: the
+      // unique index stopped the second insert.
+      if (key && isUniqueViolation(err, 'payments_tenant_idem_uniq')) {
+        const replayOf = await replay(this.db);
+        if (replayOf) return this.findOne(tenantId, replayOf);
+      }
+      throw err;
     }
 
-    if ((dto.discount ?? 0) < 0) throw new BadRequestException("Chegirma manfiy bo'lishi mumkin emas");
-
-    let targetInvoice: typeof invoices.$inferSelect | undefined;
-
-    if (dto.invoiceId) {
-      const inv = await this.db.query.invoices.findFirst({
-        where: and(
-          eq(invoices.id, dto.invoiceId),
-          eq(invoices.tenantId, tenantId),
-          eq(invoices.studentId, dto.studentId),
-        ),
-      });
-      if (!inv) {
-        throw new NotFoundException("Hisob-faktura topilmadi");
-      }
-      if (inv.status === 'CANCELLED') {
-        throw new BadRequestException("Bekor qilingan hisob-faktura uchun to'lov qabul qilib bo'lmaydi");
-      }
-      if (dto.amount > inv.remainingAmount) {
-        throw new BadRequestException(
-          `To'lov summasi (${dto.amount}) hisob-fakturaning qoldiq summasidan (${inv.remainingAmount}) oshib ketishi mumkin emas`,
-        );
-      }
-      targetInvoice = inv;
-    } else {
-      const openInv = await this.db.query.invoices.findFirst({
-        where: and(
-          eq(invoices.tenantId, tenantId),
-          eq(invoices.studentId, dto.studentId),
-          eq(invoices.forMonth, dto.forMonth),
-        ),
-      });
-      if (openInv && openInv.status !== 'CANCELLED' && openInv.remainingAmount > 0) {
-        targetInvoice = openInv;
-      }
-    }
-
-    const receiptNumber = `RCP-${new Date().toISOString().slice(0, 7).replace('-', '')}-${Math.floor(100000 + Math.random() * 900000)}`;
-
-    const [payment] = await this.db
-      .insert(payments)
-      .values({
-        tenantId,
-        studentId: dto.studentId,
-        invoiceId: targetInvoice?.id || dto.invoiceId || null,
-        amount: dto.amount,
-        discount: dto.discount ?? 0,
-        method: (dto.method as any) ?? 'CASH',
-        status: (dto.status as any) ?? 'PAID',
-        forMonth: dto.forMonth,
-        receiptNumber,
-        paidAt: dto.paidAt ? new Date(dto.paidAt) : new Date(),
-      })
-      .returning();
-
-    if (targetInvoice && payment.status === 'PAID') {
-      const allocAmount = Math.min(dto.amount, targetInvoice.remainingAmount);
-      await this.db.insert(paymentAllocations).values({
-        tenantId,
-        paymentId: payment.id,
-        invoiceId: targetInvoice.id,
-        amount: allocAmount,
-      });
-
-      const newPaid = targetInvoice.amountPaid + allocAmount;
-      // A discount given with the payment closes that part of the invoice
-      // too; otherwise the waived sum would stay on it as debt.
-      const waived = Math.min(dto.discount ?? 0, Math.max(0, targetInvoice.remainingAmount - allocAmount));
-      const newRemaining = Math.max(0, targetInvoice.remainingAmount - allocAmount - waived);
-      const newStatus = newRemaining === 0 ? 'PAID' : 'PARTIALLY_PAID';
-
-      await this.db
-        .update(invoices)
-        .set({
-          amountPaid: newPaid,
-          remainingAmount: newRemaining,
-          status: newStatus,
-          paidAt: newRemaining === 0 ? new Date() : targetInvoice.paidAt,
-          updatedAt: new Date(),
-        })
-        .where(eq(invoices.id, targetInvoice.id));
-    }
+    // A retry gets the first payment back; nothing is sent twice.
+    if ('replayOf' in created) return this.findOne(tenantId, created.replayOf);
+    const { payment, invoiceIds } = created;
 
     this.audit.log({
       tenantId,
@@ -199,7 +234,8 @@ export class PaymentsService {
         amount: payment.amount,
         method: payment.method,
         studentId: payment.studentId,
-        invoiceId: targetInvoice?.id || dto.invoiceId,
+        invoiceId: payment.invoiceId,
+        invoiceIds,
         receiptNumber: payment.receiptNumber,
       },
     });
@@ -212,7 +248,8 @@ export class PaymentsService {
         payment.forMonth,
       );
     }
-    void this.webhooks.dispatch(tenantId, 'payment.created', payment);
+    const { idempotencyKey: _k, requestHash: _h, ...publicPayment } = payment;
+    void this.webhooks.dispatch(tenantId, 'payment.created', publicPayment);
     // With the student and groups, so the receipt shown right after saving
     // has a name and a course instead of an id.
     return this.findOne(tenantId, payment.id);
@@ -226,39 +263,14 @@ export class PaymentsService {
     return { totalPaid: total, pendingCount: pending, failedCount: failed, count: all.length };
   }
 
+  // Who owes what for a month, from the shared ledger (see ledger/ledger.ts):
+  // invoices of that month first, then enrollments that were in force then
+  // at the price of that time. A student who has since paused, left or been
+  // removed keeps what they owed.
   async getDebtors(tenantId: string, forMonth?: string, onlyDebtors = false): Promise<DebtorsResponse> {
-    const month = forMonth || new Date().toISOString().slice(0, 7);
-
-    // Only students who are currently studying, and only their ACTIVE
-    // enrollments, are expected to pay: left, graduated and paused students,
-    // and cancelled/paused enrollments, used to inflate expected revenue and
-    // debt.
-    const studentList = await this.db.query.students.findMany({
-      where: and(eq(students.tenantId, tenantId), isNull(students.deletedAt), eq(students.status, 'ACTIVE')),
-      with: {
-        enrollments: {
-          where: eq(enrollments.status, 'ACTIVE'),
-          with: {
-            group: true,
-          },
-        },
-      },
-      orderBy: [desc(students.createdAt)],
-    });
-
-    const monthPayments = await this.db.query.payments.findMany({
-      where: and(eq(payments.tenantId, tenantId), eq(payments.forMonth, month)),
-    });
-
-    const paymentsByStudent = new Map<string, { paid: number; discount: number }>();
-    for (const p of monthPayments) {
-      if (p.status === 'PAID') {
-        const current = paymentsByStudent.get(p.studentId) || { paid: 0, discount: 0 };
-        current.paid += p.amount;
-        current.discount += (p.discount || 0);
-        paymentsByStudent.set(p.studentId, current);
-      }
-    }
+    const month = forMonth || (await this.ledger.currentMonth(tenantId));
+    if (!MONTH.test(month)) throw new BadRequestException("forMonth YYYY-MM formatida bo'lishi kerak");
+    const ledger = await this.ledger.load(tenantId, [month]);
 
     const allDebtorItems: DebtorItem[] = [];
     let totalExpected = 0;
@@ -268,24 +280,19 @@ export class PaymentsService {
     let paidCount = 0;
     let partialCount = 0;
     let unpaidCount = 0;
+    let estimatedCount = 0;
 
-    for (const student of studentList) {
-      const activeGroups = (student.enrollments || [])
-        .map((e) => e.group)
-        .filter((g): g is NonNullable<typeof g> => Boolean(g && !g.deletedAt));
-
-      const expectedAmount = activeGroups.reduce((sum, g) => sum + (g.monthlyPrice || 0), 0);
-      const pInfo = paymentsByStudent.get(student.id) || { paid: 0, discount: 0 };
-      const paidAmount = pInfo.paid;
-      const discountAmount = pInfo.discount;
-      const effectiveExpected = Math.max(0, expectedAmount - discountAmount);
-      const debtAmount = Math.max(0, effectiveExpected - paidAmount);
+    for (const student of ledger.students) {
+      const due = ledger.due(student, month);
+      // Nothing expected and nothing paid: not part of this month.
+      if (due.expected === 0 && due.paid === 0) continue;
+      const effectiveExpected = Math.max(0, due.expected - due.discount);
 
       let status: 'PAID' | 'PARTIAL' | 'UNPAID';
-      if (effectiveExpected === 0 || debtAmount === 0) {
+      if (due.debt === 0) {
         status = 'PAID';
         paidCount++;
-      } else if (paidAmount > 0) {
+      } else if (due.paid > 0) {
         status = 'PARTIAL';
         partialCount++;
         debtorCount++;
@@ -296,23 +303,24 @@ export class PaymentsService {
       }
 
       totalExpected += effectiveExpected;
-      totalPaid += paidAmount;
-      totalDebt += debtAmount;
+      totalPaid += due.paid;
+      totalDebt += due.debt;
+      if (due.estimated > 0) estimatedCount++;
 
-      if (activeGroups.length > 0 || paidAmount > 0) {
-        allDebtorItems.push({
-          studentId: student.id,
-          studentName: student.fullName,
-          phone: student.phone,
-          parentPhone: student.parentPhone,
-          groups: activeGroups.map((g) => ({ id: g.id, name: g.name, monthlyPrice: g.monthlyPrice })),
-          expectedAmount,
-          discountAmount,
-          paidAmount,
-          debtAmount,
-          status,
-        });
-      }
+      allDebtorItems.push({
+        studentId: student.id,
+        studentName: student.fullName,
+        phone: student.phone,
+        parentPhone: student.parentPhone,
+        studentStatus: student.deleted ? 'REMOVED' : student.status,
+        groups: due.groups,
+        expectedAmount: due.expected,
+        discountAmount: due.discount,
+        paidAmount: due.paid,
+        debtAmount: due.debt,
+        estimated: due.estimated > 0,
+        status,
+      });
     }
 
     const debtors = onlyDebtors
@@ -329,12 +337,14 @@ export class PaymentsService {
       paidCount,
       partialCount,
       unpaidCount,
+      estimatedCount,
       debtors,
     };
   }
 
   async getFinanceSummary(tenantId: string, forMonth?: string): Promise<FinanceSummaryResponse> {
-    const month = forMonth || new Date().toISOString().slice(0, 7);
+    const month = forMonth || (await this.ledger.currentMonth(tenantId));
+    if (!MONTH.test(month)) throw new BadRequestException("forMonth YYYY-MM formatida bo'lishi kerak");
 
     const monthPayments = await this.db.query.payments.findMany({
       where: and(eq(payments.tenantId, tenantId), eq(payments.forMonth, month)),

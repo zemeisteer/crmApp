@@ -4,17 +4,19 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { and, asc, desc, eq, inArray, isNull, lt, notExists, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, isNull, lt, ne, notExists, sql } from 'drizzle-orm';
 import { DB, Database } from '../db/db.module';
 import { enrollments, invoices, paymentAllocations, payments, students } from '../db/schema';
 import { AuditService } from '../audit/audit.service';
+import { LedgerTx, lockStudentLedger } from '../payments/allocation';
 import { CreateInvoiceDto, QueryInvoicesDto } from './dto/invoice.dto';
 
-type InvoiceExecutor = Database | Parameters<Parameters<Database['transaction']>[0]>[0];
+type InvoiceExecutor = LedgerTx;
 
 // A payment taken before the month's invoice existed is not linked to any
 // invoice. When the invoice is created, such payments of the same student
 // and month count towards it, so paid students don't show up as debtors.
+// Call inside a transaction that holds the student's ledger lock.
 export async function applyUnallocatedPayments(db: InvoiceExecutor, invoice: typeof invoices.$inferSelect) {
   if (invoice.status === 'CANCELLED' || invoice.remainingAmount <= 0) return invoice;
   const loose = await db.select({ id: payments.id, amount: payments.amount, invoiceId: payments.invoiceId })
@@ -132,8 +134,24 @@ export class InvoicesService {
   // `tx` lets another domain (admissions conversion) create the invoice inside
   // its own transaction so a later failure rolls the invoice back too. In
   // that case the caller writes the audit entry after its commit.
-  async create(tenantId: string, dto: CreateInvoiceDto, userId?: string, tx?: InvoiceExecutor) {
-    const db = tx ?? this.db;
+  async create(tenantId: string, dto: CreateInvoiceDto, userId?: string, tx?: InvoiceExecutor): Promise<typeof invoices.$inferSelect> {
+    if (!tx) {
+      const settled = await this.db.transaction((own) => this.create(tenantId, dto, userId, own));
+      this.audit.log({
+        tenantId,
+        userId: userId || null,
+        action: 'create',
+        entityType: 'invoice',
+        entityId: settled.id,
+        meta: {
+          studentId: settled.studentId,
+          amount: settled.amount,
+          forMonth: settled.forMonth,
+        },
+      });
+      return settled;
+    }
+    const db = tx;
     const student = await db.query.students.findFirst({
       where: and(
         eq(students.id, dto.studentId),
@@ -158,6 +176,8 @@ export class InvoicesService {
       }
     }
 
+    // A payment being taken for this student right now finishes first.
+    await lockStudentLedger(db, dto.studentId);
     const [invoice] = await db
       .insert(invoices)
       .values({
@@ -174,22 +194,7 @@ export class InvoicesService {
         status: 'OPEN',
       })
       .returning();
-    const settled = await applyUnallocatedPayments(db, invoice);
-
-    if (!tx) this.audit.log({
-      tenantId,
-      userId: userId || null,
-      action: 'create',
-      entityType: 'invoice',
-      entityId: invoice.id,
-      meta: {
-        studentId: invoice.studentId,
-        amount: invoice.amount,
-        forMonth: invoice.forMonth,
-      },
-    });
-
-    return settled;
+    return applyUnallocatedPayments(db, invoice);
   }
 
   async generateMonthly(tenantId: string, forMonth?: string, userId?: string) {
@@ -225,38 +230,41 @@ export class InvoicesService {
           continue;
         }
 
-        // Check if invoice already exists for this enrollment & month
-        const existing = await this.db.query.invoices.findFirst({
-          where: and(
-            eq(invoices.tenantId, tenantId),
-            eq(invoices.studentId, student.id),
-            eq(invoices.enrollmentId, enrollment.id),
-            eq(invoices.forMonth, month),
-          ),
+        // One invoice per enrollment and month. Checked and inserted under
+        // the student's ledger lock, so pressing "generate" twice (or two
+        // people at once) cannot issue it twice, and a payment being taken
+        // at the same moment is seen.
+        const inv = await this.db.transaction(async (tx) => {
+          await lockStudentLedger(tx, student.id);
+          const existing = await tx.query.invoices.findFirst({
+            where: and(
+              eq(invoices.tenantId, tenantId),
+              eq(invoices.studentId, student.id),
+              eq(invoices.enrollmentId, enrollment.id),
+              eq(invoices.forMonth, month),
+            ),
+            columns: { id: true },
+          });
+          if (existing) return null;
+          const [created] = await tx
+            .insert(invoices)
+            .values({
+              tenantId,
+              studentId: student.id,
+              enrollmentId: enrollment.id,
+              amount: group.monthlyPrice,
+              amountPaid: 0,
+              remainingAmount: group.monthlyPrice,
+              currency: 'UZS',
+              dueDate,
+              forMonth: month,
+              description: `${group.name} - ${month} oylik to'lov`,
+              status: 'OPEN',
+            })
+            .returning();
+          return applyUnallocatedPayments(tx, created);
         });
-
-        if (existing) {
-          continue;
-        }
-
-        const [inv] = await this.db
-          .insert(invoices)
-          .values({
-            tenantId,
-            studentId: student.id,
-            enrollmentId: enrollment.id,
-            amount: group.monthlyPrice,
-            amountPaid: 0,
-            remainingAmount: group.monthlyPrice,
-            currency: 'UZS',
-            dueDate,
-            forMonth: month,
-            description: `${group.name} - ${month} oylik to'lov`,
-            status: 'OPEN',
-          })
-          .returning();
-
-        generated.push(await applyUnallocatedPayments(this.db, inv));
+        if (inv) generated.push(inv);
       }
     }
 
@@ -291,11 +299,18 @@ export class InvoicesService {
       );
     }
 
+    // Only while still unpaid: a payment that lands between the check above
+    // and this update must not end up on a cancelled invoice.
     const [updated] = await this.db
       .update(invoices)
       .set({ status: 'CANCELLED', updatedAt: new Date() })
-      .where(and(eq(invoices.id, id), eq(invoices.tenantId, tenantId)))
+      .where(and(eq(invoices.id, id), eq(invoices.tenantId, tenantId), eq(invoices.amountPaid, 0), ne(invoices.status, 'PAID')))
       .returning();
+    if (!updated) {
+      throw new BadRequestException(
+        "To'lov qilingan hisob-fakturani bekor qilib bo'lmaydi. Avval to'lovni bekor qiling yoki qaytaring.",
+      );
+    }
 
     this.audit.log({
       tenantId,

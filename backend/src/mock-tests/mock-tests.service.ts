@@ -1,7 +1,7 @@
 import { BadRequestException, ConflictException, ForbiddenException, Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { and, count, desc, eq, gte, inArray, isNull, or } from 'drizzle-orm';
+import { and, count, desc, eq, inArray, isNull, or, sql } from 'drizzle-orm';
 import { DB, Database } from '../db/db.module';
-import { enrollments, mockAttempts, mockTests, students, tenants } from '../db/schema';
+import { aiUsage, enrollments, mockAttempts, mockTests, students, tenants } from '../db/schema';
 import { AiService } from '../ai/ai.service';
 import {
   bandToLevel,
@@ -44,7 +44,7 @@ import {
   type PracticeSectionResult,
   type PracticeTaskResult,
 } from './practice';
-import { DEFAULT_TIMEZONE, isValidTimeZone, zonedDayBounds } from '../common/timezone';
+import { DEFAULT_TIMEZONE, isValidTimeZone, zonedParts } from '../common/timezone';
 
 type Tx = Parameters<Parameters<Database['transaction']>[0]>[0];
 
@@ -70,6 +70,9 @@ export interface SectionResult {
   feedback?: ExaminerFeedback | null;
   teacherComment?: string | null;
   gradedBy?: 'AUTO' | 'AI' | 'TEACHER';
+  // TRANSCRIPT: an AI Speaking band worked out from the speech-to-text
+  // transcript alone - an estimate without pronunciation, not an exam band.
+  basis?: 'TRANSCRIPT';
   late?: boolean;
 }
 export type Results = Partial<Record<Section, SectionResult>> & { overall?: number | null };
@@ -93,6 +96,7 @@ const contentOf = (kind: string | null | undefined, raw: string | null | undefin
   isPractice(kind) ? normalizePractice(parse(raw, {})) : normalizeContent(parse(raw, {}));
 // Practice tests the AI makes for one student per day.
 const STUDENT_PRACTICE_PER_DAY = 5;
+const PRACTICE_USAGE = 'PRACTICE';
 type PracticeResults = Record<string, PracticeSectionResult | number | null | undefined> & { overallPercent?: number | null };
 const sameDirection = (a: string, b: string) => {
   const x = a.trim().toLowerCase();
@@ -253,7 +257,8 @@ export class MockTestsService {
       const tasks = dto.section === 'writing' && prev.tasks
         ? prev.tasks.map((t, i) => ({ ...t, band: [dto.task1, dto.task2][i] !== undefined && valid([dto.task1, dto.task2][i]) ? roundBand([dto.task1, dto.task2][i]!) : t.band }))
         : prev.tasks;
-      results[dto.section] = { ...prev, tasks, status: 'DONE', band: roundBand(dto.band), gradedBy: 'TEACHER', teacherComment: dto.comment?.trim().slice(0, 2000) || prev.teacherComment || null };
+      // The teacher's band replaces the AI's transcript-only estimate.
+      results[dto.section] = { ...prev, basis: undefined, tasks, status: 'DONE', band: roundBand(dto.band), gradedBy: 'TEACHER', teacherComment: dto.comment?.trim().slice(0, 2000) || prev.teacherComment || null };
       results.overall = overallBand(Object.fromEntries(SECTIONS.map((s) => [s, results[s]?.band ?? null])));
       return { results };
     });
@@ -611,43 +616,82 @@ export class MockTestsService {
 
   // How many AI practice sets the student may still make today.
   async practiceQuota(studentId: string, tenantId: string) {
-    const [t] = await this.db.select({ timezone: tenants.timezone }).from(tenants).where(eq(tenants.id, tenantId));
-    const tz = isValidTimeZone(t?.timezone) ? t!.timezone! : DEFAULT_TIMEZONE;
-    const { startOfToday } = zonedDayBounds(new Date(), tz);
-    const [row] = await this.db.select({ n: count() }).from(mockTests)
-      .where(and(eq(mockTests.tenantId, tenantId), eq(mockTests.ownerStudentId, studentId), gte(mockTests.createdAt, startOfToday)));
-    const used = Number(row?.n ?? 0);
+    const day = await this.localDay(tenantId);
+    const [row] = await this.db.select({ used: aiUsage.used }).from(aiUsage)
+      .where(and(eq(aiUsage.studentId, studentId), eq(aiUsage.kind, PRACTICE_USAGE), eq(aiUsage.day, day)));
+    const used = Math.min(STUDENT_PRACTICE_PER_DAY, row?.used ?? 0);
     return { limit: STUDENT_PRACTICE_PER_DAY, used, left: Math.max(0, STUDENT_PRACTICE_PER_DAY - used) };
   }
 
+  // Today's date at the center.
+  private async localDay(tenantId: string) {
+    const [t] = await this.db.select({ timezone: tenants.timezone }).from(tenants).where(eq(tenants.id, tenantId));
+    const p = zonedParts(new Date(), isValidTimeZone(t?.timezone) ? t!.timezone! : DEFAULT_TIMEZONE);
+    return `${p.year}-${String(p.month).padStart(2, '0')}-${String(p.day).padStart(2, '0')}`;
+  }
+
+  // Takes one of today's practice sets, or returns false when none is left.
+  // One statement: the row is created or its counter raised only while it
+  // is below the limit, so requests arriving together cannot pass it.
+  private async reservePractice(studentId: string, tenantId: string, day: string) {
+    const rows = await this.db.insert(aiUsage)
+      .values({ tenantId, studentId, kind: PRACTICE_USAGE, day, used: 1 })
+      .onConflictDoUpdate({
+        target: [aiUsage.studentId, aiUsage.kind, aiUsage.day],
+        set: { used: sql`${aiUsage.used} + 1`, updatedAt: new Date() },
+        setWhere: sql`${aiUsage.used} < ${STUDENT_PRACTICE_PER_DAY}`,
+      })
+      .returning({ used: aiUsage.used });
+    return rows.length > 0;
+  }
+
+  // Gives a reserved set back: the student is not charged for a set that
+  // was never made (the AI failed or returned nothing usable).
+  private async refundPractice(studentId: string, day: string) {
+    await this.db.update(aiUsage)
+      .set({ used: sql`greatest(${aiUsage.used} - 1, 0)`, updatedAt: new Date() })
+      .where(and(eq(aiUsage.studentId, studentId), eq(aiUsage.kind, PRACTICE_USAGE), eq(aiUsage.day, day)))
+      .catch((err) => this.logger.error(`practice quota refund failed for ${studentId}: ${(err as Error).message}`));
+  }
+
   // A practice set the AI makes for the student in one of their directions
-  // (optionally on a topic), started at once.
+  // (optionally on a topic), started at once. The day's limit is reserved
+  // before the AI is asked and given back if no set comes out of it.
   async generateForStudent(studentId: string, tenantId: string, dto: { subject: string; topic?: string; count?: number }) {
     const enrolls = await this.db.query.enrollments.findMany({ where: eq(enrollments.studentId, studentId), with: { group: true } });
     const own = enrolls.filter((e) => e.status === 'ACTIVE' && e.group?.tenantId === tenantId && !e.group.deletedAt);
     const group = own.find((e) => e.group.subject.trim() === dto.subject.trim())?.group;
     if (!group) throw new BadRequestException("Bu yo'nalishda o'qimaysiz");
     if (!(await this.aiAvailable(tenantId))) throw new ConflictException({ code: 'AI_OFF', message: 'AI markazda yoqilmagan' });
-    const quota = await this.practiceQuota(studentId, tenantId);
-    if (quota.left <= 0) throw new ConflictException({ code: 'LIMIT', message: `Bugun ${quota.limit} ta AI mashq yaratdingiz — ertaga yana urinib ko'ring` });
-    const topic = dto.topic?.trim().slice(0, 200) || '';
-    const n = Math.min(20, Math.max(5, Math.round(dto.count ?? 10)));
-    const questions = await this.ai.generateExamQuestions({
-      subject: group.subject,
-      topic: topic || group.subject,
-      count: n,
-      level: group.level ?? null,
-      request: "O'quvchi mustaqil mashq qiladi: savollar aniq, bir xil qiyinlikda, har biriga bitta aniq javob. ESSAY bo'lmasin.",
-    });
-    const content: PracticeContent = normalizePractice({
-      sections: [{ title: topic || group.subject, durationMin: Math.max(10, Math.round(n * 1.5)), parts: [{ title: 'Questions', questions }] }],
-    });
-    if (sectionQuestionsOf(content.sections[0]).length === 0) throw new ConflictException({ code: 'AI_EMPTY', message: "AI savol yarata olmadi — qaytadan urinib ko'ring" });
-    const [row] = await this.db.insert(mockTests).values({
-      tenantId, kind: PRACTICE_KIND, status: 'PUBLISHED', ownerStudentId: studentId, subject: group.subject,
-      title: `AI: ${topic || group.subject}`.slice(0, 200), content: JSON.stringify(content),
-    }).returning();
-    return this.start(studentId, tenantId, row.id);
+    const day = await this.localDay(tenantId);
+    if (!(await this.reservePractice(studentId, tenantId, day))) {
+      throw new ConflictException({ code: 'LIMIT', message: `Bugun ${STUDENT_PRACTICE_PER_DAY} ta AI mashq yaratdingiz — ertaga yana urinib ko'ring` });
+    }
+    let testId: string;
+    try {
+      const topic = dto.topic?.trim().slice(0, 200) || '';
+      const n = Math.min(20, Math.max(5, Math.round(dto.count ?? 10)));
+      const questions = await this.ai.generateExamQuestions({
+        subject: group.subject,
+        topic: topic || group.subject,
+        count: n,
+        level: group.level ?? null,
+        request: "O'quvchi mustaqil mashq qiladi: savollar aniq, bir xil qiyinlikda, har biriga bitta aniq javob. ESSAY bo'lmasin.",
+      });
+      const content: PracticeContent = normalizePractice({
+        sections: [{ title: topic || group.subject, durationMin: Math.max(10, Math.round(n * 1.5)), parts: [{ title: 'Questions', questions }] }],
+      });
+      if (sectionQuestionsOf(content.sections[0]).length === 0) throw new ConflictException({ code: 'AI_EMPTY', message: "AI savol yarata olmadi — qaytadan urinib ko'ring" });
+      const [row] = await this.db.insert(mockTests).values({
+        tenantId, kind: PRACTICE_KIND, status: 'PUBLISHED', ownerStudentId: studentId, subject: group.subject,
+        title: `AI: ${topic || group.subject}`.slice(0, 200), content: JSON.stringify(content),
+      }).returning();
+      testId = row.id;
+    } catch (err) {
+      await this.refundPractice(studentId, day);
+      throw err;
+    }
+    return this.start(studentId, tenantId, testId);
   }
 
   // ------------------------------------------------------------ AI marking
@@ -709,7 +753,9 @@ export class MockTestsService {
     const reply = await this.ai.completeText(speakingPrompt({ parts }), 1500);
     const fb = parseExaminerReply(reply, ['FC', 'LR', 'GRA']);
     if (!fb) throw new Error('unreadable speaking feedback');
-    return { status: 'DONE', band: fb.band, feedback: fb, gradedBy: 'AI' };
+    // The AI read the words, it did not hear the voice: pronunciation is not
+    // part of this band (the real exam has it as a fourth criterion).
+    return { status: 'DONE', band: fb.band, feedback: fb, gradedBy: 'AI', basis: 'TRANSCRIPT' };
   }
 
   // -------------------------------------------------------------- helpers

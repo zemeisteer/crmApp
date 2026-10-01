@@ -8,7 +8,8 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { and, eq, ne } from 'drizzle-orm';
 import { DB, Database } from '../db/db.module';
-import { billingTransactions, invoices, paymentAllocations, payments, students } from '../db/schema';
+import { billingTransactions, invoices, payments, students } from '../db/schema';
+import { allocateToInvoices, lockInvoice, lockOpenInvoices, lockStudentLedger } from '../payments/allocation';
 import { GeneratePaymentLinkDto } from './dto/billing.dto';
 import { TelegramService } from '../telegram/telegram.service';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -148,103 +149,73 @@ export class BillingService {
     if (!tx) return null;
     if (tx.status === 'PAID') return tx;
 
-    // Under concurrent webhook deliveries for the same transaction, only the
-    // request whose UPDATE actually flips a non-PAID row wins the race —
-    // every other concurrent caller sees an empty result and returns the
-    // already-finalized transaction instead of inserting a duplicate payment.
-    const [claimed] = await this.db
-      .update(billingTransactions)
-      .set({ status: 'PAID', updatedAt: new Date() })
-      .where(and(eq(billingTransactions.id, txId), ne(billingTransactions.status, 'PAID')))
-      .returning();
-    if (!claimed) {
+    // One transaction: claiming the gateway transaction, the payment row,
+    // its allocation to invoices and the link back either all happen or
+    // none do, so a crash in the middle cannot leave a PAID transaction
+    // without a payment. Under concurrent webhook deliveries only the
+    // request whose UPDATE flips a non-PAID row goes on; the others get the
+    // finished transaction. The student's ledger lock keeps a payment taken
+    // at the desk at the same moment from using the same invoice balance.
+    const receiptNumber = `RCP-${new Date().toISOString().slice(0, 7).replace('-', '')}-${Math.floor(100000 + Math.random() * 900000)}`;
+    const done = await this.db.transaction(async (trx) => {
+      await lockStudentLedger(trx, tx.studentId);
+      const [claimed] = await trx
+        .update(billingTransactions)
+        .set({ status: 'PAID', updatedAt: new Date() })
+        .where(and(eq(billingTransactions.id, txId), ne(billingTransactions.status, 'PAID')))
+        .returning();
+      if (!claimed) return null;
+
+      if (providerTxId) {
+        const existingPayment = await trx.query.payments.findFirst({
+          where: and(eq(payments.tenantId, tx.tenantId), eq(payments.providerTxId, providerTxId)),
+          columns: { id: true },
+        });
+        if (existingPayment) return null;
+      }
+
+      // The invoice the link was made for, else the month's open invoices
+      // (oldest due first) - the same rule as a payment taken at the desk.
+      let targets: Array<typeof invoices.$inferSelect> = [];
+      if (tx.invoiceId) {
+        const inv = await lockInvoice(trx, tx.tenantId, tx.studentId, tx.invoiceId);
+        if (inv && inv.status !== 'CANCELLED') targets = [inv];
+      } else {
+        targets = await lockOpenInvoices(trx, tx.tenantId, tx.studentId, tx.forMonth);
+      }
+
+      const [payment] = await trx
+        .insert(payments)
+        .values({
+          tenantId: tx.tenantId,
+          studentId: tx.studentId,
+          invoiceId: tx.invoiceId ?? targets[0]?.id ?? null,
+          amount: tx.amount,
+          method: tx.provider,
+          status: 'PAID',
+          forMonth: tx.forMonth,
+          providerTxId: providerTxId || tx.providerTxId || null,
+          receiptNumber,
+        })
+        .returning();
+      await allocateToInvoices(trx, { tenantId: tx.tenantId, paymentId: payment.id, amount: tx.amount }, targets);
+
+      const [updated] = await trx
+        .update(billingTransactions)
+        .set({
+          status: 'PAID',
+          paymentId: payment.id,
+          providerTxId: providerTxId || tx.providerTxId,
+          updatedAt: new Date(),
+        })
+        .where(eq(billingTransactions.id, txId))
+        .returning();
+      return { payment, updated };
+    });
+    if (!done) {
       return this.db.query.billingTransactions.findFirst({ where: eq(billingTransactions.id, txId) });
     }
-
-    if (providerTxId) {
-      const existingPayment = await this.db.query.payments.findFirst({
-        where: and(
-          eq(payments.tenantId, tx.tenantId),
-          eq(payments.providerTxId, providerTxId),
-        ),
-      });
-      if (existingPayment) {
-        return this.db.query.billingTransactions.findFirst({ where: eq(billingTransactions.id, txId) });
-      }
-    }
-
-    const receiptNumber = `RCP-${new Date().toISOString().slice(0, 7).replace('-', '')}-${Math.floor(100000 + Math.random() * 900000)}`;
-
-    const [payment] = await this.db
-      .insert(payments)
-      .values({
-        tenantId: tx.tenantId,
-        studentId: tx.studentId,
-        invoiceId: tx.invoiceId,
-        amount: tx.amount,
-        method: tx.provider,
-        status: 'PAID',
-        forMonth: tx.forMonth,
-        providerTxId: providerTxId || tx.providerTxId || null,
-        receiptNumber,
-      })
-      .returning();
-
-    // Allocate payment to invoice if invoiceId is set or if there's an open invoice for this month
-    let targetInvoiceId = tx.invoiceId;
-    if (!targetInvoiceId) {
-      const openInv = await this.db.query.invoices.findFirst({
-        where: and(
-          eq(invoices.tenantId, tx.tenantId),
-          eq(invoices.studentId, tx.studentId),
-          eq(invoices.forMonth, tx.forMonth),
-        ),
-      });
-      if (openInv && openInv.status !== 'CANCELLED' && openInv.remainingAmount > 0) {
-        targetInvoiceId = openInv.id;
-      }
-    }
-
-    if (targetInvoiceId) {
-      const inv = await this.db.query.invoices.findFirst({
-        where: eq(invoices.id, targetInvoiceId),
-      });
-      if (inv && inv.status !== 'CANCELLED') {
-        const allocAmount = Math.min(tx.amount, inv.remainingAmount);
-        await this.db.insert(paymentAllocations).values({
-          tenantId: tx.tenantId,
-          paymentId: payment.id,
-          invoiceId: inv.id,
-          amount: allocAmount,
-        });
-
-        const newPaid = inv.amountPaid + allocAmount;
-        const newRemaining = Math.max(0, inv.remainingAmount - allocAmount);
-        const newStatus = newRemaining === 0 ? 'PAID' : 'PARTIALLY_PAID';
-
-        await this.db
-          .update(invoices)
-          .set({
-            amountPaid: newPaid,
-            remainingAmount: newRemaining,
-            status: newStatus,
-            paidAt: newRemaining === 0 ? new Date() : inv.paidAt,
-            updatedAt: new Date(),
-          })
-          .where(eq(invoices.id, inv.id));
-      }
-    }
-
-    const [updated] = await this.db
-      .update(billingTransactions)
-      .set({
-        status: 'PAID',
-        paymentId: payment.id,
-        providerTxId: providerTxId || tx.providerTxId,
-        updatedAt: new Date(),
-      })
-      .where(eq(billingTransactions.id, txId))
-      .returning();
+    const { payment, updated } = done;
 
     this.audit.log({
       tenantId: tx.tenantId,

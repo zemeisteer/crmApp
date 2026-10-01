@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import DashboardShell from "@/components/DashboardShell";
 import Modal from "@/components/Modal";
 import Pagination, { usePagedSlice } from "@/components/Pagination";
@@ -27,6 +27,7 @@ import {
   DebtorItem,
   FinanceSummary,
   ApiError,
+  retryKey,
 } from "@/lib/api";
 import { localMonthStr, localDateStr } from "@/lib/date";
 import { useLanguage } from "@/lib/i18n-context";
@@ -764,6 +765,9 @@ function PaymentsContent() {
     }));
   }, [payments, period, t]);
 
+  // Sending the same form again (double click, lost answer) is one payment.
+  const paymentKey = useRef<{ sig: string; key: string } | null>(null);
+
   async function onPaymentSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
@@ -780,15 +784,17 @@ function PaymentsContent() {
     }
     setSaving(true);
     try {
-      const created = await paymentsApi.create({
+      const body = {
         studentId,
         amount: price - off,
         discount: off > 0 ? off : undefined,
         method,
-        status: "PAID",
+        status: "PAID" as const,
         forMonth,
         paidAt: paidDate,
-      });
+      };
+      const created = await paymentsApi.create(body, retryKey(paymentKey, body));
+      paymentKey.current = null;
       setModalOpen(false);
       resetPaymentForm();
       loadAll();
@@ -1563,7 +1569,13 @@ function PaymentsContent() {
                     {filteredDebtors.map((d) => (
                       <tr key={d.studentId}>
                         <td>
-                          <div style={{ fontWeight: 700 }}>{d.studentName}</div>
+                          <div style={{ fontWeight: 700 }}>
+                            {d.studentName}
+                            {/* The debt is that month's even if the student has since stopped. */}
+                            {d.studentStatus && d.studentStatus !== "ACTIVE" && (
+                              <span style={{ marginLeft: 6, fontSize: 11, fontWeight: 600, color: "#8A8D96" }}>({t(`stStatus.${d.studentStatus}`)})</span>
+                            )}
+                          </div>
                           {d.phone && (
                             <div style={{ fontSize: 11.5, color: "#8A8D96" }}>{d.phone}</div>
                           )}

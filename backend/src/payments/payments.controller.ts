@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Headers, Param, Post, Query, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../common/jwt-auth.guard';
 import { RolesGuard } from '../common/roles.guard';
 import { TrialGuard } from '../common/trial.guard';
@@ -60,7 +60,8 @@ export class PaymentsController {
     @CurrentUser('tenantId') tenantId: string,
     @CurrentUser('sub') userId: string,
     @Body() dto: CreatePaymentDto,
+    @Headers('idempotency-key') idempotencyKey?: string,
   ) {
-    return this.service.create(tenantId, dto, userId);
+    return this.service.create(tenantId, dto, userId, idempotencyKey);
   }
 }

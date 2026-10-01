@@ -10,6 +10,7 @@ import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { and, desc, eq, gt, inArray, isNull, or, sql, type AnyColumn } from 'drizzle-orm';
 import { DB, Database } from '../db/db.module';
+import { LedgerService } from '../ledger/ledger.service';
 import {
   announcementReads,
   announcements,
@@ -59,6 +60,7 @@ export class PortalService {
     private readonly billing: BillingService,
     private readonly exams: ExamsService,
     private readonly telegram: TelegramService,
+    private readonly ledger: LedgerService,
   ) {}
 
   private async signPortalToken(student: { id: string; tenantId: string; fullName: string }, viewer: PortalViewer = 'student') {
@@ -583,34 +585,22 @@ export class PortalService {
   }
 
   async getPayments(studentId: string, tenantId: string) {
-    const currentMonth = new Date().toISOString().slice(0, 7);
-
-    const student = await this.db.query.students.findFirst({
-      where: and(eq(students.id, studentId), eq(students.tenantId, tenantId)),
-      with: {
-        enrollments: {
-          with: {
-            group: true,
-          },
-        },
-      },
-    });
+    // The same figures the center sees on its payments page.
+    const currentMonth = await this.ledger.currentMonth(tenantId);
+    const ledger = await this.ledger.load(tenantId, [currentMonth], { studentId });
+    const me = ledger.students[0];
+    const due = me ? ledger.due(me, currentMonth) : { expected: 0, discount: 0, paid: 0, debt: 0 };
 
     const history = await this.db.query.payments.findMany({
       where: and(eq(payments.studentId, studentId), eq(payments.tenantId, tenantId)),
+      columns: { idempotencyKey: false, requestHash: false },
       orderBy: [desc(payments.paidAt), desc(payments.createdAt)],
     });
 
-    const activeGroups = (student?.enrollments || [])
-      .map((e) => e.group)
-      .filter((g): g is NonNullable<typeof g> => Boolean(g && !g.deletedAt));
-
-    const expectedTuition = activeGroups.reduce((sum, g) => sum + (g.monthlyPrice || 0), 0);
-    const monthPayments = history.filter((p) => p.forMonth === currentMonth && p.status === 'PAID');
-    const monthPaid = monthPayments.reduce((sum, p) => sum + p.amount, 0);
-    const monthDiscount = monthPayments.reduce((sum, p) => sum + (p.discount || 0), 0);
-    const effectiveExpected = Math.max(0, expectedTuition - monthDiscount);
-    const debtAmount = Math.max(0, effectiveExpected - monthPaid);
+    const expectedTuition = due.expected;
+    const monthPaid = due.paid;
+    const effectiveExpected = Math.max(0, due.expected - due.discount);
+    const debtAmount = due.debt;
 
     return {
       forMonth: currentMonth,

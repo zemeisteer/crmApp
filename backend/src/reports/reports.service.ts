@@ -1,6 +1,7 @@
 import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { and, eq, gte, inArray, isNull, lt, sql } from 'drizzle-orm';
 import { DB, Database } from '../db/db.module';
+import { LedgerService } from '../ledger/ledger.service';
 import { attendance, enrollments, expenses, groups, homework, homeworkCompletions, invoices, payments, salaryPayments, students, teachers } from '../db/schema';
 import { directorReport, monthsEnding, type DrStudent } from './director-report';
 import { PaymentsService } from '../payments/payments.service';
@@ -44,6 +45,7 @@ export class ReportsService {
     @Inject(DB) private readonly db: Database,
     private readonly paymentsService: PaymentsService,
     private readonly leadsService: LeadsService,
+    private readonly ledger: LedgerService,
   ) {}
 
   async overview(tenantId: string, viewer: ReportViewer, monthParam?: string) {
@@ -75,7 +77,7 @@ export class ReportsService {
         newStudents: 'Students registered during the month (center timezone).',
         attendanceRate: '(PRESENT + LATE) / all attendance marks dated in the month.',
         occupancy: 'Seats held (ACTIVE enrollments of students who have not left or graduated) / group maxStudents.',
-        collectionRate: '(expected - outstanding debt) / expected, where expected comes from ACTIVE enrollments of ACTIVE students; null when nothing was expected.',
+        collectionRate: "(expected - outstanding debt) / expected, where expected is the month's invoices plus, for enrollments without an invoice, the group's price in that month; null when nothing was expected.",
         atRisk: 'ACTIVE students with attendance below 60% this month (3+ marks) or an OVERDUE invoice.',
       },
       students: studentsSection,
@@ -482,34 +484,22 @@ export class ReportsService {
     if (month > currentMonth) throw new BadRequestException("Kelajak oyi uchun hisobot yo'q");
     const months = monthsEnding(month, 12);
     const first = months[0];
-    const monthOf = (d: Date | null | undefined) => {
-      if (!d) return null;
-      const p = zonedParts(d, tz);
-      return `${p.year}-${String(p.month).padStart(2, '0')}`;
-    };
-
-    const rows = await this.db.query.students.findMany({
-      where: and(eq(students.tenantId, tenantId), isNull(students.deletedAt)),
-      columns: { id: true, fullName: true, phone: true, parentPhone: true, status: true, createdAt: true, leftAt: true, leftReason: true },
-      with: { enrollments: { columns: { status: true, joinedAt: true, leftAt: true }, with: { group: { columns: { name: true, monthlyPrice: true } } } } },
-    });
-    const list: DrStudent[] = rows.map((r) => ({
+    // One ledger for the whole window: the debt here is the debt the
+    // payments page shows for each of these months.
+    const ledger = await this.ledger.load(tenantId, months);
+    const byId = new Map(ledger.students.map((s) => [s.id, s]));
+    const list: DrStudent[] = ledger.students.map((r) => ({
       id: r.id,
       fullName: r.fullName,
       phone: r.phone,
       parentPhone: r.parentPhone,
       status: r.status,
-      createdMonth: monthOf(r.createdAt)!,
-      leftMonth: r.status === 'LEFT' || r.status === 'GRADUATED' ? monthOf(r.leftAt) : null,
+      createdMonth: r.createdMonth,
+      leftMonth: r.leftMonth,
       leftAt: r.leftAt,
       leftReason: r.leftReason,
-      enrollments: r.enrollments.map((e) => ({
-        status: e.status,
-        joinedMonth: monthOf(e.joinedAt)!,
-        leftMonth: monthOf(e.leftAt),
-        price: e.group?.monthlyPrice ?? 0,
-        groupName: e.group?.name ?? '—',
-      })),
+      deleted: r.deleted,
+      enrollments: r.enrollments.map((e) => ({ status: e.status, groupName: e.groupName })),
     }));
 
     const paid = await this.db
@@ -542,6 +532,7 @@ export class ReportsService {
         currentMonth,
         students: list,
         payments: paid.map((p) => ({ ...p, discount: p.discount ?? 0 })),
+        due: (id, mm) => ledger.due(byId.get(id)!, mm),
         expensesByMonth,
         salariesByMonth,
         includeProfit,

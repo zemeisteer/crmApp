@@ -6,6 +6,7 @@ import {
   integer,
   boolean,
   uniqueIndex,
+  primaryKey,
   index,
   jsonb,
   type AnyPgColumn,
@@ -408,6 +409,20 @@ export const groups = pgTable('groups', {
   courseIdx: index('groups_course_idx').on(t.courseId),
 }));
 
+// Every monthly price a group has had, so the tuition of a past month is
+// worked out with the price of that time, not today's.
+export const groupPriceHistory = pgTable('group_price_history', {
+  id: text('id').primaryKey().$defaultFn(() => createId()),
+  tenantId: text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  groupId: text('group_id').notNull().references(() => groups.id, { onDelete: 'cascade' }),
+  monthlyPrice: integer('monthly_price').notNull(),
+  effectiveFrom: timestamp('effective_from').notNull().defaultNow(),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+}, (t) => ({
+  groupIdx: index('group_price_history_group_idx').on(t.groupId, t.effectiveFrom),
+  tenantIdx: index('group_price_history_tenant_idx').on(t.tenantId),
+}));
+
 export const students = pgTable('students', {
   id: text('id').primaryKey().$defaultFn(() => createId()),
   tenantId: text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
@@ -424,6 +439,8 @@ export const students = pgTable('students', {
   // Set when the status becomes LEFT/GRADUATED (churn reports); reason is one of LEFT_REASONS.
   leftAt: timestamp('left_at'),
   leftReason: text('left_reason'),
+  // Set while the status is PAUSED: months before it are still owed.
+  pausedAt: timestamp('paused_at'),
   notes: text('notes'),
   avatarUrl: text('avatar_url'),
   startDate: timestamp('start_date').notNull().defaultNow(),
@@ -513,11 +530,17 @@ export const payments = pgTable('payments', {
   forMonth: text('for_month').notNull(),
   providerTxId: text('provider_tx_id'),
   receiptNumber: text('receipt_number'),
+  // Retry protection for payments entered by staff: the same key from the
+  // same center returns the first payment instead of taking the money twice;
+  // requestHash tells a retry from a different request reusing the key.
+  idempotencyKey: text('idempotency_key'),
+  requestHash: text('request_hash'),
   paidAt: timestamp('paid_at').notNull().defaultNow(),
   createdAt: timestamp('created_at').notNull().defaultNow(),
 }, (t) => ({
   tenantIdx: index('payments_tenant_idx').on(t.tenantId),
   invoiceIdx: index('payments_invoice_idx').on(t.invoiceId),
+  idemUniq: uniqueIndex('payments_tenant_idem_uniq').on(t.tenantId, t.idempotencyKey),
 }));
 
 export const attendance = pgTable('attendance', {
@@ -1109,6 +1132,9 @@ export const mockTests = pgTable('mock_tests', {
   // Where it came from, e.g. "Cambridge IELTS 18 — Test 2".
   source: text('source'),
   importId: text('import_id'),
+  // Which test of the imported book this is (0, 1, ...): an import that is
+  // retried or picked up by another server cannot create it twice.
+  importIndex: integer('import_index'),
   // Set on a practice test the AI made for one student: only they see it.
   ownerStudentId: text('owner_student_id').references(() => students.id, { onDelete: 'cascade' }),
   content: text('content').notNull().default('{}'),
@@ -1117,6 +1143,7 @@ export const mockTests = pgTable('mock_tests', {
 }, (t) => ({
   tenantIdx: index('mock_tests_tenant_idx').on(t.tenantId),
   ownerStudentIdx: index('mock_tests_owner_student_idx').on(t.ownerStudentId),
+  importUniq: uniqueIndex('mock_tests_import_uniq').on(t.importId, t.importIndex),
 }));
 
 // A batch of uploaded materials (PDF books, audio) turned into mock tests in
@@ -1130,10 +1157,42 @@ export const mockImports = pgTable('mock_imports', {
   progress: text('progress').notNull().default('{}'),
   result: text('result').notNull().default('{}'),
   error: text('error'),
+  // Who started it.
+  createdBy: text('created_by').references(() => users.id, { onDelete: 'set null' }),
+  // Servers only take jobs of their own queue (IMPORT_QUEUE), so a test run
+  // or a second environment on the same database never runs these.
+  queue: text('queue').notNull().default('default'),
+  // The job is a row in this table, not memory: any server may take it.
+  // `lockedBy` is the server working on it and `lockedAt` its heartbeat; a
+  // job whose heartbeat stopped is taken over. `attempts` counts starts.
+  attempts: integer('attempts').notNull().default(0),
+  lockedBy: text('locked_by'),
+  lockedAt: timestamp('locked_at'),
+  // Not before this time (back-off after a failed attempt).
+  nextRunAt: timestamp('next_run_at'),
+  // Where the tests are in the book, kept so a retry extracts the same tests.
+  plan: text('plan'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 }, (t) => ({
   tenantIdx: index('mock_imports_tenant_idx').on(t.tenantId),
+  queueIdx: index('mock_imports_queue_idx').on(t.queue, t.status, t.createdAt),
+}));
+
+// Daily counters of what a student has used of the AI (kind: PRACTICE = AI
+// practice sets). One row per student, kind and local day; the limit is
+// enforced by a single conditional UPDATE, so parallel requests cannot go
+// over it.
+export const aiUsage = pgTable('ai_usage', {
+  tenantId: text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  studentId: text('student_id').notNull().references(() => students.id, { onDelete: 'cascade' }),
+  kind: text('kind').notNull(),
+  day: text('day').notNull(), // "2026-10-01" in the center's time zone
+  used: integer('used').notNull().default(0),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+}, (t) => ({
+  pk: primaryKey({ columns: [t.studentId, t.kind, t.day] }),
+  tenantIdx: index('ai_usage_tenant_idx').on(t.tenantId),
 }));
 
 // One student's sitting of a mock test. JSON columns: answers per section,

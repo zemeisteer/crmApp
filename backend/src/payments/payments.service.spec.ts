@@ -1,11 +1,24 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { PaymentsService } from './payments.service';
+import { monthDue } from '../ledger/ledger';
 
 describe('PaymentsService', () => {
   let service: PaymentsService;
   let mockDb: any;
   let mockTelegram: any;
   let mockWebhooks: any;
+  // What the ledger loader would return: students with their enrollments,
+  // and each student's PAID payments of the month.
+  let students: any[];
+  let monthPayments: Record<string, Array<{ amount: number; discount: number; allocated: number | null }>>;
+  const student = (id: string, fullName: string, prices: number[]) => ({
+    id, fullName, phone: null, parentPhone: null, telegramChatId: null, status: 'ACTIVE', createdMonth: '2026-01',
+    leftAt: null, leftReason: null, leftMonth: null, pausedMonth: null, deletedMonth: null, deleted: false,
+    enrollments: prices.map((price, n) => ({
+      id: `${id}-e${n}`, groupId: `${id}-g${n}`, groupName: `Group ${n}`, status: 'ACTIVE', joinedMonth: '2026-01',
+      leftMonth: null, groupDeletedMonth: null, prices: [{ from: '2026-01', price }],
+    })),
+  });
 
   beforeEach(() => {
     mockDb = {
@@ -49,92 +62,35 @@ describe('PaymentsService', () => {
       log: vi.fn(),
     };
 
-    service = new PaymentsService(mockDb, mockTelegram, mockWebhooks, mockNotifications as any, mockAudit as any);
+    students = [];
+    monthPayments = {};
+    const mockLedger = {
+      currentMonth: vi.fn().mockResolvedValue('2026-09'),
+      load: vi.fn().mockImplementation(async () => ({
+        timezone: 'Asia/Tashkent',
+        currentMonth: '2026-09',
+        students,
+        due: (st: any, month: string) => monthDue(st, month, [], monthPayments[st.id] ?? []),
+      })),
+    };
+
+    service = new PaymentsService(mockDb, mockTelegram, mockWebhooks, mockNotifications as any, mockAudit as any, mockLedger as any);
   });
 
   describe('getDebtors', () => {
     it('accurately computes debt based on student group prices and payments', async () => {
-      const mockStudents = [
-        {
-          id: 'student-1',
-          fullName: 'Anvar Karimov',
-          phone: '+998901234567',
-          parentPhone: '+998907654321',
-          enrollments: [
-            {
-              group: {
-                id: 'group-1',
-                name: 'Ingliz tili B2',
-                monthlyPrice: 500000,
-                deletedAt: null,
-              },
-            },
-            {
-              group: {
-                id: 'group-2',
-                name: 'Matematika',
-                monthlyPrice: 400000,
-                deletedAt: null,
-              },
-            },
-          ],
-        },
-        {
-          id: 'student-2',
-          fullName: 'Zarina Rustamova',
-          phone: '+998931112233',
-          parentPhone: null,
-          enrollments: [
-            {
-              group: {
-                id: 'group-1',
-                name: 'Ingliz tili B2',
-                monthlyPrice: 500000,
-                deletedAt: null,
-              },
-            },
-          ],
-        },
-        {
-          id: 'student-3',
-          fullName: 'Dilshod Saidov',
-          phone: '+998945556677',
-          parentPhone: null,
-          enrollments: [
-            {
-              group: {
-                id: 'group-3',
-                name: 'Rus tili',
-                monthlyPrice: 300000,
-                deletedAt: null,
-              },
-            },
-          ],
-        },
-      ];
-
       // Student 1 paid 500,000 out of 900,000 (debt = 400,000 -> PARTIAL)
       // Student 2 paid 500,000 out of 500,000 (debt = 0 -> PAID)
       // Student 3 paid 0 out of 300,000 (debt = 300,000 -> UNPAID)
-      const mockPayments = [
-        {
-          studentId: 'student-1',
-          amount: 500000,
-          discount: 0,
-          status: 'PAID',
-          forMonth: '2026-09',
-        },
-        {
-          studentId: 'student-2',
-          amount: 500000,
-          discount: 0,
-          status: 'PAID',
-          forMonth: '2026-09',
-        },
+      students = [
+        student('student-1', 'Anvar Karimov', [500000, 400000]),
+        student('student-2', 'Zarina Rustamova', [500000]),
+        student('student-3', 'Dilshod Saidov', [300000]),
       ];
-
-      mockDb.query.students.findMany.mockResolvedValue(mockStudents);
-      mockDb.query.payments.findMany.mockResolvedValue(mockPayments);
+      monthPayments = {
+        'student-1': [{ amount: 500000, discount: 0, allocated: null }],
+        'student-2': [{ amount: 500000, discount: 0, allocated: null }],
+      };
 
       const result = await service.getDebtors('tenant-1', '2026-09');
 
@@ -146,6 +102,8 @@ describe('PaymentsService', () => {
       expect(result.paidCount).toBe(1);
       expect(result.partialCount).toBe(1);
       expect(result.unpaidCount).toBe(1);
+      // The list and the totals are the same numbers.
+      expect(result.debtors.reduce((sum, d) => sum + d.debtAmount, 0)).toBe(result.totalDebt);
 
       const anvar = result.debtors.find((d) => d.studentId === 'student-1');
       expect(anvar?.status).toBe('PARTIAL');
@@ -161,25 +119,16 @@ describe('PaymentsService', () => {
     });
 
     it('filters only debtors when onlyDebtors flag is true', async () => {
-      mockDb.query.students.findMany.mockResolvedValue([
-        {
-          id: 's1',
-          fullName: 'Student 1',
-          enrollments: [{ group: { monthlyPrice: 500000, deletedAt: null } }],
-        },
-        {
-          id: 's2',
-          fullName: 'Student 2',
-          enrollments: [{ group: { monthlyPrice: 500000, deletedAt: null } }],
-        },
-      ]);
-      mockDb.query.payments.findMany.mockResolvedValue([
-        { studentId: 's1', amount: 500000, status: 'PAID', forMonth: '2026-09' },
-      ]);
+      students = [student('s1', 'Student 1', [500000]), student('s2', 'Student 2', [500000])];
+      monthPayments = { s1: [{ amount: 500000, discount: 0, allocated: null }] };
 
       const result = await service.getDebtors('tenant-1', '2026-09', true);
       expect(result.debtors).toHaveLength(1);
       expect(result.debtors[0].studentId).toBe('s2');
+    });
+
+    it('rejects a month that is not YYYY-MM', async () => {
+      await expect(service.getDebtors('tenant-1', '2026-13')).rejects.toThrow();
     });
   });
 
@@ -205,23 +154,11 @@ describe('PaymentsService', () => {
       ]);
 
       // Students for debt calculation (Expected: 12,500,000)
-      mockDb.query.students.findMany.mockResolvedValue([
-        {
-          id: 's1',
-          fullName: 'S1',
-          enrollments: [{ group: { monthlyPrice: 6000000, deletedAt: null } }],
-        },
-        {
-          id: 's2',
-          fullName: 'S2',
-          enrollments: [{ group: { monthlyPrice: 4000000, deletedAt: null } }],
-        },
-        {
-          id: 's4',
-          fullName: 'S4',
-          enrollments: [{ group: { monthlyPrice: 2500000, deletedAt: null } }],
-        },
-      ]);
+      students = [student('s1', 'S1', [6000000]), student('s2', 'S2', [4000000]), student('s4', 'S4', [2500000])];
+      monthPayments = {
+        s1: [{ amount: 6000000, discount: 0, allocated: null }],
+        s2: [{ amount: 4000000, discount: 0, allocated: null }],
+      };
 
       const summary = await service.getFinanceSummary('tenant-1', '2026-09');
 

@@ -2,10 +2,10 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import request from 'supertest';
 import { App } from 'supertest/types';
-import { eq } from 'drizzle-orm';
+import { eq, inArray } from 'drizzle-orm';
 import { AppModule } from '../src/app.module.js';
 import { DB, type Database } from '../src/db/db.module.js';
-import { students, tenants, users } from '../src/db/schema.js';
+import { enrollments, students, tenants, users } from '../src/db/schema.js';
 import { NotificationsService } from '../src/notifications/notifications.service.js';
 import { TelegramService } from '../src/telegram/telegram.service.js';
 import { RemindersService } from '../src/reminders/reminders.service.js';
@@ -76,6 +76,8 @@ describe('Automatic reminders (e2e)', () => {
     const gone = (await http().post('/api/students').set(auth()).send({ fullName: 'Already Left', groupIds: [g] }).expect(201)).body.id as string;
     await http().patch(`/api/students/${gone}`).set(auth()).send({ status: 'LEFT', leftReason: 'MOVED' }).expect(200);
     await db.update(students).set({ telegramChatId: `9${String(suffix).slice(-8)}` }).where(eq(students.id, debtor));
+    // The clock below is set to September 2026: they were already studying then.
+    await db.update(enrollments).set({ joinedAt: new Date('2026-08-01T05:00:00Z') }).where(inArray(enrollments.studentId, [debtor, gone]));
 
     const r = app.get(RemindersService);
     await http().patch('/api/notifications/settings').set(auth()).send({ remindPaymentDay: 5 }).expect(200);

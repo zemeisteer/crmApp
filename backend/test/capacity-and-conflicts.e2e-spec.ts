@@ -322,7 +322,9 @@ describe('Group capacity & schedule day alignment (e2e)', () => {
     expect(linked.user).toMatchObject({ email });
     await http().post(`/api/teachers/${tid}/account`).set(auth()).send({ email, password: 'secret123' }).expect(409);
 
-    const login = (await http().post('/api/auth/login').send({ email, password: 'secret123' }).expect(201)).body;
+    const loginRes = await http().post('/api/auth/login').send({ email, password: 'secret123' });
+    expect(loginRes.status, JSON.stringify(loginRes.body)).toBe(201);
+    const login = loginRes.body;
     const groups = (await http().get('/api/groups').set({ Authorization: `Bearer ${login.accessToken}` }).expect(200)).body;
     expect(groups.map((g: { id: string }) => g.id)).toEqual([mine]);
 

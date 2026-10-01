@@ -1,10 +1,9 @@
 import { Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { and, desc, eq, isNull, sql } from 'drizzle-orm';
+import { and, desc, eq, sql } from 'drizzle-orm';
 import { DB, Database } from '../db/db.module';
+import { LedgerService } from '../ledger/ledger.service';
 import {
-  enrollments,
   notifications,
-  payments,
   students,
   tenants,
 } from '../db/schema';
@@ -26,6 +25,7 @@ export class NotificationsService {
     private readonly telegram: TelegramService,
     private readonly eskiz: EskizProvider,
     private readonly playmobile: PlayMobileProvider,
+    private readonly ledger: LedgerService,
   ) {}
 
   async getSettings(tenantId: string) {
@@ -308,42 +308,19 @@ export class NotificationsService {
   }
 
   async notifyDebtors(tenantId: string, forMonth?: string, targetStudentIds?: string[]) {
-    const month = forMonth || new Date().toISOString().slice(0, 7);
-
-    // Same rule as the payments page: only students who study now, only
-    // their ACTIVE enrollments (left students and closed groups owe nothing).
-    const studentList = await this.db.query.students.findMany({
-      where: and(eq(students.tenantId, tenantId), isNull(students.deletedAt), eq(students.status, 'ACTIVE')),
-      with: {
-        enrollments: {
-          where: eq(enrollments.status, 'ACTIVE'),
-          with: {
-            group: true,
-          },
-        },
-      },
-    });
-
-    const monthPayments = await this.db.query.payments.findMany({
-      where: and(eq(payments.tenantId, tenantId), eq(payments.forMonth, month), eq(payments.status, 'PAID')),
-    });
-
-    const paidByStudent: Record<string, number> = {};
-    for (const p of monthPayments) {
-      // Discounts lower what is owed, as on the payments page.
-      paidByStudent[p.studentId] = (paidByStudent[p.studentId] || 0) + p.amount + (p.discount || 0);
-    }
+    // The debt the payments page shows, from the same ledger.
+    const month = forMonth || (await this.ledger.currentMonth(tenantId));
+    const ledger = await this.ledger.load(tenantId, [month]);
 
     let sentCount = 0;
-    for (const student of studentList) {
+    for (const student of ledger.students) {
+      // Only students who study now are messaged; what the others still
+      // owe stays on the payments page for the office to follow up.
+      if (student.deleted || student.status !== 'ACTIVE') continue;
       if (targetStudentIds && targetStudentIds.length > 0 && !targetStudentIds.includes(student.id)) {
         continue;
       }
-
-      const activeEnrollments = (student.enrollments || []).filter((e) => e.group && !e.group.deletedAt);
-      const expectedAmount = activeEnrollments.reduce((sum, e) => sum + (e.group?.monthlyPrice || 0), 0);
-      const paidAmount = paidByStudent[student.id] || 0;
-      const debt = expectedAmount - paidAmount;
+      const debt = ledger.due(student, month).debt;
 
       if (debt > 0) {
         const formattedDebt = new Intl.NumberFormat('uz-UZ').format(debt);

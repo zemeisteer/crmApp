@@ -154,6 +154,11 @@ export class StudentsService {
         : dto.leftReason !== undefined && before.status === 'LEFT'
           ? { leftReason: dto.leftReason }
           : {};
+    // Months before a pause are still owed; the pause itself is not.
+    const pauseFields =
+      dto.status !== undefined && dto.status !== before.status
+        ? { pausedAt: dto.status === 'PAUSED' ? new Date() : null }
+        : {};
 
     if (dto.branchId) {
       const branch = await this.db.query.branches.findFirst({
@@ -178,6 +183,7 @@ export class StudentsService {
         ...(dto.notes !== undefined ? { notes: dto.notes || null } : {}),
         ...(dto.avatarUrl !== undefined ? { avatarUrl: dto.avatarUrl || null } : {}),
         ...leftFields,
+        ...pauseFields,
         updatedAt: new Date(),
       })
       .where(and(eq(students.id, id), eq(students.tenantId, tenantId)))

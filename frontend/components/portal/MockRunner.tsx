@@ -393,6 +393,8 @@ function SpeakingSection({ a, readOnly, onSaved }: { a: PortalMockAttempt; readO
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       {r && <ResultBanner band={r.band} status={r.status} comment={r.teacherComment} />}
+      {/* An AI Speaking band comes from the transcript alone: say so. */}
+      {r?.gradedBy === "AI" && <div style={{ fontSize: 12.5, color: "#6B6E78", background: "#F7F7F5", border: "1px solid #EAE8E2", borderRadius: 10, padding: "9px 12px" }}>ℹ️ {t("mock.speakingTranscriptOnly")}</div>}
       {r?.feedback && <div style={card}><FeedbackView fb={r.feedback} /></div>}
       {!readOnly && <div style={{ fontSize: 12.5, color: "#6B6E78" }}>🎙 {t("pmk.micHint")}</div>}
       {a.test.content.speaking.parts.map((p, pi) => (
