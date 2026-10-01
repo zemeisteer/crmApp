@@ -1,8 +1,17 @@
+// THE way migrations are applied - everywhere: `npm run db:migrate`, CI,
+// the container on start (see Dockerfile), local setup, the migration
+// verification and the end-to-end database.
+//
 // Applies every pending migration from drizzle/, in the order of
-// drizzle/meta/_journal.json (the same list `drizzle-kit migrate` uses),
-// each in its own transaction, and records it in app_migrations. Runs on
-// container start (see Dockerfile), so a deploy brings the schema up to
-// date by itself; drizzle-kit is a dev dependency and is not in the image.
+// drizzle/meta/_journal.json, EACH IN ITS OWN TRANSACTION, and records it in
+// app_migrations. A migration that fails is rolled back as a whole and
+// nothing after it runs.
+//
+// `drizzle-kit migrate` is NOT a supported way to apply these migrations: it
+// runs all pending files in one transaction, and PostgreSQL refuses to use
+// an enum value in the transaction that added it ("unsafe use of new value
+// ... of enum type"): 0002 adds role 'OWNER', 0032 uses it. drizzle-kit is
+// still what generates migrations and snapshots (`npm run db:generate`).
 //
 //   node scripts/migrate.cjs                    apply pending migrations
 //   node scripts/migrate.cjs --status           list applied / pending
@@ -12,8 +21,9 @@
 //                                               applied without running it
 //
 // Reconciling a database that this runner has not seen before:
-//   - migrated with `drizzle-kit migrate` (has drizzle.__drizzle_migrations):
-//     adopted automatically - what Drizzle recorded is marked applied.
+//   - migrated with `drizzle-kit migrate` in the past (has
+//     drizzle.__drizzle_migrations): adopted automatically - what Drizzle
+//     recorded is marked applied, the rest is applied here.
 //   - built with `db:push` or by hand (tables, but no record at all): the
 //     runner stops. Check it with `npm run db:check-drift`, then say which
 //     migration it corresponds to with --baseline [tag]; the rest is applied

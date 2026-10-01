@@ -1,6 +1,7 @@
 // Fails (exit 1) when the database is missing anything src/db/schema.ts
 // declares: tables, columns, NOT NULL constraints, indexes or enum values.
-// CI runs it right after `db:migrate` on an empty database, so a schema
+// CI runs it right after `npm run db:migrate` (scripts/migrate.cjs) on an
+// empty database, so a schema
 // change that ships without a versioned migration is caught immediately
 // instead of surfacing on the first production deploy.
 //

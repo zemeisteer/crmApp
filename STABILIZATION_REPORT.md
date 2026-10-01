@@ -1,16 +1,136 @@
 # TalimCRM — barqarorlashtirish hisoboti
 
-Hisobot ikki bosqichni qamraydi:
-
-| | Boshlang'ich commit | Holat |
+| Bosqich | Boshlang'ich commit | Holat |
 |---|---|---|
-| **1-bosqich** (migratsiyalar, auth, to'lovlar, qarz, AI/import, CI) | `78d9cef` | `dev` ga push qilingan (`1e28f7e`), GitHub CI yashil |
-| **2-bosqich** (a'zolik, narx tarixi, test bazasi, AI repetitor limiti) | `1e28f7ec9d17559bbfce0a8929a0872bcdf316a6` | **faqat lokal**, commit va push qilinmagan — ko'rib chiqish uchun |
+| **1-bosqich** — migratsiyalar, auth, to'lovlar, qarz, AI/import, CI | `78d9cef` | push qilingan (`1e28f7e`); GitHub CI `36840295303` **o'tgan** |
+| **2-bosqich** — a'zolik, narx tarixi, test bazasi, AI repetitor limiti | `1e28f7e` | push qilingan (`9d4a369`); GitHub CI `36856454988` **yiqilgan** (migratsiya qadami) |
+| **3-bosqich** — migratsiya buyrug'i birligi, staging tayyorligi | `9d4a3690716d6ce5f74909e5797277eadac3a028` | **faqat lokal**, commit va push qilinmagan |
 
-**Ma'lum asos:** GitHub CI yurishi `36840295303` (`1e28f7e`) o'tgan — 236 unit, 173 E2E, migratsiya/yangilanish tekshiruvlari, sxema farqi, typecheck, lint va ikkala build.
-**2-bosqich o'zgarishlari** shu asosdan keyin qilingan va **faqat lokal tekshirilgan** (5-bo'lim). Ular uchun CI hali yurmagan.
+**Muhim:** 2-bosqichdagi "245 unit / 186 E2E" — lokal natijalar. `9d4a369` CI'dan **o'tmagan**: backend ishi migratsiya qadamida to'xtagan, sxema tekshiruvlari, testlar va build o'tkazib yuborilgan. 3-bosqich shu xatoni tuzatadi; uning natijalari ham hozircha faqat lokal (0.4-bo'lim).
 
-**Tayyorlik bahosi:** 1–2 markaz bilan cheklangan pilotga tayyor, 7-bo'limdagi shartlar bilan.
+**Tayyorlik bahosi:** cheklangan pilot uchun kod tayyor, lekin **avval** 3-bosqich push qilinib CI yashil bo'lishi va staging tekshiruvi (0.6-bo'lim) o'tishi kerak.
+
+---
+
+## 0. 3-bosqich: migratsiya buyrug'i birligi va staging tayyorligi
+
+### 0.1. CI xatosining sababi
+
+```
+unsafe use of new value "OWNER" of enum type role          (PostgreSQL 55P04)
+HINT: New enum values must be committed before they can be used.
+```
+
+- `0002_core_schema_catchup.sql` `role` enumiga `OWNER` qiymatini qo'shadi.
+- `0032_membership_tombstones.sql` asoschi a'zoligini to'ldirishda `'OWNER'` ni ishlatadi.
+- CI `npm run db:migrate` = `drizzle-kit migrate` edi. U **barcha** kutilayotgan fayllarni **bitta tranzaksiyada** qo'llaydi; PostgreSQL esa enum qiymatini uni qo'shgan tranzaksiya ichida ishlatishga ruxsat bermaydi.
+- Production runner (`scripts/migrate.cjs`) har migratsiyani alohida tranzaksiyada qo'llaydi, shuning uchun unda muammo yo'q. Ya'ni CI va production **ikki xil yo'l** bilan migratsiya qilar edi — xato shu farqdan chiqdi.
+- Nega lokalda ko'rinmagan: lokal PostgreSQL 18.3, CI'da 16. Bo'sh bazadan bitta tranzaksiya 18 da o'tadi (enum turi shu tranzaksiyada yaratilgan bo'lsa ruxsat beriladi), 16 da o'tmagan. Enum turi oldindan commit qilingan bazada esa **har qanday versiyada** yiqiladi.
+
+**Qayta chiqarildi** (bir martalik bazada): 0000–0001 commit qilingan baza, qolgan 0002–0033 bitta tranzaksiyada:
+
+```
+FAILED in 0032_membership_tombstones, statement 4/4:
+  unsafe use of new value "OWNER" of enum type role   (code 55P04)
+  SQL: INSERT INTO "organization_memberships" (...) SELECT 'om_founder_' || u."id", ..., 'OWNER', 'ACTIVE' FROM "users" u ...
+```
+Tranzaksiya to'liq bekor bo'ladi (baza 0001 holatida qoladi). Xuddi shu bazada `drizzle-kit migrate` — exit 1; `npm run db:migrate` — 0002…0033 qo'llanadi.
+
+### 0.2. Yagona migratsiya buyrug'i
+
+**`npm run db:migrate`** = `node scripts/migrate.cjs` — har migratsiya o'z tranzaksiyasida, `app_migrations` da qayd etiladi.
+
+| Kirish nuqtasi | Oldin | Hozir |
+|---|---|---|
+| `npm run db:migrate` | `drizzle-kit migrate` | `node scripts/migrate.cjs` |
+| `npm run db:migrate:status` | — | yangi: qo'llangan / kutilayotgan |
+| CI "Apply versioned migrations" | `drizzle-kit migrate` | `npm run db:migrate` |
+| Docker konteyner ishga tushishi | `node scripts/migrate.cjs` | o'zgarmagan (o'sha fayl) |
+| E2E test bazasi (`test/global-setup.ts`) | `node scripts/migrate.cjs` | o'zgarmagan |
+| `npm run db:verify-migrations` | runner + bir joyda `drizzle-kit migrate` | hammasi `npm run db:migrate` orqali |
+| Lokal o'rnatish (`SETUP.md`) | `npm run db:push` | `npm run db:migrate` |
+| Docker hujjatlari (`SETUP.md`, `DEPLOYMENT_GUIDE.md`) | `exec backend npm run db:push` (image'da yo'q vosita) | konteyner o'zi qo'llaydi; `migrate.cjs --status` |
+
+- **`drizzle-kit migrate` endi qo'llab-quvvatlanmaydi** — bu `migrate.cjs` boshida, `backend/README.md`, `SETUP.md` va CI izohida yozilgan. `drizzle-kit` faqat migratsiya yaratish (`db:generate`) va sxema solishtirish (`db:check-drift`) uchun qoladi.
+- Saqlangan: jurnal tartibi va jurnal/fayl mosligi tekshiruvi; `app_migrations` qaydi; ilgari `drizzle-kit` bilan migratsiya qilingan bazani qabul qilish; migratsiya ichida xato bo'lsa to'liq rollback; qayta yuritish xavfsizligi; drift va snapshot tekshiruvlari; yozuvi yo'q bazani `--baseline` siz rad etish.
+- Migratsiya fayllari o'zgartirilmagan; hech bir baza reset qilinmagan.
+
+### 0.3. Yangi o'rnatish va yangilash — dalillar
+
+`npm run db:verify-migrations` (faqat `<baza>_..._migcheck` nomli vaqtinchalik bazalarda; ishlab chiqish bazasiga tegmaydi) — **49 tekshiruv, hammasi o'tdi**:
+
+| # | Stsenariy | Nima tekshirildi |
+|---|---|---|
+| 1 | Bo'sh baza → 0033 | sxema `schema.ts` ga teng; qayta yuritish "up to date" |
+| 2 | 0020 dagi baza + ma'lumot → 0033 | 8 jadvaldagi qatorlar o'zgarmagan; asoschi a'zolik oladi; noaniq akkaunt olmaydi; eski narx qatori `ASSUMED` |
+| 3 | **Enum regressiyasi**: 0001 dagi baza (enum turi commit qilingan) | bitta tranzaksiya `0032 … 55P04 unsafe use of new value "OWNER"` bilan yiqilishi tasdiqlanadi; `npm run db:migrate` esa 0002 → 0033 ni qo'llaydi. Eski migratsiyalar o'tkazib yuborilmaydi |
+| 4 | **0031 dagi baza + vakillik ma'lumoti → 0032, 0033** | pastda |
+| 5 | Ilgari `drizzle-kit` migratsiya qilgan baza (0000–0031 yozuvi bilan) | 32 tasi qabul qilinadi, qayta qo'llanmaydi; faqat 0032–0033 qo'llanadi |
+| 6 | Jadvallari bor, yozuvi yo'q baza | rad etiladi; `--baseline` dan keyin davom etadi |
+
+4-stsenariy tafsiloti (0031 → 0033):
+- Qatorlar o'zgarmagan: `tenants` 3, `users` 8, `groups`, `students`, `enrollments`, `invoices`, `payments`, `payment_allocations`, `sessions`.
+- **OWNER to'ldirish cheklovlari:** yagona asoschi → a'zolik oladi; markazda allaqachon OWNER a'zoligi bor → ikkinchi OWNER yaratilmaydi; ikki nomzod OWNER → noaniq, hech biriga berilmaydi. Butun bazada aynan **bitta** a'zolik qo'shildi.
+- **O'chirilgan yoki noaniq xodim:** a'zoligi yo'q ADMIN akkaunt hech narsa olmaydi; `SUSPENDED` a'zolik `SUSPENDED` qoladi; faol a'zolik o'zgarmaydi.
+- **Narx tarixi:** 0030 yozgan qator (`gph_…`) → `ASSUMED`, narxi va sanalari o'sha-o'sha; ilovada qilingan narx o'zgarishi → `RECORDED`, o'zgarmagan.
+- Qayta yuritish: "up to date" va **birorta jadvalda birorta qator o'zgarmadi** (to'liq dump solishtirildi).
+
+Ilova darajasida (migratsiyadan keyin o'chirilgan xodim kira olmasligi): `test/staff-removal.e2e-spec.ts` — 6 test, o'tdi.
+
+### 0.4. Bajarilgan buyruqlar va haqiqiy natijalar (3-bosqich, lokal, PostgreSQL 18.3)
+
+| Buyruq | Natija |
+|---|---|
+| `npm run db:check-migrations` | `34 migrations, journal and files agree` |
+| `npm run db:verify-migrations` | `Migration chain verified`, 49 tekshiruv |
+| `npm run db:check-drift` | `No schema drift` |
+| `npx drizzle-kit generate --name ci-check` | `No schema changes` |
+| `npx tsc --noEmit` (backend) | xatosiz |
+| `npm run lint` (backend) | 0 xato |
+| `npm test` | **245 / 245** (38 fayl) |
+| `npm run test:e2e` (baza `talimcrm_e2e`, qayta qurilgan) | **186 / 186** (31 fayl) |
+| `npm run build` (backend) | muvaffaqiyatli |
+| `npm audit --omit=dev --audit-level=high` (backend) | exit 0 |
+| `npx tsc --noEmit` (frontend) | xatosiz |
+| `npm run lint` (frontend) | 0 xato |
+| `npm run build` (frontend) | muvaffaqiyatli |
+| `npm audit --omit=dev --audit-level=high` (frontend) | `found 0 vulnerabilities` |
+
+**Tekshirilmagan:**
+- **PostgreSQL 16.** Lokalda faqat 18.3 bor. Xato mexanizmi versiyaga bog'liq bo'lmagan stsenariyda (3) qayta chiqarildi va tuzatish shu stsenariyda tekshirildi, lekin CI'dagi aynan 16-versiyada yurishi faqat push'dan keyin ko'rinadi.
+- **GitHub CI.** 3-bosqich push qilinmagan.
+
+### 0.5. Docker — **bloklangan, tekshirilmagan**
+
+Bu mashinada Docker yo'q (`docker: command not found`), shuning uchun image qurish va konteynerda ishga tushirish **bajarilmadi**. Muvaffaqiyat da'vo qilinmaydi.
+
+Ko'rib chiqildi (o'qish orqali):
+- `backend/Dockerfile`: `npm ci`; runner bosqichiga `drizzle/` va `scripts/migrate.cjs` ko'chiriladi; `CMD node scripts/migrate.cjs && node dist/main.js` — migratsiya muvaffaqiyatsiz bo'lsa API ishga tushmaydi, tartib kafolatlangan.
+- `frontend/Dockerfile`: `npm ci`, standalone build.
+- `docker-compose.prod.yml`: backend postgres `service_healthy` ni kutadi; frontend backend `service_healthy` ni kutadi (`/api/health`).
+
+Tayyorlab qo'yildi (ishga tushirilmagan):
+- `docker-compose.smoke.yml` — o'sha Dockerfile'lar va `runner` target'lari; PostgreSQL xotirada (tmpfs), nginx/sertifikat/zaxira yo'q; barcha tashqi integratsiyalar bo'sh, eslatmalar o'chiq; portlar faqat `127.0.0.1`.
+- `scripts/production/smoke-test.sh` — image'larni quradi; stack sog'lom bo'lishini kutadi; migratsiyalar API'dan **oldin** tugaganini log tartibidan tekshiradi; `--status` bo'yicha hammasi qo'llanganini; `/api/health`, frontend `/login`, API orqali ro'yxatdan o'tish → `/auth/me`; backend qayta ishga tushganda "up to date" va hech bir migratsiya ikki marta qo'llanmaganini; tashqi kalitlar bo'shligini. Oxirida hammasini o'chiradi.
+- CI'ga `images` ishi qo'shildi — shu skriptni GitHub runner'da yuritadi. **U ham hali yurmagan.**
+
+Docker bor mashinada: `bash scripts/production/smoke-test.sh` (kutiladigan oxirgi satr: `SMOKE OK`).
+
+### 0.6. Staging'gacha qolgan to'siqlar
+
+1. 3-bosqichni push qilish va CI yashil bo'lishi: backend (PostgreSQL 16 da migratsiya), frontend, va yangi `images` ishi.
+2. Docker smoke testi o'tishi (CI'da yoki Docker bor mashinada).
+3. Quyidagi staging ro'yxati. Tashqi integratsiyalar **tekshirilmagan** — mock testlar o'tgani ularni tasdiqlamaydi.
+
+**Staging nazorat ro'yxati**
+
+- [ ] **Login zanjiri:** asosiy domenda login → markaz subdomeniga o'tish → sahifani yangilash → 20 daqiqadan keyin ham ishlaydi (refresh markazni saqlaydi).
+- [ ] **Ikki markaz, ikki rol:** bitta xodim A da ACCOUNTANT, B da TEACHER — tanlash oynasi, har markazda faqat o'z roliga ruxsat.
+- [ ] **Xodimni o'chirish:** ochiq oynasi keyingi so'rovda chiqib ketadi; qayta login 401; Telegram botda xodim menyusi yo'q; qayta qo'shilgach kiradi.
+- [ ] **Zaxira:** `db:backup` → **alohida** bazaga tiklash → `migrate.cjs --status` hammasi qo'llangan, `db:check-drift` toza, login ishlaydi.
+- [ ] **Tarixiy narx:** o'tgan oyda sariq ogohlantirish; narx tasdiqlangach jami qarz o'zgaradi; qarzdorlar ro'yxati = moliya xulosasi = direktor hisoboti.
+- [ ] **Telegram** (haqiqiy bot, haqiqiy chat): webhook, `/start`, o'quvchi AI savoli va limit, to'lov xabari, qarz eslatmasi.
+- [ ] **Click / Payme** (test merchant): to'lov havolasi → muvaffaqiyatli to'lov → bitta yozuv, hisob-faktura yopiladi; **webhook ikki marta** kelganda ikkinchi to'lov yaratilmaydi; bekor qilingan to'lov hech narsani yopmaydi.
 
 ---
 
@@ -99,6 +219,8 @@ Moslashtirilgan mavjud testlar: `payments-atomic` (poyga testi joriy oyga o'tkaz
 
 ## 5. Bajarilgan buyruqlar va haqiqiy natijalar (2-bosqich, lokal, 2026-10-01)
 
+> Bular `9d4a369` uchun **lokal** natijalar. CI'da bu commit migratsiya qadamida yiqilgan (0.1-bo'lim).
+
 **Backend** (`backend/`)
 
 | Buyruq | Natija |
@@ -127,12 +249,12 @@ Moslashtirilgan mavjud testlar: `payments-atomic` (poyga testi joriy oyga o'tkaz
 
 **Brauzerda (localhost, sinov markazi):** login → to'lovlar → qarzdorlar, avgust: sariq ogohlantirish, o'quvchi "Tasdiqlanmagan", jami qarz 0. Narx 250 000 deb tasdiqlangach: jami qarz 250 000, holat "To'lanmagan". Oktabr (joriy oy) o'zgarmagan: 3 qarzdor, 1 300 000.
 
-**Tekshirilmagan:** Docker image'lar — bu mashinada Docker yo'q. GitHub CI — 2-bosqich push qilinmagan.
+**Tekshirilmagan:** Docker image'lar — bu mashinada Docker yo'q. GitHub CI — `9d4a369` da yiqilgan (0.1-bo'lim).
 
 ## 6. Yangilash tartibi
 
 1. Zaxira nusxa: `npm run db:backup` (yoki `pg_dump`).
-2. `node scripts/migrate.cjs --status`, keyin `node scripts/migrate.cjs` (konteyner ishga tushganda o'zi bajaradi). Qo'llanadi: 0021–0033.
+2. `npm run db:migrate:status`, keyin `npm run db:migrate` (konteynerda: `node scripts/migrate.cjs`; ishga tushganda o'zi bajaradi). Qo'llanadi: 0021–0033. `drizzle-kit migrate` ishlatilmaydi.
 3. Bazada jadvallar bor, lekin migratsiya yozuvi yo'q bo'lsa: `node scripts/migrate.cjs --baseline <teg>`.
 4. `npm run db:check-drift` → `No schema drift`.
 5. **Yangi:** `node scripts/list-unlinked-accounts.cjs` — markazga kira olmaydigan xodim akkauntlari. Ishlashi kerak bo'lganlarini markaz rahbari Xodimlar bo'limida qayta qo'shadi.
@@ -150,10 +272,7 @@ Sozlamalar: `IMPORT_CONCURRENCY`, `IMPORT_POLL_MS`, `IMPORT_QUEUE`; testlar uchu
 
 ## 7. Qolgan cheklovlar
 
-**Cheklangan pilotni to'xtatib turgan narsalar**
-1. 2-bosqich o'zgarishlari commit/push qilinmagan va CI'dan o'tmagan.
-2. Docker image'lar qurib ko'rilmagan.
-3. Staging'da tekshirilmagan: domen/subdomen logini, zaxiradan tiklash, Telegram, Click/Payme (8-bo'lim).
+**Cheklangan pilotni to'xtatib turgan narsalar** — 0.6-bo'limga qarang (CI, Docker smoke, staging).
 
 **Ma'lum cheklovlar**
 4. Oraliq 401 ning sababi aniqlanmagan (4-bo'lim).

@@ -44,6 +44,29 @@ $ npm run start:dev
 $ npm run start:prod
 ```
 
+## Database migrations
+
+One command applies migrations everywhere - locally, in CI, in the
+container on start, for the end-to-end database:
+
+```bash
+$ npm run db:migrate           # node scripts/migrate.cjs
+$ npm run db:migrate:status
+```
+
+Each migration runs in its own transaction and is recorded in
+`app_migrations`. `drizzle-kit migrate` is not supported: it applies all
+pending files in one transaction, and PostgreSQL will not use an enum value
+in the transaction that added it. drizzle-kit is used only to generate
+migrations (`npm run db:generate`) and to compare schemas
+(`npm run db:check-drift`).
+
+```bash
+$ npm run db:check-migrations   # journal and SQL files agree (no database)
+$ npm run db:check-drift        # the database matches src/db/schema.ts
+$ npm run db:verify-migrations  # fresh install + upgrade paths, in scratch databases
+```
+
 ## Run tests
 
 ```bash

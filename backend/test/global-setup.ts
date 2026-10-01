@@ -7,7 +7,8 @@ const { resolveE2eDatabase } = require('./e2e-database.cjs') as {
 };
 
 // Runs once before the end-to-end suites: a database of their own, built by
-// the same migration runner production uses.
+// the one migration command everything uses (`npm run db:migrate`, i.e.
+// scripts/migrate.cjs).
 //
 //  - "<name>_e2e" databases are dropped and rebuilt on every run, so no run
 //    sees another run's rows. Set E2E_KEEP_DB=1 to keep it (faster reruns).

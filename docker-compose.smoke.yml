@@ -1,0 +1,100 @@
+# TalimCRM - smoke test of the PRODUCTION images, isolated and disposable.
+#
+# Builds the same images as docker-compose.prod.yml (same Dockerfiles, same
+# "runner" targets) and starts them next to a throw-away PostgreSQL and
+# Redis. No nginx, no certificates, no backups, no named volumes: the
+# database lives in memory and is gone when the stack stops. Every external
+# integration (AI, Telegram, SMS, e-mail, Click, Payme, Sentry) is blank,
+# and reminders are off, so nothing leaves the machine.
+#
+#   bash scripts/production/smoke-test.sh        (builds, checks, tears down)
+#
+# Never point this at real data: it has no way to reach any.
+name: talimcrm-smoke
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: smoke
+      POSTGRES_PASSWORD: smoke-only-password
+      POSTGRES_DB: talimcrm_smoke
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U smoke -d talimcrm_smoke"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--requirepass", "smoke-only-redis"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "smoke-only-redis", "ping"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: runner
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://smoke:smoke-only-password@postgres:5432/talimcrm_smoke
+      REDIS_URL: redis://:smoke-only-redis@redis:6379
+      JWT_SECRET: smoke-test-secret-not-used-anywhere-else-0123456789abcdef
+      JWT_EXPIRES_IN: 15m
+      PORT: 4000
+      FRONTEND_URL: http://localhost:13000
+      ROOT_DOMAIN: localhost
+      # Everything external is off.
+      ANTHROPIC_API_KEY: ""
+      GEMINI_API_KEY: ""
+      TELEGRAM_BOT_TOKEN: ""
+      TELEGRAM_POLLING: "false"
+      ESKIZ_API_TOKEN: ""
+      PLAYMOBILE_API_TOKEN: ""
+      RESEND_API_KEY: ""
+      SMTP_HOST: ""
+      CLICK_MERCHANT_ID: ""
+      CLICK_SERVICE_ID: ""
+      CLICK_SECRET_KEY: ""
+      PAYME_MERCHANT_ID: ""
+      PAYME_KEY: ""
+      SENTRY_DSN: ""
+      REMINDER_SCAN_MS: "0"
+      IMPORT_POLL_MS: "0"
+    ports:
+      - "127.0.0.1:14000:4000"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:4000/api/health || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 24
+      start_period: 10s
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: runner
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:14000/api
+        NEXT_PUBLIC_ROOT_DOMAIN: localhost
+    depends_on:
+      backend:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      HOSTNAME: "0.0.0.0"
+    ports:
+      - "127.0.0.1:13000:3000"

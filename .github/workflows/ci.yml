@@ -62,8 +62,12 @@ jobs:
       # order, and the journal names no missing file.
       - name: Check the migration journal
         run: npm run db:check-migrations
-      # Build the test database exactly as production is built: from the
-      # versioned migrations, never `db:push`. Then fail if schema.ts declares
+      # Build the test database exactly as production is built: with
+      # `npm run db:migrate` (scripts/migrate.cjs - one transaction per
+      # migration; the container runs the same file on start). Never
+      # `db:push`, and not `drizzle-kit migrate`: it applies every file in
+      # one transaction, which PostgreSQL refuses once a migration uses an
+      # enum value added by an earlier one. Then fail if schema.ts declares
       # anything the migrations don't create, and if db:generate would still
       # produce a new migration.
       - name: Apply versioned migrations to an empty database
@@ -74,10 +78,12 @@ jobs:
         run: |
           npx drizzle-kit generate --name ci-check | tee generate.log
           grep -q "No schema changes" generate.log
-      # The production runner (scripts/migrate.cjs) on scratch databases:
-      # empty -> current, an existing database with rows -> current with the
-      # rows untouched, a drizzle-kit database adopted, an unknown one refused.
-      - name: Verify the upgrade path of the production migration runner
+      # The same command on scratch databases: empty -> current; existing
+      # databases with rows (an early baseline, and 0031) -> current with the
+      # rows untouched; an enum value added and used across migrations; a
+      # database drizzle-kit migrated in the past adopted; an unknown one
+      # refused.
+      - name: Verify fresh install and upgrade paths
         run: npm run db:verify-migrations
 
       - run: npm run test
@@ -104,3 +110,15 @@ jobs:
       - run: npx tsc --noEmit
       - run: npm run lint
       - run: npm run build
+
+  # The production images themselves: built from both Dockerfiles and run on
+  # a throw-away database (docker-compose.smoke.yml). Checks that migrations
+  # finish before the API answers, health and a round trip through the API,
+  # and that a restart applies nothing twice. No external service is
+  # configured.
+  images:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and smoke-test the production images
+        run: bash scripts/production/smoke-test.sh

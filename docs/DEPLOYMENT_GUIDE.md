@@ -190,8 +190,9 @@ git pull origin main
 docker compose -f docker-compose.prod.yml build
 docker compose -f docker-compose.prod.yml up -d --no-deps backend frontend
 
-# 3. Agar sxemada o'zgarish bo'lsa, migratsiyani surish
-docker compose -f docker-compose.prod.yml exec backend npm run db:push
+# 3. Migratsiyalar: backend konteyneri ishga tushganda o'zi qo'llaydi
+#    (node scripts/migrate.cjs). Holatini ko'rish:
+docker compose -f docker-compose.prod.yml exec backend node scripts/migrate.cjs --status
 ```
 
 ---

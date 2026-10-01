@@ -1,10 +1,17 @@
 // Proves the migration chain on scratch databases (created next to
-// DATABASE_URL, names end in "_migcheck", dropped afterwards):
+// DATABASE_URL, names end in "_migcheck", dropped afterwards). Everything
+// goes through the one supported command, `npm run db:migrate`
+// (scripts/migrate.cjs):
 //
-//   1. empty database -> runner -> schema matches schema.ts; re-run is a no-op
-//   2. upgrade: a database at an earlier baseline with real-looking rows ->
-//      runner -> same rows, untouched, and the schema matches
-//   3. a database migrated by `drizzle-kit migrate` is adopted by the runner
+//   1. empty database -> latest; schema matches schema.ts; re-run is a no-op
+//   2. a database at an early baseline with rows -> latest, rows untouched
+//   3. enum values: a database whose enum type is already committed gets the
+//      migration that adds a value and the later one that uses it - which
+//      PostgreSQL refuses inside a single transaction
+//   4. a database at 0031 with representative records -> 0032, 0033:
+//      who gets a membership, who does not, where price history comes from
+//   5. a database that drizzle-kit migrated in the past is adopted
+//   6. a database with tables but no record is refused until --baseline
 //
 //   node scripts/verify-migrations.cjs            (DATABASE_URL = any admin-capable URL)
 require('dotenv').config({ quiet: true });
@@ -40,7 +47,30 @@ const drop = (suffix) => admin(`DROP DATABASE IF EXISTS "${new URL(urlFor(suffix
 
 const run = (url, cmd, args) =>
   execFileSync(cmd, args, { cwd: ROOT, env: { ...process.env, DATABASE_URL: url }, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], shell: process.platform === 'win32' });
-const runner = (url, ...args) => run(url, 'node', ['scripts/migrate.cjs', ...args]);
+// The canonical command itself, so a change of what `db:migrate` runs is
+// tested here too.
+const runner = (url, ...args) => run(url, 'npm', ['run', '-s', 'db:migrate', ...(args.length ? ['--', ...args] : [])]);
+const fs = require('fs');
+const crypto = require('crypto');
+const JOURNAL = JSON.parse(fs.readFileSync(path.join(ROOT, 'drizzle', 'meta', '_journal.json'), 'utf8')).entries;
+const statementsOf = (tag) =>
+  fs.readFileSync(path.join(ROOT, 'drizzle', `${tag}.sql`), 'utf8').split('--> statement-breakpoint').map((x) => x.trim()).filter((x) => x.replace(/--.*$/gm, '').trim());
+const query = async (url, sql, params) => {
+  const c = new Client({ connectionString: url });
+  await c.connect();
+  try {
+    return (await c.query(sql, params)).rows;
+  } finally {
+    await c.end();
+  }
+};
+// Every row of every table, to prove a re-run changes nothing.
+const dump = async (url) => {
+  const tables = (await query(url, "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_name <> 'app_migrations' ORDER BY 1")).map((r) => r.table_name);
+  const out = {};
+  for (const t of tables) out[t] = JSON.stringify((await query(url, `SELECT row_to_json(x)::text AS j FROM "${t}" x ORDER BY 1`)).map((r) => JSON.parse(r.j)));
+  return out;
+};
 const drift = (url) => run(url, 'npx', ['tsx', 'scripts/check-schema-drift.ts']);
 const expect = (cond, what) => {
   if (!cond) throw new Error(`FAILED: ${what}`);
@@ -120,14 +150,105 @@ async function rows(url) {
   expect(/No schema drift/.test(drift(up)), 'upgraded schema matches schema.ts');
   expect(/up to date/.test(runner(up)), 're-running after the upgrade changes nothing');
 
-  console.log('3. database migrated by drizzle-kit');
-  const dk = await recreate('drizzle');
-  run(dk, 'npx', ['drizzle-kit', 'migrate']);
-  expect(/No schema drift/.test(drift(dk)), 'drizzle-kit migrate builds the same schema');
-  const adopted = runner(dk);
-  expect(/adopted \d+ migration/.test(adopted) && /up to date/.test(adopted), 'the runner adopts it without re-applying anything');
+  console.log('3. an enum value added by one migration and used by a later one');
+  const en = await recreate('enum');
+  // 0000-0001 committed: the "role" type exists, as in every real database.
+  runner(en, '--through', '0001_invoices_and_payment_gateways');
+  // What a single transaction over the rest does (how drizzle-kit migrate
+  // works): PostgreSQL refuses to use 'OWNER' before it is committed.
+  let refusedInOneTx = '';
+  {
+    const c1 = new Client({ connectionString: en });
+    await c1.connect();
+    await c1.query('BEGIN');
+    try {
+      for (const e of JOURNAL.slice(2)) for (const st of statementsOf(e.tag)) await c1.query(st).catch((err) => { throw Object.assign(err, { tag: e.tag }); });
+    } catch (err) {
+      refusedInOneTx = `${err.tag}: ${err.code} ${err.message}`;
+    }
+    await c1.query('ROLLBACK');
+    await c1.end();
+  }
+  expect(/^0032_membership_tombstones: 55P04 unsafe use of new value "OWNER"/.test(refusedInOneTx), `one transaction for all of them fails (${refusedInOneTx || 'it did not'})`);
+  const enOut = runner(en);
+  expect(/applied 0002_/.test(enOut) && /applied 0032_/.test(enOut) && /applied 0033_/.test(enOut), 'db:migrate commits each migration, so 0002 adds the value and 0032 uses it');
+  expect(/No schema drift/.test(drift(en)), 'and the result matches schema.ts');
 
-  console.log('4. database with tables but no record is refused');
+  console.log('4. upgrade from 0031 with representative records');
+  const v31 = await recreate('v31');
+  runner(v31, '--through', '0031_ai_usage_import_queue');
+  await query(v31, `
+    INSERT INTO tenants (id, name, subdomain) VALUES
+      ('tA', 'Founder Center', 'founder-center'), ('tB', 'Owned Center', 'owned-center'), ('tC', 'Two Owners', 'two-owners');
+    INSERT INTO users (id, tenant_id, email, password_hash, full_name, role) VALUES
+      ('uA_owner',   'tA', 'a-owner@test.uz',   'x', 'Founder',            'OWNER'),
+      ('uA_removed', 'tA', 'a-removed@test.uz', 'x', 'Removed Admin',      'ADMIN'),
+      ('uA_susp',    'tA', 'a-susp@test.uz',    'x', 'Suspended Manager',  'MANAGER'),
+      ('uA_teacher', 'tA', 'a-teacher@test.uz', 'x', 'Active Teacher',     'TEACHER'),
+      ('uB_owner',   'tB', 'b-owner@test.uz',   'x', 'Owner With Member',  'OWNER'),
+      ('uB_other',   'tB', 'b-other@test.uz',   'x', 'Owner Row, No Member', 'OWNER'),
+      ('uC_one',     'tC', 'c-one@test.uz',     'x', 'One Of Two',         'OWNER'),
+      ('uC_two',     'tC', 'c-two@test.uz',     'x', 'Two Of Two',         'OWNER');
+    INSERT INTO organization_memberships (id, user_id, tenant_id, role, status) VALUES
+      ('mA_susp', 'uA_susp', 'tA', 'MANAGER', 'SUSPENDED'),
+      ('mA_teacher', 'uA_teacher', 'tA', 'TEACHER', 'ACTIVE'),
+      ('mB_owner', 'uB_owner', 'tB', 'OWNER', 'ACTIVE');
+    INSERT INTO groups (id, tenant_id, name, subject, monthly_price, created_at) VALUES ('gA', 'tA', 'Group A', 'Math', 600000, '2026-01-10 05:00:00');
+    -- What 0030 wrote for an existing group, and a price change made in the app afterwards.
+    INSERT INTO group_price_history (id, tenant_id, group_id, monthly_price, effective_from, created_at) VALUES
+      ('gph_gA', 'tA', 'gA', 400000, '2026-01-10 05:00:00', '2026-09-20 05:00:00'),
+      ('chg_gA_1', 'tA', 'gA', 600000, '2026-09-25 05:00:00', '2026-09-25 05:00:00');
+    INSERT INTO students (id, tenant_id, full_name) VALUES ('sA', 'tA', 'Student A');
+    INSERT INTO enrollments (id, student_id, group_id) VALUES ('eA', 'sA', 'gA');
+    INSERT INTO invoices (id, tenant_id, student_id, enrollment_id, amount, amount_paid, remaining_amount, due_date, for_month, status) VALUES ('iA', 'tA', 'sA', 'eA', 400000, 150000, 250000, '2026-09-10 05:00:00', '2026-09', 'PARTIALLY_PAID');
+    INSERT INTO payments (id, tenant_id, student_id, invoice_id, amount, for_month, status, method, idempotency_key) VALUES ('pA', 'tA', 'sA', 'iA', 150000, '2026-09', 'PAID', 'CASH', 'key-0001-abcdef');
+    INSERT INTO payment_allocations (id, tenant_id, payment_id, invoice_id, amount) VALUES ('alA', 'tA', 'pA', 'iA', 150000);
+    INSERT INTO sessions (id, user_id, tenant_id, refresh_token_hash) VALUES ('sessA', 'uA_removed', 'tA', 'hash-a');
+  `);
+  const before31 = await dump(v31);
+  const out31 = runner(v31);
+  expect(/applied 0032_/.test(out31) && /applied 0033_/.test(out31) && !/applied 0031_/.test(out31), 'only 0032 and 0033 are applied');
+  const after31 = await dump(v31);
+  for (const t of ['tenants', 'users', 'groups', 'students', 'enrollments', 'invoices', 'payments', 'payment_allocations', 'sessions']) {
+    const was = JSON.parse(before31[t]);
+    const now = JSON.parse(after31[t]);
+    expect(was.length === now.length && was.every((r, n) => Object.keys(r).every((k) => JSON.stringify(r[k]) === JSON.stringify(now[n][k]))), `${t}: ${was.length} row(s) unchanged`);
+  }
+  const m = await query(v31, 'SELECT id, user_id, tenant_id, role, status, removed_at FROM organization_memberships ORDER BY user_id');
+  const of = (u) => m.filter((r) => r.user_id === u);
+  expect(of('uA_owner').length === 1 && of('uA_owner')[0].role === 'OWNER' && of('uA_owner')[0].status === 'ACTIVE' && of('uA_owner')[0].tenant_id === 'tA', 'founder: the only OWNER of a center with no OWNER membership gets one');
+  expect(of('uA_removed').length === 0, 'a staff account without a membership (removed, or never linked) gets nothing');
+  expect(of('uA_susp').length === 1 && of('uA_susp')[0].status === 'SUSPENDED' && of('uA_susp')[0].removed_at === null, 'a suspended membership stays suspended');
+  expect(of('uA_teacher').length === 1 && of('uA_teacher')[0].status === 'ACTIVE', 'an active membership is untouched');
+  expect(of('uB_other').length === 0 && of('uB_owner').length === 1, 'a center that already has an OWNER membership: no second owner is created');
+  expect(of('uC_one').length === 0 && of('uC_two').length === 0, 'two candidate owners: ambiguous, neither is given access');
+  expect(m.length === 4, 'exactly one membership was added in the whole database');
+  const ph = await query(v31, "SELECT id, monthly_price, source, effective_from::text AS ef, confirmed_by_user_id FROM group_price_history ORDER BY id");
+  const seed = ph.find((r) => r.id === 'gph_gA');
+  const change = ph.find((r) => r.id === 'chg_gA_1');
+  expect(seed.source === 'ASSUMED' && seed.monthly_price === 400000 && seed.ef.startsWith('2026-01-10'), 'the row 0030 seeded is labelled ASSUMED; its price and dates are as they were');
+  expect(change.source === 'RECORDED' && change.monthly_price === 600000 && change.ef.startsWith('2026-09-25') && change.confirmed_by_user_id === null, 'a price change recorded in the app stays RECORDED, unchanged');
+  expect(/No schema drift/.test(drift(v31)), 'upgraded schema matches schema.ts');
+  expect(/up to date/.test(runner(v31)), 're-running reports nothing to do');
+  const again31 = await dump(v31);
+  expect(Object.keys(after31).every((t) => after31[t] === again31[t]), 're-running changes no row in any table');
+
+  console.log('5. database that drizzle-kit migrated in the past');
+  const dk = await recreate('drizzle');
+  // The schema as of 0031 with drizzle-kit's own record of it (and none of ours).
+  runner(dk, '--through', '0031_ai_usage_import_queue');
+  await query(dk, 'DROP TABLE app_migrations; CREATE SCHEMA drizzle; CREATE TABLE drizzle.__drizzle_migrations (id serial PRIMARY KEY, hash text NOT NULL, created_at bigint)');
+  for (const e of JOURNAL.filter((x) => x.idx <= 31)) {
+    const hash = crypto.createHash('sha256').update(fs.readFileSync(path.join(ROOT, 'drizzle', `${e.tag}.sql`))).digest('hex');
+    await query(dk, 'INSERT INTO drizzle.__drizzle_migrations (hash, created_at) VALUES ($1, $2)', [hash, e.when]);
+  }
+  const adopted = runner(dk);
+  expect(/adopted 32 migration/.test(adopted), 'what drizzle-kit recorded (0000-0031) is adopted, not re-applied');
+  expect(/applied 0032_/.test(adopted) && /applied 0033_/.test(adopted) && !/applied 00[0-2]\d_|applied 003[01]_/.test(adopted), 'only the migrations after it are applied');
+  expect(/No schema drift/.test(drift(dk)), 'and the schema matches schema.ts');
+  expect(/up to date/.test(runner(dk)), 're-running changes nothing');
+
+  console.log('6. database with tables but no record is refused');
   let refused = false;
   const c2 = new Client({ connectionString: dk });
   await c2.connect();
@@ -142,7 +263,7 @@ async function rows(url) {
   runner(dk, '--baseline', BASELINE);
   expect(/applied 0021_/.test(runner(dk)), `--baseline ${BASELINE} then applies the rest`);
 
-  for (const s of ['empty', 'upgrade', 'drizzle']) await drop(s);
+  for (const s of ['empty', 'upgrade', 'enum', 'v31', 'drizzle']) await drop(s);
   console.log('Migration chain verified.');
 })().catch(async (err) => {
   console.error(err.stderr ? String(err.stderr) : err.message);

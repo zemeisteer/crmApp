@@ -1,7 +1,8 @@
 // Applies one hand-written, idempotent SQL migration (drizzle/NNNN_*.sql)
 // inside a single transaction. Intended for databases that were created with
-// `db:push` and therefore have no drizzle migration journal table, where
-// `drizzle-kit migrate` would try to replay the 0000 baseline.
+// `db:push` and have no migration record. Kept for that one-off case; the
+// normal way is `npm run db:migrate` (scripts/migrate.cjs), which after
+// `--baseline <tag>` applies everything that is pending.
 //
 //   node scripts/apply-sql-migration.cjs drizzle/0003_admissions_crm.sql
 require('dotenv').config({ quiet: true });

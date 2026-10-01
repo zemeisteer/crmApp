@@ -22,7 +22,7 @@ PostgreSQL 16+ kerak. Lokal yoki Docker orqali o'rnating, so'ng `.env`dagi `DATA
 
 ```bash
 createdb talimcrm
-npm run db:push
+npm run db:migrate
 ```
 
 Ishga tushirish:
@@ -35,108 +35,20 @@ Backend `http://localhost:4000/api` manzilida ishga tushadi.
 
 ### Migratsiyalar
 
-Loyiha hozircha dev muhitda `drizzle-kit push` (sxemani to'g'ridan-to'g'ri bazaga surish) orqali ishlaydi — tez, lekin versiyalanmagan. Production uchun `drizzle/0000_*.sql` boshlang'ich migratsiya fayli allaqachon generatsiya qilingan. Yangi production bazani shu bilan ko'taring:
+Sxema faqat versiyalangan migratsiyalar bilan quriladi va yangilanadi. Yagona buyruq:
 
 ```bash
-npm run db:migrate
+npm run db:migrate            # kutilayotgan migratsiyalarni qo'llaydi
+npm run db:migrate:status     # qaysilari qo'llangan / kutilmoqda
 ```
 
-Kelgusi sxema o'zgarishlari uchun: `schema.ts`ni tahrirlang → `npm run db:generate` (yangi migratsiya fayli yaratadi) → `npm run db:migrate` (production'ga qo'llaydi). Dev muhitda tezlik uchun hali ham `npm run db:push` ishlatishingiz mumkin.
+Bu `scripts/migrate.cjs` — CI, Docker konteyneri (har ishga tushganda), E2E test bazasi va lokal o'rnatish ham aynan shuni ishlatadi. Har bir migratsiya o'z tranzaksiyasida bajariladi va `app_migrations` jadvalida qayd etiladi; qayta ishga tushirish xavfsiz.
 
-Versiyalangan migratsiyalar: `0000` (boshlang'ich), `0001` (hisob-fakturalar), `0002` (ilgari faqat `db:push` orqali qo'shilgan jadval/ustunlar), `0003` (Qabul CRM). Ular idempotent — qayta ishga tushirish xavfsiz. **`db:push` bilan yaratilgan mavjud bazaga** `db:migrate` ishlatmang (u 0000 ni qayta qo'llashga urinadi); o'rniga yangi faylni to'g'ridan-to'g'ri qo'llang:
-
-```bash
-npm run db:apply-sql -- drizzle/0003_admissions_crm.sql
-```
-
-Sxema va migratsiyalar mosligini tekshirish (CI ham shuni ishlatadi): `npm run db:check-drift`.
-
-Agar baza serveri ilgari UTC bo'lmagan vaqt zonasida ishlagan bo'lsa (masalan `Asia/Tashkent`), eski `created_at` qiymatlari 5 soat oldinga siljigan bo'ladi. Avval dry-run bilan ko'ring, keyin `--apply` bilan qo'llang (`--before` — UTC tuzatishli versiya deploy qilingan vaqt):
-
-```bash
-node scripts/fix-local-timestamps.cjs --offset-minutes=300 --before=2026-09-24T17:00:00Z
-```
-
-### Telegram bot (xodimlarga eslatmalar)
-
-1. Telegram'da **@BotFather** → `/newbot` → nom va username bering. U bergan tokenni oling.
-2. `backend/.env`ga yozing va backendni qayta ishga tushiring:
-
-```
-TELEGRAM_BOT_TOKEN=123456:ABC...
-TELEGRAM_BOT_USERNAME=sizning_botingiz_bot
-TELEGRAM_POLLING=true      # lokal kompyuterda
-```
-
-3. Xodimlar CRM'dagi **Lidlar** sahifasida "Telegram eslatmalari" → **Ulash** ni bosadi, botda **Start** ni bosadi. Shundan so'ng yangi arizalar, qayta aloqa va sinov darslari haqidagi eslatmalar Telegram'ga ham keladi.
-
-Production (ochiq domen) uchun `TELEGRAM_POLLING=false` qiling, `TELEGRAM_WEBHOOK_SECRET`ga tasodifiy satr yozing va webhook'ni shu sir bilan ulang:
-`https://api.telegram.org/bot<TOKEN>/setWebhook?url=https://<domen>/api/telegram/webhook&secret_token=<TELEGRAM_WEBHOOK_SECRET>`
-
-### Email (Resend)
-
-Parolni tiklash, email tasdiqlash va lid eslatmalari xatlari uchun:
-
-1. resend.com'da ro'yxatdan o'ting → **Domains** bo'limida domeningizni qo'shib, u ko'rsatgan DNS yozuvlarini domen sozlamalariga kiriting.
-2. **API Keys** → **Create API Key** (ruxsat: *Sending access*).
-3. `backend/.env`ga yozing va backendni qayta ishga tushiring:
-
-```
-RESEND_API_KEY=re_...
-EMAIL_FROM="CRMAPP <noreply@sizningdomen.uz>"
-```
-
-Domen hali tasdiqlanmagan bo'lsa, sinov uchun `EMAIL_FROM=onboarding@resend.dev` ishlatish mumkin, lekin Resend bunda faqat o'z hisobingiz emailiga yuboradi. `RESEND_API_KEY` bo'sh bo'lsa SMTP sozlamalari ishlatiladi, ikkalasi ham bo'sh bo'lsa xatlar yuborilmaydi (faqat logga yoziladi).
-
-### Zaxira nusxalash
-
-```bash
-npm run db:backup   # backups/talimcrm_<sana>.sql.gz yaratadi
-```
-
-Buni cron/Task Scheduler orqali kunlik ishga tushiring va nusxalarni bazadan alohida joyda (S3 va h.k.) saqlang — tafsilotlar `scripts/backup.sh` ichida.
-
-### Testlar va tekshiruv
-
-```bash
-npm run test                   # unit testlar (18 test fayli, barcha guard va servicelar)
-npm run test:e2e               # to'liq HTTP orqali multi-tenant izolyatsiyani tekshiradi
-npx tsx scripts/e2e-verification.ts  # yangi auth, onboarding, taklifnoma va multi-membership E2E tekshiruvi
-npx tsx scripts/migrate-memberships.ts # mavjud userlarni organization_memberships ga o'tkazish migratsiya skripti
-```
-
-### API va Arxitektura tuzilishi (qisqacha)
-
-- **Auth & Onboarding:**
-  - "Start for free" (qisqa ro'yxatdan o'tish) yangi markaz va OWNER foydalanuvchi yaratadi.
-  - 8 bosqichli Onboarding (`/onboarding`, `OnboardingModule`): profil, yo'nalishlar, Workspace URL (subdomain), fanlar, kurslar, birinchi filial, jamoani taklif qilish.
-  - Ko'p markazlilik: `organization_memberships` orqali bitta foydalanuvchi bir nechta ta'lim markaziga a'zo bo'lishi va kirishda ishchi maydonni tanlashi mumkin (`/api/auth/select-workspace`).
-  - Xavfsiz taklifnomalar: `invitations` orqali o'qituvchi, talaba va xodimlar uchun bir martalik, muddati cheklangan (7 kun), 32-baytli kriptografik token bilan hisobni faollashtirish (`/invite/[token]`).
-- **Fanlar va Kurslar:**
-  - Qat'iy markaz yo'nalishidan voz kechilgan: fanlar (`subjects`) va kurslar (`courses`) to'liq moslashuvchan iyerarxiyada ishlaydi.
-- **Asosiy CRM modullari:**
-  - Tenant, guruh/o'quvchi/o'qituvchi CRUD (soft-delete + tiklash bilan), to'lov, davomat, maosh, uy vazifasi, filial, Excel export/import, PDF kvitansiya, faoliyat jurnali (audit log), AI tahlil/materiallar, Telegram bot, Click/Payme (markaz ↔ o'quvchi va markaz ↔ platforma), platform (superadmin) boshqaruvi. To'liq ro'yxat uchun `src/*/*.controller.ts` fayllariga qarang.
-
-Barcha tenant-scoped so'rovlar JWT'dagi `tenantId` bo'yicha avtomatik filtrlaydi (multi-tenancy izolyatsiyasi) — bu backendning eng muhim xavfsizlik qatlami, o'zgartirganda ehtiyot bo'ling. Bu `test:e2e` va `scripts/e2e-verification.ts` bilan avtomatik tekshiriladi.
-
-### Nima uchun Prisma emas, Drizzle?
-
-Boshida Prisma bilan boshlangan edi, lekin build-sandbox muhitida Prisma'ning binary query-engine fayllarini yuklab olib bo'lmadi. Shuning uchun Drizzle ORM'ga o'tildi — u sof TypeScript, binary kerak emas.
-
-## 2. Frontend
-
-```bash
-cd frontend
-npm install
-```
-
-`.env.local` allaqachon bor: `NEXT_PUBLIC_API_URL=http://localhost:4000/api`.
-
-```bash
-npm run dev
-```
-
-Frontend `http://localhost:3000` da ishga tushadi.
+- **`drizzle-kit migrate` ishlatilmaydi.** U barcha fayllarni bitta tranzaksiyada qo'llaydi, PostgreSQL esa bir migratsiya qo'shgan enum qiymatini shu tranzaksiyada ishlatishga ruxsat bermaydi (`unsafe use of new value "OWNER" of enum type role`).
+- Sxemani o'zgartirish: `schema.ts`ni tahrirlang → `npm run db:generate` (migratsiya fayli va snapshot) → SQL'ni idempotent qilib ko'rib chiqing → `npm run db:migrate`.
+- Tekshiruvlar: `npm run db:check-migrations` (jurnal = fayllar), `npm run db:check-drift` (baza = `schema.ts`), `npm run db:verify-migrations` (bo'sh baza va yangilanish yo'llari, vaqtinchalik bazalarda).
+- **Jadvallari bor, lekin migratsiya yozuvi yo'q baza** (ilgari `db:push` bilan qurilgan): `db:migrate` to'xtaydi va so'raydi. Sxema qaysi migratsiyaga mosligini ko'rsating: `node scripts/migrate.cjs --baseline <teg>` (to'liq dolzarb bo'lsa tegsiz), keyin yana `npm run db:migrate`.
+- `npm run db:push` faqat tashlab yuboriladigan tajriba bazasi uchun; u migratsiya yozuvini yaratmaydi.
 
 ## 3. Docker orqali ishga tushirish (ixtiyoriy)
 
@@ -144,11 +56,7 @@ Frontend `http://localhost:3000` da ishga tushadi.
 docker compose up --build
 ```
 
-Postgres + backend + frontend'ni birga ko'taradi. Birinchi marta ko'targandan keyin sxemani qo'llang:
-
-```bash
-docker compose exec backend npm run db:push
-```
+Postgres + backend + frontend'ni birga ko'taradi. Backend konteyneri har ishga tushganda kutilayotgan migratsiyalarni o'zi qo'llaydi (`node scripts/migrate.cjs`), qo'shimcha buyruq kerak emas.
 
 Ixtiyoriy integratsiya kalitlarini (Telegram, Click, Payme, SMTP...) `.env` fayliga yozib, `docker compose up` oldidan environment o'zgaruvchisi sifatida eksport qiling — `docker-compose.yml` ularni avtomatik backend konteyneriga uzatadi.
 
