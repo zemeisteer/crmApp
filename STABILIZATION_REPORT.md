@@ -5,18 +5,17 @@
 | **1-bosqich** — migratsiyalar, auth, to'lovlar, qarz, AI/import, CI | `78d9cef` | push qilingan (`1e28f7e`); GitHub CI `36840295303` **o'tgan** |
 | **2-bosqich** — a'zolik, narx tarixi, test bazasi, AI repetitor limiti | `1e28f7e` | push qilingan (`9d4a369`); GitHub CI `36856454988` **yiqilgan** (migratsiya qadami) |
 | **3-bosqich** — migratsiya buyrug'i birligi, staging tayyorligi | `9d4a369` | push qilingan (`8f97529`); GitHub CI `36860153468`: backend va frontend **o'tgan**, `images` ishi **yiqilgan** (smoke skriptining o'zidagi xato) |
-| **4-bosqich** — smoke skriptini tuzatish, `SETUP.md` ni tiklash | `8f975293cee669160a45d02a410797fdcd51c9b4` | **faqat lokal**, commit va push qilinmagan |
+| **4-bosqich** — smoke skriptini tuzatish, `SETUP.md` ni tiklash | `8f97529` | push qilingan (`fa98eff`); GitHub CI `36862631040`: **uchala ish o'tgan** |
+| **5-bosqich** — staging tayyorgarligi | `fa98eff99727df6636e26f2d181797eeedc3ab25` | lokal; `STAGING_READINESS_REPORT.md` ga qarang |
 
-**`8f97529` bo'yicha CI'da tasdiqlangan** (yurish `36860153468`, PostgreSQL 16):
-- migratsiya va yangilash tekshiruvlari o'tdi — 3-bosqichdagi enum tuzatishi CI'da ishlaydi;
-- backend: 245 unit, 186 E2E; backend va frontend build;
-- production Docker image'lar **qurildi** va konteynerlar **ishga tushdi**.
+**`fa98eff` bo'yicha CI'da tasdiqlangan** (yurish `36862631040`, PostgreSQL 16):
+- backend: 245 unit, 186 E2E, migratsiya va yangilash tekshiruvlari, build;
+- frontend: typecheck, lint, build;
+- production Docker image'lar: smoke test **`SMOKE OK`** — 34/34 migratsiya API ishga tushishidan oldin qo'llangan; ro'yxatdan o'tish, `/auth/me`, markazni ochiq qidirish, qayta ishga tushirish xavfsizligi va ma'lumot saqlanishi o'tgan.
 
-**`8f97529` da yiqilgan:** `images` ishi, smoke testning 3-qadamida — API va qayta ishga tushirish tekshiruvlariga yetmasdan. Sabab ilovada emas, skriptda (0.7-bo'lim).
+Smoke testda tashqi integratsiyalar ataylab o'chirilgan. **Hali tekshirilmagan:** haqiqiy domen va subdomen marshrutlash, zaxirani konteynerda tiklash, Telegram, Click/Payme. Bular staging'da tekshiriladi — holati `STAGING_READINESS_REPORT.md` da.
 
-**4-bosqich** shu skriptni tuzatadi. U hali push qilinmagan va **GitHub CI'dan o'tmagan**; to'liq Docker smoke testi hali biror joyda `SMOKE OK` ga yetmagan.
-
-**Tayyorlik bahosi:** kod cheklangan pilotga tayyor; **avval** 4-bosqich push qilinib `images` ishi yashil bo'lishi va staging tekshiruvi (0.6-bo'lim) o'tishi kerak.
+**Tayyorlik bahosi:** stabilizatsiya ishlari yakunlangan va CI yashil. Cheklangan pilotgacha qolgani — staging muhiti va undagi tekshiruvlar.
 
 ---
 
@@ -106,9 +105,9 @@ Ilova darajasida (migratsiyadan keyin o'chirilgan xodim kira olmasligi): `test/s
 
 **Keyin CI'da tasdiqlandi** (`8f97529`, yurish `36860153468`): shu tekshiruvlar PostgreSQL 16 da ham o'tdi — migratsiya, yangilash, 245 unit, 186 E2E, ikkala build.
 
-### 0.5. Docker — qisman tasdiqlangan
+### 0.5. Docker — CI'da tasdiqlangan
 
-Bu mashinada Docker yo'q (`docker: command not found`), lokalda image qurib bo'lmaydi. CI'da (`8f97529`) image'lar qurildi va konteynerlar ishga tushdi, lekin smoke test 3-qadamda skript xatosi bilan to'xtadi (0.7-bo'lim). **To'liq smoke test hali o'tmagan.**
+Bu mashinada Docker yo'q, shuning uchun tekshiruv GitHub CI'da o'tadi. `8f97529` da smoke test skript xatosi bilan to'xtagan (0.7-bo'lim); tuzatishdan keyin `fa98eff` da **`SMOKE OK`** (yurish `36862631040`).
 
 Ko'rib chiqildi (o'qish orqali):
 - `backend/Dockerfile`: `npm ci`; runner bosqichiga `drizzle/` va `scripts/migrate.cjs` ko'chiriladi; `CMD node scripts/migrate.cjs && node dist/main.js` — migratsiya muvaffaqiyatsiz bo'lsa API ishga tushmaydi, tartib kafolatlangan.
@@ -124,8 +123,8 @@ Docker bor mashinada: `bash scripts/production/smoke-test.sh` (kutiladigan oxirg
 
 ### 0.6. Staging'gacha qolgan to'siqlar
 
-1. 4-bosqichni push qilish va CI'da `images` ishi `SMOKE OK` ga yetishi (backend va frontend `8f97529` da allaqachon yashil).
-2. Smoke test keyingi qadamlarida (4–6: API, qayta ishga tushirish, tashqi kalitlar) yangi muammo chiqsa — tuzatish. Bu qadamlar haqiqiy konteynerda hali bir marta ham yurmagan.
+1. ~~CI'da `images` ishi~~ — bajarildi: `fa98eff`, `SMOKE OK`.
+2. Staging muhiti (server, domen, integratsiya ma'lumotlari) — `STAGING_READINESS_REPORT.md`.
 3. Quyidagi staging ro'yxati. Tashqi integratsiyalar **tekshirilmagan** — mock testlar o'tgani ularni tasdiqlamaydi.
 
 **Staging nazorat ro'yxati**
@@ -193,7 +192,7 @@ Soxta muhitda skriptning boshidan oxirigacha yurishi (haqiqiy konteyner **emas**
 
 Har bir holatda tozalash (`down --volumes`) bajarildi.
 
-**To'liq Docker smoke testi o'tdimi? — Yo'q, tekshirilmagan.** Bu mashinada Docker yo'q; yuqoridagilar skript mantig'ini tekshiradi, konteynerlarni emas. Haqiqiy natija faqat push'dan keyingi `images` ishida ko'rinadi. CI'ga yordamchi funksiyalar testi ham qo'shildi (`smoke-lib.test.sh`).
+**To'liq Docker smoke testi:** lokalda yuritib bo'lmadi (Docker yo'q); push'dan keyin CI'da **o'tdi** — `fa98eff`, yurish `36862631040`, `SMOKE OK`. CI'ga yordamchi funksiyalar testi ham qo'shilgan (`smoke-lib.test.sh`).
 
 **Hujjat:** oldingi o'zgarish `SETUP.md` dan migratsiya bo'limi bilan birga keraksiz ravishda **frontend o'rnatish, Telegram, email, zaxira, testlar, arxitektura** bo'limlarini ham o'chirib yuborgan edi. Ular `9d4a369` dagi matndan tiklandi. Saqlangan: `npm run db:migrate` yagona buyruq, Docker migratsiyani o'zi qo'llaydi. Tiklanmagan: `drizzle-kit migrate` / `db:push` oddiy o'rnatish sifatida, va `migrate-memberships.ts` ko'rsatmasi (u barcha akkauntlarga a'zolik berib, o'chirilgan xodimlarni qaytarar edi). O'sha skriptning o'ziga ham himoya qo'yildi: maxsus bayroqsiz ishlamaydi. Kalitlar o'rniga to'ldirgichlar.
 

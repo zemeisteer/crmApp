@@ -162,17 +162,30 @@ Endi `https://crmapp.uz/admin` orqali barcha o'quv markazlarini va to'lovlarni b
 
 ## 8. Avtomatik Zaxira Nusxalash (Backups & Restore)
 
-`docker-compose.prod.yml` tarkibidagi `talimcrm_backup` servisi **har kuni soat 03:00 da** avtomatik tarzda butun PostgreSQL bazasini arxivlaydi va `/opt/crmapp/backups/` jildida saqlaydi. 14 kundan oshgan eski nusxalar avtomatik o'chiriladi.
+`docker-compose.prod.yml` tarkibidagi `db-backup` servisi **har kuni soat 03:00 da** PostgreSQL bazasini arxivlaydi va `backups/` jildida saqlaydi (`<stack>_<sana>.sql.gz`). `BACKUP_KEEP_DAYS` kundan (standart 14) eski nusxalar o'chiriladi.
 
-### Qo'lda zaxira olish:
-```bash
-./scripts/production/backup.sh
-```
+> **Baza zaxirasi to'liq zaxira emas.** Yuklangan uy vazifalari, Listening audiolari va rasmlar `uploads` volume'ida turadi va tungi avtomatik zaxiraga **kirmaydi**. Ularni `backup.sh` arxivlaydi.
 
-### Favqulodda holatda zaxiradan tiklash:
+### Qo'lda zaxira olish (baza + yuklangan fayllar):
 ```bash
-./scripts/production/restore.sh backups/talimcrm_2026-09-22_120000.sql.gz
+./scripts/production/backup.sh              # backups/<stack>_<sana>.sql.gz va ..._uploads.tar.gz
+./scripts/production/backup.sh --db-only
 ```
+Ikkala faylni ham serverdan tashqariga ko'chiring.
+
+### Zaxira tiklanishini tekshirish (mashq — jonli bazaga tegmaydi):
+```bash
+./scripts/production/restore.sh backups/<stack>_<sana>.sql.gz
+```
+Zaxirani **alohida vaqtinchalik bazaga** tiklaydi, tekshiradi (dump xatosiz yuklanishi, migratsiyalar, asosiy jadvallar, pul mosligi) va o'chiradi. Buni muntazam (masalan oyda bir marta) yuriting.
+
+### Favqulodda holatda tiklash:
+```bash
+./scripts/production/restore.sh backups/<stack>_<sana>.sql.gz --keep
+```
+Tekshirilgan nusxa alohida baza sifatida qoladi; skript ilovani unga o'tkazishning aniq buyruqlarini chiqaradi (backend to'xtatiladi, joriy baza `..._before_<vaqt>` deb qayta nomlanadi, nusxa uning o'rniga keladi). Joriy baza hech qachon o'chirilmaydi yoki ustidan yozilmaydi. Yuklangan fayllar: `docker compose -f docker-compose.prod.yml exec -T backend tar -xzf - -C /app < backups/<stack>_<sana>_uploads.tar.gz`.
+
+Staging muhiti: `docs/STAGING.md`.
 
 ---
 

@@ -124,5 +124,14 @@ jobs:
       # buffer (the first version failed on exactly that).
       - name: Test the smoke-test helpers
         run: bash scripts/production/smoke-lib.test.sh
+      # The production compose file must stay valid with both environment
+      # templates (the staging one runs the same file under other names).
+      - name: Validate the production compose file with the env templates
+        run: |
+          docker compose -f docker-compose.prod.yml --env-file .env.production.example config -q
+          docker compose -f docker-compose.prod.yml --env-file .env.staging.example config -q
+          resolved="$(docker compose -f docker-compose.prod.yml --env-file .env.staging.example config)"
+          grep -q 'container_name: talimcrm_staging_postgres' <<<"$resolved"
+          if grep -q 'container_name: talimcrm_postgres' <<<"$resolved"; then echo "staging resolves to a production container name"; exit 1; fi
       - name: Build and smoke-test the production images
         run: bash scripts/production/smoke-test.sh

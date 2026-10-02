@@ -59,7 +59,8 @@ cd "$DIR"
 if [ -f .env ]; then
   echo "   .env allaqachon bor — tegilmadi"
 else
-  cp .env.production.example .env
+  # ENV_TEMPLATE=.env.staging.example for a staging server (see docs/STAGING.md).
+  cp "${ENV_TEMPLATE:-.env.production.example}" .env
   set_env() { # key value — value never printed
     if grep -qE "^$1=" .env; then sed -i "s#^$1=.*#$1=$2#" .env; else echo "$1=$2" >> .env; fi
   }

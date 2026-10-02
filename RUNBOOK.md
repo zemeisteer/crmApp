@@ -13,7 +13,7 @@ Nosozlik yuz berganda nima qilish kerakligi bo'yicha qisqa qo'llanma.
 
 - **Baza to'la (disk)**: `df -h`, keraksiz eski backuplarni tozalang.
 - **Migratsiya xato berdi**: `npm run db:generate` bilan yaratilgan SQL faylni `backend/drizzle/` papkasida qo'lda ko'rib chiqing, kerak bo'lsa qo'lda tuzating va qayta ishga tushiring.
-- **Ma'lumot yo'qolgan/buzilgan**: eng so'nggi backup'dan tiklang: `gunzip -c backups/talimcrm_<sana>.sql.gz | psql "$DATABASE_URL"` (avval joriy bazani boshqa nomga saqlab qo'ying).
+- **Ma'lumot yo'qolgan/buzilgan**: zaxirani **alohida** bazaga tiklang va tekshiring — joriy bazaning ustiga emas: `./scripts/production/restore.sh backups/<stack>_<sana>.sql.gz --keep`. Skript nusxani tekshiradi va ilovani unga o'tkazish buyruqlarini chiqaradi (joriy baza `..._before_<vaqt>` nomi bilan saqlanib qoladi). Yuklangan fayllar (uy vazifasi, audio, rasm) alohida arxivda: `<stack>_<sana>_uploads.tar.gz`.
 
 ## 3. Tenant o'zining ma'lumotlariga kira olmayapti ("403 Forbidden")
 
@@ -44,8 +44,9 @@ Nosozlik yuz berganda nima qilish kerakligi bo'yicha qisqa qo'llanma.
 
 ## 8. Zaxira nusxalash muvaffaqiyatsiz
 
-- `npm run db:backup` qo'lda ishga tushirib xatoni ko'ring (odatda `pg_dump` yo'li yoki `DATABASE_URL` muammosi).
-- Backup fayllari `backend/backups/` papkasida — bu papka bazadan alohida joyga (S3 va h.k.) ko'chirilishi kerak.
+- Serverda: `./scripts/production/backup.sh` — baza **va** yuklangan fayllar; xato bo'lsa yarim fayl qoldirmaydi va sababini aytadi. (Lokal ishlab chiqishda: `npm run db:backup`.)
+- Zaxira haqiqatan tiklanishini tekshirish: `./scripts/production/restore.sh backups/<fayl>.sql.gz` (alohida vaqtinchalik bazaga tiklaydi, tekshiradi, o'chiradi).
+- Zaxira fayllari serverdan tashqariga (boshqa mashina, S3 va h.k.) ko'chirilishi kerak — shu diskdagi nusxa disk bilan birga yo'qoladi.
 
 ## 9. Superadmin hisobiga kirish yo'qolgan
 
@@ -57,15 +58,11 @@ Nosozlik yuz berganda nima qilish kerakligi bo'yicha qisqa qo'llanma.
 ## 10. Workspace / Tashkilot a'zoligi muammosi ("Foydalanuvchida faol tashkilot a'zoligi topilmadi")
 
 - Agar eski foydalanuvchi tizimga kirganda "Foydalanuvchida faol tashkilot a'zoligi topilmadi" xatosi chiqsa:
-  Migratsiya skriptini ishga tushiring:
-  ```bash
-  cd backend && npx tsx scripts/migrate-memberships.ts
-  ```
-  Yoki alohida foydalanuvchini bazada a'zo qilib qo'shing:
-  ```sql
-  INSERT INTO organization_memberships (id, user_id, tenant_id, role, status)
-  VALUES ('mem_' || substr(md5(random()::text), 1, 16), '<USER_ID>', '<TENANT_ID>', 'ADMIN', 'ACTIVE');
-  ```
+  Markazga kirish faqat faol a'zolikdan keladi. A'zoligi yo'q akkaunt — ataylab o'chirilgan xodim ham bo'lishi mumkin, shuning uchun a'zolik **ommaviy tiklanmaydi**.
+  1. Kimlar kira olmasligini ko'ring (faqat o'qiydi): `cd backend && node scripts/list-unlinked-accounts.cjs`
+  2. Ishlashi kerak bo'lgan odamni markaz rahbari **Xodimlar → qo'shish** orqali (o'sha email bilan) qayta qo'shadi.
+  3. Markazda birorta ham a'zo qolmagan bo'lsa, platforma admini (SUPERADMIN) o'sha markazga kirib, rahbarni Xodimlar bo'limidan qo'shadi.
+  `scripts/migrate-memberships.ts` ishlatilmaydi: u barcha akkauntlarga a'zolik berib, o'chirilgan xodimlarni ham qaytarar edi.
 
 ## 11. Taklifnoma xatolari ("Ushbu taklifnoma yaroqsiz yoki muddati tugagan")
 
@@ -86,5 +83,5 @@ Nosozlik yuz berganda nima qilish kerakligi bo'yicha qisqa qo'llanma.
 1. `GET /api/health`
 2. Backend va frontend loglarini oxirgi 5 daqiqa uchun ko'rish
 3. `npm run test && npm run test:e2e` (backend) — asosiy funksiyalar buzilmaganini tasdiqlash
-4. `npx tsx scripts/e2e-verification.ts` (backend) — auth, workspace va onboarding E2E tekshiruvi
+4. Serverda: `docker compose -f docker-compose.prod.yml exec backend node scripts/migrate.cjs --status` — kutilayotgan migratsiya yo'qligi
 5. So'nggi deploy/commit nima o'zgartirganini `git log` orqali ko'rish
