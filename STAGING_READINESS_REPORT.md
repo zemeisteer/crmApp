@@ -4,7 +4,10 @@
 - **Shu commit uchun CI:** GitHub Actions `37116211070` — natijalar foydalanuvchi tomonidan tekshirilgan (log'larni o'qish uchun GitHub autentifikatsiyasi kerak; bu yerdan faqat ishlar ro'yxati va holati ko'rindi):
   - backend: 245 unit, 189 E2E — **o'tdi**; frontend tekshiruvlari — **o'tdi**; `ops-scripts` — **o'tdi**; production image smoke test — **SMOKE OK**;
   - `recovery` — **YIQILDI** 1/7-qadamda ("unexpected certbot output"). Zaxira olish va tiklash qadamlariga yetib bormagan: **konteynerda tiklash tasdiqlanmagan**.
-- **Shu hisobotning yangi ishi:** `4828f4d` ustidagi **lokal, commit qilinmagan** o'zgarishlar (10-bo'lim). Ular uchun CI **yurmagan** (push qilinmagan). Lokal natijalar `4828f4d` ga emas, shu ishchi daraxtga tegishli.
+- **Keyingi commitlar:** `7d74229` (recovery tuzatish, idempotentlik kalitlari, brauzer testlari) va `5e13f82` (test tipi tuzatildi), ikkalasi `dev` da.
+  - CI `37122037051` (`7d74229`): **recovery — o'tdi (7/7 qadam)**, browser, images, frontend, ops-scripts — o'tdi; backend — `tsc --noEmit` test faylidagi tip xatosi tufayli yiqildi.
+  - CI `37122276297` (`5e13f82`): **hammasi yashil** — backend (unit, E2E, migratsiyalar), frontend, ops-scripts, images (smoke), browser (6 oqim), recovery (7/7).
+  - Natijalar ishlar holati orqali o'qildi; log'lar (zaxira hajmi va vaqtlari) GitHub autentifikatsiyasisiz o'qilmadi.
 - **Sana:** 2026-10-03.
 
 | Belgi | Ma'nosi |
@@ -16,12 +19,11 @@
 
 ## 1. Xulosa
 
-**Hukm: pilotga tayyorgarlik davom etmoqda.**
+**Hukm: integratsiyalar o'chirilgan holda cheklangan pilotga tayyor — quyidagi shartlar bilan.**
 
-- Konteynerda zaxira → tiklash mashqi (`recovery`) hali **bir marta ham to'liq o'tmagan**: CI'da 1-qadamda yiqilgan, tuzatish lokal, Docker'siz yurgizib bo'lmadi (10.1).
-- O'quvchi/o'qituvchi yaratishdagi takroriy yuborish himoyasi qayta yozildi va lokal testlardan o'tdi (10.2), lekin CI'da hali tekshirilmagan.
+`5e13f82` uchun CI to'liq yashil: konteynerda zaxira → alohida baza va fayl volume'iga tiklash → ilova tekshiruvi 7/7 o'tdi; yaratish formalaridagi takroriy yuborish himoyasi va asosiy brauzer oqimlari CI'da avtomatik tekshiriladi.
 
-Cheklangan pilot uchun shartlar: (1) push qilib, `recovery` ishi 7/7 qadam bilan yashil bo'lishi; (2) haqiqiy staging/pilot domenida HTTPS tekshiruvi; (3) zaxiraning serverdan tashqaridagi nusxasi sozlanib, undan tiklash sinalishi; (4) Telegram, SMS, Click, Payme o'chiq turadi (sandbox'da sinalmagan); (5) brauzer testlari faqat lokal infratuzilmada yurgan, haqiqiy domenda emas.
+Shartlar: (1) haqiqiy staging/pilot domenida HTTPS va `verify-flows.mjs` tekshiruvi (server va domen yo'q); (2) zaxiraning serverdan tashqaridagi nusxasi sozlanib, undan tiklash sinalishi; (3) Telegram, SMS, Click, Payme o'chiq turadi (sandbox'da sinalmagan); (4) brauzer testlari CI va lokal infratuzilmada yurgan, haqiqiy domenda emas; (5) tiklash vaqti faqat sintetik kichik ma'lumotda — production RTO/RPO emas.
 
 ## 2. Ishlatilgan muhit
 
@@ -205,7 +207,7 @@ Lokal soxta callback'lar provayder isboti emas. Tayyor: `set-telegram-webhook.sh
 
 **Ruxsat kutayotgan amallar:** (1) 10-bo'lim o'zgarishlarini `dev` ga push; (2) staging/pilot serverini tayyorlash (`bootstrap-server.sh`, `init-ssl.sh`, `stack.sh up -d --build`); (3) staging botiga webhook; (4) tasdiqlangan sinov chatiga xabar; (5) tashqi zaxira manzili.
 
-## 10. `4828f4d` dan keyingi ish (lokal, commit qilinmagan)
+## 10. `4828f4d` dan keyingi ish (`7d74229`, `5e13f82`)
 
 ### 10.1. Konteynerda tiklash mashqi (`restore-rehearsal.sh`)
 
@@ -220,7 +222,7 @@ Lokal soxta callback'lar provayder isboti emas. Tayyor: `set-telegram-webhook.sh
 
 **Tekshirildi (Lokal):** `rehearsal.test.sh` — soxta `docker` bilan 17/17: haqiqiy certbot javoblari qabul qilinadi, renewal sikli va shell aniqlanadi, xato hisobotida sir yo'q, yurmagan qadamlar sanaladi. `bash -n` toza. CI `ops-scripts` ishiga qo'shildi.
 
-**Tekshirilmadi:** 7 qadamning birortasi haqiqiy konteynerlarda yurmadi (Docker yo'q). Keyingi qadamlar kod bo'yicha ko'rib chiqildi (healthcheck kutishi, alohida baza serveri va uploads volume, restore nomi, uploads arxiv tuzilishi), lekin yurmagani uchun ular ham **tasdiqlanmagan**. Zaxira hajmi va vaqtlari bu bosqichda o'lchanmadi; avvalgi Docker'siz o'lchovlar (4-bo'lim) production RTO/RPO emas.
+**Keyin CI'da tasdiqlandi:** `37122037051` va `37122276297` — 7/7 qadam o'tdi. **Lokal tekshirilmadi:** Docker yo'q. Keyingi qadamlar kod bo'yicha ko'rib chiqildi (healthcheck kutishi, alohida baza serveri va uploads volume, restore nomi, uploads arxiv tuzilishi), lekin yurmagani uchun ular ham **tasdiqlanmagan**. Zaxira hajmi va vaqtlari bu bosqichda o'lchanmadi; avvalgi Docker'siz o'lchovlar (4-bo'lim) production RTO/RPO emas.
 
 ### 10.2. O'quvchi va o'qituvchi yaratish: aniq idempotentlik kaliti
 
@@ -252,7 +254,7 @@ Backend va frontendning **production build**'lari (`node dist/main.js`, `next st
 | To'lov: ikki marta bosish va javob yo'qolgandan keyin qayta yuborish → 2 ta to'lov (150 000 va 100 000), ortig'i yo'q | o'tdi |
 | Yangi o'quvchi: javob yo'qolgandan keyin qayta yuborish → bitta o'quvchi, telefon saqlangan | o'tdi |
 
-6/6, ~4,5 daqiqa (asosan backend ishga tushishi). CI'ga `browser` ishi qo'shildi (30 daqiqa chegarasi, xatoda faqat skrinshotlar; trace yozilmaydi — u tokenlarni saqlaydi). **CI'da hali yurmagan.** Bular haqiqiy staging domenida emas.
+6/6, ~4,5 daqiqa (asosan backend ishga tushishi). CI'ga `browser` ishi qo'shildi (30 daqiqa chegarasi, xatoda faqat skrinshotlar; trace yozilmaydi — u tokenlarni saqlaydi). **CI'da o'tdi** (`37122037051`, `37122276297`). Bular haqiqiy staging domenida emas.
 
 ### 10.4. Shu ishchi daraxtda yuritilgan tekshiruvlar
 
