@@ -5,6 +5,7 @@ import {
   Get,
   Param,
   Patch,
+  Headers,
   Post,
   Query,
   UseGuards,
@@ -55,8 +56,11 @@ export class StudentsController {
     @CurrentUser('tenantId') tenantId: string,
     @CurrentUser('sub') userId: string,
     @Body() dto: CreateStudentDto,
+    // Optional: a form sends one per submission so that a retry (double
+    // click, lost reply) returns the first result. See common/create-idempotency.
+    @Headers('idempotency-key') idempotencyKey?: string,
   ) {
-    return this.service.create(tenantId, userId, dto);
+    return this.service.create(tenantId, userId, dto, idempotencyKey);
   }
 
   @Roles('ADMIN')

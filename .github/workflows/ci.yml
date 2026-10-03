@@ -136,6 +136,8 @@ jobs:
         run: bash scripts/production/backup-core.test.sh
       - name: Certificate, backup and restore command sequences
         run: bash scripts/production/ops.test.sh
+      - name: Recovery rehearsal logic (certbot check, failure report, redaction)
+        run: bash scripts/production/rehearsal.test.sh
 
   # The production images themselves: built from both Dockerfiles and run on
   # a throw-away database (docker-compose.smoke.yml). Checks that migrations
@@ -166,9 +168,75 @@ jobs:
   # file behind nginx with HTTPS, a real backup (database + uploads), a real
   # failing backup, a restore into a separate database and uploads volume,
   # and the application verified on the restored copy.
+  browser:
+    # Critical flows in a real browser (Chromium), against the production
+    # builds of the backend and the frontend on a disposable database. The
+    # backend runs with NODE_ENV=development only for its http://*.localhost
+    # CORS rules. No external provider is configured.
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      BROWSER_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/talimcrm_browser_e2e
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/talimcrm_browser_e2e
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci --legacy-peer-deps
+        working-directory: backend
+      - run: npm run build
+        working-directory: backend
+      - run: npm ci
+        working-directory: frontend
+      - run: npm ci
+        working-directory: e2e-browser
+      - run: npx playwright install --with-deps chromium
+        working-directory: e2e-browser
+      - run: npm run build:frontend
+        working-directory: e2e-browser
+      - run: npm test
+        working-directory: e2e-browser
+      # Screenshots of synthetic data only (no traces: they would hold tokens).
+      - name: Keep the failure screenshots
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-test-results
+          path: |
+            e2e-browser/test-results
+            e2e-browser/playwright-report
+          if-no-files-found: ignore
+          retention-days: 7
+
   recovery:
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
       - name: Backup, restore and TLS rehearsal
+        env:
+          # Redacted failure report only (no env files, dumps or tokens).
+          REHEARSAL_DIAG_DIR: ${{ runner.temp }}/rehearsal-diagnostics
         run: bash scripts/production/restore-rehearsal.sh
+      - name: Keep the redacted failure report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rehearsal-diagnostics
+          path: ${{ runner.temp }}/rehearsal-diagnostics
+          if-no-files-found: ignore
+          retention-days: 7

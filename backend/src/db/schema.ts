@@ -378,11 +378,17 @@ export const teachers = pgTable('teachers', {
   startDate: timestamp('start_date'),
   salaryType: text('salary_type'),
   salaryValue: integer('salary_value'),
+  // Retry protection for the create form (the same pattern as payments):
+  // a retried request with the same key returns this row; requestHash
+  // tells a retry from a different request reusing the key.
+  idempotencyKey: text('idempotency_key'),
+  requestHash: text('request_hash'),
   deletedAt: timestamp('deleted_at'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 }, (t) => ({
   tenantIdx: index('teachers_tenant_idx').on(t.tenantId),
+  idemUniq: uniqueIndex('teachers_tenant_idem_uniq').on(t.tenantId, t.idempotencyKey),
 }));
 
 export const groups = pgTable('groups', {
@@ -457,11 +463,15 @@ export const students = pgTable('students', {
   notes: text('notes'),
   avatarUrl: text('avatar_url'),
   startDate: timestamp('start_date').notNull().defaultNow(),
+  // Retry protection for the create form (the same pattern as payments).
+  idempotencyKey: text('idempotency_key'),
+  requestHash: text('request_hash'),
   deletedAt: timestamp('deleted_at'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 }, (t) => ({
   tenantIdx: index('students_tenant_idx').on(t.tenantId),
+  idemUniq: uniqueIndex('students_tenant_idem_uniq').on(t.tenantId, t.idempotencyKey),
   branchIdx: index('students_branch_idx').on(t.branchId),
   leftAtIdx: index('students_left_at_idx').on(t.tenantId, t.leftAt),
 }));

@@ -1,0 +1,12 @@
+{
+  "name": "talimcrm-browser-tests",
+  "private": true,
+  "description": "Critical browser flows (Playwright) against production builds on disposable services",
+  "scripts": {
+    "build:frontend": "node scripts/build-frontend.cjs",
+    "test": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.63.0"
+  }
+}

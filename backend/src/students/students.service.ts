@@ -1,12 +1,13 @@
 import { BadRequestException, ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { and, eq, gte, isNotNull, isNull, inArray, or } from 'drizzle-orm';
+import { and, eq, isNotNull, isNull, inArray, or } from 'drizzle-orm';
 import { DB, Database } from '../db/db.module';
 import { branches, enrollments, groups, leads, organizationMemberships, studentGuardians, studentPortalPins, students, users } from '../db/schema';
 import { randomInt } from 'crypto';
 import * as bcrypt from 'bcryptjs';
 import { CreateStudentDto, LinkGuardianDto, UpdateStudentDto } from './dto/student.dto';
 import { AuditService } from '../audit/audit.service';
-import { doubleSubmitSince, lockIdenticalCreate } from '../common/double-submit';
+import { blankToNull, idempotencyKey, lockIdempotencyKey, requestHash } from '../common/create-idempotency';
+import { isUniqueViolation } from '../common/db-errors';
 import { countOccupiedSeats } from '../common/seats';
 import { assertNoStudentTimeClash } from '../common/student-schedule';
 import { studentIdsInGroups, teacherGroupIds } from '../common/teacher-scope';
@@ -82,7 +83,7 @@ export class StudentsService {
     return { ...student, origin: origin ?? null };
   }
 
-  async create(tenantId: string, userId: string, dto: CreateStudentDto) {
+  async create(tenantId: string, userId: string, dto: CreateStudentDto, rawKey?: string) {
     if (dto.branchId) {
       const branch = await this.db.query.branches.findFirst({
         where: and(eq(branches.id, dto.branchId), eq(branches.tenantId, tenantId)),
@@ -91,70 +92,88 @@ export class StudentsService {
     }
 
     const groupIds = dto.groupIds && dto.groupIds.length > 0 ? dto.groupIds : dto.groupId ? [dto.groupId] : [];
-    // The same form sent twice (double click, a retry after a lost reply)
-    // makes one student: the second request gets the first one's row.
-    let repeated = false;
-    const student = await this.db.transaction(async (tx) => {
-      await lockIdenticalCreate(tx, `student:${tenantId}:${dto.fullName}:${dto.phone ?? ''}:${dto.parentPhone ?? ''}`);
-      const twin = await tx.query.students.findFirst({
-        where: and(
-          eq(students.tenantId, tenantId),
-          eq(students.fullName, dto.fullName),
-          dto.phone ? eq(students.phone, dto.phone) : isNull(students.phone),
-          dto.parentPhone ? eq(students.parentPhone, dto.parentPhone) : isNull(students.parentPhone),
-          isNull(students.deletedAt),
-          gte(students.createdAt, doubleSubmitSince()),
-        ),
-      });
-      if (twin) {
-        repeated = true;
-        return twin;
-      }
-      const [student] = await tx
-        .insert(students)
-        .values({
-          tenantId,
-          branchId: dto.branchId || null,
-          fullName: dto.fullName,
-          gender: dto.gender as any,
-          phone: dto.phone,
-          parentPhone: dto.parentPhone,
-          birthDate: dto.birthDate ? new Date(dto.birthDate) : undefined,
-          address: dto.address,
-          telegramUsername: dto.telegramUsername,
-          startDate: dto.startDate ? new Date(dto.startDate) : undefined,
-          status: dto.status || 'ACTIVE',
-          notes: dto.notes || null,
-          avatarUrl: dto.avatarUrl || null,
-        })
-        .returning();
+    // Retry protection (see common/create-idempotency): the same key with
+    // the same form returns the student made the first time, with nothing
+    // done twice; the same key with a different form is a conflict.
+    const key = idempotencyKey(rawKey);
+    const { groupId: _single, groupIds: _many, ...fields } = dto;
+    const hash = key ? requestHash('student.create', { ...fields, status: dto.status || 'ACTIVE', groupIds }) : null;
+    const replay = async (db: Pick<Database, 'select'>) => {
+      if (!key) return null;
+      const [prior] = await db
+        .select()
+        .from(students)
+        .where(and(eq(students.tenantId, tenantId), eq(students.idempotencyKey, key)));
+      if (!prior) return null;
+      if (prior.requestHash !== hash) throw new ConflictException("Bu Idempotency-Key boshqa ma'lumotli o'quvchi uchun ishlatilgan");
+      return prior;
+    };
 
-      if (groupIds.length > 0) {
-        const validGroups = await tx.query.groups.findMany({
-          where: and(eq(groups.tenantId, tenantId), inArray(groups.id, groupIds), isNull(groups.deletedAt)),
-        });
-        const validGroupIds = validGroups.map((g) => g.id);
-        // A full group rolls back the whole create, student included.
-        for (const groupId of validGroupIds) await this.lockGroupWithCapacity(tx, tenantId, groupId);
-        await assertNoStudentTimeClash(tx, tenantId, null, validGroupIds);
-        if (validGroupIds.length > 0) {
-          await tx
-            .insert(enrollments)
-            .values(
-              validGroupIds.map((groupId) => ({
-                tenantId,
-                studentId: student.id,
-                groupId,
-                status: 'ACTIVE' as const,
-                joinedAt: new Date(),
-              })),
-            )
-            .onConflictDoNothing();
+    let result: { student: typeof students.$inferSelect; replayed: boolean };
+    try {
+      result = await this.db.transaction(async (tx) => {
+        if (key) {
+          await lockIdempotencyKey(tx, 'student.create', tenantId, key);
+          const prior = await replay(tx);
+          if (prior) return { student: prior, replayed: true };
         }
+        const [student] = await tx
+          .insert(students)
+          .values({
+            tenantId,
+            branchId: dto.branchId || null,
+            fullName: dto.fullName.trim(),
+            gender: dto.gender as any,
+            phone: blankToNull(dto.phone),
+            parentPhone: blankToNull(dto.parentPhone),
+            birthDate: dto.birthDate ? new Date(dto.birthDate) : undefined,
+            address: blankToNull(dto.address),
+            telegramUsername: blankToNull(dto.telegramUsername),
+            startDate: dto.startDate ? new Date(dto.startDate) : undefined,
+            status: dto.status || 'ACTIVE',
+            notes: dto.notes || null,
+            avatarUrl: dto.avatarUrl || null,
+            idempotencyKey: key,
+            requestHash: hash,
+          })
+          .returning();
+
+        if (groupIds.length > 0) {
+          const validGroups = await tx.query.groups.findMany({
+            where: and(eq(groups.tenantId, tenantId), inArray(groups.id, groupIds), isNull(groups.deletedAt)),
+          });
+          const validGroupIds = validGroups.map((g) => g.id);
+          // A full group rolls back the whole create, student (and key) included.
+          for (const groupId of validGroupIds) await this.lockGroupWithCapacity(tx, tenantId, groupId);
+          await assertNoStudentTimeClash(tx, tenantId, null, validGroupIds);
+          if (validGroupIds.length > 0) {
+            await tx
+              .insert(enrollments)
+              .values(
+                validGroupIds.map((groupId) => ({
+                  tenantId,
+                  studentId: student.id,
+                  groupId,
+                  status: 'ACTIVE' as const,
+                  joinedAt: new Date(),
+                })),
+              )
+              .onConflictDoNothing();
+          }
+        }
+        return { student, replayed: false };
+      });
+    } catch (err) {
+      // Safety net behind the lock: the unique index refused a second row.
+      if (key && isUniqueViolation(err, 'students_tenant_idem_uniq')) {
+        const prior = await replay(this.db);
+        if (prior) return publicRow(prior);
       }
-      return student;
-    });
-    if (repeated) return student;
+      throw err;
+    }
+    // A retry gets the first student back; audit and webhook ran then.
+    if (result.replayed) return publicRow(result.student);
+    const student = publicRow(result.student);
     this.audit.log({ tenantId, userId, action: 'create', entityType: 'student', entityId: student.id, meta: { fullName: student.fullName } });
     void this.webhooks.dispatch(tenantId, 'student.created', student);
     return student;
@@ -454,4 +473,10 @@ export class StudentsService {
       );
     return { success: true };
   }
+}
+
+// The retry bookkeeping stays on the server.
+function publicRow<T extends { idempotencyKey?: string | null; requestHash?: string | null }>(row: T) {
+  const { idempotencyKey: _k, requestHash: _h, ...rest } = row;
+  return rest;
 }

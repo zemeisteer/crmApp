@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import DashboardShell from "@/components/DashboardShell";
 import TeacherAttendanceModal from "@/components/teachers/TeacherAttendanceModal";
@@ -11,7 +11,7 @@ import Select from "@/components/Select";
 import DatePicker from "@/components/DatePicker";
 import { useAuth } from "@/lib/auth-context";
 import { useLanguage } from "@/lib/i18n-context";
-import { teachersApi, groupsApi, salaryApi, Teacher, Group, ApiError } from "@/lib/api";
+import { teachersApi, groupsApi, salaryApi, retryKey, Teacher, Group, ApiError } from "@/lib/api";
 import { localMonthStr } from "@/lib/date";
 import { PHONE_PATTERN, PHONE_TITLE, NAME_PATTERN, NAME_TITLE } from "@/lib/validation";
 import { matchesSubject } from "@/lib/subject";
@@ -107,7 +107,10 @@ function TeachersContent() {
 
   useEffect(load, []);
 
+  // One key per submission of the "new teacher" form (see retryKey).
+  const createKey = useRef<{ sig: string; key: string } | null>(null);
   function resetForm() {
+    createKey.current = null;
     setFullName("");
     setSelectedDirections([]);
     setCustomDirection("");
@@ -131,7 +134,7 @@ function TeachersContent() {
         allDirs.push(customDirection.trim());
       }
       const effectiveSubject = allDirs.join(", ");
-      const teacher = await teachersApi.create({
+      const body = {
         fullName,
         email: email.trim() || undefined,
         subject: effectiveSubject || undefined,
@@ -140,10 +143,14 @@ function TeachersContent() {
         startDate: startDate || undefined,
         salaryType: salaryValue ? salaryType : undefined,
         salaryValue: salaryValue ? Number(salaryValue) : undefined,
-      });
+      };
+      // The key covers the groups too: a retry after a failed group update
+      // gets the same teacher back and assigns the groups again.
+      const teacher = await teachersApi.create(body, retryKey(createKey, { body, assignedGroupIds }));
       if (assignedGroupIds.length > 0) {
         await Promise.all(assignedGroupIds.map((groupId) => groupsApi.update(groupId, { teacherId: teacher.id })));
       }
+      createKey.current = null;
       setModalOpen(false);
       resetForm();
       load();

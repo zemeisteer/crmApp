@@ -1341,8 +1341,10 @@ export const studentsApi = {
   },
   trash: () => request<Student[]>("/students/trash"),
   get: (id: string) => request<Student>(`/students/${id}`),
-  create: (data: Partial<Student> & { groupId?: string; groupIds?: string[] }) =>
-    request<Student>("/students", { method: "POST", body: JSON.stringify(data) }),
+  // idempotencyKey: one per submission (see retryKey) - a retry of the same
+  // form returns the student made the first time.
+  create: (data: Partial<Student> & { groupId?: string; groupIds?: string[] }, idempotencyKey?: string) =>
+    request<Student>("/students", { method: "POST", body: JSON.stringify(data), headers: idempotencyKey ? { "Idempotency-Key": idempotencyKey } : undefined }),
   update: (id: string, data: Partial<Student>) =>
     request<Student>(`/students/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
   remove: (id: string) => request<void>(`/students/${id}`, { method: "DELETE" }),
@@ -1366,8 +1368,8 @@ export const teachersApi = {
   list: () => request<Teacher[]>("/teachers"),
   trash: () => request<Teacher[]>("/teachers/trash"),
   get: (id: string) => request<Teacher>(`/teachers/${id}`),
-  create: (data: Partial<Teacher>) =>
-    request<Teacher>("/teachers", { method: "POST", body: JSON.stringify(data) }),
+  create: (data: Partial<Teacher>, idempotencyKey?: string) =>
+    request<Teacher>("/teachers", { method: "POST", body: JSON.stringify(data), headers: idempotencyKey ? { "Idempotency-Key": idempotencyKey } : undefined }),
   update: (id: string, data: Partial<Teacher>) =>
     request<Teacher>(`/teachers/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
   remove: (id: string) => request<void>(`/teachers/${id}`, { method: "DELETE" }),
@@ -1398,9 +1400,11 @@ export const paymentsApi = {
     request<Payment>("/payments", { method: "POST", body: JSON.stringify(idempotencyKey ? { ...data, idempotencyKey } : data) }),
 };
 
-// The key for a payment form: the same while the same contents are being
-// sent again, a new one as soon as anything in the form changes. Keep
-// `holder` in a ref and clear it after a successful save.
+// The key for a create form (payment, student, teacher): the same while the
+// same contents are being sent again - a double click, or a retry after the
+// reply was lost - and a new one as soon as anything in the form changes.
+// Keep `holder` in a ref; clear it after a successful save and when the
+// form is reset for a new record.
 export function retryKey(holder: { current: { sig: string; key: string } | null }, payload: unknown): string {
   const sig = JSON.stringify(payload);
   if (holder.current?.sig !== sig) {

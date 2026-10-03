@@ -1,28 +1,27 @@
 # TalimCRM — Staging va pilot tayyorligi hisoboti
 
-- **Asos commit (push qilingan):** `59d857e12f77fdb901ac4ccfbe515d6f2f031b3a` (`dev`).
-- **Shu commit uchun CI:** GitHub Actions `36995711222` — yashil: backend 245 unit / 186 E2E / 34 migratsiya, frontend tekshiruvlari va build, Docker image smoke test.
-- **Shu hisobotdagi yangi ish:** asos commit ustidagi **lokal, commit qilinmagan** o'zgarishlar (9-bo'lim). Ular uchun CI **hali yurmagan** — push qilinmagan.
-- **Sana:** 2026-10-02.
-
-Har bir natija qaysi manbadan ekanligi ko'rsatilgan:
+- **Oxirgi tekshirilgan commit:** `4828f4d7df68d01cbfd5d5d92f64d5468fdf58c8` (`dev`, push qilingan).
+- **Shu commit uchun CI:** GitHub Actions `37116211070` — natijalar foydalanuvchi tomonidan tekshirilgan (log'larni o'qish uchun GitHub autentifikatsiyasi kerak; bu yerdan faqat ishlar ro'yxati va holati ko'rindi):
+  - backend: 245 unit, 189 E2E — **o'tdi**; frontend tekshiruvlari — **o'tdi**; `ops-scripts` — **o'tdi**; production image smoke test — **SMOKE OK**;
+  - `recovery` — **YIQILDI** 1/7-qadamda ("unexpected certbot output"). Zaxira olish va tiklash qadamlariga yetib bormagan: **konteynerda tiklash tasdiqlanmagan**.
+- **Shu hisobotning yangi ishi:** `4828f4d` ustidagi **lokal, commit qilinmagan** o'zgarishlar (10-bo'lim). Ular uchun CI **yurmagan** (push qilinmagan). Lokal natijalar `4828f4d` ga emas, shu ishchi daraxtga tegishli.
+- **Sana:** 2026-10-03.
 
 | Belgi | Ma'nosi |
 |---|---|
-| **CI** | `59d857e` uchun GitHub Actions natijasi (yangi o'zgarishlarni qamramaydi) |
-| **Lokal-API** | shu kompyuterda, bir martalik bazada, API orqali yoki skript testlari bilan |
-| **Lokal-brauzer** | shu kompyuterda, haqiqiy brauzerda (`localhost` va `*.localhost` subdomenlari, `next dev`) |
+| **CI 4828f4d** | `37116211070` natijasi (yangi lokal o'zgarishlarni qamramaydi) |
+| **Lokal** | shu kompyuterda (Windows 11, Docker yo'q), bir martalik bazalarda: skript, API va brauzer testlari |
 | **Staging** | haqiqiy staging domeni va HTTPS — **mavjud emas, birorta tekshiruv yuritilmagan** |
 | **Sandbox** | provayderning rasmiy test muhiti (Telegram, Click, Payme) — **yuritilmagan** |
 
 ## 1. Xulosa
 
-**Hukm: integratsiyalar o'chirilgan holda cheklangan pilotga tayyor — ikki shart bilan** (7-bo'lim):
+**Hukm: pilotga tayyorgarlik davom etmoqda.**
 
-1. lokal o'zgarishlar push qilinib, CI yashil bo'lishi kerak (ayniqsa yangi `recovery` ishi: konteynerda zaxira → tiklash → ilova tekshiruvi hali **bir marta ham yurmagan**);
-2. pilot serverida HTTPS, zaxira va tiklash mashqi haqiqatda bir marta o'tkazilishi kerak.
+- Konteynerda zaxira → tiklash mashqi (`recovery`) hali **bir marta ham to'liq o'tmagan**: CI'da 1-qadamda yiqilgan, tuzatish lokal, Docker'siz yurgizib bo'lmadi (10.1).
+- O'quvchi/o'qituvchi yaratishdagi takroriy yuborish himoyasi qayta yozildi va lokal testlardan o'tdi (10.2), lekin CI'da hali tekshirilmagan.
 
-Telegram, SMS, Click va Payme tekshirilmagan — pilot ularsiz (kassa to'lovlari, qo'lda xabar) boshlanadi.
+Cheklangan pilot uchun shartlar: (1) push qilib, `recovery` ishi 7/7 qadam bilan yashil bo'lishi; (2) haqiqiy staging/pilot domenida HTTPS tekshiruvi; (3) zaxiraning serverdan tashqaridagi nusxasi sozlanib, undan tiklash sinalishi; (4) Telegram, SMS, Click, Payme o'chiq turadi (sandbox'da sinalmagan); (5) brauzer testlari faqat lokal infratuzilmada yurgan, haqiqiy domenda emas.
 
 ## 2. Ishlatilgan muhit
 
@@ -54,7 +53,7 @@ Bu **staging emas**: nginx, HTTPS, wildcard sertifikat va konteynerlar qatnashma
 | Yagona zaxira dasturi (`backup-core.sh`): `pg_dump` darhol yiqilishi, yarim yozib yiqilishi, kesilgan dump, bo'sh dump, buzuq gzip, disk to'lishi, fayl arxivi xatosi, tiklash tekshiruvi xatosi, oldingi zaxira saqlanishi, muvaffaqiyatdan keyin tozalash, minimal saqlash soni, boshqa stack to'plamlari, ustma-ust yurish/eskirgan qulf, healthcheck | Lokal-API (soxta pg vositalari) | **137/137** |
 | `init-ssl.sh` ketma-ketligi va xatolari, `backup.sh` buyrug'i, `restore.sh` faqat o'zi yaratgan bazani o'chirishi, buzilgan to'plam | Lokal-API (soxta Docker) | **63/63** |
 | Haqiqiy PostgreSQL bilan: zaxira → alohida bazaga tiklash → ilovani tiklangan nusxada ishga tushirish → login/rollar, yozuvlar, balans, fayl sha256 | Lokal-API (konteynersiz) | zaxira 7–10 s (dump ~20 KB), tiklash 3 s, jami 13–17 s; manba va nusxa barmoq izlari bir xil; ilova tekshiruvi 7/7 |
-| **Konteynerda to'liq mashq** (`restore-rehearsal.sh`): production compose, alohida baza serveri va alohida fayl volume'i, TLS/nginx tekshiruvi | — | **yuritilmagan** (Docker yo'q). Faqat sintaksis (`bash -n`). CI `recovery` ishi tayyor, push'dan keyin birinchi marta yuradi |
+| **Konteynerda to'liq mashq** (`restore-rehearsal.sh`): production compose, alohida baza serveri va alohida fayl volume'i, TLS/nginx tekshiruvi | CI 4828f4d | **YIQILDI** 1/7-qadamda (certbot matn tekshiruvi noto'g'ri edi; 10.1). Keyingi qadamlar yurmagan |
 | Yangi `db-backup` va `certbot` servis ta'riflarining haqiqiy Compose'da ishlashi | — | **yuritilmagan** |
 | Birinchi sertifikat va yangilanish haqiqiy Let's Encrypt bilan | Staging | **bloklangan** (domen yo'q) |
 | Zaxirani serverdan tashqariga ko'chirish | — | hujjatlashtirildi (to'ldiriladigan joylar bilan); **sozlanmagan va tekshirilmagan** |
@@ -147,7 +146,7 @@ Lokal soxta callback'lar provayder isboti emas. Tayyor: `set-telegram-webhook.sh
 ## 7. To'siqlar (ta'siri bo'yicha)
 
 **Pilotni boshlashdan oldin shart:**
-1. Lokal o'zgarishlar push qilinmagan → yangi CI ishlari (`ops-scripts`, `recovery`) yurmagan. Konteynerdagi zaxira/tiklash va yangi `db-backup`/`certbot` ta'riflari **birinchi marta CI'da sinaladi**; yiqilsa tuzatish kerak bo'ladi.
+1. Konteynerda zaxira/tiklash mashqi CI'da 1/7-qadamda yiqilgan (`4828f4d`); tuzatish (10.1) lokal va push qilinmagan, Docker'siz yurgizilmagan. 7/7 qadam yashil bo'lmaguncha tiklash tasdiqlanmagan.
 2. Server va domen yo'q: HTTPS, nginx, wildcard sertifikat, haqiqiy subdomenlar tekshirilmagan.
 3. Zaxiraning serverdan tashqaridagi nusxasi sozlanmagan (manzil va kalit berilmagan).
 
@@ -188,7 +187,7 @@ Lokal soxta callback'lar provayder isboti emas. Tayyor: `set-telegram-webhook.sh
 - [ ] Tiklash mashqi shu serverda bir marta o'tkazilgan (`restore.sh`).
 - [ ] Muammo bo'lsa kimga murojaat qilinadi; `RUNBOOK.md` qayerda.
 
-## 9. Lokal o'zgarishlar (commit va push qilinmagan)
+## 9. `4828f4d` ga kirgan o'zgarishlar (avval lokal bo'lgan)
 
 | Soha | Fayllar |
 |---|---|
@@ -200,8 +199,67 @@ Lokal soxta callback'lar provayder isboti emas. Tayyor: `set-telegram-webhook.sh
 | Frontend | `lib/api.ts`, `lib/auth-context.tsx`, `lib/i18n.ts`, `app/login/page.tsx`, `app/groups/page.tsx`, `app/leads/[id]/page.tsx`, `components/DashboardShell.tsx`, `Sidebar.tsx` (markaz almashtirgich), `Modal.tsx`, `MultiSelect.tsx`, `portal/PortalTabs.tsx`, 7 ta `Field` va 42 ta xato bloki (bir nechta sahifa) |
 | Hujjatlar | `docs/STAGING.md`, `docs/DEPLOYMENT_GUIDE.md`, `RUNBOOK.md`, `.env.*.example`, shu hisobot |
 
-**Shu o'zgarishlar bilan lokal yuritilgan tekshiruvlar:** backend build va lint; unit **245/245**; E2E **189/189** (33 fayl, bir martalik `_e2e` bazada); frontend `tsc` xatosiz, lint 0 xato (106 ogohlantirish), production build muvaffaqiyatli; skript testlari 69 + 10 + 137 + 63.
+**O'shanda lokal yuritilgan tekshiruvlar** (keyin CI `37116211070` da tasdiqlandi, `recovery` dan tashqari): backend build va lint; unit **245/245**; E2E **189/189** (33 fayl, bir martalik `_e2e` bazada); frontend `tsc` xatosiz, lint 0 xato (106 ogohlantirish), production build muvaffaqiyatli; skript testlari 69 + 10 + 137 + 63.
 
-**Yuritilmagan:** shu o'zgarishlar uchun CI; Docker bilan bog'liq hamma narsa; staging; provayder sandbox'lari.
+**Yuritilmagan:** konteynerda tiklash (CI'da yiqildi); staging; provayder sandbox'lari.
 
-**Ruxsat kutayotgan amallar:** (1) `dev` ga push; (2) staging/pilot serverini tayyorlash (`bootstrap-server.sh`, `init-ssl.sh`, `stack.sh up -d --build`); (3) staging botiga webhook; (4) tasdiqlangan sinov chatiga xabar; (5) tashqi zaxira manzili.
+**Ruxsat kutayotgan amallar:** (1) 10-bo'lim o'zgarishlarini `dev` ga push; (2) staging/pilot serverini tayyorlash (`bootstrap-server.sh`, `init-ssl.sh`, `stack.sh up -d --build`); (3) staging botiga webhook; (4) tasdiqlangan sinov chatiga xabar; (5) tashqi zaxira manzili.
+
+## 10. `4828f4d` dan keyingi ish (lokal, commit qilinmagan)
+
+### 10.1. Konteynerda tiklash mashqi (`restore-rehearsal.sh`)
+
+**Ildiz sababi.** 1-qadam `certbot certificates` chiqishida "certbot" so'zini qidirardi. Certbot sertifikat yozuvi bo'lmaganda faqat "Saving debug log to /var/log/letsencrypt/letsencrypt.log" va "No certificates found." deb yozadi — "certbot" so'zi yo'q. Mashqdagi sertifikat esa certbot chiqarmagan, volume'ga nusxalangan o'z-o'zidan imzolangan sertifikat; certbot'da uning yozuvi bo'lmaydi. Buyruq muvaffaqiyatli bo'lgan, tekshiruv noto'g'ri edi. (Bu Certbot'ning chiqish matniga asoslangan tahlil: CI log'i bu yerdan o'qilmadi — GitHub autentifikatsiyasi yo'q, Docker ham yo'q, shuning uchun image bilan qayta takrorlanmadi.)
+
+**Tuzatish.**
+- `certbot --version` → oxirgi qator `certbot X.Y` bo'lishi shart (renewal sikli yoki shell javob bersa yiqiladi); image nomi va digest chiqariladi.
+- `certbot certificates` → muvaffaqiyatli tugashi va "No certificates found" deyishi shart (nusxalangan sertifikatda certbot yozuvi bo'lmasligi kutiladi).
+- Har ikki buyruq va `up --wait` vaqt bilan cheklangan (180 s / 600 s), CI ishi 45 daqiqa.
+- Har yurish o'z nomlarida (`talimcrm_rehearsal_<run>_src/_dst`, bazalar ham) va bo'sh portlarda; tozalash faqat shu yurishning loyihalarini o'chiradi.
+- Xatoda: qadam nomi, buyruqning chiqish kodi, yurmagan tekshiruvlar ro'yxati, konteyner holati va log'lar — shu yurishning sirlari va sintetik parol `<redacted>` bilan almashtirilgan. CI'da shu matn artifact sifatida saqlanadi (env fayl, dump, token yo'q).
+
+**Tekshirildi (Lokal):** `rehearsal.test.sh` — soxta `docker` bilan 17/17: haqiqiy certbot javoblari qabul qilinadi, renewal sikli va shell aniqlanadi, xato hisobotida sir yo'q, yurmagan qadamlar sanaladi. `bash -n` toza. CI `ops-scripts` ishiga qo'shildi.
+
+**Tekshirilmadi:** 7 qadamning birortasi haqiqiy konteynerlarda yurmadi (Docker yo'q). Keyingi qadamlar kod bo'yicha ko'rib chiqildi (healthcheck kutishi, alohida baza serveri va uploads volume, restore nomi, uploads arxiv tuzilishi), lekin yurmagani uchun ular ham **tasdiqlanmagan**. Zaxira hajmi va vaqtlari bu bosqichda o'lchanmadi; avvalgi Docker'siz o'lchovlar (4-bo'lim) production RTO/RPO emas.
+
+### 10.2. O'quvchi va o'qituvchi yaratish: aniq idempotentlik kaliti
+
+**Muammo.** 10 soniyalik "o'xshash yozuv" qoidasi guruhlar, filial, tug'ilgan sana va boshqa maydonlarni solishtirmasdi va ikkinchi so'rovning guruhlarini jimgina tashlab yuborardi; o'qituvchida qulf kaliti email bilan, qidiruv esa emailsiz edi; bo'sh telefon `""` saqlanib, `IS NULL` qidiruvi uni topmasdi.
+
+**Yechim** (to'lovlardagi usul): forma `Idempotency-Key` sarlavhasini yuboradi; kalit va normallashtirilgan so'rov xeshi yaratilgan yozuvning o'zida saqlanadi (`students`/`teachers`, markaz bo'yicha noyob indeks).
+- bir xil kalit + bir xil so'rov → birinchi yozuv qaytadi; guruhga yozish, audit va webhook qayta bajarilmaydi;
+- bir xil kalit + boshqa so'rov → **409**;
+- yangi kalit → yangi yozuv (bir xil ism yoki telefon birlashtirilmaydi — bu biznes qoidasi emas);
+- kalitsiz so'rov (eski mijozlar, skriptlar) → oddiy yaratish;
+- kalit transaksiya ichida qulflanadi; transaksiya yiqilsa kalit ham saqlanmaydi;
+- normallashtirish: satrlar `trim`; bo'sh satr, `null` va yo'q maydon bir xil; guruhlar to'plam sifatida (tartib va takror ahamiyatsiz); saqlashda bo'sh telefon/email `null`.
+- Frontend: kalit forma mazmuni o'zgarmaguncha bir xil (ikki marta bosish, javob yo'qolgandan keyingi qayta yuborish), muvaffaqiyatdan yoki forma tozalangandan keyin yangilanadi.
+
+**Migratsiya:** `0034_create_idempotency.sql` — `students` va `teachers` ga ikki ustun va noyob indeks (`IF NOT EXISTS`, qayta qo'llansa xatosiz). Tekshirildi: yangi baza; 0033 dagi mavjud yozuvli bazani yangilash (eski qatorlar o'zgarmadi, qayta yurish "up to date"); `db:verify-migrations` 49/49; `drizzle-kit generate` — o'zgarish yo'q; drift yo'q. Lokal dev bazaga ham qo'llandi (faqat qo'shimcha).
+
+**Testlar (Lokal):** `double-submit.e2e-spec.ts` 9/9 — bir kalit bilan bir vaqtdagi o'quvchi va o'qituvchi so'rovlari (bitta yozuv, bitta guruh yozuvi, bitta audit, bitta webhook); guruh, filial, tug'ilgan sana, ota-ona telefoni, izoh, email, fan, maosh o'zgarsa 409; normallashtirish; yangi kalit = yangi yozuv; markazlar va operatsiyalar bo'yicha ajratish; javob yo'qolgandan keyingi qayta yuborish; yiqilgan transaksiyadan keyin qayta yuborish; noto'g'ri kalit 400. Normallashtirish unit testi 6/6.
+
+### 10.3. Avtomatik brauzer testlari (`e2e-browser/`, Playwright 1.63)
+
+Backend va frontendning **production build**'lari (`node dist/main.js`, `next start`), bir martalik `_browser_e2e` baza; backend faqat `http://*.localhost` CORS qoidalari uchun `NODE_ENV=development`. Tashqi xizmatlar o'chiq. Lokal: o'rnatilgan Chrome (`PW_CHANNEL=chrome`); CI: yuklab olinadigan Chromium.
+
+| Oqim | Natija (Lokal) |
+|---|---|
+| Asosiy saytda login → markaz subdomeni → yangilash; asosiy saytda sessiya qolmaydi | o'tdi |
+| Ikki markaz, ikki rol, menyudan almashtirish; o'qituvchiga to'lovlar yopiq | o'tdi |
+| Chiqish → himoyalangan sahifa rad etiladi, tokenlar o'chgan | o'tdi |
+| Brauzer ochiq turganda xodim o'chiriladi → keyingi so'rov login'ga | o'tdi |
+| To'lov: ikki marta bosish va javob yo'qolgandan keyin qayta yuborish → 2 ta to'lov (150 000 va 100 000), ortig'i yo'q | o'tdi |
+| Yangi o'quvchi: javob yo'qolgandan keyin qayta yuborish → bitta o'quvchi, telefon saqlangan | o'tdi |
+
+6/6, ~4,5 daqiqa (asosan backend ishga tushishi). CI'ga `browser` ishi qo'shildi (30 daqiqa chegarasi, xatoda faqat skrinshotlar; trace yozilmaydi — u tokenlarni saqlaydi). **CI'da hali yurmagan.** Bular haqiqiy staging domenida emas.
+
+### 10.4. Shu ishchi daraxtda yuritilgan tekshiruvlar
+
+- Backend: unit 245/245 + 6/6 (yangi), lint xatosiz, `tsc` xatosiz, build; E2E **196/196** (33 fayl).
+- Migratsiyalar: `--check`, `db:verify-migrations` 49/49, yangilash sinovi, drift yo'q, `drizzle-kit generate` bo'sh.
+- Frontend: `tsc` xatosiz, lint 0 xato, brauzer testlari uchun production build.
+- Skriptlar: `rehearsal.test.sh` 17/17, `tooling.test.sh`, `backup-core.test.sh` — o'tdi.
+- Brauzer: 6/6.
+
+**Yuritilmagan:** `restore-rehearsal.sh` (Docker yo'q); yangi CI ishlari (push qilinmagan); staging; sandbox.

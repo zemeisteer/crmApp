@@ -9,7 +9,7 @@ import PlacementTestModal from "@/components/students/PlacementTestModal";
 import Pagination, { usePagedSlice } from "@/components/Pagination";
 import Select from "@/components/Select";
 import DatePicker from "@/components/DatePicker";
-import { studentsApi, groupsApi, exportApi, reportsApi, Student, Group, Gender, ApiError } from "@/lib/api";
+import { studentsApi, groupsApi, exportApi, reportsApi, retryKey, Student, Group, Gender, ApiError } from "@/lib/api";
 import { PHONE_PATTERN, PHONE_TITLE, NAME_PATTERN, NAME_TITLE } from "@/lib/validation";
 import { useLanguage } from "@/lib/i18n-context";
 import { matchesSubject, extractUniqueSubjects } from "@/lib/subject";
@@ -32,6 +32,8 @@ function StudentsContent() {
   const [page, setPage] = useState(1);
   const [importMsg, setImportMsg] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // One key per submission of the "new student" form (see retryKey).
+  const createKey = useRef<{ sig: string; key: string } | null>(null);
 
   const [fullName, setFullName] = useState("");
   const [gender, setGender] = useState<Gender | "">("");
@@ -91,6 +93,7 @@ function StudentsContent() {
     setBirthDate("");
     setGroupIds([]);
     setError(null);
+    createKey.current = null;
   }
 
   async function onSubmit(e: React.FormEvent) {
@@ -100,14 +103,16 @@ function StudentsContent() {
     try {
       const cleanPhone = phone.replace(/\D/g, "").length >= 9 ? phone : undefined;
       const cleanParentPhone = parentPhone.replace(/\D/g, "").length >= 9 ? parentPhone : undefined;
-      await studentsApi.create({
+      const body = {
         fullName: fullName.trim(),
         gender: gender || undefined,
         phone: cleanPhone,
         parentPhone: cleanParentPhone,
         birthDate: birthDate || undefined,
         groupIds: groupIds.length > 0 ? groupIds : undefined,
-      });
+      };
+      await studentsApi.create(body, retryKey(createKey, body));
+      createKey.current = null;
       setModalOpen(false);
       resetForm();
       load();

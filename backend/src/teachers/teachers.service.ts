@@ -1,11 +1,12 @@
 import { BadRequestException, ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { and, eq, gte, isNotNull, isNull } from 'drizzle-orm';
+import { and, eq, isNotNull, isNull } from 'drizzle-orm';
 import { DB, Database } from '../db/db.module';
 import { organizationMemberships, teachers, users } from '../db/schema';
 import { StaffService } from '../staff/staff.service';
 import { CreateTeacherDto, TeacherAccountDto, UpdateTeacherDto } from './dto/teacher.dto';
 import { AuditService } from '../audit/audit.service';
-import { doubleSubmitSince, lockIdenticalCreate } from '../common/double-submit';
+import { blankToNull, idempotencyKey, lockIdempotencyKey, requestHash } from '../common/create-idempotency';
+import { isUniqueViolation } from '../common/db-errors';
 
 @Injectable()
 export class TeachersService {
@@ -90,34 +91,57 @@ export class TeachersService {
     return this.findOne(tenantId, id);
   }
 
-  async create(tenantId: string, userId: string, dto: CreateTeacherDto) {
+  async create(tenantId: string, userId: string, dto: CreateTeacherDto, rawKey?: string) {
     if (dto.userId) await this.assertMember(tenantId, dto.userId);
-    // The same form sent twice (double click, a retry after a lost reply)
-    // makes one teacher: the second request gets the first one's row.
-    const { teacher, repeated } = await this.db.transaction(async (tx) => {
-      await lockIdenticalCreate(tx, `teacher:${tenantId}:${dto.fullName}:${dto.phone ?? ''}:${dto.email ?? ''}`);
-      const twin = await tx.query.teachers.findFirst({
-        where: and(
-          eq(teachers.tenantId, tenantId),
-          eq(teachers.fullName, dto.fullName),
-          dto.phone ? eq(teachers.phone, dto.phone) : isNull(teachers.phone),
-          isNull(teachers.deletedAt),
-          gte(teachers.createdAt, doubleSubmitSince()),
-        ),
+    // Retry protection (see common/create-idempotency): the same key with
+    // the same form returns the teacher made the first time; the same key
+    // with a different form is a conflict.
+    const key = idempotencyKey(rawKey);
+    const hash = key ? requestHash('teacher.create', dto) : null;
+    const replay = async (db: Pick<Database, 'select'>) => {
+      if (!key) return null;
+      const [prior] = await db
+        .select()
+        .from(teachers)
+        .where(and(eq(teachers.tenantId, tenantId), eq(teachers.idempotencyKey, key)));
+      if (!prior) return null;
+      if (prior.requestHash !== hash) throw new ConflictException("Bu Idempotency-Key boshqa ma'lumotli o'qituvchi uchun ishlatilgan");
+      return prior;
+    };
+    let result: { teacher: typeof teachers.$inferSelect; replayed: boolean };
+    try {
+      result = await this.db.transaction(async (tx) => {
+        if (key) {
+          await lockIdempotencyKey(tx, 'teacher.create', tenantId, key);
+          const prior = await replay(tx);
+          if (prior) return { teacher: prior, replayed: true };
+        }
+        const [created] = await tx
+          .insert(teachers)
+          .values({
+            tenantId,
+            ...dto,
+            fullName: dto.fullName.trim(),
+            phone: blankToNull(dto.phone),
+            email: blankToNull(dto.email),
+            subject: blankToNull(dto.subject),
+            birthDate: dto.birthDate ? new Date(dto.birthDate) : undefined,
+            startDate: dto.startDate ? new Date(dto.startDate) : undefined,
+            idempotencyKey: key,
+            requestHash: hash,
+          })
+          .returning();
+        return { teacher: created, replayed: false };
       });
-      if (twin) return { teacher: twin, repeated: true };
-      const [created] = await tx
-        .insert(teachers)
-        .values({
-          tenantId,
-          ...dto,
-          birthDate: dto.birthDate ? new Date(dto.birthDate) : undefined,
-          startDate: dto.startDate ? new Date(dto.startDate) : undefined,
-        })
-        .returning();
-      return { teacher: created, repeated: false };
-    });
-    if (repeated) return teacher;
+    } catch (err) {
+      if (key && isUniqueViolation(err, 'teachers_tenant_idem_uniq')) {
+        const prior = await replay(this.db);
+        if (prior) return publicRow(prior);
+      }
+      throw err;
+    }
+    const teacher = publicRow(result.teacher);
+    if (result.replayed) return teacher;
     this.audit.log({ tenantId, userId, action: 'create', entityType: 'teacher', entityId: teacher.id, meta: { fullName: teacher.fullName } });
     return teacher;
   }
@@ -159,4 +183,10 @@ export class TeachersService {
     this.audit.log({ tenantId, userId, action: 'restore', entityType: 'teacher', entityId: id });
     return teacher;
   }
+}
+
+// The retry bookkeeping stays on the server.
+function publicRow<T extends { idempotencyKey?: string | null; requestHash?: string | null }>(row: T) {
+  const { idempotencyKey: _k, requestHash: _h, ...rest } = row;
+  return rest;
 }

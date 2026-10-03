@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import DashboardShell from "@/components/DashboardShell";
@@ -11,7 +11,7 @@ import GroupExamResults from "@/components/groups/GroupExamResults";
 import GroupInfoCard from "@/components/groups/GroupInfoCard";
 import GroupAttendanceHistory from "@/components/groups/GroupAttendanceHistory";
 import GroupTutorReport from "@/components/groups/GroupTutorReport";
-import { groupsApi, studentsApi, paymentsApi, attendanceApi, Group, Student, Gender, Payment, AttendanceRecord, AttendanceStatus, ApiError } from "@/lib/api";
+import { groupsApi, studentsApi, paymentsApi, attendanceApi, Group, Student, Gender, Payment, AttendanceRecord, AttendanceStatus, ApiError, retryKey } from "@/lib/api";
 import { PHONE_PATTERN, PHONE_TITLE, NAME_PATTERN, NAME_TITLE, phoneOrEmpty } from "@/lib/validation";
 import { localDateStr, localMonthStr } from "@/lib/date";
 import { useLanguage } from "@/lib/i18n-context";
@@ -81,7 +81,10 @@ function GroupDetailContent() {
   const [enrollError, setEnrollError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
+  // One key per submission of the "new student" form (see retryKey).
+  const createKey = useRef<{ sig: string; key: string } | null>(null);
   function resetEnrollForm() {
+    createKey.current = null;
     setEnrollStudentId("");
     setNewFullName("");
     setNewGender("");
@@ -206,14 +209,16 @@ function GroupDetailContent() {
           setSaving(false);
           return;
         }
-        await studentsApi.create({
+        const body = {
           fullName: newFullName.trim(),
           gender: newGender ? (newGender as Gender) : null,
           phone: newPhone.trim() || undefined,
           parentPhone: phoneOrEmpty(newParentPhone) || undefined,
           birthDate: newBirthDate || undefined,
           groupId: id,
-        });
+        };
+        await studentsApi.create(body, retryKey(createKey, body));
+        createKey.current = null;
       }
       setEnrollOpen(false);
       resetEnrollForm();
