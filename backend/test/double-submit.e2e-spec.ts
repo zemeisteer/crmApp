@@ -55,7 +55,7 @@ describe('Idempotent student and teacher creation (e2e)', () => {
     await new Promise((r) => setTimeout(r, 300));
     return (await db.select().from(auditLogs).where(and(eq(auditLogs.entityId, entityId), eq(auditLogs.action, 'create')))).length;
   };
-  const webhookCalls = (id: string) => dispatch.mock.calls.filter((c) => c[1] === 'student.created' && (c[2] as { id: string }).id === id).length;
+  const webhookCalls = (id: string) => dispatch.mock.calls.filter((c: unknown[]) => c[1] === 'student.created' && (c[2] as { id: string }).id === id).length;
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({ imports: [AppModule] }).compile();
