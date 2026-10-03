@@ -4,7 +4,7 @@ import { ExtractJwt, Strategy } from 'passport-jwt';
 import { ConfigService } from '@nestjs/config';
 import { and, eq } from 'drizzle-orm';
 import { DB, Database } from '../db/db.module';
-import { organizationMemberships, users } from '../db/schema';
+import { organizationMemberships, sessions, users } from '../db/schema';
 
 export interface JwtPayload {
   sub: string; // userId
@@ -12,6 +12,8 @@ export interface JwtPayload {
   role: 'SUPERADMIN' | 'OWNER' | 'ADMIN' | 'MANAGER' | 'RECEPTIONIST' | 'TEACHER' | 'ACCOUNTANT' | 'STUDENT' | 'PARENT';
   tenantId: string | null;
   permissions?: string[] | null;
+  /** The session this token belongs to (see AuthService.signAccessToken). */
+  sid?: string;
 }
 
 @Injectable()
@@ -44,6 +46,16 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       columns: { id: true, role: true },
     });
     if (!user) throw new UnauthorizedException();
+    // The token lives only as long as its session: after logout, a revoked
+    // session or removal from the center it is refused, whatever its expiry.
+    // A token without a session id (issued before this check) is refused
+    // too; the client's refresh token then gets a new one silently.
+    if (!payload.sid) throw new UnauthorizedException();
+    const [session] = await this.db
+      .select({ id: sessions.id })
+      .from(sessions)
+      .where(and(eq(sessions.id, payload.sid), eq(sessions.userId, user.id)));
+    if (!session) throw new UnauthorizedException();
     if (user.role === 'SUPERADMIN') return { ...payload, role: 'SUPERADMIN' as const };
     if (payload.role === 'SUPERADMIN') throw new UnauthorizedException();
     if (!payload.tenantId) return payload; // no workspace: nothing tenant-scoped can be read with it

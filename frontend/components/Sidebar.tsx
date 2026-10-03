@@ -1,13 +1,13 @@
 "use client";
 
-import { useLayoutEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
-import { fileUrl } from "@/lib/api";
+import { authApi, fileUrl } from "@/lib/api";
 import { useLanguage } from "@/lib/i18n-context";
 import type { TranslationKey } from "@/lib/i18n";
-import type { Role } from "@/lib/api";
+import type { Role, WorkspaceItem } from "@/lib/api";
 import { centerHost } from "@/lib/domain";
 
 const ACCENT = "#4F46E5";
@@ -234,11 +234,78 @@ const SUPERADMIN_ITEM = {
   ),
 };
 
+// The platform superadmin outside any center: only what runs the platform.
+// (Inside a center opened with "Ochish" the center's own menu is shown.)
+const PLATFORM_ITEMS = [
+  {
+    href: "/admin",
+    labelKey: "nav.centers" as TranslationKey,
+    icon: SUPERADMIN_ITEM.icon,
+  },
+  {
+    href: "/pricing",
+    labelKey: "nav.pricing" as TranslationKey,
+    icon: (
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8Z" />
+        <circle cx="7.5" cy="7.5" r="1.5" />
+      </svg>
+    ),
+  },
+];
+
+/** True for the superadmin while no center is opened. */
+export function isPlatformMode(role?: Role, hasCenter?: boolean) {
+  return role === "SUPERADMIN" && !hasCenter;
+}
+
+/**
+ * Whether this role may open a back-office page: the same rule that decides
+ * which menu items are shown, so a page hidden from the menu is not shown
+ * through its address either. Pages that are not in the menu stay open (the
+ * server still decides what data they get).
+ */
+export function canOpenPath(pathname: string, role?: Role, hasCenter = true) {
+  const under = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
+  if (isPlatformMode(role, hasCenter)) return PLATFORM_ITEMS.some((i) => under(i.href));
+  if (under(SUPERADMIN_ITEM.href)) return role === "SUPERADMIN";
+  const item = NAV_ITEMS.find((i) => under(i.href));
+  return item ? canSee(item, role) : true;
+}
+
 const NAV_SCROLL_KEY = "sidebar-scroll";
 
 export default function Sidebar({ open, onClose }: { open?: boolean; onClose?: () => void }) {
   const pathname = usePathname();
-  const { user, tenant, logout } = useAuth();
+  const { user, tenant, logout, selectWorkspace } = useAuth();
+  // Other centers this person works in: switching moves the session there
+  // (no second login). Empty for most people, so nothing is shown.
+  const [otherCenters, setOtherCenters] = useState<WorkspaceItem[]>([]);
+  const [switching, setSwitching] = useState<string | null>(null);
+  const userId = user?.id;
+  const isSuperadmin = user?.role === "SUPERADMIN";
+  const tenantId = tenant?.id;
+  useEffect(() => {
+    if (!userId || isSuperadmin || !tenantId) return;
+    let alive = true;
+    authApi
+      .workspaces()
+      .then((list) => {
+        if (alive) setOtherCenters(list.filter((w) => w.tenantId !== tenantId));
+      })
+      .catch(() => undefined);
+    return () => {
+      alive = false;
+    };
+  }, [userId, isSuperadmin, tenantId]);
+  async function switchTo(id: string) {
+    setSwitching(id);
+    try {
+      await selectWorkspace(id);
+    } catch {
+      setSwitching(null);
+    }
+  }
   // Every page mounts its own shell, so the menu would jump back to the top
   // on each click. Keep its scroll position across pages, and make sure the
   // chosen item is in view.
@@ -322,7 +389,17 @@ export default function Sidebar({ open, onClose }: { open?: boolean; onClose?: (
           marginBottom: 10,
         }}
       >
-        {NAV_ITEMS.filter((item) => canSee(item, user?.role)).map((item) => {
+        {isPlatformMode(user?.role, !!tenant) && PLATFORM_ITEMS.map((item) => {
+          const active = pathname === item.href || pathname.startsWith(item.href + "/");
+          return (
+            <Link key={item.href} href={item.href} data-active={active} className="nav-item" style={active ? { background: ACCENT, color: "#fff" } : { color: "#C7C9D1" }}>
+              {item.icon}
+              {t(item.labelKey)}
+            </Link>
+          );
+        })}
+
+        {!isPlatformMode(user?.role, !!tenant) && NAV_ITEMS.filter((item) => canSee(item, user?.role)).map((item) => {
           const active = pathname === item.href || pathname.startsWith(item.href + "/");
           return (
             <Link
@@ -354,7 +431,7 @@ export default function Sidebar({ open, onClose }: { open?: boolean; onClose?: (
           );
         })}
 
-        {user?.role === "SUPERADMIN" && (
+        {user?.role === "SUPERADMIN" && tenant && (
           <Link
             href={SUPERADMIN_ITEM.href}
             className="nav-item"
@@ -386,6 +463,28 @@ export default function Sidebar({ open, onClose }: { open?: boolean; onClose?: (
           </button>
         ))}
       </div>
+
+      {otherCenters.length > 0 && (
+        <div role="group" aria-label={t("nav.otherCenters")} style={{ marginBottom: 6 }}>
+          <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "#71737C", padding: "0 8px 4px" }}>{t("nav.otherCenters")}</div>
+          <div style={{ maxHeight: 96, overflowY: "auto" }}>
+            {otherCenters.map((w) => (
+              <button
+                key={w.tenantId}
+                type="button"
+                onClick={() => switchTo(w.tenantId)}
+                disabled={switching !== null}
+                className="nav-item btn"
+                title={centerHost(w.subdomain)}
+                style={{ color: "#C7C9D1", background: "transparent", width: "100%", textAlign: "left", fontSize: 12.5, opacity: switching && switching !== w.tenantId ? 0.5 : 1 }}
+              >
+                <span aria-hidden="true">⇄</span>
+                <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{switching === w.tenantId ? t("common.loading") : w.name}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       <button
         onClick={logout}

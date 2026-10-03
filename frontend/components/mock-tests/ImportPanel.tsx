@@ -88,7 +88,7 @@ export default function ImportPanel({ onClose, onOpenTest }: { onClose: () => vo
                 <div style={{ fontSize: 12, color: "#6B6E78" }}>{t("mimp.summary").replace("{p}", String(pdfs.length)).replace("{a}", String(audios.length))}</div>
               </div>
             )}
-            {error && <div style={{ background: "#FDEBEC", color: "#B23A47", padding: "9px 12px", borderRadius: 10, fontSize: 13 }}>{error}</div>}
+            {error && <div role="alert" style={{ background: "#FDEBEC", color: "#B23A47", padding: "9px 12px", borderRadius: 10, fontSize: 13 }}>{error}</div>}
             {upload !== null && (
               <div>
                 <div style={{ fontSize: 12.5, marginBottom: 4 }}>{t("mimp.uploading")} {upload}%</div>

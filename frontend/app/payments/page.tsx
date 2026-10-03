@@ -2178,7 +2178,7 @@ function PaymentsContent() {
       >
         <form onSubmit={onPaymentSubmit} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           {error && (
-            <div
+            <div role="alert"
               style={{
                 background: "#FDEBEC",
                 color: "#B23A47",
@@ -2277,7 +2277,7 @@ function PaymentsContent() {
       >
         <form onSubmit={onExpenseSubmit} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           {error && (
-            <div
+            <div role="alert"
               style={{
                 background: "#FDEBEC",
                 color: "#B23A47",
@@ -2528,7 +2528,7 @@ function PaymentsContent() {
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div>
+    <div role="group" aria-label={label}>
       <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>{label}</div>
       {children}
     </div>

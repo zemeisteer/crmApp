@@ -1,171 +1,207 @@
-# TalimCRM — Staging tayyorligi hisoboti
+# TalimCRM — Staging va pilot tayyorligi hisoboti
 
-- **Tekshirilgan commit:** `fa98eff99727df6636e26f2d181797eeedc3ab25` (`dev`) + shu bosqichning lokal o'zgarishlari (commit va push qilinmagan).
-- **Asos:** GitHub Actions `36862631040` — uchala ish o'tgan (backend 245 unit / 186 E2E / migratsiya; frontend; Docker smoke `SMOKE OK`, 34/34 migratsiya API'dan oldin).
-- **Sana:** 2026-10-01.
+- **Asos commit (push qilingan):** `59d857e12f77fdb901ac4ccfbe515d6f2f031b3a` (`dev`).
+- **Shu commit uchun CI:** GitHub Actions `36995711222` — yashil: backend 245 unit / 186 E2E / 34 migratsiya, frontend tekshiruvlari va build, Docker image smoke test.
+- **Shu hisobotdagi yangi ish:** asos commit ustidagi **lokal, commit qilinmagan** o'zgarishlar (9-bo'lim). Ular uchun CI **hali yurmagan** — push qilinmagan.
+- **Sana:** 2026-10-02.
 
-## 1. Qisqacha
+Har bir natija qaysi manbadan ekanligi ko'rsatilgan:
 
-**Staging muhiti mavjud emas** — server, domen va integratsiya ma'lumotlari berilmagan, hech qayerga deploy qilinmagan. Bu bosqichda:
+| Belgi | Ma'nosi |
+|---|---|
+| **CI** | `59d857e` uchun GitHub Actions natijasi (yangi o'zgarishlarni qamramaydi) |
+| **Lokal-API** | shu kompyuterda, bir martalik bazada, API orqali yoki skript testlari bilan |
+| **Lokal-brauzer** | shu kompyuterda, haqiqiy brauzerda (`localhost` va `*.localhost` subdomenlari, `next dev`) |
+| **Staging** | haqiqiy staging domeni va HTTPS — **mavjud emas, birorta tekshiruv yuritilmagan** |
+| **Sandbox** | provayderning rasmiy test muhiti (Telegram, Click, Payme) — **yuritilmagan** |
 
-- staging uchun barcha konfiguratsiya, himoya skriptlari va tekshiruv vositalari **tayyorlandi**;
-- ular **lokal simulyatsiyada** sinovdan o'tkazildi (production build + bir martalik PostgreSQL bazasi, sintetik ma'lumot);
-- haqiqiy domen, HTTPS, nginx, Telegram va Click/Payme tekshiruvlari **bloklangan** — 6-bo'limdagi ma'lumotlar kerak.
+## 1. Xulosa
+
+**Hukm: integratsiyalar o'chirilgan holda cheklangan pilotga tayyor — ikki shart bilan** (7-bo'lim):
+
+1. lokal o'zgarishlar push qilinib, CI yashil bo'lishi kerak (ayniqsa yangi `recovery` ishi: konteynerda zaxira → tiklash → ilova tekshiruvi hali **bir marta ham yurmagan**);
+2. pilot serverida HTTPS, zaxira va tiklash mashqi haqiqatda bir marta o'tkazilishi kerak.
+
+Telegram, SMS, Click va Payme tekshirilmagan — pilot ularsiz (kassa to'lovlari, qo'lda xabar) boshlanadi.
 
 ## 2. Ishlatilgan muhit
 
 | | |
 |---|---|
-| Mashina | lokal ishlab chiqish kompyuteri (Windows 11), Docker **yo'q** |
-| Ilova | backend production build (`node dist/main.js`, `NODE_ENV=production`), `ROOT_DOMAIN=staging.localhost` |
-| Baza | PostgreSQL 18.3, bir martalik `talimcrm_stagingsim` (yaratildi → ishlatildi → o'chirildi) |
+| Mashina | lokal ishlab chiqish kompyuteri (Windows 11); **Docker yo'q** |
+| Backend | production build (`node dist/main.js`), port 4100, `ROOT_DOMAIN` — `localhost` |
+| Frontend | `next dev`, port 3100 (production build alohida muvaffaqiyatli yig'ildi) |
+| Baza | PostgreSQL 18.3, bir martalik `talimcrm_stagingsim` (yaratildi → ishlatildi → **o'chirildi**) |
 | Integratsiyalar | AI, Telegram, SMS, email, Click, Payme — hammasi bo'sh; eslatmalar o'chiq |
-| Ma'lumot | faqat sintetik (`ZZ Staging Check …` markazlari) |
-| Tegilmagan | ishlab chiqish bazasi (`talimcrm`) va boshqa bazalar; hech qanday server |
+| Ma'lumot | faqat sintetik markazlar va `@example.test` manzillari; hech kimga xabar yuborilmagan |
+| Tegilmagan | ishlab chiqish bazasi (`talimcrm`), har qanday server, production |
 
-Bu **staging emas**: nginx, HTTPS, wildcard sertifikat, haqiqiy subdomen marshrutlash va konteynerlar bu yerda qatnashmagan.
+Bu **staging emas**: nginx, HTTPS, wildcard sertifikat va konteynerlar qatnashmagan.
 
-## 3. O'tgan tekshiruvlar va dalillar
-
-### 3.1. Domen, markaz va pilot yo'li — API orqali (lokal simulyatsiya)
-
-`node scripts/staging/verify-flows.mjs` → **21 o'tdi, 0 yiqildi, 1 yuritilmadi (HTTPS)**; login limiti uchun 60 s kutildi.
+## 3. 1-bosqich — staging vositalari (Lokal-API)
 
 | Tekshiruv | Natija |
 |---|---|
-| Xodim logini o'z markaziga tushadi, refresh token bilan | o'tdi |
-| Handoff: bir martalik kod, o'z sessiyasi, takror rad etiladi | o'tdi |
-| Refresh markaz va rolni saqlaydi | o'tdi |
-| Bir kishi, ikki markaz: A da MANAGER, B da TEACHER; B da to'lovlarga 403 | o'tdi |
-| A'zo bo'lmagan markazni tanlash → 401; boshqa markaz ma'lumoti ko'rinmaydi | o'tdi |
-| A dan o'chirish: eski token, `/me`, refresh, A ni tanlash, oldin olingan handoff kodi → 401 | o'tdi |
-| O'sha odam uchun B ishlashda davom etadi | o'tdi |
-| Yagona markazli xodim: o'chirilgach hech qanday yo'l yo'q; qayta qo'shilgach kiradi | o'tdi |
-| CORS: `https://<root>` va `https://<markaz>.<root>` ruxsat etilgan | o'tdi |
-| CORS: begona domen, o'xshash domen, ikki darajali subdomen, `http://` → rad | o'tdi |
-| Tokensiz / buzuq token → 401 | o'tdi |
-| Taklifnoma → xodim logini; lid → sinov darsi → qabul → hisob-faktura → davomat | o'tdi |
-| Rol: qabulxona to'lov ololmaydi (403); hisobchi oladi; takror kalit bitta to'lov; boshqa mazmun 409; ortiqcha to'lov 400 | o'tdi |
-| Balans bir xil: qarzdorlar ro'yxati = moliya xulosasi = direktor hisoboti = o'quvchi va ota-ona kabineti (400 000 / 390 000 / chegirma 10 000 / qarz 0) | o'tdi |
-| O'quvchi va ota-ona kabineti ishlaydi; ularning tokeni boshqaruv paneliga 403 | o'tdi |
-| O'tgan oy uchun qarz to'qilmaydi; narxni tasdiqlash: MANAGER 403, hisobchi yozadi, joriy oy hisob-fakturasi o'zgarmaydi | o'tdi |
-| Xato xabarlari tushunarli (noto'g'ri oy → 400 izoh bilan; yo'q hisob-faktura → 404) | o'tdi |
+| Stack tanlash: `.env` yagona manba, loyiha har doim `-p` bilan; meros qolgan `COMPOSE_PROJECT_NAME`/`STACK_NAME`/baza sozlamalari/`COMPOSE_FILE` farq qilsa `REFUSED`; `.env` yo'q; production standartlari; `down` va `--purge`; boshqa papkadan chaqirish; `--prod-env` bilan resurs nomlarini solishtirish — soxta Docker bilan (`scripts/staging/tooling.test.sh`) | **69/69** |
+| `verify-flows.mjs` manzil qoidalari: URL tahlili, root↔API aniq bog'liqligi, alohida host tasdig'i, login/parolli URL, noto'g'ri protokol, production'ga o'xshash manzil, cheklangan lokal rejim, redirect; rad etilgan sozlama **0 ta tarmoq so'rovi** (`target.test.mjs`) | **10/10** (testlar bitta haqiqiy bo'shliqni topdi — root hostda boshqa port; tuzatildi) |
+| `verify-flows.mjs` lokal yurishi, markazlar izolyatsiyasi bilan (ikkala markazda farqli yozuvlar, 7 ta o'tish urinishi javobi tekshirilgan, begona ID'ga o'qish/o'zgartirish/a'zo qilish/to'lov/narx tarixi → 403/404, B yozuvlari o'zgarmagan) | **25 o'tdi, 0 yiqildi, 1 yuritilmadi (HTTPS)** |
+| Skript fayllari bajariladigan (`100755`) va hujjatdagi buyruqlar `bash scripts/...` ko'rinishida | git indeksida tuzatildi; toza checkout'dan tekshirish CI `ops-scripts` ishiga qo'shildi — **hali yurmagan** |
 
-Tekshiruv davomida skriptning o'zidagi bitta noto'g'ri kutish tuzatildi (production'da faqat `https` origin ruxsat etiladi — server to'g'ri ishlagan). Ilova kodida xato topilmadi.
+## 4. 2-bosqich — zaxira va tiklash
 
-### 3.2. Zaxira va tiklash (sintetik ma'lumot, lokal)
+| Tekshiruv | Manba | Natija |
+|---|---|---|
+| Yagona zaxira dasturi (`backup-core.sh`): `pg_dump` darhol yiqilishi, yarim yozib yiqilishi, kesilgan dump, bo'sh dump, buzuq gzip, disk to'lishi, fayl arxivi xatosi, tiklash tekshiruvi xatosi, oldingi zaxira saqlanishi, muvaffaqiyatdan keyin tozalash, minimal saqlash soni, boshqa stack to'plamlari, ustma-ust yurish/eskirgan qulf, healthcheck | Lokal-API (soxta pg vositalari) | **137/137** |
+| `init-ssl.sh` ketma-ketligi va xatolari, `backup.sh` buyrug'i, `restore.sh` faqat o'zi yaratgan bazani o'chirishi, buzilgan to'plam | Lokal-API (soxta Docker) | **63/63** |
+| Haqiqiy PostgreSQL bilan: zaxira → alohida bazaga tiklash → ilovani tiklangan nusxada ishga tushirish → login/rollar, yozuvlar, balans, fayl sha256 | Lokal-API (konteynersiz) | zaxira 7–10 s (dump ~20 KB), tiklash 3 s, jami 13–17 s; manba va nusxa barmoq izlari bir xil; ilova tekshiruvi 7/7 |
+| **Konteynerda to'liq mashq** (`restore-rehearsal.sh`): production compose, alohida baza serveri va alohida fayl volume'i, TLS/nginx tekshiruvi | — | **yuritilmagan** (Docker yo'q). Faqat sintaksis (`bash -n`). CI `recovery` ishi tayyor, push'dan keyin birinchi marta yuradi |
+| Yangi `db-backup` va `certbot` servis ta'riflarining haqiqiy Compose'da ishlashi | — | **yuritilmagan** |
+| Birinchi sertifikat va yangilanish haqiqiy Let's Encrypt bilan | Staging | **bloklangan** (domen yo'q) |
+| Zaxirani serverdan tashqariga ko'chirish | — | hujjatlashtirildi (to'ldiriladigan joylar bilan); **sozlanmagan va tekshirilmagan** |
+
+Topilgan va tuzatilgan haqiqiy nuqsonlar: (1) tungi zaxira `pg_dump | gzip` ko'rinishida edi — `pg_dump` yiqilsa ham "muvaffaqiyat" bo'lib ko'rinardi va yuklangan fayllarni olmasdi; (2) `certbot` konteynerida yangilash sikli entrypoint bo'lgani uchun `init-ssl.sh` chaqirgan `certonly` umuman bajarilmasdi — birinchi sertifikat olinmasdi.
+
+O'lchovlar ~20 KB li sintetik baza uchun; haqiqiy hajmda tiklash vaqti **o'lchanmagan**.
+
+## 5. 3-bosqich — brauzer tekshiruvi (Lokal-brauzer)
+
+Ikki sintetik markaz (A, B) + UI orqali yangi yaratilgan uchinchi markaz ("Pilot Sinov"). Skrinshot va chiqishlarda token yoki parol yo'q.
+
+### 5.1. Kirish va markaz sessiyalari
+
+| Ssenariy | Natija | Dalil |
+|---|---|---|
+| Asosiy manzilda login → markaz subdomenidagi `/dashboard` | o'tdi | manzil subdomen; asosiy manzil xotirasi bo'sh; kod manzil satridan olib tashlangan |
+| Bir martalik handoff kodi | o'tdi | birinchi almashtirish 201, takrori 401, noto'g'ri kod 401 |
+| Sahifani yangilash, yangi oyna | o'tdi | sessiya saqlanadi; B markaz subdomenida sessiya yo'q → login |
+| Token yangilanishi | o'tdi | yaroqsiz access token bilan sahifa ochildi: 401 → bitta `/auth/refresh` → 200; eski refresh token qayta ishlamaydi |
+| Bir kishi, ikki markazda ikki rol | o'tdi | tanlash oynasi: A — Hisobchi, B — O'qituvchi; A da to'lovlar 200, xodimlar 403 |
+| Markazni almashtirish | o'tdi (tuzatishdan keyin) | menyudagi "Boshqa markazlarim" → B markazga parolsiz; A manzilida sessiya yopildi |
+| Chiqish, keyin himoyalangan sahifa | o'tdi (tuzatishdan keyin) | xotira tozalandi, `/payments` → login; **eski access token ham 401** |
+| Xodim A dan o'chirildi, brauzeri ochiq | o'tdi | keyingi amalda login sahifasiga chiqarildi, xotira bo'sh |
+| A dan o'chirilgan, B qolgan | o'tdi | login to'g'ri B ga (O'qituvchi) olib kirdi; B da to'lovlar/xodimlar 403 |
+| Yagona markazidan ham o'chirilgan xodim | o'tdi | login rad etildi: "Sizning markazdagi a'zoligingiz faol emas" |
+| O'quvchi va ota-ona kabineti sessiyasi xodim sahifalarida | o'tdi | kabinet tokeni: o'quvchilar/to'lovlar/xodimlar/hisobot 403, `/auth/me` 401; `/payments`, `/students` → login |
+| Taklifnoma → xodim paroli → kirish | o'tdi | O'qituvchi roli; to'lovlar va xodimlar 403 |
+
+### 5.2. Kundalik ish — UI orqali
 
 | Qadam | Natija |
 |---|---|
-| `backup.sh`: baza dump'i | 24 KB, 1 s |
-| `backup.sh`: yuklangan fayllar arxivi | yaratildi, ichida sinov fayli bor |
-| `restore.sh` (mashq): yangi alohida bazaga yuklash | **2 s**, xatosiz |
-| Migratsiyalar | 34/34 qayd etilgan, kutilayotgan 0, noma'lum 0 |
-| Qatorlar (tiklangan / manba) | markazlar 4/4, foydalanuvchilar 12/12, a'zoliklar 14/14, o'quvchilar 2/2, a'zoliklar (guruh) 2/2, davomat 2/2, hisob-fakturalar 2/2, to'lovlar 4/4, taqsimotlar 4/4 |
-| Pul mosligi (6 tekshiruv) | hammasi toza |
-| Mashqdan keyin vaqtinchalik baza | o'chirildi; manba bazaga tegilmadi |
-| `--keep` bilan tiklangan nusxada ilova | ishga tushdi; `db:migrate` "up to date"; `db:check-drift` toza |
-| Tiklangan nusxada login va balanslar | manba bilan **aynan bir xil** (login, rol, o'quvchilar, to'lovlar, taqsimotlar, xodimlar, kutilgan/to'langan/qarz, tushum) |
-| Buzuq zaxira (gzip emas / SQL xatosi) | rad etildi, yarim baza qolmadi |
-| To'liq mashq vaqti | **~10 s** |
+| Ro'yxatdan o'tish → 8 qadamli sozlash (profil, vaqt zonasi, yo'nalish, fan, kurs, manzil, filial, taklif) | o'tdi |
+| O'qituvchi qo'shish | o'tdi |
+| Guruh (fan, o'qituvchi, filial, kunlar, vaqt, sana, 400 000 so'm); majburiy maydon xatosi o'zbekcha | o'tdi |
+| Lid → aloqa yozuvi → "Bog'lanildi" → sinov darsi → "Qatnashdi" → "Tayyor" | o'tdi |
+| O'quvchiga aylantirish (6 qadam, guruh va oktabr hisob-fakturasi bilan, bitta amalda) | o'tdi; ota-ona telefoni liddan ko'chdi |
+| Davomat | o'tdi (1 dars, 100%) |
+| Qisman to'lov 150 000 → kvitansiya | o'tdi |
+| Qolgan to'lov: narx 250 000 − chegirma 10 000 = 240 000 → kvitansiyada narx/chegirma/to'lov | o'tdi |
+| **Yakun: kutilgan 400 000 / to'langan 390 000 / chegirma 10 000 / qarz 0** | to'lovlar sahifasi = qarzdorlar ro'yxati = hisob-faktura = moliya xulosasi = direktor hisoboti = o'quvchi kabineti |
+| Ikki marta bosish (o'qituvchidan tashqari har bir forma, ~90 ms oraliq) | bitta yozuv: tugma birinchi bosishda o'chadi; to'lovlar server tomonida ham takrorlanmas kalit bilan himoyalangan |
+| Tarmoq xatosida to'lov | "Xatolik yuz berdi", kvitansiya yo'q, jami o'zgarmadi |
+| O'quvchi kabineti (telefon + PIN), ota-ona kabineti | o'tdi: jadval, davomat 1/1, "To'langan — Oktabr", to'lovlar tarixi |
+| Rol cheklovi UI va serverda: o'qituvchi `/payments`, `/settings` | "Bu bo'lim sizning rolingiz uchun ochiq emas" + server 403 (tuzatishdan keyin) |
 
-**Cheklovlar (o'lchanmagan narsalar da'vo qilinmaydi):**
-- Vaqtlar 24 KB li sintetik baza uchun. Haqiqiy hajmdagi baza uchun tiklash vaqti **o'lchanmagan** — RTO/RPO belgilanmagan.
-- Skriptlar Docker'siz rejimda (`PG_LOCAL=1`) sinaldi; konteyner ichidagi yo'l (`docker compose exec postgres …`) **yuritilmagan**.
-- Tungi avtomatik zaxira faqat bazani oladi; yuklangan fayllar faqat `backup.sh` bilan arxivlanadi. Zaxirani serverdan tashqariga ko'chirish sozlanmagan.
-- Yuklangan fayllarni konteynerga qayta tiklash buyrug'i hujjatlashtirilgan, lekin yuritilmagan.
+### 5.3. Qulaylik (kompyuter va 375 px telefon o'lchami)
 
-### 3.3. Staging himoya skriptlari (namunaviy `.env` fayllar bilan)
-
-| Holat | Natija |
+| Tekshiruv | Natija |
 |---|---|
-| Shablon o'zgartirilmagan (to'ldirgichlar) | `NOT SAFE`: 5 muammo |
-| To'g'ri to'ldirilgan staging `.env` | "isolated", 2 ogohlantirish (production bilan solishtirilmagan; Docker yo'q) |
-| Production'ga o'xshash `.env` | `NOT SAFE`: konteyner/volume/baza nomlari |
-| `JWT_SECRET` production bilan bir xil | `FAIL JWT_SECRET is the SAME as production's` (qiymat ko'rsatilmaydi) |
-| `down.sh` production'ga o'xshash `.env` da | `REFUSED`, hech narsa to'xtatilmadi |
-| `down.sh` `.env` siz | `REFUSED` |
-| `verify-flows.mjs` jonli ko'rinishdagi domen yoki `--confirm` siz | rad etadi |
+| 11 sahifada gorizontal siljish (bosh sahifa, o'quvchilar, o'quvchi, guruhlar, guruh, lidlar, lid, o'qituvchilar, hisobotlar, sozlamalar, jadval) | yo'q |
+| To'lov formasi telefonda | sig'adi; moliyaviy jadvallar o'z ichida siljiydi |
+| Kabinet telefonda | gorizontal siljish yo'q |
+| Dialoglarni klaviatura bilan yopish (Escape) | o'tdi (tuzatishdan keyin) |
+| Haqiqiy telefon qurilmasida sinov | **yuritilmagan** (faqat brauzerda o'lcham emulyatsiyasi) |
 
-Yuritilmagan (faqat `bash -n` sintaksis tekshiruvi): `set-telegram-webhook.sh` (bot tokeni kerak), `init-ssl.sh`, `bootstrap-server.sh`, `down.sh` ning Docker qismi, `backup.sh`/`restore.sh` ning konteyner yo'li. ShellCheck o'rnatilmagan.
+### 5.4. Topilgan nuqsonlar
 
-## 4. Yiqilgan, bloklangan yoki yuritilmagan
+| # | Nuqson | Ta'sir | Holat |
+|---|---|---|---|
+| 1 | Chiqishdan (logout) yoki sessiya bekor qilingandan keyin access token 7 kungacha ishlayverardi | xavfsizlik | **tuzatildi**: token sessiyaga bog'landi (`sid`), har so'rovda sessiya tekshiriladi; yangi E2E test (`session-tokens.e2e-spec.ts`) |
+| 2 | 1-tuzatishdan kelib chiqqan poyga: markaz manziliga ko'chish paytida yo'ldagi so'rov 401 olib, foydalanuvchini login sahifasiga otardi | kirish | **tuzatildi**, brauzerda qayta tekshirildi |
+| 3 | Tizimga kirgan xodim asosiy manzildan kelganda yana login formasini ko'rardi | qulaylik | **tuzatildi**, qayta tekshirildi |
+| 4 | Rolga yopiq sahifa manzili to'g'ridan-to'g'ri ochilsa, bo'sh sahifa (0 so'm, "+ Yangi to'lov") ko'rinardi; ma'lumot chiqmasdi (server 403) | chalg'ituvchi | **tuzatildi**: menyu qoidasi sahifaga ham qo'llanadi |
+| 5 | O'qituvchiga "+ Yangi guruh", "Tahrirlash", "O'chirilganlar" ko'rinardi (server rad etadi) | chalg'ituvchi | **tuzatildi** |
+| 6 | Dialoglar Escape bilan yopilmasdi; `dialog` roli yo'q edi | klaviatura | **tuzatildi** (umumiy `Modal`) |
+| 7 | Ko'p tanlovli ro'yxat dialog ichida butun oyna kengligiga yoyilardi | ko'rinish | **tuzatildi** |
+| 8 | Ro'yxatdan o'tishda juda qisqa parol xatosi inglizcha xom matn edi | til | **tuzatildi** (o'zbekcha, 8 belgi qoidasi bilan bir xil) |
+| 9 | Ilova ichida markazlar orasida almashtirgich yo'q edi (qayta login kerak edi) | noqulay | **tuzatildi**: menyuda "Boshqa markazlarim" — parolsiz o'tadi, eski markaz sessiyasi yopiladi; brauzerda tekshirildi (A → B, rol O'qituvchi) |
+| 10 | Forma maydonlari nomi ekran o'quvchisiga yetmasdi; xato xabarlarida `role="alert"` yo'q edi | ekran o'quvchilari | **qisman tuzatildi**: 7 ta umumiy `Field` maydon guruhiga nom berildi, 42 ta xato bloki `alert`; boshqa formalardagi alohida `<label>` lar (≈100) hali bog'lanmagan |
+| 11 | Kelajakdagi sinov darsini bugun "Qatnashdi"/"Kelmadi" deb belgilash ogohlantirishsiz edi | mantiq | **tuzatildi**: tasdiq so'raladi ("hali bo'lmagan"); rad etilsa holat o'zgarmaydi — tekshirildi. Server cheklamaydi (oldindan belgilash ba'zan kerak) |
+| 12 | Kabinetda chegirma alohida ko'rsatilmasdi | tushunarlilik | **tuzatildi**: "To'landi 390 000 · Chegirma 10 000 · Narx 400 000" — tekshirildi |
+| 13 | Lidlar sahifasida texnik matn "(TELEGRAM_BOT_TOKEN)" | matn | **tuzatildi**: oddiy tilda yozildi |
+| 14 | O'qituvchi/o'quvchi yaratishda serverda takrorlanishdan himoya yo'q edi | past | **tuzatildi**: bir xil so'rov 10 s ichida bitta yozuv beradi (bir vaqtda kelsa ham); yangi E2E test `double-submit.e2e-spec.ts` |
 
-| Tekshiruv | Holat | Sabab |
-|---|---|---|
-| HTTPS (asosiy domen va subdomenlar), HTTP→HTTPS, HSTS | **bloklangan** | staging serveri va domeni yo'q |
-| nginx marshrutlash, wildcard sertifikat | **bloklangan** | shu |
-| Brauzerda: login → subdomen → yangilash | **yuritilmagan** (staging'da) | oldinroq `localhost` subdomenlarida tekshirilgan; haqiqiy domen bilan emas |
-| Mobil qulaylik | **yuritilmagan** | staging yo'q |
-| `docker-compose.prod.yml` staging `.env` bilan | **tekshirilmagan** | Docker yo'q; CI'ga tekshiruv qo'shildi, hali yurmagan |
-| Zaxira/tiklash konteynerda | **yuritilmagan** | Docker yo'q |
-| Telegram (bog'lash, to'lov xabari, qarz eslatmasi) | **bloklangan** | staging boti va tasdiqlangan sinov chati yo'q |
-| Click / Payme sandbox | **bloklangan** | test merchant ma'lumotlari yo'q |
-| Staging'ga deploy | **bajarilmagan** | ruxsat va muhit kerak |
+Brauzer regressiya testlarini avtomatlashtirish **bloklangan**: loyihada brauzer test vositasi yo'q, uni o'rnatish internetdan brauzer yuklab olishni talab qiladi (ruxsat kerak). 1-nuqson uchun server E2E testi qo'shildi; qolgan tuzatishlar shu hisobotdagi qo'lda tekshiruv bilan tasdiqlangan.
 
-Yiqilgan tekshiruv yo'q.
+## 6. Integratsiyalar
 
-## 5. Integratsiyalar holati
+| Integratsiya | Lokal soxta testlar (CI) | Haqiqiy tekshiruv | Kerak bo'lgan narsa |
+|---|---|---|---|
+| Telegram | bot mantig'i unit/E2E (yuborish soxta) | **yuritilmagan** | alohida staging boti tokeni (`.env` ga o'zingiz yozasiz) va tasdiqlangan sinov chati |
+| Click | `billing-gateways.e2e`: to'lov, takroriy callback, noto'g'ri imzo, bekor qilish — soxta so'rovlar | **yuritilmagan** | Click test kabinetidan merchant/service ID va kalit; ochiq HTTPS staging manzili |
+| Payme | xuddi shunday | **yuritilmagan** | Payme sandbox merchant ID va kaliti; ochiq HTTPS staging manzili |
+| SMS / email | o'chiq | **yuritilmagan** | provayder test kaliti va tasdiqlangan qabul qiluvchi |
 
-| Integratsiya | Lokal soxta testlar | Haqiqiy tekshiruv |
-|---|---|---|
-| Telegram | bot mantig'i unit/E2E testlarda (xabar yuborish stub) | **yo'q** |
-| Click | `billing-gateways.e2e`: to'lov, takroriy webhook, noto'g'ri imzo, bekor qilish — soxta so'rovlar | **yo'q** (provayder sandbox'i emas) |
-| Payme | xuddi shunday | **yo'q** |
-| Email / SMS | o'chiq | **yo'q** |
+Lokal soxta callback'lar provayder isboti emas. Tayyor: `set-telegram-webhook.sh` (boshqa botning webhook'ini almashtirmaydi), `docs/STAGING.md` 3–4-bo'limlardagi tekshiruv ro'yxatlari.
 
-Soxta testlar o'tgani integratsiyani tasdiqlamaydi.
+## 7. To'siqlar (ta'siri bo'yicha)
 
-Tayyorlangan: `set-telegram-webhook.sh` endi botni ko'rsatadi, `.env` dagi nomga mos kelmasa yoki bot boshqa hostga ulangan bo'lsa rad etadi — production botining webhook'ini tasodifan almashtirib bo'lmaydi. Tekshiruv ro'yxatlari: `docs/STAGING.md` 3–4-bo'limlar.
+**Pilotni boshlashdan oldin shart:**
+1. Lokal o'zgarishlar push qilinmagan → yangi CI ishlari (`ops-scripts`, `recovery`) yurmagan. Konteynerdagi zaxira/tiklash va yangi `db-backup`/`certbot` ta'riflari **birinchi marta CI'da sinaladi**; yiqilsa tuzatish kerak bo'ladi.
+2. Server va domen yo'q: HTTPS, nginx, wildcard sertifikat, haqiqiy subdomenlar tekshirilmagan.
+3. Zaxiraning serverdan tashqaridagi nusxasi sozlanmagan (manzil va kalit berilmagan).
 
-## 6. Qolgan to'siqlar (muhimligi bo'yicha)
+**Pilotni cheklaydi, to'xtatmaydi:**
+4. Telegram, Click, Payme, SMS tekshirilmagan → pilotda o'chiq turadi.
+5. Haqiqiy telefonda sinov o'tkazilmagan.
+6. Haqiqiy hajmda tiklash vaqti o'lchanmagan.
 
-1. **Staging serveri va domeni yo'q.** Kerak: server, `staging.<domen>` va `*.staging.<domen>` DNS yozuvlari, DNS provayderiga kirish (wildcard sertifikat).
-2. **Deploy uchun ruxsat.** Aniq maqsad va amal 8-bo'limda.
-3. **Staging Telegram boti va tasdiqlangan sinov chati.**
-4. **Click va Payme test merchant ma'lumotlari.**
-5. Shu bosqich o'zgarishlari push qilinmagan; CI'da `docker-compose.prod.yml` tekshiruvi hali yurmagan.
-6. Zaxirani serverdan tashqariga ko'chirish (S3 yoki boshqa mashina) sozlanmagan.
-7. Haqiqiy hajmda tiklash vaqti o'lchanmagan.
+**Ma'lum kamchiliklar:** 5.4-jadval, 10-band (alohida `<label>` lar).
 
-## 7. 1–2 markazli pilotni boshlash ro'yxati
+**Joylashtirishda e'tibor:** 1-tuzatishdan keyin eski (sessiya raqamisiz) access tokenlar rad etiladi — ochiq brauzerlar refresh token orqali o'zi yangi token oladi, foydalanuvchi buni sezmaydi.
 
-- [ ] CI uchala ishda yashil (shu o'zgarishlar bilan).
-- [ ] Staging: `verify-flows.mjs` — hammasi o'tdi, HTTPS tekshiruvlari bilan.
-- [ ] Staging: brauzer va telefonda login → subdomen → yangilash.
-- [ ] Staging: `backup.sh` → `restore.sh` mashqi konteynerda o'tdi; zaxira serverdan tashqariga ko'chirilmoqda.
-- [ ] Telegram: staging botida bog'lash, to'lov xabari, qarz eslatmasi; tasdiqlanmagan qarzga eslatma kelmaydi.
-- [ ] Click/Payme: test merchant bilan to'lov va takroriy callback — yoki pilot faqat kassa to'lovlari bilan boshlanadi.
-- [ ] Production `.env`: o'z sirlari; `preflight.sh` toza.
-- [ ] Har markaz uchun: vaqt zonasi, guruh narxlari, birinchi oy hisob-fakturalari.
-- [ ] Markaz rahbariga: xodimni o'chirish darhol kuchga kirishi, o'tgan oy narxini tasdiqlash, zaxira qayerda.
+## 8. Birinchi markazni ulash ro'yxati
 
-## 8. Lokal o'zgarishlar va ruxsat kutayotgan qadamlar
+**Sozlamalar**
+- [ ] Markaz nomi, telefoni, logotipi; vaqt zonasi (Toshkent) va valyuta to'g'ri.
+- [ ] Markaz manzili (`<markaz>.<domen>`) tanlangan — keyin o'zgartirish xodimlarning havolalarini buzadi.
 
-**O'zgargan / yangi fayllar (commit qilinmagan):**
+**Xodimlar va rollar**
+- [ ] Har bir xodim o'z hisobi bilan taklif qilingan (umumiy parol yo'q); roli: rahbar, administrator, menejer, qabulxona, hisobchi, o'qituvchi.
+- [ ] Rahbar biladi: xodimni o'chirish darhol kuchga kiradi (ochiq brauzeri ham yopiladi).
 
-| Fayl | Nima |
+**Guruhlar**
+- [ ] Har guruhning oylik narxi, o'qituvchisi, kunlari va boshlanish sanasi kiritilgan.
+- [ ] Har o'quvchining guruhga qo'shilgan sanasi haqiqiy sana bilan (qarz shu sanadan hisoblanadi).
+
+**Boshlang'ich qoldiqlar**
+- [ ] Tizimga o'tish oyi belgilangan; undan oldingi qarzlar/ortiqcha to'lovlar qanday kiritilishi hisobchi bilan kelishilgan.
+- [ ] O'tgan oylar narxi hisobchi tomonidan tasdiqlangan (tasdiqlanmagan o'tgan narx qarz sifatida ko'rsatilmaydi va eslatma yuborilmaydi).
+
+**Mas'uliyat**
+- [ ] To'lovni kim kiritadi (hisobchi / qabulxona), chegirmani kim beradi.
+- [ ] Davomatni kim va qachon belgilaydi (o'qituvchi, dars kuni).
+- [ ] O'quvchi/ota-ona kabineti uchun PIN'ni kim beradi.
+
+**Zaxira va yordam**
+- [ ] Tungi zaxira yurmoqda (`db-backup` — `healthy`), tashqi nusxa ko'chirilmoqda; mas'ul shaxs belgilangan.
+- [ ] Tiklash mashqi shu serverda bir marta o'tkazilgan (`restore.sh`).
+- [ ] Muammo bo'lsa kimga murojaat qilinadi; `RUNBOOK.md` qayerda.
+
+## 9. Lokal o'zgarishlar (commit va push qilinmagan)
+
+| Soha | Fayllar |
 |---|---|
-| `docker-compose.prod.yml` | `STACK_NAME`, portlar, zaxira papkasi `.env` dan; production uchun standartlar o'sha-o'sha |
-| `.env.staging.example` | staging shabloni, faqat to'ldirgichlar |
-| `scripts/production/lib.sh` | skriptlar uchun umumiy qism (stack, `.env`, xavfsiz matn tekshiruvlari) |
-| `scripts/production/backup.sh` | baza + yuklangan fayllar; yarim fayl qoldirmaydi; `pipefail` xatosi tuzatildi |
-| `scripts/production/restore.sh` | **faqat alohida bazaga** tiklaydi va tekshiradi; jonli bazaga yozmaydi |
-| `scripts/production/set-telegram-webhook.sh` | botni tekshiradi, boshqa hostdagi webhook'ni ruxsatsiz almashtirmaydi |
-| `scripts/production/bootstrap-server.sh` | `ENV_TEMPLATE` (staging shabloni uchun) |
-| `scripts/staging/preflight-staging.sh` | staging izolyatsiyasi tekshiruvi |
-| `scripts/staging/down.sh` | faqat staging stack'ini to'xtatadi/o'chiradi |
-| `scripts/staging/verify-flows.mjs` | API orqali staging tekshiruvi |
-| `.github/workflows/ci.yml` | `docker-compose.prod.yml` ni ikkala shablon bilan tekshirish |
-| `docs/STAGING.md`, `docs/DEPLOYMENT_GUIDE.md`, `RUNBOOK.md` | staging qo'llanmasi; zaxira/tiklash; eskirgan a'zolik ko'rsatmasi olib tashlandi |
-| `STAGING_READINESS_REPORT.md`, `STABILIZATION_REPORT.md` | hisobotlar |
+| Stack tanlash va staging | `scripts/production/lib.sh`, `stack.sh` (yangi), `scripts/staging/down.sh`, `preflight-staging.sh`, `target.mjs` (yangi), `verify-flows.mjs`, testlar: `tooling.test.sh`, `target.test.mjs` |
+| Zaxira va tiklash | `backup-core.sh` (yangi), `backup.sh`, `restore.sh`, `restore-rehearsal.sh` (yangi), `rehearsal-seed.mjs`, `rehearsal-verify.mjs`, `docker-compose.prod.yml` (`db-backup`, `certbot`), testlar: `backup-core.test.sh`, `ops.test.sh` |
+| TLS | `init-ssl.sh` |
+| CI | `.github/workflows/ci.yml` — `ops-scripts`, `recovery` |
+| Backend | `auth.service.ts`, `common/jwt.strategy.ts` (token ↔ sessiya), `auth/dto/register.dto.ts`, `common/double-submit.ts` (yangi), `teachers.service.ts`, `students.service.ts`, `portal.service.ts`, testlar: `session-tokens.e2e-spec.ts`, `double-submit.e2e-spec.ts` (yangi), ikki unit test mock'i |
+| Frontend | `lib/api.ts`, `lib/auth-context.tsx`, `lib/i18n.ts`, `app/login/page.tsx`, `app/groups/page.tsx`, `app/leads/[id]/page.tsx`, `components/DashboardShell.tsx`, `Sidebar.tsx` (markaz almashtirgich), `Modal.tsx`, `MultiSelect.tsx`, `portal/PortalTabs.tsx`, 7 ta `Field` va 42 ta xato bloki (bir nechta sahifa) |
+| Hujjatlar | `docs/STAGING.md`, `docs/DEPLOYMENT_GUIDE.md`, `RUNBOOK.md`, `.env.*.example`, shu hisobot |
 
-Ilova kodi (backend/frontend) o'zgarmagan.
+**Shu o'zgarishlar bilan lokal yuritilgan tekshiruvlar:** backend build va lint; unit **245/245**; E2E **189/189** (33 fayl, bir martalik `_e2e` bazada); frontend `tsc` xatosiz, lint 0 xato (106 ogohlantirish), production build muvaffaqiyatli; skript testlari 69 + 10 + 137 + 63.
 
-**Ruxsat kutayotgan amallar** (tayyor, bajarilmagan):
+**Yuritilmagan:** shu o'zgarishlar uchun CI; Docker bilan bog'liq hamma narsa; staging; provayder sandbox'lari.
 
-1. Shu o'zgarishlarni `dev` ga push qilish.
-2. Staging serverini tayyorlash: `sudo DIR=/opt/crmapp-staging ENV_TEMPLATE=.env.staging.example bash bootstrap.sh staging.<domen>` — maqsad: **siz ko'rsatgan staging serveri**.
-3. Staging uchun sertifikat olish va stack'ni ko'tarish: `init-ssl.sh`, `docker compose -f docker-compose.prod.yml up -d --build`.
-4. Staging botiga webhook o'rnatish: `set-telegram-webhook.sh` — maqsad: **faqat staging boti**.
-5. Sinov chatiga xabar yuborish — **faqat tasdiqlangan chat**.
+**Ruxsat kutayotgan amallar:** (1) `dev` ga push; (2) staging/pilot serverini tayyorlash (`bootstrap-server.sh`, `init-ssl.sh`, `stack.sh up -d --build`); (3) staging botiga webhook; (4) tasdiqlangan sinov chatiga xabar; (5) tashqi zaxira manzili.

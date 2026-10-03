@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 
 import Link from "next/link";
 import { useLanguage } from "@/lib/i18n-context";
 import { LANDING_TEXT, type LandingLang } from "./landing-text";
+import { plansApi, type Plan } from "@/lib/api";
 
 // Public home page — a port of the original talimcrm-demo design
 // (Downloads/talimcrm-demo/index.html), in three languages and phone-ready.
@@ -205,6 +206,24 @@ export default function Landing() {
   ];
   const planNames = ["Basic", "Pro", "Business"];
   const planPrices = ["299 000", "590 000", L.individual];
+  // The tariffs the platform admin keeps on the Tariflar page; the texts
+  // above are only shown if they cannot be loaded.
+  const [livePlans, setLivePlans] = useState<Plan[] | null>(null);
+  useEffect(() => {
+    plansApi.listPublic().then((list) => setLivePlans(list.length ? list : null)).catch(() => setLivePlans(null));
+  }, []);
+  const FREE = { UZ: "Bepul", RU: "Бесплатно", EN: "Free" } as const;
+  const cards = livePlans
+    ? livePlans.map((p) => ({
+        name: p.name,
+        price: p.price > 0 ? new Intl.NumberFormat("uz-UZ").format(p.price).replace(/,/g, " ") : FREE[lang as keyof typeof FREE] ?? FREE.UZ,
+        monthly: p.price > 0,
+        sub: "",
+        items: p.features.split(/\r?\n/).map((x) => x.trim()).filter(Boolean),
+        highlight: p.popular,
+        cta: L.choose,
+      }))
+    : L.plans.map(([sub, ...items], i) => ({ name: planNames[i], price: planPrices[i], monthly: i < 2, sub, items, highlight: i === 1, cta: i === 2 ? L.contact : L.choose }));
 
   return (
     <div className="lp-root" ref={rootRef}>
@@ -550,19 +569,19 @@ export default function Landing() {
             <h2 style={{ fontSize: 34, fontWeight: 800, letterSpacing: "-0.02em" }}>{L.pricingTitle}</h2>
           </div>
           <div className="lp-grid3 lp-group" style={{ gap: 24, width: "100%" }}>
-            {L.plans.map(([sub, ...items], i) => {
-              const pro = i === 1;
+            {cards.map(({ name, price, monthly, sub, items, highlight, cta }, i) => {
+              const pro = highlight;
               return (
                 <div key={i} className="lp-reveal" style={{ border: pro ? `2px solid ${ACCENT}` : "1px solid var(--border)", borderRadius: 18, padding: 28, display: "flex", flexDirection: "column", gap: 18, position: "relative", boxShadow: pro ? "0 20px 40px -20px rgba(79,70,229,0.35)" : "none" }}>
                   {pro && <div style={{ position: "absolute", top: -13, left: 28, background: ACCENT, color: "#fff", fontSize: 11.5, fontWeight: 700, padding: "5px 12px", borderRadius: 100 }}>{L.popular}</div>}
-                  <div style={{ fontFamily: "'Manrope',sans-serif", fontWeight: 700, fontSize: 17 }}>{planNames[i]}</div>
+                  <div style={{ fontFamily: "'Manrope',sans-serif", fontWeight: 700, fontSize: 17 }}>{name}</div>
                   <div>
-                    <span style={{ fontSize: 32, fontWeight: 800, fontFamily: "'Manrope',sans-serif" }}>{planPrices[i]}</span>
-                    {i < 2 && <span style={{ fontSize: 14, color: "var(--muted)" }}>{L.perMonth}</span>}
+                    <span style={{ fontSize: 32, fontWeight: 800, fontFamily: "'Manrope',sans-serif" }}>{price}</span>
+                    {monthly && <span style={{ fontSize: 14, color: "var(--muted)" }}>{L.perMonth}</span>}
                   </div>
-                  <div style={{ fontSize: 13, color: "var(--muted)" }}>{sub}</div>
+                  {sub && <div style={{ fontSize: 13, color: "var(--muted)" }}>{sub}</div>}
                   <Link href="/register" className="lp-btn" style={{ background: pro ? ACCENT : "var(--chip)", color: pro ? "#fff" : "var(--text)", fontSize: 14.5, fontWeight: 700, padding: 12, borderRadius: 10, marginTop: 6 }}>
-                    {i === 2 ? L.contact : L.choose}
+                    {cta}
                   </Link>
                   <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 4 }}>
                     {items.map((it) => (

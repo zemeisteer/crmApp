@@ -48,7 +48,8 @@ fi
 echo "== Docker"
 command -v docker >/dev/null && ok "docker" || bad "docker o'rnatilmagan"
 docker compose version >/dev/null 2>&1 && ok "docker compose" || bad "docker compose yo'q"
-docker compose -f docker-compose.prod.yml config -q 2>/dev/null && ok "docker-compose.prod.yml to'g'ri" || bad "docker-compose.prod.yml xato (docker compose -f docker-compose.prod.yml config)"
+# The same pinned project and .env the other scripts use (lib.sh).
+if ( source "$SCRIPT_DIR/lib.sh" && load_stack && compose config -q ) 2>/dev/null; then ok "docker-compose.prod.yml to'g'ri (shu papkaning .env fayli bilan)"; else bad "docker-compose.prod.yml xato yoki shell'dagi o'zgaruvchilar .env ga zid (bash scripts/production/stack.sh config)"; fi
 
 echo
 if [ "$FAIL" -eq 0 ]; then echo "✅ Tayyor. Keyingi: ./scripts/production/init-ssl.sh"; else echo "❌ Yuqoridagi xatolarni tuzating."; fi

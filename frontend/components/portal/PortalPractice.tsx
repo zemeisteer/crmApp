@@ -71,7 +71,7 @@ export default function PortalPractice({ readOnly = false }: { readOnly?: boolea
           <span style={{ fontSize: 13.5 }}>{t("pmk.yourLevel")}: <b>{t(levelKey(data.level))}</b> — {t("pmk.levelHint")}</span>
         </div>
       )}
-      {error && <div style={{ ...card, color: "#B23A47", fontSize: 13 }}>{error}</div>}
+      {error && <div role="alert" style={{ ...card, color: "#B23A47", fontSize: 13 }}>{error}</div>}
       {!data ? (
         <div style={{ ...card, color: "#8A8D96" }}>{t("common.loading")}</div>
       ) : data.directions.length === 0 ? (

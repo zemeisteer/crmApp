@@ -47,7 +47,10 @@ function shortScheduleOf(g: Group, t: (k: TranslationKey) => string) {
 }
 
 function GroupsContent() {
-  const { tenant } = useAuth();
+  const { tenant, user } = useAuth();
+  // Creating, editing and the trash are for those who run the center (the
+  // server refuses anyone else), so a teacher is not offered them.
+  const canManage = user?.role === "OWNER" || user?.role === "ADMIN" || user?.role === "SUPERADMIN";
   const { t } = useLanguage();
   const shortSchedule = (g: Group) => shortScheduleOf(g, t);
   const [groups, setGroups] = useState<Group[]>([]);
@@ -263,17 +266,21 @@ function GroupsContent() {
       <div style={{ padding: "22px 32px", borderBottom: "1px solid #EAE8E2", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div>
           <h1 style={{ fontSize: 22, fontWeight: 800 }}>{t("groups.title")}</h1>
-          <Link href="/groups/trash" style={{ fontSize: 12, color: "#8A8D96", fontWeight: 600 }}>
-            {t("nav.trash")}
-          </Link>
+          {canManage && (
+            <Link href="/groups/trash" style={{ fontSize: 12, color: "#8A8D96", fontWeight: 600 }}>
+              {t("nav.trash")}
+            </Link>
+          )}
         </div>
-        <button
-          className="btn"
-          onClick={() => setModalOpen(true)}
-          style={{ background: ACCENT, color: "#fff", border: "none", fontSize: 13.5, fontWeight: 700, padding: "10px 18px", borderRadius: 9 }}
-        >
-          {t("groups.newGroup")}
-        </button>
+        {canManage && (
+          <button
+            className="btn"
+            onClick={() => setModalOpen(true)}
+            style={{ background: ACCENT, color: "#fff", border: "none", fontSize: 13.5, fontWeight: 700, padding: "10px 18px", borderRadius: 9 }}
+          >
+            {t("groups.newGroup")}
+          </button>
+        )}
       </div>
 
       <div style={{ flex: 1, minHeight: 0, padding: "26px 32px", overflow: "auto", boxSizing: "border-box" }}>
@@ -384,14 +391,16 @@ function GroupsContent() {
                     </td>
 
                     <td style={{ textAlign: "right" }}>
-                      <button
-                        type="button"
-                        className="btn"
-                        onClick={() => openEdit(g)}
-                        style={{ display: "inline-block", background: "#fff", border: "1px solid #EAE8E2", color: "#181A1F", fontSize: 12, fontWeight: 700, padding: "6px 12px", borderRadius: 8, marginRight: 6, cursor: "pointer" }}
-                      >
-                        {t("common.edit")}
-                      </button>
+                      {canManage && (
+                        <button
+                          type="button"
+                          className="btn"
+                          onClick={() => openEdit(g)}
+                          style={{ display: "inline-block", background: "#fff", border: "1px solid #EAE8E2", color: "#181A1F", fontSize: 12, fontWeight: 700, padding: "6px 12px", borderRadius: 8, marginRight: 6, cursor: "pointer" }}
+                        >
+                          {t("common.edit")}
+                        </button>
+                      )}
                       <Link
                         href={`/groups/${g.id}`}
                         className="btn"
@@ -412,7 +421,7 @@ function GroupsContent() {
       <Modal open={modalOpen} onClose={() => { setModalOpen(false); resetForm(); }} title={editingId ? t("groups.editTitle") : t("groups.modalTitle")}>
         <form onSubmit={onSubmit} style={{ display: "flex", flexDirection: "column", gap: 14 }} noValidate>
           {error && (
-            <div style={{ background: "#FDEBEC", color: "#B23A47", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: 10 }}>{error}</div>
+            <div role="alert" style={{ background: "#FDEBEC", color: "#B23A47", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: 10 }}>{error}</div>
           )}
           <Field label={t("groups.fieldName")} required error={fieldErrors.name}>
             <input className="field-input" value={name} onChange={(e) => setName(e.target.value)} placeholder="IELTS Speaking — B2" />
@@ -527,7 +536,7 @@ function GroupsContent() {
 
 function Field({ label, children, required, error }: { label: string; children: React.ReactNode; required?: boolean; error?: string }) {
   return (
-    <div>
+    <div role="group" aria-label={label}>
       <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>
         {label}
         {required && <span style={{ color: "#DC2626", marginLeft: 3 }}>*</span>}

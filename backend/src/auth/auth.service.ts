@@ -59,13 +59,17 @@ export class AuthService {
     role: string;
     tenantId: string | null;
     permissions?: string[] | null;
-  }) {
+  }, sessionId: string) {
+    // `sid` ties the token to its session row: when the session ends
+    // (logout, revoke, removal from the center) the token stops working at
+    // once instead of at its expiry. Checked in JwtStrategy.
     return this.jwt.signAsync({
       sub: user.id,
       email: user.email,
       role: user.role,
       tenantId: user.tenantId,
       permissions: user.permissions || [],
+      sid: sessionId,
     });
   }
 
@@ -75,14 +79,14 @@ export class AuthService {
 
   private async issueSession(userId: string, tenantId: string | null, meta: { userAgent?: string; ip?: string }) {
     const refreshToken = randomBytes(32).toString('hex');
-    await this.db.insert(sessions).values({
+    const [row] = await this.db.insert(sessions).values({
       userId,
       tenantId,
       refreshTokenHash: hashToken(refreshToken),
       userAgent: meta.userAgent,
       ip: meta.ip,
-    });
-    return refreshToken;
+    }).returning({ id: sessions.id });
+    return { refreshToken, sessionId: row.id };
   }
 
   private frontendUrl() {
@@ -93,8 +97,8 @@ export class AuthService {
     user: { id: string; email: string; role: string; tenantId: string | null; permissions?: string[] | null },
     meta: { userAgent?: string; ip?: string } = {},
   ) {
-    const accessToken = await this.signAccessToken(user);
-    const refreshToken = await this.issueSession(user.id, user.tenantId, meta);
+    const { refreshToken, sessionId } = await this.issueSession(user.id, user.tenantId, meta);
+    const accessToken = await this.signAccessToken(user, sessionId);
     return { accessToken, refreshToken };
   }
 
@@ -389,9 +393,8 @@ export class AuthService {
       });
     }
 
-    const accessToken = await this.signAccessToken({ id: user.id, email: user.email, role, tenantId: tenant.id, permissions });
-
     let refreshToken: string | null = null;
+    let sessionId: string | null = null;
     if (typeof currentRefreshToken === 'string' && currentRefreshToken) {
       const rotated = randomBytes(32).toString('hex');
       const [updated] = await this.db
@@ -399,9 +402,13 @@ export class AuthService {
         .set({ tenantId: tenant.id, refreshTokenHash: hashToken(rotated), lastUsedAt: new Date(), userAgent: meta.userAgent, ip: meta.ip })
         .where(and(eq(sessions.refreshTokenHash, hashToken(currentRefreshToken)), eq(sessions.userId, user.id)))
         .returning({ id: sessions.id });
-      if (updated) refreshToken = rotated;
+      if (updated) {
+        refreshToken = rotated;
+        sessionId = updated.id;
+      }
     }
-    refreshToken ??= await this.issueSession(user.id, tenant.id, meta);
+    if (!refreshToken || !sessionId) ({ refreshToken, sessionId } = await this.issueSession(user.id, tenant.id, meta));
+    const accessToken = await this.signAccessToken({ id: user.id, email: user.email, role, tenantId: tenant.id, permissions }, sessionId);
 
     return {
       accessToken,
@@ -529,7 +536,7 @@ export class AuthService {
       role: ws.role,
       tenantId: ws.tenant?.id ?? null,
       permissions: ws.permissions,
-    });
+    }, session.id);
     const newRefreshToken = randomBytes(32).toString('hex');
     await this.db
       .update(sessions)

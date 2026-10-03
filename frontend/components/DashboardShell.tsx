@@ -5,7 +5,7 @@ import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
 import { useLanguage } from "@/lib/i18n-context";
-import Sidebar from "./Sidebar";
+import Sidebar, { canOpenPath, isPlatformMode } from "./Sidebar";
 
 const ACCENT = "#4F46E5";
 
@@ -53,7 +53,7 @@ function TrialBanner() {
 }
 
 export default function DashboardShell({ children }: { children: ReactNode }) {
-  const { user, loading } = useAuth();
+  const { user, tenant, loading } = useAuth();
   const { t } = useLanguage();
   const router = useRouter();
   const pathname = usePathname();
@@ -68,6 +68,14 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
   useEffect(() => {
     setMenuOpen(false);
   }, [pathname]);
+
+  // The superadmin outside a center has no center pages: the platform
+  // panel is their home.
+  const platformMode = isPlatformMode(user?.role, !!tenant);
+  const misplaced = platformMode && !canOpenPath(pathname, user?.role, false);
+  useEffect(() => {
+    if (misplaced) router.replace("/admin");
+  }, [misplaced, router]);
 
   if (loading) {
     return (
@@ -107,7 +115,17 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
           </svg>
         </button>
         <TrialBanner />
-        {children}
+        {misplaced ? null : canOpenPath(pathname, user.role, !!tenant) ? (
+          children
+        ) : (
+          <div role="alert" style={{ flex: 1, display: "grid", placeContent: "center", justifyItems: "center", gap: 10, padding: 24, textAlign: "center" }}>
+            <div style={{ fontFamily: "'Manrope', sans-serif", fontSize: 17, fontWeight: 800 }}>{t("shell.noAccessTitle")}</div>
+            <div style={{ fontSize: 13.5, color: "#8A8D96" }}>{t("shell.noAccessText")}</div>
+            <Link href="/dashboard" style={{ marginTop: 6, background: ACCENT, color: "#fff", fontWeight: 700, fontSize: 13.5, padding: "10px 18px", borderRadius: 10, textDecoration: "none" }}>
+              {t("shell.noAccessBack")}
+            </Link>
+          </div>
+        )}
       </div>
     </div>
   );

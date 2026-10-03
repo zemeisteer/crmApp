@@ -13,7 +13,7 @@ Nosozlik yuz berganda nima qilish kerakligi bo'yicha qisqa qo'llanma.
 
 - **Baza to'la (disk)**: `df -h`, keraksiz eski backuplarni tozalang.
 - **Migratsiya xato berdi**: `npm run db:generate` bilan yaratilgan SQL faylni `backend/drizzle/` papkasida qo'lda ko'rib chiqing, kerak bo'lsa qo'lda tuzating va qayta ishga tushiring.
-- **Ma'lumot yo'qolgan/buzilgan**: zaxirani **alohida** bazaga tiklang va tekshiring — joriy bazaning ustiga emas: `./scripts/production/restore.sh backups/<stack>_<sana>.sql.gz --keep`. Skript nusxani tekshiradi va ilovani unga o'tkazish buyruqlarini chiqaradi (joriy baza `..._before_<vaqt>` nomi bilan saqlanib qoladi). Yuklangan fayllar (uy vazifasi, audio, rasm) alohida arxivda: `<stack>_<sana>_uploads.tar.gz`.
+- **Ma'lumot yo'qolgan/buzilgan**: zaxirani **alohida** bazaga tiklang va tekshiring — joriy bazaning ustiga emas: `bash scripts/production/restore.sh backups/<stack>_<vaqt>Z --keep`. Skript nusxani tekshiradi va ilovani unga o'tkazish buyruqlarini chiqaradi (joriy baza `..._before_<vaqt>` nomi bilan saqlanib qoladi). Yuklangan fayllar (uy vazifasi, audio, rasm) shu to'plam ichida: `uploads.tar.gz`.
 
 ## 3. Tenant o'zining ma'lumotlariga kira olmayapti ("403 Forbidden")
 
@@ -44,8 +44,9 @@ Nosozlik yuz berganda nima qilish kerakligi bo'yicha qisqa qo'llanma.
 
 ## 8. Zaxira nusxalash muvaffaqiyatsiz
 
-- Serverda: `./scripts/production/backup.sh` — baza **va** yuklangan fayllar; xato bo'lsa yarim fayl qoldirmaydi va sababini aytadi. (Lokal ishlab chiqishda: `npm run db:backup`.)
-- Zaxira haqiqatan tiklanishini tekshirish: `./scripts/production/restore.sh backups/<fayl>.sql.gz` (alohida vaqtinchalik bazaga tiklaydi, tekshiradi, o'chiradi).
+- Serverda: `bash scripts/production/backup.sh` — baza **va** yuklangan fayllar; xato bo'lsa yarim fayl qoldirmaydi va sababini aytadi. (Lokal ishlab chiqishda: `npm run db:backup`.)
+- Zaxira haqiqatan tiklanishini tekshirish: `sudo bash scripts/production/restore.sh backups/<stack>_<vaqt>Z` (nazorat yig'indilari, alohida vaqtinchalik bazaga tiklash, tekshirish; faqat o'zi yaratgan bazani o'chiradi).
+- Tungi zaxira holati: `bash scripts/production/stack.sh ps db-backup` (`unhealthy` = 26 soatdan beri muvaffaqiyatli zaxira yo'q); sababi: `bash scripts/production/stack.sh logs --tail=50 db-backup`. Muvaffaqiyatsiz yurish eski to'plamlarni o'chirmaydi.
 - Zaxira fayllari serverdan tashqariga (boshqa mashina, S3 va h.k.) ko'chirilishi kerak — shu diskdagi nusxa disk bilan birga yo'qoladi.
 
 ## 9. Superadmin hisobiga kirish yo'qolgan
@@ -83,5 +84,5 @@ Nosozlik yuz berganda nima qilish kerakligi bo'yicha qisqa qo'llanma.
 1. `GET /api/health`
 2. Backend va frontend loglarini oxirgi 5 daqiqa uchun ko'rish
 3. `npm run test && npm run test:e2e` (backend) — asosiy funksiyalar buzilmaganini tasdiqlash
-4. Serverda: `docker compose -f docker-compose.prod.yml exec backend node scripts/migrate.cjs --status` — kutilayotgan migratsiya yo'qligi
+4. Serverda: `bash scripts/production/stack.sh exec backend node scripts/migrate.cjs --status` — kutilayotgan migratsiya yo'qligi
 5. So'nggi deploy/commit nima o'zgartirganini `git log` orqali ko'rish

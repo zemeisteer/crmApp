@@ -19,7 +19,9 @@ export class RegisterDto {
   email: string;
 
   @IsString()
-  @MinLength(6)
+  // Same rule and wording as isPasswordStrongEnough, so the form never shows
+  // the validator's raw English text.
+  @MinLength(8, { message: "Parol kamida 8 ta belgidan iborat bo'lishi kerak" })
   password: string;
 
   @IsString()

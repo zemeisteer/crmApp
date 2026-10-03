@@ -111,7 +111,7 @@ function ReviewModal({ detail, onClose, onChanged }: { detail: MockAttemptDetail
   return (
     <Modal open onClose={onClose} title={`${detail.student.fullName} — ${detail.test.title}`}>
       <div style={{ display: "grid", gap: 16, maxHeight: "75vh", overflowY: "auto", paddingRight: 4 }}>
-        {error && <div style={{ background: "#FDEBEC", color: "#B23A47", padding: "8px 12px", borderRadius: 10, fontSize: 13 }}>{error}</div>}
+        {error && <div role="alert" style={{ background: "#FDEBEC", color: "#B23A47", padding: "8px 12px", borderRadius: 10, fontSize: 13 }}>{error}</div>}
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           {MOCK_SECTIONS.map((s) => (
             <span key={s} style={{ background: "#F7F7F5", borderRadius: 10, padding: "6px 10px", fontSize: 13 }}>

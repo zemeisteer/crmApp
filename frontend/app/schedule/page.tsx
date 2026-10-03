@@ -755,7 +755,7 @@ export default function SchedulePage() {
               )}
 
               {formError && (
-                <div style={{ color: "#DC2626", fontSize: 13, fontWeight: 600, background: "#FEE2E2", padding: "8px 12px", borderRadius: 6 }}>
+                <div role="alert" style={{ color: "#DC2626", fontSize: 13, fontWeight: 600, background: "#FEE2E2", padding: "8px 12px", borderRadius: 6 }}>
                   {formError}
                 </div>
               )}

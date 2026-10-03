@@ -30,6 +30,7 @@ import {
   type LeadTrial,
   type Teacher,
 } from "@/lib/api";
+import { leadNote } from "@/lib/lead-note";
 import { useLanguage } from "@/lib/i18n-context";
 import { useAuth } from "@/lib/auth-context";
 import type { TranslationKey } from "@/lib/i18n";
@@ -305,13 +306,13 @@ function LeadProfile() {
           </div>
         )}
         {lead.convertedStudent && (
-          <div style={{ ...card, background: "#F0FDF4", borderColor: "#BBF7D0", display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+          <div style={{ ...card, background: "#F0FDF4", border: "1px solid #BBF7D0", display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
             <span>{t("adm.convertedBanner")}: <strong>{lead.convertedStudent.fullName}</strong> · {formatDateTime(lead.convertedAt, lang)}</span>
             <Link href={`/students/${lead.convertedStudent.id}`} style={{ color: "#15803D", fontWeight: 700 }}>{t("adm.viewStudent")} →</Link>
           </div>
         )}
         {lead.duplicateOfLeadId && (
-          <div style={{ ...card, background: "#FFFBEB", borderColor: "#FDE68A", fontSize: 13 }}>
+          <div style={{ ...card, background: "#FFFBEB", border: "1px solid #FDE68A", fontSize: 13 }}>
             {t("adm.duplicateOf")} <Link href={`/leads/${lead.duplicateOfLeadId}`} style={{ color: ACCENT, fontWeight: 700 }}>{lead.duplicateOfLeadId}</Link>
           </div>
         )}
@@ -329,7 +330,7 @@ function LeadProfile() {
               {utm && detail(t("adm.originAd"), utm)}
               {detail(t("adm.originWant"), [lead.desiredSubject?.name ?? lead.legacySubject, lead.desiredCourse?.name, lead.preferredBranch?.name].filter(Boolean).join(" · ") || "—")}
               {detail(t("adm.originDate"), formatDateTime(lead.createdAt, lang))}
-              {lead.notes && detail(t("leads.fieldNotes"), <span style={{ whiteSpace: "pre-wrap", fontWeight: 400 }}>{lead.notes}</span>)}
+              {leadNote(lead.notes) && detail(t("leads.fieldNotes"), <span style={{ whiteSpace: "pre-wrap", fontWeight: 400 }}>{leadNote(lead.notes)}</span>)}
             </section>
 
             <section style={card}>
@@ -506,8 +507,8 @@ function LeadProfile() {
                       {tr.outcomeNote && <div style={{ fontSize: 12.5, color: "#8A8D96" }}>{tr.outcomeNote}</div>}
                       {editable && tr.status === "BOOKED" && (
                         <div className="adm-actions">
-                          <button type="button" className="btn" style={{ ...primaryBtn, padding: "6px 12px", fontSize: 12 }} disabled={busy} onClick={() => run(() => leadsApi.attendTrial(lead.id, tr.id))}>{t("adm.trialAttend")}</button>
-                          <button type="button" className="btn" style={{ ...ghostBtn, padding: "6px 12px", fontSize: 12 }} disabled={busy} onClick={() => run(() => leadsApi.missTrial(lead.id, tr.id))}>{t("adm.trialMiss")}</button>
+                          <button type="button" className="btn" style={{ ...primaryBtn, padding: "6px 12px", fontSize: 12 }} disabled={busy} onClick={() => { if (trialHappened(tr.scheduledAt, t("adm.trialNotYet"))) run(() => leadsApi.attendTrial(lead.id, tr.id)); }}>{t("adm.trialAttend")}</button>
+                          <button type="button" className="btn" style={{ ...ghostBtn, padding: "6px 12px", fontSize: 12 }} disabled={busy} onClick={() => { if (trialHappened(tr.scheduledAt, t("adm.trialNotYet"))) run(() => leadsApi.missTrial(lead.id, tr.id)); }}>{t("adm.trialMiss")}</button>
                           <button type="button" className="btn" style={{ ...ghostBtn, padding: "6px 12px", fontSize: 12 }} onClick={() => openDialog({ kind: "trial", reschedule: tr })}>{t("adm.trialReschedule")}</button>
                           <button type="button" className="btn" style={{ ...dangerBtn, padding: "6px 12px", fontSize: 12 }} disabled={busy} onClick={() => run(() => leadsApi.cancelTrial(lead.id, tr.id))}>{t("adm.trialCancel")}</button>
                         </div>
@@ -538,7 +539,7 @@ function LeadProfile() {
                       aria-pressed={activityType === k}
                       onClick={() => setActivityType(k)}
                       className="btn"
-                      style={{ ...ghostBtn, padding: "5px 12px", fontSize: 12, ...(activityType === k ? { background: "#EEF0FF", borderColor: "#C7D2FE", color: ACCENT } : {}) }}
+                      style={{ ...ghostBtn, padding: "5px 12px", fontSize: 12, ...(activityType === k ? { background: "#EEF0FF", border: "1px solid #C7D2FE", color: ACCENT } : {}) }}
                     >
                       {t(`adm.activity.${k}` as TranslationKey)}
                     </button>
@@ -717,6 +718,13 @@ function LeadProfile() {
       </Modal>
     </>
   );
+}
+
+// The outcome of a trial is normally recorded after it took place: for one
+// that is still ahead, ask before marking it attended or missed.
+function trialHappened(scheduledAt: string, question: string) {
+  if (new Date(scheduledAt).getTime() <= Date.now()) return true;
+  return window.confirm(question);
 }
 
 export default function LeadProfilePage() {

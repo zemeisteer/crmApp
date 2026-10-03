@@ -66,7 +66,7 @@ export default function TeacherAccountCard({ teacher, onChanged, canManage }: { 
             <input className="field-input" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="ustoz@markaz.uz" autoComplete="off" />
             <input className="field-input" type="text" required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} placeholder={t("tacc.passwordPh")} autoComplete="new-password" />
           </div>
-          {error && <div style={{ background: "#FDEBEC", color: "#B23A47", fontSize: 12.5, fontWeight: 600, padding: "8px 12px", borderRadius: 8 }}>{error}</div>}
+          {error && <div role="alert" style={{ background: "#FDEBEC", color: "#B23A47", fontSize: 12.5, fontWeight: 600, padding: "8px 12px", borderRadius: 8 }}>{error}</div>}
           <button type="submit" className="btn" disabled={busy} style={{ alignSelf: "flex-start", background: ACCENT, color: "#fff", border: "none", fontSize: 13, fontWeight: 700, padding: "9px 16px", borderRadius: 9 }}>
             {busy ? t("common.saving") : t("tacc.create")}
           </button>

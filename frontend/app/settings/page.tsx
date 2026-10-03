@@ -405,7 +405,7 @@ function SettingsContent() {
 
                 <form onSubmit={onSave} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                   {error && (
-                    <div style={{ background: "#FDEBEC", color: "#B23A47", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: 10 }}>{error}</div>
+                    <div role="alert" style={{ background: "#FDEBEC", color: "#B23A47", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: 10 }}>{error}</div>
                   )}
                   {saved && (
                     <div style={{ background: "#E9F8EF", color: "#1FA463", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: 10 }}>{t("common.saved")}</div>

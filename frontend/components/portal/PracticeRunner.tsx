@@ -123,7 +123,7 @@ export default function PracticeRunner({ initial, readOnly, onExit }: { initial:
         <div style={{ fontWeight: 800, fontSize: 16, flex: 1, minWidth: 160 }}>{a.test.title}</div>
         <span style={{ fontSize: 12, fontWeight: 800, color: "#4A4E58", background: "#F2F1EC", padding: "3px 10px", borderRadius: 100 }}>{a.test.subject}</span>
       </div>
-      {error && <div style={{ ...card, color: "#B23A47", fontSize: 13 }}>{error}</div>}
+      {error && <div role="alert" style={{ ...card, color: "#B23A47", fontSize: 13 }}>{error}</div>}
 
       {!open && (
         <>

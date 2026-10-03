@@ -111,6 +111,32 @@ jobs:
       - run: npm run lint
       - run: npm run build
 
+  # The deployment scripts, without Docker: which stack they act on, where
+  # the staging check may send requests, backups under controlled failures,
+  # the certificate and restore command sequences. Docker is a recording
+  # fake in these tests; nothing real is started or removed.
+  ops-scripts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Scripts are committed as executable
+        run: |
+          not_executable="$(git ls-files -s 'scripts/*.sh' | awk '$1 != "100755" {print $4}')"
+          if [ -n "$not_executable" ]; then echo "not executable in git:"; echo "$not_executable"; exit 1; fi
+      - name: Shell syntax
+        run: for f in scripts/production/*.sh scripts/staging/*.sh; do bash -n "$f"; done
+      - name: Stack selection (staging guard, pinned Compose project)
+        run: bash scripts/staging/tooling.test.sh
+      - name: Destination rules of the staging check
+        run: node --test scripts/staging/target.test.mjs
+      - name: Backups under controlled failures
+        run: bash scripts/production/backup-core.test.sh
+      - name: Certificate, backup and restore command sequences
+        run: bash scripts/production/ops.test.sh
+
   # The production images themselves: built from both Dockerfiles and run on
   # a throw-away database (docker-compose.smoke.yml). Checks that migrations
   # finish before the API answers, health and a round trip through the API,
@@ -135,3 +161,14 @@ jobs:
           if grep -q 'container_name: talimcrm_postgres' <<<"$resolved"; then echo "staging resolves to a production container name"; exit 1; fi
       - name: Build and smoke-test the production images
         run: bash scripts/production/smoke-test.sh
+
+  # Recovery rehearsal in disposable containers: the production compose
+  # file behind nginx with HTTPS, a real backup (database + uploads), a real
+  # failing backup, a restore into a separate database and uploads volume,
+  # and the application verified on the restored copy.
+  recovery:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Backup, restore and TLS rehearsal
+        run: bash scripts/production/restore-rehearsal.sh

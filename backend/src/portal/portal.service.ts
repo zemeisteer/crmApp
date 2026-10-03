@@ -606,6 +606,8 @@ export class PortalService {
       forMonth: currentMonth,
       expectedTuition,
       monthPaid,
+      // Shown as its own line, so paid + discount visibly add up to the price.
+      monthDiscount: due.discount,
       debtAmount,
       status: effectiveExpected === 0 || debtAmount === 0 ? 'PAID' : monthPaid > 0 ? 'PARTIAL' : 'UNPAID',
       history,

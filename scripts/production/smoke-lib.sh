@@ -37,5 +37,5 @@ last_line() {
 # json_string KEY JSON - the value of the first "KEY":"value" pair (enough
 # for the flat fields the smoke test reads; no jq needed in the runner).
 json_string() {
-  sed -n 's/.*"'"$1"'":"\([^"]*\)".*/\1/p' <<<"$2"
+  sed -n 's/.*"'"$1"'":[[:space:]]*"\([^"]*\)".*/\1/p' <<<"$2"
 }

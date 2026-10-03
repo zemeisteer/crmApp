@@ -81,7 +81,7 @@ export default function PortalExams({ onFinished, readOnly = false }: { onFinish
             onAnswer={(i, v) => setAnswers((a) => ({ ...a, [running.questions[i].id]: v }))}
           />
         </div>
-        {error && <div style={alertStyle}>{error}</div>}
+        {error && <div role="alert" style={alertStyle}>{error}</div>}
         <div style={{ display: "flex", gap: 8, marginTop: 18 }}>
           <button type="button" onClick={() => setRunning(null)} style={ghost}>{t("common.cancel")}</button>
           <button type="button" onClick={submit} disabled={busy} style={{ ...primary, flex: 1, opacity: busy ? 0.7 : 1 }}>
@@ -103,7 +103,7 @@ export default function PortalExams({ onFinished, readOnly = false }: { onFinish
           </div>
         </div>
       )}
-      {error && <div style={alertStyle}>{error}</div>}
+      {error && <div role="alert" style={alertStyle}>{error}</div>}
       {list === null ? (
         <div style={{ fontSize: 13, color: "#64748B" }}>{t("common.loading")}</div>
       ) : list.length === 0 ? (

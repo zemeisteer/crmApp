@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useAuth, isWorkspaceSelection } from "@/lib/auth-context";
 import { useLanguage } from "@/lib/i18n-context";
@@ -33,7 +33,7 @@ const ROLE_LABELS: Record<string, Record<"UZ" | "RU" | "EN", string>> = {
 };
 
 export default function LoginPage() {
-  const { login, completeTwoFactorLogin, selectWorkspace } = useAuth();
+  const { login, completeTwoFactorLogin, selectWorkspace, user, loading: authLoading } = useAuth();
   const { t, lang, setLang } = useLanguage();
   const [emailOrPhone, setEmailOrPhone] = useState("");
   const [password, setPassword] = useState("");
@@ -41,21 +41,35 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
 
   // On a center's own address the login belongs to that center. The main
-  // address sends a returning staff member to the center they last used
-  // (unless they came here on purpose with ?main=1).
+  // address only offers the center a returning staff member last used -
+  // it does not move them there by itself (signing in here works too: the
+  // session is carried to the right center afterwards).
   const hostCenter = useCenterFromHost();
+  const [lastCenterLink, setLastCenterLink] = useState<{ sub: string; url: string } | null>(null);
   useEffect(() => {
     const q = new URLSearchParams(window.location.search);
     if (q.has("main")) {
       forgetCenter();
       return;
     }
-    // Only from the main address; a center's own login stays put.
     if (subdomainFromHost(window.location.host)) return;
     const last = lastCenter();
     const base = last ? centerRedirectBase(last) : null;
-    if (base) window.location.replace(`${base}/login`);
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reads browser storage, only after mount
+    if (last && base) setLastCenterLink({ sub: last, url: `${base}/login` });
   }, []);
+
+  // Already signed in on this center's address (sent here from the main
+  // site, or an old bookmark): go on to the app instead of asking again.
+  // Decided once, when the stored session has been checked.
+  const sessionChecked = useRef(false);
+  useEffect(() => {
+    if (authLoading || sessionChecked.current) return;
+    sessionChecked.current = true;
+    if (!user || !subdomainFromHost(window.location.host)) return;
+    if (new URLSearchParams(window.location.search).has("main")) return;
+    window.location.replace(user.role === "STUDENT" || user.role === "PARENT" ? "/portal" : "/dashboard");
+  }, [authLoading, user]);
 
   // 2FA state
   const [pendingToken, setPendingToken] = useState<string | null>(null);
@@ -121,7 +135,7 @@ export default function LoginPage() {
             <p style={{ fontSize: 13, color: "#8A8D96", marginTop: 4 }}>{t("twofa.subtitle")}</p>
           </div>
           {error && (
-            <div style={{ background: "#FDEBEC", color: "#B23A47", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: 10 }}>{error}</div>
+            <div role="alert" style={{ background: "#FDEBEC", color: "#B23A47", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: 10 }}>{error}</div>
           )}
           <input
             className="field-input"
@@ -224,7 +238,7 @@ export default function LoginPage() {
           </div>
 
           {error && (
-            <div style={{ background: "#FEF2F2", border: "1px solid #FEE2E2", color: "#B91C1C", fontSize: 13.5, fontWeight: 600, padding: "10px 14px", borderRadius: 10 }}>
+            <div role="alert" style={{ background: "#FEF2F2", border: "1px solid #FEE2E2", color: "#B91C1C", fontSize: 13.5, fontWeight: 600, padding: "10px 14px", borderRadius: 10 }}>
               {error}
             </div>
           )}
@@ -471,13 +485,18 @@ export default function LoginPage() {
             <p style={{ fontSize: 14.5, color: "#6B7280" }}>
               {hostCenter ? t("auth.loginCenterSubtitle").replace("{name}", hostCenter.name ?? hostCenter.subdomain) : t("auth.loginSubtitle")}
             </p>
+            {!hostCenter && lastCenterLink && (
+              <a href={lastCenterLink.url} style={{ alignSelf: "flex-start", fontSize: 13, fontWeight: 700, color: ACCENT, background: "#EEF0FF", padding: "7px 12px", borderRadius: 100, textDecoration: "none" }}>
+                🏫 {t("auth.lastCenter").replace("{name}", lastCenterLink.sub)} →
+              </a>
+            )}
             {hostCenter && (
               <a href={`${mainSiteUrl()}/login?main=1`} style={{ fontSize: 12.5, color: "#6B7280", textDecoration: "underline" }}>{t("auth.otherCenter")}</a>
             )}
           </div>
 
           {error && (
-            <div
+            <div role="alert"
               style={{
                 background: "#FEF2F2",
                 border: "1px solid #FEE2E2",

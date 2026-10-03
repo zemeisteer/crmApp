@@ -24,8 +24,10 @@ export const dict = {
   "nav.reports": { UZ: "Hisobotlar", RU: "Отчёты", EN: "Reports" },
   "nav.auditLog": { UZ: "Faoliyat jurnali", RU: "Журнал действий", EN: "Activity log" },
   "nav.settings": { UZ: "Sozlamalar", RU: "Настройки", EN: "Settings" },
+  "nav.centers": { UZ: "Markazlar", RU: "Центры", EN: "Centers" },
   "nav.platformAdmin": { UZ: "Platform boshqaruvi", RU: "Управление платформой", EN: "Platform admin" },
   "nav.logout": { UZ: "Chiqish", RU: "Выйти", EN: "Log out" },
+  "nav.otherCenters": { UZ: "Boshqa markazlarim", RU: "Другие мои центры", EN: "My other centers" },
   "nav.trash": { UZ: "O'chirilganlar", RU: "Корзина", EN: "Trash" },
 
   // Common actions / labels used across many pages
@@ -379,9 +381,9 @@ export const dict = {
   },
   "settings.telegramBotLabel": { UZ: "Telegram bot (davomat/to'lov xabarnomalari)", RU: "Telegram-бот (уведомления о посещаемости/платежах)", EN: "Telegram bot (attendance/payment notifications)" },
   "settings.telegramInactiveHint": {
-    UZ: "Yoqilmagan — backend/.env fayliga TELEGRAM_BOT_TOKEN qo'shing",
-    RU: "Не включено — добавьте TELEGRAM_BOT_TOKEN в файл backend/.env",
-    EN: "Not enabled — add TELEGRAM_BOT_TOKEN to the backend/.env file",
+    UZ: "Yoqilmagan — bot tokeni server sozlamalarida (.env) kiritilmagan",
+    RU: "Не включено — токен бота не задан в настройках сервера (.env)",
+    EN: "Not enabled — the bot token is not set in the server settings (.env)",
   },
   "settings.clickPaymentLabel": { UZ: "Click to'lov", RU: "Оплата Click", EN: "Click payment" },
   "settings.paymePaymentLabel": { UZ: "Payme to'lov", RU: "Оплата Payme", EN: "Payme payment" },
@@ -803,6 +805,7 @@ export const dict = {
   "ptl.debtLabel": { UZ: "Qarz", RU: "Долг", EN: "Owed" },
   "ptl.allPaid": { UZ: "Barcha to'lovlar qilingan (qarz yo'q)", RU: "Всё оплачено (долгов нет)", EN: "All paid (nothing owed)" },
   "ptl.coursePrice": { UZ: "Oylik kurs narxi", RU: "Стоимость курса в месяц", EN: "Monthly course price" },
+  "ptl.discount": { UZ: "Chegirma", RU: "Скидка", EN: "Discount" },
   "ptl.paidSoFar": { UZ: "To'landi", RU: "Оплачено", EN: "Paid" },
   "ptl.payClick": { UZ: "Click orqali to'lash", RU: "Оплатить через Click", EN: "Pay with Click" },
   "ptl.payPayme": { UZ: "Payme orqali to'lash", RU: "Оплатить через Payme", EN: "Pay with Payme" },
@@ -1831,6 +1834,7 @@ export const dict = {
   "handoff.failed": { UZ: "Kirish havolasi eskirgan. Qaytadan kiring.", RU: "Ссылка для входа устарела. Войдите снова.", EN: "This sign-in link has expired. Please sign in again." },
   "handoff.login": { UZ: "Kirish", RU: "Войти", EN: "Sign in" },
   "auth.loginCenterSubtitle": { UZ: "{name} hisobingizga kiring.", RU: "Войдите в аккаунт {name}.", EN: "Sign in to your {name} account." },
+  "auth.lastCenter": { UZ: "Oxirgi markazingiz: {name}", RU: "Ваш последний центр: {name}", EN: "Your last center: {name}" },
   "auth.otherCenter": { UZ: "Boshqa markazga kirish", RU: "Войти в другой центр", EN: "Sign in to another center" },
   "chart.current": { UZ: "joriy", RU: "текущий", EN: "current" },
   "chart.noData": { UZ: "Ma'lumot yo'q", RU: "Нет данных", EN: "No data" },
@@ -2752,6 +2756,9 @@ export const dict = {
   "month.short.nov": { UZ: "Noy", RU: "Ноя", EN: "Nov" },
   "month.short.dec": { UZ: "Dek", RU: "Дек", EN: "Dec" },
   "shell.menuAriaLabel": { UZ: "Menyu", RU: "Меню", EN: "Menu" },
+  "shell.noAccessTitle": { UZ: "Bu bo'lim sizning rolingiz uchun ochiq emas", RU: "Этот раздел недоступен для вашей роли", EN: "This section is not open to your role" },
+  "shell.noAccessText": { UZ: "Kerak bo'lsa, markaz rahbaridan ruxsat so'rang.", RU: "Если он нужен, попросите доступ у руководителя центра.", EN: "If you need it, ask the center's owner for access." },
+  "shell.noAccessBack": { UZ: "Bosh sahifaga qaytish", RU: "На главную", EN: "Back to the dashboard" },
   "common.sumUnit": { UZ: "so'm", RU: "сум", EN: "sum" },
 
   "groups.scheduleConflictWarning": {
@@ -2970,6 +2977,7 @@ export const dict = {
   "adm.trialDuration": { UZ: "Davomiyligi (daqiqa)", RU: "Длительность (мин)", EN: "Duration (min)" },
   "adm.trialGroup": { UZ: "Guruh (ixtiyoriy)", RU: "Группа (необязательно)", EN: "Group (optional)" },
   "adm.trialTeacher": { UZ: "O'qituvchi (ixtiyoriy)", RU: "Учитель (необязательно)", EN: "Teacher (optional)" },
+  "adm.trialNotYet": { UZ: "Bu sinov darsi hali bo'lmagan. Natijani baribir hozir belgilaysizmi?", RU: "Это пробное занятие ещё не прошло. Всё равно отметить результат сейчас?", EN: "This trial lesson has not taken place yet. Record its outcome now anyway?" },
   "adm.trialAttend": { UZ: "Qatnashdi", RU: "Пришёл", EN: "Attended" },
   "adm.trialMiss": { UZ: "Kelmadi", RU: "Не пришёл", EN: "Missed" },
   "adm.trialCancel": { UZ: "Bekor qilish", RU: "Отменить", EN: "Cancel" },
@@ -3095,7 +3103,7 @@ export const dict = {
   "tg.disconnect": { UZ: "Uzish", RU: "Отключить", EN: "Disconnect" },
   "tg.check": { UZ: "Tekshirish", RU: "Проверить", EN: "Check" },
   "tg.openHint": { UZ: "Telegram ochildi: botda \"Start\" ni bosing, keyin \"Tekshirish\"ni bosing.", RU: "Откроется Telegram: нажмите «Start» в боте, затем «Проверить».", EN: "Telegram opens: press \"Start\" in the bot, then \"Check\"." },
-  "tg.notConfigured": { UZ: "Telegram bot hali sozlanmagan (TELEGRAM_BOT_TOKEN).", RU: "Telegram-бот ещё не настроен (TELEGRAM_BOT_TOKEN).", EN: "Telegram bot is not set up yet (TELEGRAM_BOT_TOKEN)." },
+  "tg.notConfigured": { UZ: "Telegram bot hali ulanmagan — markaz rahbari yoki texnik yordamga murojaat qiling.", RU: "Telegram-бот ещё не подключён — обратитесь к руководителю центра или в поддержку.", EN: "The Telegram bot is not connected yet — ask the center owner or support." },
 } as const;
 
 export type TranslationKey = keyof typeof dict;

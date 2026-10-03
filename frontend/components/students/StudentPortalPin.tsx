@@ -71,7 +71,7 @@ export default function StudentPortalPin({ studentId, hasPhone }: { studentId: s
           <div style={{ fontFamily: "'Manrope', monospace", fontWeight: 800, fontSize: 30, letterSpacing: 8, color: ACCENT }}>{pin}</div>
         </div>
       )}
-      {error && <div style={{ fontSize: 12.5, color: "#B23A47", marginBottom: 10 }}>{error}</div>}
+      {error && <div role="alert" style={{ fontSize: 12.5, color: "#B23A47", marginBottom: 10 }}>{error}</div>}
       <button
         type="button"
         onClick={issue}

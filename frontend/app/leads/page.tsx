@@ -17,6 +17,7 @@ import {
   type LeadQuery,
   type LeadStatus,
 } from "@/lib/api";
+import { leadNote } from "@/lib/lead-note";
 import { useLanguage } from "@/lib/i18n-context";
 import { useAuth } from "@/lib/auth-context";
 import {
@@ -305,7 +306,14 @@ function LeadsContent() {
                 <tbody>
                   {data.items.map((l) => (
                     <tr key={l.id} style={{ opacity: l.archivedAt ? 0.55 : 1 }}>
-                      <td><Link href={`/leads/${l.id}`} style={{ fontWeight: 700, color: "#181A1F" }}>{l.fullName}</Link></td>
+                      <td style={{ maxWidth: 320 }}>
+                        <Link href={`/leads/${l.id}`} style={{ fontWeight: 700, color: "#181A1F" }}>{l.fullName}</Link>
+                        {leadNote(l.notes) && (
+                          <div title={leadNote(l.notes)} style={{ fontSize: 12, color: "#8A8D96", marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            💬 {leadNote(l.notes)}
+                          </div>
+                        )}
+                      </td>
                       <td><a href={telHref(l.phone)} style={{ color: ACCENT }}>{l.phone}</a></td>
                       <td><StatusBadge status={l.status} label={t(statusKey(l.status))} /></td>
                       <td>{t(sourceKey(l.source))}</td>
@@ -328,6 +336,7 @@ function LeadsContent() {
                     <StatusBadge status={l.status} label={t(statusKey(l.status))} />
                   </div>
                   <div style={{ fontSize: 13, color: "#5B5F6A" }}>{l.phone} · {t(sourceKey(l.source))}</div>
+                  {leadNote(l.notes) && <div style={{ fontSize: 12.5, color: "#8A8D96", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>💬 {leadNote(l.notes)}</div>}
                   {l.followUpAt && (
                     <div style={{ fontSize: 12.5, color: isOverdue(l.followUpAt) ? "#B91C1C" : "#5B5F6A" }}>
                       {t("adm.colFollowUp")}: {formatDateTime(l.followUpAt, lang)}

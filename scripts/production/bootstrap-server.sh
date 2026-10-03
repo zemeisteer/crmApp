@@ -52,7 +52,9 @@ if [ -d "$DIR/.git" ]; then
 else
   git clone -q -b "$BRANCH" "$REPO" "$DIR"
 fi
-chmod +x "$DIR"/scripts/production/*.sh
+# The scripts are committed as executable; this also covers a checkout made
+# with core.fileMode off.
+chmod +x "$DIR"/scripts/production/*.sh "$DIR"/scripts/staging/*.sh
 
 echo "== 5/5 .env"
 cd "$DIR"

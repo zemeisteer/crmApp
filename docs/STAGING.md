@@ -25,15 +25,15 @@ sudo DIR=/opt/crmapp-staging ENV_TEMPLATE=.env.staging.example bash bootstrap.sh
 
 cd /opt/crmapp-staging
 nano .env                                   # POSTGRES_USER/DB, bot, test merchant ...
-./scripts/staging/preflight-staging.sh      # izolyatsiya tekshiruvi (sirlarni ko'rsatmaydi)
-./scripts/production/preflight.sh           # DNS va Docker
-./scripts/production/init-ssl.sh            # staging.<domen> va *.staging.<domen>
-docker compose -f docker-compose.prod.yml up -d --build
+bash scripts/staging/preflight-staging.sh      # izolyatsiya tekshiruvi (sirlarni ko'rsatmaydi)
+bash scripts/production/preflight.sh           # DNS va Docker
+bash scripts/production/init-ssl.sh            # staging.<domen> va *.staging.<domen>
+bash scripts/production/stack.sh up -d --build
 ```
 
 - Migratsiyalar backend ishga tushganda o'zi qo'llanadi (`node scripts/migrate.cjs`); API undan keyin ochiladi.
 - `bootstrap-server.sh` parollar va JWT sirini tasodifiy yaratadi; ular ekranga chiqmaydi.
-- Production ham shu serverda bo'lsa: `./scripts/staging/preflight-staging.sh --prod-env /opt/crmapp/.env` — birorta sir umumiy emasligini tekshiradi (qiymatlarni ko'rsatmaydi). Shu holatda `HTTP_PORT`/`HTTPS_PORT` ni boshqa portlarga o'zgartirish kerak; alohida server afzal.
+- Production ham shu serverda bo'lsa: `bash scripts/staging/preflight-staging.sh --prod-env /opt/crmapp/.env` — birorta sir umumiy emasligini tekshiradi (qiymatlarni ko'rsatmaydi). Shu holatda `HTTP_PORT`/`HTTPS_PORT` ni boshqa portlarga o'zgartirish kerak; alohida server afzal.
 
 **Staging'ni production'dan ajratib turadigan narsalar** (`.env`):
 
@@ -46,6 +46,8 @@ docker compose -f docker-compose.prod.yml up -d --build
 | `JWT_SECRET` | o'ziniki | production tokeni staging'da yaroqsiz va aksincha |
 | `REMINDER_SCAN_MS=0` | avtomatik eslatmalar o'chiq | o'z-o'zidan xabar ketmaydi |
 
+**Stack tanlash qoidasi.** Stack'ni faqat shu papkadagi `.env` belgilaydi; barcha buyruqlar `bash scripts/production/stack.sh ...` orqali. Terminaldan meros qolgan `COMPOSE_PROJECT_NAME` / `STACK_NAME` / `POSTGRES_DB` / `POSTGRES_USER` / `BACKUP_DIR` / `DOMAIN` / `COMPOSE_FILE` `.env` dan farq qilsa, skriptlar `REFUSED` deb to'xtaydi. `--prod-env` berilganda `preflight-staging.sh` sirlardan tashqari resurs nomlarini ham solishtiradi: Compose loyihasi (papka nomidan olinadigan standart ham), `STACK_NAME`, `POSTGRES_DB`, `DOMAIN`, zaxira papkasi, portlar.
+
 ## 2. Tekshirish
 
 ```bash
@@ -53,11 +55,21 @@ docker compose -f docker-compose.prod.yml up -d --build
 node scripts/staging/verify-flows.mjs --api https://staging.<domen>/api --root staging.<domen> --confirm staging.<domen>
 
 # 2.2 Zaxira va tiklash mashqi (jonli bazaga tegmaydi)
-./scripts/production/backup.sh
-./scripts/production/restore.sh backups/talimcrm_staging_<sana>.sql.gz
+sudo bash scripts/production/backup.sh
+sudo bash scripts/production/restore.sh backups/talimcrm_staging_<vaqt>Z      # tiklash to'plami papkasi
+bash scripts/production/restore-rehearsal.sh   # ixtiyoriy: bir martalik konteynerlarda to'liq tiklash mashqi
 ```
 
 `verify-flows.mjs` ikki sinov markazi ("ZZ Staging Check …") yaratadi va tekshiradi: HTTPS va HTTP→HTTPS, markaz subdomenida HTTPS, login → markaz, handoff, refresh, ikki markaz/ikki rol, xodimni o'chirish, ruxsatsiz markaz va origin, lid → sinov darsi → qabul → davomat → hisob-faktura → to'lov, balanslarning to'lovlar sahifasi/moliya xulosasi/direktor hisoboti/kabinetda bir xilligi, tarixiy narxni tasdiqlash. Login limitiga (8/daq) rioya qiladi — kutadi, chetlab o'tmaydi.
+
+**`verify-flows.mjs` qayerga murojaat qiladi (manzil qoidalari).** Skript faqat tasdiqlangan manzilga so'rov yuboradi; qoidaga to'g'ri kelmasa **birorta ham tarmoq so'rovisiz** to'xtaydi:
+- `--api` aynan `https://<--root>/api` bo'lishi kerak (standart port); `--confirm` `--root` bilan bir xil yoziladi.
+- API boshqa hostda bo'lsa: `--confirm-api-host <host[:port]>` bilan alohida tasdiqlanadi va host nomi sinov muhitiga o'xshashi kerak (`staging`, `stage`, `stg`, `test`).
+- Rad etiladi: noto'g'ri URL, `http(s)` dan boshqa protokol, URL ichidagi login/parol, query/fragment, boshqa yo'l, production'ga o'xshash manzil.
+- Redirect'lar kuzatilmaydi (boshqa hostga olib ketolmaydi).
+- Lokal sinov: `--local --api http://127.0.0.1:<port>/api --root staging.localhost --confirm staging.localhost` — faqat loopback manzil va `.localhost` domeni.
+
+Skript markazlar izolyatsiyasini ham tekshiradi: har ikki markazda farqlanadigan yozuvlar yaratadi, A markaz tokeni bilan B markaz ma'lumotiga header/query orqali o'tishga urinadi va javobning o'zini tekshiradi, B ning ID'lariga to'g'ridan-to'g'ri o'qish/o'zgartirish/to'lov so'rovlari 403/404 qaytarishini va B yozuvlari o'zgarmaganini tasdiqlaydi.
 
 **Brauzerda qo'lda** (skript qamramaydi):
 - [ ] `https://staging.<domen>/login` → markaz subdomenidagi `/dashboard` ga o'tadi; sahifani yangilaganda sessiya saqlanadi.
@@ -70,7 +82,7 @@ node scripts/staging/verify-flows.mjs --api https://staging.<domen>/api --root s
 Oldin: sinov chat(lar)i aniq tasdiqlangan bo'lishi kerak. Production botining tokeni staging'ga **hech qachon** qo'yilmaydi.
 
 ```bash
-./scripts/production/set-telegram-webhook.sh
+bash scripts/production/set-telegram-webhook.sh
 ```
 Skript token qaysi botga tegishli ekanini va hozir qayerga ulanganini ko'rsatadi; bot nomi `.env` dagi `TELEGRAM_BOT_USERNAME` ga mos kelmasa yoki bot boshqa hostga ulangan bo'lsa — **rad etadi** (`--replace` faqat shu bot haqiqatan staging'niki bo'lsa).
 
@@ -99,7 +111,7 @@ Bu holatlar lokal testlarda (`test/billing-gateways.e2e-spec.ts`, 25 test) **sox
 ## 5. To'xtatish va tozalash
 
 ```bash
-./scripts/staging/down.sh            # to'xtatadi, ma'lumot saqlanadi
-./scripts/staging/down.sh --purge    # volume'larni ham o'chiradi (stack nomini yozib tasdiqlash so'raladi)
+bash scripts/staging/down.sh            # to'xtatadi, ma'lumot saqlanadi
+bash scripts/staging/down.sh --purge    # volume'larni ham o'chiradi (stack nomini yozib tasdiqlash so'raladi)
 ```
 Skript `.env` dagi `STACK_NAME` va `COMPOSE_PROJECT_NAME` ikkalasida ham `staging`/`test` bo'lmasa **hech narsa qilmaydi** — production papkasida yuritilsa ham rad etadi.

@@ -68,7 +68,7 @@ export default function PortalLogin({ onLoggedIn, subdomain }: { onLoggedIn: (se
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-      {error && <div style={errorBox}>{error}</div>}
+      {error && <div role="alert" style={errorBox}>{error}</div>}
 
       {step === "phone" && (
         <form onSubmit={start} style={{ display: "flex", flexDirection: "column", gap: 14 }} noValidate>

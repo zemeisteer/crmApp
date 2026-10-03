@@ -1,11 +1,12 @@
 import { BadRequestException, ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { and, eq, isNotNull, isNull, inArray, or } from 'drizzle-orm';
+import { and, eq, gte, isNotNull, isNull, inArray, or } from 'drizzle-orm';
 import { DB, Database } from '../db/db.module';
 import { branches, enrollments, groups, leads, organizationMemberships, studentGuardians, studentPortalPins, students, users } from '../db/schema';
 import { randomInt } from 'crypto';
 import * as bcrypt from 'bcryptjs';
 import { CreateStudentDto, LinkGuardianDto, UpdateStudentDto } from './dto/student.dto';
 import { AuditService } from '../audit/audit.service';
+import { doubleSubmitSince, lockIdenticalCreate } from '../common/double-submit';
 import { countOccupiedSeats } from '../common/seats';
 import { assertNoStudentTimeClash } from '../common/student-schedule';
 import { studentIdsInGroups, teacherGroupIds } from '../common/teacher-scope';
@@ -90,7 +91,25 @@ export class StudentsService {
     }
 
     const groupIds = dto.groupIds && dto.groupIds.length > 0 ? dto.groupIds : dto.groupId ? [dto.groupId] : [];
+    // The same form sent twice (double click, a retry after a lost reply)
+    // makes one student: the second request gets the first one's row.
+    let repeated = false;
     const student = await this.db.transaction(async (tx) => {
+      await lockIdenticalCreate(tx, `student:${tenantId}:${dto.fullName}:${dto.phone ?? ''}:${dto.parentPhone ?? ''}`);
+      const twin = await tx.query.students.findFirst({
+        where: and(
+          eq(students.tenantId, tenantId),
+          eq(students.fullName, dto.fullName),
+          dto.phone ? eq(students.phone, dto.phone) : isNull(students.phone),
+          dto.parentPhone ? eq(students.parentPhone, dto.parentPhone) : isNull(students.parentPhone),
+          isNull(students.deletedAt),
+          gte(students.createdAt, doubleSubmitSince()),
+        ),
+      });
+      if (twin) {
+        repeated = true;
+        return twin;
+      }
       const [student] = await tx
         .insert(students)
         .values({
@@ -135,6 +154,7 @@ export class StudentsService {
       }
       return student;
     });
+    if (repeated) return student;
     this.audit.log({ tenantId, userId, action: 'create', entityType: 'student', entityId: student.id, meta: { fullName: student.fullName } });
     void this.webhooks.dispatch(tenantId, 'student.created', student);
     return student;

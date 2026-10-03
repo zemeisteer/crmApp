@@ -62,7 +62,7 @@ export default function DirectorReport({ month, onMonth, onSms }: { month: strin
         <MonthPicker value={month} onChange={onMonth} style={{ width: 200 }} />
         {loading && <span style={{ fontSize: 12, color: "#8A8D96" }}>{t("common.loading")}</span>}
       </div>
-      {error && <div style={{ background: "#FEE2E2", color: "#B91C1C", fontWeight: 600, fontSize: 13, padding: "12px 16px", borderRadius: 12 }}>{error}</div>}
+      {error && <div role="alert" style={{ background: "#FEE2E2", color: "#B91C1C", fontWeight: 600, fontSize: 13, padding: "12px 16px", borderRadius: 12 }}>{error}</div>}
 
       {data && now && (
         <>

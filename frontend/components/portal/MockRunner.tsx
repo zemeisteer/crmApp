@@ -154,7 +154,7 @@ export default function MockRunner({ initial, readOnly, onExit }: { initial: Por
         )}
         {section && !done(section) && section !== "speaking" && <span style={{ fontSize: 12, color: saved === "error" ? "#B23A47" : "#8A8D96" }}>{saved === "saving" ? t("pmk.saving") : saved === "saved" ? `✓ ${t("pmk.saved")}` : saved === "error" ? `⚠ ${t("exm.saveError")}` : ""}</span>}
       </div>
-      {error && <div style={{ ...card, color: "#B23A47", fontSize: 13 }}>{error}</div>}
+      {error && <div role="alert" style={{ ...card, color: "#B23A47", fontSize: 13 }}>{error}</div>}
 
       {!section && (
         <>
@@ -553,7 +553,7 @@ function SpeakingQuestion({ attemptId, k, question, prep, limit, saved, readOnly
           </div>
         </div>
       )}
-      {error && <div style={{ fontSize: 12.5, color: "#B23A47" }}>{error}</div>}
+      {error && <div role="alert" style={{ fontSize: 12.5, color: "#B23A47" }}>{error}</div>}
     </div>
   );
 }

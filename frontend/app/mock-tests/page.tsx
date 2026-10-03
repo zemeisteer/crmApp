@@ -121,7 +121,7 @@ function MockTestsContent() {
           </div>
         </div>
       )}
-      {error && <div style={{ background: "#FDEBEC", color: "#B23A47", padding: "10px 14px", borderRadius: 10, fontSize: 13, fontWeight: 600 }}>{error}</div>}
+      {error && <div role="alert" style={{ background: "#FDEBEC", color: "#B23A47", padding: "10px 14px", borderRadius: 10, fontSize: 13, fontWeight: 600 }}>{error}</div>}
       {importing && <ImportPanel onClose={() => { setImporting(false); load(); }} onOpenTest={(id) => { setImporting(false); load(); openTest(id); }} />}
 
       {tests === null ? (

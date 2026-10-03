@@ -57,7 +57,7 @@ function ResetPasswordForm() {
         <p style={{ fontSize: 13, color: "#8A8D96", marginTop: 4 }}>{t("resetPw.newPasswordHint")}</p>
       </div>
       {error && (
-        <div style={{ background: "#FDEBEC", color: "#B23A47", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: 10 }}>{error}</div>
+        <div role="alert" style={{ background: "#FDEBEC", color: "#B23A47", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: 10 }}>{error}</div>
       )}
       {message ? (
         <div style={{ background: "#E9F8EF", color: "#1FA463", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: 10 }}>

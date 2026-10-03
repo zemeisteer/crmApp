@@ -137,6 +137,15 @@ async function tryRefresh(): Promise<boolean> {
   return refreshInFlight;
 }
 
+// Set while the page is on its way to the center's own address with a
+// handoff code: this address's session has just been closed on purpose, so a
+// request still in flight must not turn its 401 into a trip to /login (that
+// would replace the navigation to the center).
+let leavingForCenter = false;
+export function markLeavingForCenter() {
+  leavingForCenter = true;
+}
+
 async function request<T>(
   path: string,
   options: RequestInit = {},
@@ -167,6 +176,7 @@ async function request<T>(
       clearPortalToken();
       throw new ApiError("Portal sessiyasi eskirgan", 401);
     }
+    if (leavingForCenter) throw new ApiError("Sessiya markaz manziliga ko'chirildi", 401);
     if (!_retried && (await tryRefresh())) {
       return request<T>(path, options, true);
     }
@@ -2416,6 +2426,7 @@ export interface PortalPayments {
   forMonth: string;
   expectedTuition: number;
   monthPaid: number;
+  monthDiscount?: number;
   debtAmount: number;
   status: "PAID" | "PARTIAL" | "UNPAID";
   history: Payment[];

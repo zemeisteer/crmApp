@@ -133,5 +133,5 @@ export const ghostBtn: React.CSSProperties = {
 export const dangerBtn: React.CSSProperties = {
   ...ghostBtn,
   color: "#B91C1C",
-  borderColor: "#FECACA",
+  border: "1px solid #FECACA",
 };

@@ -1,61 +1,82 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# TalimCRM - restore a database backup INTO A NEW, SEPARATE DATABASE and
-# check it. The live database is never written to, dropped or renamed here.
+# TalimCRM - restore a backup INTO A NEW, SEPARATE DATABASE and check it.
+# The live database is never written to, dropped or renamed here.
 #
-#   ./scripts/production/restore.sh backups/<stack>_<time>.sql.gz          drill: restore, check, drop
-#   ./scripts/production/restore.sh backups/<stack>_<time>.sql.gz --keep   restore, check, keep the copy
+#   bash scripts/production/restore.sh backups/<stack>_<time>Z            drill: restore, check, drop
+#   bash scripts/production/restore.sh backups/<stack>_<time>Z --keep     restore, check, keep the copy
+#   (a single older <name>.sql.gz file is accepted too; it has no checksums)
 #
-# What it checks on the restored copy:
-#   - the dump loads without a single error
-#   - migrations: every migration file of this checkout is recorded as
-#     applied, none is unknown (so the app can start on it as it is)
-#   - the core tables are there and readable; their row counts are printed
-#     next to the live database's (the live one may have moved on since)
-#   - money adds up: no invoice paid past its amount, no payment allocated
-#     past its amount, every allocation points at an existing payment/invoice
+# It reports three different things, separately:
+#   LOADED      the dump loaded into the new database without one error
+#   CONSISTENT  the restored data passed the checks: migrations known to
+#               this checkout, core tables present, money adds up
+#   APPLICATION not checked here. That the application starts and works on
+#               the copy is proven by scripts/production/restore-rehearsal.sh
+#               (disposable containers) or by switching to the kept copy.
 #
+# The only database this script may drop is the one it created itself in
+# this run: if creating it fails, or the name is taken, nothing is dropped.
 # Switching the application to a kept copy is a separate, deliberate step:
-# the exact commands are printed at the end. Uploaded files are restored
-# separately (see the end of the output).
+# the exact commands are printed at the end, with the uploaded files.
 # ==============================================================================
 set -euo pipefail
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
 
-FILE="${1:-}"
+SRC="${1:-}"
 KEEP=0
 [ "${2:-}" = "--keep" ] && KEEP=1
-if [ -z "$FILE" ] || [ ! -f "$FILE" ]; then
-  echo "Usage: $0 <backup.sql.gz> [--keep]" >&2
-  exit 1
+[ -n "$SRC" ] || die "Usage: $0 <recovery set folder | backup.sql.gz> [--keep]"
+load_stack
+
+if [ -d "$SRC" ]; then
+  SET="$(cd "$SRC" && pwd)"
+  DUMP="$SET/db.sql.gz"
+  [ -f "$DUMP" ] && [ -f "$SET/SHA256SUMS" ] && [ -f "$SET/manifest.json" ] || die "ERROR: $SRC is not a complete recovery set (db.sql.gz, manifest.json, SHA256SUMS)."
+  ( cd "$SET" && sha256sum -c SHA256SUMS >/dev/null 2>&1 ) || die "ERROR: the checksums of $SRC do not match - the set is damaged or was altered."
+  CHECKSUMS="verified"
+elif [ -f "$SRC" ]; then
+  SET=""
+  DUMP="$SRC"
+  CHECKSUMS="none (a single file, not a recovery set)"
+else
+  die "ERROR: $SRC not found."
 fi
-gzip -t "$FILE" || { echo "ERROR: $FILE is not a valid gzip file." >&2; exit 1; }
+gzip -t "$DUMP" || die "ERROR: $DUMP is not a valid gzip file."
 require_stack
 
-TARGET="${PGDB}_restore_$(date +%Y%m%d%H%M%S)"
-safe_dbname "$TARGET" || { echo "ERROR: unusable database name \"$TARGET\"." >&2; exit 1; }
-[ "$TARGET" != "$PGDB" ] || { echo "ERROR: the target would be the live database." >&2; exit 1; }
-EXISTS="$(sql postgres "SELECT count(*) FROM pg_database WHERE datname = '$TARGET'")"
-[ "$EXISTS" = "0" ] || { echo "ERROR: database $TARGET already exists." >&2; exit 1; }
+TARGET="${PGDB}_restore_$(date -u +%Y%m%d%H%M%S)"
+safe_dbname "$TARGET" || die "ERROR: unusable database name \"$TARGET\"."
+[ "$TARGET" != "$PGDB" ] || die "ERROR: the target would be the live database."
 
-DROP_ON_EXIT=1
+# Set only after createdb succeeded: the exit handler must never drop a
+# database this run did not create (a name collision, a failed createdb).
+CREATED=0
 cleanup() {
-  if [ "$DROP_ON_EXIT" = "1" ]; then
+  if [ "$CREATED" = "1" ] && [ "$KEEP_COPY" = "0" ]; then
     pg dropdb --if-exists "$TARGET" >/dev/null 2>&1 || echo "warning: could not drop $TARGET; remove it by hand: dropdb $TARGET" >&2
   fi
 }
+KEEP_COPY=0
 trap cleanup EXIT
 problem() { echo "RESTORE CHECK FAILED: $*" >&2; exit 1; }
 
 echo "Stack: $STACK_NAME   live database: $PGDB (not touched)"
-echo "Backup: $FILE ($(du -h "$FILE" | cut -f1))"
+echo "Backup: $SRC ($(du -h "$DUMP" | cut -f1) database dump; checksums: $CHECKSUMS)"
+if [ -n "$SET" ]; then
+  echo "    made:     $(json_string created_utc "$(cat "$SET/manifest.json")")   revision: $(json_string application_revision "$(cat "$SET/manifest.json")")   latest migration: $(json_string latest_migration "$(cat "$SET/manifest.json")")"
+fi
+
 echo "1/4 creating $TARGET and loading the dump"
+EXISTS="$(sql postgres "SELECT count(*) FROM pg_database WHERE datname = '$TARGET'")" || problem "could not query the server"
+[ "$EXISTS" = "0" ] || problem "a database named $TARGET already exists; nothing was changed"
 T0="$(now_s)"
-pg createdb "$TARGET" || problem "could not create $TARGET"
+pg createdb "$TARGET" || problem "could not create $TARGET; nothing was changed"
+CREATED=1
 # ON_ERROR_STOP: one failing statement fails the whole restore.
-gunzip -c "$FILE" | pg psql -d "$TARGET" -v ON_ERROR_STOP=1 -q -X >/dev/null || problem "the dump did not load cleanly"
+gunzip -c "$DUMP" | pg psql -d "$TARGET" -v ON_ERROR_STOP=1 -q -X >/dev/null || problem "the dump did not load cleanly"
 LOAD_S=$(( $(now_s) - T0 ))
-echo "    loaded in ${LOAD_S}s"
+echo "    LOADED: yes, in ${LOAD_S}s"
 
 echo "2/4 migrations"
 FILES=("$PROJECT_ROOT"/backend/drizzle/[0-9][0-9][0-9][0-9]_*.sql)
@@ -96,24 +117,24 @@ check_zero "enrollments without their student or group" "SELECT count(*) FROM en
 check_zero "active memberships without their user or center" "SELECT count(*) FROM organization_memberships m LEFT JOIN users u ON u.id = m.user_id LEFT JOIN tenants t ON t.id = m.tenant_id WHERE u.id IS NULL OR t.id IS NULL"
 
 echo
-if [ "$WARNINGS" = "0" ]; then
-  echo "RESTORE OK: the backup loads and is consistent (load ${LOAD_S}s, total $(( $(now_s) - T0 ))s)."
-else
-  echo "RESTORE LOADED WITH $WARNINGS WARNING(S): the dump restores, but the data has the inconsistencies listed above (load ${LOAD_S}s)."
-fi
+echo "RESULT"
+echo "  LOADED:      yes (${LOAD_S}s; total $(( $(now_s) - T0 ))s)"
+if [ "$WARNINGS" = "0" ]; then echo "  CONSISTENT:  yes"; else echo "  CONSISTENT:  NO - $WARNINGS finding(s) above"; fi
+echo "  APPLICATION: not checked by this script (see restore-rehearsal.sh)"
 if [ "$KEEP" = "1" ]; then
-  DROP_ON_EXIT=0
+  KEEP_COPY=1
+  echo "RESTORED_DATABASE=$TARGET"
   cat <<EOF
 
 The copy was kept as database "$TARGET". Nothing uses it yet.
 To run the application on it (a deliberate step - the current data stays as "${PGDB}_before_<time>"):
-  1. docker compose -f docker-compose.prod.yml stop backend
-  2. docker compose -f docker-compose.prod.yml exec postgres psql -U $PGU -d postgres -c 'ALTER DATABASE "$PGDB" RENAME TO "${PGDB}_before_$(date +%Y%m%d%H%M)"'
-  3. docker compose -f docker-compose.prod.yml exec postgres psql -U $PGU -d postgres -c 'ALTER DATABASE "$TARGET" RENAME TO "$PGDB"'
-  4. docker compose -f docker-compose.prod.yml start backend      (applies any pending migration, then serves)
-Uploaded files (homework, audio, images) are not in the database dump. From the matching archive:
-  docker compose -f docker-compose.prod.yml exec -T backend tar -xzf - -C /app < backups/<stack>_<time>_uploads.tar.gz
-To discard the copy instead:  docker compose -f docker-compose.prod.yml exec postgres dropdb -U $PGU "$TARGET"
+  1. bash scripts/production/stack.sh stop backend
+  2. bash scripts/production/stack.sh exec postgres psql -U $PGU -d postgres -c 'ALTER DATABASE "$PGDB" RENAME TO "${PGDB}_before_$(date -u +%Y%m%d%H%M)"'
+  3. bash scripts/production/stack.sh exec postgres psql -U $PGU -d postgres -c 'ALTER DATABASE "$TARGET" RENAME TO "$PGDB"'
+  4. bash scripts/production/stack.sh start backend      (applies any pending migration, then serves)
+Uploaded files (homework, audio, images) are not in the database. From the same set, into the uploads volume:
+  bash scripts/production/stack.sh exec -T backend tar -xzf - -C /app/uploads < <set folder>/uploads.tar.gz
+To discard the copy instead:  bash scripts/production/stack.sh exec postgres dropdb -U $PGU "$TARGET"
 EOF
 else
   echo "The temporary copy $TARGET is being dropped (use --keep to keep it)."

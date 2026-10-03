@@ -604,7 +604,9 @@ export class LeadsService {
           desiredSubjectId,
           legacySubject: desiredSubjectId ? null : subjectText,
           preferredBranchId: branchId,
-          notes: noteText,
+          // Only what the person wrote: where it came from is shown as the
+          // lead's channel and on the timeline.
+          notes: channel === 'placement_test' ? null : dto.notes?.trim() || null,
           ...appTimestamps(),
         }).returning();
         await this.recordActivity(tx, {

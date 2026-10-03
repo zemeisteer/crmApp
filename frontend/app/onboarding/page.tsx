@@ -607,7 +607,7 @@ export default function OnboardingPage() {
           }}
         >
           {error && (
-            <div
+            <div role="alert"
               style={{
                 background: "#FEF2F2",
                 border: "1px solid #FEE2E2",

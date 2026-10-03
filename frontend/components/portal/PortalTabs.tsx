@@ -739,7 +739,9 @@ export function PaymentsTab({ payments, checkoutLoading, onPay, payError }: { pa
   const debt = payments?.debtAmount ?? 0;
   const expected = payments?.expectedTuition ?? 0;
   const paid = payments?.monthPaid ?? 0;
-  const pct = expected > 0 ? Math.min(100, Math.round((paid / expected) * 100)) : 0;
+  const discount = payments?.monthDiscount ?? 0;
+  // A discount counts towards the month being covered.
+  const pct = expected > 0 ? Math.min(100, Math.round(((paid + discount) / expected) * 100)) : 0;
   const history = payments?.history ?? [];
   // Pay-online buttons only for providers the center has set up.
   const providers = ([
@@ -765,6 +767,7 @@ export function PaymentsTab({ payments, checkoutLoading, onPay, payError }: { pa
             </div>
             <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5, opacity: 0.9, marginTop: 6, gap: 10, flexWrap: "wrap" }}>
               <span>{t("ptl.paidSoFar")}: {money(paid)}</span>
+              {discount > 0 && <span>{t("ptl.discount")}: {money(discount)}</span>}
               <span>{t("ptl.coursePrice")}: {money(expected)}</span>
             </div>
           </>

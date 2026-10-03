@@ -53,6 +53,7 @@ describe('StudentsService', () => {
       }),
     };
 
+    mockDb.execute = vi.fn().mockResolvedValue(undefined);
     mockDb.transaction = vi.fn(async (cb: (tx: unknown) => unknown) => cb(mockDb));
 
     mockAudit = {

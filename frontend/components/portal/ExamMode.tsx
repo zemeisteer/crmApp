@@ -900,7 +900,7 @@ function SpeakingExam(props: ExamProps) {
                 </>
               )}
               {phase === "save" && <div style={{ color: "#1E40AF", fontWeight: 700 }}>⏫ {t("pmk.uploading")}</div>}
-              {error && <div style={{ color: "#B91C1C" }}>{error}</div>}
+              {error && <div role="alert" style={{ color: "#B91C1C" }}>{error}</div>}
             </>
           ) : null}
         </div>

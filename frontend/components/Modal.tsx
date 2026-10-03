@@ -1,6 +1,9 @@
 "use client";
 
-import { ReactNode } from "react";
+import { ReactNode, useEffect, useRef } from "react";
+
+// Open dialogs, oldest first: Escape closes only the one on top.
+const openDialogs: object[] = [];
 
 export default function Modal({
   open,
@@ -17,6 +20,28 @@ export default function Modal({
   width?: number | string;
   style?: React.CSSProperties;
 }) {
+  // Escape closes the dialog (the latest onClose, without re-subscribing).
+  const closeRef = useRef(onClose);
+  useEffect(() => {
+    closeRef.current = onClose;
+  });
+  useEffect(() => {
+    if (!open) return;
+    const me = {};
+    openDialogs.push(me);
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape" || openDialogs[openDialogs.length - 1] !== me) return;
+      e.stopPropagation();
+      closeRef.current();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      const i = openDialogs.indexOf(me);
+      if (i >= 0) openDialogs.splice(i, 1);
+    };
+  }, [open]);
+
   if (!open) return null;
   return (
     <div
@@ -34,6 +59,9 @@ export default function Modal({
     >
       <div
         className="modal-panel"
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
         onClick={(e) => e.stopPropagation()}
         style={{
           background: "#fff",

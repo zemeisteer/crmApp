@@ -1,39 +1,42 @@
 #!/usr/bin/env node
 // Staging verification through the public API: domain and workspace flows,
-// staff removal, portals, origins, and the pilot journey with its balances.
-// No dependencies (Node 20+).
+// staff removal, tenant isolation, portals, origins, and the pilot journey
+// with its balances. No dependencies (Node 20+).
 //
 //   node scripts/staging/verify-flows.mjs --api https://staging.example.uz/api --root staging.example.uz --confirm staging.example.uz
 //
+//   local rehearsal:
+//   node scripts/staging/verify-flows.mjs --local --api http://127.0.0.1:4100/api --root staging.localhost --confirm staging.localhost
+//
 // It CREATES synthetic data: two centers "ZZ Staging Check ...", a few staff
-// accounts, one student, one invoice and payments. Run it only against an
-// environment made for testing. To make a mistake hard:
-//   --confirm must repeat the root domain, and
-//   the root domain must look like a test one (staging / test / stg / dev /
-//   localhost) unless --not-a-test-name is given on purpose.
+// accounts, students, one invoice and payments. Run it only against an
+// environment made for testing. The destination is validated before the
+// first request (scripts/staging/target.mjs): the API must be the confirmed
+// root domain itself (or a separately confirmed host), over https; a
+// loopback target needs --local; and no request - including a redirect - can
+// go to any other host.
 // It sends no Telegram, SMS or e-mail itself and never touches payment
 // providers; whether the server sends anything depends on the server's own
 // configuration.
 //
-// Checks that need a browser (cookies / local storage on the subdomain, the
-// redirect after login) are NOT covered: this is the API side only.
+// Checks that need a browser (local storage on the subdomain, the redirect
+// after login, reload) are NOT covered: this is the API side only.
 
-const args = Object.fromEntries(process.argv.slice(2).map((a, i, all) => (a.startsWith('--') ? [a.slice(2), all[i + 1] && !all[i + 1].startsWith('--') ? all[i + 1] : true] : [])).filter((x) => x.length));
-const API = String(args.api || '').replace(/\/$/, '');
-const ROOT = String(args.root || '').toLowerCase();
-if (!API || !ROOT) {
-  console.error('usage: verify-flows.mjs --api <https://host/api> --root <root domain> --confirm <root domain>');
+import { TargetError, guardedFetch, parseArgs, resolveTarget } from './target.mjs';
+
+const args = parseArgs(process.argv.slice(2));
+let target;
+try {
+  target = resolveTarget(args);
+} catch (err) {
+  if (!(err instanceof TargetError)) throw err;
+  console.error(`refusing: ${err.message}`);
   process.exit(2);
 }
-if (args.confirm !== ROOT) {
-  console.error(`refusing: --confirm must repeat the root domain (${ROOT}). This script creates data.`);
-  process.exit(2);
-}
-if (!/(staging|stage|stg|test|dev|localhost)/.test(ROOT) && !args['not-a-test-name']) {
-  console.error(`refusing: "${ROOT}" does not look like a test domain. Pass --not-a-test-name only if this really is a staging environment.`);
-  process.exit(2);
-}
-const HTTPS = API.startsWith('https://');
+const API = target.api;
+const ROOT = target.root;
+const HTTPS = target.https && !target.local;
+const fetch = guardedFetch(target);
 const suffix = Date.now();
 const password = `Stg-${suffix}-check`;
 const results = [];
@@ -53,6 +56,11 @@ async function call(method, path, { token, body, headers } = {}) {
       waited += wait;
       await sleep(wait * 1000);
       continue;
+    }
+    // Redirects are not followed (see guardedFetch): an API answering 3xx is
+    // reported as it is, never chased to wherever it points.
+    if (res.status >= 300 && res.status < 400) {
+      return { status: res.status, body: null, text: `redirect to ${res.headers.get('location')}`, headers: res.headers };
     }
     const text = await res.text();
     let json = null;
@@ -89,8 +97,11 @@ console.log('\n1. Environment');
 await check('env', 'API health', async () => { const r = await call('GET', '/health'); eq(r.status, 200, 'status'); });
 if (HTTPS) {
   await check('env', 'HTTP redirects to HTTPS', async () => {
-    const r = await fetch(API.replace('https://', 'http://') + '/health', { redirect: 'manual' });
-    if (![301, 308].includes(r.status) || !String(r.headers.get('location')).startsWith('https://')) throw new Error(`status ${r.status}, location ${r.headers.get('location')}`);
+    const r = await fetch(API.replace('https://', 'http://') + '/health', { allowPlainHttp: true });
+    const to = r.headers.get('location');
+    if (![301, 308].includes(r.status) || !to) throw new Error(`status ${r.status}, location ${to}`);
+    const dest = new URL(to);
+    if (dest.protocol !== 'https:' || dest.host !== target.apiUrl.host) throw new Error(`redirects to ${dest.origin}, expected https://${target.apiUrl.host}`);
   });
   await check('env', 'HSTS header on the main domain', async () => {
     const r = await call('GET', '/health');
@@ -174,9 +185,71 @@ await check('auth', 'one person, two centers: the right role in each', async () 
 });
 await check('auth', 'a workspace the user does not belong to is refused', async () => {
   eq((await call('POST', '/auth/select-workspace', { token: state.acc.access, body: { tenantId: B.tenantId } })).status, 401, 'select another center');
-  eq((await call('GET', `/students`, { token: state.acc.access, headers: { 'x-tenant-id': B.tenantId } })).status, 200, 'own list still works');
-  const mine = await must('students', 'GET', '/students', { token: state.acc.access });
-  eq(JSON.stringify(mine).includes(B.tenantId), false, "no data of the other center");
+});
+
+console.log('\n3b. Tenant isolation (records that exist in both centers)');
+await check('isolation', 'each center has its own student and group', async () => {
+  for (const [c, tag] of [[A, 'A'], [B, 'B']]) {
+    const g = await must(`group ${tag}`, 'POST', '/groups', { token: c.owner, body: { name: `ZZ-${tag}-ONLY group ${suffix}`, subject: 'Math', monthlyPrice: 100000 } });
+    const st = await must(`student ${tag}`, 'POST', '/students', { token: c.owner, body: { fullName: `ZZ-${tag}-ONLY student ${suffix}`, groupIds: [g.id] } });
+    c.probe = { groupId: g.id, studentId: st.id, studentName: `ZZ-${tag}-ONLY student ${suffix}`, groupName: `ZZ-${tag}-ONLY group ${suffix}` };
+  }
+  return `${A.probe.studentName} / ${B.probe.studentName}`;
+});
+// Everything of B that must never appear in an answer given to A's user.
+const foreign = () => [B.probe.studentId, B.probe.groupId, B.probe.studentName, B.probe.groupName, B.tenantId];
+const leaks = (r) => foreign().filter((x) => r.text.includes(x));
+await check('isolation', "A's user sees A's records", async () => {
+  const list = await call('GET', '/students', { token: state.acc.access });
+  eq(list.status, 200, 'list status');
+  if (!list.text.includes(A.probe.studentId)) throw new Error("A's own student is missing from A's list");
+  eq((await call('GET', `/students/${A.probe.studentId}`, { token: state.acc.access })).status, 200, "A's own student by id");
+  eq(leaks(list), [], "B's data in A's plain list");
+});
+await check('isolation', "asking for B's center through headers or parameters still returns only A's data", async () => {
+  // The answer to the ATTEMPTED request itself is inspected.
+  const attempts = [
+    ['x-tenant-id header', '/students', { 'x-tenant-id': B.tenantId }],
+    ['x-tenant header', '/students', { 'x-tenant': B.sub, 'x-workspace-id': B.tenantId }],
+    ['tenantId query', `/students?tenantId=${B.tenantId}`, {}],
+    ['groups with header', '/groups', { 'x-tenant-id': B.tenantId }],
+    ['payments with header', '/payments', { 'x-tenant-id': B.tenantId }],
+    ['debtors with query', `/payments/debtors?tenantId=${B.tenantId}`, {}],
+    ['Origin of B subdomain', '/students', { Origin: `https://${B.sub}.${ROOT}`, Host: undefined }],
+  ];
+  for (const [what, path, headers] of attempts) {
+    const clean = Object.fromEntries(Object.entries(headers).filter(([, v]) => v !== undefined));
+    const r = await call('GET', path, { token: state.acc.access, headers: clean });
+    if (r.status !== 200) throw new Error(`${what}: status ${r.status}`);
+    const found = leaks(r);
+    if (found.length) throw new Error(`${what}: the answer contains B's data (${found.length} marker(s))`);
+    if (path.startsWith('/students') && !r.text.includes(A.probe.studentId)) throw new Error(`${what}: A's own student is missing - the request was not answered for A`);
+  }
+  return `${attempts.length} attempts, each answer checked`;
+});
+await check('isolation', "B's records cannot be read, changed or paid for by id from A", async () => {
+  const t = state.acc.access;
+  const owner = A.owner;
+  const tries = [
+    ['read student', await call('GET', `/students/${B.probe.studentId}`, { token: t })],
+    ['read group', await call('GET', `/groups/${B.probe.groupId}`, { token: t })],
+    ['rename student (owner of A)', await call('PATCH', `/students/${B.probe.studentId}`, { token: owner, body: { fullName: 'taken over' } })],
+    ['change group price (owner of A)', await call('PATCH', `/groups/${B.probe.groupId}`, { token: owner, body: { monthlyPrice: 1 } })],
+    ['enroll into foreign group', await call('POST', `/students/${A.probe.studentId}/enroll/${B.probe.groupId}`, { token: owner })],
+    ['payment for foreign student', await call('POST', '/payments', { token: t, body: { studentId: B.probe.studentId, amount: 1000, forMonth: month, method: 'CASH' } })],
+    ['price history of foreign group', await call('GET', `/groups/${B.probe.groupId}/price-history`, { token: t })],
+  ];
+  for (const [what, r] of tries) {
+    if (![403, 404].includes(r.status)) throw new Error(`${what}: status ${r.status}`);
+    const found = leaks(r).filter((x) => x !== B.probe.studentId && x !== B.probe.groupId); // the id was in the request itself
+    if (found.length) throw new Error(`${what}: the refusal reveals B's data`);
+  }
+  // ...and B's records are exactly as B left them.
+  const st = await must("B reads its student", 'GET', `/students/${B.probe.studentId}`, { token: B.owner });
+  const g = await must("B reads its group", 'GET', `/groups/${B.probe.groupId}`, { token: B.owner });
+  eq([st.fullName, g.monthlyPrice], [B.probe.studentName, 100000], "B's records unchanged");
+  const pays = await must("B's payments", 'GET', '/payments', { token: B.owner });
+  eq(pays.length, 0, "payments created in B by A");
 });
 
 console.log('\n4. Removing a member');
@@ -283,6 +356,9 @@ await check('journey', 'the same balance on the payments page, finance summary, 
   const list = await must('debtors', 'GET', `/payments/debtors?forMonth=${month}`, { token: acc });
   const row = list.debtors.find((d) => d.studentId === state.studentId);
   eq([row.expectedAmount, row.paidAmount, row.discountAmount, row.debtAmount, row.status], [400000, 390000, 10000, 0, 'PAID'], 'debtor row');
+  // The isolation probe student (100 000, unpaid) is in this center too:
+  // the totals are compared with each other, the journey student exactly.
+  eq([list.totalDebt, list.debtorCount], [100000, 1], 'center totals (only the probe student owes)');
   const fin = await must('summary', 'GET', `/payments/finance-summary?forMonth=${month}`, { token: acc });
   eq([fin.totalRevenue, fin.totalOutstandingDebt, fin.debtorCount], [390000, list.totalDebt, list.debtorCount], 'finance summary');
   const dir = await must('director', 'GET', `/reports/director?month=${month}`, { token: A.owner });
@@ -324,5 +400,5 @@ const failed = results.filter((r) => r.ok === false);
 const skipped = results.filter((r) => r.ok === null);
 console.log(`\n${results.filter((r) => r.ok).length} passed, ${failed.length} failed, ${skipped.length} not run${waited ? `; waited ${waited}s for rate limits` : ''}`);
 console.log(`Synthetic data left in place: centers ${A.sub} and ${B.sub} (run ${suffix}).`);
-if (args.json) (await import('node:fs')).writeFileSync(String(args.json), JSON.stringify({ api: API, root: ROOT, run: suffix, results }, null, 2));
+if (typeof args.json === 'string') (await import('node:fs')).writeFileSync(args.json, JSON.stringify({ api: API, root: ROOT, local: target.local, run: suffix, results }, null, 2));
 process.exit(failed.length ? 1 : 0);

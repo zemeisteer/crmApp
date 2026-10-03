@@ -426,7 +426,7 @@ export function AnnouncementsContent() {
       <Modal open={modalOpen} onClose={() => setModalOpen(false)} title={t("ann.newTitle")}>
         <form onSubmit={handleSubmit} className="space-y-4">
           {error && (
-            <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold">
+            <div role="alert" className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold">
               {error}
             </div>
           )}

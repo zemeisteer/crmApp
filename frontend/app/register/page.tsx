@@ -280,7 +280,7 @@ export default function RegisterPage() {
           </div>
 
           {error && (
-            <div
+            <div role="alert"
               style={{
                 background: "#FEF2F2",
                 border: "1px solid #FEE2E2",

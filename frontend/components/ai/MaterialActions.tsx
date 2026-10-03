@@ -68,7 +68,7 @@ export default function MaterialActions({ material, groups, defaultGroupId }: { 
       </div>
       <div style={{ fontSize: 11.5, color: "#8A8D96" }}>{t("aim.visibilityHint")}</div>
       {notice && <div style={{ fontSize: 12.5, fontWeight: 600, color: "#15803D", background: "#ECFDF5", borderRadius: 8, padding: "8px 12px" }}>✓ {notice}</div>}
-      {error && <div style={{ fontSize: 12.5, fontWeight: 600, color: "#B23A47", background: "#FDEBEC", borderRadius: 8, padding: "8px 12px" }}>{error}</div>}
+      {error && <div role="alert" style={{ fontSize: 12.5, fontWeight: 600, color: "#B23A47", background: "#FDEBEC", borderRadius: 8, padding: "8px 12px" }}>{error}</div>}
 
       {mode === "homework" && (
         <HomeworkModal
@@ -156,7 +156,7 @@ function HomeworkModal({ material, groups, defaultGroupId, onClose, onDone }: { 
             <span>🔑 {t("aim.hideKey")}</span>
           </label>
         )}
-        {error && <div style={{ fontSize: 12.5, fontWeight: 600, color: "#B23A47", background: "#FDEBEC", borderRadius: 8, padding: "8px 12px" }}>{error}</div>}
+        {error && <div role="alert" style={{ fontSize: 12.5, fontWeight: 600, color: "#B23A47", background: "#FDEBEC", borderRadius: 8, padding: "8px 12px" }}>{error}</div>}
         <button type="button" className="btn" disabled={saving} onClick={submit} style={{ background: ACCENT, color: "#fff", border: "none", fontSize: 14, fontWeight: 700, padding: 12, borderRadius: 10 }}>
           {saving ? t("homework.adding") : t("homework.assign")}
         </button>
@@ -224,7 +224,7 @@ function ExamModal({ material, onClose, onDone }: { material: MaterialLike; onCl
             <Select value={examId} onChange={setExamId} options={exams.map((e) => ({ value: e.id, label: `${e.title}${e.group?.name ? ` · ${e.group.name}` : ""}` }))} />
           </div>
         )}
-        {error && <div style={{ fontSize: 12.5, fontWeight: 600, color: "#B23A47", background: "#FDEBEC", borderRadius: 8, padding: "8px 12px" }}>{error}</div>}
+        {error && <div role="alert" style={{ fontSize: 12.5, fontWeight: 600, color: "#B23A47", background: "#FDEBEC", borderRadius: 8, padding: "8px 12px" }}>{error}</div>}
         <button type="button" className="btn" disabled={reading || !examId} onClick={read} style={{ background: "linear-gradient(135deg, #7C3AED, #4F46E5)", color: "#fff", border: "none", fontSize: 14, fontWeight: 700, padding: 12, borderRadius: 10, opacity: examId ? 1 : 0.6 }}>
           {reading ? t("aim.reading") : `✨ ${t("aim.readQuestions")}`}
         </button>

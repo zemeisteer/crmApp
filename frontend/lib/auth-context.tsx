@@ -9,6 +9,7 @@ import {
   setToken,
   setRefreshToken,
   clearToken,
+  markLeavingForCenter,
   Tenant,
   User,
   LoginResponse,
@@ -91,6 +92,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!base) return false;
     try {
       const { code } = await authApi.handoff();
+      markLeavingForCenter();
       authApi.logout().catch(() => undefined);
       clearToken();
       rememberCenter(tn.subdomain);
@@ -135,7 +137,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       redirectUrl ||
       (res.user.role === "STUDENT" || res.user.role === "PARENT"
         ? "/portal"
-        : "/dashboard");
+        : res.user.role === "SUPERADMIN" && !res.tenant
+          ? "/admin"
+          : "/dashboard");
     // New centers finish onboarding first (their address may still change).
     if (destination.startsWith("/onboarding")) {
       router.push(destination);

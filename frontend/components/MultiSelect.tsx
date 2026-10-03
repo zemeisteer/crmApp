@@ -130,6 +130,9 @@ export default function MultiSelect({
             padding: 5,
             boxShadow: "0 12px 36px rgba(18,19,26,0.14), 0 2px 6px rgba(18,19,26,0.06)",
             ...place,
+            // The placed panel is fixed and already as wide as the field: a
+            // percentage minimum would then mean the whole window.
+            ...(place.position === "fixed" ? { minWidth: 0 } : {}),
           }}
         >
           {searchable && (

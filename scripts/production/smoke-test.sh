@@ -21,7 +21,9 @@ source scripts/production/smoke-lib.sh
 API="${SMOKE_API:-http://127.0.0.1:14000/api}"
 WEB="${SMOKE_WEB:-http://127.0.0.1:13000}"
 
-compose() { docker compose -f docker-compose.smoke.yml "$@"; }
+# Its own project, whatever the shell carries: an inherited
+# COMPOSE_PROJECT_NAME or COMPOSE_FILE must not point this at another stack.
+compose() { env -u COMPOSE_PROJECT_NAME -u COMPOSE_FILE -u COMPOSE_PROFILES docker compose -p talimcrm-smoke -f docker-compose.smoke.yml "$@"; }
 
 fail() {
   echo "SMOKE FAILED: $*" >&2

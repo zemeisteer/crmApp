@@ -353,7 +353,7 @@ function AiMaterialsContent() {
             </form>
 
             {error && (
-              <div
+              <div role="alert"
                 style={{
                   background: "#FDEBEC",
                   color: "#B23A47",

@@ -1,10 +1,11 @@
 import { BadRequestException, ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { and, eq, isNotNull, isNull } from 'drizzle-orm';
+import { and, eq, gte, isNotNull, isNull } from 'drizzle-orm';
 import { DB, Database } from '../db/db.module';
 import { organizationMemberships, teachers, users } from '../db/schema';
 import { StaffService } from '../staff/staff.service';
 import { CreateTeacherDto, TeacherAccountDto, UpdateTeacherDto } from './dto/teacher.dto';
 import { AuditService } from '../audit/audit.service';
+import { doubleSubmitSince, lockIdenticalCreate } from '../common/double-submit';
 
 @Injectable()
 export class TeachersService {
@@ -91,15 +92,32 @@ export class TeachersService {
 
   async create(tenantId: string, userId: string, dto: CreateTeacherDto) {
     if (dto.userId) await this.assertMember(tenantId, dto.userId);
-    const [teacher] = await this.db
-      .insert(teachers)
-      .values({
-        tenantId,
-        ...dto,
-        birthDate: dto.birthDate ? new Date(dto.birthDate) : undefined,
-        startDate: dto.startDate ? new Date(dto.startDate) : undefined,
-      })
-      .returning();
+    // The same form sent twice (double click, a retry after a lost reply)
+    // makes one teacher: the second request gets the first one's row.
+    const { teacher, repeated } = await this.db.transaction(async (tx) => {
+      await lockIdenticalCreate(tx, `teacher:${tenantId}:${dto.fullName}:${dto.phone ?? ''}:${dto.email ?? ''}`);
+      const twin = await tx.query.teachers.findFirst({
+        where: and(
+          eq(teachers.tenantId, tenantId),
+          eq(teachers.fullName, dto.fullName),
+          dto.phone ? eq(teachers.phone, dto.phone) : isNull(teachers.phone),
+          isNull(teachers.deletedAt),
+          gte(teachers.createdAt, doubleSubmitSince()),
+        ),
+      });
+      if (twin) return { teacher: twin, repeated: true };
+      const [created] = await tx
+        .insert(teachers)
+        .values({
+          tenantId,
+          ...dto,
+          birthDate: dto.birthDate ? new Date(dto.birthDate) : undefined,
+          startDate: dto.startDate ? new Date(dto.startDate) : undefined,
+        })
+        .returning();
+      return { teacher: created, repeated: false };
+    });
+    if (repeated) return teacher;
     this.audit.log({ tenantId, userId, action: 'create', entityType: 'teacher', entityId: teacher.id, meta: { fullName: teacher.fullName } });
     return teacher;
   }

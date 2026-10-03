@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import DashboardShell from "@/components/DashboardShell";
 import Modal from "@/components/Modal";
+import Select from "@/components/Select";
+import Link from "next/link";
 import Pagination, { usePagedSlice } from "@/components/Pagination";
 import { useAuth } from "@/lib/auth-context";
 import { useRouter } from "next/navigation";
@@ -155,6 +157,10 @@ function AdminContent() {
           <h1 style={{ fontSize: 22, fontWeight: 800 }}>{t("admin.title")}</h1>
           <div style={{ fontSize: 13, color: "#8A8D96", marginTop: 2 }}>{t("admin.subtitle")}</div>
         </div>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        <Link href="/pricing" className="btn" style={{ background: "#fff", color: "#181A1F", border: "1px solid #EAE8E2", fontSize: 13.5, fontWeight: 700, padding: "10px 16px", borderRadius: 9 }}>
+          {t("nav.pricing")}
+        </Link>
         <button
           className="btn"
           onClick={() => setCreateOpen(true)}
@@ -162,11 +168,12 @@ function AdminContent() {
         >
           {t("admin.newCenter")}
         </button>
+        </div>
       </div>
 
       <div style={{ flex: 1, minHeight: 0, padding: "26px 32px", overflow: "auto", boxSizing: "border-box" }}>
         {error && (
-          <div style={{ background: "#FDEBEC", color: "#B23A47", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: 10, marginBottom: 16 }}>
+          <div role="alert" style={{ background: "#FDEBEC", color: "#B23A47", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: 10, marginBottom: 16 }}>
             {error}
           </div>
         )}
@@ -189,12 +196,13 @@ function AdminContent() {
 
         <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
           <input className="field-input" placeholder={t("sa.search")} value={search} onChange={(e) => setSearch(e.target.value)} style={{ width: 280 }} />
-          <select className="field-input" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} style={{ width: 180 }}>
-            <option value="">{t("sa.allStatuses")}</option>
-            {Object.keys(STATUS_LABEL_KEYS).map((v) => (
-              <option key={v} value={v}>{t(STATUS_LABEL_KEYS[v])}</option>
-            ))}
-          </select>
+          <Select
+            ariaLabel={t("admin.colStatus")}
+            value={statusFilter}
+            onChange={setStatusFilter}
+            options={[{ value: "", label: t("sa.allStatuses") }, ...Object.keys(STATUS_LABEL_KEYS).map((v) => ({ value: v, label: t(STATUS_LABEL_KEYS[v]) }))]}
+            style={{ width: 200 }}
+          />
         </div>
 
         {loading ? (
@@ -205,7 +213,8 @@ function AdminContent() {
           </div>
         ) : (
           <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, overflow: "hidden" }}>
-            <table>
+            <div style={{ overflowX: "auto" }}>
+            <table style={{ minWidth: 980 }}>
               <thead>
                 <tr>
                   <th style={{ paddingTop: 16 }}>{t("admin.colCenter")}</th>
@@ -224,27 +233,33 @@ function AdminContent() {
                     <tr key={tn.id}>
                       <td>
                         <div style={{ fontWeight: 700 }}>{tn.name}</div>
-                        <div style={{ fontSize: 12, color: "#8A8D96" }}>{centerHost(tn.subdomain)}</div>
+                        <div style={{ fontSize: 12, color: "#8A8D96", wordBreak: "break-all" }}>{centerHost(tn.subdomain)}</div>
                         {tn.owner && <div style={{ fontSize: 12, color: "#4A4E58" }}>{tn.owner.fullName} · {tn.owner.email}</div>}
                       </td>
-                      <td style={{ fontSize: 12.5 }}>
+                      <td style={{ fontSize: 12.5, whiteSpace: "nowrap" }}>
                         <div><b>{tn.students}</b> {t("sa.studentsShort")}</div>
                         <div style={{ color: "#8A8D96" }}>{tn.groups} {t("sa.groupsShort")} · {tn.teachers} {t("sa.teachersShort")}</div>
                       </td>
-                      <td style={{ fontWeight: 700 }}>{tn.monthRevenue ? `${money(tn.monthRevenue)} ${t("common.sumUnit")}` : "—"}</td>
+                      <td style={{ fontWeight: 700, whiteSpace: "nowrap" }}>{tn.monthRevenue ? `${money(tn.monthRevenue)} ${t("common.sumUnit")}` : "—"}</td>
                       <td>
-                        <select className="field-input" style={{ padding: "6px 8px", fontSize: 12.5, width: "auto" }} value={tn.plan} disabled={savingId === tn.id} onChange={(e) => onChangePlan(tn.id, e.target.value)}>
-                          {plans.map((p) => (
-                            <option key={p.key} value={p.key}>{p.name}</option>
-                          ))}
-                        </select>
+                        <Select
+                          ariaLabel={t("admin.colPlan")}
+                          value={tn.plan}
+                          disabled={savingId === tn.id}
+                          onChange={(v) => onChangePlan(tn.id, v)}
+                          options={(plans.some((p) => p.key === tn.plan) ? plans : [...plans, { key: tn.plan, name: tn.plan } as Plan]).map((p) => ({ value: p.key, label: p.name }))}
+                          style={{ minWidth: 140 }}
+                        />
                       </td>
                       <td>
-                        <select className="field-input" style={{ padding: "6px 8px", fontSize: 12.5, width: "auto" }} value={tn.status} disabled={savingId === tn.id} onChange={(e) => onChangeStatus(tn.id, e.target.value)}>
-                          {Object.keys(STATUS_LABEL_KEYS).map((v) => (
-                            <option key={v} value={v}>{t(STATUS_LABEL_KEYS[v])}</option>
-                          ))}
-                        </select>
+                        <Select
+                          ariaLabel={t("admin.colStatus")}
+                          value={tn.status}
+                          disabled={savingId === tn.id}
+                          onChange={(v) => onChangeStatus(tn.id, v)}
+                          options={Object.keys(STATUS_LABEL_KEYS).map((v) => ({ value: v, label: t(STATUS_LABEL_KEYS[v]) }))}
+                          style={{ minWidth: 150 }}
+                        />
                         {left !== null && (
                           <div style={{ fontSize: 11.5, marginTop: 4, fontWeight: 600, color: left <= 3 ? "#B23A47" : "#8A8D96" }}>
                             {left > 0 ? t("sa.trialLeft").replace("{n}", String(left)) : t("sa.trialEnded")}
@@ -268,6 +283,7 @@ function AdminContent() {
                 })}
               </tbody>
             </table>
+            </div>
             <Pagination page={page} total={tenants.length} onChange={setPage} />
           </div>
         )}
@@ -309,7 +325,7 @@ function AdminContent() {
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div>
+    <div role="group" aria-label={label}>
       <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>{label}</div>
       {children}
     </div>

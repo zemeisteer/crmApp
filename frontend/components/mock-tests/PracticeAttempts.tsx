@@ -133,7 +133,7 @@ function SectionTasks({ detail, sectionKey, title, tasks, answers, onChanged }: 
   return (
     <section style={{ display: "grid", gap: 10 }}>
       <h3 style={{ margin: 0, fontSize: 15 }}>✍️ {title} {r?.gradedBy === "AI" && <span style={{ fontSize: 11, color: ACCENT }}>· AI</span>}</h3>
-      {error && <div style={{ background: "#FDEBEC", color: "#B23A47", padding: "8px 12px", borderRadius: 10, fontSize: 13 }}>{error}</div>}
+      {error && <div role="alert" style={{ background: "#FDEBEC", color: "#B23A47", padding: "8px 12px", borderRadius: 10, fontSize: 13 }}>{error}</div>}
       {tasks.map((task, i) => (
         <div key={i} style={{ border: "1px solid #EAE8E2", borderRadius: 12, padding: 12, display: "grid", gap: 8 }}>
           <div style={{ fontWeight: 700, fontSize: 13 }}>{task.title} · {r?.tasks?.[i]?.words ?? 0} {t("mock.words")}</div>
