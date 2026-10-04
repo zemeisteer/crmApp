@@ -159,6 +159,15 @@ fresh
 old_set 20260601T220000Z "120 days ago"; old_set 20260701T220000Z "90 days ago"; old_set 20260801T220000Z "60 days ago"
 run BACKUP_KEEP_DAYS=14 BACKUP_MIN_KEEP=3 -- once
 check "old sets beyond the minimum are removed, the newest three stay" bash -c "[ \"\$(find '$ROOT' -maxdepth 1 -type d -name 'talimcrm_test_*Z' | wc -l | tr -d ' ')\" = 3 ] && [ -e '$ROOT/talimcrm_test_20260801T220000Z' ] && [ -e '$ROOT/talimcrm_test_20260701T220000Z' ] && [ ! -e '$ROOT/talimcrm_test_20260601T220000Z' ]"
+echo "with off-server copies configured, a set not yet copied off is never pruned"
+fresh
+old_set 20260801T220000Z "60 days ago"; old_set 20260815T220000Z "45 days ago"; old_set 20260901T220000Z "30 days ago"
+mkdir -p "$ROOT/.state/offsite"; touch "$ROOT/.state/offsite/talimcrm_test_20260815T220000Z.ok"
+run BACKUP_KEEP_DAYS=14 BACKUP_MIN_KEEP=1 BACKUP_OFFSITE_REQUIRED=1 -- once
+check "exit 0" [ "$RC" = "0" ]
+check "a copied-off old set is pruned" bash -c "[ ! -e '$ROOT/talimcrm_test_20260815T220000Z' ]"
+check "old sets not yet copied off are kept" bash -c "[ -e '$ROOT/talimcrm_test_20260801T220000Z' ] && [ -e '$ROOT/talimcrm_test_20260901T220000Z' ]"
+check "and it says why" grep -q "not yet copied off-server" <<<"$OUT"
 echo "another stack's sets in the same folder are not this stack's to prune"
 fresh; mkdir -p "$ROOT/talimcrm_20260101T220000Z"; echo '{}' > "$ROOT/talimcrm_20260101T220000Z/manifest.json"; touch -d "200 days ago" "$ROOT/talimcrm_20260101T220000Z"
 old_set 20260601T220000Z "120 days ago"; old_set 20260701T220000Z "90 days ago"; old_set 20260801T220000Z "60 days ago"

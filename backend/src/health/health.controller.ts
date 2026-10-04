@@ -13,6 +13,7 @@ export class HealthController {
     } catch {
       throw new ServiceUnavailableException({ status: 'error', db: 'unreachable' });
     }
-    return { status: 'ok', db: 'ok', time: new Date().toISOString() };
+    // The commit the running image was built from (backend/Dockerfile).
+    return { status: 'ok', db: 'ok', revision: process.env.APP_REVISION || 'unknown', time: new Date().toISOString() };
   }
 }

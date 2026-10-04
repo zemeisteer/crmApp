@@ -16,20 +16,73 @@ Xuddi shu `docker-compose.prod.yml` ishlatiladi; farq faqat `.env` da (`STACK_NA
 | 6 | Click va Payme **test** merchant ma'lumotlari | Jonli merchant kalitlari emas |
 | 7 | (ixtiyoriy) AI kaliti, sandbox email | Bo'sh qolsa — o'sha funksiya o'chiq |
 
-## 1. O'rnatish
+## 1. O'rnatish va aniq reviziyani chiqarish
+
+Bir marta (alohida server yoki kamida alohida papka, staging shabloni):
 
 ```bash
-# Serverda, bir marta (alohida papka va staging shabloni):
 curl -fsSL https://raw.githubusercontent.com/zemeisteer/crmApp/dev/scripts/production/bootstrap-server.sh -o bootstrap.sh
 sudo DIR=/opt/crmapp-staging ENV_TEMPLATE=.env.staging.example bash bootstrap.sh staging.<domen>
-
 cd /opt/crmapp-staging
-nano .env                                   # POSTGRES_USER/DB, bot, test merchant ...
-bash scripts/staging/preflight-staging.sh      # izolyatsiya tekshiruvi (sirlarni ko'rsatmaydi)
-bash scripts/production/preflight.sh           # DNS va Docker
-bash scripts/production/init-ssl.sh            # staging.<domen> va *.staging.<domen>
-bash scripts/production/stack.sh up -d --build
+nano .env        # DOMAIN, LETSENCRYPT_EMAIL, CLOUDFLARE_API_TOKEN; integratsiyalar BO'SH qoladi
 ```
+
+Har bir chiqarish (deploy) shu tartibda:
+
+```bash
+cd /opt/crmapp-staging
+# 1. Aniq reviziya: commit SHA bilan (branch emas). Ishchi daraxt toza bo'lishi shart.
+git fetch origin && git checkout --detach <commit-sha>
+# 2. Sozlamalar tekshiruvi (sirlarni ko'rsatmaydi): izolyatsiya, domen, FRONTEND_URL,
+#    /api, integratsiyalar o'chiqligi, off-server sozlamasi, toza checkout
+bash scripts/staging/preflight-staging.sh            # production shu serverda bo'lsa: --prod-env /opt/crmapp/.env
+bash scripts/production/preflight.sh                 # DNS (staging.<domen>, *.staging.<domen>) va Docker
+# 3. Sertifikat (birinchi marta; mashq uchun --test-cert)
+sudo bash scripts/production/init-ssl.sh
+# 4. Qurish va ishga tushirish. Image'larga shu commit yoziladi (APP_REVISION);
+#    backend ishga tushganda avval migratsiyalarni qo'llaydi, keyin API ochiladi.
+bash scripts/production/stack.sh up -d --build --wait --wait-timeout 600
+# 5. Nima ishlayapti: checkout, image'lar, ishlayotgan API, frontend qaysi domen uchun
+#    qurilgani va migratsiyalar bir xilmi -> RELEASE OK yoki RELEASE MISMATCH
+bash scripts/production/release-info.sh
+# 6. Tashqi tekshiruvlar (sintetik "ZZ ..." markazlar yaratadi)
+curl -fsS https://staging.<domen>/api/health                     # {"status":"ok",...,"revision":"<sha>"}
+node scripts/staging/verify-flows.mjs --api https://staging.<domen>/api --root staging.<domen> --confirm staging.<domen>
+cd e2e-browser && npm ci && npx playwright install chromium && \
+  STAGING_ROOT=staging.<domen> STAGING_CONFIRM=staging.<domen> npm run test:staging; cd ..
+# 7. Zaxira holati
+bash scripts/production/stack.sh ps db-backup                    # healthy
+sudo bash scripts/production/offsite.sh status                   # mahalliy / masofaviy / tiklash tekshiruvi
+```
+
+**Muammo bo'lsa (diagnostika):**
+
+```bash
+bash scripts/production/stack.sh ps                               # qaysi xizmat healthy emas
+bash scripts/production/stack.sh logs --tail=100 backend          # migratsiya xatosi API'ni ochirmaydi
+bash scripts/production/stack.sh logs --tail=100 nginx frontend
+bash scripts/production/stack.sh exec backend node scripts/migrate.cjs --status
+bash scripts/production/stack.sh exec nginx nginx -t
+bash scripts/production/release-info.sh                           # nima nimaga mos emas
+```
+
+**Xavfsiz to'xtatish:** `bash scripts/staging/down.sh` (ma'lumot saqlanadi). To'liq o'chirish faqat `down.sh --purge` (stack nomini yozib tasdiqlash so'raladi).
+
+### Orqaga qaytarish (rollback)
+
+Ilovani qaytarish va bazani tiklash — **ikki xil amal**:
+
+1. **Faqat ilova (baza o'zgarmagan bo'lsa).** Yangi reviziyada yangi migratsiya bo'lmasa (`release-info.sh` / `migrate.cjs --status` bilan solishtiring: oldingi va yangi reviziyaning `backend/drizzle/` ro'yxati bir xil), oldingi commitga qaytib qayta quriladi:
+   ```bash
+   git checkout --detach <oldingi-sha>
+   bash scripts/production/stack.sh up -d --build --wait --wait-timeout 600
+   bash scripts/production/release-info.sh
+   ```
+2. **Yangi reviziya migratsiya qo'llagan bo'lsa** — eski ilova yangi sxemaga mos ekani **kafolatlanmaydi** va migratsiyalarni avtomatik orqaga qaytarish yo'q (qilinmaydi ham: ma'lumot yo'qolishi mumkin). Tanlov:
+   - **oldinga tuzatish** (afzal): xatoni tuzatgan yangi commitni chiqarish;
+   - **bazani tiklash**: deploydan oldin olingan zaxira to'plamini `restore.sh <to'plam> --keep` bilan alohida bazaga tiklash, chiqargan buyruqlari bo'yicha ilovani unga o'tkazish, keyin oldingi reviziyani qurish. Zaxiradan keyingi barcha o'zgarishlar yo'qoladi — bu ongli qaror.
+
+   Shuning uchun **har deploydan oldin**: `sudo bash scripts/production/backup.sh` (va off-server sozlangan bo'lsa `sudo bash scripts/production/offsite.sh push`).
 
 - Migratsiyalar backend ishga tushganda o'zi qo'llanadi (`node scripts/migrate.cjs`); API undan keyin ochiladi.
 - `bootstrap-server.sh` parollar va JWT sirini tasodifiy yaratadi; ular ekranga chiqmaydi.

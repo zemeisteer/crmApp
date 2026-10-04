@@ -138,6 +138,8 @@ jobs:
         run: bash scripts/production/ops.test.sh
       - name: Recovery rehearsal logic (certbot check, failure report, redaction)
         run: bash scripts/production/rehearsal.test.sh
+      - name: Off-server copies (transfer faults, retries, fetch; local stand-ins)
+        run: bash scripts/production/offsite.test.sh
 
   # The production images themselves: built from both Dockerfiles and run on
   # a throw-away database (docker-compose.smoke.yml). Checks that migrations

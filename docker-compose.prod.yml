@@ -56,6 +56,9 @@ services:
       context: ./backend
       dockerfile: Dockerfile
       target: runner
+      args:
+        # The checkout's commit (scripts/production/lib.sh sets it).
+        APP_REVISION: ${APP_REVISION:-unknown}
     container_name: ${STACK_NAME:-talimcrm}_backend
     restart: always
     depends_on:
@@ -123,6 +126,7 @@ services:
       args:
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-/api}
         NEXT_PUBLIC_ROOT_DOMAIN: ${DOMAIN:?DOMAIN must be defined}
+        APP_REVISION: ${APP_REVISION:-unknown}
     container_name: ${STACK_NAME:-talimcrm}_frontend
     restart: always
     depends_on:
@@ -193,6 +197,8 @@ services:
       # 1: every set is restored into a scratch database before it counts.
       BACKUP_VERIFY_RESTORE: ${BACKUP_VERIFY_RESTORE:-1}
       APP_REVISION: ${APP_REVISION:-unknown}
+      # Off-server copies configured: old sets are pruned only once copied.
+      BACKUP_OFFSITE_REQUIRED: ${OFFSITE_DRIVER:+1}
     volumes:
       - ${BACKUP_DIR:-./backups}:/backups
       - uploads_prod_data:/uploads:ro

@@ -4,7 +4,8 @@
   "description": "Critical browser flows (Playwright) against production builds on disposable services",
   "scripts": {
     "build:frontend": "node scripts/build-frontend.cjs",
-    "test": "playwright test"
+    "test": "playwright test",
+    "test:staging": "playwright test -c playwright.staging.config.ts"
   },
   "devDependencies": {
     "@playwright/test": "^1.63.0"

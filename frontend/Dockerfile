@@ -34,6 +34,13 @@ COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
+# What this image was built from and for (see scripts/production/release-info.sh).
+ARG APP_REVISION=unknown
+ARG NEXT_PUBLIC_ROOT_DOMAIN=crmapp.com
+ARG NEXT_PUBLIC_API_URL=/api
+LABEL org.opencontainers.image.revision=$APP_REVISION \
+      uz.talimcrm.root-domain=$NEXT_PUBLIC_ROOT_DOMAIN \
+      uz.talimcrm.api-url=$NEXT_PUBLIC_API_URL
 USER nextjs
 EXPOSE 3000
 

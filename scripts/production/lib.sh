@@ -138,8 +138,12 @@ compose() {
   env "${unset_args[@]}" APP_REVISION="$(app_revision)" docker compose -p "$PROJECT" --project-directory "$PROJECT_ROOT" --env-file "$ENV_FILE" -f "$COMPOSE_YML" "$@"
 }
 
+# The checkout's commit, "-dirty" when tracked files have uncommitted changes:
+# such a build is not any commit, and says so.
 app_revision() {
-  git -C "$PROJECT_ROOT" rev-parse --short=12 HEAD 2>/dev/null || printf 'unknown'
+  local rev
+  rev="$(git -C "$PROJECT_ROOT" rev-parse --short=12 HEAD 2>/dev/null)" || { printf 'unknown'; return; }
+  if git -C "$PROJECT_ROOT" diff --quiet HEAD -- 2>/dev/null; then printf '%s' "$rev"; else printf '%s-dirty' "$rev"; fi
 }
 
 # pg CMD ARGS... - a PostgreSQL client program (psql, pg_dump, createdb,

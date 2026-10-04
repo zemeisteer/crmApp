@@ -120,6 +120,15 @@ echo
 echo "RESULT"
 echo "  LOADED:      yes (${LOAD_S}s; total $(( $(now_s) - T0 ))s)"
 if [ "$WARNINGS" = "0" ]; then echo "  CONSISTENT:  yes"; else echo "  CONSISTENT:  NO - $WARNINGS finding(s) above"; fi
+# For offsite.sh status: when this server last proved a set restores.
+if [ "$WARNINGS" = "0" ]; then
+  case "$(cd "$(dirname "$SRC")" 2>/dev/null && pwd)" in
+    "$BACKUP_ROOT"*) ORIGIN="local set" ;;
+    *) ORIGIN="copy outside the backup folder (e.g. fetched off-server)" ;;
+  esac
+  { mkdir -p "$BACKUP_ROOT/.state" && printf '%s  %s (%s), loaded and consistent\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$(basename "$SRC")" "$ORIGIN" > "$BACKUP_ROOT/.state/last-restore-check"; } 2>/dev/null \
+    || echo "  (could not record the check in $BACKUP_ROOT/.state - run with sudo to record it)"
+fi
 echo "  APPLICATION: not checked by this script (see restore-rehearsal.sh)"
 if [ "$KEEP" = "1" ]; then
   KEEP_COPY=1

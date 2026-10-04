@@ -213,40 +213,62 @@ sudo bash scripts/production/restore.sh backups/<stack>_<vaqt>Z --keep
 ```
 Tekshirilgan nusxa alohida baza sifatida qoladi; skript ilovani unga o'tkazishning aniq buyruqlarini chiqaradi (backend to'xtatiladi, joriy baza `..._before_<vaqt>` deb qayta nomlanadi, nusxa uning o'rniga keladi). Joriy baza hech qachon o'chirilmaydi yoki ustidan yozilmaydi. Yuklangan fayllar shu to'plamdan: `bash scripts/production/stack.sh exec -T backend tar -xzf - -C /app/uploads < backups/<stack>_<vaqt>Z/uploads.tar.gz`.
 
-### Serverdan tashqaridagi nusxa (Off-server copies) — **hali sozlanmagan**
+### Serverdan tashqaridagi nusxa (Off-server copies)
 
-Shu serverdagi to'plam server yo'qolsa birga yo'qoladi. Har tun to'plamlarni boshqa joyga ko'chiring. Namuna (qiymatlar — to'ldiriladigan joylar; haqiqiy manzil va kalit hali berilmagan, shuning uchun bu qadam **tekshirilmagan**):
+Shu serverdagi to'plamlar server bilan birga yo'qolishi mumkin. `scripts/production/offsite.sh` tayyor to'plamlarni boshqa joyga ko'chiradi va kerak bo'lganda qaytarib yuklab oladi.
+
+**Qanday ishlaydi:**
+- Faqat tugallangan to'plamlar (`manifest.json` va `SHA256SUMS` bilan) yuboriladi. Yozilayotgan (`.incomplete-*`) to'plam hech qachon yuborilmaydi.
+- Barcha fayllar yuborilgach, masofadagi nusxa lokal nusxa bilan **bayt-ma-bayt** solishtiriladi. Faqat shundan keyin `COMPLETE` belgisi yoziladi. Belgisiz to'plam **ishlatib bo'lmaydigan** hisoblanadi va keyingi `push` uni qayta yuboradi.
+- Hech narsa o'chirilmaydi: na masofadan (sinxronlash va tozalash yo'q — eski to'plamlarni saqlash muddatini xotiraning o'z lifecycle qoidasi belgilaydi), na lokal. Uzatish yiqilsa, lokal to'plamlar joyida qoladi.
+- Off-server sozlangan bo'lsa, tungi zaxira hali tashqariga ko'chirilmagan eski to'plamni o'chirmaydi.
+- Lokal holat (`.state/last-*`) va masofaviy holat (`.state/offsite-*`) alohida saqlanadi.
+
+**Sozlash** (`.env` va server; sirlar repoga kirmaydi):
+
+| | |
+|---|---|
+| `OFFSITE_DRIVER=rclone` | istalgan S3-mos xotira, Backblaze B2, SFTP va h.k. Masofaviy manzil va kalitlar serverdagi `rclone.conf` da (`sudo rclone config`, root uchun `/root/.config/rclone/rclone.conf`). Bucket **ochiq bo'lmasin** (`acl = private`), versioning yoki o'chirishdan himoya yoqilsin. |
+| `OFFSITE_DRIVER=dir` | boshqa mashinadan ulangan papka (NFS, tashqi disk) |
+| `OFFSITE_TARGET` | rclone uchun `<remote>:<bucket>/<yo'l>`; dir uchun absolyut yo'l |
+| `OFFSITE_MAX_AGE_HOURS` | `status --check` uchun chegara (standart 30 soat) |
+
+**Shifrlash va kalitlar egasi.** To'plamlarda shaxsiy ma'lumotlar bor. rclone'da `crypt` turidagi masofaviy manzil ishlating (rclone `crypt` remote). Shifrlash paroli va `rclone.conf` nusxasi **markaz egasi yoki mas'ul shaxsda, serverdan tashqarida** (parol menejerida) saqlansin. Usiz masofaviy nusxani tiklab bo'lmaydi.
 
 ```bash
-# /etc/cron.d/talimcrm-offsite  (root), zaxiradan 1 soat keyin
-0 23 * * * root rsync -a --ignore-existing /opt/crmapp/backups/ <BACKUP_USER>@<BACKUP_HOST>:<BACKUP_PATH>/
-# yoki S3-mos saqlash:  aws s3 sync /opt/crmapp/backups/ s3://<BUCKET>/<PREFIX>/ --exclude ".*"
+sudo bash scripts/production/offsite.sh push            # yangi tayyor to'plamlarni yuborish (xavfsiz qayta yuritish mumkin)
+sudo bash scripts/production/offsite.sh status --check  # lokal, masofaviy, tiklash tekshiruvi; muammo bo'lsa exit 1
+# root crontab: zaxiradan 1 soat keyin yuborish, har soatda holatni tekshirish
+0 23 * * * cd /opt/crmapp && bash scripts/production/offsite.sh push >> /var/log/talimcrm-offsite.log 2>&1
 ```
 
-Sozlangach tekshirish: (1) masofadagi papkada bugungi `<stack>_<vaqt>Z/` borligi; (2) uni boshqa mashinaga yuklab, `sha256sum -c SHA256SUMS`; (3) o'sha nusxadan `restore.sh` mashqi. Masofadagi saqlashda o'chirishdan himoya (versioning / append-only) va shifrlash yoqilsin: to'plamda shaxsiy ma'lumotlar bor.
+**Server yo'qolganda — masofaviy nusxadan tiklash** (yangi serverda, kod va `.env` tiklangandan keyin):
+
+```bash
+sudo bash scripts/production/offsite.sh fetch latest /root/recovered     # bo'sh papkaga yuklab olinadi, checksum va COMPLETE belgisi tekshiriladi
+sudo bash scripts/production/restore.sh /root/recovered/<to'plam> --keep
+# so'ng restore.sh chiqargan buyruqlar: ilovani tiklangan bazaga o'tkazish va uploads.tar.gz'ni uploads volume'iga ochish
+```
+
+Tekshirilganlari: `offsite.test.sh` (lokal simulyatsiya: yarim uzatish, kesilgan fayl, yuborib bo'lmaydigan xotira, qayta urinish, yuklab olish, eski masofaviy to'plamlar o'chmasligi, holat). CI'dagi `recovery` mashqi tiklashni lokal papka ko'rinishidagi "masofaviy" nusxadan qiladi. **Haqiqiy tashqi xotira bilan hali sinalmagan** — manzil va kalit berilmagan.
 
 Staging muhiti: `docs/STAGING.md`.
 
 ---
 
-## 9. Yangilanishlarni O'rnatish (Zero-Downtime Deployment)
+## 9. Yangilanishlarni O'rnatish
 
-Loyiha kodi o'zgarganda yangi versiyani serverga chiqarish:
+Har doim **aniq commit** chiqariladi va chiqarishdan oldin zaxira olinadi:
 
 ```bash
 cd /opt/crmapp
-
-# 1. Yangi kodni yuklab olish
-git pull origin main
-
-# 2. Yangi imidjlarni yig'ish va yangilash
-bash scripts/production/stack.sh build
-bash scripts/production/stack.sh up -d --no-deps backend frontend
-
-# 3. Migratsiyalar: backend konteyneri ishga tushganda o'zi qo'llaydi
-#    (node scripts/migrate.cjs). Holatini ko'rish:
-bash scripts/production/stack.sh exec backend node scripts/migrate.cjs --status
+sudo bash scripts/production/backup.sh && sudo bash scripts/production/offsite.sh push   # off-server sozlangan bo'lsa
+git fetch origin && git checkout --detach <commit-sha>
+bash scripts/production/stack.sh up -d --build --wait --wait-timeout 600   # migratsiyalar API'dan oldin qo'llanadi
+bash scripts/production/release-info.sh       # RELEASE OK: shu commit qurilgan, ishlayapti, migratsiyalar to'liq
 ```
+
+`/api/health` javobidagi `revision` va image'lardagi `org.opencontainers.image.revision` belgisi qaysi commit ishlayotganini ko'rsatadi. Orqaga qaytarish (ilova va baza alohida): `docs/STAGING.md`, "Orqaga qaytarish".
 
 ---
 

@@ -26,6 +26,12 @@ case "$line" in
   *"SELECT tag FROM app_migrations"*) for f in "$FAKE_REPO"/backend/drizzle/[0-9][0-9][0-9][0-9]_*.sql; do basename "$f"; done ;;
   *" psql -d "*" -q -X") cat >/dev/null ;;
   *"SELECT count(*)"*) echo 0 ;;
+  *" images -q "*) echo "img-${line##* }" ;;
+  *"image inspect"*"image.revision"*) echo "${FAKE_IMG_REV:-unknown}" ;;
+  *"image inspect"*"root-domain"*) echo "${FAKE_FRONT_DOMAIN:-staging.school.uz}" ;;
+  *"image inspect"*"api-url"*) echo "/api" ;;
+  *"api/health"*) echo "{\"status\":\"ok\",\"db\":\"ok\",\"revision\":\"${FAKE_RUN_REV:-unknown}\"}" ;;
+  *"migrate.cjs --status"*) echo "applied 0000_init.sql"; [ -n "${FAKE_PENDING:-}" ] && echo "PENDING 0034_x.sql" ;;
 esac
 exit 0
 EOF
@@ -195,6 +201,24 @@ checkout; run -- bash "$CO/scripts/production/restore.sh" /nonexistent/set
 check "a missing set is refused" [ "$RC" = "1" ]
 checkout; run STACK_NAME=talimcrm -- bash "$CO/scripts/production/restore.sh" "$SET"
 check "an inherited production stack name is refused, nothing runs" bash -c "[ '$RC' = 1 ] && [ ! -s '$DOCKER_CALLS' ]"
+
+# -------------------------------------------------------------- release-info
+echo "release-info.sh - what is running against what the checkout says"
+gitco() { checkout; git -C "$CO" init -q && git -C "$CO" add -A && git -C "$CO" -c user.name=t -c user.email=t@t commit -qm t; REV="$(git -C "$CO" rev-parse --short=12 HEAD)"; }
+gitco
+run FAKE_IMG_REV="$REV" FAKE_RUN_REV="$REV" -- bash "$CO/scripts/production/release-info.sh"
+check "all agree: RELEASE OK, exit 0" bash -c "[ '$RC' = 0 ] && grep -q 'RELEASE OK: $REV' <<<\"\$0\"" "$OUT"
+check "the commits are printed" bash -c "grep -q 'running API:        $REV' <<<\"\$0\"" "$OUT"
+run FAKE_IMG_REV="0000aaaa1111" FAKE_RUN_REV="0000aaaa1111" -- bash "$CO/scripts/production/release-info.sh"
+check "an image from another commit: MISMATCH, exit 1" bash -c "[ '$RC' = 1 ] && grep -q 'backend image (0000aaaa1111) differs' <<<\"\$0\"" "$OUT"
+run FAKE_IMG_REV="$REV" FAKE_RUN_REV="$REV" FAKE_FRONT_DOMAIN=crmapp.com -- bash "$CO/scripts/production/release-info.sh"
+check "a frontend built for another domain is caught" bash -c "[ '$RC' = 1 ] && grep -q 'built for domain crmapp.com, .env says staging.school.uz' <<<\"\$0\"" "$OUT"
+run FAKE_IMG_REV="$REV" FAKE_RUN_REV="$REV" FAKE_PENDING=1 -- bash "$CO/scripts/production/release-info.sh"
+check "pending migrations are caught" bash -c "[ '$RC' = 1 ] && grep -q 'migrations: 1 applied, 1 pending' <<<\"\$0\"" "$OUT"
+echo "change" >> "$CO/docker-compose.prod.yml"
+run FAKE_IMG_REV="$REV" FAKE_RUN_REV="$REV" -- bash "$CO/scripts/production/release-info.sh"
+check "a dirty checkout cannot name its build" bash -c "[ '$RC' = 1 ] && grep -q 'not a clean commit ($REV-dirty)' <<<\"\$0\"" "$OUT"
+check_not "release-info prints no secret" bash -c "grep -q 'aaaaaaaaaaaaaaaa\|cccccccccccccccc' <<<\"\$0\"" "$OUT"
 
 echo
 if [ "$failures" -gt 0 ]; then echo "$failures check(s) failed" >&2; exit 1; fi

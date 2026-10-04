@@ -117,6 +117,17 @@ if [ -z "$(env_value RESEND_API_KEY)" ] && [ -z "$(env_value SMTP_HOST)" ]; then
 if [ -z "$(env_value CLICK_SECRET_KEY)" ] && [ -z "$(env_value PAYME_KEY)" ]; then ok "payment providers not configured"
 else warn "payment keys are set: they must be the providers' TEST merchants"; fi
 
+echo "== domain, build and recovery"
+DOM="$(env_value DOMAIN)"
+FURL="$(env_value FRONTEND_URL)"
+[ -z "$FURL" ] || [ "$FURL" = "https://$DOM" ] && ok "FRONTEND_URL matches https://DOMAIN" || bad "FRONTEND_URL ($FURL) is not https://$DOM: CORS and links would point elsewhere"
+NAPI="$(env_value NEXT_PUBLIC_API_URL)"
+[ -z "$NAPI" ] || [ "$NAPI" = "/api" ] && ok "the frontend calls the API on its own origin (/api)" || warn "NEXT_PUBLIC_API_URL=$NAPI: the API is on another origin; it is baked in at build time"
+if [ -n "$(env_value OFFSITE_DRIVER)" ]; then ok "off-server copies configured ($(env_value OFFSITE_DRIVER)); check with: bash scripts/production/offsite.sh status"
+else warn "off-server copies are not configured (OFFSITE_DRIVER/OFFSITE_TARGET): losing this server loses its backups"; fi
+if git -C "$PROJECT_ROOT" diff --quiet HEAD -- 2>/dev/null; then ok "checkout is a clean commit: $(git -C "$PROJECT_ROOT" rev-parse --short=12 HEAD 2>/dev/null)"
+else warn "the checkout has uncommitted changes: the build cannot be named by its commit"; fi
+
 echo "== docker"
 if [ "$CONFLICT" = "1" ]; then
   warn "docker was not consulted: fix the inherited variables above first"

@@ -47,7 +47,9 @@ Nosozlik yuz berganda nima qilish kerakligi bo'yicha qisqa qo'llanma.
 - Serverda: `bash scripts/production/backup.sh` — baza **va** yuklangan fayllar; xato bo'lsa yarim fayl qoldirmaydi va sababini aytadi. (Lokal ishlab chiqishda: `npm run db:backup`.)
 - Zaxira haqiqatan tiklanishini tekshirish: `sudo bash scripts/production/restore.sh backups/<stack>_<vaqt>Z` (nazorat yig'indilari, alohida vaqtinchalik bazaga tiklash, tekshirish; faqat o'zi yaratgan bazani o'chiradi).
 - Tungi zaxira holati: `bash scripts/production/stack.sh ps db-backup` (`unhealthy` = 26 soatdan beri muvaffaqiyatli zaxira yo'q); sababi: `bash scripts/production/stack.sh logs --tail=50 db-backup`. Muvaffaqiyatsiz yurish eski to'plamlarni o'chirmaydi.
-- Zaxira fayllari serverdan tashqariga (boshqa mashina, S3 va h.k.) ko'chirilishi kerak — shu diskdagi nusxa disk bilan birga yo'qoladi.
+- Hammasining holati bir joyda: `sudo bash scripts/production/offsite.sh status --check` — oxirgi lokal zaxira, oxirgi tashqariga uzatish, eng yangi ishlatsa bo'ladigan masofaviy to'plam yoshi, oxirgi tiklash tekshiruvi; muammo bo'lsa exit 1.
+- Tashqariga uzatish yiqilgan (`remote transfer: LAST RUN FAILED`): sababi shu qatorda. Tarmoq yoki kalitni tuzatib, `sudo bash scripts/production/offsite.sh push` ni qayta yuriting — qayta yuritish xavfsiz, lokal to'plamlar o'chmaydi, chala yuborilgan to'plam belgisiz (ishlatilmaydi) qoladi va qayta yuboriladi.
+- Server yo'qolgan: `docs/DEPLOYMENT_GUIDE.md` → "Server yo'qolganda — masofaviy nusxadan tiklash".
 
 ## 9. Superadmin hisobiga kirish yo'qolgan
 

@@ -1,5 +1,12 @@
 import { expect, test } from '@playwright/test';
-import { PASSWORD, addStaff, api, centerUrl, expectCenterDashboard, loginOnMainSite, newCenter, run } from './support';
+import { PASSWORD, TARGET, addStaff, api, centerUrl, deleteOwnCenters, expectCenterDashboard, loginOnMainSite, newCenter, run } from './support';
+
+// On a deployed staging domain the run removes the centers it made.
+test.afterAll(async () => {
+  if (TARGET !== 'staging') return;
+  const left = await deleteOwnCenters();
+  if (left.length) console.warn(`not deleted (remove by hand): ${left.join(', ')}`);
+});
 
 // Every test gets its own browser context (Playwright's default): no
 // session leaks from one flow into the next.
@@ -21,7 +28,7 @@ test('sign in on the main site -> the center\'s own address -> reload keeps the 
 test('one person, two centers, a different role in each: switching from the menu', async ({ page }) => {
   const a = await newCenter('swa');
   const b = await newCenter('swb');
-  const email = `staff-sw-${run}@example.test`;
+  const email = `zzbr-staff-sw-${run}@example.test`;
   await addStaff(a.token, email, 'ACCOUNTANT');
   await addStaff(b.token, email, 'TEACHER');
 
@@ -53,7 +60,7 @@ test('logout: protected pages are refused afterwards', async ({ page }) => {
 
 test('staff removed while their browser is open: the next request is refused', async ({ page }) => {
   const a = await newCenter('removal');
-  const email = `staff-rm-${run}@example.test`;
+  const email = `zzbr-staff-rm-${run}@example.test`;
   const staffId = await addStaff(a.token, email, 'ADMIN');
   await loginOnMainSite(page, email);
   await expectCenterDashboard(page, a.sub);

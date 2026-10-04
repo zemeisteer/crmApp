@@ -20,7 +20,10 @@
 #   3. a backup through the real Docker path (backup.sh -> db-backup service
 #      -> backup-core.sh) gives a complete recovery set; a backup that cannot
 #      succeed fails and leaves the earlier set alone
-#   4. the set is restored into a SEPARATE database server and a SEPARATE
+#      and it is copied off-server (offsite.sh, "dir" driver: a folder that
+#      stands in for the remote storage) and marked usable there
+#   4. the set is DOWNLOADED from that off-server copy into an empty folder
+#      and restored from there into a SEPARATE database server and a SEPARATE
 #      uploads volume, the application starts on them and works: migrations,
 #      login and roles, records, balances, the uploaded file byte for byte
 #   5. the source database and the source uploads are unchanged
@@ -256,6 +259,18 @@ if grep -rqF "$SECRET" "$SET/manifest.json" "$SET/SHA256SUMS"; then fail "a secr
 DB_BYTES="$(wc -c < "$SET/db.sql.gz" | tr -d ' ')"; UP_BYTES="$(wc -c < "$SET/uploads.tar.gz" | tr -d ' ')"
 echo "    set $(basename "$SET"): database ${DB_BYTES} bytes, uploads ${UP_BYTES} bytes, ${BACKUP_S}s (including its own restore check)"
 src exec -T db-backup sh /opt/talimcrm/backup-core.sh healthcheck >/dev/null || fail "(status $?) the backup service is not healthy after a good backup"
+# Off-server: offsite.sh with the "dir" driver; the folder stands in for the
+# remote storage. Its state goes into the backup folder's .state, which the
+# backup container created for root - opened up here like the sets are.
+REMOTE_DIR="$WORK/offsite-remote"
+mkdir -p "$REMOTE_DIR"
+printf 'OFFSITE_DRIVER=dir\nOFFSITE_TARGET=%s\n' "$REMOTE_DIR" >> "$SRC_ENV"
+docker run --rm -v "$SRC_BACKUPS:/b" alpine sh -c 'mkdir -p /b/.state && chmod -R a+rwX /b/.state' >/dev/null || fail "(status $?) could not open the backup state folder"
+P0="$(date +%s)"
+OFFSITE_OUT="$(script "$SRC_ENV" scripts/production/offsite.sh push 2>&1)" || fail "(status $?) offsite.sh push: $OFFSITE_OUT"
+PUSH_S=$(( $(date +%s) - P0 ))
+[ -f "$REMOTE_DIR/$(basename "$SET")/COMPLETE" ] || fail "the set is not marked usable off-server: $OFFSITE_OUT"
+echo "    copied off-server and verified there in ${PUSH_S}s"
 
 step "4/7 a backup that cannot succeed"
 # pg_dump of a database that does not exist: the real program, really failing.
@@ -271,9 +286,16 @@ echo "    failed as it should; the good set is intact; the service reports unhea
 
 # ---------------------------------------------------------------- 5. restore
 step "5/7 restore into a separate database and a separate uploads volume"
+# From the OFF-SERVER copy only: downloaded into an empty folder, verified.
+F0="$(date +%s)"
+FETCH_OUT="$(script "$SRC_ENV" scripts/production/offsite.sh fetch latest "$WORK/fetched" 2>&1)" || fail "(status $?) offsite.sh fetch: $FETCH_OUT"
+FETCH_S=$(( $(date +%s) - F0 ))
+REMOTE_SET="$WORK/fetched/$(basename "$SET")"
+[ -f "$REMOTE_SET/COMPLETE" ] && [ "$REMOTE_SET" != "$SET" ] || fail "the fetched set is missing or is the local one"
+echo "    downloaded the off-server copy into an empty folder and verified it in ${FETCH_S}s"
 R0="$(date +%s)"
 dst up -d --wait --wait-timeout 600 postgres || fail "(status $?) the second database server did not start"
-RESTORE_OUT="$(script "$DST_ENV" scripts/production/restore.sh "$SET" --keep 2>&1)" || { rc=$?; echo "$RESTORE_OUT" | redact; fail "(status $rc) restore.sh failed"; }
+RESTORE_OUT="$(script "$DST_ENV" scripts/production/restore.sh "$REMOTE_SET" --keep 2>&1)" || { rc=$?; echo "$RESTORE_OUT" | redact; fail "(status $rc) restore.sh failed"; }
 echo "$RESTORE_OUT" | grep -E "LOADED|CONSISTENT|APPLICATION|recorded:" | sed 's/^/    /'
 has_text "LOADED:      yes" "$RESTORE_OUT" || fail "(status $?) the dump did not load"
 has_text "CONSISTENT:  yes" "$RESTORE_OUT" || fail "(status $?) the restored data is not consistent"
@@ -281,7 +303,7 @@ RESTORED_DB="$(sed -n 's/^RESTORED_DATABASE=//p' <<<"$RESTORE_OUT")"
 [ -n "$RESTORED_DB" ] && [ "$RESTORED_DB" != "$DST_DB_NAME" ] || fail "(status $?) no separate restored database"
 LOAD_S="$(sed -n 's/.*LOADED:      yes (\([0-9]*\)s.*/\1/p' <<<"$RESTORE_OUT")"
 # The files, into the second stack's own uploads volume.
-dst run --rm --no-deps --user root --entrypoint sh -v "$SET:/set:ro" backend -c \
+dst run --rm --no-deps --user root --entrypoint sh -v "$REMOTE_SET:/set:ro" backend -c \
   'tar -xzf /set/uploads.tar.gz -C /app/uploads && chown -R node:node /app/uploads' || fail "(status $?) could not restore the uploads"
 # The application of the second stack, on the restored database.
 sed -i "s/^POSTGRES_DB=.*/POSTGRES_DB=$RESTORED_DB/" "$DST_ENV"
@@ -312,5 +334,6 @@ echo
 echo "REHEARSAL OK"
 echo "  data:    database dump ${DB_BYTES} bytes (gzip), uploads archive ${UP_BYTES} bytes - a tiny synthetic set"
 echo "  backup:  ${BACKUP_S}s (dump, restore check, uploads, checksums)"
+echo "  off-server: copy + verify ${PUSH_S}s, download + verify ${FETCH_S}s (a local folder standing in for the remote storage)"
 echo "  restore: ${RESTORE_S}s from an empty server to a running, verified application (dump load ${LOAD_S:-?}s)"
 echo "  These times describe this small data set on this machine only."

@@ -31,6 +31,13 @@ COPY --from=builder /app/scripts/migrate.cjs ./scripts/migrate.cjs
 
 RUN mkdir -p /app/uploads && chown -R node:node /app
 
+# The commit this image was built from (scripts/production/lib.sh passes it;
+# "-dirty" when the checkout had uncommitted changes). Shown by /api/health
+# and as an image label, so an operator can tell what is running. Declared
+# last, so a new commit does not invalidate the dependency layers.
+ARG APP_REVISION=unknown
+ENV APP_REVISION=$APP_REVISION
+LABEL org.opencontainers.image.revision=$APP_REVISION
 USER node
 EXPOSE 4000
 

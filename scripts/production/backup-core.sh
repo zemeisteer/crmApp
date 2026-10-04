@@ -53,6 +53,7 @@ VERIFY_RESTORE="${BACKUP_VERIFY_RESTORE:-1}"
 REQUIRE_UPLOADS="${BACKUP_REQUIRE_UPLOADS:-1}"
 LOCK_STALE_S="${BACKUP_LOCK_STALE_S:-21600}"
 APP_REVISION="${APP_REVISION:-unknown}"
+OFFSITE_REQUIRED="${BACKUP_OFFSITE_REQUIRED:-0}"
 export PGHOST="${PGHOST:-${POSTGRES_HOST:-postgres}}"
 export PGUSER="${PGUSER:-${POSTGRES_USER:-postgres}}"
 export PGPASSWORD="${PGPASSWORD:-${POSTGRES_PASSWORD:-}}"
@@ -220,6 +221,12 @@ prune() {
   removable=$(( total - MIN_KEEP ))
   [ "$removable" -gt 0 ] || return 0
   finished_sets | head -n "$removable" | while IFS= read -r d; do
+    # With off-server copies configured, a set not yet copied off the
+    # server is kept, however old (scripts/production/offsite.sh).
+    if [ "$OFFSITE_REQUIRED" = "1" ] && [ ! -f "$STATE/offsite/$(basename "$d").ok" ]; then
+      log "kept $(basename "$d"): not yet copied off-server"
+      continue
+    fi
     if [ -n "$(find "$d" -maxdepth 0 -mtime +"$KEEP_DAYS" 2>/dev/null)" ]; then
       rm -rf "$d" && log "removed old set $(basename "$d") (older than $KEEP_DAYS days)"
     fi
