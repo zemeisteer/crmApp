@@ -20,7 +20,7 @@ import {
 } from "@/lib/api";
 import { useLanguage } from "@/lib/i18n-context";
 import { useAuth } from "@/lib/auth-context";
-import { LEAD_SOURCES, label, primaryBtn, ghostBtn, sourceKey, statusKey, StatusBadge, toIsoFromParts } from "./lead-ui";
+import { LEAD_SOURCES, label, primaryBtn, ghostBtn, sourceKey, statusKey, StatusBadge, toIsoFromParts, useCenterTimeZone, CenterTimeNote } from "./lead-ui";
 import PhoneInput from "@/components/PhoneInput";
 import { phoneOrEmpty } from "@/lib/validation";
 
@@ -61,6 +61,7 @@ interface Props {
 export default function LeadFormModal({ open, onClose, onSaved, lead, managers = [] }: Props) {
   const { t } = useLanguage();
   const { can } = useAuth();
+  const tz = useCenterTimeZone();
   const editing = !!lead;
 
   // Initial values come straight from props: parents mount this component
@@ -145,7 +146,7 @@ export default function LeadFormModal({ open, onClose, onSaved, lead, managers =
           desiredCourseId: courseId || undefined,
           preferredBranchId: branchId || undefined,
           assignedManagerUserId: managerId || undefined,
-          followUpAt: followDate ? toIsoFromParts(followDate, "10:00") : undefined,
+          followUpAt: followDate ? toIsoFromParts(followDate, "10:00", tz) : undefined,
           notes: notes.trim() || undefined,
           ...(override ? { allowDuplicate: true, duplicateReason: overrideReason.trim() } : {}),
         });
@@ -241,6 +242,7 @@ export default function LeadFormModal({ open, onClose, onSaved, lead, managers =
             <div>
               <label style={label}>{t("adm.fieldFollowUp")}</label>
               <DatePicker value={followDate} onChange={setFollowDate} />
+              <CenterTimeNote tz={tz} text={t("adm.centerTime")} />
               <div style={{ marginTop: 5, fontSize: 12, color: "#8A8D96" }}>{t("leadForm.followUpHint")}</div>
             </div>
           )}

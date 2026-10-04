@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { nextLessonDate } from "@/lib/date";
+import { centerWallClock, isoToCenterParts } from "@/lib/center-time";
 import { useParams } from "next/navigation";
 import DashboardShell from "@/components/DashboardShell";
 import Modal from "@/components/Modal";
@@ -53,6 +54,8 @@ import {
   statusKey,
   telHref,
   toIsoFromParts,
+  useCenterTimeZone,
+  CenterTimeNote,
   trialKey,
 } from "@/components/leads/lead-ui";
 
@@ -85,6 +88,7 @@ function LeadProfile() {
   const { id } = useParams<{ id: string }>();
   const { t, lang } = useLanguage();
   const { can, tenant } = useAuth();
+  const tz = useCenterTimeZone();
 
   const [lead, setLead] = useState<Lead | null>(null);
   const [timeline, setTimeline] = useState<LeadActivity[]>([]);
@@ -162,7 +166,8 @@ function LeadProfile() {
     if (!g) return;
     if (g.startTime) setTrialTime(g.startTime.slice(0, 5));
     if (g.teacherId) setTrialTeacher(g.teacherId);
-    const next = withDate ? nextLessonDate(g.scheduleDays, g.startTime) : null;
+    // The group's days and times are the center's; so is "now".
+    const next = withDate ? nextLessonDate(g.scheduleDays, g.startTime, centerWallClock(new Date(), tz)!) : null;
     if (next) setTrialDate(next);
   }
 
@@ -171,8 +176,10 @@ function LeadProfile() {
     setConflicts([]);
     setActionError(null);
     if (d?.kind === "trial") {
-      setTrialDate("");
-      setTrialTime("10:00");
+      // Rescheduling starts from the booked date and time, on the center's clock.
+      const booked = d.reschedule ? isoToCenterParts(d.reschedule.scheduledAt, tz) : null;
+      setTrialDate(booked?.date ?? "");
+      setTrialTime(booked?.time ?? "10:00");
       setTrialDuration(String(d.reschedule?.durationMinutes ?? 60));
       setTrialGroup(d.reschedule?.groupId ?? d.groupId ?? "");
       setTrialTeacher(d.reschedule?.teacherId ?? "");
@@ -307,7 +314,7 @@ function LeadProfile() {
         )}
         {lead.convertedStudent && (
           <div style={{ ...card, background: "#F0FDF4", border: "1px solid #BBF7D0", display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-            <span>{t("adm.convertedBanner")}: <strong>{lead.convertedStudent.fullName}</strong> · {formatDateTime(lead.convertedAt, lang)}</span>
+            <span>{t("adm.convertedBanner")}: <strong>{lead.convertedStudent.fullName}</strong> · {formatDateTime(lead.convertedAt, lang, tz)}</span>
             <Link href={`/students/${lead.convertedStudent.id}`} style={{ color: "#15803D", fontWeight: 700 }}>{t("adm.viewStudent")} →</Link>
           </div>
         )}
@@ -329,7 +336,7 @@ function LeadProfile() {
               {origin?.createdBy && detail(t("adm.originAddedBy"), origin.createdBy.fullName)}
               {utm && detail(t("adm.originAd"), utm)}
               {detail(t("adm.originWant"), [lead.desiredSubject?.name ?? lead.legacySubject, lead.desiredCourse?.name, lead.preferredBranch?.name].filter(Boolean).join(" · ") || "—")}
-              {detail(t("adm.originDate"), formatDateTime(lead.createdAt, lang))}
+              {detail(t("adm.originDate"), formatDateTime(lead.createdAt, lang, tz))}
               {leadNote(lead.notes) && detail(t("leads.fieldNotes"), <span style={{ whiteSpace: "pre-wrap", fontWeight: 400 }}>{leadNote(lead.notes)}</span>)}
             </section>
 
@@ -377,7 +384,7 @@ function LeadProfile() {
                     <li key={a.id} style={{ border: "1px solid #F2F1EC", borderRadius: 10, padding: 12, display: "grid", gap: 8 }}>
                       <div style={{ display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
                         <strong style={{ fontSize: 13.5 }}>{a.testTitle}</strong>
-                        <span style={{ fontSize: 11.5, color: "#8A8D96" }}>{formatDateTime(a.createdAt, lang)}</span>
+                        <span style={{ fontSize: 11.5, color: "#8A8D96" }}>{formatDateTime(a.createdAt, lang, tz)}</span>
                       </div>
                       <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
                         <span style={{ fontFamily: "'Manrope',sans-serif", fontWeight: 800, fontSize: 24, color: a.percent >= 70 ? "#15803D" : a.percent >= 40 ? "#B45309" : "#B91C1C" }}>{a.percent}%</span>
@@ -457,14 +464,14 @@ function LeadProfile() {
                 <div style={{ fontSize: 12, color: "#B45309", marginTop: 6 }}>⚠ {t("adm.managerInactive")}</div>
               )}
               {lead.status === "LOST" && detail(t("adm.lostReason"), <>{lead.lostReason ? t(lostKey(lead.lostReason)) : "—"}{lead.lostNote ? ` — ${lead.lostNote}` : ""}</>)}
-              {detail(t("adm.createdBy"), formatDateTime(lead.createdAt, lang))}
-              {detail(t("adm.lastUpdated"), formatDateTime(lead.updatedAt, lang))}
+              {detail(t("adm.createdBy"), formatDateTime(lead.createdAt, lang, tz))}
+              {detail(t("adm.lastUpdated"), formatDateTime(lead.updatedAt, lang, tz))}
             </section>
 
             <section style={card}>
               <h2 style={{ fontSize: 15, fontWeight: 800, marginBottom: 8 }}>{t("adm.followUp")}</h2>
               <div style={{ fontSize: 13.5, marginBottom: 10, color: isOverdue(lead.followUpAt) && isOpen ? "#B91C1C" : undefined, fontWeight: 600 }}>
-                {lead.followUpAt ? formatDateTime(lead.followUpAt, lang) : t("adm.noFollowUp")}
+                {lead.followUpAt ? formatDateTime(lead.followUpAt, lang, tz) : t("adm.noFollowUp")}
                 {lead.followUpAt && isOverdue(lead.followUpAt) && isOpen ? ` (${t("adm.overdue")})` : ""}
               </div>
               {editable && isOpen && (
@@ -476,7 +483,7 @@ function LeadProfile() {
                     className="btn"
                     style={primaryBtn}
                     disabled={!followDate || busy}
-                    onClick={() => run(() => leadsApi.followUp(lead.id, toIsoFromParts(followDate, followTime)), () => setFollowDate(""))}
+                    onClick={() => run(() => leadsApi.followUp(lead.id, toIsoFromParts(followDate, followTime, tz)), () => setFollowDate(""))}
                   >
                     {t("adm.setFollowUp")}
                   </button>
@@ -487,6 +494,7 @@ function LeadProfile() {
                   )}
                 </div>
               )}
+              {editable && isOpen && <CenterTimeNote tz={tz} text={t("adm.centerTime")} />}
             </section>
 
             <section style={card}>
@@ -498,7 +506,7 @@ function LeadProfile() {
                   {lead.trials!.map((tr) => (
                     <li key={tr.id} style={{ border: "1px solid #F2F1EC", borderRadius: 10, padding: 10, display: "grid", gap: 6 }}>
                       <div style={{ display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
-                        <strong style={{ fontSize: 13.5 }}>{formatDateTime(tr.scheduledAt, lang)} · {tr.durationMinutes}′</strong>
+                        <strong style={{ fontSize: 13.5 }}>{formatDateTime(tr.scheduledAt, lang, tz)} · {tr.durationMinutes}′</strong>
                         <span style={{ fontSize: 11.5, fontWeight: 700, padding: "2px 8px", borderRadius: 999, ...TRIAL_STYLE[tr.status] }}>{t(trialKey(tr.status))}</span>
                       </div>
                       <div style={{ fontSize: 12.5, color: "#5B5F6A" }}>
@@ -566,7 +574,7 @@ function LeadProfile() {
                   </div>
                   {a.body && <div style={{ fontSize: 13, whiteSpace: "pre-wrap", marginTop: 3 }}>{a.body}</div>}
                   <div style={{ fontSize: 11.5, color: "#8A8D96", marginTop: 3 }}>
-                    {formatDateTime(a.occurredAt, lang)} · {a.actor?.fullName ?? t("adm.system")}
+                    {formatDateTime(a.occurredAt, lang, tz)} · {a.actor?.fullName ?? t("adm.system")}
                   </div>
                 </li>
               ))}
@@ -611,7 +619,7 @@ function LeadProfile() {
               }, close);
             }
             if (dialog?.kind === "trial") {
-              const scheduledAt = toIsoFromParts(trialDate, trialTime);
+              const scheduledAt = toIsoFromParts(trialDate, trialTime, tz);
               setConflicts([]);
               if (dialog.reschedule) {
                 run(() => leadsApi.rescheduleTrial(lead.id, dialog.reschedule!.id, { scheduledAt, note: note.trim() || undefined }), close);
@@ -659,6 +667,7 @@ function LeadProfile() {
                 <div>
                   <label style={label}>{t("adm.trialTime")} *</label>
                   <TimePicker value={trialTime} onChange={setTrialTime} />
+                  <CenterTimeNote tz={tz} text={t("adm.centerTime")} />
                 </div>
                 {!dialog.reschedule && (
                   <>

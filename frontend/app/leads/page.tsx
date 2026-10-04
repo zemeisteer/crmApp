@@ -37,6 +37,7 @@ import {
   sourceKey,
   statusKey,
   telHref,
+  useCenterTimeZone,
 } from "@/components/leads/lead-ui";
 
 const PAGE_SIZE = 25;
@@ -44,6 +45,7 @@ const PAGE_SIZE = 25;
 function LeadsContent() {
   const { t, lang } = useLanguage();
   const { can } = useAuth();
+  const tz = useCenterTimeZone();
   const canRead = can("admissions.read");
 
   const [view, setView] = useState<"list" | "pipeline">("list");
@@ -320,9 +322,9 @@ function LeadsContent() {
                       <td>{l.desiredCourse?.name ?? l.desiredSubject?.name ?? l.legacySubject ?? "—"}</td>
                       <td>{l.assignedManager?.fullName ?? <span style={{ color: "#8A8D96" }}>{t("adm.unassigned")}</span>}</td>
                       <td style={{ color: isOverdue(l.followUpAt) && OPEN_STATUSES.includes(l.status) ? "#B91C1C" : undefined, fontWeight: isOverdue(l.followUpAt) ? 700 : 400 }}>
-                        {formatDateTime(l.followUpAt, lang)}
+                        {formatDateTime(l.followUpAt, lang, tz)}
                       </td>
-                      <td>{formatDate(l.createdAt, lang)}</td>
+                      <td>{formatDate(l.createdAt, lang, tz)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -339,7 +341,7 @@ function LeadsContent() {
                   {leadNote(l.notes) && <div style={{ fontSize: 12.5, color: "#8A8D96", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>💬 {leadNote(l.notes)}</div>}
                   {l.followUpAt && (
                     <div style={{ fontSize: 12.5, color: isOverdue(l.followUpAt) ? "#B91C1C" : "#5B5F6A" }}>
-                      {t("adm.colFollowUp")}: {formatDateTime(l.followUpAt, lang)}
+                      {t("adm.colFollowUp")}: {formatDateTime(l.followUpAt, lang, tz)}
                     </div>
                   )}
                 </Link>
@@ -373,7 +375,7 @@ function LeadsContent() {
                           </div>
                           {l.followUpAt && (
                             <div style={{ fontSize: 12, color: isOverdue(l.followUpAt) ? "#B91C1C" : "#5B5F6A", fontWeight: isOverdue(l.followUpAt) ? 700 : 400 }}>
-                              ⏰ {formatDateTime(l.followUpAt, lang)}
+                              ⏰ {formatDateTime(l.followUpAt, lang, tz)}
                             </div>
                           )}
                           {can("admissions.update") && !l.archivedAt && (l.status === "CONTACTED" || l.status === "TRIAL_BOOKED") && (

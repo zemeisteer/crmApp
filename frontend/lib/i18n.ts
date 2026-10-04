@@ -2968,6 +2968,7 @@ export const dict = {
   "adm.statConversionHint": { UZ: "Oxirgi 30 kunda yaratilgan lidlardan o'quvchi bo'lganlar", RU: "Доля лидов за 30 дней, ставших учениками", EN: "Leads created in the last 30 days that enrolled" },
   "adm.colManager": { UZ: "Mas'ul", RU: "Ответственный", EN: "Owner" },
   "adm.colFollowUp": { UZ: "Qayta aloqa", RU: "Контакт", EN: "Follow-up" },
+  "adm.centerTime": { UZ: "Vaqt markaz vaqtida: {tz}", RU: "Время указано по часовому поясу центра: {tz}", EN: "Times are the center's local time: {tz}" },
   "adm.loadError": { UZ: "Ma'lumotlarni yuklab bo'lmadi.", RU: "Не удалось загрузить данные.", EN: "Could not load data." },
   "adm.retry": { UZ: "Qayta urinish", RU: "Повторить", EN: "Retry" },
   "adm.noPermission": { UZ: "Sizda qabul bo'limini ko'rish uchun ruxsat yo'q.", RU: "У вас нет доступа к разделу приёма.", EN: "You don't have access to admissions." },

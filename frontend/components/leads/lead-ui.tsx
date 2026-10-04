@@ -4,6 +4,8 @@ import type { LeadLostReason, LeadSource, LeadStatus, LeadTrialStatus } from "@/
 import type { TranslationKey } from "@/lib/i18n";
 import { formatDate as fmtDate, formatDateTime as fmtDateTime } from "@/lib/format-date";
 import type { Lang } from "@/lib/i18n";
+import { useAuth } from "@/lib/auth-context";
+import { centerTimeToIso, centerTimeZone, centerWallClock } from "@/lib/center-time";
 
 export const ACCENT = "#4F46E5";
 
@@ -67,24 +69,37 @@ export function StatusBadge({ status, label }: { status: LeadStatus; label: stri
   );
 }
 
-// Formats in the viewer's locale; the backend stores instants in UTC.
-export function formatDateTime(iso?: string | null, lang: Lang = "UZ") {
-  if (!iso) return "—";
-  return fmtDateTime(iso, lang);
+// Lead dates and times are the center's wall clock (lib/center-time.ts):
+// typed in the center's timezone, sent as UTC instants, shown back in the
+// center's timezone - not the browser's.
+export function useCenterTimeZone() {
+  const { tenant } = useAuth();
+  return centerTimeZone(tenant?.timezone);
 }
 
-export function formatDate(iso?: string | null, lang: Lang = "UZ") {
-  if (!iso) return "—";
-  return fmtDate(iso, lang, "short");
+export function formatDateTime(iso: string | null | undefined, lang: Lang, tz: string) {
+  const d = iso ? centerWallClock(iso, tz) : null;
+  return d ? fmtDateTime(d, lang) : "—";
 }
 
-// Combines the DatePicker (YYYY-MM-DD) and TimePicker (HH:MM) values, read as
-// the viewer's local time, into an ISO instant for the API.
-export function toIsoFromParts(date: string, time: string) {
+export function formatDate(iso: string | null | undefined, lang: Lang, tz: string) {
+  const d = iso ? centerWallClock(iso, tz) : null;
+  return d ? fmtDate(d, lang, "short") : "—";
+}
+
+// Said next to date and time inputs when the browser's clock is not the
+// center's, so nobody types their own local time by mistake.
+export function CenterTimeNote({ tz, text }: { tz: string; text: string }) {
+  const browser = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  if (browser === tz) return null;
+  return <div style={{ fontSize: 11.5, color: "#8A8D96", marginTop: 4 }}>{text.replace("{tz}", tz)}</div>;
+}
+
+// DatePicker (YYYY-MM-DD) + TimePicker (HH:MM), on the center's clock -> the
+// ISO instant for the API ("" without a date).
+export function toIsoFromParts(date: string, time: string, tz: string) {
   if (!date) return "";
-  const [y, m, d] = date.split("-").map(Number);
-  const [hh, mm] = (time || "09:00").split(":").map(Number);
-  return new Date(y, m - 1, d, hh, mm).toISOString();
+  return centerTimeToIso(date, time || "09:00", tz);
 }
 
 export function isOverdue(iso?: string | null) {

@@ -109,6 +109,11 @@ jobs:
         run: npm audit --omit=dev --audit-level=high
       - run: npx tsc --noEmit
       - run: npm run lint
+      # Pure helpers (the center's clock for lead dates), in a timezone far
+      # from the centers' so a browser-local mistake would show.
+      - run: npm test
+        env:
+          TZ: America/Los_Angeles
       - run: npm run build
 
   # The deployment scripts, without Docker: which stack they act on, where
