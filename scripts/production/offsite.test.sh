@@ -36,6 +36,14 @@ REAL_CP="$(command -v cp)"
 cat > "$WORK/bin/cp" <<EOF
 #!/usr/bin/env bash
 # FAULT_FAIL=<text>: fail a copy whose source contains it.
+# FAULT_PAUSE=<text>: a copy whose arguments contain it stops at a barrier:
+#   it creates \$PAUSE_DIR/reached and goes on only once \$PAUSE_DIR/release
+#   exists (the test creates it); never released in 60 s -> the copy fails.
+case " \$* " in *"\${FAULT_PAUSE:-@@}"*)
+  : > "\$PAUSE_DIR/reached"
+  for _ in \$(seq 600); do [ -e "\$PAUSE_DIR/release" ] && break; sleep 0.1; done
+  [ -e "\$PAUSE_DIR/release" ] || { echo "cp: barrier never released (test)" >&2; exit 1; } ;;
+esac
 src="\${@: -2:1}"
 case "\$src" in *"\${FAULT_FAIL:-@@}"*) echo "cp: write error (injected)" >&2; exit 1 ;; esac
 exec "$REAL_CP" "\$@"
@@ -86,6 +94,18 @@ run() { # [VAR=value ...] -- args
   OUT="$(env -i PATH="$WORK/bin:$PATH" HOME="${HOME:-/tmp}" FAKE_BUCKET="$WORK/bucket" "${vars[@]}" bash "$CO/scripts/production/offsite.sh" "$@" 2>&1 </dev/null)"
   RC=$?
 }
+# run_bg OUTFILE [VAR=value ...] -- args: like run, in the background; the
+# output and then the exit code go to OUTFILE and OUTFILE.rc.
+run_bg() {
+  local out="$1" vars=(); shift
+  while [ "$1" != "--" ]; do vars+=("$1"); shift; done; shift
+  ( env -i PATH="$WORK/bin:$PATH" HOME="${HOME:-/tmp}" FAKE_BUCKET="$WORK/bucket" "${vars[@]}" bash "$CO/scripts/production/offsite.sh" "$@" > "$out" 2>&1 </dev/null
+    echo $? > "$out.rc" ) &
+  BG=$!
+}
+# Waits (at most 30 s) until a paused copy has reached its barrier.
+reached() { local _; for _ in $(seq 300); do [ -e "$1/reached" ] && return 0; sleep 0.1; done; return 1; }
+leftover_work() { find "$BK" -maxdepth 1 -name '.offsite-*' ! -name '.offsite.lock' | grep -q .; }
 dest_ack_dir() { printf '%s/.state/offsite/%s' "$BK" "$(printf '%s|%s' "$(sed -n 's/^OFFSITE_DRIVER=//p' "$CO/.env")" "$(sed -n 's/^OFFSITE_TARGET=//p' "$CO/.env")" | sha256sum | cut -c1-16)"; }
 says() { grep -q -- "$1" <<<"$OUT"; }
 usable() { [ -f "$REMOTE/$1/COMPLETE" ] && grep -qx 'format=2' "$REMOTE/$1/COMPLETE"; }
@@ -273,6 +293,39 @@ run -- fetch latest "$WORK/f-noup"
 check "and fetched" eval '[ $RC = 0 ] && [ -f "$WORK/f-noup/$NOUP/db.sql.gz" ]'
 
 # ================================================================= rclone driver
+echo "21. runs at the same time (barriers, not timing: a copy is held until released)"
+REMOTE="$WORK/remote-conc"; mkdir -p "$REMOTE"
+checkout talimcrm_conc dir "$REMOTE"; restore_check
+C1="$(mkset)"
+run -- push
+check "baseline push exit 0" [ "$RC" = 0 ]
+PAUSE="$WORK/pause-a"; mkdir -p "$PAUSE"
+# a) status A holds its download of the newest set; status B runs start to end.
+run_bg "$WORK/status-a" FAULT_PAUSE=/full. PAUSE_DIR="$PAUSE" -- status --check
+check "status A is held inside its content check" reached "$PAUSE"
+run -- status --check
+check "status B, meanwhile: exit 0, newest VERIFIED" eval '[ $RC = 0 ] && says "$C1  VERIFIED (content check"'
+: > "$PAUSE/release"; wait "$BG"
+OUT="$(cat "$WORK/status-a")"; RC="$(cat "$WORK/status-a.rc")"
+check "status A, released: its work folder was still there - VERIFIED, exit 0" eval '[ $RC = 0 ] && says "$C1  VERIFIED (content check" && ! says UNREADABLE'
+check "neither left a work folder behind" eval '! leftover_work'
+# b) push holds its read-back of a new set (lock taken, marker in its work
+#    folder); a status runs start to end beside it.
+C2="$(mkset)"
+PAUSE="$WORK/pause-b"; mkdir -p "$PAUSE"
+run_bg "$WORK/push-b" FAULT_PAUSE=/sent. PAUSE_DIR="$PAUSE" -- push
+check "push is held after uploading, before its content check" reached "$PAUSE"
+run -- status
+check "status beside it: runs (no lock needed); the set being sent has no marker yet, the older one is the fallback" eval '[ $RC = 0 ] && says "$C2  DAMAGED: no COMPLETE marker" && says "fallback: *$C1 is the newest VERIFIED set"'
+: > "$PAUSE/release"; wait "$BG"
+OUT="$(cat "$WORK/push-b")"; RC="$(cat "$WORK/push-b.rc")"
+check "push, released: its work folder was untouched - exit 0, the set usable and acknowledged" eval '[ $RC = 0 ] && usable "$C2" && acked "$C2"'
+check "no work folder is left behind" eval '! leftover_work'
+# c) status that ends with "attention" (exit 1) also removes its folder.
+rm "$REMOTE/$C2/uploads.tar.gz"
+run -- status --check
+check "status --check exit 1 on a damaged set, and no work folder left" eval '[ $RC = 1 ] && ! leftover_work'
+
 echo "rclone driver (fake rclone - a simulation; bucket in a local folder)"
 REMOTE="$WORK/bucket/talimcrm/staging"
 checkout talimcrm_staging rclone "backup:talimcrm/staging"; restore_check

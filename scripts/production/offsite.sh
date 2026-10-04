@@ -61,9 +61,11 @@
 # half way leaves the set unusable and the local set untouched. Nothing else
 # is ever deleted - remotely or locally (no sync, no prune).
 #
-# Locks: one off-server run at a time (.offsite.lock); push and verify do not
-# start while a backup runs (.backup.lock), and the backup does not prune
-# while an off-server run holds its lock.
+# Locks: one push or verify at a time (.offsite.lock), working in
+# .offsite-work; push and verify do not start while a backup runs
+# (.backup.lock), and the backup does not prune while an off-server run
+# holds its lock. status takes no lock: each run works in its own
+# .offsite-status.XXXXXX folder, removed when it ends.
 # ==============================================================================
 set -euo pipefail
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
@@ -404,7 +406,12 @@ status() {
     echo "remote transfer:  NOT CONFIGURED (OFFSITE_DRIVER, OFFSITE_TARGET)"; attention+=("off-server copies are not configured")
   else
     need_config
-    mkdir -p "$WORKROOT"
+    # status takes no lock (it only reads), so it may run beside another
+    # status, a push or a verify: it works in a folder of its own, made for
+    # this run and removed when it ends - never the shared .offsite-work a
+    # locked run is using (removing that broke the other run's checks).
+    mkdir -p "$BACKUP_ROOT"
+    WORKROOT="$(mktemp -d "$BACKUP_ROOT/.offsite-status.XXXXXX")"
     trap 'rm -rf "$WORKROOT" 2>/dev/null || true' EXIT
     if [ -f "$STATE/offsite-last-success" ]; then t="$(cat "$STATE/offsite-last-success")"; echo "remote transfer:  last success $(utc "$t") ($(ago "$t") ago)"
     else echo "remote transfer:  no success recorded"; fi
