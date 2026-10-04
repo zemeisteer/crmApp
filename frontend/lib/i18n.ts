@@ -715,6 +715,7 @@ export const dict = {
   "tch.salPerLesson": { UZ: "Har bir dars uchun", RU: "За каждый урок", EN: "Per lesson" },
   "tch.weeklyLessons": { UZ: "Haftalik darslar soni", RU: "Уроков в неделю", EN: "Lessons per week" },
   "tch.monthlyLessons": { UZ: "Oylik darslar (taxminiy)", RU: "Уроков в месяц (примерно)", EN: "Lessons per month (approx.)" },
+  "sch.conflictCheckError": { UZ: "To'qnashuvni tekshirib bo'lmadi. Saqlashdan oldin qayta urinib ko'ring.", RU: "Не удалось проверить пересечения. Повторите перед сохранением.", EN: "Could not check for clashes. Try again before saving." },
   "sch.confirmDeleteRoom": { UZ: "Bu xonani o'chirmoqchimisiz?", RU: "Удалить эту аудиторию?", EN: "Delete this room?" },
   "sch.joinOnline": { UZ: "Onlayn darsga ulanish", RU: "Подключиться к онлайн-уроку", EN: "Join the online lesson" },
   "sch.topicPh": { UZ: "Masalan: Present Simple, Trigonometriya...", RU: "Например: Present Simple, тригонометрия...", EN: "E.g. Present Simple, trigonometry..." },

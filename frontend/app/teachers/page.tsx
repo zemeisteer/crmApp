@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import DashboardShell from "@/components/DashboardShell";
+import LoadError from "@/components/LoadError";
 import TeacherAttendanceModal from "@/components/teachers/TeacherAttendanceModal";
 import Modal from "@/components/Modal";
 import MultiSelect from "@/components/MultiSelect";
@@ -94,6 +95,10 @@ function TeachersContent() {
   }, [groups, selectedDirections]);
 
 
+  // A failed load is shown with a retry, not as an empty page ("" = no
+  // message from the server; null = no error).
+  const [loadError, setLoadError] = useState<string | null>(null);
+
   function load() {
     setLoading(true);
     Promise.all([teachersApi.list(), groupsApi.list()])
@@ -101,6 +106,8 @@ function TeachersContent() {
         setTeachers(t);
         setGroups(g);
       })
+      .then(() => setLoadError(null))
+      .catch((err) => setLoadError(err instanceof ApiError ? err.message : ""))
       .finally(() => setLoading(false));
   }
 
@@ -268,7 +275,9 @@ function TeachersContent() {
             </div>
           </>
         )}
-        {loading ? (
+        {loadError !== null ? (
+          <LoadError message={loadError || tr("adm.loadError")} onRetry={load} />
+        ) : loading ? (
           <div style={{ color: "#8A8D96", fontSize: 14 }}>{tr("common.loading")}</div>
         ) : teachers.length === 0 ? (
           <div style={{ color: "#8A8D96", fontSize: 14, background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 32, textAlign: "center" }}>

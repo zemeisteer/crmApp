@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import DashboardShell from "@/components/DashboardShell";
+import LoadError from "@/components/LoadError";
 import Modal from "@/components/Modal";
 import BarChart from "@/components/BarChart";
 import PdfImportPanel from "@/components/exams/PdfImportPanel";
@@ -91,6 +92,10 @@ function ExamsContent() {
   const [simulatorResult, setSimulatorResult] = useState<SubmitAttemptResult | null>(null);
   const [submittingAttempt, setSubmittingAttempt] = useState(false);
 
+  // A failed load is shown with a retry, not as an empty page ("" = no
+  // message from the server; null = no error).
+  const [loadError, setLoadError] = useState<string | null>(null);
+
   function load() {
     setLoading(true);
     Promise.all([examsApi.list(), groupsApi.list()])
@@ -98,6 +103,8 @@ function ExamsContent() {
         setExams(e);
         setGroups(g);
       })
+      .then(() => setLoadError(null))
+      .catch((err) => setLoadError(err instanceof ApiError ? err.message : ""))
       .finally(() => setLoading(false));
   }
 
@@ -432,7 +439,9 @@ function ExamsContent() {
       </div>
 
       <div style={{ padding: "28px 32px", display: "flex", flexDirection: "column", gap: 24 }}>
-        {loading ? (
+        {loadError !== null ? (
+          <LoadError message={loadError || t("adm.loadError")} onRetry={load} />
+        ) : loading ? (
           <div style={{ color: "#8A8D96", fontSize: 14 }}>{t("common.loading")}</div>
         ) : (
           <>

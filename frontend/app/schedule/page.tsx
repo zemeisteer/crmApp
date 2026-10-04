@@ -2,12 +2,14 @@
 
 import { useEffect, useMemo, useState } from "react";
 import DashboardShell from "@/components/DashboardShell";
+import LoadError from "@/components/LoadError";
 import RoomsManager from "@/components/schedule/RoomsManager";
 import Select from "@/components/Select";
 import TimePicker from "@/components/TimePicker";
 import { useAuth } from "@/lib/auth-context";
 import { useLanguage } from "@/lib/i18n-context";
 import {
+  ApiError,
   scheduleApi,
   groupsApi,
   teachersApi,
@@ -67,6 +69,10 @@ export default function SchedulePage() {
   const [allowCollision, setAllowCollision] = useState(false);
   const [conflicts, setConflicts] = useState<ScheduleConflict[]>([]);
   const [checkingConflict, setCheckingConflict] = useState(false);
+  // The check could not be made: saving waits for a successful one.
+  const [conflictError, setConflictError] = useState<string | null>(null);
+  const [conflictRetry, setConflictRetry] = useState(0);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState("");
 
@@ -93,8 +99,9 @@ export default function SchedulePage() {
         setGroups(gList);
         setTeachers(tList);
         setBranches(bList);
+        setLoadError(null);
       })
-      .catch((err) => console.error("Error loading schedule:", err))
+      .catch((err) => setLoadError(err instanceof ApiError ? err.message : ""))
       .finally(() => setLoading(false));
   }
 
@@ -102,13 +109,17 @@ export default function SchedulePage() {
     loadData();
   }, []);
 
-  // Live conflict check when form inputs change
+  // Live conflict check when form inputs change. Only the answer for the
+  // current inputs counts: an older, slower answer is dropped, so the
+  // warning (and the save button) never reflect inputs already changed.
   useEffect(() => {
     if (!showAddModal || !groupId || !startTime || !endTime) {
       setConflicts([]);
+      setConflictError(null);
       return;
     }
 
+    let current = true;
     const timer = setTimeout(() => {
       setCheckingConflict(true);
       scheduleApi
@@ -122,14 +133,26 @@ export default function SchedulePage() {
           excludeScheduleId: editingItem?.id,
         })
         .then((res) => {
+          if (!current) return;
           setConflicts(res.conflicts);
+          setConflictError(null);
         })
-        .catch(() => undefined)
-        .finally(() => setCheckingConflict(false));
+        .catch((err) => {
+          if (!current) return;
+          setConflicts([]);
+          setConflictError(err instanceof ApiError ? err.message : t("sch.conflictCheckError"));
+        })
+        .finally(() => {
+          if (current) setCheckingConflict(false);
+        });
     }, 250);
 
-    return () => clearTimeout(timer);
-  }, [showAddModal, groupId, teacherId, roomId, dayOfWeek, startTime, endTime, editingItem]);
+    return () => {
+      current = false;
+      clearTimeout(timer);
+      setCheckingConflict(false);
+    };
+  }, [showAddModal, groupId, teacherId, roomId, dayOfWeek, startTime, endTime, editingItem, conflictRetry, t]);
 
   function openCreateModal(defaultDay?: number) {
     setEditingItem(null);
@@ -371,7 +394,9 @@ export default function SchedulePage() {
       </div>
 
       {/* Weekly Timetable Grid (7 Days) */}
-      {loading ? (
+      {loadError !== null ? (
+        <LoadError message={loadError || t("adm.loadError")} onRetry={loadData} />
+      ) : loading ? (
         <div style={{ textAlign: "center", padding: "60px 0", color: "#6B7280" }}>{t("common.loading")}</div>
       ) : (
         <div
@@ -719,6 +744,10 @@ export default function SchedulePage() {
                 />
               </div>
 
+              {conflictError && (
+                <LoadError compact message={conflictError} onRetry={() => setConflictRetry((n) => n + 1)} />
+              )}
+
               {/* Collision Alert Warning Box */}
               {conflicts.length > 0 && (
                 <div
@@ -772,7 +801,7 @@ export default function SchedulePage() {
                 </button>
                 <button
                   type="submit"
-                  disabled={saving || checkingConflict || (conflicts.length > 0 && !allowCollision)}
+                  disabled={saving || checkingConflict || !!conflictError || (conflicts.length > 0 && !allowCollision)}
                   className="btn"
                   style={{
                     padding: "8px 20px",

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import DashboardShell from "@/components/DashboardShell";
+import LoadError from "@/components/LoadError";
 import Modal from "@/components/Modal";
 import MultiSelect from "@/components/MultiSelect";
 import BarChart from "@/components/BarChart";
@@ -376,6 +377,10 @@ function HomeworkContent() {
   const groupsInFilterDirection = filterDirection ? groups.filter((g) => matchesSubject(g.subject, filterDirection)) : groups;
   const groupsInFormDirection = formDirection ? groups.filter((g) => matchesSubject(g.subject, formDirection)) : groups;
 
+  // A failed load is shown with a retry, not as an empty page ("" = no
+  // message from the server; null = no error).
+  const [loadError, setLoadError] = useState<string | null>(null);
+
   function load() {
     setLoading(true);
     Promise.all([homeworkApi.list(), groupsApi.list()])
@@ -383,6 +388,8 @@ function HomeworkContent() {
         setItems(h);
         setGroups(g);
       })
+      .then(() => setLoadError(null))
+      .catch((err) => setLoadError(err instanceof ApiError ? err.message : ""))
       .finally(() => setLoading(false));
   }
 
@@ -616,7 +623,9 @@ function HomeworkContent() {
       </div>
 
       <div style={{ flex: 1, minHeight: 0, padding: "26px 32px", overflow: "auto", boxSizing: "border-box" }}>
-        {loading ? (
+        {loadError !== null ? (
+          <LoadError message={loadError || t("adm.loadError")} onRetry={load} />
+        ) : loading ? (
           <div style={{ color: "#8A8D96", fontSize: 14 }}>{t("common.loading")}</div>
         ) : groups.length === 0 ? (
           <div style={{ color: "#8A8D96", fontSize: 14, background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 32, textAlign: "center" }}>

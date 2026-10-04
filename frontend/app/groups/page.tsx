@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import DashboardShell from "@/components/DashboardShell";
+import LoadError from "@/components/LoadError";
 import Modal from "@/components/Modal";
 import Pagination, { usePagedSlice } from "@/components/Pagination";
 import Select from "@/components/Select";
@@ -81,21 +82,34 @@ function GroupsContent() {
   const [durationMonths, setDurationMonths] = useState("");
   const [description, setDescription] = useState("");
   const [scheduleConflicts, setScheduleConflicts] = useState<{ id: string; name: string }[]>([]);
+  // A failed check is said, not shown as "no clash".
+  const [conflictCheckError, setConflictCheckError] = useState<string | null>(null);
+  const [conflictRetry, setConflictRetry] = useState(0);
 
   useEffect(() => {
     if (!teacherId || days.length === 0 || !startTime) {
       setScheduleConflicts([]);
+      setConflictCheckError(null);
       return;
     }
+    // Only the answer for the current inputs counts.
     let cancelled = false;
     const timer = setTimeout(() => {
       groupsApi
         .scheduleConflicts({ teacherId, days: days.join(","), startTime, endTime: endTime || undefined, excludeId: editingId ?? undefined })
-        .then((res) => { if (!cancelled) setScheduleConflicts(res); })
-        .catch(() => { if (!cancelled) setScheduleConflicts([]); });
+        .then((res) => {
+          if (cancelled) return;
+          setScheduleConflicts(res);
+          setConflictCheckError(null);
+        })
+        .catch((err) => {
+          if (cancelled) return;
+          setScheduleConflicts([]);
+          setConflictCheckError(err instanceof ApiError ? err.message : t("sch.conflictCheckError"));
+        });
     }, 300);
     return () => { cancelled = true; clearTimeout(timer); };
-  }, [teacherId, days, startTime, endTime, editingId]);
+  }, [teacherId, days, startTime, endTime, editingId, conflictRetry, t]);
 
   // Directions saved in the subjects list (also filled from group subjects).
   const [savedSubjects, setSavedSubjects] = useState<string[]>([]);
@@ -109,6 +123,10 @@ function GroupsContent() {
     return Array.from(new Set([...usedSubjects, ...suggested])).sort();
   }, [usedSubjects, category]);
 
+  // A failed load is shown with a retry, not as an empty page ("" = no
+  // message from the server; null = no error).
+  const [loadError, setLoadError] = useState<string | null>(null);
+
   function load() {
     setLoading(true);
     Promise.all([groupsApi.list(), branchesApi.list(), teachersApi.list()])
@@ -117,6 +135,8 @@ function GroupsContent() {
         setBranches(b);
         setTeachers(t);
       })
+      .then(() => setLoadError(null))
+      .catch((err) => setLoadError(err instanceof ApiError ? err.message : ""))
       .finally(() => setLoading(false));
   }
 
@@ -301,7 +321,9 @@ function GroupsContent() {
             />
           </div>
         )}
-        {loading ? (
+        {loadError !== null ? (
+          <LoadError message={loadError || t("adm.loadError")} onRetry={load} />
+        ) : loading ? (
           <div style={{ color: "#8A8D96", fontSize: 14 }}>{t("common.loading")}</div>
         ) : groups.length === 0 ? (
           <div style={{ color: "#8A8D96", fontSize: 14, background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 32, textAlign: "center" }}>
@@ -497,6 +519,9 @@ function GroupsContent() {
           </div>
           {days.length > 0 && startTime && (
             <div style={{ fontSize: 12, color: "#8A8D96", marginTop: -6 }}>{t("groups.timetableHint")}</div>
+          )}
+          {conflictCheckError && (
+            <LoadError compact message={conflictCheckError} onRetry={() => setConflictRetry((n) => n + 1)} />
           )}
           {scheduleConflicts.length > 0 && (
             <div style={{ background: "#FFF7E6", color: "#A15C00", fontSize: 12.5, fontWeight: 600, padding: "10px 14px", borderRadius: 10, lineHeight: 1.5 }}>
