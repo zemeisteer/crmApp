@@ -16,7 +16,8 @@ export default defineConfig({
   timeout: 90_000,
   expect: { timeout: 15_000 },
   retries: 0,
-  reporter: [['list'], ['html', { open: 'never', outputFolder: 'playwright-report' }]],
+  // In CI, failures also become annotations: readable without opening the job log.
+  reporter: [['list'], ['html', { open: 'never', outputFolder: 'playwright-report' }], ...(process.env.CI ? [['github'] as const] : [])],
   outputDir: 'test-results',
   use: {
     baseURL: `http://localhost:${WEB_PORT}`,
