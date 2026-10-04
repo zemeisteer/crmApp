@@ -22,7 +22,8 @@ import {
   type ReportsOverview as ReportsOverviewData,
 } from "@/lib/api";
 import ReportsOverviewView from "@/components/reports/ReportsOverview";
-import { localMonthStr } from "@/lib/date";
+import { centerToday, centerTimeZone } from "@/lib/center-time";
+import { useAuth } from "@/lib/auth-context";
 import { useLanguage } from "@/lib/i18n-context";
 
 const ACCENT = "#4F46E5";
@@ -43,13 +44,16 @@ function ReportsContent() {
 
   // Server-computed monthly report (replaces downloading every student,
   // payment and attendance row and aggregating in the browser).
-  const [reportMonth, setReportMonth] = useState(localMonthStr());
+  // Months start on the center's clock (the server reports in its timezone),
+  // not the browser's: near midnight on the 1st they differ.
+  const { tenant } = useAuth();
+  const [reportMonth, setReportMonth] = useState(() => centerToday(centerTimeZone(tenant?.timezone)).slice(0, 7));
   const [report, setReport] = useState<ReportsOverviewData | null>(null);
   const [reportLoading, setReportLoading] = useState(true);
   const [reportError, setReportError] = useState<string | null>(null);
 
   // Payroll states (Spec §25)
-  const [selectedPayrollMonth, setSelectedPayrollMonth] = useState(localMonthStr());
+  const [selectedPayrollMonth, setSelectedPayrollMonth] = useState(reportMonth);
   const [payrollData, setPayrollData] = useState<PayrollCalculationResponse | null>(null);
   const [loadingPayroll, setLoadingPayroll] = useState(false);
   const [payrollError, setPayrollError] = useState<string | null>(null);
