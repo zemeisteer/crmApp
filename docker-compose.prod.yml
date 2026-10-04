@@ -197,8 +197,10 @@ services:
       # 1: every set is restored into a scratch database before it counts.
       BACKUP_VERIFY_RESTORE: ${BACKUP_VERIFY_RESTORE:-1}
       APP_REVISION: ${APP_REVISION:-unknown}
-      # Off-server copies configured: old sets are pruned only once copied.
-      BACKUP_OFFSITE_REQUIRED: ${OFFSITE_DRIVER:+1}
+      # Off-server copies configured: an old set is pruned only once it is
+      # acknowledged for THIS destination (scripts/production/offsite.sh).
+      BACKUP_OFFSITE_DRIVER: ${OFFSITE_DRIVER:-}
+      BACKUP_OFFSITE_TARGET: ${OFFSITE_TARGET:-}
     volumes:
       - ${BACKUP_DIR:-./backups}:/backups
       - uploads_prod_data:/uploads:ro

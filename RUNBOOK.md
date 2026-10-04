@@ -47,7 +47,9 @@ Nosozlik yuz berganda nima qilish kerakligi bo'yicha qisqa qo'llanma.
 - Serverda: `bash scripts/production/backup.sh` — baza **va** yuklangan fayllar; xato bo'lsa yarim fayl qoldirmaydi va sababini aytadi. (Lokal ishlab chiqishda: `npm run db:backup`.)
 - Zaxira haqiqatan tiklanishini tekshirish: `sudo bash scripts/production/restore.sh backups/<stack>_<vaqt>Z` (nazorat yig'indilari, alohida vaqtinchalik bazaga tiklash, tekshirish; faqat o'zi yaratgan bazani o'chiradi).
 - Tungi zaxira holati: `bash scripts/production/stack.sh ps db-backup` (`unhealthy` = 26 soatdan beri muvaffaqiyatli zaxira yo'q); sababi: `bash scripts/production/stack.sh logs --tail=50 db-backup`. Muvaffaqiyatsiz yurish eski to'plamlarni o'chirmaydi.
-- Hammasining holati bir joyda: `sudo bash scripts/production/offsite.sh status --check` — oxirgi lokal zaxira, oxirgi tashqariga uzatish, eng yangi ishlatsa bo'ladigan masofaviy to'plam yoshi, oxirgi tiklash tekshiruvi; muammo bo'lsa exit 1.
+- Hammasining holati bir joyda: `sudo bash scripts/production/offsite.sh status --check` — oxirgi lokal zaxira, oxirgi uzatish, har bir masofaviy to'plam holati (`VERIFIED` = tarkibi tekshirildi, `PRESENT` = faqat metadata, `DAMAGED`, `INCOMPLETE`, `UNREADABLE`), eng yangi tekshirilgan to'plam (`fallback:`), oxirgi tiklash tekshiruvi; muammo bo'lsa exit 1.
+- Masofaviy to'plam `DAMAGED`: lokal nusxa bo'lsa `sudo bash scripts/production/offsite.sh push` uni tuzatadi (belgi oxirida yoziladi). Lokal nusxa bo'lmasa, tiklash uchun `fallback:` dagi to'plamni ishlating (`offsite.sh fetch latest` uni o'zi tanlaydi va buni aytadi).
+- `UNREADABLE`: xotira yoki tarmoq ishlamayapti — hech bir masofaviy nusxa tasdiqlanmagan; ulanishni tuzating va `status` ni qayta yuriting.
 - Tashqariga uzatish yiqilgan (`remote transfer: LAST RUN FAILED`): sababi shu qatorda. Tarmoq yoki kalitni tuzatib, `sudo bash scripts/production/offsite.sh push` ni qayta yuriting — qayta yuritish xavfsiz, lokal to'plamlar o'chmaydi, chala yuborilgan to'plam belgisiz (ishlatilmaydi) qoladi va qayta yuboriladi.
 - Server yo'qolgan: `docs/DEPLOYMENT_GUIDE.md` → "Server yo'qolganda — masofaviy nusxadan tiklash".
 

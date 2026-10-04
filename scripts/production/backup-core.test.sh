@@ -159,15 +159,34 @@ fresh
 old_set 20260601T220000Z "120 days ago"; old_set 20260701T220000Z "90 days ago"; old_set 20260801T220000Z "60 days ago"
 run BACKUP_KEEP_DAYS=14 BACKUP_MIN_KEEP=3 -- once
 check "old sets beyond the minimum are removed, the newest three stay" bash -c "[ \"\$(find '$ROOT' -maxdepth 1 -type d -name 'talimcrm_test_*Z' | wc -l | tr -d ' ')\" = 3 ] && [ -e '$ROOT/talimcrm_test_20260801T220000Z' ] && [ -e '$ROOT/talimcrm_test_20260701T220000Z' ] && [ ! -e '$ROOT/talimcrm_test_20260601T220000Z' ]"
-echo "with off-server copies configured, a set not yet copied off is never pruned"
+echo "with off-server copies configured, a set not acknowledged for THIS destination is never pruned"
+ACKD="$(printf '%s|%s' rclone 'backup:bucket/staging' | sha256sum | cut -c1-16)"
+OTHER="$(printf '%s|%s' rclone 'backup:old-bucket/staging' | sha256sum | cut -c1-16)"
+OFF=(BACKUP_KEEP_DAYS=14 BACKUP_MIN_KEEP=1 BACKUP_OFFSITE_DRIVER=rclone BACKUP_OFFSITE_TARGET=backup:bucket/staging)
 fresh
 old_set 20260801T220000Z "60 days ago"; old_set 20260815T220000Z "45 days ago"; old_set 20260901T220000Z "30 days ago"
-mkdir -p "$ROOT/.state/offsite"; touch "$ROOT/.state/offsite/talimcrm_test_20260815T220000Z.ok"
-run BACKUP_KEEP_DAYS=14 BACKUP_MIN_KEEP=1 BACKUP_OFFSITE_REQUIRED=1 -- once
+mkdir -p "$ROOT/.state/offsite/$ACKD" "$ROOT/.state/offsite/$OTHER"
+touch "$ROOT/.state/offsite/$ACKD/talimcrm_test_20260815T220000Z.ok"
+# An acknowledgement for the PREVIOUS destination does not count for the new one.
+touch "$ROOT/.state/offsite/$OTHER/talimcrm_test_20260801T220000Z.ok"
+run "${OFF[@]}" -- once
 check "exit 0" [ "$RC" = "0" ]
-check "a copied-off old set is pruned" bash -c "[ ! -e '$ROOT/talimcrm_test_20260815T220000Z' ]"
-check "old sets not yet copied off are kept" bash -c "[ -e '$ROOT/talimcrm_test_20260801T220000Z' ] && [ -e '$ROOT/talimcrm_test_20260901T220000Z' ]"
-check "and it says why" grep -q "not yet copied off-server" <<<"$OUT"
+check "a set acknowledged for this destination is pruned when old (retention works)" bash -c "[ ! -e '$ROOT/talimcrm_test_20260815T220000Z' ]"
+check "a set acknowledged only for an old destination is kept" bash -c "[ -e '$ROOT/talimcrm_test_20260801T220000Z' ] && ( cd '$ROOT/talimcrm_test_20260801T220000Z' && sha256sum -c --quiet SHA256SUMS )"
+check "an unacknowledged set is kept, intact" unharmed 20260901T220000Z
+check "and it says why" grep -q "no acknowledgement for this destination" <<<"$OUT"
+echo "pruning waits while an off-server run is using the sets (verification or repair)"
+fresh
+old_set 20260801T220000Z "60 days ago"; old_set 20260815T220000Z "45 days ago"
+mkdir -p "$ROOT/.state/offsite/$ACKD"; touch "$ROOT/.state/offsite/$ACKD/talimcrm_test_20260801T220000Z.ok" "$ROOT/.state/offsite/$ACKD/talimcrm_test_20260815T220000Z.ok"
+mkdir -p "$ROOT/.offsite.lock"; date -u +%s > "$ROOT/.offsite.lock/started"
+run "${OFF[@]}" -- once
+check "the backup itself succeeds" [ "$RC" = "0" ]
+check "acknowledged old sets are NOT pruned during the off-server run" bash -c "unharmed() { [ -f '$ROOT/talimcrm_test_'\$1/db.sql.gz ]; }; unharmed 20260801T220000Z && unharmed 20260815T220000Z"
+check "it says pruning was postponed" grep -q "pruning postponed" <<<"$OUT"
+rm -rf "$ROOT/.offsite.lock"
+run "${OFF[@]}" -- once
+check "once the off-server run is over, they are pruned normally" bash -c "[ ! -e '$ROOT/talimcrm_test_20260801T220000Z' ] && [ ! -e '$ROOT/talimcrm_test_20260815T220000Z' ]"
 echo "another stack's sets in the same folder are not this stack's to prune"
 fresh; mkdir -p "$ROOT/talimcrm_20260101T220000Z"; echo '{}' > "$ROOT/talimcrm_20260101T220000Z/manifest.json"; touch -d "200 days ago" "$ROOT/talimcrm_20260101T220000Z"
 old_set 20260601T220000Z "120 days ago"; old_set 20260701T220000Z "90 days ago"; old_set 20260801T220000Z "60 days ago"

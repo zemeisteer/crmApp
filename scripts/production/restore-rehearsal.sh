@@ -271,6 +271,14 @@ OFFSITE_OUT="$(script "$SRC_ENV" scripts/production/offsite.sh push 2>&1)" || fa
 PUSH_S=$(( $(date +%s) - P0 ))
 [ -f "$REMOTE_DIR/$(basename "$SET")/COMPLETE" ] || fail "the set is not marked usable off-server: $OFFSITE_OUT"
 echo "    copied off-server and verified there in ${PUSH_S}s"
+# A damaged off-server copy must never look healthy, and must be repaired.
+rm -f "$REMOTE_DIR/$(basename "$SET")/uploads.tar.gz"
+if STATUS_OUT="$(script "$SRC_ENV" scripts/production/offsite.sh status --check 2>&1)"; then fail "status --check called a damaged off-server set healthy: $STATUS_OUT"; fi
+has_text "$(basename "$SET")  DAMAGED" "$STATUS_OUT" || fail "status did not name the damaged set: $STATUS_OUT"
+REPAIR_OUT="$(script "$SRC_ENV" scripts/production/offsite.sh push 2>&1)" || fail "(status $?) push could not repair the off-server copy: $REPAIR_OUT"
+has_text "repaired and verified" "$REPAIR_OUT" || fail "push did not repair the damaged copy: $REPAIR_OUT"
+VERIFY_OUT="$(script "$SRC_ENV" scripts/production/offsite.sh verify "$(basename "$SET")" 2>&1)" || fail "(status $?) the repaired copy does not verify: $VERIFY_OUT"
+echo "    a damaged off-server copy was reported DAMAGED, repaired from the local set, and verifies again"
 
 step "4/7 a backup that cannot succeed"
 # pg_dump of a database that does not exist: the real program, really failing.
@@ -295,7 +303,7 @@ REMOTE_SET="$WORK/fetched/$(basename "$SET")"
 echo "    downloaded the off-server copy into an empty folder and verified it in ${FETCH_S}s"
 R0="$(date +%s)"
 dst up -d --wait --wait-timeout 600 postgres || fail "(status $?) the second database server did not start"
-RESTORE_OUT="$(script "$DST_ENV" scripts/production/restore.sh "$REMOTE_SET" --keep 2>&1)" || { rc=$?; echo "$RESTORE_OUT" | redact; fail "(status $rc) restore.sh failed"; }
+RESTORE_OUT="$(script "$DST_ENV" scripts/production/restore.sh "$REMOTE_SET" --keep --from-stack "$SRC_PROJECT" 2>&1)" || { rc=$?; echo "$RESTORE_OUT" | redact; fail "(status $rc) restore.sh failed"; }
 echo "$RESTORE_OUT" | grep -E "LOADED|CONSISTENT|APPLICATION|recorded:" | sed 's/^/    /'
 has_text "LOADED:      yes" "$RESTORE_OUT" || fail "(status $?) the dump did not load"
 has_text "CONSISTENT:  yes" "$RESTORE_OUT" || fail "(status $?) the restored data is not consistent"

@@ -25,15 +25,33 @@ source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
 
 SRC="${1:-}"
 KEEP=0
-[ "${2:-}" = "--keep" ] && KEEP=1
-[ -n "$SRC" ] || die "Usage: $0 <recovery set folder | backup.sql.gz> [--keep]"
+FROM_STACK=""
+shift || true
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --keep) KEEP=1 ;;
+    # Restoring ANOTHER stack's set (disaster recovery) must be asked for by name.
+    --from-stack) FROM_STACK="${2:-}"; shift ;;
+    *) die "Unknown option: $1" ;;
+  esac
+  shift
+done
+[ -n "$SRC" ] || die "Usage: $0 <recovery set folder | backup.sql.gz> [--keep] [--from-stack <stack>]"
 load_stack
 
 if [ -d "$SRC" ]; then
   SET="$(cd "$SRC" && pwd)"
   DUMP="$SET/db.sql.gz"
   [ -f "$DUMP" ] && [ -f "$SET/SHA256SUMS" ] && [ -f "$SET/manifest.json" ] || die "ERROR: $SRC is not a complete recovery set (db.sql.gz, manifest.json, SHA256SUMS)."
-  ( cd "$SET" && sha256sum -c SHA256SUMS >/dev/null 2>&1 ) || die "ERROR: the checksums of $SRC do not match - the set is damaged or was altered."
+  ( cd "$SET" && sed 's/ \*/  /' SHA256SUMS | sha256sum -c - >/dev/null 2>&1 ) || die "ERROR: the checksums of $SRC do not match - the set is damaged or was altered."
+  # Whose data is this? A set of another stack is not restored by accident.
+  SET_STACK="$(sed -n 's/^  "stack": "\([^"]*\)",\{0,1\}$/\1/p' "$SET/manifest.json" | head -n 1)"
+  if [ -n "$FROM_STACK" ]; then
+    [ "$SET_STACK" = "$FROM_STACK" ] || die "ERROR: the set belongs to stack \"${SET_STACK:-unknown}\", not \"$FROM_STACK\" as given."
+    [ "$FROM_STACK" = "$STACK_NAME" ] || echo "NOTE: restoring a set of stack $FROM_STACK into stack $STACK_NAME, as asked with --from-stack."
+  elif [ -n "$SET_STACK" ] && [ "$SET_STACK" != "$STACK_NAME" ]; then
+    die "ERROR: the set belongs to stack \"$SET_STACK\", this is stack \"$STACK_NAME\". Refused; to restore another stack's data on purpose add --from-stack $SET_STACK."
+  fi
   CHECKSUMS="verified"
 elif [ -f "$SRC" ]; then
   SET=""

@@ -53,7 +53,10 @@ VERIFY_RESTORE="${BACKUP_VERIFY_RESTORE:-1}"
 REQUIRE_UPLOADS="${BACKUP_REQUIRE_UPLOADS:-1}"
 LOCK_STALE_S="${BACKUP_LOCK_STALE_S:-21600}"
 APP_REVISION="${APP_REVISION:-unknown}"
-OFFSITE_REQUIRED="${BACKUP_OFFSITE_REQUIRED:-0}"
+# Off-server copies (scripts/production/offsite.sh): when configured, a set
+# is pruned only with an acknowledgement for THIS destination.
+OFFSITE_DRIVER="${BACKUP_OFFSITE_DRIVER:-}"
+OFFSITE_TARGET="${BACKUP_OFFSITE_TARGET:-}"
 export PGHOST="${PGHOST:-${POSTGRES_HOST:-postgres}}"
 export PGUSER="${PGUSER:-${POSTGRES_USER:-postgres}}"
 export PGPASSWORD="${PGPASSWORD:-${POSTGRES_PASSWORD:-}}"
@@ -217,14 +220,22 @@ finished_sets() {
 }
 
 prune() {
+  # An off-server run may be checking or repairing from these sets: wait.
+  if [ -n "$OFFSITE_DRIVER" ] && [ -d "$BACKUP_ROOT/.offsite.lock" ] && [ $(( $(now) - $(cat "$BACKUP_ROOT/.offsite.lock/started" 2>/dev/null || echo 0) )) -le "$LOCK_STALE_S" ]; then
+    log "pruning postponed: an off-server run is using the sets"
+    return 0
+  fi
+  if [ -n "$OFFSITE_DRIVER" ]; then
+    ACKS="$STATE/offsite/$(printf '%s|%s' "$OFFSITE_DRIVER" "$OFFSITE_TARGET" | sha256sum | cut -c1-16)"
+  fi
   total="$(finished_sets | grep -c .)"
   removable=$(( total - MIN_KEEP ))
   [ "$removable" -gt 0 ] || return 0
   finished_sets | head -n "$removable" | while IFS= read -r d; do
     # With off-server copies configured, a set not yet copied off the
     # server is kept, however old (scripts/production/offsite.sh).
-    if [ "$OFFSITE_REQUIRED" = "1" ] && [ ! -f "$STATE/offsite/$(basename "$d").ok" ]; then
-      log "kept $(basename "$d"): not yet copied off-server"
+    if [ -n "$OFFSITE_DRIVER" ] && [ ! -f "$ACKS/$(basename "$d").ok" ]; then
+      log "kept $(basename "$d"): not yet copied off-server (no acknowledgement for this destination)"
       continue
     fi
     if [ -n "$(find "$d" -maxdepth 0 -mtime +"$KEEP_DAYS" 2>/dev/null)" ]; then

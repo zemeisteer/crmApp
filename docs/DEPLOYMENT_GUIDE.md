@@ -215,42 +215,83 @@ Tekshirilgan nusxa alohida baza sifatida qoladi; skript ilovani unga o'tkazishni
 
 ### Serverdan tashqaridagi nusxa (Off-server copies)
 
-Shu serverdagi to'plamlar server bilan birga yo'qolishi mumkin. `scripts/production/offsite.sh` tayyor to'plamlarni boshqa joyga ko'chiradi va kerak bo'lganda qaytarib yuklab oladi.
+Shu serverdagi to'plamlar server bilan birga yo'qolishi mumkin. `scripts/production/offsite.sh` ularni boshqa joyga ko'chiradi, holatini tekshiradi, buzilganini tuzatadi va kerak bo'lganda qaytarib yuklab oladi.
 
-**Qanday ishlaydi:**
-- Faqat tugallangan to'plamlar (`manifest.json` va `SHA256SUMS` bilan) yuboriladi. Yozilayotgan (`.incomplete-*`) to'plam hech qachon yuborilmaydi.
-- Barcha fayllar yuborilgach, masofadagi nusxa lokal nusxa bilan **bayt-ma-bayt** solishtiriladi. Faqat shundan keyin `COMPLETE` belgisi yoziladi. Belgisiz to'plam **ishlatib bo'lmaydigan** hisoblanadi va keyingi `push` uni qayta yuboradi.
-- Hech narsa o'chirilmaydi: na masofadan (sinxronlash va tozalash yo'q — eski to'plamlarni saqlash muddatini xotiraning o'z lifecycle qoidasi belgilaydi), na lokal. Uzatish yiqilsa, lokal to'plamlar joyida qoladi.
-- Off-server sozlangan bo'lsa, tungi zaxira hali tashqariga ko'chirilmagan eski to'plamni o'chirmaydi.
-- Lokal holat (`.state/last-*`) va masofaviy holat (`.state/offsite-*`) alohida saqlanadi.
+**Masofaviy to'plam qachon "ishlatsa bo'ladi" hisoblanadi:**
+- papka nomi `<STACK_NAME>_YYYYMMDDTHHMMSSZ` ko'rinishida;
+- `manifest.json` shu stack'ni, nomga mos yaratilish vaqtini, dump va (agar arxivlangan bo'lsa) uploads arxivini hajmi va sha256 bilan ko'rsatadi;
+- `SHA256SUMS` aynan shu ma'lumot fayllarini sanaydi va ular unga mos;
+- eng oxirida yoziladigan `COMPLETE` belgisi xuddi shu stack, to'plam, `SHA256SUMS` va `manifest.json` ni ko'rsatadi.
+
+**Ikki xil tekshiruv — nimani isbotlashi bilan nomlangan:**
+
+| Natija | Tekshiruv | Nimani isbotlaydi |
+|---|---|---|
+| `PRESENT` | metadata | `COMPLETE`, manifest va `SHA256SUMS` o'qiladi va bir-biriga mos; har bir fayl joyida va manifestdagi hajmda. Ma'lumotning **o'zi o'qilmaydi** — hajmi o'zgarmagan buzilishni ko'rmaydi |
+| `VERIFIED` | to'liq tarkib | butun to'plam ishchi papkaga yuklab olinadi va har bir bayt `SHA256SUMS` va manifest bilan solishtiriladi; provayder qaysi checksum'ni berishiga bog'liq emas |
+| `DAMAGED` | — | fayl yo'q, hajmi yoki tarkibi mos emas, belgi boshqa to'plam/stack/manifestni ko'rsatadi |
+| `INCOMPLETE` | — | `COMPLETE` belgisi yo'q: yuborish tugamagan yoki tuzatilmoqda |
+| `UNREADABLE` | — | xotirani o'qib bo'lmadi yoki vaqt tugadi. **Hech qachon "sog'" deb hisoblanmaydi** |
+
+- `push` eng yangi to'plamni va yuborgan yoki tuzatgan har bir to'plamni to'liq tekshiradi; tasdig'i bekor qilinganlarini ham to'liq tekshiradi; qolganlarini metadata bo'yicha.
+- `status` eng yangi masofaviy to'plamni to'liq tekshiradi. U buzilgan bo'lsa, eskiroqlarini birma-bir to'liq tekshiradi va birinchi o'tganini **"fallback"** deb alohida ko'rsatadi; qolganlarini metadata bo'yicha.
+- `verify all` hammasini to'liq tekshiradi. Uni haftada bir marta yuriting: eski to'plamdagi hajmi o'zgarmagan buzilishni faqat shu topadi.
+- Har bir uzoq amalning vaqt chegarasi bor: `OFFSITE_QUICK_TIMEOUT` (60 s), `OFFSITE_TRANSFER_TIMEOUT` (1800 s).
+
+**Buzilgan to'plam qanday ko'rsatiladi.** `status` uni nomi va sababi bilan `DAMAGED` deb yozadi. Agar u eng yangi to'plam bo'lsa, eng yangi tekshirilgan zaxira `fallback:` qatorida ko'rsatiladi, `status --check` esa 1 bilan tugaydi. Buzilgan to'plamning lokal tasdig'i (`.state/offsite/<manzil>/<to'plam>.ok`) bekor qilinadi, shuning uchun tungi zaxira uning lokal nusxasini o'chirmaydi.
+
+**Xavfsiz tuzatish.** `push` lokal nusxasi sog' bo'lgan buzilgan to'plamni o'zi tuzatadi:
+1. faqat shu to'plamning `COMPLETE` belgisini o'chiradi;
+2. fayllarni qayta yuboradi;
+3. yuklab olib, tarkibini tekshiradi;
+4. belgini eng oxirida yozadi.
+
+Tuzatish yarim yo'lda to'xtasa, to'plam belgisiz (ishlatib bo'lmaydigan) qoladi, lokal nusxa esa tegilmaydi. Keyingi `push` davom ettiradi. Lokal nusxa bo'lmasa, `push` 1 bilan tugaydi va "no local copy to repair it from" deydi. Boshqa hech narsa o'chirilmaydi: na masofadan, na lokal.
+
+**Stack tanlash.** Ro'yxat, holat, tuzatish va `fetch` faqat `.env` dagi `STACK_NAME` to'plamlari bilan ishlaydi; boshqa stack'larning to'plamlari ko'rinmaydi. `latest` deganda nomidagi vaqt bo'yicha eng yangisi tanlanadi. Boshqa stack'ning to'plamini nomi bilan so'rash rad etiladi. Ataylab boshqa stack'dan tiklash (falokatdan tiklash) uchun manba stack nomi alohida ko'rsatiladi: `offsite.sh fetch --from-stack <stack> ...` va `restore.sh ... --from-stack <stack>`. Noto'g'ri nomlar va `../` kabi yo'llar rad etiladi.
+
+**Xotira ishlamasa.** `push` 1 bilan tugaydi, hech bir to'plam tashqarida deb hisoblanmaydi va lokal to'plamlar tegilmaydi. `status` `UNREADABLE` deb yozadi va `--check` 1 bilan tugaydi.
+
+**Qulflar.** Bir vaqtda faqat bitta off-server amal yuradi (`.offsite.lock`). Zaxira olinayotganda `push` va `verify` boshlanmaydi (75 bilan chiqadi). Off-server amal yurayotganda tungi zaxira eski to'plamlarni o'chirmaydi.
+
+**Tasdiqlar manzilga bog'langan.** `OFFSITE_DRIVER` yoki `OFFSITE_TARGET` o'zgarsa, eski tasdiqlarning birortasi ham hisoblanmaydi: yangi manzilga yuborilmaguncha lokal to'plamlar saqlanadi.
 
 **Sozlash** (`.env` va server; sirlar repoga kirmaydi):
 
 | | |
 |---|---|
-| `OFFSITE_DRIVER=rclone` | istalgan S3-mos xotira, Backblaze B2, SFTP va h.k. Masofaviy manzil va kalitlar serverdagi `rclone.conf` da (`sudo rclone config`, root uchun `/root/.config/rclone/rclone.conf`). Bucket **ochiq bo'lmasin** (`acl = private`), versioning yoki o'chirishdan himoya yoqilsin. |
+| `OFFSITE_DRIVER=rclone` | istalgan S3-mos xotira, B2, SFTP va h.k. Masofaviy manzil va kalitlar serverdagi `rclone.conf` da (`sudo rclone config`). Bucket ochiq bo'lmasin (`acl = private`), versioning yoqilsin |
 | `OFFSITE_DRIVER=dir` | boshqa mashinadan ulangan papka (NFS, tashqi disk) |
 | `OFFSITE_TARGET` | rclone uchun `<remote>:<bucket>/<yo'l>`; dir uchun absolyut yo'l |
-| `OFFSITE_MAX_AGE_HOURS` | `status --check` uchun chegara (standart 30 soat) |
+| `OFFSITE_MAX_AGE_HOURS` | eng yangi tekshirilgan to'plamning ruxsat etilgan yoshi (30) |
 
-**Shifrlash va kalitlar egasi.** To'plamlarda shaxsiy ma'lumotlar bor. rclone'da `crypt` turidagi masofaviy manzil ishlating (rclone `crypt` remote). Shifrlash paroli va `rclone.conf` nusxasi **markaz egasi yoki mas'ul shaxsda, serverdan tashqarida** (parol menejerida) saqlansin. Usiz masofaviy nusxani tiklab bo'lmaydi.
+Tuzatish uchun xotira `COMPLETE` faylini o'chirishga ruxsat berishi kerak. Ma'lumot fayllarini o'chirish ruxsati shart emas.
+
+**Shifrlash va kalitlar egasi.** To'plamlarda shaxsiy ma'lumotlar bor. rclone `crypt` remote ishlating. Shifrlash paroli va `rclone.conf` nusxasi markaz egasi yoki mas'ul shaxsda, serverdan tashqarida saqlansin — usiz masofaviy nusxani tiklab bo'lmaydi.
 
 ```bash
-sudo bash scripts/production/offsite.sh push            # yangi tayyor to'plamlarni yuborish (xavfsiz qayta yuritish mumkin)
-sudo bash scripts/production/offsite.sh status --check  # lokal, masofaviy, tiklash tekshiruvi; muammo bo'lsa exit 1
-# root crontab: zaxiradan 1 soat keyin yuborish, har soatda holatni tekshirish
-0 23 * * * cd /opt/crmapp && bash scripts/production/offsite.sh push >> /var/log/talimcrm-offsite.log 2>&1
+sudo bash scripts/production/offsite.sh push              # yuborish / tekshirish / tuzatish (qayta yuritish xavfsiz)
+sudo bash scripts/production/offsite.sh status --check    # lokal, masofaviy, fallback, tiklash tekshiruvi; muammo -> exit 1
+sudo bash scripts/production/offsite.sh verify all        # haftalik to'liq tarkib tekshiruvi
+# root crontab
+0 23 * * *  cd /opt/crmapp && bash scripts/production/offsite.sh push       >> /var/log/talimcrm-offsite.log 2>&1
+30 4 * * 0  cd /opt/crmapp && bash scripts/production/offsite.sh verify all >> /var/log/talimcrm-offsite.log 2>&1
 ```
 
 **Server yo'qolganda — masofaviy nusxadan tiklash** (yangi serverda, kod va `.env` tiklangandan keyin):
 
 ```bash
-sudo bash scripts/production/offsite.sh fetch latest /root/recovered     # bo'sh papkaga yuklab olinadi, checksum va COMPLETE belgisi tekshiriladi
+sudo bash scripts/production/offsite.sh fetch latest /root/recovered   # bo'sh papkaga; har bir fayl tekshiriladi.
+                                       # Eng yangisi buzilgan bo'lsa, buni ochiq aytadi va eng yangi tekshirilganini oladi.
 sudo bash scripts/production/restore.sh /root/recovered/<to'plam> --keep
 # so'ng restore.sh chiqargan buyruqlar: ilovani tiklangan bazaga o'tkazish va uploads.tar.gz'ni uploads volume'iga ochish
 ```
 
-Tekshirilganlari: `offsite.test.sh` (lokal simulyatsiya: yarim uzatish, kesilgan fayl, yuborib bo'lmaydigan xotira, qayta urinish, yuklab olish, eski masofaviy to'plamlar o'chmasligi, holat). CI'dagi `recovery` mashqi tiklashni lokal papka ko'rinishidagi "masofaviy" nusxadan qiladi. **Haqiqiy tashqi xotira bilan hali sinalmagan** — manzil va kalit berilmagan.
+**Tekshirilganlari:**
+- `offsite.test.sh` — lokal simulyatsiya: papka va soxta rclone, to'plamlar haqiqiy `backup-core.sh` bilan yaratilgan;
+- CI `recovery` mashqi — buzilgan masofaviy nusxani aniqlash, tuzatish va yuklab olingan nusxadan tiklash; bu yerda ham masofaviy xotira lokal papka.
+
+**Haqiqiy tashqi xotira bilan sinalmagan** — manzil va kalit berilmagan.
 
 Staging muhiti: `docs/STAGING.md`.
 
