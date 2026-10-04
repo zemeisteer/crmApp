@@ -4,9 +4,9 @@
 
 | | |
 |---|---|
-| **Oxirgi tasdiqlangan commit** | `0cc2e531011b1fb11c27afa27be5d59e5adb28f0` (`dev`, push qilingan) |
-| **Uning CI'si** | [GitHub Actions 37202235519](https://github.com/zemeisteer/crmApp/actions/runs/37202235519) — 6 ish ham yashil (holat GitHub API orqali olingan; step log'lari login talab qiladi, o'qilmagan) |
-| **Off-server tuzatishlari** | `fd60705` + `0cc2e53` (5-bo'lim). CI 37201317408 (`fd60705`) da `ops-scripts` yiqildi: `backup-core.test.sh` da ikki zaxira bir soniyada bir xil nom olardi (Linux tez, Windows'da ko'rinmagan) — `0cc2e53` da tuzatildi. O'sha run'da `browser` ham yiqildi; log o'qilmadi, kodi o'zgarmagan, lokal 6/6 va keyingi run'da o'tdi — beqaror (flaky) deb hisoblanadi, sababi aniqlanmagan |
+| **Oxirgi CI'da tasdiqlangan commit** | `7fa8464` (`dev`, push qilingan) — [GitHub Actions 37224367508](https://github.com/zemeisteer/crmApp/actions/runs/37224367508), barcha ishlar yashil |
+| **Lokal commit'lar (push qilinmagan, CI'da yurmagan)** | `b72685f` … `1af20ce` va shu hisobot — 7-bo'lim "Kundalik ish va pilotga tayyorlik". Faqat lokal dalil; CI natijasi push'dan keyin bo'ladi |
+| **Brauzer testi beqarorligi** | 37201317408 va 37223867822 da "staff removed while their browser is open" yiqilgan. Sababi topildi va lokal qayta hosil qilindi (oldingi sahifaning sekin so'rovi rad etilib, bosilayotgan havolani olib tashlardi), `c215e95` da tuzatildi |
 | **Staging (haqiqiy domen)** | **mavjud emas** — server va domen berilmagan; hech narsa deploy qilinmagan |
 | **Haqiqiy tashqi xotira (S3/SFTP)** | **sinalmagan** — manzil va kalit berilmagan; barcha off-server tekshiruvlar lokal papka yoki soxta rclone bilan |
 | **Provayder sandbox'lari** | **yuritilmagan** — Telegram, SMS, Click, Payme sinov ma'lumotlari berilmagan |
@@ -15,7 +15,7 @@
 
 | Bosqich | Holat |
 |---|---|
-| 1. Avtomatik tekshiruvlar bir martalik CI infratuzilmasida o'tdi | **o'tdi** — `0cc2e53`, 37202235519, off-server tuzatishlari va `recovery` dagi buzilgan nusxa qadami bilan |
+| 1. Avtomatik tekshiruvlar bir martalik CI infratuzilmasida o'tdi | **o'tdi** — `7fa8464`, 37224367508. Yangi lokal commit'lar (7-bo'lim) lokal o'tdi, CI'da hali yurmagan |
 | 2. Staging'ga chiqarishga tayyor | **tayyor, server va domen kutilmoqda** — buyruqlar ketma-ketligi, preflight, reviziya tekshiruvi, rollback tartibi bor (`docs/STAGING.md`). |
 | 3. Staging haqiqiy domenda tasdiqlangan | **bloklangan** — staging yo'q |
 | 4. Birinchi pilot markazni qabul qilishga tayyor | **tayyor emas** — 3-bosqich va haqiqiy tashqi xotiradan tiklash yo'q |
@@ -45,6 +45,7 @@
 - **Takroriy yuborish:** to'lov, o'quvchi va o'qituvchi yaratish aniq `Idempotency-Key` bilan himoyalangan.
 - **Pul:** 400 000 / 390 000 / chegirma 10 000 / qarz 0 misoli barcha hisobotlarda bir xil.
 - **Zaxira va tiklash:** zaxira to'plami, yiqilgan zaxira eski to'plamni buzmasligi, yuklab olingan nusxadan alohida baza serveri va uploads volume'iga tiklash, ilova tiklangan nusxada ishlashi — CI `recovery` (7/7).
+- **Oylik to'lovi (lokal, CI'da hali emas):** bo'lib to'lash, har bir to'lov bitta xarajat bilan atomar, qayta yuborishga chidamli, hisobotlarda bir marta sanaladi; eski yozuvlar uchun faqat o'qiydigan solishtirish hisoboti.
 - **Off-server (lokal simulyatsiya va CI'dagi lokal "masofa"):** masofaviy to'plam faqat nomi, manifesti, `SHA256SUMS` va `COMPLETE` belgisi bir-biriga mos bo'lsa ishlatiladi. Buzilgan, chala yoki o'qib bo'lmaydigan to'plam hech qachon "sog'" deb ko'rsatilmaydi. Eng yangisi buzilganda eng yangi tekshirilgan to'plam "fallback" deb alohida aytiladi. Lokal nusxasi bor buzilgan to'plam xavfsiz tuzatiladi. Faqat shu stack'ning to'plamlari tanlanadi.
 
 ## 4. Qolgan to'siqlar (ta'siri bo'yicha)
@@ -53,6 +54,7 @@
 2. **Tashqi xotira** — haqiqiy S3/SFTP bilan hech narsa sinalmagan.
 3. **Integratsiyalar** — Telegram, SMS, Click, Payme pilotda o'chiq (cheklangan pilotni to'xtatmaydi; `docs/PILOT_ONBOARDING.md`).
 4. **Haqiqiy hajmdagi tiklash vaqti** o'lchanmagan.
+5. **Bu bosqich commit'lari** (`b72685f`…) push qilinmagan — CI (shu jumladan `recovery` mashqi) ularda hali yurmagan.
 
 ## 5. Off-server tuzatishlari (`fd60705`, `0cc2e53`)
 
@@ -72,7 +74,7 @@
 
 **Fayllar:** `offsite.sh`, `offsite.test.sh`, `backup-core.sh`, `backup-core.test.sh`, `restore.sh`, `restore-rehearsal.sh`, `docker-compose.prod.yml` (`BACKUP_OFFSITE_DRIVER/TARGET`), `docs/DEPLOYMENT_GUIDE.md`, `RUNBOOK.md`, shu hisobot.
 
-## 6. Kerakli ma'lumotlar
+## 6. Kerakli tashqi ma'lumotlar
 
 | Nima | Qayerga |
 |---|---|
@@ -82,7 +84,25 @@
 | Tashqi xotira (S3-mos bucket yoki SFTP) va kirish kaliti; `COMPLETE` faylini o'chirish ruxsati | serverdagi `rclone.conf` (`sudo rclone config`); `.env` da faqat `OFFSITE_DRIVER=rclone`, `OFFSITE_TARGET=<remote>:<bucket>/<yo'l>`; shifrlash kaliti egasida |
 | (Ixtiyoriy) staging Telegram boti va ruxsat etilgan sinov chati; Click/Payme test merchant | serverdagi `.env` |
 
-## 7. Tarix (joriy holat emas)
+## 7. Kundalik ish va pilotga tayyorlik (lokal, 2026-10-04)
+
+| Soha | Commit | Nima o'zgardi | Lokal dalil |
+|---|---|---|---|
+| Oylik to'lovi | `7ea743e` | Bo'lib to'lash; har bir to'lov va uning xarajati bitta tranzaksiyada; `Idempotency-Key`; bir oy uchun jami hisoblangan maoshdan oshmaydi; moliya va direktor hisobotida bir marta sanaladi; maosh xarajatini alohida o'chirib/o'zgartirib bo'lmaydi; 0035 dan oldingi yozuvlar uchun faqat o'qiydigan hisobot | `payroll-disbursement.e2e-spec.ts` (7 test: 10 ta bir vaqtdagi bosish, bir kalit bilan 3 ta parallel qayta yuborish, trigger bilan o'rtadagi xato, …), `verify-migrations` 7-qadam (0034 → 0035, eski qatorlar o'zgarmaydi) |
+| Test izolyatsiyasi | `b72685f` | Parallel e2e suite'lar bir xil `Date.now()` olganda bir xil email ishlatardi (lokal bir marta yiqildi) — har bir manzil suite prefiksi bilan | backend e2e 34 fayl / 203 test — to'liq to'plam 2 marta, to'qnashgan 5 suite birga 4 marta o'tdi |
+| Brauzer: sessiya bekor qilish | `c215e95` | Xodim o'chirilishidan oldin joriy sahifaning barcha API so'rovlari tugashi kutiladi; o'chirilgandan keyin birinchi javob 401, ma'lumotli javob yo'q | asl xato 1,5 s kechiktirilgan so'rov bilan qayta hosil qilindi; tuzatilgan test 24/24 |
+| Lid vaqti | `24e0f8c` | Kiritilgan sana/vaqt markaz vaqt zonasida (default Asia/Tashkent), brauzer zonasida emas; ko'rsatish ham markaz vaqtida | `lib/center-time.test.ts` (TZ=America/Los_Angeles), brauzer: New York zonasidagi brauzer |
+| Eskirgan javob / ko'rinadigan xato | `f33dba1`, `134c53f` | Jadval to'qnashuvi tekshiruvi faqat joriy kiritmaga javobni qo'llaydi, xato bo'lsa "Saqlash" yopiq; guruh, o'quvchi, o'qituvchi, imtihon, uy vazifasi, jadval sahifalarida yuklash xatosi "qayta urinish" bilan; maosh oyi va hisobot oyi markaz vaqtida | tsc, lint (0 xato), brauzer yo'nalishlari |
+| Brauzer yo'nalishlari | `11b4aa6` | 9 fayl, 13 test: session, role-boundaries, admissions, capacity, teaching, tuition, payroll, parent-portal, reports. Server limiti (8/daqiqa) pasaytirilmagan — testlar navbat kutadi | 3 marta ketma-ket 13/13 (~2,2 daq), retry yo'q |
+| Off-server `status` | `1af20ce` | `status` har chaqiruvda o'z vaqtinchalik papkasida ishlaydi; avval umumiy `.offsite-work` ni o'chirib, parallel `status`/`push` ni buzardi | `offsite.test.sh` 21-bo'lim (barer bilan sinxron): eski skriptda 2 tekshiruv yiqiladi, yangisida hammasi o'tadi |
+
+**Lokal tekshiruvlar (HEAD, push qilinmagan):** backend — `npm audit --omit=dev` (high/critical yo'q), tsc, lint, migratsiya jurnali, bo'sh bazaga migratsiya, drift yo'q, `drizzle-kit generate` o'zgarish topmadi, `verify-migrations` (7 ssenariy), unit 253/253, e2e 203/203, build; frontend — audit, tsc, lint (0 xato, 86 ogohlantirish; avval 87), `npm test` 6/6, build; ops — tooling, target, backup-core, ops, rehearsal, offsite, smoke-lib testlari; brauzer — 13/13.
+
+**Tiklash mashqi (`restore-rehearsal.sh`) bu muhitda yurmadi:** Docker bor, lekin image build'da Alpine paket manzili (`dl-cdn.alpinelinux.org`) muhit tarmoq siyosati tomonidan rad etildi (HTTP 403). Kod o'zgarmagan qismlar uchun oxirgi dalil — CI `recovery` (37224367508). Bu commit'lar uchun mashq CI'da push'dan keyin yuradi.
+
+## 8. Tarix (joriy holat emas)
+
+- `0cc2e53` (CI 37202235519): off-server tuzatishlari bilan to'liq yashil; `7fa8464` faqat Playwright `github` reporter qo'shgan.
 
 - `fd60705` (CI 37201317408): `ops-scripts` (test nomlari bir soniyada to'qnashdi) va `browser` (flaky) yiqildi; `0cc2e53` da hammasi yashil.
 - `0413557` (CI 37193868954): off-server nusxa, reviziya belgisi, staging brauzer rejimi qo'shildi — keyin `offsite.sh` da 5-bo'limdagi ikki nuqson topildi.

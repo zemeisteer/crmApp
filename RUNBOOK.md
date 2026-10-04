@@ -52,15 +52,23 @@ Nosozlik yuz berganda nima qilish kerakligi bo'yicha qisqa qo'llanma.
 - `UNREADABLE`: xotira yoki tarmoq ishlamayapti — hech bir masofaviy nusxa tasdiqlanmagan; ulanishni tuzating va `status` ni qayta yuriting.
 - Tashqariga uzatish yiqilgan (`remote transfer: LAST RUN FAILED`): sababi shu qatorda. Tarmoq yoki kalitni tuzatib, `sudo bash scripts/production/offsite.sh push` ni qayta yuriting — qayta yuritish xavfsiz, lokal to'plamlar o'chmaydi, chala yuborilgan to'plam belgisiz (ishlatilmaydi) qoladi va qayta yuboriladi.
 - Server yo'qolgan: `docs/DEPLOYMENT_GUIDE.md` → "Server yo'qolganda — masofaviy nusxadan tiklash".
+- `status` qulf olmaydi: uni `push` yoki `verify` yurayotganda ham, bir vaqtda bir necha marta ham yuritish xavfsiz — har biri o'z vaqtinchalik papkasida (`backups/.offsite-status.XXXXXX`) ishlaydi va tugaganda faqat shuni o'chiradi. `push`/`verify` `.offsite-work` da, qulf ostida ishlaydi. Jarayon o'ldirilib qolgan `.offsite-status.*` papkalarni, hech bir `offsite.sh` yurmayotganda, qo'lda o'chirish mumkin.
 
-## 9. Superadmin hisobiga kirish yo'qolgan
+## 9. O'qituvchi maoshi (Hisobotlar → Oylik maosh)
+
+- Bir oy bir necha qismda to'lanishi mumkin. Har bir to'lov bitta `salary_payments` qatori va **o'sha tranzaksiyada** yozilgan bitta `SALARY` xarajati (`expense_id`). Ikki marta bosish yoki javob yo'qolgandan keyingi qayta yuborish (`Idempotency-Key`) — bitta to'lov. Bir oy uchun to'lovlar jami hisoblangan maoshdan oshmaydi.
+- "Summa qoldiqdan katta" / "to'lanadigan maosh qolmagan": hisoblangan maosh (stavka, davomat, chegirmalar) o'zgargan bo'lishi mumkin — avval o'qituvchi sozlamalari va davomatni tekshiring.
+- Maosh to'lovining xarajatini Xarajatlar bo'limidan o'chirish yoki summasi/turi/sanasini o'zgartirish 409 qaytaradi — bu ataylab: to'lov va xarajat birga turadi. Izohni o'zgartirish mumkin.
+- **0035 dan oldingi yozuvlar:** Hisobotlar → Oylik maosh pastidagi "Eski maosh yozuvlari" bloki (API: `GET /api/salary-payments/reconciliation?forMonth=YYYY-MM`, faqat o'qiydi). `LIKELY_DOUBLE_COUNTED` — moliya hisobotida shu pul ikki marta sanalgan bo'lishi mumkin; `AMOUNT_MISMATCH` — bir necha to'lov eski qatorni ustidan yozgan; `NO_EXPENSE` — xarajat yozilmagan. Hisobot hech narsani o'zgartirmaydi; tuzatish qarorini buxgalter qiladi (masalan, takroriy xarajatni qo'lda o'chirish).
+
+## 10. Superadmin hisobiga kirish yo'qolgan
 
 - Birinchi SUPERADMIN'ni qo'lda bazada yaratish kerak (self-service yo'q, xavfsizlik uchun ataylab shunday):
   ```sql
   UPDATE users SET role = 'SUPERADMIN' WHERE email = 'sizning-email@domen.uz';
   ```
 
-## 10. Workspace / Tashkilot a'zoligi muammosi ("Foydalanuvchida faol tashkilot a'zoligi topilmadi")
+## 11. Workspace / Tashkilot a'zoligi muammosi ("Foydalanuvchida faol tashkilot a'zoligi topilmadi")
 
 - Agar eski foydalanuvchi tizimga kirganda "Foydalanuvchida faol tashkilot a'zoligi topilmadi" xatosi chiqsa:
   Markazga kirish faqat faol a'zolikdan keladi. A'zoligi yo'q akkaunt — ataylab o'chirilgan xodim ham bo'lishi mumkin, shuning uchun a'zolik **ommaviy tiklanmaydi**.
@@ -69,13 +77,13 @@ Nosozlik yuz berganda nima qilish kerakligi bo'yicha qisqa qo'llanma.
   3. Markazda birorta ham a'zo qolmagan bo'lsa, platforma admini (SUPERADMIN) o'sha markazga kirib, rahbarni Xodimlar bo'limidan qo'shadi.
   `scripts/migrate-memberships.ts` ishlatilmaydi: u barcha akkauntlarga a'zolik berib, o'chirilgan xodimlarni ham qaytarar edi.
 
-## 11. Taklifnoma xatolari ("Ushbu taklifnoma yaroqsiz yoki muddati tugagan")
+## 12. Taklifnoma xatolari ("Ushbu taklifnoma yaroqsiz yoki muddati tugagan")
 
 - Taklifnomalar 7 kun muddatga ega va faqat 1 marta ishlatiladi (`invitation_status` = `PENDING`).
 - Token bazada SHA-256 hash ko'rinishida (`token_hash`) saqlanadi.
 - Agar foydalanuvchi taklifnomani yo'qotgan yoki muddati o'tgan bo'lsa, markaz administratori settings yoki onboarding orqali yangi taklifnoma yuborishi kerak (eski taklifnoma `REVOKED` yoki `EXPIRED` bo'ladi).
 
-## 12. Onboarding bosqichida qolib ketish ("Onboarding reset")
+## 13. Onboarding bosqichida qolib ketish ("Onboarding reset")
 
 - Agar markaz administratori onboarding bosqichini qayta o'tmoqchi bo'lsa yoki qolib ketgan bo'lsa:
   ```sql
@@ -83,10 +91,10 @@ Nosozlik yuz berganda nima qilish kerakligi bo'yicha qisqa qo'llanma.
   ```
   Onboarding yakunlanganda `onboarding_step = 'COMPLETED'` bo'ladi.
 
-## 13. Umumiy tekshiruv tartibi (istalgan nosozlikda birinchi qadamlar)
+## 14. Umumiy tekshiruv tartibi (istalgan nosozlikda birinchi qadamlar)
 
 1. `GET /api/health`
 2. Backend va frontend loglarini oxirgi 5 daqiqa uchun ko'rish
-3. `npm run test && npm run test:e2e` (backend) — asosiy funksiyalar buzilmaganini tasdiqlash
+3. `npm run test && npm run test:e2e` (backend) — asosiy funksiyalar buzilmaganini tasdiqlash; brauzer yo'nalishlari: `e2e-browser/README.md`
 4. Serverda: `bash scripts/production/stack.sh exec backend node scripts/migrate.cjs --status` — kutilayotgan migratsiya yo'qligi
 5. So'nggi deploy/commit nima o'zgartirganini `git log` orqali ko'rish
