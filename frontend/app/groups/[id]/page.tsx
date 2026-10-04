@@ -515,7 +515,7 @@ function GroupDetailContent() {
 
         <form onSubmit={onEnroll} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           {enrollError && (
-            <div style={{ background: "#FDEBEC", color: "#B23A47", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: 10 }}>{enrollError}</div>
+            <div role="alert" style={{ background: "#FDEBEC", color: "#B23A47", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: 10 }}>{enrollError}</div>
           )}
 
           {enrollMode === "existing" ? (

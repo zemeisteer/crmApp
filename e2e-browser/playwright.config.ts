@@ -11,10 +11,12 @@ const WEB_PORT = Number(process.env.BROWSER_WEB_PORT || 3300);
 // (e.g. a preinstalled one of another Playwright revision).
 export default defineConfig({
   testDir: './tests',
-  // The flows share two servers and the login rate limit: one at a time.
+  // The journeys share two servers and the login rate limit: one at a time.
   workers: 1,
   fullyParallel: false,
-  timeout: 90_000,
+  // Room for the sign-up/sign-in pacer (tests/support.ts authSlot), which may
+  // wait up to a minute for the server's rate limit window.
+  timeout: 180_000,
   expect: { timeout: 15_000 },
   retries: 0,
   // In CI, failures also become annotations: readable without opening the job log.

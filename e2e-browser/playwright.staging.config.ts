@@ -30,7 +30,8 @@ export default defineConfig({
   testDir: './tests',
   workers: 1,
   fullyParallel: false,
-  timeout: 120_000,
+  // Room for the sign-up/sign-in pacer (tests/support.ts authSlot).
+  timeout: 180_000,
   expect: { timeout: 20_000 },
   retries: 0,
   reporter: [['list'], ['html', { open: 'never', outputFolder: 'playwright-report-staging' }]],
