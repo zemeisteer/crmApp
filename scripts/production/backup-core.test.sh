@@ -185,6 +185,8 @@ check "the backup itself succeeds" [ "$RC" = "0" ]
 check "acknowledged old sets are NOT pruned during the off-server run" bash -c "unharmed() { [ -f '$ROOT/talimcrm_test_'\$1/db.sql.gz ]; }; unharmed 20260801T220000Z && unharmed 20260815T220000Z"
 check "it says pruning was postponed" grep -q "pruning postponed" <<<"$OUT"
 rm -rf "$ROOT/.offsite.lock"
+# Set names have one-second resolution: the next run must not reuse the name.
+sleep 1
 run "${OFF[@]}" -- once
 check "once the off-server run is over, they are pruned normally" bash -c "[ ! -e '$ROOT/talimcrm_test_20260801T220000Z' ] && [ ! -e '$ROOT/talimcrm_test_20260815T220000Z' ]"
 echo "another stack's sets in the same folder are not this stack's to prune"
