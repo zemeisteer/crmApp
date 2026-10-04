@@ -4,9 +4,9 @@
 
 | | |
 |---|---|
-| **Oxirgi tasdiqlangan commit** | `04135570233ca41fab6d06f8d28a461abb21cff8` (`dev`, push qilingan; keyingi `b67ba98` faqat shu hisobot) |
-| **Uning CI'si** | [GitHub Actions 37193868954](https://github.com/zemeisteer/crmApp/actions/runs/37193868954) — 6 ish ham yashil, log'lari foydalanuvchi tomonidan o'qilgan |
-| **Ishchi daraxt** | `0413557` ustida **commit qilinmagan** o'zgarishlar: off-server tekshiruvi va stack tanlashdagi ikki nuqson tuzatildi (5-bo'lim). Faqat **lokal** tekshirilgan; ular uchun CI yurmagan; konteynerdagi mashq lokal yurmagan (Docker yo'q) |
+| **Oxirgi tasdiqlangan commit** | `0cc2e531011b1fb11c27afa27be5d59e5adb28f0` (`dev`, push qilingan) |
+| **Uning CI'si** | [GitHub Actions 37202235519](https://github.com/zemeisteer/crmApp/actions/runs/37202235519) — 6 ish ham yashil (holat GitHub API orqali olingan; step log'lari login talab qiladi, o'qilmagan) |
+| **Off-server tuzatishlari** | `fd60705` + `0cc2e53` (5-bo'lim). CI 37201317408 (`fd60705`) da `ops-scripts` yiqildi: `backup-core.test.sh` da ikki zaxira bir soniyada bir xil nom olardi (Linux tez, Windows'da ko'rinmagan) — `0cc2e53` da tuzatildi. O'sha run'da `browser` ham yiqildi; log o'qilmadi, kodi o'zgarmagan, lokal 6/6 va keyingi run'da o'tdi — beqaror (flaky) deb hisoblanadi, sababi aniqlanmagan |
 | **Staging (haqiqiy domen)** | **mavjud emas** — server va domen berilmagan; hech narsa deploy qilinmagan |
 | **Haqiqiy tashqi xotira (S3/SFTP)** | **sinalmagan** — manzil va kalit berilmagan; barcha off-server tekshiruvlar lokal papka yoki soxta rclone bilan |
 | **Provayder sandbox'lari** | **yuritilmagan** — Telegram, SMS, Click, Payme sinov ma'lumotlari berilmagan |
@@ -15,8 +15,8 @@
 
 | Bosqich | Holat |
 |---|---|
-| 1. Avtomatik tekshiruvlar bir martalik CI infratuzilmasida o'tdi | **o'tdi** — `0413557`, 37193868954. Ishchi daraxtdagi tuzatishlar uchun hali emas |
-| 2. Staging'ga chiqarishga tayyor | **tayyor, server va domen kutilmoqda** — buyruqlar ketma-ketligi, preflight, reviziya tekshiruvi, rollback tartibi bor (`docs/STAGING.md`). Off-server tuzatishlari avval push qilinib, CI'dan o'tishi kerak |
+| 1. Avtomatik tekshiruvlar bir martalik CI infratuzilmasida o'tdi | **o'tdi** — `0cc2e53`, 37202235519, off-server tuzatishlari va `recovery` dagi buzilgan nusxa qadami bilan |
+| 2. Staging'ga chiqarishga tayyor | **tayyor, server va domen kutilmoqda** — buyruqlar ketma-ketligi, preflight, reviziya tekshiruvi, rollback tartibi bor (`docs/STAGING.md`). |
 | 3. Staging haqiqiy domenda tasdiqlangan | **bloklangan** — staging yo'q |
 | 4. Birinchi pilot markazni qabul qilishga tayyor | **tayyor emas** — 3-bosqich va haqiqiy tashqi xotiradan tiklash yo'q |
 
@@ -26,16 +26,9 @@
 
 | Commit | Run | Ish / ssenariy | Natija | Muhit | Muhim cheklov |
 |---|---|---|---|---|---|
-| `0413557` | [37193868954](https://github.com/zemeisteer/crmApp/actions/runs/37193868954) | backend | o'tdi: 251 unit, 196 E2E, migratsiya tekshiruvlari | CI, bir martalik PostgreSQL 16 | — |
-| `0413557` | 37193868954 | frontend | o'tdi | CI | — |
-| `0413557` | 37193868954 | ops-scripts | o'tdi | CI, soxta docker, lokal "masofa" | eski `offsite.sh` (5-bo'limdagi nuqsonlar bilan) |
-| `0413557` | 37193868954 | images | o'tdi: 35/35 migratsiya API'dan oldin, SMOKE OK | CI, Docker | — |
-| `0413557` | 37193868954 | browser (6 oqim) | o'tdi | CI, lokal production build'lar, `*.localhost` | haqiqiy domen va HTTPS emas |
-| `0413557` | 37193868954 | recovery (7/7 qadam) | o'tdi, REHEARSAL OK | CI, ikki bir martalik Compose loyihasi; tiklash yuklab olingan "masofaviy" nusxadan | "masofaviy" xotira = lokal papka; buzilgan nusxa qadami hali yo'q edi |
-| ishchi daraxt | — | `offsite.test.sh` (kengaytirilgan, 20 holat + rclone) | **o'tdi 74/74** | lokal simulyatsiya: papka va soxta rclone; to'plamlarni haqiqiy `backup-core.sh` yaratgan | haqiqiy provayder emas |
-| ishchi daraxt | — | `backup-core.test.sh` (manzilga bog'langan tasdiq, prune qulfi) | o'tdi | lokal, soxta pg | — |
-| ishchi daraxt | — | `ops.test.sh` (`restore.sh --from-stack` bilan), `rehearsal.test.sh` (17), `bash -n` barcha skriptlar | o'tdi | lokal, soxta docker | — |
-| ishchi daraxt | — | `restore-rehearsal.sh` yangi qadami: buzilgan masofaviy nusxa → `DAMAGED`, `status --check` ≠ 0 → tuzatish → `verify` | **yuritilmagan** | — | lokal Docker yo'q; push'dan keyin CI `recovery` da yuradi |
+| `0cc2e53` | [GitHub Actions 37202235519](https://github.com/zemeisteer/crmApp/actions/runs/37202235519) | backend, frontend, images, browser (6 oqim) | o'tdi | CI | haqiqiy domen va HTTPS emas |
+| `0cc2e53` | 37202235519 | ops-scripts (`offsite.test.sh` 74 tekshiruv, `backup-core.test.sh` va b.) | o'tdi | CI, soxta docker va rclone, lokal "masofa" | haqiqiy provayder emas |
+| `0cc2e53` | 37202235519 | recovery, yangi qadam bilan: masofadan `uploads.tar.gz` o'chiriladi → `status --check` ≠ 0 va `DAMAGED` → `push` tuzatadi → `verify` o'tadi; keyin yuklab olingan nusxadan tiklash | o'tdi | CI, ikki bir martalik Compose loyihasi | "masofaviy" xotira = lokal papka |
 | — | — | haqiqiy domen: HTTPS, wildcard, nginx, `verify-flows.mjs`, staging brauzer testlari | **bloklangan** | — | server va domen yo'q |
 | — | — | haqiqiy S3/SFTP: yuborish, yuklab olish, undan tiklash | **bloklangan** | — | manzil va kalit yo'q |
 
@@ -43,7 +36,7 @@
 
 | Manba | Dump (gzip) | Uploads | Zaxira | Tiklash |
 |---|---|---|---|---|
-| CI 37193868954 (konteyner, "masofaviy" nusxadan) | 16 059 bayt | 49 409 bayt | 2 s | ishlayotgan ilovagacha 34 s |
+| CI 37193868954, `0413557` (konteyner, "masofaviy" nusxadan) | 16 059 bayt | 49 409 bayt | 2 s | ishlayotgan ilovagacha 34 s |
 | Lokal simulyatsiya (masofaviy nusxadan, Docker'siz; oldingi bosqich) | 15 685 bayt | 49 406 bayt | 8,3 s | uzatish 3,0 s, yuklab olish 1,4 s, tiklash 9,9 s, ilova ishga tushishi 13,6 s |
 
 ## 3. Nima tasdiqlangan (joriy holat)
@@ -52,17 +45,16 @@
 - **Takroriy yuborish:** to'lov, o'quvchi va o'qituvchi yaratish aniq `Idempotency-Key` bilan himoyalangan.
 - **Pul:** 400 000 / 390 000 / chegirma 10 000 / qarz 0 misoli barcha hisobotlarda bir xil.
 - **Zaxira va tiklash:** zaxira to'plami, yiqilgan zaxira eski to'plamni buzmasligi, yuklab olingan nusxadan alohida baza serveri va uploads volume'iga tiklash, ilova tiklangan nusxada ishlashi — CI `recovery` (7/7).
-- **Off-server (lokal simulyatsiya, ishchi daraxt):** masofaviy to'plam faqat nomi, manifesti, `SHA256SUMS` va `COMPLETE` belgisi bir-biriga mos bo'lsa ishlatiladi. Buzilgan, chala yoki o'qib bo'lmaydigan to'plam hech qachon "sog'" deb ko'rsatilmaydi. Eng yangisi buzilganda eng yangi tekshirilgan to'plam "fallback" deb alohida aytiladi. Lokal nusxasi bor buzilgan to'plam xavfsiz tuzatiladi. Faqat shu stack'ning to'plamlari tanlanadi.
+- **Off-server (lokal simulyatsiya va CI'dagi lokal "masofa"):** masofaviy to'plam faqat nomi, manifesti, `SHA256SUMS` va `COMPLETE` belgisi bir-biriga mos bo'lsa ishlatiladi. Buzilgan, chala yoki o'qib bo'lmaydigan to'plam hech qachon "sog'" deb ko'rsatilmaydi. Eng yangisi buzilganda eng yangi tekshirilgan to'plam "fallback" deb alohida aytiladi. Lokal nusxasi bor buzilgan to'plam xavfsiz tuzatiladi. Faqat shu stack'ning to'plamlari tanlanadi.
 
 ## 4. Qolgan to'siqlar (ta'siri bo'yicha)
 
 1. **Staging serveri va domeni** — 3- va 4-bosqichlar shunga bog'liq.
 2. **Tashqi xotira** — haqiqiy S3/SFTP bilan hech narsa sinalmagan.
-3. **Off-server tuzatishlari push qilinmagan** — CI'da (ayniqsa `recovery` dagi buzilgan nusxa qadami) yurmagan.
-4. **Integratsiyalar** — Telegram, SMS, Click, Payme pilotda o'chiq (cheklangan pilotni to'xtatmaydi; `docs/PILOT_ONBOARDING.md`).
-5. **Haqiqiy hajmdagi tiklash vaqti** o'lchanmagan.
+3. **Integratsiyalar** — Telegram, SMS, Click, Payme pilotda o'chiq (cheklangan pilotni to'xtatmaydi; `docs/PILOT_ONBOARDING.md`).
+4. **Haqiqiy hajmdagi tiklash vaqti** o'lchanmagan.
 
-## 5. Ishchi daraxtdagi tuzatishlar (`0413557` ustida, commit qilinmagan)
+## 5. Off-server tuzatishlari (`fd60705`, `0cc2e53`)
 
 **Nuqson 1 — buzilgan masofaviy to'plam "sog'" ko'rinardi.** `push` va `status` faqat `COMPLETE` belgisiga qarardi. Masofadan `uploads.tar.gz` o'chirilsa ham `OFFSITE OK` va `STATUS OK` chiqardi, lokal tasdiq (`.ok`) saqlanib qolardi. Tuzatish:
 - Ikki daraja kiritildi: `PRESENT` — metadata tekshiruvi (belgi, manifest va `SHA256SUMS` mos, fayllar joyida va o'z hajmida, ma'lumot o'qilmaydi) va `VERIFIED` — to'liq tarkib tekshiruvi (to'plam yuklab olinib, har bir bayt tekshiriladi).
@@ -92,6 +84,7 @@
 
 ## 7. Tarix (joriy holat emas)
 
+- `fd60705` (CI 37201317408): `ops-scripts` (test nomlari bir soniyada to'qnashdi) va `browser` (flaky) yiqildi; `0cc2e53` da hammasi yashil.
 - `0413557` (CI 37193868954): off-server nusxa, reviziya belgisi, staging brauzer rejimi qo'shildi — keyin `offsite.sh` da 5-bo'limdagi ikki nuqson topildi.
 - `4828f4d` (CI 37116211070): `recovery` 1/7-qadamda yiqilgan — certbot tekshiruvi "certbot" so'zini kutardi. `7d74229` da tuzatilgan; CI 37122037051 da `recovery` o'tdi, `backend` test faylidagi tip xatosi tufayli yiqildi; `5e13f82`, `ba2939a` to'liq yashil.
 - O'quvchi/o'qituvchi yaratishdagi 10 soniyalik "o'xshash yozuv" qoidasi `7d74229` da aniq `Idempotency-Key` bilan almashtirilgan (migratsiya 0034).
