@@ -1,4 +1,4 @@
-import { expect, type Page } from '@playwright/test';
+import { expect, type Page, type Request } from '@playwright/test';
 import { randomBytes } from 'crypto';
 
 // Fixtures are prepared and final state is read through the API; the flow
@@ -13,6 +13,13 @@ export const TARGET = process.env.BROWSER_TARGET === 'staging' ? 'staging' : 'lo
 const ROOT = TARGET === 'staging' ? process.env.STAGING_ROOT! : 'localhost';
 export const WEB_PORT = Number(process.env.BROWSER_WEB_PORT || 3300);
 export const API = TARGET === 'staging' ? `https://${ROOT}/api` : `http://127.0.0.1:${process.env.BROWSER_API_PORT || 4300}/api`;
+// The pages call the API as http://localhost:<port>/api (the build's
+// NEXT_PUBLIC_API_URL); the tests themselves use 127.0.0.1. Either is the API.
+export function isApiUrl(url: string) {
+  if (TARGET === 'staging') return url.startsWith(API);
+  const u = new URL(url);
+  return (u.hostname === 'localhost' || u.hostname === '127.0.0.1') && u.port === new URL(API).port && u.pathname.startsWith('/api/');
+}
 export const centerUrl = (sub: string, path = '') =>
   TARGET === 'staging' ? `https://${sub}.${ROOT}${path}` : `http://${sub}.localhost:${WEB_PORT}${path}`;
 export const run = `${Date.now().toString(36)}${randomBytes(2).toString('hex')}`;
@@ -74,4 +81,33 @@ export async function loginOnMainSite(page: Page, email: string) {
 export async function expectCenterDashboard(page: Page, sub: string) {
   await expect(page).toHaveURL(centerUrl(sub, '/dashboard'));
   await expect(page.getByRole('heading', { name: /Xush kelibsiz/ })).toBeVisible();
+}
+
+/**
+ * The current document's requests to the API that have not finished yet.
+ * The pages poll nothing, so once every request a page started has finished,
+ * nothing more reaches the API until the test acts. Tests that change
+ * server state under an open page wait for that (an empty list) first, so no
+ * request of the previous page can race the step under test.
+ */
+export function apiInFlight(page: Page) {
+  const pending = new Set<Request>();
+  page.on('request', (r) => {
+    // A new document: the old one's requests are abandoned with it (the main
+    // site's fire-and-forget logout after the handoff never reports back).
+    if (r.isNavigationRequest() && r.frame() === page.mainFrame()) pending.clear();
+    else if (isApiUrl(r.url())) pending.add(r);
+  });
+  page.on('requestfinished', (r) => pending.delete(r));
+  page.on('requestfailed', (r) => pending.delete(r));
+  return () => [...pending].map((r) => `${r.method()} ${new URL(r.url()).pathname} (${r.frame().url()})`);
+}
+
+/** Statuses of the API responses the page receives from now on, in order. */
+export function apiStatuses(page: Page) {
+  const seen: Array<{ path: string; status: number }> = [];
+  page.on('response', (r) => {
+    if (isApiUrl(r.url())) seen.push({ path: new URL(r.url()).pathname, status: r.status() });
+  });
+  return seen;
 }

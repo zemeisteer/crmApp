@@ -7,7 +7,8 @@ const WEB_PORT = Number(process.env.BROWSER_WEB_PORT || 3300);
 // the frontend, on a disposable database (see scripts/). Run:
 //   npm run build:frontend && npm test
 // PW_CHANNEL=chrome (or msedge) uses an installed browser instead of the
-// downloaded Chromium.
+// downloaded Chromium; PW_EXECUTABLE_PATH a Chromium binary at that path
+// (e.g. a preinstalled one of another Playwright revision).
 export default defineConfig({
   testDir: './tests',
   // The flows share two servers and the login rate limit: one at a time.
@@ -22,6 +23,7 @@ export default defineConfig({
   use: {
     baseURL: `http://localhost:${WEB_PORT}`,
     channel: process.env.PW_CHANNEL || undefined,
+    launchOptions: process.env.PW_EXECUTABLE_PATH ? { executablePath: process.env.PW_EXECUTABLE_PATH } : {},
     // Screenshots of synthetic data only. No traces or videos: a trace keeps
     // request headers and storage, i.e. session tokens.
     screenshot: 'only-on-failure',

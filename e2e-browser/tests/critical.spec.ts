@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { PASSWORD, TARGET, addStaff, api, centerUrl, deleteOwnCenters, expectCenterDashboard, loginOnMainSite, newCenter, run } from './support';
+import { PASSWORD, TARGET, addStaff, api, apiInFlight, apiStatuses, centerUrl, deleteOwnCenters, expectCenterDashboard, isApiUrl, loginOnMainSite, newCenter, run } from './support';
 
 // On a deployed staging domain the run removes the centers it made.
 test.afterAll(async () => {
@@ -62,16 +62,31 @@ test('staff removed while their browser is open: the next request is refused', a
   const a = await newCenter('removal');
   const email = `zzbr-staff-rm-${run}@example.test`;
   const staffId = await addStaff(a.token, email, 'ADMIN');
+  const inFlight = apiInFlight(page);
   await loginOnMainSite(page, email);
   await expectCenterDashboard(page, a.sub);
+  const studentsLoaded = page.waitForResponse((r) => isApiUrl(r.url()) && new URL(r.url()).pathname === '/api/students' && r.request().method() === 'GET');
   await page.locator('.sidebar').getByRole('link', { name: "O'quvchilar" }).click();
   await expect(page).toHaveURL(centerUrl(a.sub, '/students'));
+  expect((await studentsLoaded).status()).toBe(200);
+  // Everything the Students page asked for has been answered (it polls
+  // nothing): no request of that page can be the one refused below, and the
+  // menu stays in place for the click. This was the race that made the
+  // test fail now and then: a slow Students request was refused first and
+  // its redirect to /login detached the link being clicked.
+  await expect.poll(inFlight, { message: 'API requests still in flight before the removal' }).toEqual([]);
+  const statuses = apiStatuses(page);
 
   await api('DELETE', `/staff/${staffId}`, { token: a.token });
 
   await page.locator('.sidebar').getByRole('link', { name: 'Guruhlar' }).click();
   await expect(page).toHaveURL(centerUrl(a.sub, '/login'));
   expect(await page.evaluate(() => localStorage.getItem('talimcrm_token'))).toBeNull();
+  // It was the Groups page's own request that was refused, and nothing after
+  // the removal was answered with data.
+  expect(statuses.length).toBeGreaterThan(0);
+  expect(statuses[0]).toMatchObject({ status: 401 });
+  expect(statuses.filter((s) => s.status < 400 && !s.path.endsWith('/auth/logout'))).toEqual([]);
 });
 
 test('payment: a double click and a retry after a lost reply each record one payment', async ({ page }) => {
