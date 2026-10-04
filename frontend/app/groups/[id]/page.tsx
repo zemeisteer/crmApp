@@ -16,7 +16,6 @@ import { PHONE_PATTERN, PHONE_TITLE, NAME_PATTERN, NAME_TITLE, phoneOrEmpty } fr
 import { localDateStr, localMonthStr } from "@/lib/date";
 import { useLanguage } from "@/lib/i18n-context";
 import type { TranslationKey } from "@/lib/i18n";
-import { formatDate as fmtDate } from "@/lib/format-date";
 import PhoneInput from "@/components/PhoneInput";
 
 const ACCENT = "#4F46E5";
@@ -56,12 +55,7 @@ function GroupDetailContent() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const id = params.id;
-  const { t, lang } = useLanguage();
-
-  function formatDate(iso: string | null) {
-    if (!iso) return "—";
-    return fmtDate(iso, lang, "long");
-  }
+  const { t } = useLanguage();
 
   const [group, setGroup] = useState<Group & { enrollments?: { id: string; status?: string; student: Student }[] } | null>(null);
   const [allStudents, setAllStudents] = useState<Student[]>([]);
@@ -104,7 +98,7 @@ function GroupDetailContent() {
     setLoading(true);
     Promise.all([groupsApi.get(id), studentsApi.list(), paymentsApi.list().catch(() => []), attendanceApi.list({ groupId: id }), attendanceApi.topics(id).catch(() => [])])
       .then(([g, s, p, a, tp]) => {
-        setGroup(g as any);
+        setGroup(g);
         setAllStudents(s);
         setPayments(p);
         setAttendance(a);
@@ -127,7 +121,6 @@ function GroupDetailContent() {
     }
     setDraft(next);
     setTopic(topics.find((x) => x.date === attendanceDate)?.topic ?? "");
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [group, attendance, attendanceDate, topics]);
 
   if (loading) {
@@ -620,15 +613,6 @@ function GroupDetailContent() {
         </form>
       </Modal>
     </>
-  );
-}
-
-function InfoField({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <div style={{ fontSize: 11.5, color: "#8A8D96" }}>{label}</div>
-      <div style={{ fontSize: 13.5, fontWeight: 600, marginTop: 3 }}>{value}</div>
-    </div>
   );
 }
 

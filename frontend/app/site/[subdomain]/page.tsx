@@ -721,7 +721,7 @@ function ChipGroup({ label, value, onChange, options }: { label: string; value: 
       <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-2)" }}>{label}</span>
       <div className="ps-chips">
         {options.map((o) => (
-          <button key={o.value || "none"} type="button" role="radio" aria-checked={value === o.value} aria-pressed={value === o.value} className="ps-chip" onClick={() => onChange(o.value)}>
+          <button key={o.value || "none"} type="button" role="radio" aria-checked={value === o.value} className="ps-chip" onClick={() => onChange(o.value)}>
             {o.label}
           </button>
         ))}

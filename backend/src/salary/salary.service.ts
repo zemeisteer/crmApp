@@ -8,7 +8,6 @@ import {
   groups,
   payments,
   salaryPayments,
-  schedules,
   teachers,
 } from '../db/schema';
 import { CreateSalaryPaymentDto, DisburseSalaryDto } from './dto/salary.dto';
@@ -136,12 +135,7 @@ export class SalaryService {
       where: and(eq(groups.tenantId, tenantId), isNull(groups.deletedAt)),
     });
 
-    // 4. Fetch schedules for tenant
-    const tenantSchedules = await this.db.query.schedules.findMany({
-      where: and(eq(schedules.tenantId, tenantId)),
-    });
-
-    // 5. Fetch all paid tuition payments in this month
+    // 4. Fetch all paid tuition payments in this month
     const paidPayments = await this.db.query.payments.findMany({
       where: and(
         eq(payments.tenantId, tenantId),
@@ -150,7 +144,7 @@ export class SalaryService {
       ),
     });
 
-    // 6. Fetch enrollments of this center
+    // 5. Fetch enrollments of this center
     const allEnrollments = await this.db.query.enrollments.findMany({ where: eq(enrollments.tenantId, tenantId) });
     const attendanceStats = await this.teacherAttendance.monthStats(tenantId, month);
 

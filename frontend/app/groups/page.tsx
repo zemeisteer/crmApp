@@ -103,11 +103,11 @@ function GroupsContent() {
     subjectsApi.list("ACTIVE").then((list) => setSavedSubjects(list.map((x) => x.name))).catch(() => setSavedSubjects([]));
   }, []);
   const usedSubjects = useMemo(() => Array.from(new Set([...groups.map((g) => g.subject), ...savedSubjects])), [groups, savedSubjects]);
-  const subjectSuggestions = tenant ? CATEGORY_SUBJECT_SUGGESTIONS[tenant.category] || [] : [];
-  const subjectOptions = useMemo(
-    () => Array.from(new Set([...usedSubjects, ...subjectSuggestions])).sort(),
-    [usedSubjects, subjectSuggestions],
-  );
+  const category = tenant?.category;
+  const subjectOptions = useMemo(() => {
+    const suggested = category ? CATEGORY_SUBJECT_SUGGESTIONS[category] || [] : [];
+    return Array.from(new Set([...usedSubjects, ...suggested])).sort();
+  }, [usedSubjects, category]);
 
   function load() {
     setLoading(true);

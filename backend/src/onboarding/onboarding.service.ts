@@ -1,6 +1,5 @@
 import {
   BadRequestException,
-  ConflictException,
   Inject,
   Injectable,
   NotFoundException,
@@ -9,13 +8,10 @@ import { and, count, eq, ne } from 'drizzle-orm';
 import { DB, Database } from '../db/db.module';
 import {
   branches,
-  courses,
-  invitations,
   organizationMemberships,
   students,
   subjects,
   tenants,
-  users,
 } from '../db/schema';
 import {
   BranchStepDto,

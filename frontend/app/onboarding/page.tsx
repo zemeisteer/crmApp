@@ -61,7 +61,7 @@ const STEPS = [
 export default function OnboardingPage() {
   const { t } = useLanguage();
   const router = useRouter();
-  const { user, refreshMe } = useAuth();
+  const { refreshMe } = useAuth();
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [initialLoading, setInitialLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -139,7 +139,7 @@ export default function OnboardingPage() {
           const idx = STEPS.findIndex((s) => s.id === stepName);
           if (idx >= 0) setCurrentStepIndex(idx);
         }
-      } catch (err) {
+      } catch {
         // If not authenticated or error, redirect to login
         router.push("/login");
       } finally {

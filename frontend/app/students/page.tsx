@@ -10,7 +10,7 @@ import Pagination, { usePagedSlice } from "@/components/Pagination";
 import Select from "@/components/Select";
 import DatePicker from "@/components/DatePicker";
 import { studentsApi, groupsApi, exportApi, reportsApi, retryKey, Student, Group, Gender, ApiError } from "@/lib/api";
-import { PHONE_PATTERN, PHONE_TITLE, NAME_PATTERN, NAME_TITLE } from "@/lib/validation";
+import { NAME_PATTERN, NAME_TITLE } from "@/lib/validation";
 import { useLanguage } from "@/lib/i18n-context";
 import { matchesSubject, extractUniqueSubjects } from "@/lib/subject";
 import PhoneInput from "@/components/PhoneInput";

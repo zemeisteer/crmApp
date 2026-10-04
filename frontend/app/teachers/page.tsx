@@ -13,12 +13,11 @@ import { useAuth } from "@/lib/auth-context";
 import { useLanguage } from "@/lib/i18n-context";
 import { teachersApi, groupsApi, salaryApi, retryKey, Teacher, Group, ApiError } from "@/lib/api";
 import { localMonthStr } from "@/lib/date";
-import { PHONE_PATTERN, PHONE_TITLE, NAME_PATTERN, NAME_TITLE } from "@/lib/validation";
+import { NAME_PATTERN, NAME_TITLE } from "@/lib/validation";
 import { matchesSubject } from "@/lib/subject";
 import PhoneInput from "@/components/PhoneInput";
 
 const ACCENT = "#4F46E5";
-const OTHER_SUBJECT = "__OTHER__";
 
 const SUGGESTED_DIRECTIONS = [
   "Ingliz tili (IELTS)",

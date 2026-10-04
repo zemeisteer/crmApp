@@ -8,7 +8,6 @@ const ACCENT = "#4F46E5";
 export default function GlobalError({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
   const { t } = useLanguage();
   useEffect(() => {
-    // eslint-disable-next-line no-console
     console.error(error);
   }, [error]);
 

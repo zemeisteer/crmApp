@@ -1,4 +1,4 @@
-import { IsEmail, IsIn, IsOptional, IsString, MinLength, Matches } from 'class-validator';
+import { IsEmail, IsOptional, IsString, MinLength, Matches } from 'class-validator';
 
 export class RegisterDto {
   @IsString()

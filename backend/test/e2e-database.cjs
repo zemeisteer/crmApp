@@ -46,7 +46,7 @@ function resolveE2eDatabase(env = process.env) {
     name,
     // Only a database this tooling derived or that is named "_e2e" is ever
     // dropped and rebuilt; a "_test" database (CI's) is used as it is.
-    disposable: /_e2e$/.test(name),
+    disposable: name.endsWith('_e2e'),
     // Somewhere to connect while creating / dropping it.
     adminUrl: (() => {
       const u = new URL(url);

@@ -11,6 +11,8 @@ const eslintConfig = defineConfig([
       "react-hooks/purity": "warn",
       "react/no-unescaped-entities": "off",
       "@typescript-eslint/no-explicit-any": "warn",
+      // `const { omitted, ...rest } = x` drops a field on purpose.
+      "@typescript-eslint/no-unused-vars": ["warn", { ignoreRestSiblings: true }],
     },
   },
   // Override default ignores of eslint-config-next.
@@ -20,6 +22,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Separate build outputs (e.g. .next-browser for the browser tests).
+    ".next-*/**",
   ]),
 ]);
 

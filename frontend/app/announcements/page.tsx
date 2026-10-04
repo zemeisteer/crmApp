@@ -17,7 +17,6 @@ import {
 import { useLanguage } from "@/lib/i18n-context";
 import { formatDateTime } from "@/lib/format-date";
 
-const ACCENT = "#4F46E5";
 
 export function AnnouncementsContent() {
   const { t } = useLanguage();

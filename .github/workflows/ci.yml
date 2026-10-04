@@ -8,7 +8,7 @@ on:
 
 jobs:
   backend:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     services:
       postgres:
         image: postgres:16-alpine
@@ -29,8 +29,8 @@ jobs:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/talimcrm_test
       JWT_SECRET: ci-test-secret
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -92,13 +92,13 @@ jobs:
       - run: npm run build
 
   frontend:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     defaults:
       run:
         working-directory: frontend
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -116,10 +116,10 @@ jobs:
   # the certificate and restore command sequences. Docker is a recording
   # fake in these tests; nothing real is started or removed.
   ops-scripts:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
       - name: Scripts are committed as executable
@@ -147,9 +147,9 @@ jobs:
   # and that a restart applies nothing twice. No external service is
   # configured.
   images:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       # The script's own text checks, on a log far larger than a pipe
       # buffer (the first version failed on exactly that).
       - name: Test the smoke-test helpers
@@ -175,7 +175,7 @@ jobs:
     # builds of the backend and the frontend on a disposable database. The
     # backend runs with NODE_ENV=development only for its http://*.localhost
     # CORS rules. No external provider is configured.
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     services:
       postgres:
@@ -194,8 +194,8 @@ jobs:
       BROWSER_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/talimcrm_browser_e2e
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/talimcrm_browser_e2e
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
       - run: npm ci --legacy-peer-deps
@@ -215,7 +215,7 @@ jobs:
       # Screenshots of synthetic data only (no traces: they would hold tokens).
       - name: Keep the failure screenshots
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: browser-test-results
           path: |
@@ -225,10 +225,10 @@ jobs:
           retention-days: 7
 
   recovery:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Backup, restore and TLS rehearsal
         env:
           # Redacted failure report only (no env files, dumps or tokens).
@@ -236,7 +236,7 @@ jobs:
         run: bash scripts/production/restore-rehearsal.sh
       - name: Keep the redacted failure report
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: rehearsal-diagnostics
           path: ${{ runner.temp }}/rehearsal-diagnostics

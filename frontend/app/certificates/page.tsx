@@ -10,7 +10,6 @@ import { certificatesApi, studentsApi, groupsApi, Certificate, Student, Group, A
 import { useLanguage } from "@/lib/i18n-context";
 import { formatDate } from "@/lib/format-date";
 
-const ACCENT = "#4F46E5";
 
 function CertificatesContent() {
   const { t } = useLanguage();

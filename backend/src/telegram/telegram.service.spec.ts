@@ -40,6 +40,7 @@ describe('TelegramService (Secure Link Token)', () => {
       }),
       // select(...).from(...)[.innerJoin/.where/.orderBy]: no parent chats
       select: vi.fn(() => {
+        // oxlint-disable-next-line unicorn/no-thenable -- deliberately awaitable, like a drizzle builder
         const chain: any = { from: () => chain, innerJoin: () => chain, where: () => chain, orderBy: () => chain, then: (res: (v: unknown[]) => unknown) => res([]) };
         return chain;
       }),
@@ -196,6 +197,7 @@ describe('TelegramService (Secure Link Token)', () => {
     // The first lookup is the active membership in that center.
     const none = mockDb.select.getMockImplementation();
     mockDb.select.mockImplementationOnce(() => {
+      // oxlint-disable-next-line unicorn/no-thenable -- deliberately awaitable, like a drizzle builder
       const chain: any = { from: () => chain, where: () => chain, then: (res: (v: unknown[]) => unknown) => res([{ role: 'ADMIN' }]) };
       return chain;
     });

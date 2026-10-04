@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState, use } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
 import { invitationsApi, Role, ApiError } from "@/lib/api";
@@ -28,7 +27,6 @@ export default function InviteAcceptPage({
 }) {
   const resolvedParams = use(params);
   const token = resolvedParams.token;
-  const router = useRouter();
   const { user: activeUser, setAuthSession } = useAuth();
   const { t } = useLanguage();
   const roleLabel = (r?: string) => (r && ROLE_LABELS[r] ? t(ROLE_LABELS[r]) : r);

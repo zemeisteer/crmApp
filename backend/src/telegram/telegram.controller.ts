@@ -12,7 +12,7 @@ export class TelegramController {
 
   // Resolves when every update received so far has been handled.
   async idle() {
-    await Promise.all([...this.inFlight]);
+    await Promise.all(this.inFlight);
   }
 
   constructor(private readonly service: TelegramService) {}

@@ -39,9 +39,7 @@ describe('Billing & Payment Gateways E2E Test Suite (25 Tests)', () => {
   const paymeAuthHeader = 'Basic ' + Buffer.from(`Paycom:${PAYME_KEY}`).toString('base64');
 
   let tokenA: string;
-  let tenantAId: string;
   let tokenB: string;
-  let tenantBId: string;
 
   let teacherToken: string;
   let parentToken: string;
@@ -53,9 +51,7 @@ describe('Billing & Payment Gateways E2E Test Suite (25 Tests)', () => {
 
   let studentA2Id: string;
   let studentA2Phone: string;
-  let studentA2PortalToken: string;
 
-  let studentB1Id: string;
 
   let groupAId: string;
 
@@ -94,7 +90,6 @@ describe('Billing & Payment Gateways E2E Test Suite (25 Tests)', () => {
       .expect(201);
 
     tokenA = resA.body.accessToken;
-    tenantAId = resA.body.tenant.id;
 
     // 2. Setup Tenant B
     const resB = await request(app.getHttpServer())
@@ -109,7 +104,6 @@ describe('Billing & Payment Gateways E2E Test Suite (25 Tests)', () => {
       .expect(201);
 
     tokenB = resB.body.accessToken;
-    tenantBId = resB.body.tenant.id;
 
     // 3. Create Teacher in Tenant A
     const teacherInvRes = await request(app.getHttpServer())
@@ -174,7 +168,7 @@ describe('Billing & Payment Gateways E2E Test Suite (25 Tests)', () => {
       .expect(201);
 
     // 6. Create Student in Tenant B
-    const studentBRes = await request(app.getHttpServer())
+    await request(app.getHttpServer())
       .post('/api/students')
       .set('Authorization', `Bearer ${tokenB}`)
       .send({
@@ -183,7 +177,6 @@ describe('Billing & Payment Gateways E2E Test Suite (25 Tests)', () => {
         gender: 'MALE',
       })
       .expect(201);
-    studentB1Id = studentBRes.body.id;
 
     // 7. Invite & Register Parent in Tenant A, link to studentA1
     const parentInvRes = await request(app.getHttpServer())
@@ -229,7 +222,7 @@ describe('Billing & Payment Gateways E2E Test Suite (25 Tests)', () => {
         .expect(201)).body.accessToken as string;
     };
     studentA1PortalToken = await portalLogin(studentA1Id, studentA1Phone);
-    studentA2PortalToken = await portalLogin(studentA2Id, studentA2Phone);
+    await portalLogin(studentA2Id, studentA2Phone);
   }, 60000);
 
   afterAll(async () => {
