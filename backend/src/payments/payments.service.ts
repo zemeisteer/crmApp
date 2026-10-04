@@ -406,9 +406,11 @@ export class PaymentsService {
       expensesByCategory[e.category] = (expensesByCategory[e.category] || 0) + e.amount;
     }
 
+    // Payouts made since 0035 are expenses already (category SALARY); only
+    // older salary rows with no linked expense are added here.
     let totalSalaries = 0;
     for (const s of monthSalaries) {
-      totalSalaries += s.amount;
+      if (!s.expenseId) totalSalaries += s.amount;
     }
     if (totalSalaries > 0) {
       expensesByCategory['SALARY'] = (expensesByCategory['SALARY'] || 0) + totalSalaries;

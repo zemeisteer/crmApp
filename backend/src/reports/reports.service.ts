@@ -520,7 +520,13 @@ export class ReportsService {
       const sal = await this.db
         .select({ m: salaryPayments.forMonth, total: sql<number>`coalesce(sum(${salaryPayments.amount}), 0)::int` })
         .from(salaryPayments)
-        .where(and(eq(salaryPayments.tenantId, tenantId), gte(salaryPayments.forMonth, first), sql`${salaryPayments.forMonth} <= ${month}`))
+        .where(and(
+          eq(salaryPayments.tenantId, tenantId),
+          // Linked payouts are counted with the expenses above.
+          isNull(salaryPayments.expenseId),
+          gte(salaryPayments.forMonth, first),
+          sql`${salaryPayments.forMonth} <= ${month}`,
+        ))
         .groupBy(salaryPayments.forMonth);
       for (const r of sal) salariesByMonth[r.m] = r.total;
     }

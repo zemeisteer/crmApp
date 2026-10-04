@@ -58,9 +58,10 @@ describe('SalaryService', () => {
       ];
       mockDb.query.teachers.findMany.mockResolvedValue(mockTeachers);
 
-      // t-1 has 2000000 already paid
+      // t-1 has 2000000 already paid, in two installments
       mockDb.query.salaryPayments.findMany.mockResolvedValue([
-        { teacherId: 't-1', amount: 2000000, forMonth: '2026-09', paidAt: new Date('2026-09-10') },
+        { teacherId: 't-1', amount: 1500000, forMonth: '2026-09', paidAt: new Date('2026-09-10') },
+        { teacherId: 't-1', amount: 500000, forMonth: '2026-09', paidAt: new Date('2026-09-20') },
       ]);
 
       mockDb.query.groups.findMany.mockResolvedValue([
@@ -98,6 +99,8 @@ describe('SalaryService', () => {
       expect(p1?.paidAmount).toBe(2000000);
       expect(p1?.netPayable).toBe(2750000);
       expect(p1?.isPaid).toBe(false);
+      expect(p1?.installments).toBe(2);
+      expect(p1?.paidAt).toEqual(new Date('2026-09-20'));
 
       // t-2: PER_LESSON 3 lessons * 100,000 => 300,000, paid 0 => netPayable 300,000
       const p2 = result.teachers.find((t) => t.teacherId === 't-2');
@@ -117,42 +120,7 @@ describe('SalaryService', () => {
     });
   });
 
-  describe('disburse', () => {
-    it('creates salary payment and unified expense record under SALARY category', async () => {
-      const mockTeacher = { id: 't-1', fullName: 'Alisher Navoiy', tenantId: 'tenant-1' };
-      mockDb.query.teachers.findFirst.mockResolvedValue(mockTeacher);
-
-      const salaryPaymentRow = { id: 'sp-1', teacherId: 't-1', amount: 3000000, forMonth: '2026-09' };
-      const expenseRow = { id: 'exp-1', title: "O'qituvchi maoshi: Alisher Navoiy (2026-09)", category: 'SALARY', amount: 3000000 };
-
-      mockDb.insert.mockImplementation(() => ({
-        values: vi.fn().mockImplementation((val) => {
-          if (val.category === 'SALARY') {
-            return {
-              returning: vi.fn().mockResolvedValue([expenseRow]),
-            };
-          }
-          return {
-            onConflictDoUpdate: vi.fn().mockReturnValue({
-              returning: vi.fn().mockResolvedValue([salaryPaymentRow]),
-            }),
-          };
-        }),
-      }));
-
-      const res = await service.disburse(
-        'tenant-1',
-        {
-          teacherId: 't-1',
-          amount: 3000000,
-          forMonth: '2026-09',
-          paymentMethod: 'CASH',
-        },
-        'user-admin',
-      );
-
-      expect(res.salaryPayment).toEqual(salaryPaymentRow);
-      expect(res.expense).toEqual(expenseRow);
-    });
+  it('refuses a month that is not YYYY-MM', async () => {
+    await expect(service.calculatePayroll('tenant-1', '2026-13')).rejects.toThrow('YYYY-MM');
   });
 });

@@ -596,6 +596,12 @@ export const lessonTopics = pgTable('lesson_topics', {
   tenantIdx: index('lesson_topics_tenant_idx').on(t.tenantId),
 }));
 
+// One row per payout (installment) of a teacher's pay for a month; a month
+// can be paid in several parts. Every payout made since 0035 has exactly one
+// expense (expense_id) written in the same transaction, so money out is
+// counted once: from the expenses. Rows without expense_id are older records
+// (one row per month, overwritten by each payout) - see the payroll
+// reconciliation report; they are counted from here as before.
 export const salaryPayments = pgTable('salary_payments', {
   id: text('id').primaryKey().$defaultFn(() => createId()),
   tenantId: text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
@@ -603,10 +609,19 @@ export const salaryPayments = pgTable('salary_payments', {
   amount: integer('amount').notNull(),
   forMonth: text('for_month').notNull(), // "2026-09"
   paidAt: timestamp('paid_at').notNull().defaultNow(),
+  expenseId: text('expense_id').references(() => expenses.id, { onDelete: 'restrict' }),
+  paymentMethod: paymentMethodEnum('payment_method'),
+  notes: text('notes'),
+  recordedById: text('recorded_by_id').references(() => users.id, { onDelete: 'set null' }),
+  // Retry protection, as for payments (see common/create-idempotency).
+  idempotencyKey: text('idempotency_key'),
+  requestHash: text('request_hash'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
 }, (t) => ({
   tenantIdx: index('salary_payments_tenant_idx').on(t.tenantId),
-  uniq: uniqueIndex('salary_payments_teacher_month_idx').on(t.teacherId, t.forMonth),
+  teacherMonthIdx: index('salary_payments_teacher_month_idx').on(t.teacherId, t.forMonth),
+  expenseUniq: uniqueIndex('salary_payments_expense_uniq').on(t.expenseId),
+  idemUniq: uniqueIndex('salary_payments_tenant_idem_uniq').on(t.tenantId, t.idempotencyKey),
 }));
 
 export const billingTransactions = pgTable('billing_transactions', {

@@ -41,7 +41,7 @@ describe('Role boundaries on back-office endpoints (e2e)', () => {
     (await http().get(`/api${path}`).set('Authorization', `Bearer ${tokens[role]}`)).status;
 
   it('keeps finance data away from teachers, students and parents', async () => {
-    for (const path of ['/payments', '/payments/summary', '/payments/debtors', '/payments/finance-summary', '/expenses', '/expenses/summary', '/salary-payments']) {
+    for (const path of ['/payments', '/payments/summary', '/payments/debtors', '/payments/finance-summary', '/expenses', '/expenses/summary', '/salary-payments', '/salary-payments/reconciliation']) {
       for (const role of ['TEACHER', 'STUDENT', 'PARENT']) {
         expect(await status(path, role), `${role} ${path}`).toBe(403);
       }
@@ -55,6 +55,7 @@ describe('Role boundaries on back-office endpoints (e2e)', () => {
       expect(await status('/payments', role)).toBe(200);
       expect(await status('/expenses', role)).toBe(403);
       expect(await status('/salary-payments', role)).toBe(403);
+      expect(await status('/salary-payments/reconciliation', role)).toBe(403);
     }
   });
 

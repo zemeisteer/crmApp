@@ -1,7 +1,7 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { and, desc, eq, like } from 'drizzle-orm';
 import { DB, Database } from '../db/db.module';
-import { expenses } from '../db/schema';
+import { expenses, salaryPayments } from '../db/schema';
 import { CreateExpenseDto, UpdateExpenseDto } from './dto/expense.dto';
 import { AuditService } from '../audit/audit.service';
 
@@ -76,8 +76,21 @@ export class ExpensesService {
     return this.findOne(tenantId, created.id);
   }
 
+  // A payroll payout's expense is the payout's money: its amount, category
+  // and date follow the payout, and it goes only with the payout.
+  private async payoutOf(tenantId: string, id: string) {
+    const [row] = await this.db
+      .select({ id: salaryPayments.id })
+      .from(salaryPayments)
+      .where(and(eq(salaryPayments.tenantId, tenantId), eq(salaryPayments.expenseId, id)));
+    return row ?? null;
+  }
+
   async update(tenantId: string, userId: string, id: string, dto: UpdateExpenseDto) {
     await this.findOne(tenantId, id);
+    if ((dto.amount !== undefined || dto.category !== undefined || dto.date !== undefined) && (await this.payoutOf(tenantId, id))) {
+      throw new ConflictException("Bu xarajat o'qituvchi maoshi to'lovi: summasi, turi va sanasi maosh bo'limida yozilgan to'lovga bog'liq");
+    }
 
     const [updated] = await this.db
       .update(expenses)
@@ -108,6 +121,9 @@ export class ExpensesService {
 
   async delete(tenantId: string, userId: string, id: string) {
     await this.findOne(tenantId, id);
+    if (await this.payoutOf(tenantId, id)) {
+      throw new ConflictException("Bu xarajat o'qituvchi maoshi to'lovi: uni alohida o'chirib bo'lmaydi");
+    }
     await this.db.delete(expenses).where(and(eq(expenses.id, id), eq(expenses.tenantId, tenantId)));
 
     this.audit.log({

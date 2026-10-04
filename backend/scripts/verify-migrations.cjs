@@ -12,6 +12,8 @@
 //      who gets a membership, who does not, where price history comes from
 //   5. a database that drizzle-kit migrated in the past is adopted
 //   6. a database with tables but no record is refused until --baseline
+//   7. a database at 0034 with payroll rows the old code wrote -> 0035:
+//      rows untouched, nothing linked, installments allowed
 //
 //   node scripts/verify-migrations.cjs            (DATABASE_URL = any admin-capable URL)
 require('dotenv').config({ quiet: true });
@@ -263,7 +265,42 @@ async function rows(url) {
   runner(dk, '--baseline', BASELINE);
   expect(/applied 0021_/.test(runner(dk)), `--baseline ${BASELINE} then applies the rest`);
 
-  for (const s of ['empty', 'upgrade', 'enum', 'v31', 'drizzle']) await drop(s);
+  console.log('7. upgrade from 0034 with payroll records written by the old code');
+  const v34 = await recreate('v34');
+  runner(v34, '--through', '0034_create_idempotency');
+  // One row per teacher and month, overwritten by each payout, and the
+  // SALARY expenses each payout added beside it (no link between them).
+  await query(v34, `
+    INSERT INTO tenants (id, name, subdomain) VALUES ('tP', 'Payroll Center', 'payroll-center');
+    INSERT INTO teachers (id, tenant_id, full_name, salary_type, salary_value) VALUES ('tchP', 'tP', 'Old Teacher', 'FIXED', 1000000);
+    INSERT INTO salary_payments (id, tenant_id, teacher_id, amount, for_month, paid_at) VALUES ('spP', 'tP', 'tchP', 300000, '2026-08', '2026-08-25 05:00:00');
+    INSERT INTO expenses (id, tenant_id, title, category, amount, date) VALUES
+      ('exP1', 'tP', 'O''qituvchi maoshi: Old Teacher (2026-08)', 'SALARY', 700000, '2026-08-10'),
+      ('exP2', 'tP', 'O''qituvchi maoshi: Old Teacher (2026-08)', 'SALARY', 300000, '2026-08-25');
+  `);
+  const before34 = await dump(v34);
+  const out34 = runner(v34);
+  expect(/applied 0035_/.test(out34) && !/applied 0034_/.test(out34), '0035 is applied');
+  const after34 = await dump(v34);
+  for (const t of ['tenants', 'teachers', 'salary_payments', 'expenses']) {
+    const was = JSON.parse(before34[t]);
+    const now = JSON.parse(after34[t]);
+    expect(was.length === now.length && was.every((r, n) => Object.keys(r).every((k) => JSON.stringify(r[k]) === JSON.stringify(now[n][k]))), `${t}: ${was.length} row(s) unchanged`);
+  }
+  const sp = (await query(v34, "SELECT expense_id, idempotency_key, payment_method FROM salary_payments WHERE id = 'spP'"))[0];
+  expect(sp.expense_id === null && sp.idempotency_key === null && sp.payment_method === null, 'the old salary row is not linked to any expense: that is left to the reconciliation report');
+  // A second payout for the same teacher and month is now possible.
+  await query(v34, "INSERT INTO salary_payments (id, tenant_id, teacher_id, amount, for_month, expense_id) VALUES ('spP2', 'tP', 'tchP', 100000, '2026-08', 'exP2')");
+  let twice = '';
+  await query(v34, "INSERT INTO salary_payments (id, tenant_id, teacher_id, amount, for_month, expense_id) VALUES ('spP3', 'tP', 'tchP', 100000, '2026-08', 'exP2')").catch((e) => { twice = e.code; });
+  expect(twice === '23505', 'installments per month are allowed; one expense still belongs to one payout');
+  let removed = '';
+  await query(v34, "DELETE FROM expenses WHERE id = 'exP2'").catch((e) => { removed = e.code; });
+  expect(removed === '23503', "a payout's expense cannot be deleted from under it");
+  expect(/No schema drift/.test(drift(v34)), 'upgraded schema matches schema.ts');
+  expect(/up to date/.test(runner(v34)), 're-running reports nothing to do');
+
+  for (const s of ['empty', 'upgrade', 'enum', 'v31', 'drizzle', 'v34']) await drop(s);
   console.log('Migration chain verified.');
 })().catch(async (err) => {
   console.error(err.stderr ? String(err.stderr) : err.message);

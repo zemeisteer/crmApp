@@ -899,6 +899,8 @@ export interface AttendanceRecord {
   updatedAt: string;
 }
 
+// One payout (installment) of a teacher's month. expenseId is null only on
+// records made before payouts were linked to expenses.
 export interface SalaryPayment {
   id: string;
   tenantId: string;
@@ -906,7 +908,30 @@ export interface SalaryPayment {
   amount: number;
   forMonth: string;
   paidAt: string;
+  expenseId: string | null;
+  paymentMethod: "CASH" | "CLICK" | "PAYME" | "BANK_TRANSFER" | null;
+  notes: string | null;
   createdAt: string;
+}
+
+export type PayrollReconciliationStatus = "NO_EXPENSE" | "LIKELY_DOUBLE_COUNTED" | "AMOUNT_MISMATCH";
+
+export interface PayrollReconciliation {
+  forMonth: string | null;
+  items: Array<{
+    salaryPaymentId: string;
+    teacherId: string;
+    teacherName: string;
+    forMonth: string;
+    recordedAmount: number;
+    paidAt: string;
+    matchedExpenses: Array<{ id: string; title: string; amount: number; date: string }>;
+    matchedExpenseTotal: number;
+    difference: number;
+    status: PayrollReconciliationStatus;
+  }>;
+  expensesWithoutPayroll: Array<{ id: string; title: string; amount: number; date: string }>;
+  totals: { legacyRows: number; likelyDoubleCounted: number; mismatched: number; withoutExpense: number; expensesWithoutPayroll: number };
 }
 
 export interface BillingLink {
@@ -1530,6 +1555,7 @@ export interface TeacherPayrollItem {
   netPayable: number;
   isPaid: boolean;
   paidAt: string | null;
+  installments: number;
   details: {
     type: string;
     rate: number;
@@ -1575,10 +1601,16 @@ export interface PayrollCalculationResponse {
 }
 
 export const salaryApi = {
-  list: (teacherId?: string) =>
-    request<SalaryPayment[]>(`/salary-payments${teacherId ? `?teacherId=${encodeURIComponent(teacherId)}` : ""}`),
-  create: (data: { teacherId: string; amount: number; forMonth: string; paidAt?: string }) =>
-    request<SalaryPayment>("/salary-payments", { method: "POST", body: JSON.stringify(data) }),
+  list: (teacherId?: string, forMonth?: string) => {
+    const q = new URLSearchParams();
+    if (teacherId) q.set("teacherId", teacherId);
+    if (forMonth) q.set("forMonth", forMonth);
+    const qs = q.toString();
+    return request<SalaryPayment[]>(`/salary-payments${qs ? `?${qs}` : ""}`);
+  },
+  // Read-only: salary records from before payouts were linked to expenses.
+  reconciliation: (forMonth?: string) =>
+    request<PayrollReconciliation>(`/salary-payments/reconciliation${forMonth ? `?forMonth=${encodeURIComponent(forMonth)}` : ""}`),
   // The signed-in teacher's own pay line (null when not linked to a teacher).
   mine: (forMonth?: string) =>
     request<TeacherPayrollItem | null>(`/salary-payments/me${forMonth ? `?forMonth=${encodeURIComponent(forMonth)}` : ""}`),
@@ -1593,10 +1625,13 @@ export const salaryApi = {
     paymentMethod?: "CASH" | "CLICK" | "PAYME" | "BANK_TRANSFER";
     paidAt?: string;
     notes?: string;
-  }) =>
+  }, idempotencyKey?: string) =>
+    // One installment and its expense. `idempotencyKey` (see retryKey): a
+    // double click or a retry after a lost answer returns the first payout.
     request<{ salaryPayment: SalaryPayment; expense: Expense }>("/salary-payments/disburse", {
       method: "POST",
       body: JSON.stringify(data),
+      headers: idempotencyKey ? { "Idempotency-Key": idempotencyKey } : undefined,
     }),
 };
 

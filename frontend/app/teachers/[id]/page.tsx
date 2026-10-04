@@ -9,7 +9,7 @@ import Select from "@/components/Select";
 import DatePicker from "@/components/DatePicker";
 import TeacherAccountCard from "@/components/teachers/TeacherAccountCard";
 import { useAuth } from "@/lib/auth-context";
-import { teachersApi, groupsApi, paymentsApi, salaryApi, Teacher, Group, Student, Payment, SalaryPayment, ApiError } from "@/lib/api";
+import { teachersApi, groupsApi, paymentsApi, salaryApi, Teacher, Group, Student, Payment, SalaryPayment, TeacherPayrollItem, ApiError } from "@/lib/api";
 import { localMonthStr } from "@/lib/date";
 import { useLanguage } from "@/lib/i18n-context";
 import { formatDate } from "@/lib/format-date";
@@ -46,7 +46,8 @@ function TeacherDetailContent() {
   const [fullGroups, setFullGroups] = useState<FullGroup[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
   const [salaryPayments, setSalaryPayments] = useState<SalaryPayment[]>([]);
-  const [markingSalary, setMarkingSalary] = useState(false);
+  // This month's line of the payroll engine (null for roles without payroll access).
+  const [payrollLine, setPayrollLine] = useState<TeacherPayrollItem | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
 
@@ -69,14 +70,16 @@ function TeacherDetailContent() {
       .then(async (t) => {
         setTeacher(t as any);
         const groups = (t as any).groups as Group[] | undefined;
-        const [full, p, sp] = await Promise.all([
+        const [full, p, sp, payroll] = await Promise.all([
           Promise.all((groups || []).map((g) => groupsApi.get(g.id))),
           paymentsApi.list().catch(() => []),
           salaryApi.list(id).catch(() => []),
+          salaryApi.calculate(currentMonth()).catch(() => null),
         ]);
         setFullGroups(full as FullGroup[]);
         setPayments(p);
         setSalaryPayments(sp);
+        setPayrollLine(payroll?.teachers.find((x) => x.teacherId === id) ?? null);
       })
       .catch((err) => {
         if (err instanceof ApiError && err.status === 404) setNotFound(true);
@@ -245,19 +248,6 @@ function TeacherDetailContent() {
     router.push("/teachers");
   }
 
-  const salaryPaidThisMonth = salaryPayments.find((s) => s.forMonth === month);
-
-  async function onMarkSalaryPaid() {
-    if (!calculatedSalary) return;
-    setMarkingSalary(true);
-    try {
-      await salaryApi.create({ teacherId: id, amount: calculatedSalary, forMonth: month });
-      load();
-    } finally {
-      setMarkingSalary(false);
-    }
-  }
-
   return (
     <>
       <div style={{ padding: "22px 32px", borderBottom: "1px solid #EAE8E2" }}>
@@ -330,22 +320,25 @@ function TeacherDetailContent() {
           <div style={{ background: "#ECEBFB", border: "1px solid #D7D3F8", borderRadius: 14, padding: 18 }}>
             <div style={{ fontSize: 12, color: ACCENT }}>{t("teacherDetail.statMonthCalculatedSalary")}</div>
             <div style={{ fontSize: 24, fontWeight: 800, fontFamily: "'Manrope', sans-serif", marginTop: 4, color: ACCENT }}>
-              {teacher.salaryValue ? `${formatMoney(calculatedSalary)} ${t("common.sumUnit")}` : "—"}
+              {payrollLine ? `${formatMoney(payrollLine.calculatedSalary)} ${t("common.sumUnit")}` : teacher.salaryValue ? `${formatMoney(calculatedSalary)} ${t("common.sumUnit")}` : "—"}
             </div>
-            {teacher.salaryValue ? (
-              salaryPaidThisMonth ? (
+            {/* Payouts are made in Reports -> Payroll (installments, one expense each). */}
+            {payrollLine && payrollLine.calculatedSalary > 0 ? (
+              payrollLine.isPaid ? (
                 <span className="badge badge-success" style={{ marginTop: 8, display: "inline-block" }}>
                   {t("teacherDetail.paidThisMonth")}
                 </span>
               ) : (
-                <button
-                  className="btn"
-                  onClick={onMarkSalaryPaid}
-                  disabled={markingSalary}
-                  style={{ marginTop: 8, background: ACCENT, color: "#fff", border: "none", fontSize: 11.5, fontWeight: 700, padding: "6px 12px", borderRadius: 7 }}
-                >
-                  {markingSalary ? "..." : t("teacherDetail.markPaid")}
-                </button>
+                <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                  {payrollLine.paidAmount > 0 && <span className="badge badge-warning">{t("teacherDetail.partPaid")}</span>}
+                  <Link
+                    href="/reports?tab=payroll"
+                    className="btn"
+                    style={{ background: ACCENT, color: "#fff", border: "none", fontSize: 11.5, fontWeight: 700, padding: "6px 12px", borderRadius: 7 }}
+                  >
+                    {t("teacherDetail.payInReports")}
+                  </Link>
+                </div>
               )
             ) : null}
           </div>

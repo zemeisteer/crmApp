@@ -236,6 +236,11 @@ tbody tr:hover {
   background: #f2f1ec;
 }
 
+.badge-warning {
+  color: #b45309;
+  background: #fef3c7;
+}
+
 .mobile-menu-btn {
   display: none;
 }

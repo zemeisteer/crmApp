@@ -1,30 +1,16 @@
-import { IsIn, IsInt, IsOptional, IsString, Min } from 'class-validator';
+import { IsIn, IsInt, IsOptional, IsString, Matches, MaxLength, Min } from 'class-validator';
 
-export class CreateSalaryPaymentDto {
-  @IsString()
-  teacherId: string;
-
-  @IsInt()
-  @Min(0)
-  amount: number;
-
-  @IsString()
-  forMonth: string; // "2026-09"
-
-  @IsOptional()
-  @IsString()
-  paidAt?: string;
-}
-
+// One payout (installment) of a teacher's month.
 export class DisburseSalaryDto {
   @IsString()
   teacherId: string;
 
   @IsInt()
-  @Min(0)
+  @Min(1)
   amount: number;
 
   @IsString()
+  @Matches(/^\d{4}-(0[1-9]|1[0-2])$/, { message: "forMonth YYYY-MM formatida bo'lishi kerak" })
   forMonth: string; // "2026-09"
 
   @IsOptional()
@@ -37,5 +23,6 @@ export class DisburseSalaryDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(500)
   notes?: string;
 }

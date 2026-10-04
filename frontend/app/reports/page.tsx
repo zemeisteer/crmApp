@@ -1,18 +1,23 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import DashboardShell from "@/components/DashboardShell";
 import Modal from "@/components/Modal";
 import Select from "@/components/Select";
 import MonthPicker from "@/components/MonthPicker";
 import DirectorReport from "@/components/reports/DirectorReport";
+import LoadError from "@/components/LoadError";
+import PayrollReconciliationPanel from "@/components/reports/PayrollReconciliation";
 import {
   ApiError,
   exportApi,
   reportsApi,
   salaryApi,
   notificationsApi,
+  retryKey,
   PayrollCalculationResponse,
+  SalaryPayment,
   TeacherPayrollItem,
   type ReportsOverview as ReportsOverviewData,
 } from "@/lib/api";
@@ -27,11 +32,14 @@ function formatMoney(n: number) {
 }
 
 type ReportsTab = "director" | "overview" | "payroll" | "retention";
+const TABS: ReportsTab[] = ["director", "overview", "payroll", "retention"];
 type SmsTarget = { id: string; fullName: string; phone: string | null };
 
 function ReportsContent() {
   const { t } = useLanguage();
-  const [activeTab, setActiveTab] = useState<ReportsTab>("director");
+  // A link can open a tab directly (/reports?tab=payroll from a teacher's page).
+  const tabParam = useSearchParams().get("tab");
+  const [activeTab, setActiveTab] = useState<ReportsTab>(() => (TABS.includes(tabParam as ReportsTab) ? (tabParam as ReportsTab) : "director"));
 
   // Server-computed monthly report (replaces downloading every student,
   // payment and attendance row and aggregating in the browser).
@@ -44,12 +52,21 @@ function ReportsContent() {
   const [selectedPayrollMonth, setSelectedPayrollMonth] = useState(localMonthStr());
   const [payrollData, setPayrollData] = useState<PayrollCalculationResponse | null>(null);
   const [loadingPayroll, setLoadingPayroll] = useState(false);
+  const [payrollError, setPayrollError] = useState<string | null>(null);
   const [disburseModalOpen, setDisburseModalOpen] = useState(false);
   const [disburseTeacher, setDisburseTeacher] = useState<TeacherPayrollItem | null>(null);
+  const [disburseMonth, setDisburseMonth] = useState(selectedPayrollMonth);
   const [disburseAmount, setDisburseAmount] = useState("");
   const [disburseMethod, setDisburseMethod] = useState<"CASH" | "CLICK" | "PAYME" | "BANK_TRANSFER">("CASH");
   const [disburseNotes, setDisburseNotes] = useState("");
+  const [disburseError, setDisburseError] = useState<string | null>(null);
   const [disbursing, setDisbursing] = useState(false);
+  const [monthPayouts, setMonthPayouts] = useState<SalaryPayment[] | null>(null);
+  // One Idempotency-Key per payout form contents (see retryKey).
+  const disburseKey = useRef<{ sig: string; key: string } | null>(null);
+  // Only the answer for the month on screen is shown: switching months
+  // quickly must not let a slower, older answer overwrite a newer one.
+  const payrollSeq = useRef(0);
 
   // SMS quick action state for at-risk students
   const [smsModalOpen, setSmsModalOpen] = useState(false);
@@ -69,46 +86,74 @@ function ReportsContent() {
     return () => { cancelled = true; };
   }, [reportMonth, t]);
 
-  function loadPayroll(month = selectedPayrollMonth) {
+  const loadPayroll = useCallback((month: string) => {
+    const seq = ++payrollSeq.current;
     setLoadingPayroll(true);
+    setPayrollError(null);
     salaryApi
       .calculate(month)
-      .then((res) => setPayrollData(res))
-      .catch((err) => console.error(err))
-      .finally(() => setLoadingPayroll(false));
-  }
+      .then((res) => {
+        if (seq === payrollSeq.current) setPayrollData(res);
+      })
+      .catch((err) => {
+        if (seq !== payrollSeq.current) return;
+        setPayrollData(null);
+        setPayrollError(err instanceof ApiError ? err.message : t("rep2.payrollLoadError"));
+      })
+      .finally(() => {
+        if (seq === payrollSeq.current) setLoadingPayroll(false);
+      });
+  }, [t]);
 
   useEffect(() => {
     if (activeTab === "payroll") {
       loadPayroll(selectedPayrollMonth);
     }
-  }, [activeTab, selectedPayrollMonth]);
+  }, [activeTab, selectedPayrollMonth, loadPayroll]);
 
   function openDisburseModal(item: TeacherPayrollItem) {
     setDisburseTeacher(item);
-    setDisburseAmount(String(item.netPayable || item.calculatedSalary));
+    setDisburseMonth(selectedPayrollMonth);
+    setDisburseAmount(String(item.netPayable));
     setDisburseMethod("CASH");
-    setDisburseNotes(`Oylik maosh: ${item.teacherName} (${selectedPayrollMonth})`);
+    setDisburseNotes("");
+    setDisburseError(null);
+    disburseKey.current = null;
+    setMonthPayouts(null);
     setDisburseModalOpen(true);
+    // Earlier payouts of this month, shown in the form.
+    const month = selectedPayrollMonth;
+    salaryApi
+      .list(item.teacherId, month)
+      .then((rows) => setMonthPayouts(rows))
+      .catch(() => setMonthPayouts([]));
   }
 
   async function handleDisburseSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!disburseTeacher || !disburseAmount) return;
+    const amount = Number(disburseAmount);
+    if (!Number.isInteger(amount) || amount < 1 || amount > disburseTeacher.netPayable) {
+      setDisburseError(t("rep2.amountRange").replace("{max}", formatMoney(disburseTeacher.netPayable)));
+      return;
+    }
+    const body = {
+      teacherId: disburseTeacher.teacherId,
+      amount,
+      forMonth: disburseMonth,
+      paymentMethod: disburseMethod,
+      notes: disburseNotes.trim() || undefined,
+    };
     setDisbursing(true);
+    setDisburseError(null);
     try {
-      await salaryApi.disburse({
-        teacherId: disburseTeacher.teacherId,
-        amount: Number(disburseAmount),
-        forMonth: selectedPayrollMonth,
-        paymentMethod: disburseMethod,
-        notes: disburseNotes.trim() || undefined,
-      });
-      alert(t("rep2.salaryPaid"));
+      await salaryApi.disburse(body, retryKey(disburseKey, body));
+      disburseKey.current = null;
       setDisburseModalOpen(false);
-      loadPayroll();
+      if (disburseMonth === selectedPayrollMonth) loadPayroll(selectedPayrollMonth);
     } catch (err) {
-      alert(err instanceof Error ? err.message : t("rep2.salaryError"));
+      // The key is kept: sending the same form again is a retry, not a second payout.
+      setDisburseError(err instanceof Error ? err.message : t("rep2.salaryError"));
     } finally {
       setDisbursing(false);
     }
@@ -309,7 +354,11 @@ function ReportsContent() {
               <div style={{ padding: "16px 20px", borderBottom: "1px solid #EAE8E2", fontSize: 14, fontWeight: 700 }}>
                 {selectedPayrollMonth} oyi uchun maosh vedomosti
               </div>
-              {loadingPayroll ? (
+              {payrollError ? (
+                <div style={{ padding: 16 }}>
+                  <LoadError message={payrollError} onRetry={() => loadPayroll(selectedPayrollMonth)} />
+                </div>
+              ) : loadingPayroll ? (
                 <div style={{ padding: 32, textAlign: "center", color: "#8A8D96" }}>Hisoblanmoqda...</div>
               ) : !payrollData || payrollData.teachers.length === 0 ? (
                 <div style={{ padding: 32, textAlign: "center", color: "#8A8D96" }}>{t("rep2.noTeachers")}</div>
@@ -366,6 +415,11 @@ function ReportsContent() {
                         </td>
                         <td style={{ fontWeight: 600, color: item.paidAmount > 0 ? "#10B981" : "#8A8D96" }}>
                           {formatMoney(item.paidAmount)} so&apos;m
+                          {item.installments > 1 && (
+                            <div style={{ fontSize: 11.5, fontWeight: 600, color: "#8A8D96" }}>
+                              {t("rep2.installments").replace("{n}", String(item.installments))}
+                            </div>
+                          )}
                         </td>
                         <td style={{ fontWeight: 800, color: item.netPayable > 0 ? "#DC2626" : "#10B981" }}>
                           {formatMoney(item.netPayable)} so&apos;m
@@ -375,6 +429,8 @@ function ReportsContent() {
                             <span style={{ color: "#8A8D96" }}>—</span>
                           ) : item.isPaid ? (
                             <span className="badge badge-success">✓ To&apos;langan</span>
+                          ) : item.paidAmount > 0 ? (
+                            <span className="badge badge-warning">{t("rep2.partPaid")}</span>
                           ) : (
                             <span className="badge badge-danger">Kutilmoqda</span>
                           )}
@@ -395,7 +451,7 @@ function ReportsContent() {
                               cursor: "pointer",
                             }}
                           >
-                            {item.isPaid ? t("rep2.payAgain") : t("rep2.pay")}
+                            {item.paidAmount > 0 ? t("rep2.payRest") : t("rep2.pay")}
                           </button>}
                         </td>
                       </tr>
@@ -404,6 +460,8 @@ function ReportsContent() {
                 </table>
               )}
             </div>
+
+            <PayrollReconciliationPanel month={selectedPayrollMonth} />
           </div>
         )}
 
@@ -425,10 +483,28 @@ function ReportsContent() {
             <div style={{ fontSize: 12, color: "#8A8D96", marginTop: 2 }}>
               {t("rep2.subject")}: {disburseTeacher?.subject || t("rep2.notSet")} • Model: {disburseTeacher?.salaryType}
             </div>
-            <div style={{ fontSize: 13, color: ACCENT, fontWeight: 700, marginTop: 4 }}>
-              Kutilayotgan summa: {formatMoney(disburseTeacher?.netPayable || 0)} so&apos;m
+            <div style={{ fontSize: 12.5, color: "#4A4E58", marginTop: 6 }}>
+              {disburseMonth} · {t("rep2.calculated")}: {formatMoney(disburseTeacher?.calculatedSalary || 0)} · {t("rep2.paidSalary")}: {formatMoney(disburseTeacher?.paidAmount || 0)}
             </div>
+            <div style={{ fontSize: 13, color: ACCENT, fontWeight: 700, marginTop: 4 }}>
+              {t("rep2.remaining")}: {formatMoney(disburseTeacher?.netPayable || 0)} {t("common.sumUnit")}
+            </div>
+            {monthPayouts && monthPayouts.length > 0 && (
+              <div style={{ marginTop: 8, borderTop: "1px solid #EAE8E2", paddingTop: 8 }}>
+                <div style={{ fontSize: 11.5, fontWeight: 700, color: "#8A8D96", marginBottom: 4 }}>{t("rep2.earlierPayouts")}</div>
+                {monthPayouts.map((p) => (
+                  <div key={p.id} style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#4A4E58" }}>
+                    <span>{p.paidAt.slice(0, 10)}{p.paymentMethod ? ` · ${p.paymentMethod}` : ""}</span>
+                    <span style={{ fontWeight: 700 }}>{formatMoney(p.amount)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
+
+          {disburseError && (
+            <div role="alert" style={{ background: "#FDEBEC", color: "#B23A47", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: 10 }}>{disburseError}</div>
+          )}
 
           <div>
             <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>To&apos;lov summasi (so&apos;m)</div>
@@ -437,8 +513,12 @@ function ReportsContent() {
               className="field-input"
               value={disburseAmount}
               onChange={(e) => setDisburseAmount(e.target.value)}
+              min={1}
+              max={disburseTeacher?.netPayable || undefined}
+              step={1}
               required
             />
+            <div style={{ fontSize: 11.5, color: "#8A8D96", marginTop: 4 }}>{t("rep2.installmentHint")}</div>
           </div>
 
           <div>
@@ -539,7 +619,9 @@ function StatCard({ label, value, delta, danger }: { label: string; value: strin
 export default function ReportsPage() {
   return (
     <DashboardShell>
-      <ReportsContent />
+      <Suspense fallback={null}>
+        <ReportsContent />
+      </Suspense>
     </DashboardShell>
   );
 }
