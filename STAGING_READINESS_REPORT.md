@@ -6,7 +6,7 @@
 |---|---|
 | **Oxirgi tasdiqlangan commit** | `ba2939ad1303af9e5ef99ed0606f79d9ce0d917d` (`dev`) |
 | **Uning CI'si** | [GitHub Actions 37122610214](https://github.com/zemeisteer/crmApp/actions/runs/37122610214) — 6 ish ham yashil; log'lari foydalanuvchi tomonidan o'qilgan |
-| **Ishchi daraxt** | `ba2939a` ustida **commit qilinmagan** o'zgarishlar bor (5-bo'lim): off-server nusxa, reviziya belgisi, staging brauzer rejimi, hujjatlar. Ular faqat **lokal** tekshirilgan; ular uchun CI hali yurmagan |
+| **Keyingi commit** | `0413557` (off-server nusxa, reviziya belgisi, staging brauzer rejimi, hujjatlar) — [CI 37193868954](https://github.com/zemeisteer/crmApp/actions/runs/37193868954): 6 ish ham **o'tdi**, jumladan `recovery` (tiklash endi off-server nusxadan). Natija ishlar holatidan o'qildi; log'lar (o'lchovlar) GitHub autentifikatsiyasisiz o'qilmadi |
 | **Staging (haqiqiy domen)** | **mavjud emas** — server va domen berilmagan; hech narsa deploy qilinmagan |
 | **Provayder sandbox'lari** | **yuritilmagan** — Telegram, SMS, Click, Payme sinov ma'lumotlari berilmagan |
 
@@ -15,7 +15,7 @@
 | Bosqich | Holat |
 |---|---|
 | 1. Avtomatik tekshiruvlar bir martalik CI infratuzilmasida o'tdi | **o'tdi** — `ba2939a`, 37122610214 |
-| 2. Staging'ga chiqarishga tayyor | **tayyor, server va domen kutilmoqda** — buyruqlar ketma-ketligi, preflight, reviziya tekshiruvi, rollback tartibi bor (`docs/STAGING.md`). Yangi lokal o'zgarishlar push qilinib, CI'dan o'tishi kerak |
+| 2. Staging'ga chiqarishga tayyor | **tayyor, server va domen kutilmoqda** — buyruqlar ketma-ketligi, preflight, reviziya tekshiruvi, rollback tartibi bor (`docs/STAGING.md`); `0413557` CI'dan o'tgan |
 | 3. Staging haqiqiy domenda tasdiqlangan | **o'tmagan (bloklangan)** — staging yo'q |
 | 4. Birinchi pilot markazni qabul qilishga tayyor | **tayyor emas** — 3-bosqich va off-server nusxa haqiqiy xotirada sinalmagan |
 
@@ -31,13 +31,13 @@
 | `ba2939a` | 37122610214 | images | o'tdi: 35/35 migratsiya API'dan oldin, SMOKE OK | CI, Docker | — |
 | `ba2939a` | 37122610214 | browser (6 oqim) | o'tdi | CI, lokal production build'lar, `*.localhost` | haqiqiy domen va HTTPS emas |
 | `ba2939a` | 37122610214 | recovery (7/7 qadam) | o'tdi, REHEARSAL OK | CI, ikki bir martalik Compose loyihasi, o'z-o'zidan imzolangan sertifikat | sintetik kichik ma'lumot; tiklash lokal to'plamdan |
-| ishchi daraxt | — | `offsite.test.sh` | o'tdi 33/33 | lokal simulyatsiya (papka va soxta rclone) | haqiqiy provayder emas |
-| ishchi daraxt | — | masofaviy nusxadan tiklash mashqi | o'tdi | lokal simulyatsiya: haqiqiy PostgreSQL 18, backend build, "masofa" = lokal papka | Docker'siz; tashqi xotira emas |
-| ishchi daraxt | — | backend unit (251), lint, `tsc` | o'tdi | lokal | `/api/health` o'zgarishi bilan |
-| ishchi daraxt | — | `ops.test.sh` (+ `release-info.sh`), `backup-core.test.sh`, `tooling.test.sh`, `rehearsal.test.sh`, `smoke-lib.test.sh`, `target.test.mjs` | o'tdi | lokal, soxta docker | — |
-| ishchi daraxt | — | brauzer, 6 oqim (lokal rejim) | o'tdi 6/6 | lokal Chrome, production build'lar | — |
-| ishchi daraxt | — | brauzer, staging rejimi | **yuritilmagan** | — | staging yo'q; noto'g'ri manzillarni rad etishi sinalgan |
-| ishchi daraxt | — | Docker image'lar (reviziya label'lari), `recovery` (masofaviy nusxa bilan) | **yuritilmagan** | — | lokal Docker yo'q; push'dan keyin CI'da yuradi |
+| ishchi daraxt (`0413557` dan oldin) | — | `offsite.test.sh` | o'tdi 33/33 | lokal simulyatsiya (papka va soxta rclone) | haqiqiy provayder emas |
+| ishchi daraxt (`0413557` dan oldin) | — | masofaviy nusxadan tiklash mashqi | o'tdi | lokal simulyatsiya: haqiqiy PostgreSQL 18, backend build, "masofa" = lokal papka | Docker'siz; tashqi xotira emas |
+| ishchi daraxt (`0413557` dan oldin) | — | backend unit (251), lint, `tsc` | o'tdi | lokal | `/api/health` o'zgarishi bilan |
+| ishchi daraxt (`0413557` dan oldin) | — | `ops.test.sh` (+ `release-info.sh`), `backup-core.test.sh`, `tooling.test.sh`, `rehearsal.test.sh`, `smoke-lib.test.sh`, `target.test.mjs` | o'tdi | lokal, soxta docker | — |
+| ishchi daraxt (`0413557` dan oldin) | — | brauzer, 6 oqim (lokal rejim) | o'tdi 6/6 | lokal Chrome, production build'lar | — |
+| ishchi daraxt (`0413557` dan oldin) | — | brauzer, staging rejimi | **yuritilmagan** | — | staging yo'q; noto'g'ri manzillarni rad etishi sinalgan |
+| `0413557` | [37193868954](https://github.com/zemeisteer/crmApp/actions/runs/37193868954) | backend, frontend, ops-scripts (offsite.test.sh bilan), images (reviziya label'lari), browser, recovery (off-server nusxadan tiklash) | o'tdi (6/6) | CI | "masofaviy" xotira = lokal papka |
 | — | — | haqiqiy domen: HTTPS, wildcard, nginx, `verify-flows.mjs` | **bloklangan** | — | server va domen yo'q |
 | — | — | off-server: haqiqiy xotiraga yuborish va undan tiklash | **bloklangan** | — | manzil va kalit yo'q |
 
@@ -60,11 +60,10 @@
 
 1. **Staging serveri va domeni** — 3- va 4-bosqichlar shunga bog'liq.
 2. **Off-server xotira** — server yo'qolganda tiklash imkoni.
-3. **Yangi lokal o'zgarishlar push qilinmagan** — CI'da yurmagan (ayniqsa `recovery` endi masofaviy nusxadan tiklaydi va Dockerfile'lar o'zgargan).
-4. **Integratsiyalar** — Telegram, SMS, Click, Payme pilotda o'chiq (cheklangan pilotni to'xtatmaydi; `docs/PILOT_ONBOARDING.md`).
-5. **Haqiqiy hajmdagi tiklash vaqti** o'lchanmagan.
+3. **Integratsiyalar** — Telegram, SMS, Click, Payme pilotda o'chiq (cheklangan pilotni to'xtatmaydi; `docs/PILOT_ONBOARDING.md`).
+4. **Haqiqiy hajmdagi tiklash vaqti** o'lchanmagan.
 
-## 5. Ishchi daraxtdagi o'zgarishlar (`ba2939a` ustida, commit qilinmagan)
+## 5. `0413557` da kiritilgan o'zgarishlar
 
 | Soha | Nima |
 |---|---|
