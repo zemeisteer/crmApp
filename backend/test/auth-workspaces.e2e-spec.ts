@@ -43,8 +43,8 @@ describe('Workspace-aware sessions (e2e)', () => {
     const a = await registerCenter('a', email); // OWNER of A
     tenantA = a.tenant.id;
     userId = a.user.id;
-    tenantB = (await registerCenter('b', `b-${suffix}@test.uz`)).tenant.id;
-    tenantC = (await registerCenter('c', `c-${suffix}@test.uz`)).tenant.id;
+    tenantB = (await registerCenter('b', `ws-b-${suffix}@test.uz`)).tenant.id;
+    tenantC = (await registerCenter('c', `ws-c-${suffix}@test.uz`)).tenant.id;
     // ...and a TEACHER in B.
     await db.insert(organizationMemberships).values({ userId, tenantId: tenantB, role: 'TEACHER', status: 'ACTIVE' });
   });

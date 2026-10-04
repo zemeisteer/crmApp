@@ -317,7 +317,7 @@ describe('Group capacity & schedule day alignment (e2e)', () => {
     const mine = (await http().post('/api/groups').set(auth()).send({ name: 'Mine', subject: 'Math', maxStudents: 5, teacherId: tid, scheduleDays: 'Dushanba', startTime: '09:00', endTime: '10:00' }).expect(201)).body.id as string;
     await http().post('/api/groups').set(auth()).send({ name: 'Not mine', subject: 'Math', maxStudents: 5, scheduleDays: 'Dushanba', startTime: '11:00', endTime: '12:00' }).expect(201);
 
-    const email = `teacher-${suffix}@test.uz`;
+    const email = `cap-teacher-${suffix}@test.uz`;
     const linked = (await http().post(`/api/teachers/${tid}/account`).set(auth()).send({ email, password: 'secret123' }).expect(201)).body;
     expect(linked.user).toMatchObject({ email });
     await http().post(`/api/teachers/${tid}/account`).set(auth()).send({ email, password: 'secret123' }).expect(409);
@@ -329,7 +329,7 @@ describe('Group capacity & schedule day alignment (e2e)', () => {
     expect(groups.map((g: { id: string }) => g.id)).toEqual([mine]);
 
     // A user id from another center cannot be linked.
-    const other = (await http().post('/api/auth/register').send({ centerName: `Other ${suffix}`, subdomain: `other-${suffix}`, email: `other-${suffix}@test.uz`, password: 'password123', fullName: 'Other Owner' }).expect(201)).body;
+    const other = (await http().post('/api/auth/register').send({ centerName: `Other ${suffix}`, subdomain: `cap-other-${suffix}`, email: `cap-other-${suffix}@test.uz`, password: 'password123', fullName: 'Other Owner' }).expect(201)).body;
     await http().post('/api/teachers').set(auth()).send({ fullName: 'Hijack', userId: other.user.id }).expect(400);
 
     // Taking the login away.

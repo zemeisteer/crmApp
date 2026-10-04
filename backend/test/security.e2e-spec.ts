@@ -33,7 +33,7 @@ describe('Security Hardening Suite (e2e)', () => {
       .send({
         centerName: `Security Org A ${suffix}`,
         subdomain: tenantASubdomain,
-        email: `admin-a-${suffix}@test.uz`,
+        email: `sec-admin-a-${suffix}@test.uz`,
         password: 'password123',
         fullName: 'Admin Org A',
       })
@@ -49,7 +49,7 @@ describe('Security Hardening Suite (e2e)', () => {
       .send({
         centerName: `Security Org B ${suffix}`,
         subdomain: tenantBSubdomain,
-        email: `admin-b-${suffix}@test.uz`,
+        email: `sec-admin-b-${suffix}@test.uz`,
         password: 'password123',
         fullName: 'Admin Org B',
       })
@@ -68,7 +68,7 @@ describe('Security Hardening Suite (e2e)', () => {
   // ==========================================
   describe('Test A — Parent invitation', () => {
     it('admin creates PARENT invitation, parent accepts, role is PARENT, no new org created', async () => {
-      const parentEmail = `parent-${suffix}@test.uz`;
+      const parentEmail = `sec-parent-${suffix}@test.uz`;
       const invRes = await request(app.getHttpServer())
         .post('/api/invitations')
         .set('Authorization', `Bearer ${tokenA}`)

@@ -38,7 +38,7 @@ describe('Reports overview (e2e)', () => {
     tokens.OWNER = await register('a');
     tokens.B = await register('b');
     for (const role of ['ACCOUNTANT', 'MANAGER', 'TEACHER']) {
-      const inv = await http().post('/api/invitations').set(as('OWNER')).send({ email: `${role}-${suffix}@test.uz`, role }).expect(201);
+      const inv = await http().post('/api/invitations').set(as('OWNER')).send({ email: `rep-${role.toLowerCase()}-${suffix}@test.uz`, role }).expect(201);
       tokens[role] = (await http().post(`/api/invitations/${inv.body.token}/accept`).send({ fullName: role, password: 'password12345' }).expect(201)).body.accessToken;
     }
 

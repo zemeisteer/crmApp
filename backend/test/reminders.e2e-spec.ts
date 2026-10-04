@@ -50,7 +50,7 @@ describe('Automatic reminders (e2e)', () => {
 
   it('reminds students and the teacher before a lesson, once', async () => {
     const tid = (await http().post('/api/teachers').set(auth()).send({ fullName: 'Rem Teacher', subject: 'Math' }).expect(201)).body.id as string;
-    const acc = (await http().post(`/api/teachers/${tid}/account`).set(auth()).send({ email: `rt-${suffix}@test.uz`, password: 'secret123' }).expect(201)).body;
+    const acc = (await http().post(`/api/teachers/${tid}/account`).set(auth()).send({ email: `remind-rt-${suffix}@test.uz`, password: 'secret123' }).expect(201)).body;
     await db.update(users).set({ telegramChatId: `7${String(suffix).slice(-8)}` }).where(eq(users.id, acc.user.id));
     const g = (await http().post('/api/groups').set(auth()).send({ name: 'Monday Math', subject: 'Math', teacherId: tid, scheduleDays: 'Dushanba', startTime: '11:30', endTime: '13:00' }).expect(201)).body.id as string;
     const late = (await http().post('/api/groups').set(auth()).send({ name: 'Evening', subject: 'Math', scheduleDays: 'Dushanba', startTime: '18:00', endTime: '19:00' }).expect(201)).body.id as string;

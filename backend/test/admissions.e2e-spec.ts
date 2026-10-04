@@ -58,7 +58,7 @@ describe('Admissions & Sales CRM Suite (e2e)', () => {
 
   async function invite(ownerToken: string, role: string, tag: string) {
     const inv = await http().post('/api/invitations').set(auth(ownerToken))
-      .send({ email: `${tag}-${suffix}@test.uz`, role }).expect(201);
+      .send({ email: `adm-inv-${tag}-${suffix}@test.uz`, role }).expect(201);
     const acc = await http().post(`/api/invitations/${inv.body.token}/accept`)
       .send({ fullName: `${role} ${tag}`, password: 'password12345' }).expect(201);
     return { token: acc.body.accessToken as string, userId: acc.body.user.id as string };

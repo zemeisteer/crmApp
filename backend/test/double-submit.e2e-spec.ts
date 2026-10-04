@@ -129,7 +129,7 @@ describe('Idempotent student and teacher creation (e2e)', () => {
     const tk = key('te-c');
     const tbase = { fullName: 'Idem T Changed', subject: 'English', email: `idem-tc-${suffix}@test.uz` };
     await createTeacher(tokenA, tbase, tk).expect(201);
-    await createTeacher(tokenA, { ...tbase, email: `other-${suffix}@test.uz` }, tk).expect(409);
+    await createTeacher(tokenA, { ...tbase, email: `ds-other-${suffix}@test.uz` }, tk).expect(409);
     await createTeacher(tokenA, { ...tbase, subject: 'Math' }, tk).expect(409);
     await createTeacher(tokenA, { ...tbase, salaryValue: 1000000, salaryType: 'FIXED' }, tk).expect(409);
     expect(await teachersWithKey(tk)).toHaveLength(1);

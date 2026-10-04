@@ -26,7 +26,7 @@ describe('Role boundaries on back-office endpoints (e2e)', () => {
     tokens.OWNER = reg.body.accessToken;
     for (const role of ['TEACHER', 'STUDENT', 'PARENT', 'ACCOUNTANT', 'MANAGER', 'RECEPTIONIST']) {
       const inv = await http().post('/api/invitations').set('Authorization', `Bearer ${tokens.OWNER}`)
-        .send({ email: `${role.toLowerCase()}-${suffix}@test.uz`, role }).expect(201);
+        .send({ email: `roles-${role.toLowerCase()}-${suffix}@test.uz`, role }).expect(201);
       const acc = await http().post(`/api/invitations/${inv.body.token}/accept`)
         .send({ fullName: `${role} user`, password: 'password12345' }).expect(201);
       tokens[role] = acc.body.accessToken;

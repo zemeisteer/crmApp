@@ -30,7 +30,7 @@ describe('Teacher scope and safe user fields (e2e)', () => {
       .send({ centerName: `Scope ${suffix}`, subdomain: `scope-${suffix}`, email: `scope-${suffix}@test.uz`, password: 'password123', fullName: 'Owner' })
       .expect(201)).body.accessToken;
     for (const [who, role] of [['T1', 'TEACHER'], ['T2', 'TEACHER'], ['PARENT', 'PARENT']]) {
-      const inv = await http().post('/api/invitations').set(as('OWNER')).send({ email: `${who.toLowerCase()}-${suffix}@test.uz`, role }).expect(201);
+      const inv = await http().post('/api/invitations').set(as('OWNER')).send({ email: `scope-${who.toLowerCase()}-${suffix}@test.uz`, role }).expect(201);
       const acc = await http().post(`/api/invitations/${inv.body.token}/accept`).send({ fullName: `${who} user`, password: 'password12345' }).expect(201);
       tokens[who] = acc.body.accessToken;
       userIds[who] = acc.body.user.id;

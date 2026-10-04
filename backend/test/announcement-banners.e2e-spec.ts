@@ -23,7 +23,7 @@ describe('Announcement banners on the staff dashboard (e2e)', () => {
       .send({ centerName: `Banners ${suffix}`, subdomain: `banners-${suffix}`, email: `banners-${suffix}@test.uz`, password: 'password123', fullName: 'Owner' })
       .expect(201)).body.accessToken;
     for (const [who, role] of [['T1', 'TEACHER'], ['ACC', 'ACCOUNTANT']]) {
-      const inv = await http().post('/api/invitations').set(as('OWNER')).send({ email: `${who.toLowerCase()}-${suffix}@test.uz`, role }).expect(201);
+      const inv = await http().post('/api/invitations').set(as('OWNER')).send({ email: `banner-${who.toLowerCase()}-${suffix}@test.uz`, role }).expect(201);
       tokens[who] = (await http().post(`/api/invitations/${inv.body.token}/accept`).send({ fullName: `${who} user`, password: 'password12345' }).expect(201)).body.accessToken;
     }
   }, 120_000);

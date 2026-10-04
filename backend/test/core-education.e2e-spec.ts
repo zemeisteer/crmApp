@@ -49,7 +49,7 @@ describe('Core Education Operations Suite (e2e)', () => {
       .send({
         centerName: `Edu Org A ${suffix}`,
         subdomain: tenantASubdomain,
-        email: `admin-a-${suffix}@test.uz`,
+        email: `edu-admin-a-${suffix}@test.uz`,
         password: 'password123',
         fullName: 'Admin Org A',
       })
@@ -65,7 +65,7 @@ describe('Core Education Operations Suite (e2e)', () => {
       .send({
         centerName: `Edu Org B ${suffix}`,
         subdomain: tenantBSubdomain,
-        email: `admin-b-${suffix}@test.uz`,
+        email: `edu-admin-b-${suffix}@test.uz`,
         password: 'password123',
         fullName: 'Admin Org B',
       })
@@ -79,7 +79,7 @@ describe('Core Education Operations Suite (e2e)', () => {
       .post('/api/invitations')
       .set('Authorization', `Bearer ${tokenA}`)
       .send({
-        email: `teacher-a-${suffix}@test.uz`,
+        email: `edu-teacher-a-${suffix}@test.uz`,
         role: 'TEACHER',
       })
       .expect(201);
