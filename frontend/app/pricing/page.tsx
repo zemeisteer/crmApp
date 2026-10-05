@@ -6,7 +6,7 @@ import Modal from "@/components/Modal";
 import Select from "@/components/Select";
 import { useAuth } from "@/lib/auth-context";
 import { platformBillingApi, plansApi, Plan, ApiError } from "@/lib/api";
-import { localMonthStr } from "@/lib/date";
+import { useCenterClock } from "@/lib/use-center-clock";
 import { useLanguage } from "@/lib/i18n-context";
 
 const ACCENT = "#4F46E5";
@@ -19,6 +19,7 @@ function formatMoney(n: number) {
 
 function TenantPricing() {
   const { tenant } = useAuth();
+  const clock = useCenterClock();
   const { t } = useLanguage();
   const [plans, setPlans] = useState<Plan[]>([]);
   const [loading, setLoading] = useState(true);
@@ -46,7 +47,7 @@ function TenantPricing() {
     setError(null);
     try {
       const api = provider === "CLICK" ? platformBillingApi.clickLink : platformBillingApi.paymeLink;
-      const res = await api({ plan: selectedPlan, forMonth: localMonthStr() });
+      const res = await api({ plan: selectedPlan, forMonth: clock.month() });
       setLink(res.url);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Xatolik yuz berdi");

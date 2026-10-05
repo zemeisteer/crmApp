@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import type { AttendanceRecord, Student } from "@/lib/api";
 import { useLanguage } from "@/lib/i18n-context";
+import { useCenterClock } from "@/lib/use-center-clock";
 import { MONTH_KEYS } from "@/lib/i18n";
 
 const MARK: Record<string, { sym: string; bg: string; fg: string }> = {
@@ -18,7 +19,8 @@ export default function GroupAttendanceHistory({ students, records }: { students
   const { t } = useLanguage();
   const months = useMemo(() => [...new Set(records.map((r) => r.date.slice(0, 7)))].sort(), [records]);
   const [month, setMonth] = useState<string | null>(null);
-  const current = month ?? months.at(-1) ?? new Date().toISOString().slice(0, 7);
+  const clock = useCenterClock();
+  const current = month ?? months.at(-1) ?? clock.month();
   const idx = months.indexOf(current);
 
   const inMonth = records.filter((r) => r.date.startsWith(current));

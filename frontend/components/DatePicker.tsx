@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useLanguage } from "@/lib/i18n-context";
+import { useCenterClock } from "@/lib/use-center-clock";
+import { centerWallClock } from "@/lib/center-time";
 import { usePopoverPlacement } from "@/lib/use-popover";
 import type { TranslationKey } from "@/lib/i18n";
 import { formatDate } from "@/lib/format-date";
@@ -42,12 +44,14 @@ export default function DatePicker({
   style?: React.CSSProperties;
 }) {
   const { t, lang } = useLanguage();
+  // "Today" and the month shown first are the center's (not the browser's).
+  const clock = useCenterClock();
   const effectivePlaceholder = placeholder ?? t("picker.selectDate");
   const [open, setOpen] = useState(false);
   const [alignRight, setAlignRight] = useState(false);
   const [viewMode, setViewMode] = useState<"days" | "months" | "years">("days");
   const selected = parseLocalStr(value);
-  const [viewDate, setViewDate] = useState(() => selected || new Date());
+  const [viewDate, setViewDate] = useState(() => selected || centerWallClock(new Date(), clock.tz)!);
   const ref = useRef<HTMLDivElement>(null);
   // Opens upward / right-aligned when there is no room (phones, modals).
   const place = usePopoverPlacement(ref, open, 360, 290);
@@ -85,7 +89,7 @@ export default function DatePicker({
     ...Array.from({ length: daysInMonth }, (_, i) => i + 1),
   ];
 
-  const today = toLocalStr(new Date());
+  const today = clock.today();
 
   function pick(day: number) {
     const d = new Date(year, month, day);

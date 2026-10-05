@@ -10,7 +10,7 @@ import DatePicker from "@/components/DatePicker";
 import TeacherAccountCard from "@/components/teachers/TeacherAccountCard";
 import { useAuth } from "@/lib/auth-context";
 import { teachersApi, groupsApi, paymentsApi, salaryApi, Teacher, Group, Student, Payment, SalaryPayment, TeacherPayrollItem, ApiError } from "@/lib/api";
-import { localMonthStr } from "@/lib/date";
+import { useCenterClock } from "@/lib/use-center-clock";
 import { useLanguage } from "@/lib/i18n-context";
 import { formatDate } from "@/lib/format-date";
 
@@ -18,10 +18,6 @@ const ACCENT = "#4F46E5";
 
 function formatMoney(n: number) {
   return new Intl.NumberFormat("uz-UZ").format(n);
-}
-
-function currentMonth() {
-  return localMonthStr();
 }
 
 function initials(name: string) {
@@ -40,6 +36,7 @@ function TeacherDetailContent() {
   const router = useRouter();
   const id = params.id;
   const { t, lang } = useLanguage();
+  const clock = useCenterClock();
 
   const { user } = useAuth();
   const [teacher, setTeacher] = useState<(Teacher & { groups?: Group[] }) | null>(null);
@@ -74,7 +71,7 @@ function TeacherDetailContent() {
           Promise.all((groups || []).map((g) => groupsApi.get(g.id))),
           paymentsApi.list().catch(() => []),
           salaryApi.list(id).catch(() => []),
-          salaryApi.calculate(currentMonth()).catch(() => null),
+          salaryApi.calculate(clock.month()).catch(() => null),
         ]);
         setFullGroups(full as FullGroup[]);
         setPayments(p);
@@ -87,9 +84,9 @@ function TeacherDetailContent() {
       .finally(() => setLoading(false));
   }
 
-  useEffect(load, [id]);
+  useEffect(load, [id, clock]);
 
-  const month = currentMonth();
+  const month = clock.month();
 
   function groupRevenue(g: FullGroup) {
     const enrolled = g.enrollments || [];
@@ -103,7 +100,7 @@ function TeacherDetailContent() {
   const totalStudents = fullGroups.reduce((sum, g) => sum + (g.enrollments?.length || 0), 0);
 
   const daysOfWeekUz = ["Yakshanba", "Dushanba", "Seshanba", "Chorshanba", "Payshanba", "Juma", "Shanba"];
-  const todayWeekdayIndex = new Date().getDay();
+  const todayWeekdayIndex = clock.weekday() % 7; // 0 = Sunday, as daysOfWeekUz
   const todayWeekday = daysOfWeekUz[todayWeekdayIndex];
 
   const lessonsStats = useMemo(() => {

@@ -14,7 +14,7 @@ import { homeworkApi, groupsApi, aiApi, Homework, Group, ApiError, fileUrl, type
 import { useLanguage } from "@/lib/i18n-context";
 import { matchesSubject, extractUniqueSubjects } from "@/lib/subject";
 import { formatDate as fmtDate } from "@/lib/format-date";
-import { localDateStr } from "@/lib/date";
+import { useCenterClock } from "@/lib/use-center-clock";
 
 const ACCENT = "#4F46E5";
 
@@ -337,6 +337,7 @@ function LeaderboardModal({
 
 function HomeworkContent() {
   const { t, lang } = useLanguage();
+  const clock = useCenterClock();
 
   function formatDate(iso: string | null) {
     if (!iso) return "—";
@@ -535,11 +536,12 @@ function HomeworkContent() {
 
   // Demo-style summary: per homework, how many of the group's students
   // handed it in, and whether it is active, due today, done or overdue.
-  const today = localDateStr();
+  // Due dates are the center's days.
+  const today = clock.today();
   const hwState = (h: Homework) => {
     const size = groups.find((g) => g.id === h.groupId)?.studentCount ?? 0;
     const done = (h.completions || []).filter((c) => c.completed).length;
-    const due = h.dueDate ? localDateStr(new Date(h.dueDate)) : null;
+    const due = h.dueDate ? clock.dateOf(h.dueDate) : null;
     const status: "DONE" | "TODAY" | "OVERDUE" | "ACTIVE" =
       size > 0 && done >= size ? "DONE" : due === today ? "TODAY" : due && due < today ? "OVERDUE" : "ACTIVE";
     return { size, done, status };

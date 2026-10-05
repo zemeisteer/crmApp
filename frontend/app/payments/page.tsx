@@ -30,7 +30,8 @@ import {
   ApiError,
   retryKey,
 } from "@/lib/api";
-import { localMonthStr, localDateStr } from "@/lib/date";
+import { useCenterClock } from "@/lib/use-center-clock";
+import { centerWallClock } from "@/lib/center-time";
 import { useLanguage } from "@/lib/i18n-context";
 import { useAuth } from "@/lib/auth-context";
 import { MONTH_KEYS, MONTH_SHORT_KEYS, type TranslationKey } from "@/lib/i18n";
@@ -443,6 +444,8 @@ function PaymentReceiptModal({
 
 function PaymentsContent() {
   const { t, lang } = useLanguage();
+  // Days and months on the center's clock (the server's), not the browser's.
+  const clock = useCenterClock();
   const { tenant, user } = useAuth();
 
   const [activeTab, setActiveTab] = useState<TabType>("history");
@@ -463,7 +466,7 @@ function PaymentsContent() {
   const [page, setPage] = useState(1);
 
   // Month selector for Debtors & Expenses
-  const [selectedMonth, setSelectedMonth] = useState(() => localMonthStr());
+  const [selectedMonth, setSelectedMonth] = useState(() => clock.month());
 
   // Debtors data state
   const [debtorsData, setDebtorsData] = useState<DebtorsResponse | null>(null);
@@ -486,15 +489,15 @@ function PaymentsContent() {
   const [amount, setAmount] = useState("");
   const [discount, setDiscount] = useState("");
   const [method, setMethod] = useState("CASH");
-  const [forMonth, setForMonth] = useState(() => localMonthStr());
-  const [paidDate, setPaidDate] = useState(() => localDateStr());
+  const [forMonth, setForMonth] = useState(() => clock.month());
+  const [paidDate, setPaidDate] = useState(() => clock.today());
 
   // Expense form state
   const [expenseTitle, setExpenseTitle] = useState("");
   const [expenseCategory, setExpenseCategory] = useState<ExpenseCategory>("OTHER");
   const [expenseAmount, setExpenseAmount] = useState("");
   const [expensePaymentMethod, setExpensePaymentMethod] = useState("CASH");
-  const [expenseDate, setExpenseDate] = useState(() => localDateStr());
+  const [expenseDate, setExpenseDate] = useState(() => clock.today());
   const [expenseBranchId, setExpenseBranchId] = useState("");
   const [expenseNotes, setExpenseNotes] = useState("");
 
@@ -567,7 +570,7 @@ function PaymentsContent() {
     setDiscount("");
     setMethod("CASH");
     setForMonth(selectedMonth);
-    setPaidDate(localDateStr());
+    setPaidDate(clock.today());
     setError(null);
   }
 
@@ -576,7 +579,7 @@ function PaymentsContent() {
     setExpenseCategory("OTHER");
     setExpenseAmount("");
     setExpensePaymentMethod("CASH");
-    setExpenseDate(localDateStr());
+    setExpenseDate(clock.today());
     setExpenseBranchId("");
     setExpenseNotes("");
     setError(null);
@@ -592,7 +595,7 @@ function PaymentsContent() {
     setDiscount("");
     setMethod("CASH");
     setForMonth(selectedMonth);
-    setPaidDate(localDateStr());
+    setPaidDate(clock.today());
     setModalOpen(true);
   }
 
@@ -619,7 +622,7 @@ function PaymentsContent() {
       const res = await fn({
         studentId: linkDebtor.studentId,
         amount: linkDebtor.debtAmount,
-        forMonth: debtorsData?.forMonth || localMonthStr(new Date()),
+        forMonth: debtorsData?.forMonth || clock.month(),
       });
       setGeneratedLink({ provider, url: res.url });
     } catch (err) {
@@ -648,7 +651,7 @@ function PaymentsContent() {
     }
   }
 
-  const currentMonth = localMonthStr();
+  const currentMonth = clock.month();
   const monthPaid = payments
     .filter((p) => p.forMonth === currentMonth && p.status === "PAID")
     .reduce((sum, p) => sum + p.amount, 0);
@@ -722,49 +725,54 @@ function PaymentsContent() {
     const paid = payments.filter((p) => p.status === "PAID");
     if (period === "day") {
       const days = Array.from({ length: 7 }, (_, i) => {
-        const d = new Date();
+        const d = centerWallClock(new Date(), clock.tz)!;
         d.setDate(d.getDate() - (6 - i));
         return localDayStr(d);
       });
       return days.map((d) => ({
         label: String(Number(d.slice(8))),
         title: `${Number(d.slice(8))} ${t(MONTH_KEYS[Number(d.slice(5, 7)) - 1])}`,
-        isCurrent: d === localDayStr(new Date()),
+        isCurrent: d === clock.today(),
         value: paid
-          .filter((p) => p.paidAt && localDayStr(new Date(p.paidAt)) === d)
+          .filter((p) => p.paidAt && clock.dateOf(p.paidAt) === d)
           .reduce((s, p) => s + p.amount, 0),
       }));
     }
     if (period === "week") {
-      const now = new Date();
+      // Week bounds on the center's wall clock; payments read the same way.
+      const now = centerWallClock(new Date(), clock.tz)!;
       return Array.from({ length: 6 }, (_, i) => {
         const weekStart = new Date(now);
         weekStart.setDate(now.getDate() - (5 - i) * 7 - now.getDay());
         const weekEnd = new Date(weekStart);
         weekEnd.setDate(weekStart.getDate() + 7);
         const value = paid
-          .filter((p) => p.paidAt && new Date(p.paidAt) >= weekStart && new Date(p.paidAt) < weekEnd)
+          .filter((p) => {
+            const at = p.paidAt ? centerWallClock(p.paidAt, clock.tz) : null;
+            return !!at && at >= weekStart && at < weekEnd;
+          })
           .reduce((s, p) => s + p.amount, 0);
         return { label: `${weekStart.getDate()}/${weekStart.getMonth() + 1}`, value };
       });
     }
     if (period === "year") {
-      const years = Array.from({ length: 4 }, (_, i) => new Date().getFullYear() - (3 - i));
+      const thisYear = Number(clock.month().slice(0, 4));
+      const years = Array.from({ length: 4 }, (_, i) => thisYear - (3 - i));
       return years.map((y) => ({
         label: String(y),
         value: paid.filter((p) => p.forMonth.startsWith(String(y))).reduce((s, p) => s + p.amount, 0),
       }));
     }
     // January to December of the current year.
-    const year = new Date().getFullYear();
+    const year = Number(clock.month().slice(0, 4));
     const months = Array.from({ length: 12 }, (_, i) => `${year}-${String(i + 1).padStart(2, "0")}`);
     return months.map((m, i) => ({
       label: t(MONTH_SHORT_KEYS[i]),
       title: t(MONTH_KEYS[i]),
-      isCurrent: m === localMonthStr(),
+      isCurrent: m === clock.month(),
       value: paid.filter((p) => p.forMonth === m).reduce((s, p) => s + p.amount, 0),
     }));
-  }, [payments, period, t]);
+  }, [payments, period, t, clock]);
 
   // Sending the same form again (double click, lost answer) is one payment.
   const paymentKey = useRef<{ sig: string; key: string } | null>(null);

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { fileUrl, portalApi, type PortalAttendance, type PortalHomework, type PortalPastLesson, type PortalPayments, type PortalSchedule } from "@/lib/api";
 import { useLanguage } from "@/lib/i18n-context";
+import { DEFAULT_CENTER_TIMEZONE, centerToday, centerWallClock } from "@/lib/center-time";
 import { MONTH_KEYS, MONTH_SHORT_KEYS, type TranslationKey } from "@/lib/i18n";
 import Modal from "@/components/Modal";
 
@@ -19,7 +20,11 @@ const DAY_KEYS: TranslationKey[] = [
   "weekday.monday", "weekday.tuesday", "weekday.wednesday", "weekday.thursday",
   "weekday.friday", "weekday.saturday", "weekday.sunday",
 ];
-const todayDow = () => (new Date().getDay() === 0 ? 7 : new Date().getDay());
+// Today on the center's clock (its timezone comes with the portal profile).
+const todayDow = (tz: string) => {
+  const d = centerWallClock(new Date(), tz)!.getDay();
+  return d === 0 ? 7 : d;
+};
 const monthLabel = (ym: string, t: (k: TranslationKey) => string) =>
   /^\d{4}-\d{2}/.test(ym) ? `${t(MONTH_KEYS[Number(ym.slice(5, 7)) - 1])} ${ym.slice(0, 4)}` : ym;
 
@@ -54,14 +59,14 @@ function Pill({ children, tone }: { children: React.ReactNode; tone: "green" | "
 
 // ---------------------------------------------------------------- schedule
 
-export function ScheduleTab({ schedule }: { schedule: PortalSchedule | null }) {
+export function ScheduleTab({ schedule, tz = DEFAULT_CENTER_TIMEZONE }: { schedule: PortalSchedule | null; tz?: string }) {
   const { t } = useLanguage();
   const [view, setView] = useState<"week" | "past">("week");
   const timetable = schedule?.timetable ?? [];
   // Groups without timetable rows only (the rest are already in the week).
   const inTimetable = new Set(timetable.map((l) => l.group?.name).filter(Boolean));
   const fallback = (schedule?.fallbackGroups ?? []).filter((g) => !inTimetable.has(g.name));
-  const today = todayDow();
+  const today = todayDow(tz);
   const days = [1, 2, 3, 4, 5, 6, 7]
     .map((d) => ({ d, items: timetable.filter((l) => (l.dayOfWeek === 0 ? 7 : l.dayOfWeek) === d).sort((a, b) => a.startTime.localeCompare(b.startTime)) }))
     .filter((x) => x.items.length > 0);
@@ -359,7 +364,7 @@ const ATT_CSS = `
 @media (min-width:900px){.pat-cols{grid-template-columns:minmax(0,1.25fr) minmax(0,1fr)}}
 `;
 
-export function AttendanceTab({ attendance }: { attendance: PortalAttendance | null }) {
+export function AttendanceTab({ attendance, tz = DEFAULT_CENTER_TIMEZONE }: { attendance: PortalAttendance | null; tz?: string }) {
   const { t } = useLanguage();
   const present = attendance?.present ?? 0;
   const late = attendance?.late ?? 0;
@@ -419,7 +424,7 @@ export function AttendanceTab({ attendance }: { attendance: PortalAttendance | n
         <Empty icon="📋" text={t("ptl.noAtt")} />
       ) : (
         <div className="pat-cols">
-          {shown && <MonthCalendar month={shown} months={months} onMonth={setMonth} records={records} statusLabel={STATUS_LABEL} />}
+          {shown && <MonthCalendar month={shown} months={months} onMonth={setMonth} records={records} statusLabel={STATUS_LABEL} tz={tz} />}
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
             {(attendance?.byGroup?.length ?? 0) > 0 && (
               <div style={{ ...card, display: "flex", flexDirection: "column", gap: 12 }}>
@@ -474,7 +479,8 @@ export function AttendanceTab({ attendance }: { attendance: PortalAttendance | n
 
 // A month grid (Mon-Sun): each lesson day is coloured by the mark; a day with
 // several lessons shows a dot per lesson.
-function MonthCalendar({ month, months, onMonth, records, statusLabel }: {
+function MonthCalendar({ month, months, onMonth, records, statusLabel, tz }: {
+  tz: string;
   month: string;
   months: string[];
   onMonth: (m: string) => void;
@@ -496,7 +502,7 @@ function MonthCalendar({ month, months, onMonth, records, statusLabel }: {
   const inMonth = records.filter((r) => r.date.slice(0, 7) === month);
   const ok = inMonth.filter((r) => r.status !== "ABSENT").length;
   const cells: Array<number | null> = [...Array(lead).fill(null), ...Array.from({ length: daysIn }, (_, i) => i + 1)];
-  const todayStr = new Date().toISOString().slice(0, 10);
+  const todayStr = centerToday(tz);
   const navBtn = (disabled: boolean): React.CSSProperties => ({ width: 34, height: 34, borderRadius: 10, border: "1px solid #EAE8E2", background: "#fff", cursor: disabled ? "default" : "pointer", opacity: disabled ? 0.35 : 1, fontSize: 16, fontWeight: 700 });
 
   return (

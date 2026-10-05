@@ -12,7 +12,7 @@ import Select from "@/components/Select";
 import GroupPicker from "@/components/students/GroupPicker";
 import MonthPicker from "@/components/MonthPicker";
 import { studentsApi, groupsApi, paymentsApi, retryKey, attendanceApi, billingApi, telegramApi, exportApi, reportsApi, Student, Group, Payment, AttendanceRecord, ApiError } from "@/lib/api";
-import { localMonthStr } from "@/lib/date";
+import { useCenterClock } from "@/lib/use-center-clock";
 import { useLanguage } from "@/lib/i18n-context";
 import { MONTH_KEYS, type TranslationKey } from "@/lib/i18n";
 import { formatDate as fmtDate } from "@/lib/format-date";
@@ -57,6 +57,7 @@ function StudentDetailContent() {
   const router = useRouter();
   const id = params.id;
   const { t, lang } = useLanguage();
+  const clock = useCenterClock();
 
   function formatDate(iso: string | null) {
     if (!iso) return "—";
@@ -76,7 +77,7 @@ function StudentDetailContent() {
   const [paymentOpen, setPaymentOpen] = useState(false);
   const [amount, setAmount] = useState("");
   const [method, setMethod] = useState("CASH");
-  const [forMonth, setForMonth] = useState(() => localMonthStr());
+  const [forMonth, setForMonth] = useState(() => clock.month());
   // Sending the same form again (double click, lost answer) is one payment.
   const paymentKey = useRef<{ sig: string; key: string } | null>(null);
   const [paymentError, setPaymentError] = useState<string | null>(null);
@@ -88,7 +89,7 @@ function StudentDetailContent() {
   const [billingOpen, setBillingOpen] = useState(false);
   const [billingProvider, setBillingProvider] = useState<"CLICK" | "PAYME">("CLICK");
   const [billingAmount, setBillingAmount] = useState("");
-  const [billingMonth, setBillingMonth] = useState(() => localMonthStr());
+  const [billingMonth, setBillingMonth] = useState(() => clock.month());
   const [billingResult, setBillingResult] = useState<string | null>(null);
   const [billingError, setBillingError] = useState<string | null>(null);
   const [billingSaving, setBillingSaving] = useState(false);
@@ -230,7 +231,7 @@ function StudentDetailContent() {
       paymentKey.current = null;
       setPaymentOpen(false);
       setAmount("");
-      setForMonth(localMonthStr());
+      setForMonth(clock.month());
       load();
     } catch (err) {
       setPaymentError(err instanceof ApiError ? err.message : t("common.errorGeneric"));
@@ -601,7 +602,7 @@ function StudentDetailContent() {
         </form>
       </Modal>
 
-      <Modal open={paymentOpen} onClose={() => { setPaymentOpen(false); setAmount(""); setForMonth(localMonthStr()); setPaymentError(null); }} title={t("studentDetail.modalNewPayment")}>
+      <Modal open={paymentOpen} onClose={() => { setPaymentOpen(false); setAmount(""); setForMonth(clock.month()); setPaymentError(null); }} title={t("studentDetail.modalNewPayment")}>
         <form onSubmit={onAddPayment} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           {paymentError && (
             <div style={{ background: "#FDEBEC", color: "#B23A47", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: 10 }}>{paymentError}</div>

@@ -3,6 +3,7 @@
 import PortalHome from "@/components/portal/PortalHome";
 import { useEffect, useState } from "react";
 import { useLanguage } from "@/lib/i18n-context";
+import { centerTimeZone } from "@/lib/center-time";
 import PortalExamList from "@/components/portal/PortalExams";
 import PortalLogin from "@/components/portal/PortalLogin";
 import { useCenterFromHost } from "@/lib/use-center-host";
@@ -592,8 +593,8 @@ export default function StudentPortalPage() {
           />
         )}
 
-        {activeTab === "schedule" && <ScheduleTab key={token ?? ""} schedule={schedule} />}
-        {activeTab === "attendance" && <AttendanceTab attendance={attendance} />}
+        {activeTab === "schedule" && <ScheduleTab key={token ?? ""} schedule={schedule} tz={centerTimeZone(me?.tenant?.timezone)} />}
+        {activeTab === "attendance" && <AttendanceTab attendance={attendance} tz={centerTimeZone(me?.tenant?.timezone)} />}
         {activeTab === "homework" && <HomeworkTab homework={homework} onSubmit={handleHomeworkSubmit} readOnly={isParent} />}
         {activeTab === "ai" && !isParent && <PortalTutor firstName={me?.fullName?.split(" ")[0]} />}
 

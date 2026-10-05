@@ -8,6 +8,7 @@ import Select from "@/components/Select";
 import TimePicker from "@/components/TimePicker";
 import { useAuth } from "@/lib/auth-context";
 import { useLanguage } from "@/lib/i18n-context";
+import { useCenterClock } from "@/lib/use-center-clock";
 import {
   ApiError,
   scheduleApi,
@@ -37,6 +38,7 @@ const DAYS_OF_WEEK = [
 export default function SchedulePage() {
   const { user } = useAuth();
   const { t } = useLanguage();
+  const clock = useCenterClock();
 
   const [schedules, setSchedules] = useState<ScheduleItem[]>([]);
   const [rooms, setRooms] = useState<Room[]>([]);
@@ -78,11 +80,8 @@ export default function SchedulePage() {
 
   // Room Form state
 
-  // Today's day of week (1=Monday ... 7=Sunday)
-  const currentDayOfWeek = useMemo(() => {
-    const jsDay = new Date().getDay();
-    return jsDay === 0 ? 7 : jsDay;
-  }, []);
+  // Today's day of week (1=Monday ... 7=Sunday), on the center's clock.
+  const currentDayOfWeek = useMemo(() => clock.weekday(), [clock]);
 
   function loadData() {
     setLoading(true);

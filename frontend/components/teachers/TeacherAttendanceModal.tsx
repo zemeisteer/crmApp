@@ -6,7 +6,7 @@ import Select from "@/components/Select";
 import DatePicker from "@/components/DatePicker";
 import { ApiError, teacherAttendanceApi, type Teacher, type TeacherLesson, type TeacherMark } from "@/lib/api";
 import { useLanguage } from "@/lib/i18n-context";
-import { localDateStr } from "@/lib/date";
+import { useCenterClock } from "@/lib/use-center-clock";
 
 const ACCENT = "#4F46E5";
 const STATES: Array<{ key: TeacherMark; label: "ptl.present" | "ptl.late" | "ptl.absent"; color: string }> = [
@@ -21,7 +21,8 @@ type Draft = { status: TeacherMark | null; substituteTeacherId: string; note: st
 // lessons come off that teacher's pay; a substitute is paid for the lesson.
 export default function TeacherAttendanceModal({ teachers, onClose }: { teachers: Teacher[]; onClose: () => void }) {
   const { t } = useLanguage();
-  const [date, setDate] = useState(localDateStr());
+  const clock = useCenterClock();
+  const [date, setDate] = useState(() => clock.today());
   const [lessons, setLessons] = useState<TeacherLesson[] | null>(null);
   const [drafts, setDrafts] = useState<Record<string, Draft>>({});
   const [saving, setSaving] = useState(false);

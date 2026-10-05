@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { salaryApi, type DashboardData, type TeacherPayrollItem } from "@/lib/api";
 import { useLanguage } from "@/lib/i18n-context";
-import { localMonthStr } from "@/lib/date";
 
 const ACCENT = "#4F46E5";
 const money = (n: number) => new Intl.NumberFormat("uz-UZ").format(n);
@@ -17,7 +16,8 @@ export default function TeacherHome({ data }: { data: DashboardData }) {
   const [pay, setPay] = useState<TeacherPayrollItem | null | undefined>(undefined);
 
   useEffect(() => {
-    salaryApi.mine(localMonthStr()).then(setPay).catch(() => setPay(null));
+    // No month: the server uses the center's current month.
+    salaryApi.mine().then(setPay).catch(() => setPay(null));
   }, []);
 
   const studentsTotal = data.groupFill.reduce((s, g) => s + g.students, 0);

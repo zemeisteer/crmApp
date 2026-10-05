@@ -13,7 +13,7 @@ import DatePicker from "@/components/DatePicker";
 import { useAuth } from "@/lib/auth-context";
 import { useLanguage } from "@/lib/i18n-context";
 import { teachersApi, groupsApi, salaryApi, retryKey, Teacher, Group, ApiError } from "@/lib/api";
-import { localMonthStr } from "@/lib/date";
+import { useCenterClock } from "@/lib/use-center-clock";
 import { NAME_PATTERN, NAME_TITLE } from "@/lib/validation";
 import { matchesSubject } from "@/lib/subject";
 import PhoneInput from "@/components/PhoneInput";
@@ -42,6 +42,7 @@ function formatMoney(n: number) {
 function TeachersContent() {
   const { user } = useAuth();
   const { t: tr } = useLanguage();
+  const clock = useCenterClock();
   const [attendanceOpen, setAttendanceOpen] = useState(false);
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
@@ -167,7 +168,7 @@ function TeachersContent() {
     }
   }
 
-  const currentMonth = localMonthStr();
+  const currentMonth = clock.month();
 
   // Month salary from the payroll engine (same numbers as Reports →
   // payroll: missed lessons deducted, substitutions paid). Roles without

@@ -2340,6 +2340,7 @@ export interface PortalMe {
     logoUrl?: string | null;
     phone?: string | null;
     address?: string | null;
+    timezone?: string | null;
   };
   enrollments: Array<{
     id: string;

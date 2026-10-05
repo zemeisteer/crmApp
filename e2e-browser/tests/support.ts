@@ -170,6 +170,11 @@ export function centerMonth(tz = 'Asia/Tashkent', now = new Date()) {
   return `${p.year}-${p.month}`;
 }
 
+/** Today (YYYY-MM-DD) on a center's clock. */
+export function centerDay(tz = 'Asia/Tashkent', now = new Date()) {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' }).format(now);
+}
+
 /** Wall-clock "YYYY-MM-DD HH:MM" of an instant in a timezone. */
 export function wallClock(iso: string, tz: string) {
   const p = Object.fromEntries(

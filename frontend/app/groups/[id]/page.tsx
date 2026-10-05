@@ -13,7 +13,7 @@ import GroupAttendanceHistory from "@/components/groups/GroupAttendanceHistory";
 import GroupTutorReport from "@/components/groups/GroupTutorReport";
 import { groupsApi, studentsApi, paymentsApi, attendanceApi, Group, Student, Gender, Payment, AttendanceRecord, AttendanceStatus, ApiError, retryKey } from "@/lib/api";
 import { PHONE_PATTERN, PHONE_TITLE, NAME_PATTERN, NAME_TITLE, phoneOrEmpty } from "@/lib/validation";
-import { localDateStr, localMonthStr } from "@/lib/date";
+import { useCenterClock } from "@/lib/use-center-clock";
 import { useLanguage } from "@/lib/i18n-context";
 import type { TranslationKey } from "@/lib/i18n";
 import PhoneInput from "@/components/PhoneInput";
@@ -22,14 +22,6 @@ const ACCENT = "#4F46E5";
 
 function formatMoney(n: number) {
   return new Intl.NumberFormat("uz-UZ").format(n);
-}
-
-function currentMonth() {
-  return localMonthStr();
-}
-
-function today() {
-  return localDateStr();
 }
 
 const ATTENDANCE_LABEL_KEYS: Record<AttendanceStatus, TranslationKey> = {
@@ -56,6 +48,7 @@ function GroupDetailContent() {
   const router = useRouter();
   const id = params.id;
   const { t } = useLanguage();
+  const clock = useCenterClock();
 
   const [group, setGroup] = useState<Group & { enrollments?: { id: string; status?: string; student: Student }[] } | null>(null);
   const [allStudents, setAllStudents] = useState<Student[]>([]);
@@ -88,7 +81,7 @@ function GroupDetailContent() {
     setEnrollError(null);
   }
 
-  const [attendanceDate, setAttendanceDate] = useState(today);
+  const [attendanceDate, setAttendanceDate] = useState(() => clock.today());
   const [draft, setDraft] = useState<Record<string, AttendanceStatus>>({});
   const [markSaving, setMarkSaving] = useState(false);
   const [topics, setTopics] = useState<Array<{ date: string; topic: string }>>([]);
@@ -145,7 +138,7 @@ function GroupDetailContent() {
   const enrollments = (group.enrollments || []).filter((e) => !e.status || e.status === "ACTIVE" || e.status === "PAUSED");
   const enrolledIds = new Set(enrollments.map((e) => e.student.id));
   const availableStudents = allStudents.filter((s) => !enrolledIds.has(s.id));
-  const month = currentMonth();
+  const month = clock.month();
 
   function paymentStatusFor(studentId: string) {
     const paid = payments.some((p) => p.studentId === studentId && p.forMonth === month && p.status === "PAID");
