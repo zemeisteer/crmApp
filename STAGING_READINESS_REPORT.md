@@ -96,7 +96,19 @@
 | Brauzer yo'nalishlari | `11b4aa6` | 9 fayl, 13 test: session, role-boundaries, admissions, capacity, teaching, tuition, payroll, parent-portal, reports. Server limiti (8/daqiqa) pasaytirilmagan — testlar navbat kutadi | 3 marta ketma-ket 13/13 (~2,2 daq), retry yo'q |
 | Off-server `status` | `1af20ce` | `status` har chaqiruvda o'z vaqtinchalik papkasida ishlaydi; avval umumiy `.offsite-work` ni o'chirib, parallel `status`/`push` ni buzardi | `offsite.test.sh` 21-bo'lim (barer bilan sinxron): eski skriptda 2 tekshiruv yiqiladi, yangisida hammasi o'tadi |
 
-**Lokal tekshiruvlar (HEAD, push qilinmagan):** backend — `npm audit --omit=dev` (high/critical yo'q), tsc, lint, migratsiya jurnali, bo'sh bazaga migratsiya, drift yo'q, `drizzle-kit generate` o'zgarish topmadi, `verify-migrations` (7 ssenariy), unit 253/253, e2e 203/203, build; frontend — audit, tsc, lint (0 xato, 86 ogohlantirish; avval 87), `npm test` 6/6, build; ops — tooling, target, backup-core, ops, rehearsal, offsite, smoke-lib testlari; brauzer — 13/13.
+**Keyingi qadamlar (2026-10-05, lokal):**
+
+| Soha | Commit | Nima | Lokal dalil |
+|---|---|---|---|
+| **Xavfsizlik** | `7332525` | `GET /portal/me` o'quvchi/ota-onaga markazning `smsApiToken`ini, `/portal/me`, `/portal/schedule`, `/portal/lessons` esa o'qituvchining maoshini (`salaryValue`) va ichki kalitlarni qaytarardi. Endi faqat kerakli ustunlar ketadi. **SMS tokeni saqlangan markazlarda token almashtirilishi kerak** | portal-parent e2e (eski kodda yiqiladi) |
+| Maosh | `8f119cd` | Xato to'lovni storno qilish (sabab bilan, xarajati o'chadi, qator saqlanadi), eski yozuvni teng xarajatga bog'lash, audit jurnali, oy markaz vaqtida (migratsiya 0036) | payroll e2e 12/12, brauzer payroll storno bilan |
+| Vaqt | `db633e5` | Barcha "bugun/shu oy" markaz vaqtida (davomat, to'lovlar, portal, DatePicker…) | brauzer: Pago Pago zonasi, soat qotirilgan; eski kodda yiqiladi |
+| Mobil | `cc5908a`, `ce800c6` | 18 sahifa 390 px'da tekshiriladi; sozlamalar bo'limlari o'raladi | `mobile.spec.ts` |
+| Boshqa | `5e06b84`, `3ec7be3`, `e10c6bc` | O'qituvchi sahifasida faqat hisob-kitob mexanizmi raqami; `@nestjs/mau` olib tashlandi (tooling'da HIGH yo'q); imtihon taymeri bir marta, so'nggi javoblar bilan topshiradi; lint 86 → 71 | tsc, lint, build |
+
+Tekshirilmagan: PDF'dan savol ajratish (AI kaliti va asl PDF kerak).
+
+**Lokal tekshiruvlar (HEAD, push qilinmagan):** backend — `npm audit --omit=dev` (high/critical yo'q), tsc, lint, migratsiya jurnali, bo'sh bazaga migratsiya, drift yo'q, `drizzle-kit generate` o'zgarish topmadi, `verify-migrations` (7 ssenariy), unit 254/254, e2e 209/209, build; frontend — audit, tsc, lint (0 xato, 71 ogohlantirish), `npm test` 6/6, build; ops — tooling, target, backup-core, ops, rehearsal, offsite, smoke-lib testlari; brauzer — 14/14.
 
 **Tiklash mashqi (`restore-rehearsal.sh`) bu muhitda yurmadi:** Docker bor, lekin image build'da Alpine paket manzili (`dl-cdn.alpinelinux.org`) muhit tarmoq siyosati tomonidan rad etildi (HTTP 403). Kod o'zgarmagan qismlar uchun oxirgi dalil — CI `recovery` (37224367508). Bu commit'lar uchun mashq CI'da push'dan keyin yuradi.
 
