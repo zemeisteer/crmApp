@@ -720,8 +720,9 @@ export interface Teacher {
   email: string | null;
   birthDate: string | null;
   startDate?: string | null;
-  salaryType: string | null;
-  salaryValue: number | null;
+  // Pay: present only for the owner, admins and accountants.
+  salaryType?: string | null;
+  salaryValue?: number | null;
   deletedAt?: string | null;
   createdAt: string;
   updatedAt: string;

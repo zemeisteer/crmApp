@@ -370,14 +370,29 @@ function TeacherDetailContent() {
               value={teacherAge ? `${teacherAge.formatted} (${teacherAge.age} yosh)` : "—"}
             />
             <InfoField label={t("tch.startDate")} value={startedDateFormatted} />
-            <InfoField
-              label={t("teacherDetail.salaryTypeField")}
-              value={teacher.salaryType === "PERCENT" ? t("teachers.salaryPercent") : t("teachers.salaryFixed")}
-            />
-            <InfoField
-              label={teacher.salaryType === "PERCENT" ? t("teacherDetail.percent") : t("teacherDetail.monthlySalary")}
-              value={teacher.salaryValue ? (teacher.salaryType === "PERCENT" ? `${teacher.salaryValue}%` : `${formatMoney(teacher.salaryValue)} ${t("common.sumUnit")}`) : "—"}
-            />
+            {/* Pay is sent only to finance roles; others see no pay fields. */}
+            {"salaryType" in teacher && (
+              <>
+                <InfoField
+                  label={t("teacherDetail.salaryTypeField")}
+                  value={
+                    teacher.salaryType === "PERCENT" ? t("teachers.salaryPercent")
+                    : teacher.salaryType === "PER_STUDENT" ? t("tch.salPerStudent")
+                    : teacher.salaryType === "PER_LESSON" ? t("tch.salPerLesson")
+                    : t("teachers.salaryFixed")
+                  }
+                />
+                <InfoField
+                  label={
+                    teacher.salaryType === "PERCENT" ? t("tch.percentAmount")
+                    : teacher.salaryType === "PER_STUDENT" ? t("tch.perStudentAmount")
+                    : teacher.salaryType === "PER_LESSON" ? t("tch.perLessonAmount")
+                    : t("teacherDetail.monthlySalary")
+                  }
+                  value={teacher.salaryValue ? (teacher.salaryType === "PERCENT" ? `${teacher.salaryValue}%` : `${formatMoney(teacher.salaryValue)} ${t("common.sumUnit")}`) : "—"}
+                />
+              </>
+            )}
           </div>
         </div>
 

@@ -4,6 +4,7 @@ import { and, eq, isNull } from 'drizzle-orm';
 import Anthropic from '@anthropic-ai/sdk';
 import { DB, Database } from '../db/db.module';
 import { groups, payments, attendance } from '../db/schema';
+import { TEACHER_PUBLIC_COLUMNS } from '../common/teacher-columns';
 import { GenerateMaterialDto, PlacementTestDto } from './dto/ai.dto';
 import { bankFor, pickFromBank } from './placement-bank';
 import { normalizeQuestion, type TestQuestion } from '../common/test-questions';
@@ -82,7 +83,7 @@ export class AiService {
   async groupInsights(tenantId: string, groupId: string) {
     const group = await this.db.query.groups.findFirst({
       where: eq(groups.id, groupId),
-      with: { teacher: true, enrollments: { with: { student: true } } },
+      with: { teacher: { columns: TEACHER_PUBLIC_COLUMNS }, enrollments: { with: { student: true } } },
     });
     if (!group || group.tenantId !== tenantId) {
       throw new ServiceUnavailableException("Guruh topilmadi");

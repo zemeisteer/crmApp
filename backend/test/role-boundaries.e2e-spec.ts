@@ -71,4 +71,31 @@ describe('Role boundaries on back-office endpoints (e2e)', () => {
   it('still lets parents use the endpoints meant for them', async () => {
     expect(await status('/portal/parent/students', 'PARENT')).toBe(200);
   });
+  it("shows a teacher's pay only to the owner, admins and accountants", async () => {
+    const as = (role: string) => ({ Authorization: `Bearer ${tokens[role]}` });
+    const tid = (await http().post('/api/teachers').set(as('OWNER')).set('Idempotency-Key', `roles-pay-${suffix}`)
+      .send({ fullName: 'Pay Secret', salaryType: 'FIXED', salaryValue: 6_543_210 }).expect(201)).body.id as string;
+    const gid = (await http().post('/api/groups').set(as('OWNER')).send({ name: 'Pay Group', subject: 'Math', teacherId: tid }).expect(201)).body.id as string;
+    await http().post('/api/schedule').set(as('OWNER')).send({ groupId: gid, teacherId: tid, dayOfWeek: 2, startTime: '15:00', endTime: '16:00' });
+
+    for (const role of ['OWNER', 'ACCOUNTANT']) {
+      const one = (await http().get(`/api/teachers/${tid}`).set(as(role)).expect(200)).body;
+      expect(one, role).toMatchObject({ salaryType: 'FIXED', salaryValue: 6_543_210 });
+    }
+    for (const role of ['MANAGER', 'RECEPTIONIST', 'TEACHER']) {
+      const list = (await http().get('/api/teachers').set(as(role)).expect(200)).body;
+      const one = (await http().get(`/api/teachers/${tid}`).set(as(role)).expect(200)).body;
+      expect(one.fullName, role).toBe('Pay Secret');
+      const bodies = [JSON.stringify(list), JSON.stringify(one)];
+      for (const path of ['/groups', `/groups/${gid}`, '/schedule']) {
+        const r = await http().get(`/api${path}`).set(as(role));
+        if (r.status === 200) bodies.push(JSON.stringify(r.body));
+      }
+      for (const body of bodies) {
+        for (const secret of ['salaryValue', 'salaryType', '6543210', 'idempotencyKey', 'requestHash']) expect(body, `${role}: ${secret}`).not.toContain(secret);
+      }
+    }
+    // Retry keys never leave the server, not even for the owner.
+    expect(JSON.stringify((await http().get('/api/teachers').set(as('OWNER')).expect(200)).body)).not.toContain('idempotencyKey');
+  });
 });

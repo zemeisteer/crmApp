@@ -2,6 +2,7 @@ import { ConflictException, Inject, Injectable, NotFoundException } from '@nestj
 import { and, eq, ne, isNull } from 'drizzle-orm';
 import { DB, Database } from '../db/db.module';
 import { groups, rooms, schedules, teachers } from '../db/schema';
+import { TEACHER_PUBLIC_COLUMNS } from '../common/teacher-columns';
 import { CreateRoomDto, UpdateRoomDto } from './dto/room.dto';
 import { CheckConflictDto, CreateScheduleDto, UpdateScheduleDto } from './dto/schedule.dto';
 
@@ -137,7 +138,7 @@ export class ScheduleService {
       ),
       with: {
         group: true,
-        teacher: true,
+        teacher: { columns: TEACHER_PUBLIC_COLUMNS },
         room: true,
       },
     });
@@ -230,7 +231,7 @@ export class ScheduleService {
       where: eq(schedules.tenantId, tenantId),
       with: {
         group: true,
-        teacher: true,
+        teacher: { columns: TEACHER_PUBLIC_COLUMNS },
         room: true,
         branch: true,
       },
@@ -254,7 +255,7 @@ export class ScheduleService {
       where: and(eq(schedules.id, id), eq(schedules.tenantId, tenantId)),
       with: {
         group: true,
-        teacher: true,
+        teacher: { columns: TEACHER_PUBLIC_COLUMNS },
         room: true,
         branch: true,
       },

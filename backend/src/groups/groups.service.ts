@@ -2,6 +2,7 @@ import { BadRequestException, ConflictException, ForbiddenException, Inject, Inj
 import { and, eq, inArray, isNotNull, isNull, ne, sql } from 'drizzle-orm';
 import { DB, Database } from '../db/db.module';
 import { branches, courses, enrollments, groupPriceHistory, groups, schedules, students, subjects, teachers, tenants } from '../db/schema';
+import { TEACHER_PUBLIC_COLUMNS } from '../common/teacher-columns';
 import { DEFAULT_TIMEZONE, isValidTimeZone, zonedParts, zonedTimeToUtc } from '../common/timezone';
 import { seatHeldWhere } from '../common/seats';
 import { addMinutes, DEFAULT_LESSON_MINUTES, isoWeekdaysOf } from '../common/weekdays';
@@ -52,7 +53,7 @@ export class GroupsService {
 
     const rows = await this.db.query.groups.findMany({
       where: and(...conditions),
-      with: { teacher: true, branch: true, course: true },
+      with: { teacher: { columns: TEACHER_PUBLIC_COLUMNS }, branch: true, course: true },
       orderBy: (g, { desc }) => desc(g.createdAt),
     });
     // Seats taken (same rule as capacity checks), for the list's
@@ -74,7 +75,7 @@ export class GroupsService {
   async findOne(tenantId: string, id: string, role?: string, userId?: string) {
     const group = await this.db.query.groups.findFirst({
       where: and(eq(groups.id, id), eq(groups.tenantId, tenantId), isNull(groups.deletedAt)),
-      with: { teacher: true, branch: true, course: true, enrollments: { with: { student: true } } },
+      with: { teacher: { columns: TEACHER_PUBLIC_COLUMNS }, branch: true, course: true, enrollments: { with: { student: true } } },
     });
     if (!group) throw new NotFoundException('Guruh topilmadi');
 

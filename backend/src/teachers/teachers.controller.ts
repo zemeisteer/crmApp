@@ -22,20 +22,21 @@ import { CreateTeacherDto, UpdateTeacherDto , TeacherAccountDto } from './dto/te
 export class TeachersController {
   constructor(private readonly service: TeachersService) {}
 
+  // Any staff member may list teachers; pay only reaches finance roles.
   @Get()
-  findAll(@CurrentUser('tenantId') tenantId: string) {
-    return this.service.findAll(tenantId);
+  findAll(@CurrentUser('tenantId') tenantId: string, @CurrentUser('role') role: string) {
+    return this.service.findAll(tenantId, role);
   }
 
   @Roles('ADMIN')
   @Get('trash')
-  trash(@CurrentUser('tenantId') tenantId: string) {
-    return this.service.trash(tenantId);
+  trash(@CurrentUser('tenantId') tenantId: string, @CurrentUser('role') role: string) {
+    return this.service.trash(tenantId, role);
   }
 
   @Get(':id')
-  findOne(@CurrentUser('tenantId') tenantId: string, @Param('id') id: string) {
-    return this.service.findOne(tenantId, id);
+  findOne(@CurrentUser('tenantId') tenantId: string, @CurrentUser('role') role: string, @Param('id') id: string) {
+    return this.service.view(tenantId, id, role);
   }
 
   @Roles('ADMIN')

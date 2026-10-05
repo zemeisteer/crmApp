@@ -7,6 +7,7 @@ import { CreateTeacherDto, TeacherAccountDto, UpdateTeacherDto } from './dto/tea
 import { AuditService } from '../audit/audit.service';
 import { blankToNull, idempotencyKey, lockIdempotencyKey, requestHash } from '../common/create-idempotency';
 import { isUniqueViolation } from '../common/db-errors';
+import { teacherView } from '../common/teacher-columns';
 
 @Injectable()
 export class TeachersService {
@@ -25,19 +26,26 @@ export class TeachersService {
     if (!m) throw new BadRequestException("Foydalanuvchi bu markaz a'zosi emas");
   }
 
-  findAll(tenantId: string) {
-    return this.db.query.teachers.findMany({
+  // As the viewer may see them: pay only for finance roles (common/teacher-columns).
+  async findAll(tenantId: string, role?: string) {
+    const rows = await this.db.query.teachers.findMany({
       where: and(eq(teachers.tenantId, tenantId), isNull(teachers.deletedAt)),
       with: { groups: true, user: { columns: { id: true, email: true } } },
       orderBy: (t, { desc }) => desc(t.createdAt),
     });
+    return rows.map((r) => teacherView(r, role));
   }
 
-  trash(tenantId: string) {
-    return this.db.query.teachers.findMany({
+  async view(tenantId: string, id: string, role?: string) {
+    return teacherView(await this.findOne(tenantId, id), role);
+  }
+
+  async trash(tenantId: string, role?: string) {
+    const rows = await this.db.query.teachers.findMany({
       where: and(eq(teachers.tenantId, tenantId), isNotNull(teachers.deletedAt)),
       orderBy: (t, { desc }) => desc(t.deletedAt),
     });
+    return rows.map((r) => teacherView(r, role));
   }
 
   async findOne(tenantId: string, id: string) {
@@ -76,7 +84,7 @@ export class TeachersService {
     await this.db.update(teachers).set({ userId, email: teacher.email ?? email, updatedAt: new Date() })
       .where(and(eq(teachers.id, id), eq(teachers.tenantId, tenantId)));
     this.audit.log({ tenantId, userId: actorId, action: 'update', entityType: 'teacher', entityId: id, meta: { account: email } });
-    return this.findOne(tenantId, id);
+    return teacherView(await this.findOne(tenantId, id), 'ADMIN');
   }
 
   // Takes the login away: unlinks it and suspends the membership.
@@ -88,7 +96,7 @@ export class TeachersService {
     await this.db.update(teachers).set({ userId: null, updatedAt: new Date() })
       .where(and(eq(teachers.id, id), eq(teachers.tenantId, tenantId)));
     this.audit.log({ tenantId, userId: actorId, action: 'update', entityType: 'teacher', entityId: id, meta: { account: null } });
-    return this.findOne(tenantId, id);
+    return teacherView(await this.findOne(tenantId, id), 'ADMIN');
   }
 
   async create(tenantId: string, userId: string, dto: CreateTeacherDto, rawKey?: string) {
@@ -160,7 +168,7 @@ export class TeachersService {
       .where(and(eq(teachers.id, id), eq(teachers.tenantId, tenantId)))
       .returning();
     this.audit.log({ tenantId, userId, action: 'update', entityType: 'teacher', entityId: id, meta: dto });
-    return teacher;
+    return teacherView(teacher, 'ADMIN');
   }
 
   async remove(tenantId: string, userId: string, id: string) {
