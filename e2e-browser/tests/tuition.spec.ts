@@ -1,8 +1,8 @@
 import { expect, test } from '@playwright/test';
-import { api, centerUrl, cleanUpStagingCenters, expectCenterDashboard, loginOnMainSite, newCenter } from './support';
+import { api, centerDay, centerMonth, centerUrl, cleanUpStagingCenters, expectCenterDashboard, loginOnMainSite, money, newCenter } from './support';
 
 // Tuition: taking a payment at the desk, safe against double clicks and
-// retries after a lost reply.
+// retries after a lost reply; closing the cash desk at the end of the day.
 cleanUpStagingCenters();
 
 test('payment: a double click and a retry after a lost reply each record one payment', async ({ page }) => {
@@ -49,4 +49,31 @@ test('payment: a double click and a retry after a lost reply each record one pay
 
   const payments = (await api<Array<{ studentId: string; amount: number }>>('GET', '/payments', { token: a.token })).filter((p) => p.studentId === student.id);
   expect(payments.map((p) => p.amount).sort((x, y) => x - y)).toEqual([100000, 150000]);
+});
+
+test('closing the cash desk: what should be in the drawer, the count, the difference', async ({ page }) => {
+  const a = await newCenter('cash');
+  const month = centerMonth();
+  const kid = await api('POST', '/students', { token: a.token, body: { fullName: 'Cash Student' } });
+  await api('POST', '/payments', { token: a.token, body: { studentId: kid.id, amount: 400000, forMonth: month, method: 'CASH' } });
+  await api('POST', '/payments', { token: a.token, body: { studentId: kid.id, amount: 250000, forMonth: month, method: 'CLICK' } });
+  await api('POST', '/expenses', { token: a.token, body: { title: 'Markers', category: 'OTHER', amount: 50000, paymentMethod: 'CASH', date: centerDay() } });
+
+  await loginOnMainSite(page, a.email);
+  await expectCenterDashboard(page, a.sub);
+  await page.goto(centerUrl(a.sub, '/payments'));
+  await page.getByRole('button', { name: 'Kassa (kun)' }).click();
+  const expected = page.locator('div:has(> div:text-is("Kassada bo\'lishi kerak"))').first();
+  await expect(expected).toContainText(money(350000));
+
+  await page.getByLabel("Sanalgan naqd pul (so'm)").fill('345000');
+  await expect(page.getByText(/Farq: -5[\s,.]?000 \(kam\)/)).toBeVisible();
+  await page.getByLabel('Izoh (farq sababi va h.k.)').fill('Qaytim berildi');
+  await page.getByRole('button', { name: 'Kassani yopish' }).click();
+  await expect(page.getByText(/Farq: -5[\s,.]?000 \(kam\)/)).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Kassani yopish' })).toHaveCount(0);
+
+  const day = await api('GET', '/cash/day', { token: a.token });
+  expect(day.closed).toMatchObject({ expectedCash: 350000, countedCash: 345000, difference: -5000, note: 'Qaytim berildi' });
+  await expect(api('POST', '/cash/day/close', { token: a.token, body: { date: day.date, countedCash: 1 } })).rejects.toThrow(/409/);
 });

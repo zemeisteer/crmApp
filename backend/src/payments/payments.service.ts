@@ -214,6 +214,7 @@ export class PaymentsService {
             receiptNumber: `RCP-${new Date().toISOString().slice(0, 7).replace('-', '')}-${Math.floor(100000 + Math.random() * 900000)}`,
             idempotencyKey: key,
             requestHash,
+            recordedById: userId ?? null,
             paidAt: paidAt ?? new Date(),
           })
           .returning();

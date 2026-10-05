@@ -260,6 +260,13 @@
       "when": 1793700000000,
       "tag": "0036_payroll_reversals",
       "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1793800000000,
+      "tag": "0037_cash_closings",
+      "breakpoints": true
     }
   ]
 }

@@ -18,6 +18,7 @@ import { TeachersModule } from './teachers/teachers.module';
 import { PaymentsModule } from './payments/payments.module';
 import { AttendanceModule } from './attendance/attendance.module';
 import { SalaryModule } from './salary/salary.module';
+import { CashModule } from './cash/cash.module';
 import { BillingModule } from './billing/billing.module';
 import { AiModule } from './ai/ai.module';
 import { PlacementModule } from './placement/placement.module';
@@ -65,6 +66,7 @@ import { InvoicesModule } from './invoices/invoices.module';
     PaymentsModule,
     AttendanceModule,
     SalaryModule,
+    CashModule,
     BillingModule,
     AiModule,
     PlacementModule,

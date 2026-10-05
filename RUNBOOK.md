@@ -62,14 +62,22 @@ Nosozlik yuz berganda nima qilish kerakligi bo'yicha qisqa qo'llanma.
 - **Xato to'lov — storno:** Hisobotlar → Oylik maosh → o'qituvchi qatoridagi "To'lovlar" (yoki "Qoldiqni to'lash") → to'lov yonidagi "Storno", sababi bilan (API: `POST /api/salary-payments/<id>/reverse {reason}`). Bitta tranzaksiyada: to'lov "storno qilingan" bo'lib qoladi (kim, qachon, nima uchun), uning xarajati o'chadi, oy uchun shu summa yana to'lanadigan bo'ladi. Qayta storno hech narsani o'zgartirmaydi. Audit jurnalida `salary.disburse` / `salary.reverse` / `salary.link_expense`.
 - **0035 dan oldingi yozuvlar:** Hisobotlar → Oylik maosh pastidagi "Eski maosh yozuvlari" bloki (API: `GET /api/salary-payments/reconciliation?forMonth=YYYY-MM`, faqat o'qiydi). `LIKELY_DOUBLE_COUNTED` — moliya hisobotida shu pul ikki marta sanalgan bo'lishi mumkin; `AMOUNT_MISMATCH` — bir necha to'lov eski qatorni ustidan yozgan; `NO_EXPENSE` — xarajat yozilmagan. Hisobotning o'zi hech narsani o'zgartirmaydi. `LIKELY_DOUBLE_COUNTED` qatorida bitta, summasi aynan teng xarajat bo'lsa, "Xarajatga bog'lash" tugmasi chiqadi (`POST /api/salary-payments/<id>/link-expense {expenseId}`): bog'langandan keyin pul faqat xarajatdan bir marta sanaladi, kerak bo'lsa storno ham qilinadi. Summasi farq qiladigan yozuvni bog'lab bo'lmaydi — uni buxgalter qo'lda tuzatadi.
 
-## 10. Superadmin hisobiga kirish yo'qolgan
+## 10. Kunlik kassa (To'lovlar → Kassa (kun))
+
+- Kun markaz vaqtida (tenant timezone) olinadi: shu kunda `paidAt` bo'lgan `PAID` to'lovlar va shu sanadagi xarajatlar (maosh to'lovlari ham xarajat). "Kassada bo'lishi kerak" = naqd kirim − naqd xarajat; Click/Payme/bank kassadan o'tmaydi.
+- "Kim qabul qildi": `payments.recorded_by_id` (migratsiya 0037 dan). Eski va onlayn to'lovlar "Onlayn / yozilmagan".
+- Yopish: egasi, admin yoki hisobchi sanalgan naqd pulni kiritadi (`POST /api/cash/day/close {date, countedCash, note}`). Kun **bir marta** yopiladi va o'zgarmaydi (ikkinchi urinish 409). Kelajakdagi kunni yopib bo'lmaydi.
+- Yopilgandan keyin shu kunga kiritilgan to'lov/xarajat "yopilgandan keyin" belgisi bilan ko'rinadi; yopilgan kun kartasida "Yopilgandan keyin naqd o'zgarishi" ogohlantirishi chiqadi. Bunday holda pulni sanab, farqni izohda yoki keyingi kun yopilishida hisobga oling.
+- Tarix: `GET /api/cash/closings?month=YYYY-MM`; audit jurnalida `cash.close`.
+
+## 11. Superadmin hisobiga kirish yo'qolgan
 
 - Birinchi SUPERADMIN'ni qo'lda bazada yaratish kerak (self-service yo'q, xavfsizlik uchun ataylab shunday):
   ```sql
   UPDATE users SET role = 'SUPERADMIN' WHERE email = 'sizning-email@domen.uz';
   ```
 
-## 11. Workspace / Tashkilot a'zoligi muammosi ("Foydalanuvchida faol tashkilot a'zoligi topilmadi")
+## 12. Workspace / Tashkilot a'zoligi muammosi ("Foydalanuvchida faol tashkilot a'zoligi topilmadi")
 
 - Agar eski foydalanuvchi tizimga kirganda "Foydalanuvchida faol tashkilot a'zoligi topilmadi" xatosi chiqsa:
   Markazga kirish faqat faol a'zolikdan keladi. A'zoligi yo'q akkaunt — ataylab o'chirilgan xodim ham bo'lishi mumkin, shuning uchun a'zolik **ommaviy tiklanmaydi**.
@@ -78,13 +86,13 @@ Nosozlik yuz berganda nima qilish kerakligi bo'yicha qisqa qo'llanma.
   3. Markazda birorta ham a'zo qolmagan bo'lsa, platforma admini (SUPERADMIN) o'sha markazga kirib, rahbarni Xodimlar bo'limidan qo'shadi.
   `scripts/migrate-memberships.ts` ishlatilmaydi: u barcha akkauntlarga a'zolik berib, o'chirilgan xodimlarni ham qaytarar edi.
 
-## 12. Taklifnoma xatolari ("Ushbu taklifnoma yaroqsiz yoki muddati tugagan")
+## 13. Taklifnoma xatolari ("Ushbu taklifnoma yaroqsiz yoki muddati tugagan")
 
 - Taklifnomalar 7 kun muddatga ega va faqat 1 marta ishlatiladi (`invitation_status` = `PENDING`).
 - Token bazada SHA-256 hash ko'rinishida (`token_hash`) saqlanadi.
 - Agar foydalanuvchi taklifnomani yo'qotgan yoki muddati o'tgan bo'lsa, markaz administratori settings yoki onboarding orqali yangi taklifnoma yuborishi kerak (eski taklifnoma `REVOKED` yoki `EXPIRED` bo'ladi).
 
-## 13. Onboarding bosqichida qolib ketish ("Onboarding reset")
+## 14. Onboarding bosqichida qolib ketish ("Onboarding reset")
 
 - Agar markaz administratori onboarding bosqichini qayta o'tmoqchi bo'lsa yoki qolib ketgan bo'lsa:
   ```sql
@@ -92,7 +100,7 @@ Nosozlik yuz berganda nima qilish kerakligi bo'yicha qisqa qo'llanma.
   ```
   Onboarding yakunlanganda `onboarding_step = 'COMPLETED'` bo'ladi.
 
-## 14. Umumiy tekshiruv tartibi (istalgan nosozlikda birinchi qadamlar)
+## 15. Umumiy tekshiruv tartibi (istalgan nosozlikda birinchi qadamlar)
 
 1. `GET /api/health`
 2. Backend va frontend loglarini oxirgi 5 daqiqa uchun ko'rish

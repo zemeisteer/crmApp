@@ -9,7 +9,7 @@ Eng muhim oqimlar haqiqiy brauzerda, backend va frontendning **production build*
 | `admissions.spec.ts` | Brauzer New York vaqtida: lidning qayta aloqasi va sinov darsi markaz vaqtida (Asia/Tashkent) saqlanadi va ko'rsatiladi; yangi o'quvchi — javob yo'qolgandan keyingi qayta yuborishda bitta |
 | `capacity.spec.ts` | To'lgan guruh yangi o'quvchini qabul qilmaydi va sababini aytadi |
 | `teaching.spec.ts` | O'qituvchi o'z guruhida davomat qiladi; brauzer sanasi markaznikidan farq qilganda ham davomat markaz kunida yoziladi |
-| `tuition.spec.ts` | To'lov: ikki marta bosish va javob yo'qolgandan keyingi qayta yuborish — har biri bitta to'lov |
+| `tuition.spec.ts` | To'lov: ikki marta bosish va javob yo'qolgandan keyingi qayta yuborish — har biri bitta to'lov; kunlik kassani yopish (kutilgan naqd, sanalgan, farq; ikkinchi yopish rad etiladi) |
 | `payroll.spec.ts` | Hisobchi oylikni ikki qismda to'laydi; ikki marta bosish va qayta yuborish — bitta to'lov, har biriga bitta xarajat; xato to'lov storno qilinadi |
 | `parent-portal.spec.ts` | Ota-ona telefon va PIN bilan kiradi, farzandini faqat kuzatadi (AI repetitor yo'q) |
 | `reports.spec.ts` | Direktor hisobotida oylik to'lovi xarajatda bir marta hisoblanadi |

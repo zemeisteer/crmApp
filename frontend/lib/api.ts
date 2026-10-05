@@ -1645,6 +1645,49 @@ export const salaryApi = {
     }),
 };
 
+// ---- Cash desk by day ----
+
+export type CashMethod = "CASH" | "CLICK" | "PAYME" | "BANK_TRANSFER";
+
+export interface CashDay {
+  date: string;
+  timezone: string;
+  in: Record<CashMethod, { amount: number; count: number }>;
+  out: Record<CashMethod, { amount: number; count: number }>;
+  totalIn: number;
+  totalOut: number;
+  expectedCash: number;
+  byCashier: Array<{ userId: string | null; name: string | null; cash: number; other: number; count: number }>;
+  payments: Array<{ id: string; amount: number; method: string; paidAt: string; studentName: string; recordedByName: string | null; afterClosing: boolean }>;
+  expenses: Array<{ id: string; title: string; amount: number; paymentMethod: string; category: string; afterClosing: boolean }>;
+  closed: null | {
+    closedAt: string;
+    closedBy: string | null;
+    expectedCash: number;
+    countedCash: number;
+    difference: number;
+    note: string | null;
+    changedAfterClosing: number;
+  };
+}
+
+export interface CashClosing {
+  date: string;
+  expectedCash: number;
+  countedCash: number;
+  difference: number;
+  closedAt: string;
+  closedBy: string | null;
+  note: string | null;
+}
+
+export const cashApi = {
+  day: (date?: string) => request<CashDay>(`/cash/day${date ? `?date=${encodeURIComponent(date)}` : ""}`),
+  close: (data: { date: string; countedCash: number; note?: string }) =>
+    request<CashDay>("/cash/day/close", { method: "POST", body: JSON.stringify(data) }),
+  closings: (month: string) => request<CashClosing[]>(`/cash/closings?month=${encodeURIComponent(month)}`),
+};
+
 // ---- Tenants (settings + superadmin) ----
 
 export interface TenantsOverview {

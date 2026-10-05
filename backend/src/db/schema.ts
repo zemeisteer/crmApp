@@ -558,6 +558,9 @@ export const payments = pgTable('payments', {
   // requestHash tells a retry from a different request reusing the key.
   idempotencyKey: text('idempotency_key'),
   requestHash: text('request_hash'),
+  // The staff member who took it at the desk (null: online, or recorded
+  // before 0037).
+  recordedById: text('recorded_by_id').references(() => users.id, { onDelete: 'set null' }),
   paidAt: timestamp('paid_at').notNull().defaultNow(),
   createdAt: timestamp('created_at').notNull().defaultNow(),
 }, (t) => ({
@@ -1295,6 +1298,24 @@ export const schedules = pgTable('schedules', {
   groupIdx: index('schedules_group_idx').on(t.groupId),
   teacherIdx: index('schedules_teacher_idx').on(t.teacherId),
   roomIdx: index('schedules_room_idx').on(t.roomId),
+}));
+
+// The end of a center's day at the desk: the cash counted, against what
+// the records say should be there. One per center and day, never changed;
+// anything recorded for that day afterwards is shown as "after closing".
+export const cashClosings = pgTable('cash_closings', {
+  id: text('id').primaryKey().$defaultFn(() => createId()),
+  tenantId: text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  date: text('date').notNull(), // the center's calendar day, "YYYY-MM-DD"
+  expectedCash: integer('expected_cash').notNull(),
+  countedCash: integer('counted_cash').notNull(),
+  difference: integer('difference').notNull(), // counted - expected
+  totals: text('totals').notNull(), // JSON: the day's figures at closing
+  note: text('note'),
+  closedById: text('closed_by_id').references(() => users.id, { onDelete: 'set null' }),
+  closedAt: timestamp('closed_at').notNull().defaultNow(),
+}, (t) => ({
+  tenantDateUniq: uniqueIndex('cash_closings_tenant_date_uniq').on(t.tenantId, t.date),
 }));
 
 // Expenses (CRMAPP Master Spec Section 24)

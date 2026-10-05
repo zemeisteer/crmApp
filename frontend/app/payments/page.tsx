@@ -31,6 +31,7 @@ import {
   retryKey,
 } from "@/lib/api";
 import { useCenterClock } from "@/lib/use-center-clock";
+import CashDayPanel from "@/components/payments/CashDay";
 import { centerWallClock } from "@/lib/center-time";
 import { useLanguage } from "@/lib/i18n-context";
 import { useAuth } from "@/lib/auth-context";
@@ -111,7 +112,7 @@ const EXPENSE_CATEGORIES: { value: ExpenseCategory; labelKey: TranslationKey; co
   { value: "OTHER", labelKey: "payments.expenses.catOther", color: "#64748B" },
 ];
 
-type TabType = "history" | "debtors" | "invoices" | "expenses";
+type TabType = "history" | "debtors" | "invoices" | "expenses" | "cash";
 type Period = "day" | "week" | "month" | "year";
 
 function localDayStr(d: Date) {
@@ -989,6 +990,23 @@ function PaymentsContent() {
               }}
             >
               {t("payments.tabExpenses")}
+            </button>
+            <button
+              onClick={() => setActiveTab("cash")}
+              style={{
+                fontSize: 13,
+                fontWeight: 700,
+                padding: "7px 16px",
+                borderRadius: 8,
+                cursor: "pointer",
+                border: "none",
+                background: activeTab === "cash" ? "#fff" : "transparent",
+                color: activeTab === "cash" ? "#181A1F" : "#71737C",
+                boxShadow: activeTab === "cash" ? "0 1px 3px rgba(18,19,26,0.08)" : "none",
+                transition: "all 0.15s ease",
+              }}
+            >
+              {t("cash.tab")}
             </button>
           </div>
         </div>
@@ -1899,6 +1917,8 @@ function PaymentsContent() {
         {/* ========================================================================= */}
         {/* TAB 4: EXPENSES & CASH FLOW (P&L) (Master Spec Section 24)                 */}
         {/* ========================================================================= */}
+        {activeTab === "cash" && <CashDayPanel canClose={canConfirmPrice} />}
+
         {activeTab === "expenses" && (
           <>
             {/* Finance P&L Cards */}
