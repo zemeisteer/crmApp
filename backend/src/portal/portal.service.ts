@@ -51,6 +51,14 @@ function samePhone(a: string | null | undefined, normalized: string) {
   return x.length >= 9 && (x === y || x.slice(-9) === y.slice(-9));
 }
 
+// What the portal (students, parents) may see of the center, a teacher and
+// a branch. Never whole rows: tenants hold the SMS provider token, teachers
+// their pay, students their retry keys.
+const PORTAL_TENANT = { id: true, name: true, subdomain: true, logoUrl: true, phone: true, address: true, timezone: true } as const;
+const PORTAL_TEACHER = { id: true, fullName: true, phone: true } as const;
+const PORTAL_BRANCH = { id: true, name: true, address: true } as const;
+const STUDENT_PRIVATE = { idempotencyKey: false, requestHash: false, telegramChatId: false } as const;
+
 @Injectable()
 export class PortalService {
   constructor(
@@ -267,14 +275,15 @@ export class PortalService {
         eq(students.tenantId, tenantId),
         isNull(students.deletedAt),
       ),
+      columns: STUDENT_PRIVATE,
       with: {
-        tenant: true,
+        tenant: { columns: PORTAL_TENANT },
         enrollments: {
           with: {
             group: {
               with: {
-                teacher: true,
-                branch: true,
+                teacher: { columns: PORTAL_TEACHER },
+                branch: { columns: PORTAL_BRANCH },
               },
             },
           },
@@ -295,8 +304,8 @@ export class PortalService {
       with: {
         group: {
           with: {
-            teacher: true,
-            branch: true,
+            teacher: { columns: PORTAL_TEACHER },
+            branch: { columns: PORTAL_BRANCH },
           },
         },
       },
@@ -315,7 +324,7 @@ export class PortalService {
       ),
       with: {
         group: true,
-        teacher: true,
+        teacher: { columns: PORTAL_TEACHER },
         room: true,
       },
       orderBy: [desc(schedules.dayOfWeek), desc(schedules.startTime)],
@@ -351,7 +360,7 @@ export class PortalService {
 
     const enrolls = await this.db.query.enrollments.findMany({
       where: and(eq(enrollments.studentId, studentId), or(eq(enrollments.tenantId, tenantId), isNull(enrollments.tenantId))),
-      with: { group: { with: { teacher: true } } },
+      with: { group: { with: { teacher: { columns: PORTAL_TEACHER } } } },
     });
     const own = enrolls.filter((e) => e.group && e.group.tenantId === tenantId && !e.group.deletedAt);
     if (own.length === 0) return { from, today, lessons: [] };
@@ -743,13 +752,14 @@ export class PortalService {
       ),
       with: {
         student: {
+          columns: STUDENT_PRIVATE,
           with: {
             enrollments: {
               with: {
                 group: {
                   with: {
-                    teacher: true,
-                    branch: true,
+                    teacher: { columns: PORTAL_TEACHER },
+                    branch: { columns: PORTAL_BRANCH },
                   },
                 },
               },

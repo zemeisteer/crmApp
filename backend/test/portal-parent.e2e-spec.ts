@@ -85,4 +85,29 @@ describe('Portal for parents (e2e)', () => {
     await http().post('/api/portal/auth/parent-account').set(auth()).expect(403);
     await http().post('/api/portal/auth/parent-account').expect(401);
   });
+  it('never sends the center\'s secrets, a teacher\'s pay or internal keys to the portal', async () => {
+    const teacher = (await http().post('/api/teachers').set(auth()).send({ fullName: 'Paid Teacher', salaryType: 'FIXED', salaryValue: 7_000_000 }).expect(201)).body.id as string;
+    const g = (await http().post('/api/groups').set(auth()).send({ name: 'Leak G', subject: 'Math', teacherId: teacher }).expect(201)).body.id as string;
+    await http().post('/api/schedule').set(auth()).send({ groupId: g, teacherId: teacher, dayOfWeek: 1, startTime: '09:00', endTime: '10:00' });
+    const parentPhone = `+99897${tail(7)}`;
+    const kid = (await http().post('/api/students').set(auth()).set('Idempotency-Key', `leak-kid-${suffix}`).send({ fullName: 'Leak Kid', parentPhone, groupIds: [g] }).expect(201)).body.id as string;
+    const { pin } = (await http().post(`/api/students/${kid}/portal-pin`).set(auth()).expect(201)).body;
+    const token = (await http().post('/api/portal/auth/phone/verify').send({ phone: parentPhone, pin }).expect(201)).body.accessToken;
+    const p = { Authorization: `Bearer ${token}` };
+
+    const me = (await http().get('/api/portal/me').set(p).expect(200)).body;
+    expect(me.tenant).toEqual(expect.objectContaining({ name: expect.any(String), timezone: expect.any(String) }));
+    expect(Object.keys(me.tenant).sort()).toEqual(['address', 'id', 'logoUrl', 'name', 'phone', 'subdomain', 'timezone']);
+    expect(me.enrollments[0].group.teacher).toEqual({ id: teacher, fullName: 'Paid Teacher', phone: null });
+    const bodies = [
+      JSON.stringify(me),
+      JSON.stringify((await http().get('/api/portal/schedule').set(p).expect(200)).body),
+      JSON.stringify((await http().get('/api/portal/lessons').set(p)).body),
+    ];
+    for (const body of bodies) {
+      for (const secret of ['smsApiToken', 'salaryValue', 'salaryType', 'idempotencyKey', 'requestHash', 'telegramChatId', '7000000']) {
+        expect(body, secret).not.toContain(secret);
+      }
+    }
+  });
 });
