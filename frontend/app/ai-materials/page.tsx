@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import DashboardShell from "@/components/DashboardShell";
 import Select from "@/components/Select";
+import LoadError from "@/components/LoadError";
 import MarkdownLite from "@/components/MarkdownLite";
 import MaterialActions from "@/components/ai/MaterialActions";
 import { aiApi, groupsApi, homeworkApi, Group, Homework, ApiError } from "@/lib/api";
@@ -95,14 +96,19 @@ function AiMaterialsContent() {
     }
   }
 
-  useEffect(() => {
+  // Groups and homework for the form; a failed load is said, with a retry.
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const loadData = useCallback(() => {
     Promise.all([groupsApi.list(), homeworkApi.list()])
       .then(([g, h]) => {
         setGroups(g);
         setHomework(h);
+        setLoadError(null);
       })
+      .catch((err) => setLoadError(err instanceof ApiError ? err.message : ""))
       .finally(() => setLoadingData(false));
   }, []);
+  useEffect(loadData, [loadData]);
 
   const subjects = useMemo(
     () => Array.from(new Set(groups.map((g) => g.subject).filter(Boolean))) as string[],
@@ -203,10 +209,15 @@ function AiMaterialsContent() {
       </div>
 
       <div style={{ flex: 1, minHeight: 0, padding: "26px 32px", overflow: "auto", boxSizing: "border-box" }}>
+        {loadError !== null && (
+          <div style={{ marginBottom: 16 }}>
+            <LoadError message={loadError || t("adm.loadError")} onRetry={loadData} />
+          </div>
+        )}
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(380px, 1fr))",
+            gridTemplateColumns: "repeat(auto-fit, minmax(min(380px, 100%), 1fr))",
             gap: 24,
             alignItems: "start",
           }}
