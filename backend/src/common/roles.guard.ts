@@ -1,6 +1,8 @@
 import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { ROLES_KEY } from './roles.decorator';
+import { routeIdOf } from './route-id';
+import { accessDecides } from '../access/catalog';
 
 export const END_USER_ROLES = ['STUDENT', 'PARENT'];
 
@@ -14,6 +16,9 @@ export class RolesGuard implements CanActivate {
       context.getClass(),
     ]);
     const { user } = context.switchToHttp().getRequest();
+    // A member with their own access list: the list decides its routes.
+    const own = user ? accessDecides(routeIdOf(context) ?? '', user.role, user.access) : null;
+    if (own !== null) return own;
     if (!requiredRoles || requiredRoles.length === 0) return !user || rolesAllow(user.role, requiredRoles);
     if (!user) return false;
     return rolesAllow(user.role, requiredRoles);

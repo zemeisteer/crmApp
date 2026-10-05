@@ -289,6 +289,9 @@ export const organizationMemberships = pgTable('organization_memberships', {
   role: roleEnum('role').notNull().default('ADMIN'),
   status: membershipStatusEnum('status').notNull().default('ACTIVE'),
   permissions: text('permissions').array(),
+  // The member's own list of what they may do (keys of access/catalog.ts),
+  // set by the owner; null means their role's default.
+  access: text('access').array(),
   // Set when a member is removed from the center. The row stays (SUSPENDED)
   // as the record that access was taken away; adding the person again
   // clears it.

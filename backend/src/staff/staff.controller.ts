@@ -24,8 +24,8 @@ export class StaffController {
   }
 
   @Patch(':id')
-  update(@CurrentUser('tenantId') tenantId: string, @Param('id') id: string, @Body() dto: UpdateStaffDto) {
-    return this.service.update(tenantId, id, dto);
+  update(@CurrentUser('tenantId') tenantId: string, @Param('id') id: string, @Body() dto: UpdateStaffDto, @CurrentUser('sub') userId: string) {
+    return this.service.update(tenantId, id, dto, userId);
   }
 
   @Delete(':id')

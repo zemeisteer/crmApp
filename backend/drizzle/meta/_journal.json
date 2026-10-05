@@ -274,6 +274,13 @@
       "when": 1793900000000,
       "tag": "0038_debtor_reminders",
       "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1794000000000,
+      "tag": "0039_member_access",
+      "breakpoints": true
     }
   ]
 }

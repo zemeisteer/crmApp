@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Delete,
+  ForbiddenException,
   Get,
   Param,
   Post,
@@ -19,6 +20,8 @@ import { Roles } from '../common/roles.decorator';
 import { CurrentUser } from '../common/current-user.decorator';
 import { AuthService } from '../auth/auth.service';
 
+const MANAGER_INVITES = ['TEACHER', 'RECEPTIONIST', 'STUDENT', 'PARENT'];
+
 @Controller('invitations')
 export class InvitationsController {
   constructor(
@@ -32,8 +35,15 @@ export class InvitationsController {
   create(
     @CurrentUser('tenantId') tenantId: string,
     @CurrentUser('sub') userId: string,
+    @CurrentUser('role') role: string,
     @Body() dto: CreateInvitationDto,
   ) {
+    // A manager invites the people they work with; roles with more access
+    // than their own (admin, manager, accountant) are given by the owner or
+    // an admin - otherwise an invitation would be a way to raise one's own.
+    if (role !== 'OWNER' && role !== 'ADMIN' && role !== 'SUPERADMIN' && !MANAGER_INVITES.includes(dto.role)) {
+      throw new ForbiddenException("Bu rolga taklifnomani faqat markaz egasi yoki admin yubora oladi");
+    }
     return this.invitationsService.create(tenantId, userId, dto);
   }
 

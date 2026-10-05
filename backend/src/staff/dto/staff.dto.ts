@@ -1,4 +1,5 @@
 import { IsArray, IsEmail, IsIn, IsOptional, IsString, MinLength } from 'class-validator';
+import { ACCESS_KEYS } from '../../access/catalog';
 
 export class CreateStaffDto {
   @IsString()
@@ -18,6 +19,12 @@ export class CreateStaffDto {
   @IsArray()
   @IsString({ each: true })
   permissions?: string[];
+
+  // The member's own list (keys of access/catalog.ts); null: the role's default.
+  @IsOptional()
+  @IsArray()
+  @IsIn(ACCESS_KEYS, { each: true })
+  access?: string[] | null;
 }
 
 export class UpdateStaffDto {
@@ -29,4 +36,10 @@ export class UpdateStaffDto {
   @IsArray()
   @IsString({ each: true })
   permissions?: string[];
+
+  // The member's own list (keys of access/catalog.ts); null: the role's default.
+  @IsOptional()
+  @IsArray()
+  @IsIn(ACCESS_KEYS, { each: true })
+  access?: string[] | null;
 }

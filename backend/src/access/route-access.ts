@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { DiscoveryService, MetadataScanner, Reflector } from '@nestjs/core';
-import { GUARDS_METADATA, METHOD_METADATA, PATH_METADATA } from '@nestjs/common/constants';
-import { RequestMethod } from '@nestjs/common';
+import { GUARDS_METADATA } from '@nestjs/common/constants';
+import { routeId } from '../common/route-id';
 import { ROLES_KEY } from '../common/roles.decorator';
 import { PERMISSIONS_KEY } from '../common/permissions.decorator';
 import { RolesGuard, rolesAllow } from '../common/roles.guard';
@@ -15,9 +15,6 @@ export interface RouteAccess {
   rolesGuard: boolean;
   permissionsGuard: boolean;
 }
-
-const join = (...parts: Array<string | string[] | undefined>) =>
-  '/' + parts.flatMap((p) => (Array.isArray(p) ? p[0] : p) ?? '').map((p) => p.replace(/^\/+|\/+$/g, '')).filter(Boolean).join('/');
 
 /**
  * Every HTTP route of the application with its @Roles / @RequirePermissions
@@ -40,18 +37,17 @@ export class RouteAccessService {
     for (const wrapper of this.discovery.getControllers()) {
       const { instance, metatype } = wrapper;
       if (!instance || !metatype) continue;
-      const base = Reflect.getMetadata(PATH_METADATA, metatype) as string | string[] | undefined;
       const classGuards = (Reflect.getMetadata(GUARDS_METADATA, metatype) as unknown[] | undefined) ?? [];
       const proto = Object.getPrototypeOf(instance);
       for (const name of this.scanner.getAllMethodNames(proto)) {
         const handler = proto[name];
-        const path = Reflect.getMetadata(PATH_METADATA, handler) as string | string[] | undefined;
-        const method = Reflect.getMetadata(METHOD_METADATA, handler) as RequestMethod | undefined;
-        if (path === undefined || method === undefined) continue;
+        const id = routeId(metatype, handler);
+        if (!id) continue;
+        const [method, path] = id.split(' ');
         const guards = [...classGuards, ...((Reflect.getMetadata(GUARDS_METADATA, handler) as unknown[] | undefined) ?? [])];
         out.push({
-          method: RequestMethod[method],
-          path: join('api', base, path),
+          method,
+          path,
           roles: this.reflector.getAllAndOverride<string[]>(ROLES_KEY, [handler, metatype]),
           permissions: this.reflector.getAllAndOverride<string[]>(PERMISSIONS_KEY, [handler, metatype]),
           rolesGuard: guards.includes(RolesGuard),

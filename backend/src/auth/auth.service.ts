@@ -6,6 +6,7 @@ import {
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
+import { effectiveAccess } from '../access/catalog';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcryptjs';
@@ -227,17 +228,17 @@ export class AuthService {
   async resolveWorkspace(
     user: { id: string; role: string; tenantId: string | null; permissions?: string[] | null },
     tenantId: string | null,
-  ): Promise<{ role: string; permissions: string[]; tenant: typeof tenants.$inferSelect | null }> {
+  ): Promise<{ role: string; permissions: string[]; access: string[]; tenant: typeof tenants.$inferSelect | null }> {
     if (user.role === 'SUPERADMIN') {
       const tenant = tenantId ? (await this.db.query.tenants.findFirst({ where: eq(tenants.id, tenantId) })) ?? null : null;
       if (tenantId && !tenant) throw new NotFoundException('Markaz topilmadi');
-      return { role: 'SUPERADMIN', permissions: ['*'], tenant };
+      return { role: 'SUPERADMIN', permissions: ['*'], access: effectiveAccess('SUPERADMIN', null), tenant };
     }
     const rows = await this.db.query.organizationMemberships.findMany({ where: eq(organizationMemberships.userId, user.id) });
     if (!tenantId) {
       // No workspace: only an account that belongs to no center at all.
       if (rows.length > 0 || user.tenantId) throw new UnauthorizedException('Markaz tanlanmagan');
-      return { role: user.role, permissions: user.permissions || [], tenant: null };
+      return { role: user.role, permissions: user.permissions || [], access: [], tenant: null };
     }
     const membership = rows.find((m) => m.tenantId === tenantId);
     if (!membership || membership.status !== 'ACTIVE') {
@@ -245,7 +246,7 @@ export class AuthService {
     }
     const tenant = await this.db.query.tenants.findFirst({ where: eq(tenants.id, tenantId) });
     if (!tenant) throw new NotFoundException('Markaz topilmadi');
-    return { role: membership.role, permissions: membership.permissions || [], tenant };
+    return { role: membership.role, permissions: membership.permissions || [], access: effectiveAccess(membership.role, membership.access), tenant };
   }
 
   // After the password (and the 2FA code): one session, bound to a
@@ -371,7 +372,7 @@ export class AuthService {
     const user = await this.db.query.users.findFirst({ where: eq(users.id, userId) });
     if (!user) throw new UnauthorizedException('Foydalanuvchi topilmadi');
 
-    const { role, permissions, tenant } = await this.resolveWorkspace(user, targetTenantId);
+    const { role, permissions, access, tenant } = await this.resolveWorkspace(user, targetTenantId);
     if (!tenant) throw new NotFoundException('Markaz topilmadi');
 
     if (user.role === 'SUPERADMIN') {
@@ -416,7 +417,7 @@ export class AuthService {
       tenant,
       role,
       permissions,
-      user: { id: user.id, email: user.email, fullName: user.fullName, role, permissions },
+      user: { id: user.id, email: user.email, fullName: user.fullName, role, permissions, access },
     };
   }
 
@@ -632,6 +633,8 @@ export class AuthService {
         fullName: user.fullName,
         role: ws.role,
         permissions: ws.permissions,
+        // What this member may do (access/catalog.ts keys), for the screens.
+        access: ws.access,
         emailVerified: user.emailVerified,
         twoFactorEnabled: user.twoFactorEnabled,
       },

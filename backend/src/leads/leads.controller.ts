@@ -17,6 +17,7 @@ import { JwtPayload } from '../common/jwt.strategy';
 import { PermissionsGuard } from '../common/permissions.guard';
 import { RequirePermissions } from '../common/permissions.decorator';
 import { getEffectivePermissions, Permission } from '../common/permissions';
+import { admissionsPermissionsFor, isConfigurableRole } from '../access/catalog';
 import { TrialGuard } from '../common/trial.guard';
 import {
   ArchiveLeadDto,
@@ -56,7 +57,11 @@ export class LeadsController {
     if (!user?.tenantId) throw new ForbiddenException('Tashkilot tanlanmagan');
     return {
       tenantId: user.tenantId,
-      actor: { userId: user.sub, permissions: getEffectivePermissions(user.role, user.permissions) },
+      actor: {
+        userId: user.sub,
+        // A member's own access list, when set, is what they may do here too.
+        permissions: isConfigurableRole(user.role) && Array.isArray(user.access) ? admissionsPermissionsFor(user.access) : getEffectivePermissions(user.role, user.permissions),
+      },
     };
   }
 

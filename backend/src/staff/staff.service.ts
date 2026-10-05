@@ -11,6 +11,30 @@ import { DB, Database } from '../db/db.module';
 import { authHandoffCodes, organizationMemberships, sessions, users } from '../db/schema';
 import { AuditService } from '../audit/audit.service';
 import { CreateStaffDto, UpdateStaffDto } from './dto/staff.dto';
+import { ACCESS_KEYS, effectiveAccess, isConfigurableRole } from '../access/catalog';
+
+type MembershipRow = typeof organizationMemberships.$inferSelect;
+const view = (userId: string, email: string, fullName: string, m: MembershipRow) => ({
+  id: userId,
+  membershipId: m.id,
+  email,
+  fullName,
+  role: m.role,
+  permissions: m.permissions || [],
+  // The own list (null: the role's default) and what it comes to.
+  access: m.access ?? null,
+  effectiveAccess: effectiveAccess(m.role, m.access),
+  createdAt: m.createdAt,
+});
+
+/** A list can be set only for the roles it applies to; kept in catalog order, without repeats. */
+function checkedAccess(role: string, access: string[] | null | undefined): string[] | null | undefined {
+  if (access === undefined || access === null) return access;
+  if (!isConfigurableRole(role)) {
+    throw new BadRequestException("Admin hamma narsaga ega: ruxsatlarni cheklash uchun boshqa rol tanlang");
+  }
+  return ACCESS_KEYS.filter((k) => access.includes(k));
+}
 
 @Injectable()
 export class StaffService {
@@ -33,18 +57,11 @@ export class StaffService {
       orderBy: (m, { asc }) => asc(m.createdAt),
     });
 
-    return memberships.map((m) => ({
-      id: m.userId,
-      membershipId: m.id,
-      email: m.user.email,
-      fullName: m.user.fullName,
-      role: m.role,
-      permissions: m.permissions || [],
-      createdAt: m.createdAt,
-    }));
+    return memberships.map((m) => view(m.userId, m.user.email, m.user.fullName, m));
   }
 
   async create(tenantId: string, dto: CreateStaffDto) {
+    const access = checkedAccess(dto.role, dto.access) ?? null;
     const email = dto.email.trim().toLowerCase();
     let user = await this.db.query.users.findFirst({
       where: eq(users.email, email),
@@ -69,6 +86,7 @@ export class StaffService {
           .set({
             role: dto.role as any,
             permissions: dto.permissions || [],
+            access,
             status: 'ACTIVE',
             removedAt: null,
             removedByUserId: null,
@@ -77,15 +95,7 @@ export class StaffService {
           .where(eq(organizationMemberships.id, existingMembership.id))
           .returning();
 
-        return {
-          id: user.id,
-          membershipId: updated.id,
-          email: user.email,
-          fullName: user.fullName,
-          role: updated.role,
-          permissions: updated.permissions || [],
-          createdAt: updated.createdAt,
-        };
+        return view(user.id, user.email, user.fullName, updated);
       }
 
       // Add membership for existing global user to this tenant
@@ -96,19 +106,12 @@ export class StaffService {
           tenantId,
           role: dto.role as any,
           permissions: dto.permissions || [],
+          access,
           status: 'ACTIVE',
         })
         .returning();
 
-      return {
-        id: user.id,
-        membershipId: membership.id,
-        email: user.email,
-        fullName: user.fullName,
-        role: membership.role,
-        permissions: membership.permissions || [],
-        createdAt: membership.createdAt,
-      };
+      return view(user.id, user.email, user.fullName, membership);
     }
 
     // New user creation
@@ -133,22 +136,15 @@ export class StaffService {
         tenantId,
         role: dto.role as any,
         permissions: dto.permissions || [],
+        access,
         status: 'ACTIVE',
       })
       .returning();
 
-    return {
-      id: newUser.id,
-      membershipId: membership.id,
-      email: newUser.email,
-      fullName: newUser.fullName,
-      role: membership.role,
-      permissions: membership.permissions || [],
-      createdAt: membership.createdAt,
-    };
+    return view(newUser.id, newUser.email, newUser.fullName, membership);
   }
 
-  async update(tenantId: string, id: string, dto: UpdateStaffDto) {
+  async update(tenantId: string, id: string, dto: UpdateStaffDto, requesterId?: string) {
     const membership = await this.db.query.organizationMemberships.findFirst({
       where: and(
         eq(organizationMemberships.tenantId, tenantId),
@@ -163,28 +159,29 @@ export class StaffService {
     });
 
     if (!membership) throw new NotFoundException('Xodim topilmadi');
+    // The owner always has everything; their membership is not edited here.
+    if (membership.role === 'OWNER') throw new BadRequestException("Markaz egasining roli va ruxsatlari o'zgartirilmaydi");
 
     const patch: Partial<typeof organizationMemberships.$inferInsert> = {
       updatedAt: new Date(),
     };
+    const role = dto.role ?? membership.role;
     if (dto.role !== undefined) patch.role = dto.role as any;
     if (dto.permissions !== undefined) patch.permissions = dto.permissions;
+    if (dto.access !== undefined) patch.access = checkedAccess(role, dto.access);
+    // A new role starts from its own default unless a list comes with it.
+    else if (dto.role !== undefined && dto.role !== membership.role) patch.access = null;
 
     const [updated] = await this.db
       .update(organizationMemberships)
       .set(patch)
       .where(eq(organizationMemberships.id, membership.id))
       .returning();
+    if (patch.role !== undefined || patch.access !== undefined) {
+      this.audit.log({ tenantId, userId: requesterId ?? null, action: 'update', entityType: 'staff', entityId: membership.userId, meta: { role: updated.role, access: updated.access ?? null } });
+    }
 
-    return {
-      id: membership.userId,
-      membershipId: updated.id,
-      email: membership.user.email,
-      fullName: membership.user.fullName,
-      role: updated.role,
-      permissions: updated.permissions || [],
-      createdAt: updated.createdAt,
-    };
+    return view(membership.userId, membership.user.email, membership.user.fullName, updated);
   }
 
   async remove(tenantId: string, id: string, requesterId: string) {
@@ -232,7 +229,7 @@ export class StaffService {
       await tx.delete(sessions).where(and(eq(sessions.userId, membership.userId), eq(sessions.tenantId, tenantId)));
       await tx.delete(authHandoffCodes).where(and(eq(authHandoffCodes.userId, membership.userId), eq(authHandoffCodes.tenantId, tenantId)));
     });
-    this.audit.log({ tenantId, userId: requesterId, action: 'delete', entityType: 'staff', entityId: membership.userId, meta: { role: membership.role, membershipId: membership.id } });
+    this.audit.log({ tenantId, userId: requesterId ?? null, action: 'delete', entityType: 'staff', entityId: membership.userId, meta: { role: membership.role, membershipId: membership.id } });
 
     return { success: true };
   }

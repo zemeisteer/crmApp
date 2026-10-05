@@ -12,6 +12,8 @@ export interface JwtPayload {
   role: 'SUPERADMIN' | 'OWNER' | 'ADMIN' | 'MANAGER' | 'RECEPTIONIST' | 'TEACHER' | 'ACCOUNTANT' | 'STUDENT' | 'PARENT';
   tenantId: string | null;
   permissions?: string[] | null;
+  /** The member's own access list (access/catalog.ts); null: the role's default. */
+  access?: string[] | null;
   /** The session this token belongs to (see AuthService.signAccessToken). */
   sid?: string;
 }
@@ -61,7 +63,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     if (!payload.tenantId) return payload; // no workspace: nothing tenant-scoped can be read with it
 
     const [membership] = await this.db
-      .select({ role: organizationMemberships.role, status: organizationMemberships.status, permissions: organizationMemberships.permissions })
+      .select({ role: organizationMemberships.role, status: organizationMemberships.status, permissions: organizationMemberships.permissions, access: organizationMemberships.access })
       .from(organizationMemberships)
       .where(and(eq(organizationMemberships.userId, user.id), eq(organizationMemberships.tenantId, payload.tenantId)));
     // No membership row means no access. The user's own `tenantId` / `role`
@@ -69,6 +71,6 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     // looks exactly like one that never had any.
     if (!membership) throw new UnauthorizedException("Siz ushbu markazga a'zo emassiz");
     if (membership.status !== 'ACTIVE') throw new UnauthorizedException("Sizning markazdagi a'zoligingiz faol emas");
-    return { ...payload, role: membership.role, permissions: membership.permissions || [] };
+    return { ...payload, role: membership.role, permissions: membership.permissions || [], access: membership.access ?? null };
   }
 }
