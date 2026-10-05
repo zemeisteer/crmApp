@@ -404,10 +404,13 @@ tbody tr:hover {
 
   /* Settings: the side menu becomes a scrollable row of tabs. */
   .settings-layout { flex-direction: column !important; overflow: visible !important; }
+  /* Every section visible: the tabs wrap onto a second row instead of
+     scrolling sideways, where the hidden ones could not be seen. */
   .settings-nav {
     width: 100% !important;
     flex-direction: row !important;
-    overflow-x: auto !important;
+    flex-wrap: wrap;
+    overflow-x: visible !important;
     border-right: none !important;
     border-bottom: 1px solid #EAE8E2;
     padding: 10px 16px !important;

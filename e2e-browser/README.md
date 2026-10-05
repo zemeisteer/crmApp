@@ -8,11 +8,12 @@ Eng muhim oqimlar haqiqiy brauzerda, backend va frontendning **production build*
 | `role-boundaries.spec.ts` | Bir kishi, ikki markaz, har birida boshqa rol; o'qituvchi faqat o'z guruhini ko'radi, to'lov/hisobot/lid/sozlamalar yopiq (sahifa ham, API ham) |
 | `admissions.spec.ts` | Brauzer New York vaqtida: lidning qayta aloqasi va sinov darsi markaz vaqtida (Asia/Tashkent) saqlanadi va ko'rsatiladi; yangi o'quvchi — javob yo'qolgandan keyingi qayta yuborishda bitta |
 | `capacity.spec.ts` | To'lgan guruh yangi o'quvchini qabul qilmaydi va sababini aytadi |
-| `teaching.spec.ts` | O'qituvchi o'z guruhida davomat qiladi |
+| `teaching.spec.ts` | O'qituvchi o'z guruhida davomat qiladi; brauzer sanasi markaznikidan farq qilganda ham davomat markaz kunida yoziladi |
 | `tuition.spec.ts` | To'lov: ikki marta bosish va javob yo'qolgandan keyingi qayta yuborish — har biri bitta to'lov |
-| `payroll.spec.ts` | Hisobchi oylikni ikki qismda to'laydi; ikki marta bosish va qayta yuborish — bitta to'lov, har biriga bitta xarajat |
+| `payroll.spec.ts` | Hisobchi oylikni ikki qismda to'laydi; ikki marta bosish va qayta yuborish — bitta to'lov, har biriga bitta xarajat; xato to'lov storno qilinadi |
 | `parent-portal.spec.ts` | Ota-ona telefon va PIN bilan kiradi, farzandini faqat kuzatadi (AI repetitor yo'q) |
 | `reports.spec.ts` | Direktor hisobotida oylik to'lovi xarajatda bir marta hisoblanadi |
+| `mobile.spec.ts` | 390 px ekranda 18 ta asosiy sahifa sig'adi: sahifa yonga surilmaydi, keng jadval faqat o'z kartochkasi ichida suriladi |
 
 ```bash
 cd e2e-browser
