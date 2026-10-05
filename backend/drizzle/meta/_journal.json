@@ -267,6 +267,13 @@
       "when": 1793800000000,
       "tag": "0037_cash_closings",
       "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1793900000000,
+      "tag": "0038_debtor_reminders",
+      "breakpoints": true
     }
   ]
 }

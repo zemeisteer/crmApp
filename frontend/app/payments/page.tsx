@@ -32,6 +32,7 @@ import {
 } from "@/lib/api";
 import { useCenterClock } from "@/lib/use-center-clock";
 import CashDayPanel from "@/components/payments/CashDay";
+import DebtorRemindersDialog from "@/components/payments/DebtorReminders";
 import { centerWallClock } from "@/lib/center-time";
 import { useLanguage } from "@/lib/i18n-context";
 import { useAuth } from "@/lib/auth-context";
@@ -508,25 +509,7 @@ function PaymentsContent() {
   const [groupFilter, setGroupFilter] = useState("");
   const [debtorGroupFilter, setDebtorGroupFilter] = useState("");
   const [methodFilter, setMethodFilter] = useState("");
-  const [sendingReminders, setSendingReminders] = useState(false);
-
-  async function handleSendReminders() {
-    const debtorCount = debtorsData?.debtorCount || 0;
-    if (debtorCount === 0) {
-      alert(t("pay.noDebtors"));
-      return;
-    }
-    if (!window.confirm(`${debtorCount} ta qarzdor o'quvchiga SMS va Telegram eslatma yuborilsinmi?`)) return;
-    setSendingReminders(true);
-    try {
-      const res = await notificationsApi.sendDebtorReminders({ forMonth: selectedMonth });
-      alert(`Muvaffaqiyatli: ${res.processedDebtors} ta qarzdorga xabarnoma yuborildi!`);
-    } catch (err) {
-      alert(err instanceof ApiError ? err.message : t("common.errorGeneric"));
-    } finally {
-      setSendingReminders(false);
-    }
-  }
+  const [remindersOpen, setRemindersOpen] = useState(false);
 
   function loadAll() {
     setLoading(true);
@@ -1586,11 +1569,12 @@ function PaymentsContent() {
                 onChange={setDebtorGroupFilter}
                 style={{ width: 190 }}
               />
+              {canConfirmPrice && (
               <button
                 type="button"
                 className="btn"
-                disabled={sendingReminders || (debtorsData?.debtorCount || 0) === 0}
-                onClick={handleSendReminders}
+                disabled={(debtorsData?.debtorCount || 0) === 0}
+                onClick={() => setRemindersOpen(true)}
                 style={{
                   marginLeft: "auto",
                   background: "#FEE2E2",
@@ -1607,8 +1591,9 @@ function PaymentsContent() {
                 }}
               >
                 <span>📢</span>
-                <span>{sendingReminders ? t("pay.sending") : t("pay.smsDebtors")}</span>
+                <span>{t("pay.smsDebtors")}</span>
               </button>
+              )}
             </div>
 
             {/* Debtors List Table */}
@@ -1918,6 +1903,7 @@ function PaymentsContent() {
         {/* TAB 4: EXPENSES & CASH FLOW (P&L) (Master Spec Section 24)                 */}
         {/* ========================================================================= */}
         {activeTab === "cash" && <CashDayPanel canClose={canConfirmPrice} />}
+        {remindersOpen && <DebtorRemindersDialog forMonth={debtorsData?.forMonth || selectedMonth} onClose={() => setRemindersOpen(false)} />}
 
         {activeTab === "expenses" && (
           <>

@@ -57,6 +57,14 @@ export class NotificationsController {
     return this.notificationsService.send(user.tenantId, dto);
   }
 
+  // Who would be reminded, and how: sends nothing.
+  @Get('debtor-reminders/preview')
+  @Roles('ADMIN', 'SUPERADMIN', 'ACCOUNTANT')
+  previewDebtorReminders(@CurrentUser() user: any, @Query('forMonth') forMonth?: string) {
+    return this.notificationsService.debtorReminderPreview(user.tenantId, forMonth || undefined);
+  }
+
+  // At most one reminder per student, month and center day.
   @Post('debtor-reminders')
   @Roles('ADMIN', 'SUPERADMIN', 'ACCOUNTANT')
   sendDebtorReminders(
@@ -67,6 +75,7 @@ export class NotificationsController {
       user.tenantId,
       dto.forMonth,
       dto.studentIds,
+      user.sub,
     );
   }
 }

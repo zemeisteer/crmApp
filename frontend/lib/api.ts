@@ -2699,6 +2699,15 @@ export interface NotificationSettings {
   dailyDigest?: boolean;
 }
 
+export type DebtorReminderPreview = {
+  forMonth: string;
+  day: string;
+  channels: { sms: boolean; telegram: boolean };
+  debtors: Array<{ studentId: string; fullName: string; debt: number; telegram: boolean; sms: boolean; remindedToday: boolean }>;
+  totals: { debtors: number; reachable: number; remindedToday: number; unreachable: number };
+};
+export type DebtorReminderResult = { success: boolean; forMonth: string; sent: number; alreadyToday: number; unreachable: number; processedDebtors: number };
+
 export const notificationsApi = {
   getSettings: () => request<NotificationSettings>("/notifications/settings"),
   updateSettings: (data: Partial<NotificationSettings>) =>
@@ -2721,8 +2730,10 @@ export const notificationsApi = {
       method: "POST",
       body: JSON.stringify(data),
     }),
+  debtorReminderPreview: (forMonth?: string) =>
+    request<DebtorReminderPreview>(`/notifications/debtor-reminders/preview${forMonth ? `?forMonth=${encodeURIComponent(forMonth)}` : ""}`),
   sendDebtorReminders: (data?: { forMonth?: string; studentIds?: string[] }) =>
-    request<{ success: boolean; processedDebtors: number }>("/notifications/debtor-reminders", {
+    request<DebtorReminderResult>("/notifications/debtor-reminders", {
       method: "POST",
       body: JSON.stringify(data || {}),
     }),

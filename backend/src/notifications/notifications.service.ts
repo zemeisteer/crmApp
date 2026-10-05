@@ -1,4 +1,5 @@
-import { Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { formatZoned } from '../common/timezone';
 import { and, desc, eq, sql } from 'drizzle-orm';
 import { DB, Database } from '../db/db.module';
 import { LedgerService } from '../ledger/ledger.service';
@@ -6,6 +7,7 @@ import {
   notifications,
   students,
   tenants,
+  debtorReminders,
 } from '../db/schema';
 import { TelegramService } from '../telegram/telegram.service';
 import { EskizProvider } from './sms/eskiz.provider';
@@ -307,50 +309,105 @@ export class NotificationsService {
     }
   }
 
-  async notifyDebtors(tenantId: string, forMonth?: string, targetStudentIds?: string[]) {
-    // The debt the payments page shows, from the same ledger.
-    const month = forMonth || (await this.ledger.currentMonth(tenantId));
-    const ledger = await this.ledger.load(tenantId, [month]);
+  // Which channels can carry a message for this center right now.
+  private async channelsReady(tenantId: string) {
+    const tenant = await this.db.query.tenants.findFirst({ where: eq(tenants.id, tenantId), columns: { smsApiToken: true, smsProvider: true, name: true } });
+    const envToken = tenant?.smsProvider === 'playmobile' ? process.env.PLAYMOBILE_API_TOKEN : process.env.ESKIZ_API_TOKEN;
+    return {
+      centerName: tenant?.name ?? 'TalimCRM',
+      // Outside production an SMS without a token is only logged (sandbox),
+      // which is what local runs and tests want; in production it needs one.
+      sms: Boolean(tenant?.smsApiToken || envToken) || process.env.NODE_ENV !== 'production',
+      telegram: this.telegram.isConfigured,
+    };
+  }
 
-    let sentCount = 0;
-    for (const student of ledger.students) {
-      // Only students who study now are messaged; what the others still
-      // owe stays on the payments page for the office to follow up.
-      if (student.deleted || student.status !== 'ACTIVE') continue;
-      if (targetStudentIds && targetStudentIds.length > 0 && !targetStudentIds.includes(student.id)) {
+  /**
+   * The month's debtors who study now, with how each can be reached and
+   * whether they were already reminded today (center day). Sends nothing.
+   */
+  async debtorReminderPreview(tenantId: string, forMonth?: string) {
+    const month = forMonth || (await this.ledger.currentMonth(tenantId));
+    if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) throw new BadRequestException("forMonth YYYY-MM formatida bo'lishi kerak");
+    const ledger = await this.ledger.load(tenantId, [month]);
+    const today = formatZoned(new Date(), ledger.timezone).slice(0, 10);
+    const ready = await this.channelsReady(tenantId);
+    const sentToday = new Set(
+      (await this.db.select({ studentId: debtorReminders.studentId }).from(debtorReminders)
+        .where(and(eq(debtorReminders.tenantId, tenantId), eq(debtorReminders.forMonth, month), eq(debtorReminders.day, today)))).map((r) => r.studentId),
+    );
+    const debtors = ledger.students
+      .filter((st) => !st.deleted && st.status === 'ACTIVE')
+      .map((st) => ({ st, debt: ledger.due(st, month).debt }))
+      .filter((x) => x.debt > 0)
+      .map(({ st, debt }) => {
+        const telegram = ready.telegram && Boolean(st.telegramChatId);
+        const sms = ready.sms && Boolean(st.parentPhone || st.phone);
+        return { studentId: st.id, fullName: st.fullName, debt, telegram, sms, remindedToday: sentToday.has(st.id) };
+      })
+      .sort((a, b) => b.debt - a.debt || a.fullName.localeCompare(b.fullName));
+    return {
+      forMonth: month,
+      day: today,
+      channels: { sms: ready.sms, telegram: ready.telegram },
+      debtors,
+      totals: {
+        debtors: debtors.length,
+        reachable: debtors.filter((d) => (d.telegram || d.sms) && !d.remindedToday).length,
+        remindedToday: debtors.filter((d) => d.remindedToday).length,
+        unreachable: debtors.filter((d) => !d.telegram && !d.sms).length,
+      },
+    };
+  }
+
+  /**
+   * Reminds the month's debtors (or the chosen ones): at most once per
+   * student, month and center day - the reminder is recorded first, so a
+   * double click or two staff at once send one. Students that cannot be
+   * reached (no channel configured, or no contact) are counted, not
+   * "sent". The message is signed with the center's name.
+   */
+  async notifyDebtors(tenantId: string, forMonth?: string, targetStudentIds?: string[], userId?: string) {
+    const preview = await this.debtorReminderPreview(tenantId, forMonth);
+    const ready = await this.channelsReady(tenantId);
+    const chosen = targetStudentIds?.length ? preview.debtors.filter((d) => targetStudentIds.includes(d.studentId)) : preview.debtors;
+    const students = new Map((await this.ledger.load(tenantId, [preview.forMonth])).students.map((st) => [st.id, st]));
+    let sent = 0;
+    let alreadyToday = 0;
+    let unreachable = 0;
+    for (const d of chosen) {
+      const st = students.get(d.studentId)!;
+      const channels = [d.telegram ? 'TELEGRAM' : null, d.sms ? 'SMS' : null].filter(Boolean) as Array<'TELEGRAM' | 'SMS'>;
+      if (channels.length === 0) {
+        unreachable++;
         continue;
       }
-      const debt = ledger.due(student, month).debt;
-
-      if (debt > 0) {
-        const formattedDebt = new Intl.NumberFormat('uz-UZ').format(debt);
-        const text = `Hurmatli o'quvchi / ota-ona! Sizning ${month} oyi uchun ${formattedDebt} so'm to'lovingiz mavjud. Iltimos, o'z vaqtida to'lovni amalga oshiring. TalimCRM`;
-
-        if (student.telegramChatId) {
-          void this.send(tenantId, {
-            channel: 'TELEGRAM',
-            event: 'PAYMENT_DUE',
-            recipient: student.telegramChatId,
-            studentId: student.id,
-            content: text,
-          });
-        }
-
-        const phone = student.parentPhone || student.phone;
-        if (phone) {
-          void this.send(tenantId, {
-            channel: 'SMS',
-            event: 'PAYMENT_DUE',
-            recipient: phone,
-            studentId: student.id,
-            content: text,
-          });
-        }
-
-        sentCount++;
+      const [claimed] = await this.db
+        .insert(debtorReminders)
+        .values({ tenantId, studentId: d.studentId, forMonth: preview.forMonth, day: preview.day, debt: d.debt, channels: channels.join(','), sentById: userId ?? null })
+        .onConflictDoNothing()
+        .returning({ id: debtorReminders.id });
+      if (!claimed) {
+        alreadyToday++;
+        continue;
       }
+      const text = `Hurmatli o'quvchi / ota-ona! ${preview.forMonth} oyi uchun ${new Intl.NumberFormat('uz-UZ').format(d.debt)} so'm to'lov qoldi. Iltimos, to'lovni o'z vaqtida qiling. ${ready.centerName}`;
+      if (channels.includes('TELEGRAM')) {
+        void this.send(tenantId, { channel: 'TELEGRAM', event: 'PAYMENT_DUE', recipient: st.telegramChatId!, studentId: st.id, content: text });
+      }
+      if (channels.includes('SMS')) {
+        void this.send(tenantId, { channel: 'SMS', event: 'PAYMENT_DUE', recipient: (st.parentPhone || st.phone)!, studentId: st.id, content: text });
+      }
+      sent++;
     }
-
-    return { success: true, processedDebtors: sentCount };
+    return {
+      success: true,
+      forMonth: preview.forMonth,
+      sent,
+      alreadyToday,
+      unreachable,
+      // Kept for older clients: the reminders actually sent now.
+      processedDebtors: sent,
+    };
   }
 }

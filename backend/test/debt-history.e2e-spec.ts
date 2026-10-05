@@ -6,6 +6,7 @@ import { eq } from 'drizzle-orm';
 import { AppModule } from '../src/app.module.js';
 import { DB, type Database } from '../src/db/db.module.js';
 import { enrollments, groupPriceHistory, groups, invoices, paymentAllocations, payments, students, tenants } from '../src/db/schema.js';
+import { TelegramService } from '../src/telegram/telegram.service.js';
 import { NotificationsService } from '../src/notifications/notifications.service.js';
 
 // What was owed for a past month must not change because of what happened
@@ -230,8 +231,11 @@ describe('Historical debt (e2e)', () => {
       const send = vi.spyOn(notifications, 'send').mockImplementation((async (_t: string, m: { studentId?: string }) => { sent.push(m); }) as never);
       await db.update(students).set({ telegramChatId: `8${String(suffix).slice(-8)}` }).where(eq(students.id, kid));
       await db.update(students).set({ telegramChatId: `7${String(suffix).slice(-8)}` }).where(eq(students.id, both));
+      // The bot as if configured (tests run without a Telegram token).
+      const tg = vi.spyOn(app.get(TelegramService), 'isConfigured', 'get').mockReturnValue(true);
       const res = await notifications.notifyDebtors(tenantId, m2, [kid, both]);
       send.mockRestore();
+      tg.mockRestore();
       expect(res.processedDebtors).toBe(1);
       expect([...new Set(sent.map((x) => x.studentId))]).toEqual([both]);
     });

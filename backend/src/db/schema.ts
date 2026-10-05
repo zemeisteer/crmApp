@@ -1318,6 +1318,23 @@ export const cashClosings = pgTable('cash_closings', {
   tenantDateUniq: uniqueIndex('cash_closings_tenant_date_uniq').on(t.tenantId, t.date),
 }));
 
+// A debt reminder to one student for one month, at most once per center
+// day: written before anything is sent, so a double click or two staff at
+// once send one reminder, not two.
+export const debtorReminders = pgTable('debtor_reminders', {
+  id: text('id').primaryKey().$defaultFn(() => createId()),
+  tenantId: text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  studentId: text('student_id').notNull().references(() => students.id, { onDelete: 'cascade' }),
+  forMonth: text('for_month').notNull(), // "YYYY-MM"
+  day: text('day').notNull(), // the center's calendar day it was sent, "YYYY-MM-DD"
+  debt: integer('debt').notNull(),
+  channels: text('channels').notNull(), // "TELEGRAM,SMS"
+  sentById: text('sent_by_id').references(() => users.id, { onDelete: 'set null' }),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+}, (t) => ({
+  oncePerDay: uniqueIndex('debtor_reminders_once_per_day').on(t.tenantId, t.studentId, t.forMonth, t.day),
+}));
+
 // Expenses (CRMAPP Master Spec Section 24)
 export const expenses = pgTable('expenses', {
   id: text('id').primaryKey().$defaultFn(() => createId()),

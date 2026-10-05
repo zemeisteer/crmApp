@@ -77,3 +77,32 @@ test('closing the cash desk: what should be in the drawer, the count, the differ
   expect(day.closed).toMatchObject({ expectedCash: 350000, countedCash: 345000, difference: -5000, note: 'Qaytim berildi' });
   await expect(api('POST', '/cash/day/close', { token: a.token, body: { date: day.date, countedCash: 1 } })).rejects.toThrow(/409/);
 });
+
+test('debtor reminders: previewed first, then sent once a day', async ({ page }) => {
+  const a = await newCenter('remind');
+  const group = await api('POST', '/groups', { token: a.token, body: { name: 'Remind group', subject: 'English', monthlyPrice: 300000, maxStudents: 10 } });
+  await api('POST', '/students', { token: a.token, body: { fullName: 'Phone Debtor', groupIds: [group.id], parentPhone: '+998901234500' } });
+  await api('POST', '/students', { token: a.token, body: { fullName: 'Silent Debtor', groupIds: [group.id] } });
+  await loginOnMainSite(page, a.email);
+  await expectCenterDashboard(page, a.sub);
+  await page.goto(centerUrl(a.sub, '/payments'));
+  await page.getByRole('button', { name: "Qarzdorlar ro'yxati" }).click();
+
+  await page.getByRole('button', { name: 'Qarzdorlarga eslatma' }).click();
+  const dialog = page.getByRole('dialog');
+  const list = dialog.getByRole('table', { name: 'Eslatma oladigan qarzdorlar' });
+  await expect(list.getByRole('row', { name: /Phone Debtor/ })).toContainText('SMS');
+  await expect(list.getByRole('row', { name: /Silent Debtor/ })).toContainText("Telefon / Telegram yo'q");
+  await expect(dialog.getByText("1 ta aloqa yo'q")).toBeVisible();
+
+  await dialog.getByRole('button', { name: '1 ta qarzdorga yuborish' }).click();
+  await expect(dialog.getByRole('status')).toHaveText("Yuborildi: 1. Bugun allaqachon yuborilgan: 0. Aloqa yo'q: 1.");
+  await expect(list.getByRole('row', { name: /Phone Debtor/ })).toContainText('Bugun yuborilgan');
+  await expect(dialog.getByText("Hozir yuboriladigan eslatma yo'q.")).toBeVisible();
+
+  // Opened again the same day: nothing left to send.
+  await page.keyboard.press('Escape');
+  await page.getByRole('button', { name: 'Qarzdorlarga eslatma' }).click();
+  await expect(page.getByRole('dialog').getByText('1 ta bugun yuborilgan')).toBeVisible();
+  await expect(page.getByRole('dialog').getByRole('button', { name: /qarzdorga yuborish/ })).toHaveCount(0);
+});

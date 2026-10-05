@@ -18,6 +18,12 @@ export class EskizProvider implements SmsProvider {
     const token = options?.apiToken || this.config.get<string>('ESKIZ_API_TOKEN');
     const sender = options?.sender || this.config.get<string>('ESKIZ_SENDER') || '4546';
 
+    // No token in production: nothing can be sent - say so (FAILED), never
+    // report a message as delivered that went nowhere. Elsewhere (local,
+    // tests) the message is only logged, as a sandbox.
+    if (!token && this.config.get<string>('NODE_ENV') === 'production') {
+      return { success: false, error: "SMS provayderi sozlanmagan (API token yo'q)" };
+    }
     if (!token) {
       this.logger.log(`[Eskiz Sandbox/Mock] SMS to +${cleanPhone} via sender '${sender}': "${text}"`);
       return {

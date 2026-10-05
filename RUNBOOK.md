@@ -79,14 +79,23 @@ Nosozlik yuz berganda nima qilish kerakligi bo'yicha qisqa qo'llanma.
 - Import yaratish formalaridagi servislar orqali (narx tarixi, haftalik darslar, guruhga yozish, audit). Agar import o'rtada to'xtasa (server xatosi), xabarda nechta saqlangani aytiladi — faylni qayta yuklang, saqlanganlari o'tkazib yuboriladi.
 - Bir faylda ko'pi bilan 2000 qator, 5 MB. Eski `POST /api/export/students/import` olib tashlandi.
 
-## 12. Superadmin hisobiga kirish yo'qolgan
+## 12. Qarzdorlarga eslatma (To'lovlar → Qarzdorlar ro'yxati → "Qarzdorlarga eslatma")
+
+- Faqat egasi, admin va buxgalter. Tugma avval ro'yxatni ko'rsatadi (`GET /api/notifications/debtor-reminders/preview?forMonth=YYYY-MM`) — hech narsa yuborilmaydi: kimga, qaysi kanal (SMS / Telegram), kim bugun olgan, kimda aloqa yo'q.
+- Yuborish (`POST /api/notifications/debtor-reminders`): bir o'quvchiga bir oy uchun **bir kunda bitta** eslatma (markaz kuni, `debtor_reminders` jadvali). Avval yozuv olinadi, keyin yuboriladi — ikki marta bosish yoki ikki xodim bir vaqtda bossa ham bitta xabar ketadi. Natija: "Yuborildi / Bugun allaqachon / Aloqa yo'q".
+- Faqat hozir o'qiyotganlar (ACTIVE). Telefoni ham, Telegram'i ham yo'q o'quvchi "aloqa yo'q" deb sanaladi, "yuborildi" deb emas. Telegram bot sozlanmagan bo'lsa Telegram kanali "ulanmagan".
+- Xabar oxirida markaz nomi turadi (avval "TalimCRM" edi).
+- Productionda SMS token (markaz sozlamasi yoki `ESKIZ_API_TOKEN` / `PLAYMOBILE_API_TOKEN`) bo'lmasa SMS "ulanmagan" ko'rinadi va yuborilmaydi; provayder ham xabarni FAILED deb yozadi (ilgari "yuborildi" deb yozardi). Local/testda tokensiz SMS faqat logga yoziladi.
+- Har bir xabarning holati Sozlamalar sahifasidagi bildirishnomalar jurnalida (`GET /api/notifications/logs`).
+
+## 13. Superadmin hisobiga kirish yo'qolgan
 
 - Birinchi SUPERADMIN'ni qo'lda bazada yaratish kerak (self-service yo'q, xavfsizlik uchun ataylab shunday):
   ```sql
   UPDATE users SET role = 'SUPERADMIN' WHERE email = 'sizning-email@domen.uz';
   ```
 
-## 13. Workspace / Tashkilot a'zoligi muammosi ("Foydalanuvchida faol tashkilot a'zoligi topilmadi")
+## 14. Workspace / Tashkilot a'zoligi muammosi ("Foydalanuvchida faol tashkilot a'zoligi topilmadi")
 
 - Agar eski foydalanuvchi tizimga kirganda "Foydalanuvchida faol tashkilot a'zoligi topilmadi" xatosi chiqsa:
   Markazga kirish faqat faol a'zolikdan keladi. A'zoligi yo'q akkaunt — ataylab o'chirilgan xodim ham bo'lishi mumkin, shuning uchun a'zolik **ommaviy tiklanmaydi**.
@@ -95,13 +104,13 @@ Nosozlik yuz berganda nima qilish kerakligi bo'yicha qisqa qo'llanma.
   3. Markazda birorta ham a'zo qolmagan bo'lsa, platforma admini (SUPERADMIN) o'sha markazga kirib, rahbarni Xodimlar bo'limidan qo'shadi.
   `scripts/migrate-memberships.ts` ishlatilmaydi: u barcha akkauntlarga a'zolik berib, o'chirilgan xodimlarni ham qaytarar edi.
 
-## 14. Taklifnoma xatolari ("Ushbu taklifnoma yaroqsiz yoki muddati tugagan")
+## 15. Taklifnoma xatolari ("Ushbu taklifnoma yaroqsiz yoki muddati tugagan")
 
 - Taklifnomalar 7 kun muddatga ega va faqat 1 marta ishlatiladi (`invitation_status` = `PENDING`).
 - Token bazada SHA-256 hash ko'rinishida (`token_hash`) saqlanadi.
 - Agar foydalanuvchi taklifnomani yo'qotgan yoki muddati o'tgan bo'lsa, markaz administratori settings yoki onboarding orqali yangi taklifnoma yuborishi kerak (eski taklifnoma `REVOKED` yoki `EXPIRED` bo'ladi).
 
-## 15. Onboarding bosqichida qolib ketish ("Onboarding reset")
+## 16. Onboarding bosqichida qolib ketish ("Onboarding reset")
 
 - Agar markaz administratori onboarding bosqichini qayta o'tmoqchi bo'lsa yoki qolib ketgan bo'lsa:
   ```sql
@@ -109,7 +118,7 @@ Nosozlik yuz berganda nima qilish kerakligi bo'yicha qisqa qo'llanma.
   ```
   Onboarding yakunlanganda `onboarding_step = 'COMPLETED'` bo'ladi.
 
-## 16. Umumiy tekshiruv tartibi (istalgan nosozlikda birinchi qadamlar)
+## 17. Umumiy tekshiruv tartibi (istalgan nosozlikda birinchi qadamlar)
 
 1. `GET /api/health`
 2. Backend va frontend loglarini oxirgi 5 daqiqa uchun ko'rish
