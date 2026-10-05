@@ -1977,19 +1977,40 @@ export const exportApi = {
   studentsXlsx: () => download("/export/students.xlsx", "oquvchilar.xlsx"),
   paymentsXlsx: () => download("/export/payments.xlsx", "tolovlar.xlsx"),
   receiptPdf: (paymentId: string) => download(`/export/payments/${paymentId}/receipt.pdf`, `kvitansiya-${paymentId}.pdf`),
-  importStudents: async (file: File) => {
-    const token = getToken();
-    const form = new FormData();
-    form.append("file", file);
-    const res = await fetch(`${API_URL}/export/students/import`, {
-      method: "POST",
-      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-      body: form,
-    });
-    const body = await res.json();
-    if (!res.ok) throw new ApiError(body?.message || "Import xato", res.status);
-    return body as { imported: number; errors: string[] };
-  },
+
+};
+
+// ---- Excel import (teachers, groups, students) ----
+
+export type ImportKind = "teachers" | "groups" | "students";
+
+export interface ImportReport {
+  kind: ImportKind;
+  rows: Array<{ row: number; values: Record<string, string>; status: "create" | "exists" | "error"; errors: string[]; note?: string }>;
+  counts: { create: number; exists: number; error: number };
+  unknownColumns: string[];
+}
+
+async function importUpload<T>(kind: ImportKind, file: File, dryRun: boolean): Promise<T> {
+  const token = getToken();
+  const form = new FormData();
+  form.append("file", file);
+  const res = await fetch(`${API_URL}/import/${kind}${dryRun ? "?dryRun=1" : ""}`, {
+    method: "POST",
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    body: form,
+  });
+  const body = await res.json().catch(() => null);
+  if (!res.ok) throw new ApiError(body?.message || "Import xato", res.status, body);
+  return body as T;
+}
+
+export const importApi = {
+  template: (kind: ImportKind) => download(`/import/${kind}/template.xlsx`, `import-${kind}.xlsx`),
+  // Reads and checks every row; writes nothing.
+  preview: (kind: ImportKind, file: File) => importUpload<ImportReport>(kind, file, true),
+  // All rows valid, or nothing is saved (400 with the report).
+  run: (kind: ImportKind, file: File) => importUpload<{ created: number; skipped: number; report: ImportReport }>(kind, file, false),
 };
 
 // ---- Admissions / Leads CRM ----

@@ -6,6 +6,7 @@ import { TeachersController } from './teachers.controller';
 @Module({
   imports: [StaffModule],
   providers: [TeachersService],
+  exports: [TeachersService],
   controllers: [TeachersController],
 })
 export class TeachersModule {}

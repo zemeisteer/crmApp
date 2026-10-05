@@ -1,4 +1,4 @@
-import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { and, eq, isNull } from 'drizzle-orm';
 import ExcelJS from 'exceljs';
 import PDFDocument from 'pdfkit';
@@ -68,49 +68,6 @@ export class ExportService {
     }
     ws.getRow(1).font = { bold: true };
     return wb.xlsx.writeBuffer();
-  }
-
-  async importStudents(tenantId: string, buffer: Buffer) {
-    const wb = new ExcelJS.Workbook();
-    await wb.xlsx.load(buffer as any);
-    const ws = wb.worksheets[0];
-    if (!ws) throw new BadRequestException("Fayl bo'sh yoki noto'g'ri formatda");
-
-    // Expected columns (by header, case-insensitive): fullName/ism, phone/telefon, parentPhone, address
-    const header = (ws.getRow(1).values as any[]).map((v) => String(v ?? '').trim().toLowerCase());
-    const col = (names: string[]) => names.map((n) => header.indexOf(n)).find((i) => i > 0);
-
-    const nameCol = col(['fullname', 'ism', "to'liq ism", 'full_name']);
-    if (!nameCol) {
-      throw new BadRequestException("Birinchi ustunda \"fullName\" yoki \"Ism\" sarlavhasi bo'lishi kerak");
-    }
-    const phoneCol = col(['phone', 'telefon']);
-    const parentPhoneCol = col(['parentphone', "ota-ona telefoni", 'parent_phone']);
-    const addressCol = col(['address', 'manzil']);
-
-    const errors: string[] = [];
-    const inserts: Promise<unknown>[] = [];
-    ws.eachRow((row, rowNumber) => {
-      if (rowNumber === 1) return;
-      const fullName = String(row.getCell(nameCol).value ?? '').trim();
-      if (!fullName) return;
-      const values: any = {
-        tenantId,
-        fullName,
-        phone: phoneCol ? String(row.getCell(phoneCol).value ?? '').trim() || undefined : undefined,
-        parentPhone: parentPhoneCol ? String(row.getCell(parentPhoneCol).value ?? '').trim() || undefined : undefined,
-        address: addressCol ? String(row.getCell(addressCol).value ?? '').trim() || undefined : undefined,
-      };
-      inserts.push(
-        this.db
-          .insert(students)
-          .values(values)
-          .catch(() => errors.push(`Qator ${rowNumber}: saqlab bo'lmadi`)),
-      );
-    });
-
-    await Promise.all(inserts);
-    return { imported: inserts.length - errors.length, errors };
   }
 
   async paymentReceiptPdf(tenantId: string, paymentId: string): Promise<Buffer> {

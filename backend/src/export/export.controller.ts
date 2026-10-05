@@ -2,13 +2,9 @@ import {
   Controller,
   Get,
   Param,
-  Post,
   Res,
-  UploadedFile,
   UseGuards,
-  UseInterceptors,
 } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
 import type { Response } from 'express';
 import { JwtAuthGuard } from '../common/jwt-auth.guard';
 import { RolesGuard } from '../common/roles.guard';
@@ -41,12 +37,6 @@ export class ExportController {
       'Content-Disposition': 'attachment; filename="tolovlar.xlsx"',
     });
     res.send(Buffer.from(buffer));
-  }
-
-  @Post('students/import')
-  @UseInterceptors(FileInterceptor('file'))
-  async importStudents(@CurrentUser('tenantId') tenantId: string, @UploadedFile() file: Express.Multer.File) {
-    return this.service.importStudents(tenantId, file.buffer);
   }
 
   @Get('payments/:id/receipt.pdf')

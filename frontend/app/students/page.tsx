@@ -4,6 +4,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import DashboardShell from "@/components/DashboardShell";
 import LoadError from "@/components/LoadError";
+import ImportDialog from "@/components/ImportDialog";
+import { useAuth } from "@/lib/auth-context";
 import Modal from "@/components/Modal";
 import MultiSelect from "@/components/MultiSelect";
 import PlacementTestModal from "@/components/students/PlacementTestModal";
@@ -20,6 +22,10 @@ const ACCENT = "#4F46E5";
 
 function StudentsContent() {
   const { t } = useLanguage();
+  const { user } = useAuth();
+  // Import creates students: the admins' (and owner's) job, as the form.
+  const canImport = ["OWNER", "ADMIN", "SUPERADMIN"].includes(user?.role ?? "");
+  const [importOpen, setImportOpen] = useState(false);
   const [students, setStudents] = useState<Student[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
   const [loading, setLoading] = useState(true);
@@ -31,8 +37,6 @@ function StudentsContent() {
   const [filterGroupId, setFilterGroupId] = useState("");
   const [filterGender, setFilterGender] = useState("");
   const [page, setPage] = useState(1);
-  const [importMsg, setImportMsg] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   // One key per submission of the "new student" form (see retryKey).
   const createKey = useRef<{ sig: string; key: string } | null>(null);
 
@@ -130,21 +134,6 @@ function StudentsContent() {
     }
   }
 
-  async function onImportFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setImportMsg(t("common.loading"));
-    try {
-      const res = await exportApi.importStudents(file);
-      setImportMsg(`${res.imported} ta o'quvchi import qilindi${res.errors.length ? `, ${res.errors.length} ta xato` : ""}.`);
-      load();
-    } catch (err) {
-      setImportMsg(err instanceof ApiError ? err.message : t("std.importError"));
-    } finally {
-      if (fileInputRef.current) fileInputRef.current.value = "";
-    }
-  }
-
   const filtered = useMemo(() => {
     return students.filter((s) => {
       if (filterGender && s.gender !== filterGender) return false;
@@ -181,14 +170,16 @@ function StudentsContent() {
           >
             {t("students.exportExcel")}
           </button>
-          <button
-            className="btn"
-            onClick={() => fileInputRef.current?.click()}
-            style={{ background: "#F2F1EC", color: "#181A1F", border: "none", fontSize: 12.5, fontWeight: 700, padding: "9px 14px", borderRadius: 9 }}
-          >
-            {t("students.importExcel")}
-          </button>
-          <input ref={fileInputRef} type="file" accept=".xlsx" onChange={onImportFile} style={{ display: "none" }} />
+          {canImport && (
+            <button
+              className="btn"
+              onClick={() => setImportOpen(true)}
+              style={{ background: "#F2F1EC", color: "#181A1F", border: "none", fontSize: 12.5, fontWeight: 700, padding: "9px 14px", borderRadius: 9 }}
+            >
+              {t("students.importExcel")}
+            </button>
+          )}
+          <ImportDialog kind="students" open={importOpen} onClose={() => setImportOpen(false)} onDone={load} />
           <button
             className="btn"
             type="button"
@@ -208,11 +199,6 @@ function StudentsContent() {
       </div>
 
       <div style={{ flex: 1, minHeight: 0, padding: "26px 32px", overflow: "auto", boxSizing: "border-box" }}>
-        {importMsg && (
-          <div style={{ background: "#ECEBFB", color: ACCENT, fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: 10, marginBottom: 16 }}>
-            {importMsg}
-          </div>
-        )}
         {!loading && students.length > 0 && (
           <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap", alignItems: "center" }}>
             <input

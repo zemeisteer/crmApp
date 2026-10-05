@@ -13,6 +13,7 @@ Eng muhim oqimlar haqiqiy brauzerda, backend va frontendning **production build*
 | `payroll.spec.ts` | Hisobchi oylikni ikki qismda to'laydi; ikki marta bosish va qayta yuborish — bitta to'lov, har biriga bitta xarajat; xato to'lov storno qilinadi |
 | `parent-portal.spec.ts` | Ota-ona telefon va PIN bilan kiradi, farzandini faqat kuzatadi (AI repetitor yo'q) |
 | `reports.spec.ts` | Direktor hisobotida oylik to'lovi xarajatda bir marta hisoblanadi |
+| `import.spec.ts` | Yangi markaz Excel'dan to'ldiriladi: o'qituvchilar, guruhlar, o'quvchilar; qayta yuklash hech narsa qo'shmaydi; xatoli qator importni to'xtatadi (fayllar backend'dagi `exceljs` bilan yasaladi) |
 | `mobile.spec.ts` | 390 px ekranda 18 ta asosiy sahifa sig'adi: sahifa yonga surilmaydi, keng jadval faqat o'z kartochkasi ichida suriladi |
 
 ```bash

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import DashboardShell from "@/components/DashboardShell";
 import LoadError from "@/components/LoadError";
+import ImportDialog from "@/components/ImportDialog";
 import TeacherAttendanceModal from "@/components/teachers/TeacherAttendanceModal";
 import Modal from "@/components/Modal";
 import MultiSelect from "@/components/MultiSelect";
@@ -41,6 +42,9 @@ function formatMoney(n: number) {
 
 function TeachersContent() {
   const { user } = useAuth();
+  // Import creates teachers: the admins' (and owner's) job, as the form.
+  const canImport = ["OWNER", "ADMIN", "SUPERADMIN"].includes(user?.role ?? "");
+  const [importOpen, setImportOpen] = useState(false);
   const { t: tr } = useLanguage();
   const clock = useCenterClock();
   const [attendanceOpen, setAttendanceOpen] = useState(false);
@@ -221,6 +225,11 @@ function TeachersContent() {
         >
           {tr("tatt.button")}
         </button>
+        {canImport && (
+          <button type="button" className="btn" onClick={() => setImportOpen(true)} style={{ background: "#fff", color: "#181A1F", border: "1px solid #EAE8E2", fontSize: 13.5, fontWeight: 700, padding: "10px 16px", borderRadius: 9, marginRight: 8 }}>
+            {tr("imp.button")}
+          </button>
+        )}
         <button
           className="btn"
           onClick={() => setModalOpen(true)}
@@ -228,6 +237,7 @@ function TeachersContent() {
         >
           {tr("teachers.newTeacher")}
         </button>
+        <ImportDialog kind="teachers" open={importOpen} onClose={() => setImportOpen(false)} onDone={load} />
       </div>
 
       <div style={{ flex: 1, minHeight: 0, padding: "26px 32px", overflow: "auto", boxSizing: "border-box" }}>

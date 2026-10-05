@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import DashboardShell from "@/components/DashboardShell";
 import LoadError from "@/components/LoadError";
+import ImportDialog from "@/components/ImportDialog";
 import Modal from "@/components/Modal";
 import Pagination, { usePagedSlice } from "@/components/Pagination";
 import Select from "@/components/Select";
@@ -52,6 +53,7 @@ function GroupsContent() {
   // Creating, editing and the trash are for those who run the center (the
   // server refuses anyone else), so a teacher is not offered them.
   const canManage = user?.role === "OWNER" || user?.role === "ADMIN" || user?.role === "SUPERADMIN";
+  const [importOpen, setImportOpen] = useState(false);
   const { t } = useLanguage();
   const shortSchedule = (g: Group) => shortScheduleOf(g, t);
   const [groups, setGroups] = useState<Group[]>([]);
@@ -293,13 +295,19 @@ function GroupsContent() {
           )}
         </div>
         {canManage && (
-          <button
-            className="btn"
-            onClick={() => setModalOpen(true)}
-            style={{ background: ACCENT, color: "#fff", border: "none", fontSize: 13.5, fontWeight: 700, padding: "10px 18px", borderRadius: 9 }}
-          >
-            {t("groups.newGroup")}
-          </button>
+          <div style={{ display: "flex", alignItems: "center" }}>
+            <button type="button" className="btn" onClick={() => setImportOpen(true)} style={{ background: "#fff", color: "#181A1F", border: "1px solid #EAE8E2", fontSize: 13.5, fontWeight: 700, padding: "10px 16px", borderRadius: 9, marginRight: 8 }}>
+              {t("imp.button")}
+            </button>
+            <button
+              className="btn"
+              onClick={() => setModalOpen(true)}
+              style={{ background: ACCENT, color: "#fff", border: "none", fontSize: 13.5, fontWeight: 700, padding: "10px 18px", borderRadius: 9 }}
+            >
+              {t("groups.newGroup")}
+            </button>
+            <ImportDialog kind="groups" open={importOpen} onClose={() => setImportOpen(false)} onDone={load} />
+          </div>
         )}
       </div>
 

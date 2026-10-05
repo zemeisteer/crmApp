@@ -70,14 +70,23 @@ Nosozlik yuz berganda nima qilish kerakligi bo'yicha qisqa qo'llanma.
 - Yopilgandan keyin shu kunga kiritilgan to'lov/xarajat "yopilgandan keyin" belgisi bilan ko'rinadi; yopilgan kun kartasida "Yopilgandan keyin naqd o'zgarishi" ogohlantirishi chiqadi. Bunday holda pulni sanab, farqni izohda yoki keyingi kun yopilishida hisobga oling.
 - Tarix: `GET /api/cash/closings?month=YYYY-MM`; audit jurnalida `cash.close`.
 
-## 11. Superadmin hisobiga kirish yo'qolgan
+## 11. Excel'dan import (yangi markazni to'ldirish)
+
+- Tartib: **o'qituvchilar → guruhlar → o'quvchilar** (guruh o'qituvchini, o'quvchi guruhni ismi bo'yicha topadi). Har bir sahifada "Excel'dan import" (faqat egasi va admin); shablon ("Shablonni yuklab olish") ustunlar va izohlar bilan.
+- Fayl tanlanganda faqat tekshiriladi (`POST /api/import/<teachers|groups|students>?dryRun=1`): har bir qator "Yangi", "Bor" (o'tkazib yuboriladi) yoki "Xato" (sababi bilan). Birorta xato bo'lsa, import qilish tugmasi chiqmaydi va server ham hech narsa saqlamaydi.
+- Tekshiriladi: majburiy ustunlar, telefon, sana (YYYY-MM-DD), vaqt (HH:MM), kunlar (Du/Cho/Ju, Dushanba, Mon, пн...), maosh turi, faylning o'zidagi takror qatorlar, o'qituvchi va filial nomi, o'qituvchining dars vaqti to'qnashuvi (mavjud guruhlar va fayl ichida), guruhda bo'sh joy.
+- "Bor" qoidasi: o'qituvchi — telefon (telefonsiz bo'lsa ism); guruh — nom; o'quvchi — ism + telefon + ota-ona telefoni. Shuning uchun bir faylni qayta yuklash hech narsa qo'shmaydi.
+- Import yaratish formalaridagi servislar orqali (narx tarixi, haftalik darslar, guruhga yozish, audit). Agar import o'rtada to'xtasa (server xatosi), xabarda nechta saqlangani aytiladi — faylni qayta yuklang, saqlanganlari o'tkazib yuboriladi.
+- Bir faylda ko'pi bilan 2000 qator, 5 MB. Eski `POST /api/export/students/import` olib tashlandi.
+
+## 12. Superadmin hisobiga kirish yo'qolgan
 
 - Birinchi SUPERADMIN'ni qo'lda bazada yaratish kerak (self-service yo'q, xavfsizlik uchun ataylab shunday):
   ```sql
   UPDATE users SET role = 'SUPERADMIN' WHERE email = 'sizning-email@domen.uz';
   ```
 
-## 12. Workspace / Tashkilot a'zoligi muammosi ("Foydalanuvchida faol tashkilot a'zoligi topilmadi")
+## 13. Workspace / Tashkilot a'zoligi muammosi ("Foydalanuvchida faol tashkilot a'zoligi topilmadi")
 
 - Agar eski foydalanuvchi tizimga kirganda "Foydalanuvchida faol tashkilot a'zoligi topilmadi" xatosi chiqsa:
   Markazga kirish faqat faol a'zolikdan keladi. A'zoligi yo'q akkaunt — ataylab o'chirilgan xodim ham bo'lishi mumkin, shuning uchun a'zolik **ommaviy tiklanmaydi**.
@@ -86,13 +95,13 @@ Nosozlik yuz berganda nima qilish kerakligi bo'yicha qisqa qo'llanma.
   3. Markazda birorta ham a'zo qolmagan bo'lsa, platforma admini (SUPERADMIN) o'sha markazga kirib, rahbarni Xodimlar bo'limidan qo'shadi.
   `scripts/migrate-memberships.ts` ishlatilmaydi: u barcha akkauntlarga a'zolik berib, o'chirilgan xodimlarni ham qaytarar edi.
 
-## 13. Taklifnoma xatolari ("Ushbu taklifnoma yaroqsiz yoki muddati tugagan")
+## 14. Taklifnoma xatolari ("Ushbu taklifnoma yaroqsiz yoki muddati tugagan")
 
 - Taklifnomalar 7 kun muddatga ega va faqat 1 marta ishlatiladi (`invitation_status` = `PENDING`).
 - Token bazada SHA-256 hash ko'rinishida (`token_hash`) saqlanadi.
 - Agar foydalanuvchi taklifnomani yo'qotgan yoki muddati o'tgan bo'lsa, markaz administratori settings yoki onboarding orqali yangi taklifnoma yuborishi kerak (eski taklifnoma `REVOKED` yoki `EXPIRED` bo'ladi).
 
-## 14. Onboarding bosqichida qolib ketish ("Onboarding reset")
+## 15. Onboarding bosqichida qolib ketish ("Onboarding reset")
 
 - Agar markaz administratori onboarding bosqichini qayta o'tmoqchi bo'lsa yoki qolib ketgan bo'lsa:
   ```sql
@@ -100,7 +109,7 @@ Nosozlik yuz berganda nima qilish kerakligi bo'yicha qisqa qo'llanma.
   ```
   Onboarding yakunlanganda `onboarding_step = 'COMPLETED'` bo'ladi.
 
-## 15. Umumiy tekshiruv tartibi (istalgan nosozlikda birinchi qadamlar)
+## 16. Umumiy tekshiruv tartibi (istalgan nosozlikda birinchi qadamlar)
 
 1. `GET /api/health`
 2. Backend va frontend loglarini oxirgi 5 daqiqa uchun ko'rish
