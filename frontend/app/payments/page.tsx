@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import DashboardShell from "@/components/DashboardShell";
 import Modal from "@/components/Modal";
 import Pagination, { usePagedSlice } from "@/components/Pagination";
@@ -555,9 +555,7 @@ function PaymentsContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedMonth]);
 
-  function studentName(id: string) {
-    return students.find((s) => s.id === id)?.fullName || id;
-  }
+  const studentName = useCallback((id: string) => students.find((s) => s.id === id)?.fullName || id, [students]);
 
   function groupNames(studentIdVal: string) {
     const student = students.find((s) => s.id === studentIdVal);
@@ -680,7 +678,7 @@ function PaymentsContent() {
       }
       return true;
     });
-  }, [payments, search, statusFilter, methodFilter, groupFilter, students]);
+  }, [payments, search, statusFilter, methodFilter, groupFilter, studentName]);
 
   useEffect(() => setPage(1), [search, statusFilter, methodFilter, groupFilter, activeTab]);
   const pageItems = usePagedSlice(filteredPayments, page);
@@ -711,7 +709,7 @@ function PaymentsContent() {
       }
       return true;
     });
-  }, [invoices, invoiceStatusFilter, invoiceSearch, students]);
+  }, [invoices, invoiceStatusFilter, invoiceSearch, studentName]);
 
   // Filtered expenses
   const filteredExpenses = useMemo(() => {

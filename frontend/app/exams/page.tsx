@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import DashboardShell from "@/components/DashboardShell";
 import LoadError from "@/components/LoadError";
 import Modal from "@/components/Modal";
@@ -111,20 +111,23 @@ function ExamsContent() {
   useEffect(load, []);
 
   // Timer effect for simulator
+  // The latest submitTestAttempt (it reads the current answers).
+  const submitLatest = useRef<() => Promise<void>>(async () => undefined);
+  useEffect(() => {
+    submitLatest.current = submitTestAttempt;
+  });
+
+  // Countdown, one second at a time. When it reaches zero the attempt is
+  // submitted once, with the answers as they are at that moment (the ref
+  // always holds the latest submit) - not from inside a state updater,
+  // which React may call twice.
   useEffect(() => {
     if (simulatorStep !== "TESTING" || simulatorTimer <= 0) return;
-    const interval = setInterval(() => {
-      setSimulatorTimer((prev) => {
-        if (prev <= 1) {
-          clearInterval(interval);
-          // Auto submit on timer expiry
-          void submitTestAttempt();
-          return 0;
-        }
-        return prev - 1;
-      });
+    const id = setTimeout(() => {
+      setSimulatorTimer(simulatorTimer - 1);
+      if (simulatorTimer === 1) void submitLatest.current();
     }, 1000);
-    return () => clearInterval(interval);
+    return () => clearTimeout(id);
   }, [simulatorStep, simulatorTimer]);
 
   const groupsInDirection = direction ? groups.filter((g) => g.subject === direction) : groups;

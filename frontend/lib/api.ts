@@ -1378,9 +1378,9 @@ export const studentsApi = {
   remove: (id: string) => request<void>(`/students/${id}`, { method: "DELETE" }),
   restore: (id: string) => request<Student>(`/students/${id}/restore`, { method: "POST" }),
   enroll: (id: string, groupId: string) =>
-    request<{ success: boolean; enrollment?: any }>(`/students/${id}/enroll/${groupId}`, { method: "POST" }),
+    request<{ success: boolean; enrollment?: unknown }>(`/students/${id}/enroll/${groupId}`, { method: "POST" }),
   unenroll: (id: string, groupId: string) =>
-    request<{ success: boolean; enrollment?: any }>(`/students/${id}/enroll/${groupId}`, { method: "DELETE" }),
+    request<{ success: boolean; enrollment?: unknown }>(`/students/${id}/enroll/${groupId}`, { method: "DELETE" }),
   getGuardians: (id: string) => request<StudentGuardian[]>(`/students/${id}/guardians`),
   linkGuardian: (id: string, data: { userId?: string; phone?: string; fullName?: string; relationship?: string; isPrimary?: boolean }) =>
     request<StudentGuardian>(`/students/${id}/guardians`, { method: "POST", body: JSON.stringify(data) }),
@@ -2518,7 +2518,7 @@ export type PortalTutorAnswer =
 
 export const portalApi = {
   loginWithToken: (token: string) =>
-    request<{ accessToken: string; student: any; tenant: any }>("/portal/auth/token", {
+    request<{ accessToken: string; student: unknown; tenant: unknown }>("/portal/auth/token", {
       method: "POST",
       body: JSON.stringify({ token }),
     }),
@@ -2689,25 +2689,25 @@ export const onboardingApi = {
     currency?: string;
     logoUrl?: string;
   }) =>
-    request<{ success: boolean; nextStep: string; tenant: any }>("/onboarding/profile", {
+    request<{ success: boolean; nextStep: string; tenant: unknown }>("/onboarding/profile", {
       method: "POST",
       body: JSON.stringify(data),
     }),
 
   updateCategories: (categories: string[]) =>
-    request<{ success: boolean; nextStep: string; tenant: any }>("/onboarding/categories", {
+    request<{ success: boolean; nextStep: string; tenant: unknown }>("/onboarding/categories", {
       method: "POST",
       body: JSON.stringify({ categories }),
     }),
 
   updateWorkspace: (subdomain: string) =>
-    request<{ success: boolean; nextStep: string; tenant: any }>("/onboarding/workspace", {
+    request<{ success: boolean; nextStep: string; tenant: unknown }>("/onboarding/workspace", {
       method: "POST",
       body: JSON.stringify({ subdomain }),
     }),
 
   addBranch: (data: { name: string; address?: string; phone?: string }) =>
-    request<{ success: boolean; nextStep: string; branch: any }>("/onboarding/branch", {
+    request<{ success: boolean; nextStep: string; branch: unknown }>("/onboarding/branch", {
       method: "POST",
       body: JSON.stringify(data),
     }),
@@ -2716,7 +2716,7 @@ export const onboardingApi = {
     request<{ success: boolean; step: string }>(`/onboarding/advance/${step}`, { method: "POST" }),
 
   skip: (step: string) =>
-    request<{ success: boolean; nextStep: string; tenant: any }>(`/onboarding/skip/${step}`, { method: "POST" }),
+    request<{ success: boolean; nextStep: string; tenant: unknown }>(`/onboarding/skip/${step}`, { method: "POST" }),
 
   complete: () =>
     request<{ success: boolean; ready: boolean; workspaceUrl: string; redirectUrl: string }>(
@@ -2782,10 +2782,10 @@ export const subjectsApi = {
 // ---- Parent Portal ----
 export const parentPortalApi = {
   listStudents: () => request<Student[]>("/portal/parent/students"),
-  getStudentOverview: (studentId: string) => request<any>(`/portal/parent/students/${studentId}/overview`),
-  getStudentSchedule: (studentId: string) => request<any>(`/portal/parent/students/${studentId}/schedule`),
-  getStudentAttendance: (studentId: string) => request<any>(`/portal/parent/students/${studentId}/attendance`),
-  getStudentPayments: (studentId: string) => request<any>(`/portal/parent/students/${studentId}/payments`),
+  getStudentOverview: (studentId: string) => request<unknown>(`/portal/parent/students/${studentId}/overview`),
+  getStudentSchedule: (studentId: string) => request<unknown>(`/portal/parent/students/${studentId}/schedule`),
+  getStudentAttendance: (studentId: string) => request<unknown>(`/portal/parent/students/${studentId}/attendance`),
+  getStudentPayments: (studentId: string) => request<unknown>(`/portal/parent/students/${studentId}/payments`),
   getStudentInvoices: (studentId: string) => request<Invoice[]>(`/portal/parent/students/${studentId}/invoices`),
   checkoutLink: (studentId: string, data: { provider: "CLICK" | "PAYME"; amount?: number; forMonth?: string; invoiceId?: string }) =>
     request<BillingLink>(`/portal/parent/students/${studentId}/checkout-link`, {
