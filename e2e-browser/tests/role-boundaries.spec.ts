@@ -53,3 +53,18 @@ test('a teacher sees only their own groups; finance and reports stay closed', as
   await expect(api('GET', '/payments', { token })).rejects.toThrow(/403/);
   await expect(api('GET', '/salary-payments/calculate', { token })).rejects.toThrow(/403/);
 });
+
+test("the owner sees who can do what, as the server enforces it", async ({ page }) => {
+  const a = await newCenter('matrix');
+  await loginOnMainSite(page, a.email);
+  await expectCenterDashboard(page, a.sub);
+  await page.goto(centerUrl(a.sub, '/settings'));
+  await page.getByRole('button', { name: 'Xodimlar va huquqlar' }).click();
+  const table = page.getByRole('table', { name: 'Kim nima qila oladi' });
+  await expect(table).toBeVisible();
+  const row = (label: string) => table.getByRole('row').filter({ has: page.getByRole('rowheader', { name: label }) });
+  // Columns: owner, admin, manager, reception, accountant, teacher.
+  await expect(row("To'lov qabul qilish").getByRole('cell')).toHaveText(['✓', '✓', '—', '—', '✓', '—']);
+  await expect(row("O'qituvchilar stavkasini ko'rish").getByRole('cell')).toHaveText(['✓', '✓', '—', '—', '✓', '—']);
+  await page.screenshot({ path: test.info().outputPath('matrix.png'), fullPage: true });
+});

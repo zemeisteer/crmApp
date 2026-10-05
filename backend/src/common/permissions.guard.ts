@@ -20,25 +20,24 @@ export class PermissionsGuard implements CanActivate {
     );
 
     const { user } = context.switchToHttp().getRequest();
-    if (!requiredPermissions || requiredPermissions.length === 0) {
-      // Like RolesGuard: a route without @RequirePermissions is back-office
-      // only, so a forgotten decorator never opens it to students/parents.
-      return !user || !END_USER_ROLES.includes(user.role);
-    }
+    if (!requiredPermissions || requiredPermissions.length === 0) return !user || permissionsAllow(user.role, requiredPermissions);
     if (!user) return false;
-
-    // SUPERADMIN and ADMIN automatically have all permissions
-    if (user.role === 'SUPERADMIN' || user.role === 'ADMIN') {
-      return true;
-    }
-
-    const effective = getEffectivePermissions(user.role, user.permissions);
-    const hasAll = requiredPermissions.every((perm) => effective.includes(perm));
-
-    if (!hasAll) {
+    if (!permissionsAllow(user.role, requiredPermissions, user.permissions)) {
       throw new ForbiddenException("Sizda ushbu amalni bajarish uchun ruxsat yo'q");
     }
-
     return true;
   }
+}
+
+/**
+ * The rule itself (also used by the access matrix): no @RequirePermissions
+ * is back-office only, like RolesGuard; SUPERADMIN and ADMIN have every
+ * permission; others need all the listed ones (role defaults plus the
+ * staff member's own extra permissions).
+ */
+export function permissionsAllow(role: string, required: string[] | undefined, custom?: string[] | null): boolean {
+  if (!required || required.length === 0) return !END_USER_ROLES.includes(role);
+  if (role === 'SUPERADMIN' || role === 'ADMIN') return true;
+  const effective = getEffectivePermissions(role, custom);
+  return required.every((perm) => effective.includes(perm));
 }

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Modal from "@/components/Modal";
 import DashboardShell from "@/components/DashboardShell";
+import AccessMatrixPanel from "@/components/settings/AccessMatrix";
 import SiteContentEditor from "@/components/settings/SiteContentEditor";
 import BranchesManager from "@/components/settings/BranchesManager";
 import Select from "@/components/Select";
@@ -612,6 +613,7 @@ function SettingsContent() {
               )}
             </div>
           )}
+          {tab === "staff" && <AccessMatrixPanel />}
 
           {tab === "security" && (
             <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 22, maxWidth: 640 }}>

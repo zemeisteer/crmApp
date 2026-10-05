@@ -20,6 +20,7 @@ import { AttendanceModule } from './attendance/attendance.module';
 import { SalaryModule } from './salary/salary.module';
 import { CashModule } from './cash/cash.module';
 import { ImportModule } from './import/import.module';
+import { AccessModule } from './access/access.module';
 import { BillingModule } from './billing/billing.module';
 import { AiModule } from './ai/ai.module';
 import { PlacementModule } from './placement/placement.module';
@@ -69,6 +70,7 @@ import { InvoicesModule } from './invoices/invoices.module';
     SalaryModule,
     CashModule,
     ImportModule,
+    AccessModule,
     BillingModule,
     AiModule,
     PlacementModule,

@@ -14,15 +14,23 @@ export class RolesGuard implements CanActivate {
       context.getClass(),
     ]);
     const { user } = context.switchToHttp().getRequest();
-    if (!requiredRoles || requiredRoles.length === 0) {
-      // Routes without @Roles are staff back-office endpoints. Students and
-      // parents (who use the /portal API) must be let in explicitly, so a
-      // forgotten @Roles can never expose center-wide data to them.
-      return !user || !END_USER_ROLES.includes(user.role);
-    }
+    if (!requiredRoles || requiredRoles.length === 0) return !user || rolesAllow(user.role, requiredRoles);
     if (!user) return false;
-    if (user.role === 'SUPERADMIN') return true;
-    if (user.role === 'OWNER' && (requiredRoles.includes('ADMIN') || requiredRoles.includes('OWNER'))) return true;
-    return requiredRoles.includes(user.role);
+    return rolesAllow(user.role, requiredRoles);
   }
+}
+
+/**
+ * The rule itself, for a signed-in role (also used by the access matrix, so
+ * the matrix is the guard's own answer):
+ * - no @Roles: staff back-office; students and parents (who use the
+ *   /portal API) must be let in explicitly, so a forgotten @Roles can never
+ *   expose center-wide data to them;
+ * - SUPERADMIN: everything; OWNER: whatever ADMIN or OWNER may.
+ */
+export function rolesAllow(role: string, requiredRoles: string[] | undefined): boolean {
+  if (!requiredRoles || requiredRoles.length === 0) return !END_USER_ROLES.includes(role);
+  if (role === 'SUPERADMIN') return true;
+  if (role === 'OWNER' && (requiredRoles.includes('ADMIN') || requiredRoles.includes('OWNER'))) return true;
+  return requiredRoles.includes(role);
 }

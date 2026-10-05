@@ -1980,6 +1980,18 @@ export const exportApi = {
 
 };
 
+// ---- Who can do what (from the server's own route rules) ----
+
+export interface AccessMatrix {
+  roles: string[];
+  capabilities: Array<{ key: string; area: "students" | "teaching" | "admissions" | "finance" | "payroll" | "center"; note?: string; route: string | null; allowed: Record<string, boolean> }>;
+  missing: string[];
+}
+
+export const accessApi = {
+  matrix: () => request<AccessMatrix>("/access/matrix"),
+};
+
 // ---- Excel import (teachers, groups, students) ----
 
 export type ImportKind = "teachers" | "groups" | "students";
