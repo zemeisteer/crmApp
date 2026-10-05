@@ -616,6 +616,11 @@ export const salaryPayments = pgTable('salary_payments', {
   // Retry protection, as for payments (see common/create-idempotency).
   idempotencyKey: text('idempotency_key'),
   requestHash: text('request_hash'),
+  // A payout made by mistake is reversed, not deleted: the row stays (who,
+  // when, why), its expense is removed, and it no longer counts anywhere.
+  reversedAt: timestamp('reversed_at'),
+  reversedById: text('reversed_by_id').references(() => users.id, { onDelete: 'set null' }),
+  reversalReason: text('reversal_reason'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
 }, (t) => ({
   tenantIdx: index('salary_payments_tenant_idx').on(t.tenantId),

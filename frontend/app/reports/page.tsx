@@ -66,6 +66,10 @@ function ReportsContent() {
   const [disburseError, setDisburseError] = useState<string | null>(null);
   const [disbursing, setDisbursing] = useState(false);
   const [monthPayouts, setMonthPayouts] = useState<SalaryPayment[] | null>(null);
+  // Reversing one payout of the month (inline, with a reason).
+  const [reversingId, setReversingId] = useState<string | null>(null);
+  const [reverseReason, setReverseReason] = useState("");
+  const [reverseBusy, setReverseBusy] = useState(false);
   // One Idempotency-Key per payout form contents (see retryKey).
   const disburseKey = useRef<{ sig: string; key: string } | null>(null);
   // Only the answer for the month on screen is shown: switching months
@@ -97,7 +101,10 @@ function ReportsContent() {
     salaryApi
       .calculate(month)
       .then((res) => {
-        if (seq === payrollSeq.current) setPayrollData(res);
+        if (seq !== payrollSeq.current) return;
+        setPayrollData(res);
+        // The open payout form shows the same teacher's fresh numbers.
+        setDisburseTeacher((prev) => (prev ? res.teachers.find((x) => x.teacherId === prev.teacherId) ?? prev : prev));
       })
       .catch((err) => {
         if (seq !== payrollSeq.current) return;
@@ -124,13 +131,40 @@ function ReportsContent() {
     setDisburseError(null);
     disburseKey.current = null;
     setMonthPayouts(null);
+    setReversingId(null);
     setDisburseModalOpen(true);
-    // Earlier payouts of this month, shown in the form.
-    const month = selectedPayrollMonth;
+    loadMonthPayouts(item.teacherId, selectedPayrollMonth);
+  }
+
+  // Payouts of this month (reversed ones too), shown in the form.
+  function loadMonthPayouts(teacherId: string, month: string) {
     salaryApi
-      .list(item.teacherId, month)
+      .list(teacherId, month)
       .then((rows) => setMonthPayouts(rows))
       .catch(() => setMonthPayouts([]));
+  }
+
+  async function confirmReverse(payoutId: string, amount: number) {
+    if (!disburseTeacher || reverseReason.trim().length < 3) {
+      setDisburseError(t("rep2.reverseReasonShort"));
+      return;
+    }
+    setReverseBusy(true);
+    setDisburseError(null);
+    try {
+      await salaryApi.reverse(payoutId, reverseReason.trim());
+      setReversingId(null);
+      setReverseReason("");
+      // The reversed amount is owed again: offer it in the form.
+      setDisburseAmount(String(disburseTeacher.netPayable + amount));
+      disburseKey.current = null;
+      loadMonthPayouts(disburseTeacher.teacherId, disburseMonth);
+      loadPayroll(selectedPayrollMonth);
+    } catch (err) {
+      setDisburseError(err instanceof Error ? err.message : t("rep2.salaryError"));
+    } finally {
+      setReverseBusy(false);
+    }
   }
 
   async function handleDisburseSubmit(e: React.FormEvent) {
@@ -457,6 +491,15 @@ function ReportsContent() {
                           >
                             {item.paidAmount > 0 ? t("rep2.payRest") : t("rep2.pay")}
                           </button>}
+                          {item.netPayable <= 0 && item.installments > 0 && (
+                            <button
+                              type="button"
+                              onClick={() => openDisburseModal(item)}
+                              style={{ background: "#F2F1EC", color: "#181A1F", border: "none", padding: "6px 12px", borderRadius: 7, fontSize: 12, fontWeight: 700, cursor: "pointer" }}
+                            >
+                              {t("rep2.payouts")}
+                            </button>
+                          )}
                         </td>
                       </tr>
                     ))}
@@ -465,7 +508,7 @@ function ReportsContent() {
               )}
             </div>
 
-            <PayrollReconciliationPanel month={selectedPayrollMonth} />
+            <PayrollReconciliationPanel month={selectedPayrollMonth} onChanged={() => loadPayroll(selectedPayrollMonth)} />
           </div>
         )}
 
@@ -497,9 +540,43 @@ function ReportsContent() {
               <div style={{ marginTop: 8, borderTop: "1px solid #EAE8E2", paddingTop: 8 }}>
                 <div style={{ fontSize: 11.5, fontWeight: 700, color: "#8A8D96", marginBottom: 4 }}>{t("rep2.earlierPayouts")}</div>
                 {monthPayouts.map((p) => (
-                  <div key={p.id} style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#4A4E58" }}>
-                    <span>{p.paidAt.slice(0, 10)}{p.paymentMethod ? ` · ${p.paymentMethod}` : ""}</span>
-                    <span style={{ fontWeight: 700 }}>{formatMoney(p.amount)}</span>
+                  <div key={p.id} style={{ padding: "3px 0" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, fontSize: 12, color: p.reversedAt ? "#8A8D96" : "#4A4E58" }}>
+                      <span style={{ textDecoration: p.reversedAt ? "line-through" : undefined }}>
+                        {p.paidAt.slice(0, 10)}{p.paymentMethod ? ` · ${p.paymentMethod}` : ""}
+                      </span>
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                        <span style={{ fontWeight: 700, textDecoration: p.reversedAt ? "line-through" : undefined }}>{formatMoney(p.amount)}</span>
+                        {p.reversedAt ? (
+                          <span className="badge badge-neutral" title={p.reversalReason ?? undefined}>{t("rep2.reversed")}</span>
+                        ) : p.expenseId && reversingId !== p.id ? (
+                          <button type="button" onClick={() => { setReversingId(p.id); setReverseReason(""); setDisburseError(null); }} style={{ background: "none", border: "none", color: "#B23A47", fontSize: 11.5, fontWeight: 700, cursor: "pointer", padding: 0 }}>
+                            {t("rep2.reverse")}
+                          </button>
+                        ) : null}
+                      </span>
+                    </div>
+                    {reversingId === p.id && (
+                      <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
+                        <input
+                          className="field-input"
+                          autoFocus
+                          aria-label={t("rep2.reverseReason")}
+                          placeholder={t("rep2.reverseReason")}
+                          value={reverseReason}
+                          onChange={(e) => setReverseReason(e.target.value)}
+                          onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void confirmReverse(p.id, p.amount); } }}
+                          maxLength={500}
+                          style={{ flex: 1, fontSize: 12.5, padding: "6px 10px" }}
+                        />
+                        <button type="button" className="btn" disabled={reverseBusy} onClick={() => void confirmReverse(p.id, p.amount)} style={{ background: "#B23A47", color: "#fff", border: "none", fontSize: 12, fontWeight: 700, padding: "6px 10px", borderRadius: 8 }}>
+                          {reverseBusy ? t("common.saving") : t("rep2.reverseConfirm")}
+                        </button>
+                        <button type="button" className="btn" disabled={reverseBusy} onClick={() => setReversingId(null)} style={{ background: "#fff", color: "#181A1F", border: "1px solid #EAE8E2", fontSize: 12, fontWeight: 700, padding: "6px 10px", borderRadius: 8 }}>
+                          {t("common.cancel")}
+                        </button>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -510,6 +587,10 @@ function ReportsContent() {
             <div role="alert" style={{ background: "#FDEBEC", color: "#B23A47", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: 10 }}>{disburseError}</div>
           )}
 
+          {(disburseTeacher?.netPayable ?? 0) <= 0 ? (
+            <div style={{ fontSize: 13, color: "#1FA463", fontWeight: 700 }}>{t("rep2.monthPaid")}</div>
+          ) : (
+          <>
           <div>
             <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>To&apos;lov summasi (so&apos;m)</div>
             <input
@@ -565,6 +646,8 @@ function ReportsContent() {
           >
             {disbursing ? t("common.saving") : t("rep2.confirmSalary")}
           </button>
+          </>
+          )}
         </form>
       </Modal>
 

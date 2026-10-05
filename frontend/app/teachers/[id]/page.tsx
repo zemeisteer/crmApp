@@ -454,7 +454,10 @@ function TeacherDetailContent() {
                 {salaryPayments.map((s) => (
                   <tr key={s.id}>
                     <td style={{ fontWeight: 600 }}>{s.forMonth}</td>
-                    <td>{formatMoney(s.amount)} {t("common.sumUnit")}</td>
+                    <td style={{ textDecoration: s.reversedAt ? "line-through" : undefined, color: s.reversedAt ? "#8A8D96" : undefined }}>
+                      {formatMoney(s.amount)} {t("common.sumUnit")}
+                      {s.reversedAt && <span className="badge badge-neutral" style={{ marginLeft: 8 }} title={s.reversalReason ?? undefined}>{t("rep2.reversed")}</span>}
+                    </td>
                     <td>{formatDate(s.paidAt, lang, "long")}</td>
                   </tr>
                 ))}

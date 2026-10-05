@@ -524,6 +524,7 @@ export class ReportsService {
           eq(salaryPayments.tenantId, tenantId),
           // Linked payouts are counted with the expenses above.
           isNull(salaryPayments.expenseId),
+          isNull(salaryPayments.reversedAt),
           gte(salaryPayments.forMonth, first),
           sql`${salaryPayments.forMonth} <= ${month}`,
         ))

@@ -52,9 +52,25 @@ test('an accountant pays a month in installments, once each, with one expense ea
   expect(lost).toBe(1);
   await expect(row.getByText("✓ To'langan")).toBeVisible();
 
-  const payouts = await api<Array<{ amount: number; expenseId: string | null }>>('GET', `/salary-payments?forMonth=${month}`, { token: accountant });
-  expect(payouts.map((p) => p.amount).sort((x, y) => x - y)).toEqual([400000, 600000]);
+  // 3. The second payout was a mistake: reversed (storno) with a reason, from the
+  //    month's payouts. The month owes the rest again.
+  await row.getByRole('button', { name: "To'lovlar" }).click();
+  dialog = page.getByRole('dialog');
+  await expect(dialog.getByText("Bu oy to'liq to'langan.")).toBeVisible();
+  // Newest first: the 600 000 payout is the first in the list.
+  await dialog.getByRole('button', { name: 'Storno', exact: true }).first().click();
+  await dialog.getByRole('textbox', { name: 'Storno sababi' }).fill("Noto'g'ri summa");
+  await dialog.getByRole('button', { name: 'Storno qilish' }).click();
+  await expect(dialog.getByText('Storno qilingan')).toBeVisible();
+  await expect(dialog.getByRole('spinbutton')).toHaveValue('600000');
+  await page.keyboard.press('Escape');
+  await expect(row.getByText("Qisman to'langan")).toBeVisible();
+
+  const all = await api<Array<{ amount: number; expenseId: string | null; reversedAt: string | null; reversalReason: string | null }>>('GET', `/salary-payments?forMonth=${month}`, { token: accountant });
+  const reversed = all.filter((p) => p.reversedAt);
+  expect(reversed).toMatchObject([{ amount: 600000, expenseId: null, reversalReason: "Noto'g'ri summa" }]);
+  const payouts = all.filter((p) => !p.reversedAt);
+  expect(payouts.map((p) => p.amount)).toEqual([400000]);
   const expenses = await api<Array<{ id: string; category: string; amount: number }>>('GET', `/expenses?forMonth=${month}&category=SALARY`, { token: accountant });
-  expect(payouts.every((p) => expenses.some((e) => e.id === p.expenseId))).toBe(true);
-  expect(expenses).toHaveLength(2);
+  expect(expenses.map((e) => e.id)).toEqual([payouts[0].expenseId]);
 });

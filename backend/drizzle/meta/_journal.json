@@ -253,6 +253,13 @@
       "when": 1793600000000,
       "tag": "0035_payroll_disbursements",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1793700000000,
+      "tag": "0036_payroll_reversals",
+      "breakpoints": true
     }
   ]
 }

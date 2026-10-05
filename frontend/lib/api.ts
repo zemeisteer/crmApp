@@ -911,6 +911,9 @@ export interface SalaryPayment {
   expenseId: string | null;
   paymentMethod: "CASH" | "CLICK" | "PAYME" | "BANK_TRANSFER" | null;
   notes: string | null;
+  // Set when the payout was reversed (it then counts nowhere).
+  reversedAt: string | null;
+  reversalReason: string | null;
   createdAt: string;
 }
 
@@ -1608,6 +1611,12 @@ export const salaryApi = {
     const qs = q.toString();
     return request<SalaryPayment[]>(`/salary-payments${qs ? `?${qs}` : ""}`);
   },
+  // A payout made by mistake: kept as reversed, its expense removed.
+  reverse: (id: string, reason: string) =>
+    request<SalaryPayment>(`/salary-payments/${encodeURIComponent(id)}/reverse`, { method: "POST", body: JSON.stringify({ reason }) }),
+  // An older record linked to the SALARY expense that is the same money.
+  linkExpense: (id: string, expenseId: string) =>
+    request<SalaryPayment>(`/salary-payments/${encodeURIComponent(id)}/link-expense`, { method: "POST", body: JSON.stringify({ expenseId }) }),
   // Read-only: salary records from before payouts were linked to expenses.
   reconciliation: (forMonth?: string) =>
     request<PayrollReconciliation>(`/salary-payments/reconciliation${forMonth ? `?forMonth=${encodeURIComponent(forMonth)}` : ""}`),

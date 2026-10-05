@@ -13,6 +13,8 @@ import {
   teachers,
 } from '../db/schema';
 import { DisburseSalaryDto } from './dto/salary.dto';
+import { LedgerService } from '../ledger/ledger.service';
+import { AuditService } from '../audit/audit.service';
 import { reconcileLegacyPayroll, salaryExpenseTitle, type PayrollReconciliation } from './payroll-reconciliation';
 
 export interface TeacherPayrollItem {
@@ -60,6 +62,8 @@ export class SalaryService {
   constructor(
     @Inject(DB) private readonly db: Database,
     private readonly teacherAttendance: TeacherAttendanceService,
+    private readonly ledger: LedgerService,
+    private readonly audit: AuditService,
   ) {}
 
   // Every payout (installment), newest first.
@@ -87,7 +91,8 @@ export class SalaryService {
   }
 
   async calculatePayroll(tenantId: string, forMonth?: string): Promise<PayrollCalculationResponse> {
-    const month = forMonth || new Date().toISOString().slice(0, 7);
+    // No month given: the center's current month, on its own clock.
+    const month = forMonth || (await this.ledger.currentMonth(tenantId));
     if (!MONTH.test(month)) throw new BadRequestException("forMonth YYYY-MM formatida bo'lishi kerak");
 
     // 1. Fetch active teachers
@@ -108,7 +113,7 @@ export class SalaryService {
 
     // 2. Payouts already made for this month: a month can be paid in parts.
     const existingPayments = await this.db.query.salaryPayments.findMany({
-      where: and(eq(salaryPayments.tenantId, tenantId), eq(salaryPayments.forMonth, month)),
+      where: and(eq(salaryPayments.tenantId, tenantId), eq(salaryPayments.forMonth, month), isNull(salaryPayments.reversedAt)),
     });
     const paymentMap = new Map<string, { amount: number; paidAt: Date; count: number }>();
     for (const p of existingPayments) {
@@ -267,8 +272,9 @@ export class SalaryService {
     const line = (await this.calculatePayroll(tenantId, dto.forMonth)).teachers.find((t) => t.teacherId === dto.teacherId);
     const calculated = line?.calculatedSalary ?? 0;
 
+    let result: DisburseResult;
     try {
-      return await this.db.transaction(async (tx) => {
+      result = await this.db.transaction(async (tx) => {
         if (key) {
           await lockIdempotencyKey(tx, 'salary.disburse', tenantId, key);
           const prior = await replay(tx);
@@ -279,7 +285,12 @@ export class SalaryService {
         const [{ paid }] = await tx
           .select({ paid: sql<number>`coalesce(sum(${salaryPayments.amount}), 0)::int` })
           .from(salaryPayments)
-          .where(and(eq(salaryPayments.tenantId, tenantId), eq(salaryPayments.teacherId, dto.teacherId), eq(salaryPayments.forMonth, dto.forMonth)));
+          .where(and(
+            eq(salaryPayments.tenantId, tenantId),
+            eq(salaryPayments.teacherId, dto.teacherId),
+            eq(salaryPayments.forMonth, dto.forMonth),
+            isNull(salaryPayments.reversedAt),
+          ));
         const remaining = Math.max(0, calculated - paid);
         if (dto.amount > remaining) {
           throw new BadRequestException(
@@ -327,6 +338,120 @@ export class SalaryService {
       }
       throw err;
     }
+    if (!result.replayed) {
+      this.audit.log({
+        tenantId,
+        userId: recordedById ?? null,
+        action: 'salary.disburse',
+        entityType: 'salary_payment',
+        entityId: result.salaryPayment.id,
+        meta: { teacherId: dto.teacherId, teacherName: teacher.fullName, forMonth: dto.forMonth, amount: dto.amount, paymentMethod: dto.paymentMethod || 'CASH', expenseId: result.expense?.id },
+      });
+    }
+    return result;
+  }
+
+  /**
+   * Reverses a payout made by mistake: in one transaction the row is marked
+   * reversed (who, when, why) and its expense is deleted, so the month's
+   * paid amount, the expenses and the finance totals drop it. The row is
+   * kept. Reversing a reversed payout again changes nothing.
+   */
+  async reverse(tenantId: string, id: string, reason: string, userId: string) {
+    const why = reason?.trim();
+    if (!why || why.length < 3) throw new BadRequestException("Bekor qilish sababini yozing (kamida 3 belgi)");
+    const outcome = await this.db.transaction(async (tx) => {
+      const [row] = await tx
+        .select()
+        .from(salaryPayments)
+        .where(and(eq(salaryPayments.id, id), eq(salaryPayments.tenantId, tenantId)))
+        .for('update');
+      if (!row) throw new NotFoundException("Maosh to'lovi topilmadi");
+      if (row.reversedAt) return { row, changed: false, expense: null as ExpenseRow | null };
+      if (!row.expenseId) {
+        // An older record (before 0035): there is no expense of its own to
+        // remove; link it first (or correct the expenses by hand).
+        throw new ConflictException("Bu eski yozuv: unga bog'langan xarajat yo'q. Avval solishtirish hisobotida xarajatga bog'lang");
+      }
+      const [expense] = await tx.select().from(expenses).where(eq(expenses.id, row.expenseId));
+      const [updated] = await tx
+        .update(salaryPayments)
+        .set({ reversedAt: new Date(), reversedById: userId, reversalReason: why, expenseId: null })
+        .where(eq(salaryPayments.id, id))
+        .returning();
+      await tx.delete(expenses).where(and(eq(expenses.id, row.expenseId), eq(expenses.tenantId, tenantId)));
+      return { row: updated, changed: true, expense: expense ?? null };
+    });
+    if (outcome.changed) {
+      this.audit.log({
+        tenantId,
+        userId,
+        action: 'salary.reverse',
+        entityType: 'salary_payment',
+        entityId: id,
+        meta: {
+          teacherId: outcome.row.teacherId,
+          forMonth: outcome.row.forMonth,
+          amount: outcome.row.amount,
+          reason: why,
+          deletedExpense: outcome.expense ? { id: outcome.expense.id, title: outcome.expense.title, amount: outcome.expense.amount, date: outcome.expense.date } : null,
+        },
+      });
+    }
+    return publicRow(outcome.row);
+  }
+
+  /**
+   * Links an older salary record (before 0035, no expense) to the SALARY
+   * expense that is the same money - the reconciliation report's
+   * "likely counted twice". Only an exact match is accepted: same center,
+   * category SALARY, not linked to any payout, same amount. Afterwards the
+   * money counts once, from the expense.
+   */
+  async linkExpense(tenantId: string, id: string, expenseId: string, userId: string) {
+    let linked: { row: SalaryRow; changed: boolean };
+    try {
+      linked = await this.db.transaction(async (tx) => {
+      const [row] = await tx
+        .select()
+        .from(salaryPayments)
+        .where(and(eq(salaryPayments.id, id), eq(salaryPayments.tenantId, tenantId)))
+        .for('update');
+      if (!row) throw new NotFoundException("Maosh to'lovi topilmadi");
+      if (row.reversedAt) throw new ConflictException("Bekor qilingan to'lovni bog'lab bo'lmaydi");
+      if (row.expenseId === expenseId) return { row, changed: false };
+      if (row.expenseId) throw new ConflictException("Bu to'lov allaqachon boshqa xarajatga bog'langan");
+      const [expense] = await tx
+        .select()
+        .from(expenses)
+        .where(and(eq(expenses.id, expenseId), eq(expenses.tenantId, tenantId)))
+        .for('update');
+      if (!expense) throw new NotFoundException('Xarajat topilmadi');
+      const [taken] = await tx.select({ id: salaryPayments.id }).from(salaryPayments).where(eq(salaryPayments.expenseId, expenseId));
+      if (taken) throw new ConflictException("Bu xarajat boshqa maosh to'loviga bog'langan");
+      if (expense.category !== 'SALARY') throw new BadRequestException("Faqat SALARY turidagi xarajatni bog'lash mumkin");
+      if (expense.amount !== row.amount) {
+        throw new BadRequestException(`Summalar farq qiladi (maosh yozuvi ${row.amount}, xarajat ${expense.amount}): bog'lab bo'lmaydi`);
+      }
+      const [updated] = await tx.update(salaryPayments).set({ expenseId }).where(eq(salaryPayments.id, id)).returning();
+      return { row: updated, changed: true };
+      });
+    } catch (err) {
+      // Two links of one expense at the same moment: the unique index decides.
+      if (isUniqueViolation(err, 'salary_payments_expense_uniq')) throw new ConflictException("Bu xarajat boshqa maosh to'loviga bog'langan");
+      throw err;
+    }
+    if (linked.changed) {
+      this.audit.log({
+        tenantId,
+        userId,
+        action: 'salary.link_expense',
+        entityType: 'salary_payment',
+        entityId: id,
+        meta: { expenseId, amount: linked.row.amount, forMonth: linked.row.forMonth, teacherId: linked.row.teacherId },
+      });
+    }
+    return publicRow(linked.row);
   }
 
   /**
@@ -350,6 +475,7 @@ export class SalaryService {
       .where(and(
         eq(salaryPayments.tenantId, tenantId),
         isNull(salaryPayments.expenseId),
+        isNull(salaryPayments.reversedAt),
         forMonth ? eq(salaryPayments.forMonth, forMonth) : undefined,
       ));
     // SALARY expenses that no payout points to.
@@ -367,7 +493,15 @@ export class SalaryService {
 
 const MONTH = /^\d{4}-(0[1-9]|1[0-2])$/;
 
-function publicRow<T extends { idempotencyKey?: string | null; requestHash?: string | null }>(row: T) {
+type SalaryRow = typeof salaryPayments.$inferSelect;
+type ExpenseRow = typeof expenses.$inferSelect;
+interface DisburseResult {
+  salaryPayment: Omit<SalaryRow, 'idempotencyKey' | 'requestHash'>;
+  expense: ExpenseRow | null;
+  replayed: boolean;
+}
+
+function publicRow(row: SalaryRow): Omit<SalaryRow, 'idempotencyKey' | 'requestHash'> {
   const { idempotencyKey: _k, requestHash: _h, ...rest } = row;
   return rest;
 }

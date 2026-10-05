@@ -1,11 +1,11 @@
-import { Body, Controller, Get, Headers, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Headers, Param, Post, Query, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../common/jwt-auth.guard';
 import { RolesGuard } from '../common/roles.guard';
 import { TrialGuard } from '../common/trial.guard';
 import { Roles } from '../common/roles.decorator';
 import { CurrentUser } from '../common/current-user.decorator';
 import { SalaryService } from './salary.service';
-import { DisburseSalaryDto } from './dto/salary.dto';
+import { DisburseSalaryDto, LinkSalaryExpenseDto, ReverseSalaryDto } from './dto/salary.dto';
 
 @UseGuards(JwtAuthGuard, RolesGuard, TrialGuard)
 @Controller('salary-payments')
@@ -54,5 +54,31 @@ export class SalaryController {
   ) {
     const { replayed: _replayed, ...result } = await this.service.disburse(tenantId, dto, userId, idempotencyKey);
     return result;
+  }
+
+  // A payout made by mistake: kept as reversed (who, when, why); its
+  // expense is removed in the same transaction.
+  @Roles('ADMIN', 'ACCOUNTANT')
+  @Post(':id/reverse')
+  reverse(
+    @CurrentUser('tenantId') tenantId: string,
+    @CurrentUser('sub') userId: string,
+    @Param('id') id: string,
+    @Body() dto: ReverseSalaryDto,
+  ) {
+    return this.service.reverse(tenantId, id, dto.reason, userId);
+  }
+
+  // An older salary record linked to the SALARY expense that is the same
+  // money (reconciliation: "likely counted twice"); exact amount only.
+  @Roles('ADMIN', 'ACCOUNTANT')
+  @Post(':id/link-expense')
+  linkExpense(
+    @CurrentUser('tenantId') tenantId: string,
+    @CurrentUser('sub') userId: string,
+    @Param('id') id: string,
+    @Body() dto: LinkSalaryExpenseDto,
+  ) {
+    return this.service.linkExpense(tenantId, id, dto.expenseId, userId);
   }
 }

@@ -5,7 +5,7 @@ import { App } from 'supertest/types';
 import { and, eq, sql } from 'drizzle-orm';
 import { AppModule } from '../src/app.module.js';
 import { DB, type Database } from '../src/db/db.module.js';
-import { expenses, salaryPayments } from '../src/db/schema.js';
+import { auditLogs, expenses, salaryPayments } from '../src/db/schema.js';
 
 // Paying teachers against real PostgreSQL: a month paid in parts, many
 // clicks at once, retries and a failure in the middle never pay a month
@@ -179,5 +179,92 @@ describe('Payroll disbursement (e2e)', () => {
     const foreign = (await http().get(`/api/salary-payments/reconciliation?forMonth=${m}`).set(auth(other)).expect(200)).body;
     expect(foreign.items).toEqual([]);
     await http().get('/api/salary-payments/reconciliation?forMonth=bad').set(auth()).expect(400);
+  });
+  const reverse = (id: string, reason = 'Xato summa kiritildi', token = owner) =>
+    http().post(`/api/salary-payments/${id}/reverse`).set(auth(token)).send({ reason });
+  const auditOf = (entityId: string) =>
+    expect.poll(async () => (await db.select().from(auditLogs).where(eq(auditLogs.entityId, entityId))).map((a) => a.action).sort());
+
+  it('a payout made by mistake is reversed: kept, its expense removed, the month payable again', async () => {
+    const m = '2031-08';
+    const t = await teacher(500_000);
+    const { salaryPayment: p1, expense } = (await disburse({ teacherId: t, amount: 300_000, forMonth: m }).expect(201)).body;
+    await auditOf(p1.id).toEqual(['salary.disburse']);
+
+    await reverse(p1.id, ' ').expect(400);
+    const reversed = (await reverse(p1.id).expect(201)).body;
+    expect(reversed).toMatchObject({ id: p1.id, amount: 300_000, expenseId: null, reversalReason: 'Xato summa kiritildi' });
+    expect(reversed.reversedAt).toBeTruthy();
+    expect(await db.select().from(expenses).where(eq(expenses.id, expense.id))).toHaveLength(0);
+    expect(await line(t, m)).toMatchObject({ paidAmount: 0, netPayable: 500_000, installments: 0 });
+    const summary = (await http().get(`/api/payments/finance-summary?forMonth=${m}`).set(auth()).expect(200)).body;
+    expect(summary.totalExpenses).toBe(0);
+    await auditOf(p1.id).toEqual(['salary.disburse', 'salary.reverse']);
+
+    // Again: nothing changes, nothing is logged twice.
+    expect((await reverse(p1.id, 'yana bir bor').expect(201)).body.reversalReason).toBe('Xato summa kiritildi');
+    await auditOf(p1.id).toEqual(['salary.disburse', 'salary.reverse']);
+    // The whole month can be paid now; the reversed row is still listed.
+    await disburse({ teacherId: t, amount: 500_000, forMonth: m }).expect(201);
+    const rows = (await http().get(`/api/salary-payments?teacherId=${t}&forMonth=${m}`).set(auth()).expect(200)).body;
+    expect(rows.map((r: { amount: number; reversedAt: string | null }) => [r.amount, !!r.reversedAt]).sort()).toEqual([[300_000, true], [500_000, false]]);
+  });
+
+  it('two reversals at once remove the expense once', async () => {
+    const t = await teacher(200_000);
+    const { salaryPayment } = (await disburse({ teacherId: t, amount: 200_000 }).expect(201)).body;
+    const results = await Promise.all([reverse(salaryPayment.id), reverse(salaryPayment.id), reverse(salaryPayment.id)]);
+    expect(results.map((r) => r.status)).toEqual([201, 201, 201]);
+    await auditOf(salaryPayment.id).toEqual(['salary.disburse', 'salary.reverse']);
+    expect(await line(t)).toMatchObject({ paidAmount: 0 });
+  });
+
+  it('reversal: another center, an unknown id and an older record without expense are refused', async () => {
+    const t = await teacher(100_000);
+    const { salaryPayment } = (await disburse({ teacherId: t, amount: 100_000 }).expect(201)).body;
+    await reverse(salaryPayment.id, 'boshqa markaz', other).expect(404);
+    await reverse('no-such-id').expect(404);
+    const [legacy] = await db.insert(salaryPayments).values({ tenantId, teacherId: t, amount: 1, forMonth: '2031-09' }).returning();
+    await reverse(legacy.id).expect(409);
+    expect(await line(t)).toMatchObject({ paidAmount: 100_000 });
+  });
+
+  it('an older record is linked to the expense that is the same money: counted once afterwards', async () => {
+    const m = '2031-10';
+    const name = `Linked ${suffix}`;
+    const t = await teacher(1_000_000, name);
+    const [legacy] = await db.insert(salaryPayments).values({ tenantId, teacherId: t, amount: 600_000, forMonth: m }).returning();
+    const [same] = await db.insert(expenses).values({ tenantId, title: `O'qituvchi maoshi: ${name} (${m})`, category: 'SALARY', amount: 600_000, date: `${m}-25` }).returning();
+    const [other1] = await db.insert(expenses).values({ tenantId, title: 'Boshqa', category: 'SALARY', amount: 599_999, date: `${m}-25` }).returning();
+    const [rent] = await db.insert(expenses).values({ tenantId, title: 'Ijara', category: 'RENT', amount: 600_000, date: `${m}-01` }).returning();
+    const totals = async () => (await http().get(`/api/payments/finance-summary?forMonth=${m}`).set(auth()).expect(200)).body.totalExpenses;
+    expect(await totals()).toBe(600_000 + 600_000 + 599_999 + 600_000); // the old row on top of its own expense
+
+    const link = (expenseId: string, token = owner) => http().post(`/api/salary-payments/${legacy.id}/link-expense`).set(auth(token)).send({ expenseId });
+    await link(other1.id).expect(400); // amounts differ
+    await link(rent.id).expect(400); // not a salary expense
+    await link(same.id, other).expect(404); // another center
+    const { salaryPayment: paid } = (await disburse({ teacherId: t, amount: 100_000, forMonth: m }).expect(201)).body;
+    await link(paid.expenseId).expect(409); // a payout's own expense
+
+    expect((await link(same.id).expect(201)).body).toMatchObject({ id: legacy.id, expenseId: same.id });
+    await link(same.id).expect(201); // the same link again: no change
+    await auditOf(legacy.id).toEqual(['salary.link_expense']);
+    // (The 100 000 payout's expense is dated today, so it is not in this month.)
+    expect(await totals()).toBe(600_000 + 599_999 + 600_000);
+    const r = (await http().get(`/api/salary-payments/reconciliation?forMonth=${m}`).set(auth()).expect(200)).body;
+    expect(r.items.find((i: { salaryPaymentId: string }) => i.salaryPaymentId === legacy.id)).toBeUndefined();
+    // Linked now, it can be reversed like any payout.
+    await reverse(legacy.id).expect(201);
+    expect(await totals()).toBe(599_999 + 600_000);
+  });
+
+  it('only finance staff reverse or link', async () => {
+    const t = await teacher(100_000);
+    const { salaryPayment } = (await disburse({ teacherId: t, amount: 100_000 }).expect(201)).body;
+    const inv = await http().post('/api/invitations').set(auth()).send({ email: `payroll-mgr-${suffix}@test.uz`, role: 'MANAGER' }).expect(201);
+    const manager = (await http().post(`/api/invitations/${inv.body.token}/accept`).send({ fullName: 'Manager', password: 'password12345' }).expect(201)).body.accessToken;
+    await reverse(salaryPayment.id, 'menejer', manager).expect(403);
+    await http().post(`/api/salary-payments/${salaryPayment.id}/link-expense`).set(auth(manager)).send({ expenseId: 'x' }).expect(403);
   });
 });

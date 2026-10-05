@@ -4,6 +4,7 @@ import { SalaryService } from './salary.service';
 describe('SalaryService', () => {
   let service: SalaryService;
   let mockDb: any;
+  let ledger: { currentMonth: ReturnType<typeof vi.fn> };
 
   beforeEach(() => {
     mockDb = {
@@ -46,7 +47,8 @@ describe('SalaryService', () => {
         ['t-2', { planned: 3, absent: 0, late: 0, substituted: 0 }],
       ])),
     };
-    service = new SalaryService(mockDb, attendance as any);
+    ledger = { currentMonth: vi.fn().mockResolvedValue('2026-10') };
+    service = new SalaryService(mockDb, attendance as any, ledger as any, { log: vi.fn() } as any);
   });
 
   describe('calculatePayroll', () => {
@@ -118,6 +120,13 @@ describe('SalaryService', () => {
       expect(result.totalPaid).toBe(2000000);
       expect(result.totalPending).toBe(3450000);
     });
+  });
+
+  it("without a month, uses the center's current month (its own clock)", async () => {
+    mockDb.query.teachers.findMany.mockResolvedValue([]);
+    const result = await service.calculatePayroll('tenant-1');
+    expect(ledger.currentMonth).toHaveBeenCalledWith('tenant-1');
+    expect(result.forMonth).toBe('2026-10');
   });
 
   it('refuses a month that is not YYYY-MM', async () => {

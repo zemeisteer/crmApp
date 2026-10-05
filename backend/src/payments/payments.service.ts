@@ -387,7 +387,7 @@ export class PaymentsService {
     });
 
     const monthSalaries = await this.db.query.salaryPayments.findMany({
-      where: and(eq(salaryPayments.tenantId, tenantId), eq(salaryPayments.forMonth, month)),
+      where: and(eq(salaryPayments.tenantId, tenantId), eq(salaryPayments.forMonth, month), isNull(salaryPayments.reversedAt)),
     });
 
     let totalRevenue = 0;

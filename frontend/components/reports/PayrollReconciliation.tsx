@@ -17,11 +17,13 @@ const STATUS: Record<PayrollReconciliationStatus, { key: TranslationKey; color: 
 // Read-only list of salary records made before payouts were linked to
 // expenses, next to the salary expenses they may duplicate. Shown only when
 // the month has any; nothing here changes data.
-export default function PayrollReconciliationPanel({ month }: { month: string }) {
+export default function PayrollReconciliationPanel({ month, onChanged }: { month: string; onChanged?: () => void }) {
   const { t } = useLanguage();
   const [data, setData] = useState<PayrollReconciliation | null>(null);
   const [error, setError] = useState<string | null>(null);
   const seq = useRef(0);
+  const [linking, setLinking] = useState<string | null>(null);
+  const [linkError, setLinkError] = useState<string | null>(null);
 
   const load = useCallback(() => {
     const mine = ++seq.current;
@@ -41,6 +43,22 @@ export default function PayrollReconciliationPanel({ month }: { month: string })
 
   useEffect(load, [load]);
 
+  // "Likely counted twice" with exactly one expense of the same amount:
+  // that expense is the same money; linking makes it count once.
+  async function link(salaryPaymentId: string, expenseId: string) {
+    setLinking(salaryPaymentId);
+    setLinkError(null);
+    try {
+      await salaryApi.linkExpense(salaryPaymentId, expenseId);
+      load();
+      onChanged?.();
+    } catch (err) {
+      setLinkError(err instanceof ApiError ? err.message : t("recon.linkError"));
+    } finally {
+      setLinking(null);
+    }
+  }
+
   if (error) return <LoadError message={error} onRetry={load} />;
   if (!data || data.forMonth !== month) return null;
   if (data.items.length === 0 && data.expensesWithoutPayroll.length === 0) return null;
@@ -56,6 +74,9 @@ export default function PayrollReconciliationPanel({ month }: { month: string })
           </p>
         )}
       </div>
+      {linkError && (
+        <div role="alert" style={{ margin: "12px 20px 0", background: "#FDEBEC", color: "#B23A47", fontSize: 13, fontWeight: 600, padding: "8px 12px", borderRadius: 10 }}>{linkError}</div>
+      )}
       {data.items.length > 0 && (
         <div style={{ overflowX: "auto" }}>
           <table>
@@ -65,11 +86,13 @@ export default function PayrollReconciliationPanel({ month }: { month: string })
                 <th style={{ paddingTop: 14 }}>{t("recon.recorded")}</th>
                 <th style={{ paddingTop: 14 }}>{t("recon.expenses")}</th>
                 <th style={{ paddingTop: 14 }}>{t("recon.status")}</th>
+                <th style={{ paddingTop: 14 }} />
               </tr>
             </thead>
             <tbody>
               {data.items.map((i) => {
                 const st = STATUS[i.status];
+                const same = i.status === "LIKELY_DOUBLE_COUNTED" && i.matchedExpenses.length === 1 ? i.matchedExpenses[0] : null;
                 return (
                   <tr key={i.salaryPaymentId}>
                     <td style={{ fontWeight: 700 }}>{i.teacherName}</td>
@@ -84,6 +107,19 @@ export default function PayrollReconciliationPanel({ month }: { month: string })
                     </td>
                     <td>
                       <span style={{ background: st.bg, color: st.color, padding: "3px 8px", borderRadius: 6, fontSize: 11.5, fontWeight: 700 }}>{t(st.key)}</span>
+                    </td>
+                    <td style={{ textAlign: "right" }}>
+                      {same && (
+                        <button
+                          type="button"
+                          className="btn"
+                          disabled={linking !== null}
+                          onClick={() => void link(i.salaryPaymentId, same.id)}
+                          style={{ background: "#4F46E5", color: "#fff", border: "none", fontSize: 12, fontWeight: 700, padding: "6px 10px", borderRadius: 7 }}
+                        >
+                          {linking === i.salaryPaymentId ? t("common.saving") : t("recon.link")}
+                        </button>
+                      )}
                     </td>
                   </tr>
                 );

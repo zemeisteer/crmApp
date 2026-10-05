@@ -26,3 +26,14 @@ export class DisburseSalaryDto {
   @MaxLength(500)
   notes?: string;
 }
+
+export class ReverseSalaryDto {
+  @IsString()
+  @MaxLength(500)
+  reason: string;
+}
+
+export class LinkSalaryExpenseDto {
+  @IsString()
+  expenseId: string;
+}
