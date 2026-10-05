@@ -68,3 +68,56 @@ test("the owner sees who can do what, as the server enforces it", async ({ page 
   await expect(row("O'qituvchilar stavkasini ko'rish").getByRole('cell')).toHaveText(['✓', '✓', '—', '—', '✓', '—']);
   await page.screenshot({ path: test.info().outputPath('matrix.png'), fullPage: true });
 });
+
+test('the owner chooses what a new receptionist may do; the menu, the page and the server follow', async ({ page, browser }) => {
+  const a = await newCenter('perm');
+  await api('POST', '/groups', { token: a.token, body: { name: 'Perm group', subject: 'English', monthlyPrice: 300000, maxStudents: 10 } });
+  await loginOnMainSite(page, a.email);
+  await expectCenterDashboard(page, a.sub);
+  await page.goto(centerUrl(a.sub, '/settings'));
+  await page.getByRole('button', { name: 'Xodimlar va huquqlar' }).click();
+
+  const email = `zzbr-reception-perm-${run}@example.test`;
+  await page.getByPlaceholder("To'liq ism").fill('Perm Reception');
+  await page.getByPlaceholder('Email').fill(email);
+  await page.getByPlaceholder('Vaqtinchalik parol').fill(PASSWORD);
+  await page.getByRole('button', { name: 'Xodim roli' }).click();
+  await page.getByRole('option', { name: 'Qabulxona' }).click();
+  await page.getByText('Nimalar qila oladi').click();
+  // The receptionist's default is ticked; change two items.
+  await expect(page.getByRole('checkbox', { name: "Lidlarni ko'rish" })).toBeChecked();
+  await expect(page.getByRole('checkbox', { name: "To'lov qabul qilish" })).not.toBeChecked();
+  await page.getByRole('checkbox', { name: "To'lov qabul qilish" }).check();
+  await page.getByRole('checkbox', { name: "Lidlarni ko'rish" }).uncheck();
+  await page.getByRole('button', { name: "Xodim qo'shish" }).click();
+  const editButton = page.getByRole('button', { name: /Huquqlar · moslashtirilgan/ });
+  await expect(editButton).toBeVisible();
+
+  // The receptionist, in their own browser.
+  const staff = await (await browser.newContext()).newPage();
+  await loginOnMainSite(staff, email);
+  await expectCenterDashboard(staff, a.sub);
+  const nav = staff.locator('.sidebar');
+  await expect(nav.getByRole('link', { name: "To'lovlar" })).toBeVisible();
+  await expect(nav.getByRole('link', { name: 'Lidlar (Qabul)' })).toHaveCount(0);
+  await staff.goto(centerUrl(a.sub, '/payments'));
+  await expect(staff.getByRole('button', { name: "+ Yangi to'lov" })).toBeVisible();
+  await staff.goto(centerUrl(a.sub, '/leads'));
+  await expect(staff.getByRole('alert').filter({ hasText: "Bu bo'lim sizning rolingiz uchun ochiq emas" })).toBeVisible();
+  const token = await apiLogin(email);
+  await expect(api('GET', '/leads', { token })).rejects.toThrow(/403/);
+
+  // Back to the role's default: payments are taken by the accountant again.
+  await editButton.click();
+  const dialog = page.getByRole('dialog');
+  await dialog.getByRole('button', { name: /Standartga qaytarish/ }).click();
+  await expect(dialog.getByText("Rol bo'yicha standart")).toBeVisible();
+  await dialog.getByRole('button', { name: 'Saqlash' }).click();
+  await expect(page.getByRole('button', { name: /Huquqlar · moslashtirilgan/ })).toHaveCount(0);
+
+  await staff.goto(centerUrl(a.sub, '/payments'));
+  await expect(staff.getByRole('link', { name: 'Lidlar (Qabul)' })).toBeVisible();
+  await expect(staff.getByRole('button', { name: "+ Yangi to'lov" })).toHaveCount(0);
+  await expect(api('POST', '/payments', { token, body: {} })).rejects.toThrow(/403/);
+  await staff.context().close();
+});

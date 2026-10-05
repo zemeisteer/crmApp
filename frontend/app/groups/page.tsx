@@ -11,6 +11,7 @@ import Select from "@/components/Select";
 import DatePicker from "@/components/DatePicker";
 import TimePicker from "@/components/TimePicker";
 import { useAuth } from "@/lib/auth-context";
+import { can } from "@/lib/access";
 import { useLanguage } from "@/lib/i18n-context";
 import type { TranslationKey } from "@/lib/i18n";
 import { groupsApi, branchesApi, teachersApi, subjectsApi, Group, Branch, Teacher, ApiError, CATEGORY_SUBJECT_SUGGESTIONS } from "@/lib/api";
@@ -52,7 +53,7 @@ function GroupsContent() {
   const { tenant, user } = useAuth();
   // Creating, editing and the trash are for those who run the center (the
   // server refuses anyone else), so a teacher is not offered them.
-  const canManage = user?.role === "OWNER" || user?.role === "ADMIN" || user?.role === "SUPERADMIN";
+  const canManage = can(user, "groups.edit");
   const [importOpen, setImportOpen] = useState(false);
   const { t } = useLanguage();
   const shortSchedule = (g: Group) => shortScheduleOf(g, t);

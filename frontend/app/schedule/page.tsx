@@ -7,6 +7,7 @@ import RoomsManager from "@/components/schedule/RoomsManager";
 import Select from "@/components/Select";
 import TimePicker from "@/components/TimePicker";
 import { useAuth } from "@/lib/auth-context";
+import { can } from "@/lib/access";
 import { useLanguage } from "@/lib/i18n-context";
 import { useCenterClock } from "@/lib/use-center-clock";
 import {
@@ -299,7 +300,7 @@ export default function SchedulePage() {
           <p style={{ color: "#6B7280", margin: 0, fontSize: 13.5 }}>{t("schedule.subtitle")}</p>
         </div>
         <div style={{ display: "flex", gap: 10 }}>
-          {(user?.role === "ADMIN" || user?.role === "OWNER") && (
+          {can(user, "rooms.manage") && (
             <button
               onClick={() => setShowRoomsModal(true)}
               className="btn"
@@ -525,7 +526,7 @@ export default function SchedulePage() {
                                   <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" />
                                 </svg>
                               </button>
-                              {(user?.role === "ADMIN" || user?.role === "OWNER") && (
+                              {can(user, "schedule.delete") && (
                                 <button
                                   onClick={() => handleDeleteSchedule(item.id)}
                                   style={{

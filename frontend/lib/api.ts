@@ -387,6 +387,9 @@ export interface StaffMember {
   fullName: string;
   role: Role;
   permissions?: string[] | null;
+  /** The member's own list (null: the role's default) and what it comes to. */
+  access?: string[] | null;
+  effectiveAccess?: string[];
   createdAt: string;
 }
 
@@ -396,6 +399,8 @@ export interface User {
   fullName: string;
   role: Role;
   permissions?: string[] | null;
+  /** What this member may do (keys of the access catalog). */
+  access?: string[];
   emailVerified?: boolean;
   twoFactorEnabled?: boolean;
 }
@@ -1750,9 +1755,9 @@ export const tenantsApi = {
 
 export const staffApi = {
   list: () => request<StaffMember[]>("/staff"),
-  create: (data: { fullName: string; email: string; password: string; role: Role; permissions?: string[] }) =>
+  create: (data: { fullName: string; email: string; password: string; role: Role; access?: string[] | null }) =>
     request<StaffMember>("/staff", { method: "POST", body: JSON.stringify(data) }),
-  update: (id: string, data: { role?: Role; permissions?: string[] }) =>
+  update: (id: string, data: { role?: Role; access?: string[] | null }) =>
     request<StaffMember>(`/staff/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
   updateRole: (id: string, role: Role) => request<StaffMember>(`/staff/${id}`, { method: "PATCH", body: JSON.stringify({ role }) }),
   remove: (id: string) => request<{ success: boolean }>(`/staff/${id}`, { method: "DELETE" }),
@@ -1988,8 +1993,16 @@ export interface AccessMatrix {
   missing: string[];
 }
 
+export type AccessArea = "students" | "teaching" | "admissions" | "finance" | "payroll" | "center";
+export interface AccessCatalog {
+  roles: Role[];
+  areas: AccessArea[];
+  keys: Array<{ key: string; area: AccessArea; template: Role[] }>;
+}
+
 export const accessApi = {
   matrix: () => request<AccessMatrix>("/access/matrix"),
+  catalog: () => request<AccessCatalog>("/access/catalog"),
 };
 
 // ---- Excel import (teachers, groups, students) ----

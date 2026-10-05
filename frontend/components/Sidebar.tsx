@@ -18,10 +18,17 @@ interface NavItem {
   icon: React.ReactNode;
   badge?: string;
   roles?: Role[];
+  /** The access item that opens this page for staff whose access the owner sets. */
+  access?: string;
 }
 
-// The owner has every admin right (same rule as the backend RolesGuard).
-function canSee(item: NavItem, role?: Role) {
+const CONFIGURABLE: Role[] = ["MANAGER", "RECEPTIONIST", "ACCOUNTANT", "TEACHER"];
+
+// Staff whose access the owner sets see a page when its item is on their
+// list (the server answers the same way); otherwise the role decides, and
+// the owner has every admin right (same rule as the backend RolesGuard).
+function canSee(item: NavItem, role?: Role, access?: string[]) {
+  if (role && item.access && access && CONFIGURABLE.includes(role)) return access.includes(item.access);
   if (!item.roles) return true;
   if (!role) return false;
   return item.roles.includes(role) || (role === "OWNER" && item.roles.includes("ADMIN"));
@@ -42,6 +49,7 @@ const NAV_ITEMS: NavItem[] = [
   },
   {
     href: "/leads",
+    access: "leads.view",
     labelKey: "nav.leads" as TranslationKey,
     roles: ["SUPERADMIN", "ADMIN", "MANAGER", "RECEPTIONIST"],
     icon: (
@@ -52,6 +60,7 @@ const NAV_ITEMS: NavItem[] = [
   },
   {
     href: "/groups",
+    access: "groups.view",
     labelKey: "nav.groups" as TranslationKey,
     roles: ["SUPERADMIN", "ADMIN", "MANAGER", "TEACHER"],
     icon: (
@@ -63,6 +72,7 @@ const NAV_ITEMS: NavItem[] = [
   },
   {
     href: "/schedule",
+    access: "schedule.view",
     labelKey: "nav.schedule" as TranslationKey,
     roles: ["SUPERADMIN", "ADMIN", "MANAGER", "TEACHER"],
     icon: (
@@ -76,6 +86,7 @@ const NAV_ITEMS: NavItem[] = [
   },
   {
     href: "/students",
+    access: "students.view",
 
     labelKey: "nav.students" as TranslationKey,
     icon: (
@@ -87,6 +98,7 @@ const NAV_ITEMS: NavItem[] = [
   },
   {
     href: "/teachers",
+    access: "teachers.view",
     labelKey: "nav.teachers" as TranslationKey,
     roles: ["SUPERADMIN", "ADMIN", "MANAGER"],
     icon: (
@@ -98,6 +110,7 @@ const NAV_ITEMS: NavItem[] = [
   },
   {
     href: "/homework",
+    access: "homework.view",
     labelKey: "nav.homework" as TranslationKey,
     roles: ["SUPERADMIN", "ADMIN", "MANAGER", "TEACHER"],
     icon: (
@@ -110,6 +123,7 @@ const NAV_ITEMS: NavItem[] = [
   },
   {
     href: "/ai-materials",
+    access: "ai.use",
     labelKey: "nav.aiMaterials" as TranslationKey,
     badge: "AI",
     roles: ["SUPERADMIN", "ADMIN", "MANAGER", "TEACHER"],
@@ -122,6 +136,7 @@ const NAV_ITEMS: NavItem[] = [
   },
   {
     href: "/exams",
+    access: "exams.view",
     labelKey: "nav.exams" as TranslationKey,
     roles: ["SUPERADMIN", "ADMIN", "MANAGER", "TEACHER"],
     icon: (
@@ -133,6 +148,7 @@ const NAV_ITEMS: NavItem[] = [
   },
   {
     href: "/mock-tests",
+    access: "mockTests.manage",
     labelKey: "nav.mockTests" as TranslationKey,
     roles: ["SUPERADMIN", "ADMIN", "MANAGER", "TEACHER"],
     icon: (
@@ -144,6 +160,7 @@ const NAV_ITEMS: NavItem[] = [
   },
   {
     href: "/certificates",
+    access: "certificates.manage",
     labelKey: "nav.certificates" as TranslationKey,
     roles: ["SUPERADMIN", "ADMIN", "MANAGER", "TEACHER"],
     icon: (
@@ -155,6 +172,7 @@ const NAV_ITEMS: NavItem[] = [
   },
   {
     href: "/announcements",
+    access: "announcements.view",
     labelKey: "nav.announcements" as TranslationKey,
     icon: (
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -165,6 +183,7 @@ const NAV_ITEMS: NavItem[] = [
   },
   {
     href: "/ai-insights",
+    access: "ai.use",
     labelKey: "nav.aiInsights" as TranslationKey,
     badge: "AI",
     roles: ["SUPERADMIN", "ADMIN", "MANAGER", "TEACHER"],
@@ -178,6 +197,7 @@ const NAV_ITEMS: NavItem[] = [
   },
   {
     href: "/payments",
+    access: "payments.view",
     labelKey: "nav.payments" as TranslationKey,
     roles: ["SUPERADMIN", "ADMIN", "MANAGER", "RECEPTIONIST", "ACCOUNTANT"],
     icon: (
@@ -189,6 +209,7 @@ const NAV_ITEMS: NavItem[] = [
   },
   {
     href: "/reports",
+    access: "reports.finance",
     labelKey: "nav.reports" as TranslationKey,
     roles: ["SUPERADMIN", "ADMIN", "MANAGER", "ACCOUNTANT"],
     icon: (
@@ -265,12 +286,12 @@ export function isPlatformMode(role?: Role, hasCenter?: boolean) {
  * through its address either. Pages that are not in the menu stay open (the
  * server still decides what data they get).
  */
-export function canOpenPath(pathname: string, role?: Role, hasCenter = true) {
+export function canOpenPath(pathname: string, role?: Role, hasCenter = true, access?: string[]) {
   const under = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
   if (isPlatformMode(role, hasCenter)) return PLATFORM_ITEMS.some((i) => under(i.href));
   if (under(SUPERADMIN_ITEM.href)) return role === "SUPERADMIN";
   const item = NAV_ITEMS.find((i) => under(i.href));
-  return item ? canSee(item, role) : true;
+  return item ? canSee(item, role, access) : true;
 }
 
 const NAV_SCROLL_KEY = "sidebar-scroll";
@@ -399,7 +420,7 @@ export default function Sidebar({ open, onClose }: { open?: boolean; onClose?: (
           );
         })}
 
-        {!isPlatformMode(user?.role, !!tenant) && NAV_ITEMS.filter((item) => canSee(item, user?.role)).map((item) => {
+        {!isPlatformMode(user?.role, !!tenant) && NAV_ITEMS.filter((item) => canSee(item, user?.role, user?.access)).map((item) => {
           const active = pathname === item.href || pathname.startsWith(item.href + "/");
           return (
             <Link

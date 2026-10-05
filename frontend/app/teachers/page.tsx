@@ -12,6 +12,7 @@ import Pagination, { usePagedSlice } from "@/components/Pagination";
 import Select from "@/components/Select";
 import DatePicker from "@/components/DatePicker";
 import { useAuth } from "@/lib/auth-context";
+import { can } from "@/lib/access";
 import { useLanguage } from "@/lib/i18n-context";
 import { teachersApi, groupsApi, salaryApi, retryKey, Teacher, Group, ApiError } from "@/lib/api";
 import { useCenterClock } from "@/lib/use-center-clock";
@@ -43,7 +44,7 @@ function formatMoney(n: number) {
 function TeachersContent() {
   const { user } = useAuth();
   // Import creates teachers: the admins' (and owner's) job, as the form.
-  const canImport = ["OWNER", "ADMIN", "SUPERADMIN"].includes(user?.role ?? "");
+  const canImport = can(user, "import.run");
   const [importOpen, setImportOpen] = useState(false);
   const { t: tr } = useLanguage();
   const clock = useCenterClock();

@@ -72,7 +72,7 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
   // The superadmin outside a center has no center pages: the platform
   // panel is their home.
   const platformMode = isPlatformMode(user?.role, !!tenant);
-  const misplaced = platformMode && !canOpenPath(pathname, user?.role, false);
+  const misplaced = platformMode && !canOpenPath(pathname, user?.role, false, user?.access);
   useEffect(() => {
     if (misplaced) router.replace("/admin");
   }, [misplaced, router]);
@@ -115,7 +115,7 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
           </svg>
         </button>
         <TrialBanner />
-        {misplaced ? null : canOpenPath(pathname, user.role, !!tenant) ? (
+        {misplaced ? null : canOpenPath(pathname, user.role, !!tenant, user.access) ? (
           children
         ) : (
           <div role="alert" style={{ flex: 1, display: "grid", placeContent: "center", justifyItems: "center", gap: 10, padding: 24, textAlign: "center" }}>

@@ -88,14 +88,24 @@ Nosozlik yuz berganda nima qilish kerakligi bo'yicha qisqa qo'llanma.
 - Productionda SMS token (markaz sozlamasi yoki `ESKIZ_API_TOKEN` / `PLAYMOBILE_API_TOKEN`) bo'lmasa SMS "ulanmagan" ko'rinadi va yuborilmaydi; provayder ham xabarni FAILED deb yozadi (ilgari "yuborildi" deb yozardi). Local/testda tokensiz SMS faqat logga yoziladi.
 - Har bir xabarning holati Sozlamalar sahifasidagi bildirishnomalar jurnalida (`GET /api/notifications/logs`).
 
-## 13. Superadmin hisobiga kirish yo'qolgan
+## 13. Xodim ruxsatlari (Sozlamalar → Xodimlar va huquqlar)
+
+- Xodim qo'shishda rol tanlanadi, "Nimalar qila oladi" ochilsa, shu rolning standart ro'yxati belgilangan holda chiqadi. Istalgan bandni qo'shish yoki olib tashlash mumkin. Mavjud xodim uchun: "🔑 Huquqlar" tugmasi; "Standartga qaytarish" ro'yxatni o'chiradi.
+- Faqat menejer, qabulxona, buxgalter va o'qituvchi uchun. Ega va admin har doim hamma narsaga ega. Xodimlar, markaz sozlamalari, sayt, filiallar, audit — faqat ega/adminda, ro'yxatda yo'q.
+- Server ro'yxatga bo'ysunadi: belgilangan band ishlaydi, olib tashlangani 403. O'zgarish xodimning keyingi so'rovidan kuchga kiradi (qayta kirish shart emas). Servis ichidagi cheklovlar saqlanadi (o'qituvchi faqat o'z guruhlarini ko'radi).
+- Ro'yxati yo'q xodim (`organization_memberships.access` = NULL, migratsiyadan keyin hamma) rolining standartida — ya'ni avvalgidek ishlaydi. Rol o'zgarsa, ro'yxat standartga qaytadi.
+- Bandlar va qaysi endpointlarga tegishliligi: `backend/src/access/catalog.ts`. Yangi endpoint qo'shilsa, `test/staff-access.e2e-spec.ts` uni katalogga yoki "doim ochiq" ro'yxatiga kiritishni talab qiladi.
+- Taklifnoma: menejer endi faqat o'qituvchi, qabulxona, o'quvchi va ota-onani taklif qila oladi; admin, menejer va buxgalterni faqat ega yoki admin taklif qiladi.
+- Xodim "ruxsat yo'q" desa: Sozlamalar → Xodimlar va huquqlar → o'sha xodim → "🔑 Huquqlar" — kerakli band belgilanganini tekshiring.
+
+## 14. Superadmin hisobiga kirish yo'qolgan
 
 - Birinchi SUPERADMIN'ni qo'lda bazada yaratish kerak (self-service yo'q, xavfsizlik uchun ataylab shunday):
   ```sql
   UPDATE users SET role = 'SUPERADMIN' WHERE email = 'sizning-email@domen.uz';
   ```
 
-## 14. Workspace / Tashkilot a'zoligi muammosi ("Foydalanuvchida faol tashkilot a'zoligi topilmadi")
+## 15. Workspace / Tashkilot a'zoligi muammosi ("Foydalanuvchida faol tashkilot a'zoligi topilmadi")
 
 - Agar eski foydalanuvchi tizimga kirganda "Foydalanuvchida faol tashkilot a'zoligi topilmadi" xatosi chiqsa:
   Markazga kirish faqat faol a'zolikdan keladi. A'zoligi yo'q akkaunt — ataylab o'chirilgan xodim ham bo'lishi mumkin, shuning uchun a'zolik **ommaviy tiklanmaydi**.
@@ -104,13 +114,13 @@ Nosozlik yuz berganda nima qilish kerakligi bo'yicha qisqa qo'llanma.
   3. Markazda birorta ham a'zo qolmagan bo'lsa, platforma admini (SUPERADMIN) o'sha markazga kirib, rahbarni Xodimlar bo'limidan qo'shadi.
   `scripts/migrate-memberships.ts` ishlatilmaydi: u barcha akkauntlarga a'zolik berib, o'chirilgan xodimlarni ham qaytarar edi.
 
-## 15. Taklifnoma xatolari ("Ushbu taklifnoma yaroqsiz yoki muddati tugagan")
+## 16. Taklifnoma xatolari ("Ushbu taklifnoma yaroqsiz yoki muddati tugagan")
 
 - Taklifnomalar 7 kun muddatga ega va faqat 1 marta ishlatiladi (`invitation_status` = `PENDING`).
 - Token bazada SHA-256 hash ko'rinishida (`token_hash`) saqlanadi.
 - Agar foydalanuvchi taklifnomani yo'qotgan yoki muddati o'tgan bo'lsa, markaz administratori settings yoki onboarding orqali yangi taklifnoma yuborishi kerak (eski taklifnoma `REVOKED` yoki `EXPIRED` bo'ladi).
 
-## 16. Onboarding bosqichida qolib ketish ("Onboarding reset")
+## 17. Onboarding bosqichida qolib ketish ("Onboarding reset")
 
 - Agar markaz administratori onboarding bosqichini qayta o'tmoqchi bo'lsa yoki qolib ketgan bo'lsa:
   ```sql
@@ -118,7 +128,7 @@ Nosozlik yuz berganda nima qilish kerakligi bo'yicha qisqa qo'llanma.
   ```
   Onboarding yakunlanganda `onboarding_step = 'COMPLETED'` bo'ladi.
 
-## 17. Umumiy tekshiruv tartibi (istalgan nosozlikda birinchi qadamlar)
+## 18. Umumiy tekshiruv tartibi (istalgan nosozlikda birinchi qadamlar)
 
 1. `GET /api/health`
 2. Backend va frontend loglarini oxirgi 5 daqiqa uchun ko'rish

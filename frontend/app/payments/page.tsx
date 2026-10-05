@@ -36,6 +36,7 @@ import DebtorRemindersDialog from "@/components/payments/DebtorReminders";
 import { centerWallClock } from "@/lib/center-time";
 import { useLanguage } from "@/lib/i18n-context";
 import { useAuth } from "@/lib/auth-context";
+import { can } from "@/lib/access";
 import { MONTH_KEYS, MONTH_SHORT_KEYS, type TranslationKey } from "@/lib/i18n";
 import { formatDate } from "@/lib/format-date";
 
@@ -760,7 +761,7 @@ function PaymentsContent() {
   const paymentKey = useRef<{ sig: string; key: string } | null>(null);
 
   // Putting on record what a group cost in the month being viewed.
-  const canConfirmPrice = ["OWNER", "ADMIN", "ACCOUNTANT", "SUPERADMIN"].includes(user?.role ?? "");
+  const canConfirmPrice = can(user, "groups.setPrice");
   const [confirmPrices, setConfirmPrices] = useState<Record<string, string>>({});
   const [confirmingGroup, setConfirmingGroup] = useState<string | null>(null);
   async function onConfirmPrice(groupId: string) {
@@ -940,6 +941,7 @@ function PaymentsContent() {
                 </span>
               )}
             </button>
+            {can(user, "invoices.manage") && (
             <button
               onClick={() => setActiveTab("invoices")}
               style={{
@@ -957,6 +959,8 @@ function PaymentsContent() {
             >
               {t("pay.tabInvoices")}
             </button>
+            )}
+            {can(user, "expenses.view") && (
             <button
               onClick={() => setActiveTab("expenses")}
               style={{
@@ -974,6 +978,8 @@ function PaymentsContent() {
             >
               {t("payments.tabExpenses")}
             </button>
+            )}
+            {can(user, "cash.view") && (
             <button
               onClick={() => setActiveTab("cash")}
               style={{
@@ -991,6 +997,7 @@ function PaymentsContent() {
             >
               {t("cash.tab")}
             </button>
+            )}
           </div>
         </div>
 
@@ -1041,6 +1048,7 @@ function PaymentsContent() {
 
           {activeTab === "history" && (
             <>
+              {can(user, "export.excel") && (
               <button
                 className="btn"
                 onClick={() => exportApi.paymentsXlsx()}
@@ -1056,6 +1064,8 @@ function PaymentsContent() {
               >
                 {t("payments.exportExcel")}
               </button>
+              )}
+              {can(user, "payments.take") && (
               <button
                 className="btn"
                 onClick={() => {
@@ -1075,6 +1085,7 @@ function PaymentsContent() {
               >
                 {t("payments.newPayment")}
               </button>
+              )}
             </>
           )}
 
@@ -1569,7 +1580,7 @@ function PaymentsContent() {
                 onChange={setDebtorGroupFilter}
                 style={{ width: 190 }}
               />
-              {canConfirmPrice && (
+              {can(user, "debtors.remind") && (
               <button
                 type="button"
                 className="btn"
@@ -1902,7 +1913,7 @@ function PaymentsContent() {
         {/* ========================================================================= */}
         {/* TAB 4: EXPENSES & CASH FLOW (P&L) (Master Spec Section 24)                 */}
         {/* ========================================================================= */}
-        {activeTab === "cash" && <CashDayPanel canClose={canConfirmPrice} />}
+        {activeTab === "cash" && <CashDayPanel canClose={can(user, "cash.close")} />}
         {remindersOpen && <DebtorRemindersDialog forMonth={debtorsData?.forMonth || selectedMonth} onClose={() => setRemindersOpen(false)} />}
 
         {activeTab === "expenses" && (

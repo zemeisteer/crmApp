@@ -9,6 +9,7 @@ import Select from "@/components/Select";
 import DatePicker from "@/components/DatePicker";
 import TeacherAccountCard from "@/components/teachers/TeacherAccountCard";
 import { useAuth } from "@/lib/auth-context";
+import { can } from "@/lib/access";
 import { teachersApi, groupsApi, paymentsApi, salaryApi, Teacher, Group, Student, Payment, SalaryPayment, TeacherPayrollItem, ApiError } from "@/lib/api";
 import { useCenterClock } from "@/lib/use-center-clock";
 import { useLanguage } from "@/lib/i18n-context";
@@ -396,7 +397,7 @@ function TeacherDetailContent() {
           </div>
         </div>
 
-        <TeacherAccountCard teacher={teacher} canManage={user?.role === "ADMIN" || user?.role === "OWNER" || user?.role === "SUPERADMIN"} onChanged={(nt) => setTeacher((cur) => (cur ? { ...cur, ...nt } : cur))} />
+        <TeacherAccountCard teacher={teacher} canManage={can(user, "teachers.edit")} onChanged={(nt) => setTeacher((cur) => (cur ? { ...cur, ...nt } : cur))} />
 
         <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, overflow: "hidden" }}>
           <div style={{ padding: "16px 20px 4px", fontFamily: "'Manrope', sans-serif", fontWeight: 700, fontSize: 15 }}>{t("teacherDetail.groupsTitle")}</div>

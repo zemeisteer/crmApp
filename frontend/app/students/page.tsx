@@ -6,6 +6,7 @@ import DashboardShell from "@/components/DashboardShell";
 import LoadError from "@/components/LoadError";
 import ImportDialog from "@/components/ImportDialog";
 import { useAuth } from "@/lib/auth-context";
+import { can } from "@/lib/access";
 import Modal from "@/components/Modal";
 import MultiSelect from "@/components/MultiSelect";
 import PlacementTestModal from "@/components/students/PlacementTestModal";
@@ -24,7 +25,7 @@ function StudentsContent() {
   const { t } = useLanguage();
   const { user } = useAuth();
   // Import creates students: the admins' (and owner's) job, as the form.
-  const canImport = ["OWNER", "ADMIN", "SUPERADMIN"].includes(user?.role ?? "");
+  const canImport = can(user, "import.run");
   const [importOpen, setImportOpen] = useState(false);
   const [students, setStudents] = useState<Student[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);

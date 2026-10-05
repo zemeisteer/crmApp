@@ -11,6 +11,7 @@ import { levelKey } from "@/components/mock-tests/levels";
 import { ApiError, isPracticeTest, mockTestsApi, type MockTest, type MockTestSummary, type PracticeTemplate, type PracticeTest } from "@/lib/api";
 import { useLanguage } from "@/lib/i18n-context";
 import { useAuth } from "@/lib/auth-context";
+import { can } from "@/lib/access";
 
 const ACCENT = "#4F46E5";
 const card: React.CSSProperties = { background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 16 };
@@ -22,7 +23,7 @@ const TEMPLATES: PracticeTemplate[] = ["SAT", "ENGLISH", "MATH", "PROGRAMMING", 
 function MockTestsContent() {
   const { t } = useLanguage();
   const { user } = useAuth();
-  const canDelete = ["OWNER", "ADMIN", "MANAGER", "SUPERADMIN"].includes(user?.role ?? "");
+  const canDelete = can(user, "mockTests.delete");
   const [tests, setTests] = useState<MockTestSummary[] | null>(null);
   const [open, setOpen] = useState<MockTest | null>(null);
   const [tab, setTab] = useState<"edit" | "results">("edit");

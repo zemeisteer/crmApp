@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Modal from "@/components/Modal";
 import DashboardShell from "@/components/DashboardShell";
 import AccessMatrixPanel from "@/components/settings/AccessMatrix";
+import StaffAccessEditor, { isConfigurableRole } from "@/components/settings/StaffAccessEditor";
 import SiteContentEditor from "@/components/settings/SiteContentEditor";
 import BranchesManager from "@/components/settings/BranchesManager";
 import Select from "@/components/Select";
@@ -12,8 +13,8 @@ import { useAuth } from "@/lib/auth-context";
 import { useLanguage } from "@/lib/i18n-context";
 import type { TranslationKey } from "@/lib/i18n";
 import {
-  tenantsApi, telegramApi, authApi, webhooksApi, staffApi, notificationsApi,
-  Session, Webhook, StaffMember, ApiError, Role, fileUrl,
+  tenantsApi, telegramApi, authApi, webhooksApi, staffApi, notificationsApi, accessApi,
+  Session, Webhook, StaffMember, ApiError, Role, fileUrl, type AccessCatalog,
   NotificationLog, NotificationSettings, NotificationStats,
 } from "@/lib/api";
 import { PHONE_PATTERN, PHONE_TITLE, NAME_PATTERN, NAME_TITLE } from "@/lib/validation";
@@ -163,7 +164,9 @@ function SettingsContent() {
   const [staffRole, setStaffRole] = useState<Role>("TEACHER");
   const [staffError, setStaffError] = useState<string | null>(null);
   const [savingStaff, setSavingStaff] = useState(false);
-  const [editingPermissionsStaff, setEditingPermissionsStaff] = useState<StaffMember | null>(null);
+  const [editingAccessStaff, setEditingAccessStaff] = useState<StaffMember | null>(null);
+  const [staffAccess, setStaffAccess] = useState<string[] | null>(null);
+  const [accessCatalog, setAccessCatalog] = useState<AccessCatalog | null>(null);
 
   const [gdprPassword, setGdprPassword] = useState("");
   const [gdprError, setGdprError] = useState<string | null>(null);
@@ -185,6 +188,7 @@ function SettingsContent() {
   }
   function loadStaff() {
     staffApi.list().then(setStaff).catch(() => undefined);
+    accessApi.catalog().then(setAccessCatalog).catch(() => undefined);
   }
 
   async function onRevokeSession(id: string) {
@@ -255,11 +259,12 @@ function SettingsContent() {
     setStaffError(null);
     setSavingStaff(true);
     try {
-      await staffApi.create({ fullName: staffName, email: staffEmail, password: staffPassword, role: staffRole });
+      await staffApi.create({ fullName: staffName, email: staffEmail, password: staffPassword, role: staffRole, access: staffAccess });
       setStaffName("");
       setStaffEmail("");
       setStaffPassword("");
       setStaffRole("TEACHER");
+      setStaffAccess(null);
       loadStaff();
     } catch (err) {
       setStaffError(err instanceof ApiError ? err.message : t("common.errorGeneric"));
@@ -539,25 +544,27 @@ function SettingsContent() {
                         <div style={{ fontSize: 11.5, color: "#8A8D96" }}>{s.email}</div>
                       </div>
                       <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
-                        <button
-                          type="button"
-                          className="btn"
-                          onClick={() => setEditingPermissionsStaff(s)}
-                          style={{
-                            background: "#EEF2FF",
-                            color: ACCENT,
-                            border: "1px solid #C7D2FE",
-                            fontSize: 11.5,
-                            fontWeight: 700,
-                            padding: "5px 10px",
-                            borderRadius: 8,
-                            cursor: "pointer",
-                            whiteSpace: "nowrap",
-                          }}
-                        >
-                          🔑 {t("set.permissions")} {s.permissions && s.permissions.length > 0 ? `(${s.permissions.length})` : ""}
-                        </button>
-                        {s.id === user?.id || s.role === "SUPERADMIN" ? (
+                        {accessCatalog && isConfigurableRole(accessCatalog, s.role) && (
+                          <button
+                            type="button"
+                            className="btn"
+                            onClick={() => setEditingAccessStaff(s)}
+                            style={{
+                              background: s.access ? "#FEF3C7" : "#EEF2FF",
+                              color: s.access ? "#B45309" : ACCENT,
+                              border: `1px solid ${s.access ? "#FCD34D" : "#C7D2FE"}`,
+                              fontSize: 11.5,
+                              fontWeight: 700,
+                              padding: "5px 10px",
+                              borderRadius: 8,
+                              cursor: "pointer",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            🔑 {t("set.permissions")}{s.access ? ` · ${t("perm.custom")}` : ""}
+                          </button>
+                        )}
+                        {s.id === user?.id || s.role === "SUPERADMIN" || s.role === "OWNER" ? (
                           <span className="badge badge-neutral">{ROLE_LABEL_KEYS[s.role] ? t(ROLE_LABEL_KEYS[s.role]) : s.role}</span>
                         ) : (
                           <Select
@@ -567,7 +574,7 @@ function SettingsContent() {
                             style={{ width: 170 }}
                           />
                         )}
-                        {s.id !== user?.id && s.role !== "SUPERADMIN" && (
+                        {s.id !== user?.id && s.role !== "SUPERADMIN" && s.role !== "OWNER" && (
                           <button className="btn" onClick={() => onRemoveStaff(s.id)} style={{ background: "transparent", color: "#B23A47", fontSize: 11.5, fontWeight: 600, padding: "4px 8px", borderRadius: 8 }}>
                             {t("common.delete")}
                           </button>
@@ -587,10 +594,25 @@ function SettingsContent() {
                 <input className="field-input" required type="email" placeholder={t("auth.email")} value={staffEmail} onChange={(e) => setStaffEmail(e.target.value)} />
                 <input className="field-input" required type="password" minLength={6} placeholder={t("settings.tempPassword")} value={staffPassword} onChange={(e) => setStaffPassword(e.target.value)} />
                 <Select
+                  ariaLabel={t("settings.staffRole")}
                   options={ROLE_OPTIONS}
                   value={staffRole}
-                  onChange={(v) => setStaffRole(v as Role)}
+                  onChange={(v) => {
+                    setStaffRole(v as Role);
+                    setStaffAccess(null);
+                  }}
                 />
+                {accessCatalog && (
+                  <details style={{ gridColumn: "1 / -1" }}>
+                    <summary style={{ cursor: "pointer", fontSize: 13, fontWeight: 700, color: "#181A1F", padding: "4px 0" }}>
+                      🔑 {t("perm.whatCanDo")}
+                      {staffAccess ? <span style={{ color: "#B45309", fontWeight: 600 }}> · {t("perm.custom")}</span> : null}
+                    </summary>
+                    <div style={{ marginTop: 10 }}>
+                      <StaffAccessEditor catalog={accessCatalog} role={staffRole} value={staffAccess} onChange={setStaffAccess} />
+                    </div>
+                  </details>
+                )}
                 <button
                   className="btn"
                   type="submit"
@@ -601,14 +623,12 @@ function SettingsContent() {
                 </button>
               </form>
 
-              {editingPermissionsStaff && (
-                <PermissionsModal
-                  staff={editingPermissionsStaff}
-                  onClose={() => setEditingPermissionsStaff(null)}
-                  onSave={async (perms) => {
-                    await staffApi.update(editingPermissionsStaff.id, { permissions: perms });
-                    loadStaff();
-                  }}
+              {editingAccessStaff && accessCatalog && (
+                <StaffAccessModal
+                  staff={editingAccessStaff}
+                  catalog={accessCatalog}
+                  onClose={() => setEditingAccessStaff(null)}
+                  onSaved={loadStaff}
                 />
               )}
             </div>
@@ -807,107 +827,42 @@ function IntegrationRow({ label, active, hint, activeLabel, inactiveLabel }: { l
   );
 }
 
-const ALL_CAPABILITIES: { key: string; label: TranslationKey }[] = [
-  { key: "students.read", label: "cap.studentsRead" },
-  { key: "students.create", label: "cap.studentsCreate" },
-  { key: "students.update", label: "cap.studentsUpdate" },
-  { key: "students.delete", label: "cap.studentsDelete" },
-  { key: "attendance.read", label: "cap.attendanceRead" },
-  { key: "attendance.mark", label: "cap.attendanceMark" },
-  { key: "groups.manage", label: "cap.groupsManage" },
-  { key: "homework.manage", label: "cap.homeworkManage" },
-  { key: "exams.manage", label: "cap.examsManage" },
-  { key: "certificates.manage", label: "cap.certificatesManage" },
-  { key: "payments.read", label: "cap.paymentsRead" },
-  { key: "payments.create", label: "cap.paymentsCreate" },
-  { key: "expenses.manage", label: "cap.expensesManage" },
-  { key: "reports.export", label: "cap.reportsExport" },
-  { key: "notifications.send", label: "cap.notificationsSend" },
-];
-
-function PermissionsModal({
-  staff,
-  onClose,
-  onSave,
-}: {
-  staff: StaffMember;
-  onClose: () => void;
-  onSave: (perms: string[]) => Promise<void>;
-}) {
+// A staff member's own list, edited item by item; saving the role's
+// default (or "back to default") stores no list at all.
+function StaffAccessModal({ staff, catalog, onClose, onSaved }: { staff: StaffMember; catalog: AccessCatalog; onClose: () => void; onSaved: () => void }) {
   const { t } = useLanguage();
-  const [selected, setSelected] = useState<string[]>(staff.permissions || []);
+  const [value, setValue] = useState<string[] | null>(staff.access ?? null);
   const [saving, setSaving] = useState(false);
-
-  function toggle(k: string) {
-    setSelected((prev) =>
-      prev.includes(k) ? prev.filter((x) => x !== k) : [...prev, k]
-    );
-  }
+  const [error, setError] = useState<string | null>(null);
 
   async function handleSave() {
     setSaving(true);
+    setError(null);
     try {
-      await onSave(selected);
+      await staffApi.update(staff.id, { access: value });
+      onSaved();
       onClose();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : t("common.errorGeneric"));
     } finally {
       setSaving(false);
     }
   }
 
   return (
-    <Modal open onClose={onClose} title={`${t("set.permissions")} — ${staff.fullName} (${staff.role})`}>
-      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        <div style={{ fontSize: 12.5, color: "#64748B", marginBottom: 6 }}>
-          {t("set.permIntro")}
+    <Modal open onClose={onClose} title={`${t("set.permissions")} — ${staff.fullName}`} width={760}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        <div style={{ fontSize: 12.5, color: "#4A4E58", lineHeight: 1.5 }}>
+          {t("perm.intro").replace("{role}", ROLE_LABEL_KEYS[staff.role] ? t(ROLE_LABEL_KEYS[staff.role]) : staff.role)}
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-          {ALL_CAPABILITIES.map((cap) => {
-            const isChecked = selected.includes(cap.key);
-            return (
-              <label
-                key={cap.key}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 8,
-                  padding: "8px 10px",
-                  borderRadius: 8,
-                  background: isChecked ? "#EEF2FF" : "#F8FAFC",
-                  border: `1px solid ${isChecked ? "#C7D2FE" : "#E2E8F0"}`,
-                  cursor: "pointer",
-                  fontSize: 12.5,
-                  fontWeight: isChecked ? 600 : 500,
-                  color: isChecked ? "#3730A3" : "#334155",
-                }}
-              >
-                <input
-                  type="checkbox"
-                  checked={isChecked}
-                  onChange={() => toggle(cap.key)}
-                  style={{ accentColor: ACCENT }}
-                />
-                <span>{t(cap.label)}</span>
-              </label>
-            );
-          })}
-        </div>
-        <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 12 }}>
-          <button
-            type="button"
-            className="btn"
-            onClick={onClose}
-            style={{ background: "#F1F5F9", color: "#475569", padding: "8px 16px", borderRadius: 8, fontSize: 13 }}
-          >
+        <StaffAccessEditor catalog={catalog} role={staff.role} value={value} onChange={setValue} disabled={saving} />
+        {error && <div role="alert" style={{ background: "#FDEBEC", color: "#B23A47", fontSize: 12.5, fontWeight: 600, padding: "8px 12px", borderRadius: 8 }}>{error}</div>}
+        <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+          <button type="button" className="btn" onClick={onClose} style={{ background: "#F2F1EC", color: "#4A4E58", border: "none", padding: "8px 16px", borderRadius: 8, fontSize: 13 }}>
             {t("common.cancel")}
           </button>
-          <button
-            type="button"
-            className="btn"
-            disabled={saving}
-            onClick={handleSave}
-            style={{ background: ACCENT, color: "#fff", padding: "8px 18px", borderRadius: 8, fontSize: 13, fontWeight: 700 }}
-          >
-            {saving ? "Saqlanmoqda..." : "Saqlash"}
+          <button type="button" className="btn" disabled={saving} onClick={() => void handleSave()} style={{ background: ACCENT, color: "#fff", border: "none", padding: "8px 18px", borderRadius: 8, fontSize: 13, fontWeight: 700 }}>
+            {saving ? t("common.saving") : t("perm.save")}
           </button>
         </div>
       </div>

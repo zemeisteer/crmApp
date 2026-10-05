@@ -191,7 +191,7 @@ export class AuthService {
     return {
       accessToken,
       refreshToken,
-      user: { id: user.id, email: user.email, fullName: user.fullName, role: 'OWNER', permissions: user.permissions || [] },
+      user: { id: user.id, email: user.email, fullName: user.fullName, role: 'OWNER', permissions: user.permissions || [], access: effectiveAccess('OWNER', null) },
       tenant,
       onboardingStep: 'PROFILE',
     };
@@ -281,7 +281,7 @@ export class AuthService {
         requiresWorkspaceSelection: false as const,
         accessToken,
         refreshToken,
-        user: { id: user.id, email: user.email, fullName: user.fullName, role: 'SUPERADMIN', permissions: ['*'] },
+        user: { id: user.id, email: user.email, fullName: user.fullName, role: 'SUPERADMIN', permissions: ['*'], access: effectiveAccess('SUPERADMIN', null) },
         tenant: null,
         workspaces: [],
       };
@@ -300,7 +300,7 @@ export class AuthService {
         requiresWorkspaceSelection: memberships.length > 1,
         accessToken,
         refreshToken,
-        user: { id: user.id, email: user.email, fullName: user.fullName, role: m.role, permissions: m.permissions || [] },
+        user: { id: user.id, email: user.email, fullName: user.fullName, role: m.role, permissions: m.permissions || [], access: effectiveAccess(m.role, m.access) },
         tenant: m.tenant,
         workspaces,
       };
@@ -325,7 +325,7 @@ export class AuthService {
       requiresWorkspaceSelection: false as const,
       accessToken,
       refreshToken,
-      user: { id: user.id, email: user.email, fullName: user.fullName, role: user.role, permissions: user.permissions || [] },
+      user: { id: user.id, email: user.email, fullName: user.fullName, role: user.role, permissions: user.permissions || [], access: [] as string[] },
       tenant: null,
       workspaces: [],
     };
