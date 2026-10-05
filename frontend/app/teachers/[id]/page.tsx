@@ -149,20 +149,6 @@ function TeacherDetailContent() {
     };
   }, [fullGroups, todayWeekdayIndex]);
 
-  const calculatedSalary = useMemo(() => {
-    if (!teacher?.salaryValue) return 0;
-    if (teacher.salaryType === "PERCENT") {
-      return Math.round((totalRevenue * teacher.salaryValue) / 100);
-    }
-    if (teacher.salaryType === "PER_STUDENT") {
-      return totalStudents * teacher.salaryValue;
-    }
-    if (teacher.salaryType === "PER_LESSON") {
-      return (lessonsStats.monthly || 12) * teacher.salaryValue;
-    }
-    return teacher.salaryValue;
-  }, [teacher, totalRevenue, totalStudents, lessonsStats.monthly]);
-
   const teacherAge = useMemo(() => {
     if (!teacher?.birthDate) return null;
     const b = new Date(teacher.birthDate);
@@ -317,7 +303,9 @@ function TeacherDetailContent() {
           <div style={{ background: "#ECEBFB", border: "1px solid #D7D3F8", borderRadius: 14, padding: 18 }}>
             <div style={{ fontSize: 12, color: ACCENT }}>{t("teacherDetail.statMonthCalculatedSalary")}</div>
             <div style={{ fontSize: 24, fontWeight: 800, fontFamily: "'Manrope', sans-serif", marginTop: 4, color: ACCENT }}>
-              {payrollLine ? `${formatMoney(payrollLine.calculatedSalary)} ${t("common.sumUnit")}` : teacher.salaryValue ? `${formatMoney(calculatedSalary)} ${t("common.sumUnit")}` : "—"}
+              {/* Only the payroll engine's number (as in Reports -> Payroll); no
+                  estimate of our own that could disagree with it. */}
+              {payrollLine ? `${formatMoney(payrollLine.calculatedSalary)} ${t("common.sumUnit")}` : "—"}
             </div>
             {/* Payouts are made in Reports -> Payroll (installments, one expense each). */}
             {payrollLine && payrollLine.calculatedSalary > 0 ? (
