@@ -26,6 +26,9 @@ services:
         condition: service_healthy
     environment:
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/talimcrm
+      # Local stack: lets the center pages on http://<center>.localhost:3000
+      # call the API (production accepts only https origins of ROOT_DOMAIN).
+      NODE_ENV: development
       JWT_SECRET: ${JWT_SECRET:-change-me-in-production}
       JWT_EXPIRES_IN: 7d
       PORT: 4000
@@ -65,6 +68,22 @@ services:
       - backend
     ports:
       - "3000:3000"
+
+  # Demo data for clicking through by hand (local only):
+  #   docker compose run --rm demo-seed
+  demo-seed:
+    build: ./backend
+    profiles: ["demo"]
+    depends_on:
+      - backend
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/talimcrm
+      API_URL: http://backend:4000/api
+      NODE_ENV: development
+    volumes:
+      - ./backend/scripts/demo-seed.cjs:/app/scripts/demo-seed.cjs:ro
+    command: ["node", "scripts/demo-seed.cjs"]
+    restart: "no"
 
 volumes:
   postgres_data:

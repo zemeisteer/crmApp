@@ -152,6 +152,33 @@ Postgres + backend + frontend'ni birga ko'taradi. Backend konteyneri har ishga t
 
 Ixtiyoriy integratsiya kalitlarini (Telegram, Click, Payme, SMTP...) `.env` fayliga yozib, `docker compose up` oldidan environment o'zgaruvchisi sifatida eksport qiling — `docker-compose.yml` ularni avtomatik backend konteyneriga uzatadi.
 
+Lokal `docker compose` backend'ni `NODE_ENV=development` bilan ishga tushiradi, shunda `http://<markaz>.localhost:3000` markaz sahifalari API'ga kira oladi (production faqat `ROOT_DOMAIN`ning https manzillarini qabul qiladi).
+
+### Demo ma'lumotlar bilan qo'lda sinash
+
+Sayt ishga tushgach, ikkinchi terminalda:
+
+```bash
+docker compose run --rm demo-seed      # Docker bilan
+cd backend && npm run demo:seed        # yoki Docker'siz (backend 4000-portda ishlab turgan bo'lsa)
+```
+
+"Bilimdon o'quv markazi" yaratiladi: 3 o'qituvchi, 4 guruh, 12 o'quvchi, bu oy to'lovlari (to'liq, qisman, to'lanmagan), xarajatlar, davomat, lidlar, e'lon. Loginlar doimiy (qayta ishga tushirish hech narsani o'zgartirmaydi, faqat jadvalni qayta chiqaradi):
+
+| Kim | Login | Parol | Qayerda |
+|---|---|---|---|
+| Platforma admini | `superadmin@bilimdon.uz` | `Demo12345` | http://localhost:3000/login |
+| Markaz egasi | `owner@bilimdon.uz` | `Demo12345` | http://bilimdon.localhost:3000/login |
+| Administrator | `admin@bilimdon.uz` | `Demo12345` | http://bilimdon.localhost:3000/login |
+| Menejer | `manager@bilimdon.uz` | `Demo12345` | http://bilimdon.localhost:3000/login |
+| Qabulxona | `reception@bilimdon.uz` | `Demo12345` | http://bilimdon.localhost:3000/login |
+| Buxgalter | `accountant@bilimdon.uz` | `Demo12345` | http://bilimdon.localhost:3000/login |
+| O'qituvchi | `teacher@bilimdon.uz` (`teacher2@`, `teacher3@`) | `Demo12345` | http://bilimdon.localhost:3000/login |
+| O'quvchi kabineti | `+998901110001` … `+998901110012` | PIN `123456` | http://bilimdon.localhost:3000/portal |
+| Ota-ona kabineti | `+998902220001` … `+998902220012` | PIN `123456` | http://bilimdon.localhost:3000/portal |
+
+Har rol uchun alohida inkognito oyna qulay. Faqat lokal demo uchun: skript `NODE_ENV=production`da va lokal bo'lmagan API manzilida ishlamaydi.
+
 ## 4. Loyihaning umumiy holati
 
 Barcha asosiy funksiyalar (auth, tenant izolyatsiyasi, RBAC, guruh/o'quvchi/o'qituvchi/to'lov/davomat/maosh CRUD, soft-delete+tiklash, audit log, Excel export/import, PDF kvitansiya, uy vazifalari, filiallar, hisobotlar, sozlamalar, superadmin panel, parolni tiklash/email tasdiqlash/refresh token) **ishlab chiqilgan va sinovdan o'tgan** (backend: unit+e2e testlar; frontend: TypeScript + production build + brauzerda qo'lda tekshirilgan).

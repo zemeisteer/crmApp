@@ -27,7 +27,8 @@
     "db:check-migrations": "node scripts/migrate.cjs --check",
     "db:verify-migrations": "node scripts/verify-migrations.cjs",
     "db:check-drift": "tsx scripts/check-schema-drift.ts",
-    "db:backup": "bash scripts/backup.sh"
+    "db:backup": "bash scripts/backup.sh",
+    "demo:seed": "node scripts/demo-seed.cjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.127.0",
