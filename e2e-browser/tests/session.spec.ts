@@ -57,8 +57,11 @@ test('staff removed while their browser is open: the next request is refused', a
   await expect(page).toHaveURL(centerUrl(a.sub, '/login'));
   expect(await page.evaluate(() => localStorage.getItem('talimcrm_token'))).toBeNull();
   // It was the Groups page's own request that was refused, and nothing after
-  // the removal was answered with data.
+  // the removal was answered with data. The center's login page it lands on
+  // looks up the center's public name (by-subdomain, no session): that is
+  // not the removed member's data.
   expect(statuses.length).toBeGreaterThan(0);
   expect(statuses[0]).toMatchObject({ status: 401 });
-  expect(statuses.filter((s) => s.status < 400 && !s.path.endsWith('/auth/logout'))).toEqual([]);
+  const publicAfterLogout = (path: string) => path.endsWith('/auth/logout') || /^\/api\/tenants\/by-subdomain\/[^/]+$/.test(path);
+  expect(statuses.filter((s) => s.status < 400 && !publicAfterLogout(s.path))).toEqual([]);
 });
