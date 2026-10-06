@@ -27,13 +27,13 @@ import {
 const ACCENT = "#4F46E5";
 
 const DAYS_OF_WEEK = [
-  { day: 1, labelKey: "schedule.days.mon" as const, short: "Du" },
-  { day: 2, labelKey: "schedule.days.tue" as const, short: "Se" },
-  { day: 3, labelKey: "schedule.days.wed" as const, short: "Cho" },
-  { day: 4, labelKey: "schedule.days.thu" as const, short: "Pay" },
-  { day: 5, labelKey: "schedule.days.fri" as const, short: "Jum" },
-  { day: 6, labelKey: "schedule.days.sat" as const, short: "Sha" },
-  { day: 7, labelKey: "schedule.days.sun" as const, short: "Yak" },
+  { day: 1, labelKey: "schedule.days.mon" as const, shortKey: "weekday.short.monday" as const },
+  { day: 2, labelKey: "schedule.days.tue" as const, shortKey: "weekday.short.tuesday" as const },
+  { day: 3, labelKey: "schedule.days.wed" as const, shortKey: "weekday.short.wednesday" as const },
+  { day: 4, labelKey: "schedule.days.thu" as const, shortKey: "weekday.short.thursday" as const },
+  { day: 5, labelKey: "schedule.days.fri" as const, shortKey: "weekday.short.friday" as const },
+  { day: 6, labelKey: "schedule.days.sat" as const, shortKey: "weekday.short.saturday" as const },
+  { day: 7, labelKey: "schedule.days.sun" as const, shortKey: "weekday.short.sunday" as const },
 ];
 
 export default function SchedulePage() {
@@ -408,7 +408,7 @@ export default function SchedulePage() {
             paddingBottom: 24,
           }}
         >
-          {DAYS_OF_WEEK.map(({ day, labelKey, short }) => {
+          {DAYS_OF_WEEK.map(({ day, labelKey, shortKey }) => {
             const isToday = currentDayOfWeek === day;
             const dayLessons = schedulesByDay[day] || [];
 
@@ -439,7 +439,7 @@ export default function SchedulePage() {
                 >
                   <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                     <span style={{ fontWeight: 800, fontSize: 14 }}>{t(labelKey)}</span>
-                    <span style={{ fontSize: 11, opacity: 0.8 }}>({short})</span>
+                    <span style={{ fontSize: 11, opacity: 0.8 }}>({t(shortKey)})</span>
                   </div>
                   <button
                     onClick={() => openCreateModal(day)}
@@ -676,7 +676,7 @@ export default function SchedulePage() {
                   {t("schedule.dayOfWeek")} *
                 </label>
                 <div style={{ display: "flex", gap: 4 }}>
-                  {DAYS_OF_WEEK.map(({ day, short }) => (
+                  {DAYS_OF_WEEK.map(({ day, shortKey }) => (
                     <button
                       key={day}
                       type="button"
@@ -693,7 +693,7 @@ export default function SchedulePage() {
                         cursor: "pointer",
                       }}
                     >
-                      {short}
+                      {t(shortKey)}
                     </button>
                   ))}
                 </div>

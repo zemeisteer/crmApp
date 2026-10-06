@@ -1977,7 +1977,7 @@ function PaymentsContent() {
                   -{formatMoney(financeSummary?.totalExpenses || 0)} {t("common.sumUnit")}
                 </div>
                 <div style={{ fontSize: 11, color: "#8A8D96", marginTop: 4 }}>
-                  Markaz: {formatMoney(financeSummary?.totalCenterExpenses || 0)} | Oylik:{" "}
+                  {t("pay.fsCenter")}: {formatMoney(financeSummary?.totalCenterExpenses || 0)} | {t("pay.fsSalaries")}:{" "}
                   {formatMoney(financeSummary?.totalSalaries || 0)}
                 </div>
               </div>
@@ -2037,7 +2037,7 @@ function PaymentsContent() {
                   {financeSummary?.collectionRate ?? 100}%
                 </div>
                 <div style={{ fontSize: 11, color: "#8A8D96", marginTop: 4 }}>
-                  Qarz: {formatMoney(financeSummary?.totalOutstandingDebt || 0)}
+                  {t("pay.fsDebt")}: {formatMoney(financeSummary?.totalOutstandingDebt || 0)}
                 </div>
               </div>
             </div>

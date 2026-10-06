@@ -376,7 +376,7 @@ function TeachersContent() {
               title={NAME_TITLE}
             />
           </Field>
-          <Field label={tr("teachers.fieldDirection") + " (bir nechta tanlash mumkin)"}>
+          <Field label={`${tr("teachers.fieldDirection")} (${tr("teachers.multiHint")})`}>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 8 }}>
               {Array.from(new Set([...SUGGESTED_DIRECTIONS, ...usedSubjects])).map((s) => {
                 const active = selectedDirections.includes(s);

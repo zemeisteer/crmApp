@@ -259,7 +259,7 @@ function ReportsContent() {
         <div>
           <h1 style={{ fontSize: 22, fontWeight: 800 }}>{t("reports.title")}</h1>
           <p style={{ fontSize: 12.5, color: "#8A8D96", marginTop: 2 }}>
-            Moliya, o&apos;qituvchilar maoshi va mijozlarni saqlash tahlili
+            {t("rep3.subtitle")}
           </p>
         </div>
 
@@ -298,7 +298,7 @@ function ReportsContent() {
                 boxShadow: activeTab === "overview" ? "0 1px 3px rgba(0,0,0,0.08)" : "none",
               }}
             >
-              📊 Umumiy & Moliya
+              📊 {t("rep3.tabOverview")}
             </button>
             <button
               type="button"

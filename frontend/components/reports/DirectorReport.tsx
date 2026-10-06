@@ -15,7 +15,8 @@ const COLLECTED = "#4F46E5"; // validated pair (light): indigo + orange
 const UNPAID = "#EB6834";
 const card: React.CSSProperties = { background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 18 };
 const money = (n: number) => new Intl.NumberFormat("uz-UZ").format(n);
-const short = (n: number) => (n >= 1_000_000 ? `${Math.round(n / 100_000) / 10} mln` : n >= 1000 ? `${Math.round(n / 1000)} ming` : String(n));
+const short = (n: number, t: (k: TranslationKey) => string) =>
+  n >= 1_000_000 ? `${Math.round(n / 100_000) / 10} ${t("common.mlnShort")}` : n >= 1000 ? `${Math.round(n / 1000)} ${t("common.thousandShort")}` : String(n);
 export const LEFT_REASONS = ["PRICE", "SCHEDULE", "MOVED", "RESULTS", "TEACHER", "GOAL_REACHED", "OTHER"] as const;
 
 export default function DirectorReport({ month, onMonth, onSms }: { month: string; onMonth: (m: string) => void; onSms: (s: { id: string; fullName: string; phone: string | null }) => void }) {
@@ -220,7 +221,7 @@ function TrendChart({ data, monthName, t }: { data: DirectorReportData; monthNam
         {ticks.map((v) => (
           <g key={v}>
             <line x1={pad.l} x2={W - pad.r} y1={y(v)} y2={y(v)} stroke="#EFEEE9" strokeWidth={1} />
-            <text x={pad.l - 8} y={y(v) + 4} textAnchor="end" fontSize="11" fill="#8A8D96">{short(v)}</text>
+            <text x={pad.l - 8} y={y(v) + 4} textAnchor="end" fontSize="11" fill="#8A8D96">{short(v, t)}</text>
           </g>
         ))}
         {rows.map((r, i) => {

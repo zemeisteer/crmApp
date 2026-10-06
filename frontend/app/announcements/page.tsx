@@ -149,20 +149,20 @@ export function AnnouncementsContent() {
         return (
           <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-50 text-rose-700 border border-rose-200">
             <span className="w-1.5 h-1.5 rounded-full bg-rose-600 animate-pulse" />
-            Shoshilinch
+            {t("ann2.urgent")}
           </span>
         );
       case "HIGH":
         return (
           <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200">
             <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-            Muhim
+            {t("ann2.high")}
           </span>
         );
       default:
         return (
           <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-200">
-            Oddiy
+            {t("ann2.normal")}
           </span>
         );
     }
@@ -173,19 +173,19 @@ export function AnnouncementsContent() {
       case "ALL":
         return (
           <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">
-            👥 Barchaga
+            👥 {t("ann2.toAll")}
           </span>
         );
       case "STUDENTS":
         return (
           <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
-            🎓 O&apos;quvchilarga
+            🎓 {t("ann2.toStudents")}
           </span>
         );
       case "TEACHERS":
         return (
           <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-sky-50 text-sky-800 border border-sky-200">
-            👨‍🏫 O&apos;qituvchilarga
+            👨‍🏫 {t("ann2.toTeachers")}
           </span>
         );
       case "GROUP":
@@ -209,10 +209,10 @@ export function AnnouncementsContent() {
                 <path d="M11.6 16.8a3 3 0 1 1-5.8-1.6" />
               </svg>
             </span>
-            E&apos;lonlar va Xabarnomalar
+            {t("ann2.title")}
           </h1>
           <p className="text-xs sm:text-sm text-slate-600 mt-1">
-            O&apos;quv markazining barcha talaba, o&apos;qituvchi va guruhlariga e&apos;lonlar berish va Telegram orqali broadcast qilish
+            {t("ann2.subtitle")}
           </p>
         </div>
 
@@ -224,7 +224,7 @@ export function AnnouncementsContent() {
             <line x1="12" y1="5" x2="12" y2="19" />
             <line x1="5" y1="12" x2="19" y2="12" />
           </svg>
-          Yangi E&apos;lon Berish
+          {t("ann2.newBtn")}
         </button>
       </div>
 
@@ -235,11 +235,11 @@ export function AnnouncementsContent() {
           <div className="text-2xl font-black text-slate-900 mt-1">{stats.total}</div>
         </div>
         <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
-          <span className="text-xs text-rose-600 font-bold">Shoshilinch (Urgent)</span>
+          <span className="text-xs text-rose-600 font-bold">{t("ann2.urgent")}</span>
           <div className="text-2xl font-black text-rose-600 mt-1">{stats.urgent}</div>
         </div>
         <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
-          <span className="text-xs text-amber-600 font-bold">Muhim (High)</span>
+          <span className="text-xs text-amber-600 font-bold">{t("ann2.high")}</span>
           <div className="text-2xl font-black text-amber-600 mt-1">{stats.high}</div>
         </div>
         <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
@@ -253,10 +253,10 @@ export function AnnouncementsContent() {
         {/* Priority Tabs */}
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0">
           {[
-            { id: "ALL", label: "Barchasi" },
-            { id: "URGENT", label: "🚨 Shoshilinch" },
-            { id: "HIGH", label: "⚡ Muhim" },
-            { id: "NORMAL", label: "ℹ️ Oddiy" },
+            { id: "ALL", label: t("ann2.all") },
+            { id: "URGENT", label: `🚨 ${t("ann2.urgent")}` },
+            { id: "HIGH", label: `⚡ ${t("ann2.high")}` },
+            { id: "NORMAL", label: `ℹ️ ${t("ann2.normal")}` },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -288,7 +288,7 @@ export function AnnouncementsContent() {
                 { value: "ALL", label: t("ann.allAudience") },
                 { value: "STUDENTS", label: t("ann.students") },
                 { value: "TEACHERS", label: t("ann.teachers") },
-                { value: "GROUP", label: "Guruhlar" },
+                { value: "GROUP", label: t("ann2.groups") },
               ]}
             />
           </div>
@@ -310,7 +310,7 @@ export function AnnouncementsContent() {
             </svg>
             <input
               type="text"
-              placeholder="Qidirish..."
+              placeholder={t("ann2.search")}
               value={search}
               onChange={(e) => {
                 setSearch(e.target.value);
@@ -324,7 +324,7 @@ export function AnnouncementsContent() {
 
       {/* Announcements List */}
       {loading ? (
-        <div className="py-20 text-center text-xs text-slate-500 font-medium">Yuklanmoqda...</div>
+        <div className="py-20 text-center text-xs text-slate-500 font-medium">{t("common.loading")}</div>
       ) : filtered.length === 0 ? (
         <div className="bg-white border border-slate-200 rounded-2xl p-12 text-center shadow-sm">
           <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 border border-indigo-100 flex items-center justify-center mx-auto mb-3">
@@ -335,13 +335,13 @@ export function AnnouncementsContent() {
           </div>
           <h3 className="text-sm font-bold text-slate-900">{t("ann.empty")}</h3>
           <p className="text-xs text-slate-600 mt-1 max-w-sm mx-auto">
-            Hozircha hech qanday e&apos;lon berilmagan. Markaz o&apos;quvchilari yoki xodimlariga yangilik yuborish uchun yangi e&apos;lon e&apos;lon qiling.
+            {t("ann2.empty")}
           </p>
           <button
             onClick={openCreateModal}
             className="mt-4 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold cursor-pointer shadow-sm"
           >
-            Yangi e&apos;lon yaratish
+            {t("ann2.create")}
           </button>
         </div>
       ) : (
@@ -407,7 +407,7 @@ export function AnnouncementsContent() {
                   <div className="w-5 h-5 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-[10px]">
                     {item.author.fullName.charAt(0)}
                   </div>
-                  <span>Muallif: <strong className="text-slate-900 font-bold">{item.author.fullName}</strong></span>
+                  <span>{t("ann2.author")}: <strong className="text-slate-900 font-bold">{item.author.fullName}</strong></span>
                 </div>
               )}
             </div>
@@ -432,7 +432,7 @@ export function AnnouncementsContent() {
 
           <div>
             <label className="block text-xs font-bold text-slate-700 mb-1">
-              Sarlavha <span className="text-rose-500">*</span>
+              {t("ann2.fieldTitle")} <span className="text-rose-500">*</span>
             </label>
             <input
               type="text"
@@ -447,31 +447,31 @@ export function AnnouncementsContent() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">
-                Auditoriya
+                {t("ann2.audience")}
               </label>
               <Select
                 value={targetAudience}
                 onChange={(val) => setTargetAudience(val as AnnouncementAudience)}
                 options={[
-                  { value: "ALL", label: "👥 Barchaga (Umumiy)" },
+                  { value: "ALL", label: `👥 ${t("ann2.toAll")}` },
                   { value: "STUDENTS", label: t("ann.onlyStudents") },
                   { value: "TEACHERS", label: t("ann.onlyTeachers") },
-                  { value: "GROUP", label: "🏫 Muayyan Guruhga" },
+                  { value: "GROUP", label: `🏫 ${t("ann2.toGroup")}` },
                 ]}
               />
             </div>
 
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">
-                Muhimlik darajasi
+                {t("ann2.priority")}
               </label>
               <Select
                 value={priority}
                 onChange={(val) => setPriority(val as AnnouncementPriority)}
                 options={[
-                  { value: "NORMAL", label: "ℹ️ Oddiy (Normal)" },
-                  { value: "HIGH", label: "⚡ Muhim (High)" },
-                  { value: "URGENT", label: "🚨 Shoshilinch (Urgent)" },
+                  { value: "NORMAL", label: `ℹ️ ${t("ann2.normal")}` },
+                  { value: "HIGH", label: `⚡ ${t("ann2.high")}` },
+                  { value: "URGENT", label: `🚨 ${t("ann2.urgent")}` },
                 ]}
               />
             </div>
@@ -480,13 +480,13 @@ export function AnnouncementsContent() {
           {targetAudience === "GROUP" && (
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">
-                Guruhni tanlang <span className="text-rose-500">*</span>
+                {t("ann2.pickGroup")} <span className="text-rose-500">*</span>
               </label>
               <Select
                 value={targetGroupId}
                 onChange={setTargetGroupId}
                 options={[
-                  { value: "", label: "— Guruhni tanlang —" },
+                  { value: "", label: `— ${t("ann2.pickGroup")} —` },
                   ...groups.map((g) => ({
                     value: g.id,
                     label: `${g.name} (${g.subject || t("ann.noSubject")})`,
@@ -498,7 +498,7 @@ export function AnnouncementsContent() {
 
           <div>
             <label className="block text-xs font-bold text-slate-700 mb-1">
-              E&apos;lon matni <span className="text-rose-500">*</span>
+              {t("ann2.fieldText")} <span className="text-rose-500">*</span>
             </label>
             <textarea
               required
