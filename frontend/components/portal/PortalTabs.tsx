@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { fileUrl, portalApi, type PortalAttendance, type PortalHomework, type PortalPastLesson, type PortalPayments, type PortalSchedule } from "@/lib/api";
 import { useLanguage } from "@/lib/i18n-context";
+import { formatDate } from "@/lib/format-date";
 import { DEFAULT_CENTER_TIMEZONE, centerToday, centerWallClock } from "@/lib/center-time";
 import { MONTH_KEYS, MONTH_SHORT_KEYS, type TranslationKey } from "@/lib/i18n";
 import Modal from "@/components/Modal";
@@ -260,7 +261,7 @@ function Section({ icon, title, children }: { icon: string; title: string; child
 }
 
 function LessonDetails({ lesson: l, onClose }: { lesson: PortalPastLesson; onClose: () => void }) {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const mark = lessonMark(l);
   const tone = ATT_ACCENT[mark.tone];
   const date = `${weekdayOf(l.date, t)}, ${Number(l.date.slice(8, 10))} ${t(MONTH_KEYS[Number(l.date.slice(5, 7)) - 1])}`;
@@ -298,7 +299,7 @@ function LessonDetails({ lesson: l, onClose }: { lesson: PortalPastLesson; onClo
                     <Pill tone={st.tone}>{h.status === "GRADED" && h.score != null ? `${h.score}/${h.maxScore}` : t(st.key)}</Pill>
                   </div>
                   {h.description && <div style={{ fontSize: 13, color: "#4A4E58", whiteSpace: "pre-wrap", lineHeight: 1.5 }}>{h.description}</div>}
-                  {h.dueDate && <div style={{ fontSize: 12, color: "#8A8D96" }}>{t("pls.due")}: {new Date(h.dueDate).toLocaleDateString()}</div>}
+                  {h.dueDate && <div style={{ fontSize: 12, color: "#8A8D96" }}>{t("pls.due")}: {formatDate(h.dueDate, lang)}</div>}
                   {h.attachmentPath && (
                     <a href={fileUrl(h.attachmentPath) ?? undefined} target="_blank" rel="noreferrer" style={{ fontSize: 12.5, fontWeight: 700, color: ACCENT }}>📎 {h.attachmentName || t("pls.file")}</a>
                   )}
@@ -365,7 +366,7 @@ const ATT_CSS = `
 `;
 
 export function AttendanceTab({ attendance, tz = DEFAULT_CENTER_TIMEZONE }: { attendance: PortalAttendance | null; tz?: string }) {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const present = attendance?.present ?? 0;
   const late = attendance?.late ?? 0;
   const absent = attendance?.absent ?? 0;
@@ -461,7 +462,7 @@ export function AttendanceTab({ attendance, tz = DEFAULT_CENTER_TIMEZONE }: { at
                     <span style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
                       <span style={{ width: 8, height: 8, borderRadius: "50%", background: c.dot, flexShrink: 0 }} />
                       <span style={{ minWidth: 0 }}>
-                        <span style={{ display: "block", fontSize: 13.5, fontWeight: 600 }}>{new Date(`${r.date}T00:00:00`).toLocaleDateString(undefined, { day: "numeric", month: "short", weekday: "short" })}</span>
+                        <span style={{ display: "block", fontSize: 13.5, fontWeight: 600 }}>{formatDate(`${r.date}T00:00:00`, lang, "short")}</span>
                         {r.groupName && <span style={{ display: "block", fontSize: 12, color: "#8A8D96", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.groupName}</span>}
                       </span>
                     </span>
@@ -600,7 +601,7 @@ export function HomeworkTab({ homework, onSubmit, readOnly = false }: { homework
 }
 
 function HomeworkCard({ hw, now, readOnly, onSubmit }: { hw: PortalHomework; now: number; readOnly: boolean; onSubmit: (id: string, data: { text?: string; file?: File | null }) => Promise<void> }) {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const [open, setOpen] = useState(false);
   const [text, setText] = useState("");
   const [file, setFile] = useState<File | null>(null);
@@ -647,7 +648,7 @@ function HomeworkCard({ hw, now, readOnly, onSubmit }: { hw: PortalHomework; now
           <div style={{ fontSize: 16, fontWeight: 800, overflowWrap: "anywhere" }}>{hw.title}</div>
           <div style={{ fontSize: 12.5, color: "#8A8D96", marginTop: 3, display: "flex", flexWrap: "wrap", gap: "2px 10px" }}>
             <span>{hw.groupName || t("ptl.general")}</span>
-            {due && <span style={{ color: overdue ? "#DC2626" : undefined, fontWeight: overdue ? 700 : 400 }}>⏰ {t("phw.due")}: {due.toLocaleDateString()}</span>}
+            {due && <span style={{ color: overdue ? "#DC2626" : undefined, fontWeight: overdue ? 700 : 400 }}>⏰ {t("phw.due")}: {formatDate(due, lang)}</span>}
             {hw.maxScore ? <span>🎯 {hw.maxScore} {t("phw.points")}</span> : null}
           </div>
         </div>
@@ -741,7 +742,7 @@ const submitBtn: React.CSSProperties = { background: ACCENT, color: "#fff", bord
 // ---------------------------------------------------------------- payments
 
 export function PaymentsTab({ payments, checkoutLoading, onPay, payError }: { payments: PortalPayments | null; checkoutLoading: string | null; onPay: (p: "CLICK" | "PAYME") => void; payError?: string | null }) {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const debt = payments?.debtAmount ?? 0;
   const expected = payments?.expectedTuition ?? 0;
   const paid = payments?.monthPaid ?? 0;
@@ -805,7 +806,7 @@ export function PaymentsTab({ payments, checkoutLoading, onPay, payError }: { pa
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 14, fontWeight: 700 }}>{p.forMonth ? monthLabel(p.forMonth, t) : "—"}</div>
-                <div style={{ fontSize: 12, color: "#8A8D96" }}>{p.paidAt ? new Date(p.paidAt).toLocaleDateString() : "—"}</div>
+                <div style={{ fontSize: 12, color: "#8A8D96" }}>{p.paidAt ? formatDate(p.paidAt, lang) : "—"}</div>
               </div>
               <div style={{ textAlign: "right" }}>
                 <div style={{ fontFamily: "'Manrope', sans-serif", fontSize: 15, fontWeight: 800 }}>{money(p.amount)}</div>

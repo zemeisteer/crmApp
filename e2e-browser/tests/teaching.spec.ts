@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { PASSWORD, api, centerDay, centerUrl, cleanUpStagingCenters, expectCenterDashboard, loginOnMainSite, newCenter, run } from './support';
+import { PASSWORD, api, apiStatuses, centerDay, centerUrl, cleanUpStagingCenters, expectCenterDashboard, loginOnMainSite, newCenter, run } from './support';
 
 // Teaching: a teacher signs in, finds their group and takes attendance.
 cleanUpStagingCenters();
@@ -23,12 +23,18 @@ test("a teacher marks attendance for their own group, on the center's today", as
   const now = new Date();
   const browserNow = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 1, 3, 0));
   await page.clock.setFixedTime(browserNow);
+  const statuses = apiStatuses(page);
   await loginOnMainSite(page, email);
   await expectCenterDashboard(page, a.sub);
   await page.locator('.sidebar').getByRole('link', { name: 'Guruhlar' }).click();
   await expect(page.getByRole('row')).toHaveCount(2); // the header and their one group
   await page.getByRole('row', { name: /Morning Math/ }).getByRole('link', { name: "Guruhni ko'rish" }).click();
   await expect(page).toHaveURL(centerUrl(a.sub, `/groups/${group.id}`));
+  // Only what a teacher may do: no payments (a wrong "debtor" mark), no
+  // deleting the group or moving students in and out.
+  await expect(page.getByRole('button', { name: "Davomatni saqlash" })).toBeVisible();
+  await expect(page.getByText('Qarzdor')).toHaveCount(0);
+  for (const name of ["Guruhni o'chirish", "+ O'quvchi qo'shish", 'Chiqarish']) await expect(page.getByRole('button', { name })).toHaveCount(0);
 
   const row = page.locator('div').filter({ hasText: /^Absent Pupil/ }).filter({ has: page.getByRole('button', { name: "Yo'q" }) }).last();
   await row.getByRole('button', { name: "Yo'q" }).click();
@@ -40,4 +46,6 @@ test("a teacher marks attendance for their own group, on the center's today", as
   expect(Object.fromEntries(rows.map((r) => [r.studentId, r.status]))).toEqual({ [here.id]: 'PRESENT', [away.id]: 'ABSENT' });
   expect(centerDay('Asia/Tashkent', browserNow)).not.toBe(centerDay('Pacific/Pago_Pago', browserNow));
   expect([...new Set(rows.map((r) => r.date))]).toEqual([centerDay('Asia/Tashkent', browserNow)]);
+  // Nothing on the way asked the server for what a teacher may not see.
+  expect(statuses.filter((r) => r.status === 403)).toEqual([]);
 });

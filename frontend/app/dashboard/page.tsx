@@ -5,6 +5,7 @@ import Link from "next/link";
 import DashboardShell from "@/components/DashboardShell";
 import BarChart, { DonutChart } from "@/components/BarChart";
 import { useAuth } from "@/lib/auth-context";
+import { can } from "@/lib/access";
 import { useLanguage } from "@/lib/i18n-context";
 import { reportsApi, type DashboardData, type ReportsOverview } from "@/lib/api";
 import { buildInsights } from "@/lib/insights";
@@ -71,6 +72,7 @@ function PeriodPills({ value, onChange, options }: { value: string; onChange: (v
 
 function DashboardContent() {
   const { user, tenant } = useAuth();
+  const seesReport = can(user, "reports.finance");
   const { t, lang } = useLanguage();
   // Aggregated on the server (GET /reports/dashboard) instead of loading
   // every group, student, payment and attendance row into the browser.
@@ -89,8 +91,9 @@ function DashboardContent() {
       .catch(() => null)
       .then(setData)
       .finally(() => setLoading(false));
-    reportsApi.overview().then(setReport).catch(() => setReport(null));
-  }, []);
+    // The full report is finance data; others get only their own dashboard.
+    if (seesReport) reportsApi.overview().then(setReport).catch(() => setReport(null));
+  }, [seesReport]);
 
   const insights = useMemo(() => (report ? buildInsights(report, t) : null), [report, t]);
   const urgent = insights ? insights.filter((i) => i.severity === "high" || i.severity === "medium") : [];

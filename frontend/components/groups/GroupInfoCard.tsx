@@ -8,6 +8,8 @@ import { formatDate } from "@/lib/format-date";
 const DAY_KEYS: Record<string, TranslationKey> = {
   dushanba: "weekday.short.monday", seshanba: "weekday.short.tuesday", chorshanba: "weekday.short.wednesday",
   payshanba: "weekday.short.thursday", juma: "weekday.short.friday", shanba: "weekday.short.saturday", yakshanba: "weekday.short.sunday",
+  mon: "weekday.short.monday", tue: "weekday.short.tuesday", wed: "weekday.short.wednesday", thu: "weekday.short.thursday",
+  fri: "weekday.short.friday", sat: "weekday.short.saturday", sun: "weekday.short.sunday",
 };
 
 // Compact "about the group" card: everything a teacher or admin needs at a

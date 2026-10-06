@@ -6,6 +6,8 @@ import DashboardShell from "@/components/DashboardShell";
 import BarChart, { DonutChart } from "@/components/BarChart";
 import { reportsApi, type DashboardData, type ReportsOverview } from "@/lib/api";
 import { useLanguage } from "@/lib/i18n-context";
+import { useAuth } from "@/lib/auth-context";
+import { can } from "@/lib/access";
 import { MONTH_KEYS, MONTH_SHORT_KEYS } from "@/lib/i18n";
 import { formatTime } from "@/lib/format-date";
 import { buildInsights, type Insight, type Severity } from "@/lib/insights";
@@ -32,6 +34,9 @@ function healthScore(parts: Array<number | null>) {
 }
 
 function AiInsightsContent() {
+  const { user } = useAuth();
+  // The center-wide report is finance data; others see their own groups.
+  const seesReport = can(user, "reports.finance");
   const { t, lang } = useLanguage();
   const [report, setReport] = useState<ReportsOverview | null>(null);
   const [dash, setDash] = useState<DashboardData | null>(null);
@@ -41,13 +46,13 @@ function AiInsightsContent() {
 
   useEffect(() => {
     // Teachers may not read the full report; they still get their groups.
-    Promise.all([reportsApi.overview().catch(() => null), reportsApi.dashboard().catch(() => null)])
+    Promise.all([seesReport ? reportsApi.overview().catch(() => null) : Promise.resolve(null), reportsApi.dashboard().catch(() => null)])
       .then(([r, d]) => {
         setReport(r);
         setDash(d);
       })
       .finally(() => setLoading(false));
-  }, []);
+  }, [seesReport]);
 
   const SEVERITY_LABEL: Record<Severity, string> = {
     high: t("aiInsights.sevHigh"),

@@ -3,6 +3,7 @@
 import type { PortalAnnouncement, PortalAttendance, PortalHomework, PortalMe, PortalPayments, PortalSchedule } from "@/lib/api";
 import { useState } from "react";
 import { useLanguage } from "@/lib/i18n-context";
+import { formatDate, formatDateTime } from "@/lib/format-date";
 import Modal from "@/components/Modal";
 import { MONTH_KEYS, type TranslationKey } from "@/lib/i18n";
 
@@ -40,7 +41,7 @@ export default function PortalHome({
   // Seen by a parent: about "your child", not a greeting to the student.
   parent?: boolean;
 }) {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const [openNews, setOpenNews] = useState<PortalAnnouncement | null>(null);
   // Home shows news only while it is fresh and unread; the rest stays in
   // the Messages tab.
@@ -146,7 +147,7 @@ export default function PortalHome({
                 <div key={h.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, padding: "10px 12px", borderRadius: 12, border: "1px solid #EDF2F7" }}>
                   <div style={{ minWidth: 0 }}>
                     <div style={{ fontSize: 14, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{h.title}</div>
-                    {!h.completed && due && <div style={{ fontSize: 12, color: late ? "#DC2626" : "#94A3B8" }}>{t("pth.due")}: {due.toLocaleDateString()}</div>}
+                    {!h.completed && due && <div style={{ fontSize: 12, color: late ? "#DC2626" : "#94A3B8" }}>{t("pth.due")}: {formatDate(due, lang)}</div>}
                   </div>
                   <span
                     style={{
@@ -203,7 +204,7 @@ export default function PortalHome({
 
       {openNews && (
         <Modal open onClose={() => setOpenNews(null)} title={openNews.title} width={520}>
-          <div style={{ fontSize: 12.5, color: "#94A3B8", marginTop: -8, marginBottom: 12 }}>{new Date(openNews.createdAt).toLocaleString()}</div>
+          <div style={{ fontSize: 12.5, color: "#94A3B8", marginTop: -8, marginBottom: 12 }}>{formatDateTime(openNews.createdAt, lang)}</div>
           <div style={{ fontSize: 14.5, lineHeight: 1.6, color: "#2A2D35", whiteSpace: "pre-wrap" }}>{openNews.content}</div>
           <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 18 }}>
             <button type="button" onClick={() => setOpenNews(null)} style={{ background: ACCENT, color: "#fff", border: "none", fontSize: 13, fontWeight: 700, padding: "9px 16px", borderRadius: 9, cursor: "pointer" }}>

@@ -179,12 +179,14 @@ function TeachersContent() {
   // payroll: missed lessons deducted, substitutions paid). Roles without
   // payroll access see "—".
   const [payroll, setPayroll] = useState<Map<string, number> | null>(null);
+  const seesPayroll = can(user, "payroll.view");
   useEffect(() => {
+    if (!seesPayroll) return;
     salaryApi
       .calculate(currentMonth)
       .then((r) => setPayroll(new Map(r.teachers.map((x) => [x.teacherId, x.calculatedSalary]))))
       .catch(() => setPayroll(null));
-  }, [currentMonth]);
+  }, [currentMonth, seesPayroll]);
 
   const teacherStats = useMemo(() => {
     return teachers.map((t) => {
@@ -214,30 +216,36 @@ function TeachersContent() {
       <div style={{ padding: "22px 32px", borderBottom: "1px solid #EAE8E2", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div>
           <h1 style={{ fontSize: 22, fontWeight: 800 }}>{tr("teachers.title")}</h1>
-          <Link href="/teachers/trash" style={{ fontSize: 12, color: "#8A8D96", fontWeight: 600 }}>
-            {tr("nav.trash")}
-          </Link>
+          {can(user, "teachers.delete") && (
+            <Link href="/teachers/trash" style={{ fontSize: 12, color: "#8A8D96", fontWeight: 600 }}>
+              {tr("nav.trash")}
+            </Link>
+          )}
         </div>
-        <button
-          type="button"
-          className="btn"
-          onClick={() => setAttendanceOpen(true)}
-          style={{ background: "#fff", color: "#181A1F", border: "1px solid #EAE8E2", fontSize: 13.5, fontWeight: 700, padding: "10px 16px", borderRadius: 9, marginRight: 8 }}
-        >
-          {tr("tatt.button")}
-        </button>
+        {can(user, "teacherAttendance.mark") && (
+          <button
+            type="button"
+            className="btn"
+            onClick={() => setAttendanceOpen(true)}
+            style={{ background: "#fff", color: "#181A1F", border: "1px solid #EAE8E2", fontSize: 13.5, fontWeight: 700, padding: "10px 16px", borderRadius: 9, marginRight: 8 }}
+          >
+            {tr("tatt.button")}
+          </button>
+        )}
         {canImport && (
           <button type="button" className="btn" onClick={() => setImportOpen(true)} style={{ background: "#fff", color: "#181A1F", border: "1px solid #EAE8E2", fontSize: 13.5, fontWeight: 700, padding: "10px 16px", borderRadius: 9, marginRight: 8 }}>
             {tr("imp.button")}
           </button>
         )}
-        <button
-          className="btn"
-          onClick={() => setModalOpen(true)}
-          style={{ background: ACCENT, color: "#fff", border: "none", fontSize: 13.5, fontWeight: 700, padding: "10px 18px", borderRadius: 9 }}
-        >
-          {tr("teachers.newTeacher")}
-        </button>
+        {can(user, "teachers.edit") && (
+          <button
+            className="btn"
+            onClick={() => setModalOpen(true)}
+            style={{ background: ACCENT, color: "#fff", border: "none", fontSize: 13.5, fontWeight: 700, padding: "10px 18px", borderRadius: 9 }}
+          >
+            {tr("teachers.newTeacher")}
+          </button>
+        )}
         <ImportDialog kind="teachers" open={importOpen} onClose={() => setImportOpen(false)} onDone={load} />
       </div>
 

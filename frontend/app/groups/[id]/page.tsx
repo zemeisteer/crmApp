@@ -11,7 +11,9 @@ import GroupExamResults from "@/components/groups/GroupExamResults";
 import GroupInfoCard from "@/components/groups/GroupInfoCard";
 import GroupAttendanceHistory from "@/components/groups/GroupAttendanceHistory";
 import GroupTutorReport from "@/components/groups/GroupTutorReport";
-import { groupsApi, studentsApi, paymentsApi, attendanceApi, Group, Student, Gender, Payment, AttendanceRecord, AttendanceStatus, ApiError, retryKey } from "@/lib/api";
+import { groupsApi, studentsApi, paymentsApi, attendanceApi, Group, Student, Gender, AttendanceRecord, AttendanceStatus, ApiError, retryKey, type DebtorItem } from "@/lib/api";
+import { useAuth } from "@/lib/auth-context";
+import { can } from "@/lib/access";
 import { PHONE_PATTERN, PHONE_TITLE, NAME_PATTERN, NAME_TITLE, phoneOrEmpty } from "@/lib/validation";
 import { useCenterClock } from "@/lib/use-center-clock";
 import { useLanguage } from "@/lib/i18n-context";
@@ -52,7 +54,12 @@ function GroupDetailContent() {
 
   const [group, setGroup] = useState<Group & { enrollments?: { id: string; status?: string; student: Student }[] } | null>(null);
   const [allStudents, setAllStudents] = useState<Student[]>([]);
-  const [payments, setPayments] = useState<Payment[]>([]);
+  const { user } = useAuth();
+  // This month's dues per student, from the same ledger as the payments
+  // page - only for those who may see payments (a teacher may not).
+  const seesPay = can(user, "payments.view");
+  const thisMonth = clock.month();
+  const [dues, setDues] = useState<Map<string, DebtorItem> | null>(null);
   const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
@@ -89,11 +96,11 @@ function GroupDetailContent() {
 
   function load() {
     setLoading(true);
-    Promise.all([groupsApi.get(id), studentsApi.list(), paymentsApi.list().catch(() => []), attendanceApi.list({ groupId: id }), attendanceApi.topics(id).catch(() => [])])
+    Promise.all([groupsApi.get(id), studentsApi.list(), seesPay ? paymentsApi.debtors({ forMonth: thisMonth }).catch(() => null) : Promise.resolve(null), attendanceApi.list({ groupId: id }), attendanceApi.topics(id).catch(() => [])])
       .then(([g, s, p, a, tp]) => {
         setGroup(g);
         setAllStudents(s);
-        setPayments(p);
+        setDues(p ? new Map(p.debtors.map((d) => [d.studentId, d])) : null);
         setAttendance(a);
         setTopics(tp);
       })
@@ -103,7 +110,7 @@ function GroupDetailContent() {
       .finally(() => setLoading(false));
   }
 
-  useEffect(load, [id]);
+  useEffect(load, [id, seesPay, thisMonth]);
 
   useEffect(() => {
     const enrolled = group?.enrollments || [];
@@ -138,11 +145,10 @@ function GroupDetailContent() {
   const enrollments = (group.enrollments || []).filter((e) => !e.status || e.status === "ACTIVE" || e.status === "PAUSED");
   const enrolledIds = new Set(enrollments.map((e) => e.student.id));
   const availableStudents = allStudents.filter((s) => !enrolledIds.has(s.id));
-  const month = clock.month();
-
+  // PAID / PARTIAL / UNPAID for this month; null when not known (no dues
+  // for the student this month, or payments not visible).
   function paymentStatusFor(studentId: string) {
-    const paid = payments.some((p) => p.studentId === studentId && p.forMonth === month && p.status === "PAID");
-    return paid;
+    return dues?.get(studentId)?.status ?? null;
   }
 
   function attendancePercentFor(studentId: string) {
@@ -266,19 +272,21 @@ function GroupDetailContent() {
             </div>
           </div>
           <div style={{ display: "flex", gap: 10 }}>
-            <button
-              className="btn"
-              onClick={onDeleteGroup}
-              style={{ background: "#FDEBEC", color: "#B23A47", border: "none", fontSize: 13, fontWeight: 700, padding: "9px 16px", borderRadius: 9 }}
-            >
-              {t("groupDetail.deleteGroup")}
-            </button>
+            {can(user, "groups.delete") && (
+              <button
+                className="btn"
+                onClick={onDeleteGroup}
+                style={{ background: "#FDEBEC", color: "#B23A47", border: "none", fontSize: 13, fontWeight: 700, padding: "9px 16px", borderRadius: 9 }}
+              >
+                {t("groupDetail.deleteGroup")}
+              </button>
+            )}
           </div>
         </div>
       </div>
 
       <div style={{ flex: 1, minHeight: 0, padding: "26px 32px", display: "flex", flexDirection: "column", gap: 20, overflow: "auto", boxSizing: "border-box" }}>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(5, minmax(0,1fr))", gap: 16 }}>
+        <div style={{ display: "grid", gridTemplateColumns: `repeat(${seesPay && dues ? 5 : 3}, minmax(0,1fr))`, gap: 16 }}>
           <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 14, padding: 18 }}>
             <div style={{ fontSize: 12, color: "#8A8D96" }}>{t("groupDetail.statStudents")}</div>
             <div style={{ fontSize: 24, fontWeight: 800, fontFamily: "'Manrope', sans-serif", marginTop: 4 }}>
@@ -297,24 +305,24 @@ function GroupDetailContent() {
               {group.monthlyPrice ? `${formatMoney(group.monthlyPrice)} ${t("common.sumUnit")}` : "—"}
             </div>
           </div>
-          <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 14, padding: 18 }}>
-            <div style={{ fontSize: 12, color: "#8A8D96" }}>{t("groupDetail.statMonthRevenue")}</div>
-            <div style={{ fontSize: 24, fontWeight: 800, fontFamily: "'Manrope', sans-serif", marginTop: 4 }}>
-              {formatMoney(
-                enrollments.reduce((sum, e) => {
-                  const paid = payments.some((p) => p.studentId === e.student.id && p.forMonth === month && p.status === "PAID");
-                  return paid ? sum + (group.monthlyPrice || 0) : sum;
-                }, 0),
-              )}{" "}
-              {t("common.sumUnit")}
-            </div>
-          </div>
-          <div style={{ background: "#FDEBEC", border: "1px solid #F6D2D6", borderRadius: 14, padding: 18 }}>
-            <div style={{ fontSize: 12, color: "#B23A47" }}>{t("groupDetail.statMonthDebtors")}</div>
-            <div style={{ fontSize: 24, fontWeight: 800, fontFamily: "'Manrope', sans-serif", marginTop: 4, color: "#B23A47" }}>
-              {enrollments.filter((e) => !paymentStatusFor(e.student.id)).length}
-            </div>
-          </div>
+          {seesPay && dues && (
+            <>
+              <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 14, padding: 18 }}>
+                <div style={{ fontSize: 12, color: "#8A8D96" }}>{t("groupDetail.statMonthRevenue")}</div>
+                <div style={{ fontSize: 24, fontWeight: 800, fontFamily: "'Manrope', sans-serif", marginTop: 4 }}>
+                  {/* What these students paid for the month, at most this group's price each. */}
+                  {formatMoney(enrollments.reduce((sum, e) => sum + Math.min(dues.get(e.student.id)?.paidAmount ?? 0, group.monthlyPrice || 0), 0))}{" "}
+                  {t("common.sumUnit")}
+                </div>
+              </div>
+              <div style={{ background: "#FDEBEC", border: "1px solid #F6D2D6", borderRadius: 14, padding: 18 }}>
+                <div style={{ fontSize: 12, color: "#B23A47" }}>{t("groupDetail.statMonthDebtors")}</div>
+                <div style={{ fontSize: 24, fontWeight: 800, fontFamily: "'Manrope', sans-serif", marginTop: 4, color: "#B23A47" }}>
+                  {enrollments.filter((e) => { const st = paymentStatusFor(e.student.id); return st === "UNPAID" || st === "PARTIAL"; }).length}
+                </div>
+              </div>
+            </>
+          )}
         </div>
 
         <GroupInfoCard group={group} students={enrollments.length} lessonsHeld={new Set(attendance.map((a) => a.date)).size} />
@@ -391,16 +399,18 @@ function GroupDetailContent() {
         <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, overflow: "hidden" }}>
           <div style={{ padding: "16px 20px 4px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 700, fontSize: 15 }}>{t("groupDetail.statStudents")}</div>
-            <button
-              className="btn"
-              onClick={() => {
-                setEnrollMode(availableStudents.length > 0 ? "existing" : "new");
-                setEnrollOpen(true);
-              }}
-              style={{ background: ACCENT, color: "#fff", border: "none", fontSize: 12.5, fontWeight: 700, padding: "8px 14px", borderRadius: 8 }}
-            >
-              {t("groupDetail.addStudent")}
-            </button>
+            {can(user, "students.edit") && (
+              <button
+                className="btn"
+                onClick={() => {
+                  setEnrollMode(availableStudents.length > 0 ? "existing" : "new");
+                  setEnrollOpen(true);
+                }}
+                style={{ background: ACCENT, color: "#fff", border: "none", fontSize: 12.5, fontWeight: 700, padding: "8px 14px", borderRadius: 8 }}
+              >
+                {t("groupDetail.addStudent")}
+              </button>
+            )}
           </div>
           {enrollments.length === 0 ? (
             <div style={{ color: "#8A8D96", fontSize: 14, padding: "24px 20px" }}>{t("groupDetail.noStudentsYet")}</div>
@@ -411,7 +421,7 @@ function GroupDetailContent() {
                   <th style={{ paddingTop: 14 }}>{t("groupDetail.colStudent")}</th>
                   <th style={{ paddingTop: 14 }}>{t("groupDetail.colPhone")}</th>
                   <th style={{ paddingTop: 14 }}>{t("groupDetail.colAttendance")}</th>
-                  <th style={{ paddingTop: 14 }}>{t("groupDetail.colMonthPayment")}</th>
+                  {seesPay && <th style={{ paddingTop: 14 }}>{t("groupDetail.colMonthPayment")}</th>}
                   <th style={{ paddingTop: 14 }}></th>
                 </tr>
               </thead>
@@ -421,13 +431,17 @@ function GroupDetailContent() {
                     <td style={{ fontWeight: 600 }}>{e.student.fullName}</td>
                     <td>{e.student.phone || "—"}</td>
                     <td>{attendancePercentFor(e.student.id) === null ? "—" : `${attendancePercentFor(e.student.id)}%`}</td>
-                    <td>
-                      {paymentStatusFor(e.student.id) ? (
-                        <span className="badge badge-success">{t("groupDetail.paid")}</span>
-                      ) : (
-                        <span className="badge badge-danger">{t("groupDetail.debtor")}</span>
-                      )}
-                    </td>
+                    {seesPay && (
+                      <td>
+                        {(() => {
+                          const st = paymentStatusFor(e.student.id);
+                          if (st === "PAID") return <span className="badge badge-success">{t("groupDetail.paid")}</span>;
+                          if (st === "PARTIAL") return <span className="badge badge-warning">{t("groupDetail.partial")}</span>;
+                          if (st === "UNPAID") return <span className="badge badge-danger">{t("groupDetail.debtor")}</span>;
+                          return <span style={{ color: "#8A8D96" }}>—</span>;
+                        })()}
+                      </td>
+                    )}
                     <td style={{ textAlign: "right", display: "flex", gap: 8, justifyContent: "flex-end" }}>
                       <Link
                         href={`/students/${e.student.id}`}
@@ -435,13 +449,13 @@ function GroupDetailContent() {
                       >
                         {t("common.viewProfile")}
                       </Link>
-                      <button
+                      {can(user, "students.edit") && <button
                         className="btn"
                         onClick={() => onUnenroll(e.student.id)}
                         style={{ background: "transparent", color: "#B23A47", fontSize: 12.5, fontWeight: 600, padding: "6px 8px", borderRadius: 8 }}
                       >
                         {t("groupDetail.remove")}
-                      </button>
+                      </button>}
                     </td>
                   </tr>
                 ))}

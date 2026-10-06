@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { aiApi, ApiError, type TutorReport } from "@/lib/api";
 import { useLanguage } from "@/lib/i18n-context";
+import { useAuth } from "@/lib/auth-context";
 import { formatDate } from "@/lib/format-date";
 import MarkdownLite from "@/components/MarkdownLite";
 
@@ -14,6 +15,7 @@ const PERIODS = [7, 14, 30] as const;
 // cabinet): who asks and what about, plus topics grouped by AI on request.
 export default function GroupTutorReport({ groupId }: { groupId: string }) {
   const { t, lang } = useLanguage();
+  const { user } = useAuth();
   const [days, setDays] = useState<(typeof PERIODS)[number]>(14);
   const [report, setReport] = useState<TutorReport | null>(null);
   const [failed, setFailed] = useState(false);
@@ -86,8 +88,14 @@ export default function GroupTutorReport({ groupId }: { groupId: string }) {
 
           {report.totalQuestions === 0 ? (
             <div style={{ padding: "4px 20px 20px", fontSize: 13.5, color: "#6B6E78", lineHeight: 1.55 }}>
-              {t("tutorRep.none")}{" "}
-              <Link href="/settings" style={{ color: ACCENT, fontWeight: 700, textDecoration: "none" }}>{t("tutorRep.settings")}</Link>
+              {t("tutorRep.none")}
+              {/* Settings open only for the owner and admins. */}
+              {user?.role === "OWNER" || user?.role === "ADMIN" || user?.role === "SUPERADMIN" ? (
+                <>
+                  {" "}{t("tutorRep.limitHint")}{" "}
+                  <Link href="/settings" style={{ color: ACCENT, fontWeight: 700, textDecoration: "none" }}>{t("tutorRep.settings")}</Link>
+                </>
+              ) : null}
             </div>
           ) : (
             <>
