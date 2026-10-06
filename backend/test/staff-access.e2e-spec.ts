@@ -85,7 +85,8 @@ describe('Staff access lists (e2e)', () => {
 
   it('each item, added to a role that lacks it, works; removed from a role that has it, is refused', async () => {
     const wrong: string[] = [];
-    for (const k of ACCESS_CATALOG) {
+    // Items that are rules rather than routes are checked on their own below.
+    for (const k of ACCESS_CATALOG.filter((x) => x.routes.length > 0)) {
       const route = k.routes[0];
       const lacking = CONFIGURABLE_ROLES.find((r) => !k.template.includes(r));
       if (lacking) {
@@ -103,6 +104,24 @@ describe('Staff access lists (e2e)', () => {
       }
     }
     expect(wrong).toEqual([]);
+  });
+
+  it("teachers' pay shows to those whose list has it, whatever their role", async () => {
+    await http().post('/api/teachers').set(as('OWNER')).send({ fullName: 'Paid Teacher', subject: 'Math', salaryType: 'FIXED', salaryValue: 3_000_000 }).expect(201);
+    const pay = async (role: string) => {
+      const list = (await http().get('/api/teachers').set(as(role)).expect(200)).body as Array<{ fullName: string; salaryValue?: number }>;
+      return list.find((x) => x.fullName === 'Paid Teacher')?.salaryValue;
+    };
+    expect(await pay('ACCOUNTANT')).toBe(3_000_000);
+    expect(await pay('MANAGER')).toBeUndefined();
+    await setAccess('MANAGER', [...templateFor('MANAGER'), 'payroll.rates']);
+    expect(await pay('MANAGER')).toBe(3_000_000);
+    await setAccess('ACCOUNTANT', templateFor('ACCOUNTANT').filter((k) => k !== 'payroll.rates'));
+    expect(await pay('ACCOUNTANT')).toBeUndefined();
+    await setAccess('MANAGER', null);
+    await setAccess('ACCOUNTANT', null);
+    expect(await pay('MANAGER')).toBeUndefined();
+    expect(await pay('ACCOUNTANT')).toBe(3_000_000);
   });
 
   it('back to the default (null): the role does what it did before', async () => {

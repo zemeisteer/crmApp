@@ -7,7 +7,7 @@ import { CreateTeacherDto, TeacherAccountDto, UpdateTeacherDto } from './dto/tea
 import { AuditService } from '../audit/audit.service';
 import { blankToNull, idempotencyKey, lockIdempotencyKey, requestHash } from '../common/create-idempotency';
 import { isUniqueViolation } from '../common/db-errors';
-import { teacherView } from '../common/teacher-columns';
+import { teacherView, type PayViewer } from '../common/teacher-columns';
 
 @Injectable()
 export class TeachersService {
@@ -27,25 +27,25 @@ export class TeachersService {
   }
 
   // As the viewer may see them: pay only for finance roles (common/teacher-columns).
-  async findAll(tenantId: string, role?: string) {
+  async findAll(tenantId: string, viewer?: PayViewer) {
     const rows = await this.db.query.teachers.findMany({
       where: and(eq(teachers.tenantId, tenantId), isNull(teachers.deletedAt)),
       with: { groups: true, user: { columns: { id: true, email: true } } },
       orderBy: (t, { desc }) => desc(t.createdAt),
     });
-    return rows.map((r) => teacherView(r, role));
+    return rows.map((r) => teacherView(r, viewer));
   }
 
-  async view(tenantId: string, id: string, role?: string) {
-    return teacherView(await this.findOne(tenantId, id), role);
+  async view(tenantId: string, id: string, viewer?: PayViewer) {
+    return teacherView(await this.findOne(tenantId, id), viewer);
   }
 
-  async trash(tenantId: string, role?: string) {
+  async trash(tenantId: string, viewer?: PayViewer) {
     const rows = await this.db.query.teachers.findMany({
       where: and(eq(teachers.tenantId, tenantId), isNotNull(teachers.deletedAt)),
       orderBy: (t, { desc }) => desc(t.deletedAt),
     });
-    return rows.map((r) => teacherView(r, role));
+    return rows.map((r) => teacherView(r, viewer));
   }
 
   async findOne(tenantId: string, id: string) {

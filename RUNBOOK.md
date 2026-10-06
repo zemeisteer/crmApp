@@ -92,7 +92,7 @@ Nosozlik yuz berganda nima qilish kerakligi bo'yicha qisqa qo'llanma.
 
 - Xodim qo'shishda rol tanlanadi, "Nimalar qila oladi" ochilsa, shu rolning standart ro'yxati belgilangan holda chiqadi. Istalgan bandni qo'shish yoki olib tashlash mumkin. Mavjud xodim uchun: "🔑 Huquqlar" tugmasi; "Standartga qaytarish" ro'yxatni o'chiradi.
 - Faqat menejer, qabulxona, buxgalter va o'qituvchi uchun. Ega va admin har doim hamma narsaga ega. Xodimlar, markaz sozlamalari, sayt, filiallar, audit — faqat ega/adminda, ro'yxatda yo'q.
-- Server ro'yxatga bo'ysunadi: belgilangan band ishlaydi, olib tashlangani 403. O'zgarish xodimning keyingi so'rovidan kuchga kiradi (qayta kirish shart emas). Servis ichidagi cheklovlar saqlanadi (o'qituvchi faqat o'z guruhlarini ko'radi).
+- Server ro'yxatga bo'ysunadi: belgilangan band ishlaydi, olib tashlangani 403. O'zgarish xodimning keyingi so'rovidan kuchga kiradi (qayta kirish shart emas). Servis ichidagi cheklovlar saqlanadi (o'qituvchi faqat o'z guruhlarini ko'radi). O'qituvchilar maoshi (stavka) ro'yxatda va kartada faqat "O'qituvchilar maoshi stavkasini ko'rish" belgilangan xodimga chiqadi (standart: buxgalter).
 - Ro'yxati yo'q xodim (`organization_memberships.access` = NULL, migratsiyadan keyin hamma) rolining standartida — ya'ni avvalgidek ishlaydi. Rol o'zgarsa, ro'yxat standartga qaytadi.
 - Bandlar va qaysi endpointlarga tegishliligi: `backend/src/access/catalog.ts`. Yangi endpoint qo'shilsa, `test/staff-access.e2e-spec.ts` uni katalogga yoki "doim ochiq" ro'yxatiga kiritishni talab qiladi.
 - Taklifnoma: menejer endi faqat o'qituvchi, qabulxona, o'quvchi va ota-onani taklif qila oladi; admin, menejer va buxgalterni faqat ega yoki admin taklif qiladi.

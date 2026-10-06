@@ -2435,6 +2435,7 @@ export const dict = {
   "perm.payroll.view": { UZ: "O'qituvchi maoshini ko'rish", RU: "Просмотр зарплат учителей", EN: "View teacher pay" },
   "perm.payroll.pay": { UZ: "Maosh to'lash va bekor qilish", RU: "Выплата и отмена зарплат", EN: "Pay and reverse salaries" },
   "perm.payroll.teacherMonth": { UZ: "O'qituvchilarning oylik davomati", RU: "Месячная посещаемость учителей", EN: "Teachers' monthly attendance" },
+  "perm.payroll.rates": { UZ: "O'qituvchilar maoshi stavkasini ko'rish", RU: "Ставки зарплаты учителей", EN: "See teachers' pay rates" },
   "perm.payroll.own": { UZ: "O'z maoshini ko'rish", RU: "Просмотр своей зарплаты", EN: "View own pay" },
   "perm.announcements.view": { UZ: "E'lonlarni ko'rish", RU: "Просмотр объявлений", EN: "View announcements" },
   "perm.announcements.manage": { UZ: "E'lon yozish va o'chirish", RU: "Создание и удаление объявлений", EN: "Post and delete announcements" },

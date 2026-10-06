@@ -14,6 +14,7 @@ import { RolesGuard } from '../common/roles.guard';
 import { TrialGuard } from '../common/trial.guard';
 import { Roles } from '../common/roles.decorator';
 import { CurrentUser } from '../common/current-user.decorator';
+import type { JwtPayload } from '../common/jwt.strategy';
 import { TeachersService } from './teachers.service';
 import { CreateTeacherDto, UpdateTeacherDto , TeacherAccountDto } from './dto/teacher.dto';
 
@@ -22,21 +23,21 @@ import { CreateTeacherDto, UpdateTeacherDto , TeacherAccountDto } from './dto/te
 export class TeachersController {
   constructor(private readonly service: TeachersService) {}
 
-  // Any staff member may list teachers; pay only reaches finance roles.
+  // Any staff member may list teachers; pay only reaches those who may see it.
   @Get()
-  findAll(@CurrentUser('tenantId') tenantId: string, @CurrentUser('role') role: string) {
-    return this.service.findAll(tenantId, role);
+  findAll(@CurrentUser('tenantId') tenantId: string, @CurrentUser() user: JwtPayload) {
+    return this.service.findAll(tenantId, user);
   }
 
   @Roles('ADMIN')
   @Get('trash')
-  trash(@CurrentUser('tenantId') tenantId: string, @CurrentUser('role') role: string) {
-    return this.service.trash(tenantId, role);
+  trash(@CurrentUser('tenantId') tenantId: string, @CurrentUser() user: JwtPayload) {
+    return this.service.trash(tenantId, user);
   }
 
   @Get(':id')
-  findOne(@CurrentUser('tenantId') tenantId: string, @CurrentUser('role') role: string, @Param('id') id: string) {
-    return this.service.view(tenantId, id, role);
+  findOne(@CurrentUser('tenantId') tenantId: string, @CurrentUser() user: JwtPayload, @Param('id') id: string) {
+    return this.service.view(tenantId, id, user);
   }
 
   @Roles('ADMIN')

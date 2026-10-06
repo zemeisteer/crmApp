@@ -158,6 +158,9 @@ export const ACCESS_CATALOG: AccessKey[] = [
   { key: 'payroll.pay', area: 'payroll', template: [A], routes: ['POST /api/salary-payments/disburse', 'POST /api/salary-payments/:id/reverse', 'POST /api/salary-payments/:id/link-expense'] },
   { key: 'payroll.teacherMonth', area: 'payroll', template: [M, A], routes: ['GET /api/teacher-attendance/month'] },
   { key: 'payroll.own', area: 'payroll', template: [T], routes: ['GET /api/salary-payments/me'] },
+  // Not a route: whether teachers' pay (type and rate) shows in the teacher
+  // list and card (common/teacher-columns.ts).
+  { key: 'payroll.rates', area: 'payroll', template: [A], routes: [] },
 
   // ---- Center ----
   { key: 'announcements.view', area: 'center', template: [T], routes: ['GET /api/announcements', 'GET /api/announcements/:id'] },
