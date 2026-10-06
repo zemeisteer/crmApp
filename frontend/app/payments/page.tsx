@@ -1851,7 +1851,7 @@ function PaymentsContent() {
                 {t("pay.noInvoices")}
               </div>
             ) : (
-              <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, overflow: "hidden" }}>
+              <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, overflowX: "auto" }}>
                 <table>
                   <thead>
                     <tr>

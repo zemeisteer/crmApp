@@ -59,6 +59,8 @@ function GroupsContent() {
   const shortSchedule = (g: Group) => shortScheduleOf(g, t);
   const [groups, setGroups] = useState<Group[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
+  // One branch (most small centers): the column would repeat it on every row.
+  const showBranch = branches.length > 1;
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
@@ -343,14 +345,14 @@ function GroupsContent() {
             {t("groups.noSearchResults")}
           </div>
         ) : (
-          <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, overflow: "hidden" }}>
+          <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, overflowX: "auto" }}>
             <table>
               <thead>
                 <tr>
                   <th style={{ paddingTop: 16 }}>{t("groups.colGroup")}</th>
                   <th style={{ paddingTop: 16 }}>{t("teachers.colTeacher")}</th>
                   <th style={{ paddingTop: 16 }}>{t("groups.colSubject")}</th>
-                  <th style={{ paddingTop: 16 }}>{t("groups.colBranch")}</th>
+                  {showBranch && <th style={{ paddingTop: 16 }}>{t("groups.colBranch")}</th>}
                   <th style={{ paddingTop: 16 }}>{t("groups.colSchedule")}</th>
                   <th style={{ paddingTop: 16 }}>{t("groups.colMonthlyPrice")}</th>
                   <th style={{ paddingTop: 16 }}>{t("grp.colStudents")}</th>
@@ -398,8 +400,12 @@ function GroupsContent() {
                       )}
                     </td>
                     <td>{g.subject}</td>
-                    <td>{g.branch?.name || "—"}</td>
-                    <td style={{ whiteSpace: "nowrap" }}>{shortSchedule(g) || "—"}</td>
+                    {showBranch && <td>{g.branch?.name || "—"}</td>}
+                    <td style={{ whiteSpace: "nowrap" }}>
+                      {(shortSchedule(g) || "—").split(", ").map((part, i) => (
+                        <div key={i}>{part}</div>
+                      ))}
+                    </td>
                     <td>{g.monthlyPrice ? `${new Intl.NumberFormat("uz-UZ").format(g.monthlyPrice)} ${t("common.sumUnit")}` : "—"}</td>
                     <td>
                       <span style={{ fontWeight: 700 }}>{g.studentCount ?? 0}</span>

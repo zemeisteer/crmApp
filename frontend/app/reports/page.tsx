@@ -38,6 +38,8 @@ type SmsTarget = { id: string; fullName: string; phone: string | null };
 
 function ReportsContent() {
   const { t } = useLanguage();
+  const salaryTypeLabel = (type: string | null | undefined) =>
+    type === "PERCENTAGE" ? t("rep3.typePercent") : type === "PER_LESSON" ? t("rep3.typePerLesson") : t("rep3.typeFixed");
   // A link can open a tab directly (/reports?tab=payroll from a teacher's page).
   const tabParam = useSearchParams().get("tab");
   const [activeTab, setActiveTab] = useState<ReportsTab>(() => (TABS.includes(tabParam as ReportsTab) ? (tabParam as ReportsTab) : "director"));
@@ -313,7 +315,7 @@ function ReportsContent() {
                 boxShadow: activeTab === "payroll" ? "0 1px 3px rgba(0,0,0,0.08)" : "none",
               }}
             >
-              💼 Oylik Maosh (Payroll)
+              💼 {t("rep3.tabPayroll")}
             </button>
             <button
               type="button"
@@ -330,7 +332,7 @@ function ReportsContent() {
                 boxShadow: activeTab === "retention" ? "0 1px 3px rgba(0,0,0,0.08)" : "none",
               }}
             >
-              🛡️ Saqlash & Churn ({report?.atRisk.length ?? 0})
+              🛡️ {t("rep3.tabRetention")} ({report?.atRisk.length ?? 0})
             </button>
           </div>
 
@@ -368,10 +370,10 @@ function ReportsContent() {
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
               <div>
                 <h2 style={{ fontSize: 17, fontWeight: 800, margin: 0 }}>
-                  O&apos;qituvchilar maoshi hisob-kitobi (Auditable Payroll)
+                  {t("rep3.payrollTitle")}
                 </h2>
                 <p style={{ fontSize: 12, color: "#8A8D96", margin: "2px 0 0" }}>
-                  Oylik stavka, darsbay yoki guruh tushumidan ulush hisobida to&apos;lov
+                  {t("rep3.payrollHint")}
                 </p>
               </div>
               <div style={{ width: 220 }}>
@@ -381,37 +383,37 @@ function ReportsContent() {
 
             {/* KPI Cards */}
             <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0,1fr))", gap: 16 }}>
-              <StatCard label="Hisoblangan jami maosh" value={`${formatMoney(payrollData?.totalCalculated || 0)} so'm`} />
+              <StatCard label={t("rep3.totalCalculated")} value={`${formatMoney(payrollData?.totalCalculated || 0)} ${t("common.sumUnit")}`} />
               <StatCard label={t("rep2.paidSalary")} value={`${formatMoney(payrollData?.totalPaid || 0)} ${t("common.sumUnit")}`} delta={payrollData?.totalPaid ? t("rep2.paidDelta") : undefined} />
-              <StatCard label="Kutilayotgan qarzdorlik" value={`${formatMoney(payrollData?.totalPending || 0)} so'm`} danger={(payrollData?.totalPending || 0) > 0} />
+              <StatCard label={t("rep3.pendingTotal")} value={`${formatMoney(payrollData?.totalPending || 0)} ${t("common.sumUnit")}`} danger={(payrollData?.totalPending || 0) > 0} />
               <StatCard label={t("rep2.activeTeachers")} value={String(payrollData?.teacherCount || 0)} />
             </div>
 
             {/* Payroll Table */}
             <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, overflow: "hidden" }}>
               <div style={{ padding: "16px 20px", borderBottom: "1px solid #EAE8E2", fontSize: 14, fontWeight: 700 }}>
-                {selectedPayrollMonth} oyi uchun maosh vedomosti
+                {t("rep3.sheetTitle").replace("{m}", selectedPayrollMonth)}
               </div>
               {payrollError ? (
                 <div style={{ padding: 16 }}>
                   <LoadError message={payrollError} onRetry={() => loadPayroll(selectedPayrollMonth)} />
                 </div>
               ) : loadingPayroll ? (
-                <div style={{ padding: 32, textAlign: "center", color: "#8A8D96" }}>Hisoblanmoqda...</div>
+                <div style={{ padding: 32, textAlign: "center", color: "#8A8D96" }}>{t("rep3.calculating")}</div>
               ) : !payrollData || payrollData.teachers.length === 0 ? (
                 <div style={{ padding: 32, textAlign: "center", color: "#8A8D96" }}>{t("rep2.noTeachers")}</div>
               ) : (
                 <table>
                   <thead>
                     <tr>
-                      <th style={{ paddingTop: 16 }}>O&apos;qituvchi</th>
-                      <th style={{ paddingTop: 16 }}>Model</th>
-                      <th style={{ paddingTop: 16 }}>Hisob tafsiloti</th>
+                      <th style={{ paddingTop: 16 }}>{t("rep3.colTeacher")}</th>
+                      <th style={{ paddingTop: 16 }}>{t("rep3.colModel")}</th>
+                      <th style={{ paddingTop: 16 }}>{t("rep3.colDetail")}</th>
                       <th style={{ paddingTop: 16 }}>{t("rep2.calculated")}</th>
-                      <th style={{ paddingTop: 16 }}>To&apos;langan</th>
+                      <th style={{ paddingTop: 16 }}>{t("rep3.colPaid")}</th>
                       <th style={{ paddingTop: 16 }}>{t("rep2.toPay")}</th>
-                      <th style={{ paddingTop: 16 }}>Holat</th>
-                      <th style={{ paddingTop: 16, textAlign: "right" }}>Amal</th>
+                      <th style={{ paddingTop: 16 }}>{t("rep3.colStatus")}</th>
+                      <th style={{ paddingTop: 16, textAlign: "right" }}>{t("rep3.colAction")}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -432,16 +434,16 @@ function ReportsContent() {
                               fontWeight: 700,
                             }}
                           >
-                            {item.salaryType === "PERCENTAGE" ? "Foiz (%)" : item.salaryType === "PER_LESSON" ? "Darsbay" : "Oylik (Fixed)"}
+                            {salaryTypeLabel(item.salaryType)}
                           </span>
                         </td>
                         <td style={{ fontSize: 12, color: "#4A4E58" }}>
-                          {item.salaryType === "FIXED" && `Belgilangan stavka: ${formatMoney(item.salaryValue)} so'm`}
-                          {item.salaryType === "PER_LESSON" && `${item.details.lessonCount || 0} ta dars × ${formatMoney(item.salaryValue)} so'm`}
-                          {item.salaryType === "PERCENTAGE" && `Guruh tushumi: ${formatMoney(item.details.groupRevenue || 0)} × ${item.salaryValue}%`}
+                          {item.salaryType === "FIXED" && t("rep3.detailFixed").replace("{x}", `${formatMoney(item.salaryValue)} ${t("common.sumUnit")}`)}
+                          {item.salaryType === "PER_LESSON" && t("rep3.detailPerLesson").replace("{n}", String(item.details.lessonCount || 0)).replace("{x}", `${formatMoney(item.salaryValue)} ${t("common.sumUnit")}`)}
+                          {item.salaryType === "PERCENTAGE" && t("rep3.detailPercent").replace("{x}", formatMoney(item.details.groupRevenue || 0)).replace("{p}", String(item.salaryValue))}
                         </td>
                         <td style={{ fontWeight: 700 }}>
-                          {formatMoney(item.calculatedSalary)} so&apos;m
+                          {formatMoney(item.calculatedSalary)} {t("common.sumUnit")}
                           {(item.details.absentLessons ?? 0) > 0 && (
                             <div style={{ fontSize: 11.5, fontWeight: 600, color: "#B23A47" }}>
                               −{formatMoney(item.details.deduction ?? 0)} · {item.details.absentLessons}/{item.details.plannedLessons} {t("tatt.missed")}
@@ -452,7 +454,7 @@ function ReportsContent() {
                           )}
                         </td>
                         <td style={{ fontWeight: 600, color: item.paidAmount > 0 ? "#10B981" : "#8A8D96" }}>
-                          {formatMoney(item.paidAmount)} so&apos;m
+                          {formatMoney(item.paidAmount)} {t("common.sumUnit")}
                           {item.installments > 1 && (
                             <div style={{ fontSize: 11.5, fontWeight: 600, color: "#8A8D96" }}>
                               {t("rep2.installments").replace("{n}", String(item.installments))}
@@ -460,17 +462,17 @@ function ReportsContent() {
                           )}
                         </td>
                         <td style={{ fontWeight: 800, color: item.netPayable > 0 ? "#DC2626" : "#10B981" }}>
-                          {formatMoney(item.netPayable)} so&apos;m
+                          {formatMoney(item.netPayable)} {t("common.sumUnit")}
                         </td>
                         <td>
                           {item.calculatedSalary <= 0 && !item.isPaid ? (
                             <span style={{ color: "#8A8D96" }}>—</span>
                           ) : item.isPaid ? (
-                            <span className="badge badge-success">✓ To&apos;langan</span>
+                            <span className="badge badge-success">✓ {t("rep3.statusPaid")}</span>
                           ) : item.paidAmount > 0 ? (
                             <span className="badge badge-warning">{t("rep2.partPaid")}</span>
                           ) : (
-                            <span className="badge badge-danger">Kutilmoqda</span>
+                            <span className="badge badge-danger">{t("rep3.statusPending")}</span>
                           )}
                         </td>
                         <td style={{ textAlign: "right" }}>
@@ -528,7 +530,7 @@ function ReportsContent() {
           <div style={{ background: "#F8F8F6", borderRadius: 10, padding: 12, border: "1px solid #EAE8E2" }}>
             <div style={{ fontSize: 14, fontWeight: 700, color: "#181A1F" }}>{disburseTeacher?.teacherName}</div>
             <div style={{ fontSize: 12, color: "#8A8D96", marginTop: 2 }}>
-              {t("rep2.subject")}: {disburseTeacher?.subject || t("rep2.notSet")} • Model: {disburseTeacher?.salaryType}
+              {t("rep2.subject")}: {disburseTeacher?.subject || t("rep2.notSet")} • {t("rep3.colModel")}: {disburseTeacher ? salaryTypeLabel(disburseTeacher.salaryType) : ""}
             </div>
             <div style={{ fontSize: 12.5, color: "#4A4E58", marginTop: 6 }}>
               {disburseMonth} · {t("rep2.calculated")}: {formatMoney(disburseTeacher?.calculatedSalary || 0)} · {t("rep2.paidSalary")}: {formatMoney(disburseTeacher?.paidAmount || 0)}
@@ -592,7 +594,7 @@ function ReportsContent() {
           ) : (
           <>
           <div>
-            <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>To&apos;lov summasi (so&apos;m)</div>
+            <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>{t("rep3.amountLabel")}</div>
             <input
               type="number"
               className="field-input"
@@ -607,13 +609,13 @@ function ReportsContent() {
           </div>
 
           <div>
-            <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>To&apos;lov usuli</div>
+            <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>{t("rep3.methodLabel")}</div>
             <Select
               options={[
-                { value: "CASH", label: "Naqd pul (CASH)" },
+                { value: "CASH", label: t("rep3.methodCash") },
                 { value: "BANK_TRANSFER", label: t("rep2.bankTransfer") },
-                { value: "CLICK", label: "Click orqali" },
-                { value: "PAYME", label: "Payme orqali" },
+                { value: "CLICK", label: t("rep3.methodClick") },
+                { value: "PAYME", label: t("rep3.methodPayme") },
               ]}
               value={disburseMethod}
               onChange={(v) => setDisburseMethod(v as "CASH" | "CLICK" | "PAYME" | "BANK_TRANSFER")}
@@ -621,7 +623,7 @@ function ReportsContent() {
           </div>
 
           <div>
-            <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>Izoh</div>
+            <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>{t("rep3.note")}</div>
             <input
               className="field-input"
               value={disburseNotes}
@@ -663,7 +665,7 @@ function ReportsContent() {
             <div style={{ fontSize: 12.5, color: ACCENT, fontWeight: 600, marginTop: 2 }}>📞 {smsStudent?.phone}</div>
           </div>
           <div>
-            <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>SMS matni</div>
+            <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>{t("rep3.smsText")}</div>
             <textarea
               className="field-input"
               rows={4}
