@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { PASSWORD, addStaff, api, apiLogin, centerUrl, cleanUpStagingCenters, expectCenterDashboard, loginOnMainSite, newCenter, run } from './support';
+import { PASSWORD, addStaff, api, apiLogin, centerMonth, centerUrl, cleanUpStagingCenters, expectCenterDashboard, loginOnMainSite, newCenter, run } from './support';
 
 // Role boundaries in the browser: what each role's menu offers and what
 // the address bar cannot open.
@@ -71,7 +71,9 @@ test("the owner sees who can do what, as the server enforces it", async ({ page 
 
 test('the owner chooses what a new receptionist may do; the menu, the page and the server follow', async ({ page, browser }) => {
   const a = await newCenter('perm');
-  await api('POST', '/groups', { token: a.token, body: { name: 'Perm group', subject: 'English', monthlyPrice: 300000, maxStudents: 10 } });
+  const permGroup = await api('POST', '/groups', { token: a.token, body: { name: 'Perm group', subject: 'English', monthlyPrice: 300000, maxStudents: 10 } });
+  const payer = await api('POST', '/students', { token: a.token, body: { fullName: 'Perm Payer', groupIds: [permGroup.id] } });
+  await api('POST', '/payments', { token: a.token, body: { studentId: payer.id, amount: 300000, forMonth: centerMonth(), method: 'CASH' } });
   await loginOnMainSite(page, a.email);
   await expectCenterDashboard(page, a.sub);
   await page.goto(centerUrl(a.sub, '/settings'));
@@ -102,6 +104,9 @@ test('the owner chooses what a new receptionist may do; the menu, the page and t
   await expect(nav.getByRole('link', { name: 'Lidlar (Qabul)' })).toHaveCount(0);
   await staff.goto(centerUrl(a.sub, '/payments'));
   await expect(staff.getByRole('button', { name: "+ Yangi to'lov" })).toBeVisible();
+  // The page loads for reception (it once failed whole on the expenses it may not see).
+  await expect(staff.getByText('Perm Payer').first()).toBeVisible();
+  await expect(staff.getByRole('button', { name: 'Xarajatlar' })).toHaveCount(0);
   await staff.goto(centerUrl(a.sub, '/leads'));
   await expect(staff.getByRole('alert').filter({ hasText: "Bu bo'lim sizning rolingiz uchun ochiq emas" })).toBeVisible();
   const token = await apiLogin(email);

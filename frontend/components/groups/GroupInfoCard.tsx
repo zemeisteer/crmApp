@@ -2,26 +2,15 @@
 
 import type { Group } from "@/lib/api";
 import { useLanguage } from "@/lib/i18n-context";
-import type { TranslationKey } from "@/lib/i18n";
+import { scheduleDaysLabel } from "@/lib/schedule-days";
 import { formatDate } from "@/lib/format-date";
 
-const DAY_KEYS: Record<string, TranslationKey> = {
-  dushanba: "weekday.short.monday", seshanba: "weekday.short.tuesday", chorshanba: "weekday.short.wednesday",
-  payshanba: "weekday.short.thursday", juma: "weekday.short.friday", shanba: "weekday.short.saturday", yakshanba: "weekday.short.sunday",
-  mon: "weekday.short.monday", tue: "weekday.short.tuesday", wed: "weekday.short.wednesday", thu: "weekday.short.thursday",
-  fri: "weekday.short.friday", sat: "weekday.short.saturday", sun: "weekday.short.sunday",
-};
 
 // Compact "about the group" card: everything a teacher or admin needs at a
 // glance, with icons, in a two-column grid.
 export default function GroupInfoCard({ group, students, lessonsHeld }: { group: Group; students: number; lessonsHeld?: number }) {
   const { t, lang } = useLanguage();
-  const days = (group.scheduleDays ?? "")
-    .split(",")
-    .map((d) => d.trim())
-    .filter(Boolean)
-    .map((d) => (DAY_KEYS[d.toLowerCase()] ? t(DAY_KEYS[d.toLowerCase()]) : d))
-    .join(", ");
+  const days = scheduleDaysLabel(group.scheduleDays, t);
   const time = group.startTime ? `${group.startTime}${group.endTime ? `–${group.endTime}` : ""}` : "";
   const schedule = days || time ? [days, time].filter(Boolean).join(" · ") : group.schedule || "—";
   const money = (n: number) => new Intl.NumberFormat("uz-UZ").format(n);

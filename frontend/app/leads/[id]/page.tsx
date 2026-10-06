@@ -35,6 +35,7 @@ import { leadNote } from "@/lib/lead-note";
 import { useLanguage } from "@/lib/i18n-context";
 import { useAuth } from "@/lib/auth-context";
 import type { TranslationKey } from "@/lib/i18n";
+import { scheduleDaysLabel } from "@/lib/schedule-days";
 import {
   ACCENT,
   LOST_REASONS,
@@ -414,7 +415,7 @@ function LeadProfile() {
                           <div style={{ minWidth: 0 }}>
                             <div style={{ fontSize: 13, fontWeight: 700 }}>{g.name}</div>
                             <div style={{ fontSize: 11.5, color: "#8A8D96" }}>
-                              {[g.level, g.scheduleDays, g.startTime, g.teacher?.fullName].filter(Boolean).join(" · ")}
+                              {[g.level, scheduleDaysLabel(g.scheduleDays, t), g.startTime, g.teacher?.fullName].filter(Boolean).join(" · ")}
                               {typeof g.studentCount === "number" ? ` · ${g.studentCount}/${g.maxStudents}` : ""}
                             </div>
                           </div>

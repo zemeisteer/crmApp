@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import DashboardShell from "@/components/DashboardShell";
 import Modal from "@/components/Modal";
+import LoadError from "@/components/LoadError";
 import Pagination, { usePagedSlice } from "@/components/Pagination";
 import Select from "@/components/Select";
 import BarChart from "@/components/BarChart";
@@ -512,6 +513,12 @@ function PaymentsContent() {
   const [methodFilter, setMethodFilter] = useState("");
   const [remindersOpen, setRemindersOpen] = useState(false);
 
+  // Expenses and invoices only for those who may see them: one refused
+  // request used to fail the whole load and leave the page empty for
+  // managers and reception. A failed load is shown, with a retry.
+  const seesExpenses = can(user, "expenses.view");
+  const seesInvoices = can(user, "invoices.manage");
+  const [loadError, setLoadError] = useState<string | null>(null);
   function loadAll() {
     setLoading(true);
     Promise.all([
@@ -520,8 +527,8 @@ function PaymentsContent() {
       branchesApi.list().catch(() => [] as Branch[]),
       paymentsApi.debtors({ forMonth: selectedMonth }),
       paymentsApi.financeSummary(selectedMonth),
-      expensesApi.list({ forMonth: selectedMonth }),
-      invoicesApi.list({ forMonth: selectedMonth }).catch(() => [] as Invoice[]),
+      seesExpenses ? expensesApi.list({ forMonth: selectedMonth }) : Promise.resolve([]),
+      seesInvoices ? invoicesApi.list({ forMonth: selectedMonth }).catch(() => [] as Invoice[]) : Promise.resolve([] as Invoice[]),
     ])
       .then(([p, s, b, d, fs, exp, invs]) => {
         setPayments(p);
@@ -531,7 +538,9 @@ function PaymentsContent() {
         setFinanceSummary(fs);
         setExpenses(exp);
         setInvoices(invs);
+        setLoadError(null);
       })
+      .catch((err) => setLoadError(err instanceof ApiError ? err.message : t("common.errorGeneric")))
       .finally(() => setLoading(false));
   }
 
@@ -1125,6 +1134,7 @@ function PaymentsContent() {
           boxSizing: "border-box",
         }}
       >
+        {loadError !== null && <LoadError message={loadError} onRetry={loadAll} />}
         {/* ========================================================================= */}
         {/* TAB 1: HISTORY                                                            */}
         {/* ========================================================================= */}
