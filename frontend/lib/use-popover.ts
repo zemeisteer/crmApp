@@ -1,4 +1,4 @@
-import { useLayoutEffect, useState, type CSSProperties, type RefObject } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type RefObject } from "react";
 
 // Where a dropdown should open so it stays on screen. The panel is placed
 // with `position: fixed` at the trigger's screen position, so a modal's or
@@ -47,4 +47,24 @@ export function usePopoverPlacement(ref: RefObject<HTMLElement | null>, open: bo
   }, [open, ref, height, width]);
 
   return style;
+}
+
+// Escape closes an open dropdown, and only the dropdown: the keypress is
+// caught on the way down (capture phase on window), before the dialog it
+// sits in would take it as "close the dialog" and lose what was typed.
+export function useEscapeToClose(open: boolean, close: () => void) {
+  const closeRef = useRef(close);
+  useEffect(() => {
+    closeRef.current = close;
+  });
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      e.stopPropagation();
+      closeRef.current();
+    };
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, [open]);
 }

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useLanguage } from "@/lib/i18n-context";
-import { usePopoverPlacement } from "@/lib/use-popover";
+import { usePopoverPlacement, useEscapeToClose } from "@/lib/use-popover";
 
 const ACCENT = "#4F46E5";
 const HOURS = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, "0"));
@@ -34,6 +34,7 @@ export default function TimePicker({
     document.addEventListener("mousedown", onClickOutside);
     return () => document.removeEventListener("mousedown", onClickOutside);
   }, []);
+  useEscapeToClose(open, () => setOpen(false));
 
   function setHour(hour: string) {
     onChange(`${hour}:${m || "00"}`);

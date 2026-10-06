@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useLanguage } from "@/lib/i18n-context";
 import { useCenterClock } from "@/lib/use-center-clock";
 import { centerWallClock } from "@/lib/center-time";
-import { usePopoverPlacement } from "@/lib/use-popover";
+import { usePopoverPlacement, useEscapeToClose } from "@/lib/use-popover";
 import type { TranslationKey } from "@/lib/i18n";
 import { formatDate } from "@/lib/format-date";
 
@@ -73,6 +73,7 @@ export default function DatePicker({
     document.addEventListener("mousedown", onClickOutside);
     return () => document.removeEventListener("mousedown", onClickOutside);
   }, []);
+  useEscapeToClose(open, () => { setOpen(false); setViewMode("days"); });
 
   useEffect(() => {
     if (selected) setViewDate(selected);

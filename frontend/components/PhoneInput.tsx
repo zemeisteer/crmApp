@@ -17,7 +17,9 @@ export default function PhoneInput({ value, onChange, onFocus, onBlur, placehold
       inputMode="tel"
       autoComplete={rest.autoComplete ?? "tel"}
       placeholder={placeholder}
-      maxLength={17}
+      // Room for a pasted full number after the shown "+998 "; the value is
+      // cut to 9 local digits when formatted.
+      maxLength={24}
       value={value}
       onChange={(e) => onChange(formatUzPhone(e.target.value))}
       onFocus={(e) => {

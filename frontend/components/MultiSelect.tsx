@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useLanguage } from "@/lib/i18n-context";
-import { usePopoverPlacement } from "@/lib/use-popover";
+import { usePopoverPlacement, useEscapeToClose } from "@/lib/use-popover";
 
 const ACCENT = "#4F46E5";
 
@@ -45,6 +45,7 @@ export default function MultiSelect({
     document.addEventListener("mousedown", onClickOutside);
     return () => document.removeEventListener("mousedown", onClickOutside);
   }, []);
+  useEscapeToClose(open, () => setOpen(false));
 
   function toggle(value: string) {
     onChange(selected.includes(value) ? selected.filter((v) => v !== value) : [...selected, value]);

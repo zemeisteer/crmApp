@@ -11,10 +11,12 @@ export const NAME_TITLE = "Faqat harflar, bo'sh joy va chiziqcha";
 
 // Uzbek phone as it is typed: "+998" is always there and the 9 local
 // digits are grouped "+998 90 123 45 67". Accepts pasted numbers with or
-// without the country code.
+// without the country code - also a full "+998..." pasted after the "+998 "
+// the field already shows, where the code then appears twice.
 export function formatUzPhone(raw: string) {
   let d = raw.replace(/\D/g, "");
   if ((raw.trim().startsWith("+") || d.length > 9) && d.startsWith("998")) d = d.slice(3);
+  if (d.length > 9 && d.startsWith("998")) d = d.slice(3);
   d = d.slice(0, 9);
   let res = "+998 ";
   if (d.length > 0) res += d.slice(0, 2);

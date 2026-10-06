@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useLanguage } from "@/lib/i18n-context";
-import { usePopoverPlacement } from "@/lib/use-popover";
+import { usePopoverPlacement, useEscapeToClose } from "@/lib/use-popover";
 
 const ACCENT = "#4F46E5";
 
@@ -61,6 +61,7 @@ export default function Select({
     document.addEventListener("mousedown", onClickOutside);
     return () => document.removeEventListener("mousedown", onClickOutside);
   }, []);
+  useEscapeToClose(open, () => setOpen(false));
 
   const selectedLabel = options.find((o) => o.value === value)?.label;
 
