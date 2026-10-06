@@ -551,8 +551,12 @@ export default function OnboardingPage() {
               fontWeight: 800,
               fontSize: 15,
             }}
+            aria-hidden
           >
-            C
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M22 10 12 5 2 10l10 5 10-5Z" />
+              <path d="M6 12v5c0 1.5 2.7 3 6 3s6-1.5 6-3v-5" />
+            </svg>
           </div>
           <span style={{ fontSize: 16, fontWeight: 800, color: "#111827", letterSpacing: "-0.02em" }}>
             TalimCRM Onboarding
