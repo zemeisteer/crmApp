@@ -13,6 +13,18 @@ import { tutorPrompt, type TutorContext } from './tutor-prompt';
 
 
 const MODEL = 'claude-sonnet-5';
+// What a person sees when the AI is overloaded after all retries.
+const AI_BUSY = "AI xizmati hozir band. Bir necha daqiqadan keyin qayta urinib ko'ring.";
+// A large PDF can take a while; past this a request is treated as lost.
+const GEMINI_TIMEOUT_MS = 180_000;
+
+// A question read from a file keeps its text without the file's own number
+// ("3. She ___" -> "She ___"): the test numbers its questions itself, and a
+// scanned page and a typed one then read the same. "12 x 8 = ?" is untouched.
+function withoutNumber(q: TestQuestion): TestQuestion {
+  const prompt = q.prompt.replace(/^\s*\d{1,3}\s*[.)]\s+(?=\S)/, '');
+  return prompt === q.prompt ? q : { ...q, prompt };
+}
 
 @Injectable()
 export class AiService {
@@ -29,55 +41,96 @@ export class AiService {
   }
 
   // `pdf` attaches a document the model reads alongside the prompt (both
-  // providers accept PDFs, including scanned pages).
+  // providers accept PDFs, including scanned pages). With both keys set,
+  // Claude answers first and Gemini takes over when Claude is unavailable
+  // (overloaded, rate limited, unreachable); the reverse is not needed as
+  // Claude is only skipped when no key is set.
   private async complete(prompt: string, maxTokens: number, pdf?: Buffer): Promise<string> {
     const anthropicKey = this.config.get<string>('ANTHROPIC_API_KEY');
-    if (anthropicKey) {
-      const res = await new Anthropic({ apiKey: anthropicKey }).messages.create({
-        model: MODEL,
-        max_tokens: maxTokens,
-        messages: [{
-          role: 'user',
-          content: pdf
-            ? [
-                { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: pdf.toString('base64') } },
-                { type: 'text', text: prompt },
-              ]
-            : prompt,
-        }],
-      });
-      return res.content.find((b) => b.type === 'text')?.text ?? '';
-    }
     const geminiKey = this.config.get<string>('GEMINI_API_KEY');
-    if (geminiKey) {
-      // Gemini's free tier is sometimes overloaded (503/429): retry, then
-      // fall back to the lighter model.
-      const primary = this.config.get<string>('GEMINI_MODEL') || 'gemini-flash-latest';
-      const models = [primary, primary, 'gemini-flash-lite-latest'];
-      let res: Response | null = null;
-      let lastError = '';
-      for (let i = 0; i < models.length; i++) {
-        if (i > 0) await new Promise((r) => setTimeout(r, 1500 * i));
-        res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(models[i])}:generateContent`, {
+    if (!anthropicKey && !geminiKey) {
+      throw new ServiceUnavailableException(
+        "AI yoqilmagan: backend/.env fayliga GEMINI_API_KEY (bepul) yoki ANTHROPIC_API_KEY qo'shing.",
+      );
+    }
+    if (anthropicKey) {
+      try {
+        return await this.completeAnthropic(anthropicKey, prompt, maxTokens, pdf);
+      } catch (err) {
+        const transient = err instanceof Anthropic.APIConnectionError || (err instanceof Anthropic.APIError && (err.status === 429 || (err.status ?? 0) >= 500));
+        if (!transient) throw err;
+        if (!geminiKey) throw new ServiceUnavailableException(AI_BUSY);
+        this.logger.warn(`Claude unavailable (${err instanceof Anthropic.APIError ? err.status ?? 'network' : 'error'}); using Gemini`);
+      }
+    }
+    return this.completeGemini(geminiKey!, prompt, maxTokens, pdf);
+  }
+
+  // The SDK itself retries overloads, rate limits and dropped connections.
+  private async completeAnthropic(apiKey: string, prompt: string, maxTokens: number, pdf?: Buffer): Promise<string> {
+    const res = await new Anthropic({ apiKey }).messages.create({
+      model: MODEL,
+      max_tokens: maxTokens,
+      messages: [{
+        role: 'user',
+        content: pdf
+          ? [
+              { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: pdf.toString('base64') } },
+              { type: 'text', text: prompt },
+            ]
+          : prompt,
+      }],
+    });
+    return res.content.find((b) => b.type === 'text')?.text ?? '';
+  }
+
+  // Gemini's free tier is often overloaded (503/429) for a while: retry with
+  // growing pauses, then on the lighter model. A dropped connection or a
+  // request that hangs counts the same. The person sees a plain "busy, try
+  // again" message, never the provider's raw error; the details go to the log.
+  private async completeGemini(apiKey: string, prompt: string, maxTokens: number, pdf?: Buffer): Promise<string> {
+    const primary = this.config.get<string>('GEMINI_MODEL') || 'gemini-flash-latest';
+    const attempts = [
+      { model: primary, wait: 0 },
+      { model: primary, wait: 2000 },
+      { model: 'gemini-flash-lite-latest', wait: 4000 },
+      { model: 'gemini-flash-lite-latest', wait: 8000 },
+    ];
+    for (const { model, wait } of attempts) {
+      if (wait) await this.sleep(wait);
+      let res: Response;
+      try {
+        res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'x-goog-api-key': geminiKey },
+          headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
           body: JSON.stringify({
             contents: [{ role: 'user', parts: [...(pdf ? [{ inline_data: { mime_type: 'application/pdf', data: pdf.toString('base64') } }] : []), { text: prompt }] }],
             generationConfig: { maxOutputTokens: Math.max(maxTokens, 2048) },
           }),
+          signal: AbortSignal.timeout(GEMINI_TIMEOUT_MS),
         });
-        if (res.ok) break;
-        lastError = `Gemini xatosi (${res.status}): ${(await res.text().catch(() => '')).slice(0, 200)}`;
-        if (res.status !== 503 && res.status !== 429 && res.status !== 500) break;
-        this.logger.warn(`${lastError} — retrying`);
+      } catch (err) {
+        this.logger.warn(`Gemini (${model}) unreachable: ${err instanceof Error ? err.message : String(err)} - retrying`);
+        continue;
       }
-      if (!res || !res.ok) throw new ServiceUnavailableException(lastError || 'Gemini javob bermadi');
-      const data = (await res.json()) as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> };
-      return data.candidates?.[0]?.content?.parts?.map((p) => p.text ?? '').join('') ?? '';
+      if (res.ok) {
+        const data = (await res.json()) as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> };
+        return data.candidates?.[0]?.content?.parts?.map((p) => p.text ?? '').join('') ?? '';
+      }
+      const body = (await res.text().catch(() => '')).slice(0, 300);
+      if (res.status === 503 || res.status === 429 || res.status === 500) {
+        this.logger.warn(`Gemini (${model}) ${res.status}: ${body} - retrying`);
+        continue;
+      }
+      this.logger.error(`Gemini (${model}) ${res.status}: ${body}`);
+      throw new ServiceUnavailableException(`AI so'rovni qabul qilmadi (${res.status}). Fayl juda katta yoki buzilgan bo'lishi mumkin.`);
     }
-    throw new ServiceUnavailableException(
-      "AI yoqilmagan: backend/.env fayliga GEMINI_API_KEY (bepul) yoki ANTHROPIC_API_KEY qo'shing.",
-    );
+    throw new ServiceUnavailableException(AI_BUSY);
+  }
+
+  /** A pause between retries (its own method so tests need not wait). */
+  protected sleep(ms: number) {
+    return new Promise<void>((resolve) => setTimeout(resolve, ms));
   }
 
   async groupInsights(tenantId: string, groupId: string) {
@@ -396,6 +449,7 @@ Javobni FAQAT quyidagi JSON formatida ber (boshqa hech qanday so'z qo'shma):
     const questions = parseJsonArray(text)
       .map((q) => normalizeQuestion(q, { requireAnswer: false }))
       .filter((q): q is TestQuestion => q !== null)
+      .map(withoutNumber)
       .slice(0, 300);
     if (questions.length === 0) throw new ServiceUnavailableException("PDF'dan savollar topilmadi. Fayl test ekanini tekshiring.");
     return questions;
@@ -410,6 +464,7 @@ Javobni FAQAT quyidagi JSON formatida ber (boshqa hech qanday so'z qo'shma):
     const questions = parseJsonArray(out)
       .map((q) => normalizeQuestion(q, { requireAnswer: false }))
       .filter((q): q is TestQuestion => q !== null)
+      .map(withoutNumber)
       .slice(0, 300);
     if (questions.length === 0) throw new ServiceUnavailableException('Matndan savollar topilmadi.');
     return questions;
