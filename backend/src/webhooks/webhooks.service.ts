@@ -1,15 +1,36 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { createHmac, randomBytes } from 'crypto';
 import { and, eq, or } from 'drizzle-orm';
 import { DB, Database } from '../db/db.module';
 import { webhooks } from '../db/schema';
 import { CreateWebhookDto, UpdateWebhookDto } from './dto/webhook.dto';
+import { assertPublicHttpUrl, OutboundUrlError } from '../common/outbound-url';
+
+// A subscriber gets this long to answer; the request that triggered the
+// event never waits for it (dispatch is fire-and-forget).
+const DELIVERY_TIMEOUT_MS = 10_000;
 
 @Injectable()
 export class WebhooksService {
   private readonly logger = new Logger(WebhooksService.name);
 
   constructor(@Inject(DB) private readonly db: Database) {}
+
+  // Local development may point a webhook at a receiver on the same machine.
+  private get allowPrivate() {
+    return process.env.WEBHOOK_ALLOW_PRIVATE === 'true';
+  }
+
+  // The URL is the center's own choice, but the request comes from our
+  // server: never towards the server's own network (SSRF).
+  private async checkUrl(url: string) {
+    try {
+      await assertPublicHttpUrl(url, this.allowPrivate);
+    } catch (err) {
+      if (err instanceof OutboundUrlError) throw new BadRequestException(`Webhook manzili: ${err.message}`);
+      throw err;
+    }
+  }
 
   findAll(tenantId: string) {
     return this.db.query.webhooks.findMany({
@@ -19,22 +40,29 @@ export class WebhooksService {
   }
 
   async create(tenantId: string, dto: CreateWebhookDto) {
+    await this.checkUrl(dto.url);
     const secret = randomBytes(24).toString('hex');
     const [wh] = await this.db.insert(webhooks).values({ tenantId, url: dto.url, event: dto.event, secret }).returning();
     return wh;
   }
 
   async update(tenantId: string, id: string, dto: UpdateWebhookDto) {
+    const existing = await this.db.query.webhooks.findFirst({ where: and(eq(webhooks.id, id), eq(webhooks.tenantId, tenantId)) });
+    if (!existing) throw new NotFoundException('Webhook topilmadi');
+    if (dto.url !== undefined) await this.checkUrl(dto.url);
+    const changes = Object.fromEntries(Object.entries(dto).filter(([, v]) => v !== undefined));
+    if (Object.keys(changes).length === 0) return existing;
     const [wh] = await this.db
       .update(webhooks)
-      .set(dto)
+      .set(changes)
       .where(and(eq(webhooks.id, id), eq(webhooks.tenantId, tenantId)))
       .returning();
     return wh;
   }
 
   async remove(tenantId: string, id: string) {
-    await this.db.delete(webhooks).where(and(eq(webhooks.id, id), eq(webhooks.tenantId, tenantId)));
+    const removed = await this.db.delete(webhooks).where(and(eq(webhooks.id, id), eq(webhooks.tenantId, tenantId))).returning({ id: webhooks.id });
+    if (removed.length === 0) throw new NotFoundException('Webhook topilmadi');
     return { success: true };
   }
 
@@ -45,13 +73,25 @@ export class WebhooksService {
       where: and(eq(webhooks.tenantId, tenantId), eq(webhooks.active, true), or(eq(webhooks.event, event), eq(webhooks.event, '*'))),
     });
     for (const sub of subs) {
+      void this.deliver(sub, event, payload);
+    }
+  }
+
+  private async deliver(sub: { url: string; secret: string }, event: string, payload: unknown) {
+    try {
+      // Checked again at delivery time: the name may resolve elsewhere now.
+      await assertPublicHttpUrl(sub.url, this.allowPrivate);
       const body = JSON.stringify({ event, data: payload, sentAt: new Date().toISOString() });
       const signature = createHmac('sha256', sub.secret).update(body).digest('hex');
-      fetch(sub.url, {
+      await fetch(sub.url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-TalimCRM-Signature': signature },
         body,
-      }).catch((err) => this.logger.warn(`Webhook delivery failed for ${sub.url}: ${err.message}`));
+        redirect: 'manual',
+        signal: AbortSignal.timeout(DELIVERY_TIMEOUT_MS),
+      });
+    } catch (err) {
+      this.logger.warn(`Webhook delivery failed for ${sub.url}: ${(err as Error).message}`);
     }
   }
 }

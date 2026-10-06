@@ -19,6 +19,7 @@ import { Roles } from '../common/roles.decorator';
 import { CurrentUser } from '../common/current-user.decorator';
 import { attachmentStorage, ATTACHMENT_MAX_SIZE } from '../common/upload.util';
 import { ExamsService } from './exams.service';
+import { ExamTeacherScopeGuard } from './exam-teacher-scope.guard';
 import {
   CreateExamDto,
   CreateExamQuestionDto,
@@ -30,14 +31,14 @@ import {
   ParseTextDto,
 } from './dto/exam.dto';
 
-@UseGuards(JwtAuthGuard, RolesGuard, TrialGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, TrialGuard, ExamTeacherScopeGuard)
 @Controller('exams')
 export class ExamsController {
   constructor(private readonly service: ExamsService) {}
 
   @Get()
-  findAll(@CurrentUser('tenantId') tenantId: string, @Query('groupId') groupId?: string) {
-    return this.service.findAll(tenantId, groupId);
+  findAll(@CurrentUser('tenantId') tenantId: string, @CurrentUser('role') role: string, @CurrentUser('sub') userId: string, @Query('groupId') groupId?: string) {
+    return this.service.findAll(tenantId, groupId, { role, userId });
   }
 
   @Get(':id')
@@ -47,8 +48,8 @@ export class ExamsController {
 
   @Roles('ADMIN', 'TEACHER')
   @Post()
-  create(@CurrentUser('tenantId') tenantId: string, @Body() dto: CreateExamDto) {
-    return this.service.create(tenantId, dto);
+  create(@CurrentUser('tenantId') tenantId: string, @CurrentUser('role') role: string, @CurrentUser('sub') userId: string, @Body() dto: CreateExamDto) {
+    return this.service.create(tenantId, dto, { role, userId });
   }
 
   @Roles('ADMIN', 'TEACHER')

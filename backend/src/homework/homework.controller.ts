@@ -34,24 +34,24 @@ export class HomeworkController {
   constructor(private readonly service: HomeworkService) {}
 
   @Get()
-  findAll(@CurrentUser('tenantId') tenantId: string, @Query('groupId') groupId?: string) {
-    return this.service.findAll(tenantId, groupId);
+  findAll(@CurrentUser('tenantId') tenantId: string, @CurrentUser('role') role: string, @CurrentUser('sub') userId: string, @Query('groupId') groupId?: string) {
+    return this.service.findAll(tenantId, groupId, { role, userId });
   }
 
   // Must precede ':id'
   @Get('leaderboard')
-  getLeaderboard(@CurrentUser('tenantId') tenantId: string, @Query('groupId') groupId?: string) {
-    return this.service.getLeaderboard(tenantId, groupId);
+  getLeaderboard(@CurrentUser('tenantId') tenantId: string, @CurrentUser('role') role: string, @CurrentUser('sub') userId: string, @Query('groupId') groupId?: string) {
+    return this.service.getLeaderboard(tenantId, groupId, { role, userId });
   }
 
   @Get(':id')
-  findOne(@CurrentUser('tenantId') tenantId: string, @Param('id') id: string) {
-    return this.service.findOne(tenantId, id);
+  findOne(@CurrentUser('tenantId') tenantId: string, @CurrentUser('role') role: string, @CurrentUser('sub') userId: string, @Param('id') id: string) {
+    return this.service.findOne(tenantId, id, { role, userId });
   }
 
   @Get(':id/roster')
-  getRoster(@CurrentUser('tenantId') tenantId: string, @Param('id') id: string) {
-    return this.service.getRoster(tenantId, id);
+  getRoster(@CurrentUser('tenantId') tenantId: string, @CurrentUser('role') role: string, @CurrentUser('sub') userId: string, @Param('id') id: string) {
+    return this.service.getRoster(tenantId, id, { role, userId });
   }
 
   @Roles('ADMIN', 'TEACHER')
@@ -69,10 +69,12 @@ export class HomeworkController {
   @Post(':id/submit')
   submit(
     @CurrentUser('tenantId') tenantId: string,
+    @CurrentUser('role') role: string,
+    @CurrentUser('sub') userId: string,
     @Param('id') id: string,
     @Body() dto: SubmitHomeworkDto,
   ) {
-    return this.service.submit(tenantId, id, dto);
+    return this.service.submit(tenantId, id, dto, { role, userId });
   }
 
   @Roles('ADMIN', 'TEACHER')
@@ -89,18 +91,20 @@ export class HomeworkController {
 
   @Roles('ADMIN', 'TEACHER')
   @Post()
-  create(@CurrentUser('tenantId') tenantId: string, @Body() dto: CreateHomeworkDto) {
-    return this.service.create(tenantId, dto);
+  create(@CurrentUser('tenantId') tenantId: string, @CurrentUser('role') role: string, @CurrentUser('sub') userId: string, @Body() dto: CreateHomeworkDto) {
+    return this.service.create(tenantId, dto, { role, userId });
   }
 
   @Roles('ADMIN', 'TEACHER')
   @Patch(':id')
   update(
     @CurrentUser('tenantId') tenantId: string,
+    @CurrentUser('role') role: string,
+    @CurrentUser('sub') userId: string,
     @Param('id') id: string,
     @Body() dto: UpdateHomeworkDto,
   ) {
-    return this.service.update(tenantId, id, dto);
+    return this.service.update(tenantId, id, dto, { role, userId });
   }
 
   @Roles('ADMIN', 'TEACHER')
@@ -110,10 +114,12 @@ export class HomeworkController {
   )
   attach(
     @CurrentUser('tenantId') tenantId: string,
+    @CurrentUser('role') role: string,
+    @CurrentUser('sub') userId: string,
     @Param('id') id: string,
     @UploadedFile() file: Express.Multer.File,
   ) {
-    return this.service.attach(tenantId, id, file);
+    return this.service.attach(tenantId, id, file, { role, userId });
   }
 
   // Attach written text (the AI task) as a PDF file.
@@ -121,15 +127,17 @@ export class HomeworkController {
   @Post(':id/attachment-text')
   attachText(
     @CurrentUser('tenantId') tenantId: string,
+    @CurrentUser('role') role: string,
+    @CurrentUser('sub') userId: string,
     @Param('id') id: string,
     @Body() dto: AttachTextDto,
   ) {
-    return this.service.attachText(tenantId, id, dto.title, dto.content);
+    return this.service.attachText(tenantId, id, dto.title, dto.content, { role, userId });
   }
 
   @Roles('ADMIN', 'TEACHER')
   @Delete(':id')
-  remove(@CurrentUser('tenantId') tenantId: string, @Param('id') id: string) {
-    return this.service.remove(tenantId, id);
+  remove(@CurrentUser('tenantId') tenantId: string, @CurrentUser('role') role: string, @CurrentUser('sub') userId: string, @Param('id') id: string) {
+    return this.service.remove(tenantId, id, { role, userId });
   }
 }

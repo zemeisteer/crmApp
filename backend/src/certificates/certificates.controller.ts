@@ -32,9 +32,11 @@ export class CertificatesController {
   @Get()
   findAll(
     @CurrentUser('tenantId') tenantId: string,
+    @CurrentUser('role') role: string,
+    @CurrentUser('sub') userId: string,
     @Query() query: QueryCertificateDto,
   ) {
-    return this.service.findAll(tenantId, query);
+    return this.service.findAll(tenantId, query, { role, userId });
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -42,9 +44,11 @@ export class CertificatesController {
   @Get(':id')
   findOne(
     @CurrentUser('tenantId') tenantId: string,
+    @CurrentUser('role') role: string,
+    @CurrentUser('sub') userId: string,
     @Param('id') id: string,
   ) {
-    return this.service.findOne(tenantId, id);
+    return this.service.findOne(tenantId, id, { role, userId });
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -52,9 +56,11 @@ export class CertificatesController {
   @Post()
   create(
     @CurrentUser('tenantId') tenantId: string,
+    @CurrentUser('role') role: string,
+    @CurrentUser('sub') userId: string,
     @Body() dto: CreateCertificateDto,
   ) {
-    return this.service.create(tenantId, dto);
+    return this.service.create(tenantId, dto, { role, userId });
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)

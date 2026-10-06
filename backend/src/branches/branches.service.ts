@@ -21,9 +21,16 @@ export class BranchesService {
   }
 
   async update(tenantId: string, id: string, dto: UpdateBranchDto) {
+    // Nothing to change (an empty form): answer with the branch as it is.
+    const changes = Object.fromEntries(Object.entries(dto).filter(([, v]) => v !== undefined));
+    if (Object.keys(changes).length === 0) {
+      const branch = await this.db.query.branches.findFirst({ where: and(eq(branches.id, id), eq(branches.tenantId, tenantId)) });
+      if (!branch) throw new NotFoundException('Filial topilmadi');
+      return branch;
+    }
     const [branch] = await this.db
       .update(branches)
-      .set(dto)
+      .set(changes)
       .where(and(eq(branches.id, id), eq(branches.tenantId, tenantId)))
       .returning();
     if (!branch) throw new NotFoundException('Filial topilmadi');

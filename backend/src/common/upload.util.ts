@@ -1,16 +1,56 @@
 import { diskStorage } from 'multer';
 import { extname, join } from 'path';
 import { createId } from '@paralleldrive/cuid2';
+import type { ServerResponse } from 'http';
 
 // Shared multer disk-storage config for homework/exam attachments —
 // content-addressed-ish filenames (cuid) so nothing collides, original
 // name is kept separately in the DB for display/download.
 export const UPLOAD_DIR = join(__dirname, '..', '..', 'uploads');
 
+// The stored name's extension comes from the declared type through this
+// list, never from the client's file name: the files are served from the
+// app's own origin, so "notebook.html" sent as image/jpeg must not come back
+// as an HTML page. A type outside the list is stored without an extension
+// and is served as a download.
+const SAFE_EXTENSIONS: Record<string, string> = {
+  'image/jpeg': '.jpg',
+  'image/png': '.png',
+  'image/webp': '.webp',
+  'image/gif': '.gif',
+  'image/heic': '.heic',
+  'image/heif': '.heif',
+  'application/pdf': '.pdf',
+  'audio/mpeg': '.mp3',
+  'audio/mp3': '.mp3',
+  'audio/mp4': '.m4a',
+  'audio/x-m4a': '.m4a',
+  'audio/aac': '.aac',
+  'audio/wav': '.wav',
+  'audio/x-wav': '.wav',
+  'audio/ogg': '.ogg',
+  'audio/webm': '.webm',
+  'video/mp4': '.mp4',
+  'video/webm': '.webm',
+  'application/msword': '.doc',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': '.docx',
+  'application/vnd.ms-excel': '.xls',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': '.xlsx',
+  'application/vnd.ms-powerpoint': '.ppt',
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation': '.pptx',
+  'text/plain': '.txt',
+  'application/zip': '.zip',
+};
+
+export function safeUploadExtension(mimetype: string | undefined): string {
+  const base = (mimetype || '').split(';')[0].trim().toLowerCase();
+  return SAFE_EXTENSIONS[base] ?? '';
+}
+
 export const attachmentStorage = diskStorage({
   destination: UPLOAD_DIR,
   filename: (_req, file, cb) => {
-    cb(null, `${createId()}${extname(file.originalname)}`);
+    cb(null, `${createId()}${safeUploadExtension(file.mimetype)}`);
   },
 });
 
@@ -24,4 +64,24 @@ export async function saveGeneratedFile(bytes: Buffer, ext: string) {
   const name = `${createId()}${ext}`;
   await writeFile(join(UPLOAD_DIR, name), bytes);
   return name;
+}
+
+// What the browser may open in place: pictures, PDFs and recordings.
+const INLINE_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.webp', '.gif', '.heic', '.heif', '.pdf', '.mp3', '.m4a', '.aac', '.wav', '.ogg', '.webm', '.mp4']);
+
+/**
+ * Response headers for a file under /uploads. The browser never guesses a
+ * type (nosniff); anything that is not a picture, PDF or recording - also a
+ * page or SVG stored before the extension rule above - is a download in a
+ * sandbox, so it can never run script on the app's origin.
+ */
+export function setUploadHeaders(res: ServerResponse, path: string) {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  const ext = extname(path).toLowerCase();
+  if (INLINE_EXTENSIONS.has(ext)) {
+    if (ext !== '.pdf') res.setHeader('Content-Security-Policy', "default-src 'none'; img-src 'self'; media-src 'self'; style-src 'unsafe-inline'");
+    return;
+  }
+  res.setHeader('Content-Disposition', 'attachment');
+  res.setHeader('Content-Security-Policy', "sandbox; default-src 'none'");
 }

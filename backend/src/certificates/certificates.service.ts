@@ -1,16 +1,31 @@
-import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { and, desc, eq, ilike, or } from 'drizzle-orm';
+import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { and, desc, eq, ilike, inArray, or } from 'drizzle-orm';
 import { randomBytes } from 'crypto';
 import { DB, Database } from '../db/db.module';
 import { certificates, groups, students } from '../db/schema';
 import { CreateCertificateDto, QueryCertificateDto } from './dto/certificate.dto';
+import { STUDENT_STAFF_COLUMNS, studentIdsInGroups, teacherGroupIds, Viewer } from '../common/teacher-scope';
 
 @Injectable()
 export class CertificatesService {
   constructor(@Inject(DB) private readonly db: Database) {}
 
-  async findAll(tenantId: string, query: QueryCertificateDto) {
+  // A teacher: the students of their own groups (and certificates of those groups).
+  private async teacherScope(tenantId: string, viewer?: Viewer) {
+    const groupIds = await teacherGroupIds(this.db, tenantId, viewer?.role, viewer?.userId);
+    if (!groupIds) return null;
+    return { groupIds, studentIds: await studentIdsInGroups(this.db, groupIds) };
+  }
+
+  async findAll(tenantId: string, query: QueryCertificateDto, viewer?: Viewer) {
     const conditions = [eq(certificates.tenantId, tenantId)];
+    const scope = await this.teacherScope(tenantId, viewer);
+    if (scope) {
+      if (scope.groupIds.length === 0) return [];
+      const visible = [inArray(certificates.groupId, scope.groupIds)];
+      if (scope.studentIds.length) visible.push(inArray(certificates.studentId, scope.studentIds));
+      conditions.push(or(...visible)!);
+    }
 
     if (query.studentId) {
       conditions.push(eq(certificates.studentId, query.studentId));
@@ -37,21 +52,30 @@ export class CertificatesService {
     });
   }
 
-  async findOne(tenantId: string, id: string) {
+  async findOne(tenantId: string, id: string, viewer?: Viewer) {
     const cert = await this.db.query.certificates.findFirst({
       where: and(eq(certificates.id, id), eq(certificates.tenantId, tenantId)),
       with: {
-        student: true,
+        student: { columns: STUDENT_STAFF_COLUMNS },
         group: true,
       },
     });
     if (!cert) {
       throw new NotFoundException('Sertifikat topilmadi');
     }
+    const scope = await this.teacherScope(tenantId, viewer);
+    if (scope && !(cert.groupId && scope.groupIds.includes(cert.groupId)) && !scope.studentIds.includes(cert.studentId)) {
+      throw new ForbiddenException("Bu o'quvchi sizning guruhingizda emas");
+    }
     return cert;
   }
 
-  async create(tenantId: string, dto: CreateCertificateDto) {
+  async create(tenantId: string, dto: CreateCertificateDto, viewer?: Viewer) {
+    // A teacher certifies the students of their own groups only.
+    const scope = await this.teacherScope(tenantId, viewer);
+    if (scope && (!dto.groupId || !scope.groupIds.includes(dto.groupId) || !scope.studentIds.includes(dto.studentId))) {
+      throw new ForbiddenException("Bu o'quvchi sizning guruhingizda emas");
+    }
     // 1. Multi-tenant IDOR check: verify student belongs to tenant
     const student = await this.db.query.students.findFirst({
       where: and(eq(students.id, dto.studentId), eq(students.tenantId, tenantId)),

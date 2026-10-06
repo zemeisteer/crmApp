@@ -50,8 +50,11 @@ export class EmailService {
     if (!this.transporter) {
       // Dev fallback: nothing is actually sent without a provider. We log
       // it so the flow (reset/verify tokens) stays testable end-to-end
-      // without a real mail account.
-      this.logger.warn(`Email provider not configured — email not sent. To: ${to}, Subject: ${subject}\n${text}`);
+      // without a real mail account. In production the body holds live
+      // reset/verification links, so only the recipient and subject are
+      // logged there (support resets the password instead, PILOT_ONBOARDING.md).
+      const body = process.env.NODE_ENV === 'production' ? '(body not logged in production)' : text;
+      this.logger.warn(`Email provider not configured — email not sent. To: ${to}, Subject: ${subject}\n${body}`);
       return;
     }
     try {

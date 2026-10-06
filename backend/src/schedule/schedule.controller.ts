@@ -91,18 +91,20 @@ export class ScheduleController {
 
   @Roles('ADMIN', 'TEACHER')
   @Post()
-  create(@CurrentUser('tenantId') tenantId: string, @Body() dto: CreateScheduleDto) {
-    return this.service.createSchedule(tenantId, dto);
+  create(@CurrentUser('tenantId') tenantId: string, @CurrentUser('role') role: string, @CurrentUser('sub') userId: string, @Body() dto: CreateScheduleDto) {
+    return this.service.createSchedule(tenantId, dto, { role, userId });
   }
 
   @Roles('ADMIN', 'TEACHER')
   @Patch(':id')
   update(
     @CurrentUser('tenantId') tenantId: string,
+    @CurrentUser('role') role: string,
+    @CurrentUser('sub') userId: string,
     @Param('id') id: string,
     @Body() dto: UpdateScheduleDto,
   ) {
-    return this.service.updateSchedule(tenantId, id, dto);
+    return this.service.updateSchedule(tenantId, id, dto, { role, userId });
   }
 
   @Roles('ADMIN')

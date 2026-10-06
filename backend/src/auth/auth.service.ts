@@ -567,7 +567,12 @@ export class AuthService {
   }
 
   async revokeSession(userId: string, sessionId: string) {
-    await this.db.delete(sessions).where(and(eq(sessions.id, sessionId), eq(sessions.userId, userId)));
+    const removed = await this.db
+      .delete(sessions)
+      .where(and(eq(sessions.id, sessionId), eq(sessions.userId, userId)))
+      .returning({ id: sessions.id });
+    // Someone else's session (or one already ended) is not "revoked" by us.
+    if (removed.length === 0) throw new NotFoundException('Sessiya topilmadi');
     return { success: true };
   }
 

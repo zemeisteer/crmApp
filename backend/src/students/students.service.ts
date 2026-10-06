@@ -264,7 +264,7 @@ export class StudentsService {
     const student = await this.findOne(tenantId, id);
     const pin = String(randomInt(0, 1_000_000)).padStart(6, '0');
     const pinHash = await bcrypt.hash(pin, 10);
-    await this.db.insert(studentPortalPins).values({ studentId: id, pinHash })
+    await this.db.insert(studentPortalPins).values({ studentId: id, pinHash, updatedAt: new Date() })
       .onConflictDoUpdate({ target: studentPortalPins.studentId, set: { pinHash, updatedAt: new Date() } });
     this.audit.log({ tenantId, userId, action: 'update', entityType: 'student', entityId: id, meta: { portalPin: 'issued' } });
     return { pin, phone: student.phone ?? student.parentPhone ?? null };
@@ -384,44 +384,28 @@ export class StudentsService {
   async linkGuardian(tenantId: string, studentId: string, dto: LinkGuardianDto) {
     await this.findOne(tenantId, studentId);
 
-    let targetUserId = dto.userId;
-    if (!targetUserId && dto.phone) {
-      const cleanPhone = dto.phone.trim();
-      const user = await this.db.query.users.findFirst({
-        where: eq(users.phone, cleanPhone),
-      });
-
-      if (!user) {
-        throw new NotFoundException(`Ushbu telefon raqamli (${cleanPhone}) foydalanuvchi tizimda topilmadi`);
-      }
-      targetUserId = user.id;
-    }
-
-    if (!targetUserId) {
+    // Only a person who already belongs to this center can be linked (a
+    // parent joins through a PARENT invitation first). Accounts of other
+    // centers are never looked up, shown or given a membership here, and
+    // "unknown" and "someone else's" get the same answer.
+    const notHere = new NotFoundException(
+      "Bu foydalanuvchi markazingizda topilmadi. Ota-onani avval taklifnoma (Ota-ona roli) orqali qo'shing.",
+    );
+    const cleanPhone = dto.phone?.trim();
+    if (!dto.userId && !cleanPhone) {
       throw new BadRequestException("Ota-ona foydalanuvchi IDsi yoki telefon raqami ko'rsatilishi shart");
     }
-
-    const guardianUser = await this.db.query.users.findFirst({
-      where: eq(users.id, targetUserId),
-    });
-    if (!guardianUser) {
-      throw new NotFoundException('Foydalanuvchi topilmadi');
-    }
-
-    const membership = await this.db.query.organizationMemberships.findFirst({
-      where: and(
+    const [member] = await this.db
+      .select({ userId: users.id, status: organizationMemberships.status })
+      .from(organizationMemberships)
+      .innerJoin(users, eq(users.id, organizationMemberships.userId))
+      .where(and(
         eq(organizationMemberships.tenantId, tenantId),
-        eq(organizationMemberships.userId, targetUserId),
-      ),
-    });
-    if (!membership) {
-      await this.db.insert(organizationMemberships).values({
-        tenantId,
-        userId: targetUserId,
-        role: 'PARENT',
-        status: 'ACTIVE',
-      });
-    }
+        dto.userId ? eq(users.id, dto.userId) : eq(users.phone, cleanPhone!),
+      ))
+      .limit(1);
+    if (!member || member.status !== 'ACTIVE') throw notHere;
+    const targetUserId = member.userId;
 
     const existingLink = await this.db.query.studentGuardians.findFirst({
       where: and(

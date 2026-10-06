@@ -5,11 +5,11 @@ dotenv.config();
 dotenv.config({ path: join(__dirname, '..', '.env') });
 import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
-import { ValidationPipe } from '@nestjs/common';
 import * as Sentry from '@sentry/node';
 import pinoHttp from 'pino-http';
 import { AppModule } from './app.module';
-import { corsOriginChecker } from './common/cors';
+import { configureApp } from './app.setup';
+import { redactQuery, redactUrl } from './common/log-redact';
 
 if (process.env.SENTRY_DSN) {
   Sentry.init({ dsn: process.env.SENTRY_DSN, environment: process.env.NODE_ENV || 'development' });
@@ -17,33 +17,24 @@ if (process.env.SENTRY_DSN) {
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
-  // Only the app's own domain and center subdomains (plus localhost in dev).
-  const corsAllowed = corsOriginChecker(process.env);
-  app.enableCors({
-    origin: (origin, cb) => cb(null, corsAllowed(origin)),
-    credentials: true,
-  });
-
-  // Uploaded homework/exam attachments — local disk in dev. For a
-  // multi-instance or ephemeral-filesystem production deploy, swap this
-  // for S3 (same pattern as the other optional integrations).
-  app.useStaticAssets(join(__dirname, '..', 'uploads'), { prefix: '/uploads/' });
-  app.useGlobalPipes(
-    new ValidationPipe({ whitelist: true, transform: true, forbidNonWhitelisted: false }),
-  );
+  // CORS, /uploads, validation, /api prefix, trust proxy (app.setup.ts).
+  configureApp(app);
 
   // Structured (JSON) request logs — pipe stdout through `pino-pretty` in
   // dev if you want colorized output; in production, JSON lines are what
-  // most log aggregators (Datadog, CloudWatch, Loki) expect.
+  // most log aggregators (Datadog, CloudWatch, Loki) expect. Tokens in
+  // links (invitations, e-mail verification) are masked (common/log-redact.ts).
   app.use(
     pinoHttp({
       level: process.env.LOG_LEVEL || 'info',
       redact: ['req.headers.authorization', 'req.headers.cookie'],
+      serializers: {
+        req: (req: { url?: string; query?: unknown }) => ({ ...req, url: redactUrl(req.url), query: redactQuery(req.query) }),
+      },
       autoLogging: { ignore: (req) => req.url === '/api/health' },
     }),
   );
 
-  app.setGlobalPrefix('api');
   const port = process.env.PORT ?? 4000;
   await app.listen(port);
   // eslint-disable-next-line no-console

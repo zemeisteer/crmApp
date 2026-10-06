@@ -5,6 +5,7 @@ import { join } from 'path';
 import { saveGeneratedFile } from '../common/upload.util';
 import { pdfFileName, renderTextPdf } from '../common/text-pdf';
 import { DB, Database } from '../db/db.module';
+import { assertTeacherGroups, STUDENT_STAFF_COLUMNS, studentIdsInGroups, teacherGroupIds, Viewer } from '../common/teacher-scope';
 import {
   homework,
   homeworkCompletions,
@@ -44,9 +45,15 @@ export class HomeworkService {
     private readonly notifications: NotificationsService,
   ) {}
 
-  findAll(tenantId: string, groupId?: string) {
+  async findAll(tenantId: string, groupId?: string, viewer?: Viewer) {
     const conditions = [eq(homework.tenantId, tenantId)];
     if (groupId) conditions.push(eq(homework.groupId, groupId));
+    // A teacher sees the homework of their own groups only.
+    const mine = await teacherGroupIds(this.db, tenantId, viewer?.role, viewer?.userId);
+    if (mine) {
+      if (mine.length === 0) return [];
+      conditions.push(inArray(homework.groupId, mine));
+    }
     return this.db.query.homework.findMany({
       where: and(...conditions),
       with: { group: true, completions: true },
@@ -54,20 +61,21 @@ export class HomeworkService {
     });
   }
 
-  async findOne(tenantId: string, id: string) {
+  async findOne(tenantId: string, id: string, viewer?: Viewer) {
     const hw = await this.db.query.homework.findFirst({
       where: and(eq(homework.id, id), eq(homework.tenantId, tenantId)),
-      with: { group: true, completions: { with: { student: true } } },
+      with: { group: true, completions: { with: { student: { columns: STUDENT_STAFF_COLUMNS } } } },
     });
     if (!hw) throw new NotFoundException('Uy vazifasi topilmadi');
+    await this.assertTeacherOwns(tenantId, hw, viewer);
     return hw;
   }
 
-  async getRoster(tenantId: string, id: string) {
-    const hw = await this.findOne(tenantId, id);
+  async getRoster(tenantId: string, id: string, viewer?: Viewer) {
+    const hw = await this.findOne(tenantId, id, viewer);
     const enrolled = await this.db.query.enrollments.findMany({
       where: eq(enrollments.groupId, hw.groupId),
-      with: { student: true },
+      with: { student: { columns: STUDENT_STAFF_COLUMNS } },
     });
 
     const completionMap = new Map<string, any>();
@@ -130,8 +138,8 @@ export class HomeworkService {
     return { success: true };
   }
 
-  async submit(tenantId: string, id: string, dto: SubmitHomeworkDto) {
-    await this.findOne(tenantId, id);
+  async submit(tenantId: string, id: string, dto: SubmitHomeworkDto, viewer?: Viewer) {
+    await this.findOne(tenantId, id, viewer);
     const student = await this.db.query.students.findFirst({
       where: and(eq(students.id, dto.studentId), eq(students.tenantId, tenantId)),
     });
@@ -231,7 +239,8 @@ export class HomeworkService {
     return result;
   }
 
-  async create(tenantId: string, dto: CreateHomeworkDto) {
+  async create(tenantId: string, dto: CreateHomeworkDto, viewer?: Viewer) {
+    await assertTeacherGroups(this.db, tenantId, viewer, dto.groupIds);
     if (dto.groupIds.length > 0) {
       const validGroups = await this.db.query.groups.findMany({
         where: and(inArray(groups.id, dto.groupIds), eq(groups.tenantId, tenantId)),
@@ -269,8 +278,8 @@ export class HomeworkService {
     return flat;
   }
 
-  async update(tenantId: string, id: string, dto: UpdateHomeworkDto) {
-    await this.findOne(tenantId, id);
+  async update(tenantId: string, id: string, dto: UpdateHomeworkDto, viewer?: Viewer) {
+    await this.findOne(tenantId, id, viewer);
     const [hw] = await this.db
       .update(homework)
       .set({
@@ -283,8 +292,8 @@ export class HomeworkService {
     return hw;
   }
 
-  async attachText(tenantId: string, id: string, title: string, content: string) {
-    const hw = await this.findOne(tenantId, id);
+  async attachText(tenantId: string, id: string, title: string, content: string, viewer?: Viewer) {
+    const hw = await this.findOne(tenantId, id, viewer);
     const pdf = await renderTextPdf({ title, subtitle: hw.group?.name ?? undefined, body: content });
     const stored = await saveGeneratedFile(pdf, '.pdf');
     const [updated] = await this.db
@@ -295,8 +304,8 @@ export class HomeworkService {
     return updated;
   }
 
-  async attach(tenantId: string, id: string, file: Express.Multer.File) {
-    await this.findOne(tenantId, id);
+  async attach(tenantId: string, id: string, file: Express.Multer.File, viewer?: Viewer) {
+    await this.findOne(tenantId, id, viewer);
     const [hw] = await this.db
       .update(homework)
       .set({ attachmentPath: file.filename, attachmentName: file.originalname, updatedAt: new Date() })
@@ -305,8 +314,8 @@ export class HomeworkService {
     return hw;
   }
 
-  async remove(tenantId: string, id: string) {
-    const hw = await this.findOne(tenantId, id);
+  async remove(tenantId: string, id: string, viewer?: Viewer) {
+    const hw = await this.findOne(tenantId, id, viewer);
     if (hw.attachmentPath) {
       await unlink(join(__dirname, '..', '..', 'uploads', hw.attachmentPath)).catch(() => undefined);
     }
@@ -314,17 +323,25 @@ export class HomeworkService {
     return { success: true };
   }
 
-  async getLeaderboard(tenantId: string, groupId?: string): Promise<LeaderboardEntry[]> {
+  async getLeaderboard(tenantId: string, groupId?: string, viewer?: Viewer): Promise<LeaderboardEntry[]> {
     let studentList: any[] = [];
     if (groupId) {
+      // The group must be this center's (and, for a teacher, their own).
+      const group = await this.db.query.groups.findFirst({ where: and(eq(groups.id, groupId), eq(groups.tenantId, tenantId)), columns: { id: true } });
+      if (!group) throw new NotFoundException('Guruh topilmadi');
+      await assertTeacherGroups(this.db, tenantId, viewer, [groupId]);
       const enrolled = await this.db.query.enrollments.findMany({
         where: eq(enrollments.groupId, groupId),
-        with: { student: true },
+        with: { student: { columns: { id: true, fullName: true } } },
       });
       studentList = enrolled.map((e) => e.student).filter(Boolean);
     } else {
+      const mine = await teacherGroupIds(this.db, tenantId, viewer?.role, viewer?.userId);
+      const onlyIds = mine ? await studentIdsInGroups(this.db, mine) : null;
+      if (onlyIds && onlyIds.length === 0) return [];
       studentList = await this.db.query.students.findMany({
-        where: and(eq(students.tenantId, tenantId), isNull(students.deletedAt)),
+        where: and(eq(students.tenantId, tenantId), isNull(students.deletedAt), ...(onlyIds ? [inArray(students.id, onlyIds)] : [])),
+        columns: { id: true, fullName: true },
       });
     }
 

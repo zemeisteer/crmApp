@@ -76,6 +76,10 @@ services:
       FRONTEND_URL: ${FRONTEND_URL:-https://${DOMAIN}}
       # Main domain: centers live on <sub>.${DOMAIN}; also limits CORS.
       ROOT_DOMAIN: ${DOMAIN:?DOMAIN must be defined}
+      # One proxy (nginx) in front: rate limits count the visitor's own
+      # address, not nginx's (backend/src/app.setup.ts). The API port is not
+      # published, so X-Forwarded-For can only come from nginx.
+      TRUST_PROXY: "1"
       # Optional external integrations
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}

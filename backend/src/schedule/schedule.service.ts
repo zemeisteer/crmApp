@@ -3,6 +3,7 @@ import { and, eq, ne, isNull } from 'drizzle-orm';
 import { DB, Database } from '../db/db.module';
 import { groups, rooms, schedules, teachers } from '../db/schema';
 import { TEACHER_PUBLIC_COLUMNS } from '../common/teacher-columns';
+import { assertTeacherGroups, Viewer } from '../common/teacher-scope';
 import { CreateRoomDto, UpdateRoomDto } from './dto/room.dto';
 import { CheckConflictDto, CreateScheduleDto, UpdateScheduleDto } from './dto/schedule.dto';
 
@@ -264,7 +265,10 @@ export class ScheduleService {
     return item;
   }
 
-  async createSchedule(tenantId: string, dto: CreateScheduleDto) {
+  async createSchedule(tenantId: string, dto: CreateScheduleDto, viewer?: Viewer) {
+    // A teacher plans lessons of their own groups only, and never past a clash.
+    await assertTeacherGroups(this.db, tenantId, viewer, [dto.groupId]);
+    if (viewer?.role === 'TEACHER') dto.allowCollision = false;
     // 1. Verify group exists and belongs to tenant
     const group = await this.db.query.groups.findFirst({
       where: and(eq(groups.id, dto.groupId), eq(groups.tenantId, tenantId), isNull(groups.deletedAt)),
@@ -330,8 +334,11 @@ export class ScheduleService {
     return this.findOneSchedule(tenantId, created.id);
   }
 
-  async updateSchedule(tenantId: string, id: string, dto: UpdateScheduleDto) {
+  async updateSchedule(tenantId: string, id: string, dto: UpdateScheduleDto, viewer?: Viewer) {
     const current = await this.findOneSchedule(tenantId, id);
+    // A teacher moves lessons of their own groups only (also the target group).
+    await assertTeacherGroups(this.db, tenantId, viewer, [current.groupId, dto.groupId ?? current.groupId]);
+    if (viewer?.role === 'TEACHER' && 'allowCollision' in dto) (dto as { allowCollision?: boolean }).allowCollision = false;
 
     if (dto.groupId) {
       const group = await this.db.query.groups.findFirst({

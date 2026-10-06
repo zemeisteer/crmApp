@@ -1,6 +1,29 @@
+import { ForbiddenException } from '@nestjs/common';
 import { and, eq, inArray, isNull } from 'drizzle-orm';
 import type { Database } from '../db/db.module';
 import { enrollments, groups, teachers } from '../db/schema';
+
+/** Who is asking, as the controllers pass it on (role of the current membership, user id). */
+export interface Viewer {
+  role?: string;
+  userId?: string;
+}
+
+/**
+ * A teacher may act only on their own groups: 403 unless every listed group
+ * is one they teach (an empty list or a missing group counts as not theirs).
+ * No restriction for any other role.
+ */
+export async function assertTeacherGroups(db: Database, tenantId: string, viewer: Viewer | undefined, groupIds: Array<string | null | undefined>) {
+  if (viewer?.role !== 'TEACHER') return;
+  const mine = new Set((await teacherGroupIds(db, tenantId, viewer.role, viewer.userId)) ?? []);
+  if (groupIds.length === 0 || groupIds.some((g) => !g || !mine.has(g))) {
+    throw new ForbiddenException('Bu guruh sizga biriktirilmagan');
+  }
+}
+
+// What staff screens need about a student; never the internal keys.
+export const STUDENT_STAFF_COLUMNS = { idempotencyKey: false, requestHash: false, telegramChatId: false } as const;
 
 // Teachers only work with their own groups: their attendance lists, QR
 // check-ins and student rosters are limited to groups where they are the

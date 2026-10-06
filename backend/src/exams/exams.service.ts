@@ -14,6 +14,7 @@ import {
 import { TelegramService } from '../telegram/telegram.service';
 import { AiService } from '../ai/ai.service';
 import { gradeAnswer, normalizeQuestion, publicQuestion, type TestQuestion } from '../common/test-questions';
+import { assertTeacherGroups, STUDENT_STAFF_COLUMNS, teacherGroupIds, Viewer } from '../common/teacher-scope';
 
 @Injectable()
 export class ExamsService {
@@ -23,16 +24,22 @@ export class ExamsService {
     private readonly ai: AiService,
   ) {}
 
-  findAll(tenantId: string, groupId?: string) {
+  async findAll(tenantId: string, groupId?: string, viewer?: Viewer) {
     const conditions = [eq(exams.tenantId, tenantId)];
     if (groupId) conditions.push(eq(exams.groupId, groupId));
+    // A teacher sees the exams of their own groups only.
+    const mine = await teacherGroupIds(this.db, tenantId, viewer?.role, viewer?.userId);
+    if (mine) {
+      if (mine.length === 0) return [];
+      conditions.push(inArray(exams.groupId, mine));
+    }
     return this.db.query.exams.findMany({
       where: and(...conditions),
       with: {
         group: true,
-        results: { with: { student: true } },
+        results: { with: { student: { columns: STUDENT_STAFF_COLUMNS } } },
         questions: true,
-        attempts: { with: { student: true } },
+        attempts: { with: { student: { columns: STUDENT_STAFF_COLUMNS } } },
       },
       orderBy: (e, { desc }) => desc(e.createdAt),
     });
@@ -43,16 +50,17 @@ export class ExamsService {
       where: and(eq(exams.id, id), eq(exams.tenantId, tenantId)),
       with: {
         group: true,
-        results: { with: { student: true } },
+        results: { with: { student: { columns: STUDENT_STAFF_COLUMNS } } },
         questions: { orderBy: [asc(examQuestions.order), asc(examQuestions.createdAt)] },
-        attempts: { with: { student: true }, orderBy: [desc(examAttempts.createdAt)] },
+        attempts: { with: { student: { columns: STUDENT_STAFF_COLUMNS } }, orderBy: [desc(examAttempts.createdAt)] },
       },
     });
     if (!exam) throw new NotFoundException('Imtihon topilmadi');
     return exam;
   }
 
-  async create(tenantId: string, dto: CreateExamDto) {
+  async create(tenantId: string, dto: CreateExamDto, viewer?: Viewer) {
+    await assertTeacherGroups(this.db, tenantId, viewer, dto.groupIds);
     if (dto.groupIds.length > 0) {
       const validGroups = await this.db.query.groups.findMany({
         where: and(inArray(groups.id, dto.groupIds), eq(groups.tenantId, tenantId)),
@@ -402,7 +410,7 @@ export class ExamsService {
     await this.findOne(tenantId, examId);
     return this.db.query.examAttempts.findMany({
       where: and(eq(examAttempts.tenantId, tenantId), eq(examAttempts.examId, examId)),
-      with: { student: true },
+      with: { student: { columns: STUDENT_STAFF_COLUMNS } },
       orderBy: [desc(examAttempts.createdAt)],
     });
   }
