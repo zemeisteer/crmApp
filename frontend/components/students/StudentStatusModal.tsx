@@ -16,7 +16,7 @@ const STATUSES: Array<{ id: Status; icon: string }> = [
 ];
 
 export const STATUS_STYLE: Record<Status, { color: string; background: string }> = {
-  ACTIVE: { color: "#1FA463", background: "#E9F8EF" },
+  ACTIVE: { color: "#167A48", background: "#E9F8EF" },
   PAUSED: { color: "#B45309", background: "#FEF3C7" },
   GRADUATED: { color: "#4F46E5", background: "#EEF0FF" },
   LEFT: { color: "#6B6E78", background: "#F2F1EC" },

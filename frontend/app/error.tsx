@@ -16,7 +16,7 @@ export default function GlobalError({ error, reset }: { error: Error & { digest?
       <div style={{ maxWidth: 420, textAlign: "center", background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 32 }}>
         <div style={{ fontSize: 40 }}>⚠️</div>
         <h1 style={{ fontSize: 18, fontWeight: 800, marginTop: 12 }}>{t("err.title")}</h1>
-        <p style={{ fontSize: 13.5, color: "#8A8D96", marginTop: 8, lineHeight: 1.6 }}>
+        <p style={{ fontSize: 13.5, color: "#686B75", marginTop: 8, lineHeight: 1.6 }}>
           {t("err.body")}
         </p>
         <button

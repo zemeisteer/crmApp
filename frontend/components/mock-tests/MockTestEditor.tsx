@@ -126,7 +126,7 @@ export default function MockTestEditor({ test, onSaved }: { test: MockTest; onSa
       <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
         {(Object.keys(SECTION_ICON) as MockSection[]).map((s) => (
           <button key={s} type="button" onClick={() => setSection(s)} style={{ border: `1.5px solid ${section === s ? ACCENT : "#EAE8E2"}`, background: section === s ? "#EEF0FF" : "#fff", color: section === s ? ACCENT : "#4A4E58", borderRadius: 11, padding: "9px 14px", fontWeight: 700, fontSize: 13.5, cursor: "pointer" }}>
-            {SECTION_ICON[s]} {t(sectionKey(s))} <span style={{ color: "#8A8D96", fontWeight: 600 }}>{counts[s]}</span>
+            {SECTION_ICON[s]} {t(sectionKey(s))} <span style={{ color: "#686B75", fontWeight: 600 }}>{counts[s]}</span>
           </button>
         ))}
       </div>
@@ -155,7 +155,7 @@ export default function MockTestEditor({ test, onSaved }: { test: MockTest; onSa
                 <input type="file" accept="audio/*" hidden onChange={(e) => upload(e.target.files?.[0], (path) => edit((c) => { c.listening.audioPath = path; return c; }))} />
               </label>
             )}
-            <span style={{ fontSize: 12, color: "#8A8D96" }}>{t("mock.sectionAudioHint")}</span>
+            <span style={{ fontSize: 12, color: "#686B75" }}>{t("mock.sectionAudioHint")}</span>
           </div>
           {content.listening.parts.map((p, pi) => (
             <div key={pi} style={{ ...card, display: "grid", gap: 10 }}>
@@ -313,9 +313,9 @@ export function QuestionsEditor({ questions, onChange, start = 0 }: { questions:
       {questions.map((q, i) => (
         <div key={i} style={{ border: `1px solid ${hasAnswer(q) ? "#EAE8E2" : "#FECACA"}`, borderRadius: 10, overflow: "hidden" }}>
           <div style={{ display: "flex", gap: 8, alignItems: "center", padding: "8px 10px", background: open === i ? "#F7F6FF" : "#fff", cursor: "pointer" }} onClick={() => setOpen(open === i ? null : i)}>
-            <b style={{ width: 24, color: "#8A8D96" }}>{start + i + 1}.</b>
-            <span style={{ flex: 1, minWidth: 0, fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{q.prompt || <i style={{ color: "#8A8D96" }}>{t("mock.emptyQuestion")}</i>}</span>
-            <span style={{ fontSize: 11, color: "#8A8D96" }}>{q.type}</span>
+            <b style={{ width: 24, color: "#686B75" }}>{start + i + 1}.</b>
+            <span style={{ flex: 1, minWidth: 0, fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{q.prompt || <i style={{ color: "#686B75" }}>{t("mock.emptyQuestion")}</i>}</span>
+            <span style={{ fontSize: 11, color: "#686B75" }}>{q.type}</span>
             {!hasAnswer(q) && <span style={{ fontSize: 11, color: "#B23A47", fontWeight: 700 }}>{t("mock.noKey")}</span>}
             <button type="button" onClick={(e) => { e.stopPropagation(); onChange(questions.filter((_, j) => j !== i)); setOpen(null); }} style={{ background: "none", border: "none", color: "#B23A47", cursor: "pointer" }}>✕</button>
           </div>

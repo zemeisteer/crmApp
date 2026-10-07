@@ -73,9 +73,9 @@ export default function PortalPractice({ readOnly = false }: { readOnly?: boolea
       )}
       {error && <div role="alert" style={{ ...card, color: "#B23A47", fontSize: 13 }}>{error}</div>}
       {!data ? (
-        <div style={{ ...card, color: "#8A8D96" }}>{t("common.loading")}</div>
+        <div style={{ ...card, color: "#686B75" }}>{t("common.loading")}</div>
       ) : data.directions.length === 0 ? (
-        <div style={{ ...card, textAlign: "center", color: "#8A8D96", padding: "36px 20px" }}>
+        <div style={{ ...card, textAlign: "center", color: "#686B75", padding: "36px 20px" }}>
           <div style={{ fontSize: 34 }}>🎯</div>
           {t("pmk.noDirections")}
         </div>
@@ -100,7 +100,7 @@ export default function PortalPractice({ readOnly = false }: { readOnly?: boolea
         ))
       )}
       {data && !data.aiFeedback && data.directions.some((d) => d.tests.length > 0) && (
-        <div style={{ fontSize: 12.5, color: "#8A8D96" }}>ℹ️ {t("pmk.noAi")}</div>
+        <div style={{ fontSize: 12.5, color: "#686B75" }}>ℹ️ {t("pmk.noAi")}</div>
       )}
     </div>
   );
@@ -126,7 +126,7 @@ function TestCardView({ x, readOnly, busy, onOpen }: { x: TestCard; readOnly: bo
           {x.recommended && <span style={pill("#E9F8EF", "#1FA463")}>✓ {t("pmk.forYou")}</span>}
         </div>
         <div style={{ fontSize: 16, fontWeight: 800 }}>{x.title}</div>
-        <div style={{ fontSize: 12, color: "#8A8D96", marginTop: 2 }}>
+        <div style={{ fontSize: 12, color: "#686B75", marginTop: 2 }}>
           ⏱ ~{minutes} {t("pmk.min")}{practice ? ` · ${practice.length} ${t("prx.sections")}` : ""}
         </div>
       </div>
@@ -163,7 +163,7 @@ function TestCardView({ x, readOnly, busy, onOpen }: { x: TestCard; readOnly: bo
       )}
       <div style={{ display: "flex", gap: 8, marginTop: "auto", flexWrap: "wrap" }}>
         {!readOnly && !x.open && (
-          <div style={{ flex: 1, fontSize: 12.5, fontWeight: 700, color: "#8A8D96", background: "#F7F7F5", borderRadius: 11, padding: "10px 12px", textAlign: "center" }}>🔒 {t("pmk.locked")}</div>
+          <div style={{ flex: 1, fontSize: 12.5, fontWeight: 700, color: "#686B75", background: "#F7F7F5", borderRadius: 11, padding: "10px 12px", textAlign: "center" }}>🔒 {t("pmk.locked")}</div>
         )}
         {!readOnly && x.open && (
           <button type="button" disabled={busy} onClick={() => onOpen()} style={btn(true)}>

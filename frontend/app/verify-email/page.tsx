@@ -37,9 +37,9 @@ function VerifyEmailContent() {
   return (
     <div style={{ textAlign: "center", display: "flex", flexDirection: "column", gap: 14 }}>
       <h1 style={{ fontSize: 20, fontWeight: 800 }}>{t("verifyEmail.title")}</h1>
-      {status === "loading" && <div style={{ color: "#8A8D96", fontSize: 14 }}>{t("verifyEmail.verifying")}</div>}
+      {status === "loading" && <div style={{ color: "#686B75", fontSize: 14 }}>{t("verifyEmail.verifying")}</div>}
       {status === "ok" && (
-        <div style={{ background: "#E9F8EF", color: "#1FA463", fontSize: 13.5, fontWeight: 600, padding: "12px 16px", borderRadius: 10 }}>{message}</div>
+        <div style={{ background: "#E9F8EF", color: "#167A48", fontSize: 13.5, fontWeight: 600, padding: "12px 16px", borderRadius: 10 }}>{message}</div>
       )}
       {status === "error" && (
         <div style={{ background: "#FDEBEC", color: "#B23A47", fontSize: 13.5, fontWeight: 600, padding: "12px 16px", borderRadius: 10 }}>{message}</div>
@@ -56,7 +56,7 @@ export default function VerifyEmailPage() {
   return (
     <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#F7F7F5" }}>
       <div style={{ width: 380, background: "#fff", borderRadius: 16, padding: 32 }}>
-        <Suspense fallback={<div style={{ color: "#8A8D96", fontSize: 14 }}>{t("common.loading")}</div>}>
+        <Suspense fallback={<div style={{ color: "#686B75", fontSize: 14 }}>{t("common.loading")}</div>}>
           <VerifyEmailContent />
         </Suspense>
       </div>

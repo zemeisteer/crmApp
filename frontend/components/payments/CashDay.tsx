@@ -86,13 +86,13 @@ export default function CashDayPanel({ canClose }: { canClose: boolean }) {
       <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
         <span style={{ fontSize: 12.5, fontWeight: 700, color: "#4A4E58" }}>{t("cash.day")}</span>
         <DatePicker value={date} onChange={(v) => v && setDate(v)} style={{ width: 200 }} />
-        <span style={{ fontSize: 12, color: "#8A8D96" }}>{clock.tz}</span>
+        <span style={{ fontSize: 12, color: "#686B75" }}>{clock.tz}</span>
       </div>
 
       {error !== null ? (
         <LoadError message={error} onRetry={load} />
       ) : !data || data.date !== date ? (
-        <div style={{ color: "#8A8D96", fontSize: 14 }}>{t("common.loading")}</div>
+        <div style={{ color: "#686B75", fontSize: 14 }}>{t("common.loading")}</div>
       ) : (
         <>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(200px, 100%), 1fr))", gap: 14 }}>
@@ -139,17 +139,17 @@ export default function CashDayPanel({ canClose }: { canClose: boolean }) {
                 <button type="submit" className="btn" disabled={closing} style={{ background: ACCENT, color: "#fff", border: "none", fontWeight: 700, fontSize: 13.5, padding: "10px 16px", borderRadius: 10, alignSelf: "flex-start" }}>
                   {closing ? t("common.saving") : t("cash.closeBtn")}
                 </button>
-                <div style={{ fontSize: 11.5, color: "#8A8D96" }}>{t("cash.closeHint")}</div>
+                <div style={{ fontSize: 11.5, color: "#686B75" }}>{t("cash.closeHint")}</div>
               </form>
             ) : (
-              <div style={{ fontSize: 13, color: "#8A8D96" }}>{t("cash.closeHint")}</div>
+              <div style={{ fontSize: 13, color: "#686B75" }}>{t("cash.closeHint")}</div>
             )}
           </section>
 
           <section style={card}>
             <div style={{ fontSize: 14, fontWeight: 800, marginBottom: 8 }}>{t("cash.byCashier")}</div>
             {data.byCashier.length === 0 ? (
-              <div style={{ fontSize: 13, color: "#8A8D96" }}>{t("cash.none")}</div>
+              <div style={{ fontSize: 13, color: "#686B75" }}>{t("cash.none")}</div>
             ) : (
               <div style={{ overflowX: "auto" }}>
                 <table>
@@ -174,7 +174,7 @@ export default function CashDayPanel({ canClose }: { canClose: boolean }) {
           <section style={card}>
             <div style={{ fontSize: 14, fontWeight: 800, marginBottom: 8 }}>{t("cash.payments")}</div>
             {data.payments.length === 0 ? (
-              <div style={{ fontSize: 13, color: "#8A8D96" }}>{t("cash.none")}</div>
+              <div style={{ fontSize: 13, color: "#686B75" }}>{t("cash.none")}</div>
             ) : (
               <div style={{ overflowX: "auto" }}>
                 <table>
@@ -185,7 +185,7 @@ export default function CashDayPanel({ canClose }: { canClose: boolean }) {
                         <td style={{ fontWeight: 600 }}>{p.studentName}</td>
                         <td style={{ fontWeight: 700 }}>{money(p.amount)}</td>
                         <td>{p.method === "CASH" ? t("cash.cash") : METHOD_LABEL[p.method] ?? p.method}</td>
-                        <td style={{ color: "#8A8D96" }}>{p.recordedByName ?? t("cash.unknownCashier")}</td>
+                        <td style={{ color: "#686B75" }}>{p.recordedByName ?? t("cash.unknownCashier")}</td>
                         <td>{p.afterClosing && <span className="badge badge-warning">{t("cash.afterClosing")}</span>}</td>
                       </tr>
                     ))}
@@ -198,7 +198,7 @@ export default function CashDayPanel({ canClose }: { canClose: boolean }) {
           <section style={card}>
             <div style={{ fontSize: 14, fontWeight: 800, marginBottom: 8 }}>{t("cash.expenses")}</div>
             {data.expenses.length === 0 ? (
-              <div style={{ fontSize: 13, color: "#8A8D96" }}>{t("cash.none")}</div>
+              <div style={{ fontSize: 13, color: "#686B75" }}>{t("cash.none")}</div>
             ) : (
               <div style={{ overflowX: "auto" }}>
                 <table>
@@ -229,7 +229,7 @@ export default function CashDayPanel({ canClose }: { canClose: boolean }) {
                         <td>{money(h.expectedCash)}</td>
                         <td>{money(h.countedCash)}</td>
                         <td style={{ color: diffColor(h.difference), fontWeight: 700 }}>{h.difference > 0 ? "+" : ""}{money(h.difference)}</td>
-                        <td style={{ color: "#8A8D96" }}>{h.closedBy ?? "—"}</td>
+                        <td style={{ color: "#686B75" }}>{h.closedBy ?? "—"}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -246,9 +246,9 @@ export default function CashDayPanel({ canClose }: { canClose: boolean }) {
 function Tile({ label, value, sub, danger, accent }: { label: string; value: string; sub?: string; danger?: boolean; accent?: boolean }) {
   return (
     <div style={{ background: accent ? "#ECEBFB" : "#fff", border: `1px solid ${accent ? "#D7D3F8" : "#EAE8E2"}`, borderRadius: 14, padding: 16 }}>
-      <div style={{ fontSize: 12, color: accent ? ACCENT : "#8A8D96" }}>{label}</div>
+      <div style={{ fontSize: 12, color: accent ? ACCENT : "#686B75" }}>{label}</div>
       <div style={{ fontSize: 22, fontWeight: 800, fontFamily: "'Manrope', sans-serif", marginTop: 4, color: danger ? "#B23A47" : accent ? ACCENT : "#181A1F" }}>{value}</div>
-      {sub && <div style={{ fontSize: 11.5, color: "#8A8D96", marginTop: 2 }}>{sub}</div>}
+      {sub && <div style={{ fontSize: 11.5, color: "#686B75", marginTop: 2 }}>{sub}</div>}
     </div>
   );
 }

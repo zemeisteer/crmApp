@@ -13,7 +13,7 @@ const CRITERIA: Record<string, string> = {
 };
 
 export function bandColor(b: number | null | undefined) {
-  if (b == null) return "#8A8D96";
+  if (b == null) return "#686B75";
   return b >= 7 ? "#1FA463" : b >= 5.5 ? "#4F46E5" : b >= 4 ? "#B45309" : "#DC2626";
 }
 
@@ -37,7 +37,7 @@ export default function FeedbackView({ fb }: { fb: ExaminerFeedback }) {
       {fb.summary && <div style={{ fontSize: 13.5, lineHeight: 1.55, color: "#33363D" }}>{fb.summary}</div>}
       {fb.strengths.length > 0 && (
         <div>
-          <div style={{ fontSize: 12, fontWeight: 800, color: "#1FA463", marginBottom: 4 }}>✓ {t("mock.strengths")}</div>
+          <div style={{ fontSize: 12, fontWeight: 800, color: "#167A48", marginBottom: 4 }}>✓ {t("mock.strengths")}</div>
           <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, lineHeight: 1.55 }}>{fb.strengths.map((s, i) => <li key={i}>{s}</li>)}</ul>
         </div>
       )}
@@ -53,7 +53,7 @@ export default function FeedbackView({ fb }: { fb: ExaminerFeedback }) {
           {fb.corrections.map((c, i) => (
             <div key={i} style={{ fontSize: 13, background: "#F7F7F5", borderRadius: 10, padding: "8px 10px", lineHeight: 1.5 }}>
               <div style={{ color: "#B23A47", textDecoration: "line-through" }}>{c.original}</div>
-              <div style={{ color: "#1FA463" }}>{c.better}</div>
+              <div style={{ color: "#167A48" }}>{c.better}</div>
             </div>
           ))}
         </div>

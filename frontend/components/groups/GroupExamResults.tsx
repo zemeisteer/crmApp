@@ -55,7 +55,7 @@ export default function GroupExamResults({ groupId, students }: { groupId: strin
     };
   }, [grid, exams]);
 
-  const pctColor = (p: number | null) => (p === null ? "#8A8D96" : p >= 80 ? "#1FA463" : p >= 60 ? "#D97706" : "#B23A47");
+  const pctColor = (p: number | null) => (p === null ? "#686B75" : p >= 80 ? "#1FA463" : p >= 60 ? "#D97706" : "#B23A47");
 
   return (
     <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, overflow: "hidden" }}>
@@ -73,18 +73,18 @@ export default function GroupExamResults({ groupId, students }: { groupId: strin
           { label: t("groupExams.passRate"), value: summary.passRate === null ? "—" : `${summary.passRate}%`, color: pctColor(summary.passRate) },
         ].map((c) => (
           <div key={c.label} style={{ background: "#F7F6F2", borderRadius: 12, padding: "10px 14px" }}>
-            <div style={{ fontSize: 11.5, color: "#8A8D96", fontWeight: 600 }}>{c.label}</div>
+            <div style={{ fontSize: 11.5, color: "#686B75", fontWeight: 600 }}>{c.label}</div>
             <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 800, fontSize: 20, color: c.color }}>{c.value}</div>
           </div>
         ))}
       </div>
 
       {exams === null ? (
-        <div style={{ padding: "0 20px 20px", fontSize: 13, color: "#8A8D96" }}>…</div>
+        <div style={{ padding: "0 20px 20px", fontSize: 13, color: "#686B75" }}>…</div>
       ) : columns.length === 0 ? (
-        <div style={{ padding: "0 20px 20px", fontSize: 13, color: "#8A8D96" }}>{t("groupExams.empty")}</div>
+        <div style={{ padding: "0 20px 20px", fontSize: 13, color: "#686B75" }}>{t("groupExams.empty")}</div>
       ) : students.length === 0 ? (
-        <div style={{ padding: "0 20px 20px", fontSize: 13, color: "#8A8D96" }}>{t("groupExams.noStudents")}</div>
+        <div style={{ padding: "0 20px 20px", fontSize: 13, color: "#686B75" }}>{t("groupExams.noStudents")}</div>
       ) : (
         <div style={{ overflowX: "auto" }}>
           <table className="table" style={{ minWidth: 520 }}>

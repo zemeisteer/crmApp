@@ -121,7 +121,7 @@ export default function PortalExams({ onFinished, readOnly = false }: { onFinish
               {e.taken ? (
                 <span style={{ fontSize: 13, fontWeight: 700, color: "#15803D" }}>✓ {e.score}/{e.maxScore}</span>
               ) : (
-                readOnly ? <span style={{ fontSize: 12.5, color: "#8A8D96" }}>{t("ptp.studentTakes")}</span> : <button type="button" onClick={() => start(e.id)} disabled={busy} style={primary}>{t("pex.start")} →</button>
+                readOnly ? <span style={{ fontSize: 12.5, color: "#686B75" }}>{t("ptp.studentTakes")}</span> : <button type="button" onClick={() => start(e.id)} disabled={busy} style={primary}>{t("pex.start")} →</button>
               )}
             </div>
           ))}

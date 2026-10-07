@@ -106,7 +106,7 @@ export function AnnouncementsContent() {
       return;
     }
     if (targetAudience === "GROUP" && !targetGroupId) {
-      setError("Iltimos, guruhni tanlang");
+      setError(t("msg.selectGroup"));
       return;
     }
 

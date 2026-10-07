@@ -37,11 +37,11 @@ export default function AccessMatrixPanel() {
   return (
     <section style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 22, marginTop: 20, maxWidth: 980 }} aria-labelledby="acc-title">
       <div id="acc-title" style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 700, fontSize: 15, marginBottom: 4 }}>{t("acc.title")}</div>
-      <div style={{ fontSize: 12.5, color: "#8A8D96", marginBottom: 16, lineHeight: 1.5 }}>{t("acc.hint")}</div>
+      <div style={{ fontSize: 12.5, color: "#686B75", marginBottom: 16, lineHeight: 1.5 }}>{t("acc.hint")}</div>
       {error !== null ? (
         <LoadError message={error} onRetry={load} />
       ) : !data ? (
-        <div style={{ fontSize: 13, color: "#8A8D96" }}>{t("common.loading")}</div>
+        <div style={{ fontSize: 13, color: "#686B75" }}>{t("common.loading")}</div>
       ) : (
         <div style={{ overflowX: "auto" }}>
           <table aria-label={t("acc.title")}>
@@ -67,12 +67,12 @@ export default function AccessMatrixPanel() {
                     <tr key={c.key}>
                       <th scope="row" style={{ textAlign: "left", fontWeight: 600, fontSize: 13 }}>
                         {t(`acc.cap.${c.key}` as TranslationKey)}
-                        {c.note && <div style={{ fontSize: 11, color: "#8A8D96", fontWeight: 500 }}>{t(`acc.note.${c.note}` as TranslationKey)}</div>}
+                        {c.note && <div style={{ fontSize: 11, color: "#686B75", fontWeight: 500 }}>{t(`acc.note.${c.note}` as TranslationKey)}</div>}
                       </th>
                       {data.roles.map((r) => (
                         <td key={r} style={{ textAlign: "center" }}>
                           {c.allowed[r] ? (
-                            <span aria-label="✓" style={{ color: "#1FA463", fontWeight: 800 }}>✓</span>
+                            <span aria-label="✓" style={{ color: "#167A48", fontWeight: 800 }}>✓</span>
                           ) : (
                             <span aria-label="—" style={{ color: "#C9C7C1" }}>—</span>
                           )}

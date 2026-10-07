@@ -61,7 +61,7 @@ export default function DirectorReport({ month, onMonth, onSms }: { month: strin
     <div style={{ display: "grid", gap: 16 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
         <MonthPicker value={month} onChange={onMonth} style={{ width: 200 }} />
-        {loading && <span style={{ fontSize: 12, color: "#8A8D96" }}>{t("common.loading")}</span>}
+        {loading && <span style={{ fontSize: 12, color: "#686B75" }}>{t("common.loading")}</span>}
       </div>
       {error && <div role="alert" style={{ background: "#FEE2E2", color: "#B91C1C", fontWeight: 600, fontSize: 13, padding: "12px 16px", borderRadius: 12 }}>{error}</div>}
 
@@ -81,7 +81,7 @@ export default function DirectorReport({ month, onMonth, onSms }: { month: strin
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 10 }}>
               <div>
                 <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 700, fontSize: 15 }}>{t("dir.trendTitle")}</div>
-                <div style={{ fontSize: 12.5, color: "#8A8D96" }}>{t("dir.trendHint")}</div>
+                <div style={{ fontSize: 12.5, color: "#686B75" }}>{t("dir.trendHint")}</div>
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 14, fontSize: 12.5, color: "#4A4E58" }}>
                 <Legend color={COLLECTED} label={t("dir.collected")} />
@@ -100,7 +100,7 @@ export default function DirectorReport({ month, onMonth, onSms }: { month: strin
               <div style={{ padding: "16px 18px 10px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
                 <div>
                   <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 700, fontSize: 15 }}>💸 {t("dir.debtorsTitle")}</div>
-                  <div style={{ fontSize: 12.5, color: "#8A8D96" }}>{t("dir.debtorsHint")}</div>
+                  <div style={{ fontSize: 12.5, color: "#686B75" }}>{t("dir.debtorsHint")}</div>
                 </div>
                 <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 600, cursor: "pointer" }}>
                   <input type="checkbox" checked={onlyMulti} onChange={(e) => setOnlyMulti(e.target.checked)} style={{ accentColor: COLLECTED }} />
@@ -108,14 +108,14 @@ export default function DirectorReport({ month, onMonth, onSms }: { month: strin
                 </label>
               </div>
               {debtors.length === 0 ? (
-                <div style={{ padding: "8px 18px 20px", fontSize: 13.5, color: "#1FA463", fontWeight: 600 }}>✓ {t("dir.noDebtors")}</div>
+                <div style={{ padding: "8px 18px 20px", fontSize: 13.5, color: "#167A48", fontWeight: 600 }}>✓ {t("dir.noDebtors")}</div>
               ) : (
                 <div>
                   {debtors.map((d) => (
                     <div key={d.studentId} style={{ display: "flex", alignItems: "center", gap: 10, padding: "11px 18px", borderTop: "1px solid #F2F1EC" }}>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <Link href={`/students/${d.studentId}`} style={{ fontSize: 14, fontWeight: 700, color: "#181A1F", textDecoration: "none" }}>{d.fullName}</Link>
-                        <div style={{ fontSize: 12, color: "#8A8D96", marginTop: 2, display: "flex", flexWrap: "wrap", gap: "2px 10px" }}>
+                        <div style={{ fontSize: 12, color: "#686B75", marginTop: 2, display: "flex", flexWrap: "wrap", gap: "2px 10px" }}>
                           {d.groups.length > 0 && <span>{d.groups.join(", ")}</span>}
                           <span>{t("dir.lastPaid")}: {d.lastPaymentAt ? formatDate(d.lastPaymentAt, lang, "short") : "—"}</span>
                           {d.status !== "ACTIVE" && <span style={{ color: "#B45309" }}>{t(`stStatus.${d.status}` as TranslationKey)}</span>}
@@ -144,14 +144,14 @@ export default function DirectorReport({ month, onMonth, onSms }: { month: strin
             {/* Churn */}
             <div style={card}>
               <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 700, fontSize: 15 }}>🚪 {t("dir.churnTitle")}</div>
-              <div style={{ fontSize: 12.5, color: "#8A8D96", marginBottom: 12 }}>{t("dir.churnHint")}</div>
+              <div style={{ fontSize: 12.5, color: "#686B75", marginBottom: 12 }}>{t("dir.churnHint")}</div>
               <div style={{ display: "flex", gap: 10, marginBottom: 14 }}>
                 <div style={{ flex: 1, background: "#F7F6F2", borderRadius: 12, padding: "10px 14px" }}>
-                  <div style={{ fontSize: 11.5, color: "#8A8D96", fontWeight: 600 }}>{t("dir.leftThisMonth")}</div>
+                  <div style={{ fontSize: 11.5, color: "#686B75", fontWeight: 600 }}>{t("dir.leftThisMonth")}</div>
                   <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 800, fontSize: 20 }}>{data.churn.left}</div>
                 </div>
                 <div style={{ flex: 1, background: "#F7F6F2", borderRadius: 12, padding: "10px 14px" }}>
-                  <div style={{ fontSize: 11.5, color: "#8A8D96", fontWeight: 600 }}>{t("dir.churn")}</div>
+                  <div style={{ fontSize: 11.5, color: "#686B75", fontWeight: 600 }}>{t("dir.churn")}</div>
                   <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 800, fontSize: 20 }}>{data.churn.rate === null ? "—" : `${data.churn.rate}%`}</div>
                 </div>
               </div>
@@ -169,7 +169,7 @@ export default function DirectorReport({ month, onMonth, onSms }: { month: strin
                 </div>
               )}
               {Object.keys(data.churn.reasonsLast3Months).includes("UNKNOWN") && (
-                <div style={{ marginTop: 10, fontSize: 12, color: "#8A8D96", lineHeight: 1.5 }}>{t("dir.reasonTip")}</div>
+                <div style={{ marginTop: 10, fontSize: 12, color: "#686B75", lineHeight: 1.5 }}>{t("dir.reasonTip")}</div>
               )}
             </div>
           </div>
@@ -182,9 +182,9 @@ export default function DirectorReport({ month, onMonth, onSms }: { month: strin
 function Tile({ label, value, sub, subColor, valueColor }: { label: string; value: string; sub?: string; subColor?: string; valueColor?: string }) {
   return (
     <div style={{ ...card, padding: "14px 16px" }}>
-      <div style={{ fontSize: 12, color: "#8A8D96", fontWeight: 600 }}>{label}</div>
+      <div style={{ fontSize: 12, color: "#686B75", fontWeight: 600 }}>{label}</div>
       <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 800, fontSize: 21, marginTop: 2, color: valueColor ?? "#181A1F", overflowWrap: "anywhere" }}>{value}</div>
-      {sub && <div style={{ fontSize: 12, color: subColor ?? "#8A8D96", marginTop: 2, fontWeight: subColor ? 700 : 500 }}>{sub}</div>}
+      {sub && <div style={{ fontSize: 12, color: subColor ?? "#686B75", marginTop: 2, fontWeight: subColor ? 700 : 500 }}>{sub}</div>}
     </div>
   );
 }
@@ -221,7 +221,7 @@ function TrendChart({ data, monthName, t }: { data: DirectorReportData; monthNam
         {ticks.map((v) => (
           <g key={v}>
             <line x1={pad.l} x2={W - pad.r} y1={y(v)} y2={y(v)} stroke="#EFEEE9" strokeWidth={1} />
-            <text x={pad.l - 8} y={y(v) + 4} textAnchor="end" fontSize="11" fill="#8A8D96">{short(v, t)}</text>
+            <text x={pad.l - 8} y={y(v) + 4} textAnchor="end" fontSize="11" fill="#686B75">{short(v, t)}</text>
           </g>
         ))}
         {rows.map((r, i) => {
@@ -235,7 +235,7 @@ function TrendChart({ data, monthName, t }: { data: DirectorReportData; monthNam
               <rect x={pad.l + i * bw} y={pad.t} width={bw} height={H - pad.t - pad.b} fill={hover === i ? "#F7F6F2" : "transparent"} />
               {r.collected > 0 && <path d={roundTop(x, paidTop, barW, base - paidTop, unpaid > 0 ? 0 : 4)} fill={COLLECTED} />}
               {unpaid > 0 && <path d={roundTop(x, unpaidTop, barW, Math.max(0, paidTop - unpaidTop - (r.collected > 0 ? 2 : 0)), 4)} fill={UNPAID} />}
-              <text x={pad.l + i * bw + bw / 2} y={H - 8} textAnchor="middle" fontSize="11" fill={i === rows.length - 1 ? "#181A1F" : "#8A8D96"} fontWeight={i === rows.length - 1 ? 700 : 400}>
+              <text x={pad.l + i * bw + bw / 2} y={H - 8} textAnchor="middle" fontSize="11" fill={i === rows.length - 1 ? "#181A1F" : "#686B75"} fontWeight={i === rows.length - 1 ? 700 : 400}>
                 {monthName(r.month)}
               </text>
             </g>
@@ -257,7 +257,7 @@ function TrendChart({ data, monthName, t }: { data: DirectorReportData; monthNam
 
 function TrendTable({ data, monthName, t }: { data: DirectorReportData; monthName: (m: string) => string; t: T }) {
   const profit = data.trend.some((r) => typeof r.net === "number");
-  const th: React.CSSProperties = { padding: "8px 10px", fontSize: 11.5, color: "#8A8D96", textAlign: "right", whiteSpace: "nowrap", fontWeight: 700 };
+  const th: React.CSSProperties = { padding: "8px 10px", fontSize: 11.5, color: "#686B75", textAlign: "right", whiteSpace: "nowrap", fontWeight: 700 };
   const td: React.CSSProperties = { padding: "8px 10px", fontSize: 12.5, textAlign: "right", whiteSpace: "nowrap", borderTop: "1px solid #F2F1EC" };
   return (
     <div style={{ overflowX: "auto" }}>

@@ -80,12 +80,12 @@ export default function BranchesManager() {
   return (
     <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 22, maxWidth: 760 }}>
       <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 700, fontSize: 15, marginBottom: 4 }}>{t("settings.branches")}</div>
-      <div style={{ fontSize: 12.5, color: "#8A8D96", marginBottom: 16 }}>{t("br.hint")}</div>
+      <div style={{ fontSize: 12.5, color: "#686B75", marginBottom: 16 }}>{t("br.hint")}</div>
 
       {branches === null ? (
-        <div style={{ fontSize: 13, color: "#8A8D96" }}>{t("common.loading")}</div>
+        <div style={{ fontSize: 13, color: "#686B75" }}>{t("common.loading")}</div>
       ) : branches.length === 0 ? (
-        <div style={{ fontSize: 13, color: "#8A8D96", border: "1px dashed #EAE8E2", borderRadius: 12, padding: 16, textAlign: "center" }}>{t("settings.noBranches")}</div>
+        <div style={{ fontSize: 13, color: "#686B75", border: "1px dashed #EAE8E2", borderRadius: 12, padding: 16, textAlign: "center" }}>{t("settings.noBranches")}</div>
       ) : (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 10, marginBottom: 16 }}>
           {branches.map((b) => (

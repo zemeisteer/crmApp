@@ -66,7 +66,7 @@ export default function MaterialActions({ material, groups, defaultGroupId }: { 
           {busy === "pdf" ? t("common.loading") : `⬇️ ${t("aim.downloadPdf")}`}
         </button>
       </div>
-      <div style={{ fontSize: 11.5, color: "#8A8D96" }}>{t("aim.visibilityHint")}</div>
+      <div style={{ fontSize: 11.5, color: "#686B75" }}>{t("aim.visibilityHint")}</div>
       {notice && <div style={{ fontSize: 12.5, fontWeight: 600, color: "#15803D", background: "#ECFDF5", borderRadius: 8, padding: "8px 12px" }}>✓ {notice}</div>}
       {error && <div role="alert" style={{ fontSize: 12.5, fontWeight: 600, color: "#B23A47", background: "#FDEBEC", borderRadius: 8, padding: "8px 12px" }}>{error}</div>}
 
@@ -215,7 +215,7 @@ function ExamModal({ material, onClose, onDone }: { material: MaterialLike; onCl
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         <div style={{ fontSize: 13, color: "#4A4E58", lineHeight: 1.5 }}>{t("aim.toExamHint")}</div>
         {exams === null ? (
-          <div style={{ fontSize: 13, color: "#8A8D96" }}>{t("common.loading")}</div>
+          <div style={{ fontSize: 13, color: "#686B75" }}>{t("common.loading")}</div>
         ) : exams.length === 0 ? (
           <div style={{ fontSize: 13, color: "#B23A47" }}>{t("aim.noExams")}</div>
         ) : (

@@ -137,7 +137,7 @@ function LeadsContent() {
   if (!canRead) {
     return (
       <div className="adm-page">
-        <div style={{ ...card, color: "#8A8D96" }}>{t("adm.noPermission")}</div>
+        <div style={{ ...card, color: "#686B75" }}>{t("adm.noPermission")}</div>
       </div>
     );
   }
@@ -159,7 +159,7 @@ function LeadsContent() {
       title={hint}
       style={{ ...card, textAlign: "left", cursor: onClick ? "pointer" : "default", padding: 16 }}
     >
-      <div style={{ fontSize: 12, color: "#8A8D96" }}>{labelText}</div>
+      <div style={{ fontSize: 12, color: "#686B75" }}>{labelText}</div>
       <div style={{ fontSize: 24, fontWeight: 800, marginTop: 4, color }}>{value}</div>
     </button>
   );
@@ -169,7 +169,7 @@ function LeadsContent() {
       <div className="adm-page" style={{ borderBottom: "1px solid #EAE8E2", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
         <div>
           <h1 style={{ fontSize: 22, fontWeight: 800 }}>{t("leads.title")}</h1>
-          <p style={{ fontSize: 12.5, color: "#8A8D96", marginTop: 2 }}>{t("leads.subtitle")}</p>
+          <p style={{ fontSize: 12.5, color: "#686B75", marginTop: 2 }}>{t("leads.subtitle")}</p>
         </div>
         <div className="adm-actions">
           <div style={{ display: "flex", background: "#F2F1EC", borderRadius: 9, padding: 3, gap: 2 }}>
@@ -182,7 +182,7 @@ function LeadsContent() {
                 style={{
                   border: "none",
                   background: view === v ? "#fff" : "transparent",
-                  color: view === v ? "#181A1F" : "#8A8D96",
+                  color: view === v ? "#181A1F" : "#686B75",
                   fontWeight: 700,
                   fontSize: 12.5,
                   padding: "6px 14px",
@@ -284,9 +284,9 @@ function LeadsContent() {
             <button type="button" className="btn" style={ghostBtn} onClick={load}>{t("adm.retry")}</button>
           </div>
         ) : loading && data.items.length === 0 ? (
-          <div style={{ ...card, color: "#8A8D96" }}>{t("common.loading")}</div>
+          <div style={{ ...card, color: "#686B75" }}>{t("common.loading")}</div>
         ) : data.items.length === 0 ? (
-          <div style={{ ...card, color: "#8A8D96", textAlign: "center", padding: 32 }}>
+          <div style={{ ...card, color: "#686B75", textAlign: "center", padding: 32 }}>
             {search || status || source || manager || followUp ? t("leads.noSearchResults") : t("leads.noLeadsYet")}
           </div>
         ) : view === "list" ? (
@@ -311,7 +311,7 @@ function LeadsContent() {
                       <td style={{ maxWidth: 320 }}>
                         <Link href={`/leads/${l.id}`} style={{ fontWeight: 700, color: "#181A1F" }}>{l.fullName}</Link>
                         {leadNote(l.notes) && (
-                          <div title={leadNote(l.notes)} style={{ fontSize: 12, color: "#8A8D96", marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          <div title={leadNote(l.notes)} style={{ fontSize: 12, color: "#686B75", marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                             💬 {leadNote(l.notes)}
                           </div>
                         )}
@@ -320,7 +320,7 @@ function LeadsContent() {
                       <td><StatusBadge status={l.status} label={t(statusKey(l.status))} /></td>
                       <td>{t(sourceKey(l.source))}</td>
                       <td>{l.desiredCourse?.name ?? l.desiredSubject?.name ?? l.legacySubject ?? "—"}</td>
-                      <td>{l.assignedManager?.fullName ?? <span style={{ color: "#8A8D96" }}>{t("adm.unassigned")}</span>}</td>
+                      <td>{l.assignedManager?.fullName ?? <span style={{ color: "#686B75" }}>{t("adm.unassigned")}</span>}</td>
                       <td style={{ color: isOverdue(l.followUpAt) && OPEN_STATUSES.includes(l.status) ? "#B91C1C" : undefined, fontWeight: isOverdue(l.followUpAt) ? 700 : 400 }}>
                         {formatDateTime(l.followUpAt, lang, tz)}
                       </td>
@@ -338,7 +338,7 @@ function LeadsContent() {
                     <StatusBadge status={l.status} label={t(statusKey(l.status))} />
                   </div>
                   <div style={{ fontSize: 13, color: "#5B5F6A" }}>{l.phone} · {t(sourceKey(l.source))}</div>
-                  {leadNote(l.notes) && <div style={{ fontSize: 12.5, color: "#8A8D96", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>💬 {leadNote(l.notes)}</div>}
+                  {leadNote(l.notes) && <div style={{ fontSize: 12.5, color: "#686B75", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>💬 {leadNote(l.notes)}</div>}
                   {l.followUpAt && (
                     <div style={{ fontSize: 12.5, color: isOverdue(l.followUpAt) ? "#B91C1C" : "#5B5F6A" }}>
                       {t("adm.colFollowUp")}: {formatDateTime(l.followUpAt, lang, tz)}
@@ -353,7 +353,7 @@ function LeadsContent() {
           </div>
         ) : (
           <div style={{ display: "grid", gap: 8 }}>
-            <p style={{ fontSize: 12.5, color: "#8A8D96" }}>{t("adm.pipelineHint")}</p>
+            <p style={{ fontSize: 12.5, color: "#686B75" }}>{t("adm.pipelineHint")}</p>
             <div className="adm-pipeline">
               {OPEN_STATUSES.map((s) => {
                 const items = data.items.filter((l) => l.status === s);
@@ -362,14 +362,14 @@ function LeadsContent() {
                   <section key={s} style={{ background: "#F7F6F2", borderRadius: 14, padding: 10, minHeight: 200 }} aria-label={t(statusKey(s))}>
                     <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "4px 6px 10px" }}>
                       <span style={{ fontWeight: 800, fontSize: 13, color: STATUS_STYLE[s].color }}>{t(statusKey(s))}</span>
-                      <span style={{ fontSize: 12, color: "#8A8D96", fontWeight: 700 }}>{totalInStage ?? items.length}</span>
+                      <span style={{ fontSize: 12, color: "#686B75", fontWeight: 700 }}>{totalInStage ?? items.length}</span>
                     </header>
                     <div style={{ display: "grid", gap: 8 }}>
                       {items.map((l) => (
                         <div key={l.id} style={{ ...card, padding: 12, display: "grid", gap: 6 }}>
                           <Link href={`/leads/${l.id}`} style={{ fontWeight: 700, color: "#181A1F" }}>{l.fullName}</Link>
                           <a href={telHref(l.phone)} style={{ fontSize: 12.5, color: ACCENT }}>{l.phone}</a>
-                          <div style={{ fontSize: 12, color: "#8A8D96" }}>
+                          <div style={{ fontSize: 12, color: "#686B75" }}>
                             {t(sourceKey(l.source))}
                             {l.assignedManager ? ` · ${l.assignedManager.fullName}` : ""}
                           </div>

@@ -33,7 +33,7 @@ export default function ForgotPasswordPage() {
       <form onSubmit={onSubmit} style={{ width: 380, background: "#fff", borderRadius: 16, padding: 32, display: "flex", flexDirection: "column", gap: 18 }}>
         <div>
           <h1 style={{ fontSize: 20, fontWeight: 800 }}>{t("forgotPw.title")}</h1>
-          <p style={{ fontSize: 13, color: "#8A8D96", marginTop: 4 }}>
+          <p style={{ fontSize: 13, color: "#686B75", marginTop: 4 }}>
             {t("forgotPw.subtitle")}
           </p>
         </div>
@@ -42,7 +42,7 @@ export default function ForgotPasswordPage() {
           <div role="alert" style={{ background: "#FDEBEC", color: "#B23A47", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: 10 }}>{error}</div>
         )}
         {message && (
-          <div style={{ background: "#E9F8EF", color: "#1FA463", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: 10, lineHeight: 1.5 }}>
+          <div style={{ background: "#E9F8EF", color: "#167A48", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: 10, lineHeight: 1.5 }}>
             {message}
           </div>
         )}

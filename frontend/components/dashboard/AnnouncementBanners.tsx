@@ -87,7 +87,7 @@ export default function AnnouncementBanners() {
       {open && (
         <Modal open onClose={() => setOpen(null)} title={open.title} width={520}>
           <div style={{ display: "flex", flexDirection: "column", gap: 14, marginTop: -6 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12.5, color: "#8A8D96" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12.5, color: "#686B75" }}>
               <span
                 style={{
                   fontSize: 10.5, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.05em", padding: "3px 8px", borderRadius: 100,

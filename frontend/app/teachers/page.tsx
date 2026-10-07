@@ -217,7 +217,7 @@ function TeachersContent() {
         <div>
           <h1 style={{ fontSize: 22, fontWeight: 800 }}>{tr("teachers.title")}</h1>
           {can(user, "teachers.delete") && (
-            <Link href="/teachers/trash" style={{ fontSize: 12, color: "#8A8D96", fontWeight: 600 }}>
+            <Link href="/teachers/trash" style={{ fontSize: 12, color: "#686B75", fontWeight: 600 }}>
               {tr("nav.trash")}
             </Link>
           )}
@@ -254,15 +254,15 @@ function TeachersContent() {
           <>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0,1fr))", gap: 16, marginBottom: 16 }}>
               <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 14, padding: 18 }}>
-                <div style={{ fontSize: 12, color: "#8A8D96" }}>{tr("teachers.statTotal")}</div>
+                <div style={{ fontSize: 12, color: "#686B75" }}>{tr("teachers.statTotal")}</div>
                 <div style={{ fontSize: 24, fontWeight: 800, fontFamily: "'Manrope', sans-serif", marginTop: 4 }}>{teachers.length}</div>
               </div>
               <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 14, padding: 18 }}>
-                <div style={{ fontSize: 12, color: "#8A8D96" }}>{tr("teachers.statActiveGroups")}</div>
+                <div style={{ fontSize: 12, color: "#686B75" }}>{tr("teachers.statActiveGroups")}</div>
                 <div style={{ fontSize: 24, fontWeight: 800, fontFamily: "'Manrope', sans-serif", marginTop: 4 }}>{activeGroupsCount}</div>
               </div>
               <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 14, padding: 18 }}>
-                <div style={{ fontSize: 12, color: "#8A8D96" }}>{tr("teachers.statMonthSalary")}</div>
+                <div style={{ fontSize: 12, color: "#686B75" }}>{tr("teachers.statMonthSalary")}</div>
                 <div style={{ fontSize: 24, fontWeight: 800, fontFamily: "'Manrope', sans-serif", marginTop: 4 }}>{totalMonthSalary === null ? "—" : `${formatMoney(totalMonthSalary)} ${tr("common.sumUnit")}`}</div>
               </div>
             </div>
@@ -273,7 +273,7 @@ function TeachersContent() {
                   <rect x="3" y="11" width="18" height="10" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" />
                 </svg>
                 <span>
-                  {tr("teachers.adminOnlyPrefix")} <strong style={{ color: ACCENT }}>{tr("role.admin")}</strong> {tr("teachers.adminOnlySuffix")}
+                  {tr("teachers.adminOnlyPrefix")} <strong style={{ color: ACCENT }}>{tr("role.admin")}</strong>{tr("teachers.adminOnlySuffix")}
                 </span>
               </div>
             )}
@@ -298,13 +298,13 @@ function TeachersContent() {
         {loadError !== null ? (
           <LoadError message={loadError || tr("adm.loadError")} onRetry={load} />
         ) : loading ? (
-          <div style={{ color: "#8A8D96", fontSize: 14 }}>{tr("common.loading")}</div>
+          <div style={{ color: "#686B75", fontSize: 14 }}>{tr("common.loading")}</div>
         ) : teachers.length === 0 ? (
-          <div style={{ color: "#8A8D96", fontSize: 14, background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 32, textAlign: "center" }}>
+          <div style={{ color: "#686B75", fontSize: 14, background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 32, textAlign: "center" }}>
             {tr("teachers.noTeachersYet")}
           </div>
         ) : filtered.length === 0 ? (
-          <div style={{ color: "#8A8D96", fontSize: 14, background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 32, textAlign: "center" }}>
+          <div style={{ color: "#686B75", fontSize: 14, background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 32, textAlign: "center" }}>
             {tr("teachers.noSearchResults")}
           </div>
         ) : (

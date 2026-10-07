@@ -67,7 +67,7 @@ export default function PayrollReconciliationPanel({ month, onChanged }: { month
     <section style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, overflow: "hidden" }} aria-labelledby="recon-title">
       <div style={{ padding: "16px 20px", borderBottom: "1px solid #EAE8E2" }}>
         <div id="recon-title" style={{ fontSize: 14, fontWeight: 700 }}>{t("recon.title")}</div>
-        <p style={{ fontSize: 12, color: "#8A8D96", margin: "4px 0 0", lineHeight: 1.5 }}>{t("recon.hint")}</p>
+        <p style={{ fontSize: 12, color: "#686B75", margin: "4px 0 0", lineHeight: 1.5 }}>{t("recon.hint")}</p>
         {data.totals.likelyDoubleCounted > 0 && (
           <p style={{ fontSize: 12.5, color: "#B23A47", fontWeight: 700, margin: "6px 0 0" }}>
             {t("recon.doubleTotal").replace("{sum}", money(data.totals.likelyDoubleCounted))}
@@ -100,7 +100,7 @@ export default function PayrollReconciliationPanel({ month, onChanged }: { month
                     <td>
                       {money(i.matchedExpenseTotal)}
                       {i.matchedExpenses.length > 0 && (
-                        <div style={{ fontSize: 11.5, color: "#8A8D96" }}>
+                        <div style={{ fontSize: 11.5, color: "#686B75" }}>
                           {i.matchedExpenses.map((e) => `${e.date}: ${money(e.amount)}`).join(" · ")}
                         </div>
                       )}

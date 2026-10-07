@@ -135,7 +135,7 @@ export default function RoomsManager({
       </form>
 
       {rooms.length === 0 ? (
-        <div style={{ textAlign: "center", color: "#8A8D96", padding: 24, border: "1px dashed #EAE8E2", borderRadius: 12 }}>{t("sch.noRooms")}</div>
+        <div style={{ textAlign: "center", color: "#686B75", padding: 24, border: "1px dashed #EAE8E2", borderRadius: 12 }}>{t("sch.noRooms")}</div>
       ) : (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: 10, maxHeight: 340, overflowY: "auto" }}>
           {rooms.map((room) => (
@@ -143,7 +143,7 @@ export default function RoomsManager({
               <div style={{ height: 6, background: room.color || ACCENT }} />
               <div style={{ padding: 12 }}>
                 <div style={{ fontWeight: 800, fontSize: 14 }}>{room.name}</div>
-                <div style={{ fontSize: 12, color: "#8A8D96", marginTop: 4, lineHeight: 1.6 }}>
+                <div style={{ fontSize: 12, color: "#686B75", marginTop: 4, lineHeight: 1.6 }}>
                   👥 {room.capacity} {t("rooms.seats")}
                   {branchName(room.branchId) && <><br />📍 {branchName(room.branchId)}</>}
                   <br />📅 {lessonsPerRoom[room.id] ?? 0} {t("rooms.weeklyLessons")}

@@ -37,7 +37,7 @@ const MIN_TESTIMONIALS = 10;
 const SOCIAL_ICON: Record<string, string> = { instagram: "📸", telegram: "✈️", youtube: "▶️", facebook: "📘", tiktok: "🎵" };
 
 const CSS = `
-  .ps{--bg:#F7F7F5;--surface:#fff;--border:#EAE8E2;--text:#181A1F;--text-2:#4A4E58;--muted:#8A8D96;--chip:#F2F1EC;background:var(--bg);color:var(--text);min-height:100vh;font-family:'Inter',system-ui,sans-serif;}
+  .ps{--bg:#F7F7F5;--surface:#fff;--border:#EAE8E2;--text:#181A1F;--text-2:#4A4E58;--muted:#686B75;--chip:#F2F1EC;background:var(--bg);color:var(--text);min-height:100vh;font-family:'Inter',system-ui,sans-serif;}
   .ps h1,.ps h2,.ps h3{font-family:'Manrope',system-ui,sans-serif;margin:0;}
   .ps a{color:inherit;text-decoration:none;}
   .ps-wrap{max-width:1160px;margin:0 auto;padding:0 32px;box-sizing:border-box;}
@@ -201,7 +201,7 @@ export default function PublicSitePage() {
 
   if (loading) {
     return (
-      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#F7F7F5", color: "#8A8D96", fontSize: 14 }}>
+      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#F7F7F5", color: "#686B75", fontSize: 14 }}>
         {L.loading}
       </div>
     );
@@ -210,9 +210,9 @@ export default function PublicSitePage() {
   if (notFound || !data) {
     return (
       <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12, background: "#F7F7F5", padding: 16, textAlign: "center" }}>
-        <div style={{ width: 64, height: 64, borderRadius: 18, background: "#fff", border: "1px solid #EAE8E2", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, color: "#8A8D96" }}>404</div>
+        <div style={{ width: 64, height: 64, borderRadius: 18, background: "#fff", border: "1px solid #EAE8E2", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, color: "#686B75" }}>404</div>
         <h2 style={{ fontFamily: "'Manrope',sans-serif", fontSize: 20, fontWeight: 800 }}>{L.notFoundTitle}</h2>
-        <p style={{ fontSize: 13.5, color: "#8A8D96", maxWidth: 360 }}>{L.notFoundText}</p>
+        <p style={{ fontSize: 13.5, color: "#686B75", maxWidth: 360 }}>{L.notFoundText}</p>
         <Link href="/" style={{ background: "#4F46E5", color: "#fff", fontWeight: 700, fontSize: 13.5, padding: "10px 18px", borderRadius: 10 }}>{L.backHome}</Link>
       </div>
     );
@@ -307,7 +307,7 @@ export default function PublicSitePage() {
           {L.category[tenant.category] ?? L.category.BOSHQA}
         </span>
         {site?.trialLesson && (
-          <span style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "#E9F8EF", color: "#1FA463", fontSize: 13, fontWeight: 700, padding: "6px 12px", borderRadius: 100 }}>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "#E9F8EF", color: "#167A48", fontSize: 13, fontWeight: 700, padding: "6px 12px", borderRadius: 100 }}>
             🎁 {L.trialBadge}{site.trialText ? ` — ${site.trialText}` : ""}
           </span>
         )}
@@ -434,7 +434,7 @@ export default function PublicSitePage() {
                   </div>
                   <h3 style={{ fontSize: 17, fontWeight: 700 }}>{g.name}</h3>
                   {g.seatsLeft !== null && g.seatsLeft !== undefined && (
-                    <span style={{ alignSelf: "flex-start", fontSize: 12, fontWeight: 700, padding: "3px 10px", borderRadius: 100, ...(g.seatsLeft === 0 ? { color: "#B23A47", background: "#FDEBEC" } : g.seatsLeft <= 3 ? { color: "#B45309", background: "#FEF3C7" } : { color: "#1FA463", background: "#E9F8EF" }) }}>
+                    <span style={{ alignSelf: "flex-start", fontSize: 12, fontWeight: 700, padding: "3px 10px", borderRadius: 100, ...(g.seatsLeft === 0 ? { color: "#B23A47", background: "#FDEBEC" } : g.seatsLeft <= 3 ? { color: "#B45309", background: "#FEF3C7" } : { color: "#167A48", background: "#E9F8EF" }) }}>
                       {g.seatsLeft === 0 ? L.seatsFull : L.seatsLeft.replace("{n}", String(g.seatsLeft))}
                     </span>
                   )}
@@ -610,7 +610,7 @@ export default function PublicSitePage() {
           </div>
           {submitSuccess ? (
             <div style={{ textAlign: "center", padding: "20px 0", display: "flex", flexDirection: "column", gap: 10, alignItems: "center" }}>
-              <div style={{ width: 56, height: 56, borderRadius: "50%", background: "#E9F8EF", color: "#1FA463", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26, fontWeight: 800 }}>✓</div>
+              <div style={{ width: 56, height: 56, borderRadius: "50%", background: "#E9F8EF", color: "#167A48", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26, fontWeight: 800 }}>✓</div>
               <h3 style={{ fontSize: 19, fontWeight: 800 }}>{L.successTitle}</h3>
               <p style={{ fontSize: 14, color: "var(--text-2)", margin: 0 }}>{L.successText}</p>
               <button type="button" className="ps-btn ps-soft" onClick={() => setSubmitSuccess(false)} style={{ fontSize: 13.5, padding: "0 18px", marginTop: 6 }}>{L.again}</button>

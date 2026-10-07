@@ -32,7 +32,7 @@ export default function SiteContentEditor() {
     placementApi.list().then(setTests).catch(() => setTests([]));
   }, [t]);
 
-  if (!site) return <div style={{ color: "#8A8D96", fontSize: 14 }}>{error ?? t("common.loading")}</div>;
+  if (!site) return <div style={{ color: "#686B75", fontSize: 14 }}>{error ?? t("common.loading")}</div>;
   const set = (patch: Partial<SiteContent>) => {
     setSite({ ...site, ...patch });
     setSaved(false);
@@ -127,7 +127,7 @@ export default function SiteContentEditor() {
 
       <div style={card}>
         <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 700, fontSize: 15 }}>{t("site.secAdvantages")}</div>
-        <div style={{ fontSize: 12.5, color: "#8A8D96", margin: "4px 0 12px" }}>{t("site.advantagesHint")}</div>
+        <div style={{ fontSize: 12.5, color: "#686B75", margin: "4px 0 12px" }}>{t("site.advantagesHint")}</div>
         {rows("advantages", 8, { icon: "✅", title: "", text: "" }, (r, u) => (
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             <div style={{ display: "flex", gap: 8 }}>
@@ -141,7 +141,7 @@ export default function SiteContentEditor() {
 
       <div style={card}>
         <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 700, fontSize: 15 }}>{t("site.secResults")}</div>
-        <div style={{ fontSize: 12.5, color: "#8A8D96", margin: "4px 0 12px" }}>{t("site.resultsHint")}</div>
+        <div style={{ fontSize: 12.5, color: "#686B75", margin: "4px 0 12px" }}>{t("site.resultsHint")}</div>
         {rows("results", 12, { name: "", result: "", detail: "" }, (r, u) => (
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
             <input className="field-input" value={r.name} maxLength={80} onChange={(e) => u({ name: e.target.value })} placeholder={t("site.resNamePh")} />
@@ -179,7 +179,7 @@ export default function SiteContentEditor() {
 
       <div style={card}>
         <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 700, fontSize: 15 }}>{t("site.secGallery")}</div>
-        <div style={{ fontSize: 12.5, color: "#8A8D96", margin: "4px 0 12px" }}>{t("site.galleryHint")}</div>
+        <div style={{ fontSize: 12.5, color: "#686B75", margin: "4px 0 12px" }}>{t("site.galleryHint")}</div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))", gap: 10 }}>
           {site.gallery.map((g) => (
             <div key={g} style={{ position: "relative", borderRadius: 10, overflow: "hidden", aspectRatio: "4 / 3", background: "#F2F1EC" }}>
@@ -204,7 +204,7 @@ export default function SiteContentEditor() {
             <input type="checkbox" checked={site.trialLesson} onChange={(e) => set({ trialLesson: e.target.checked })} style={{ marginTop: 2, accentColor: ACCENT, width: 16, height: 16 }} />
             <span>
               <b>{t("site.trial")}</b>
-              <span style={{ display: "block", fontSize: 12.5, color: "#8A8D96" }}>{t("site.trialHint")}</span>
+              <span style={{ display: "block", fontSize: 12.5, color: "#686B75" }}>{t("site.trialHint")}</span>
             </span>
           </label>
           {site.trialLesson && (
@@ -218,7 +218,7 @@ export default function SiteContentEditor() {
               options={[{ value: "", label: t("site.placementNone") }, ...tests.filter((x) => x.active).map((x) => ({ value: x.id, label: x.title }))]}
               style={{ width: "100%" }}
             />
-            <div style={{ fontSize: 12, color: "#8A8D96", marginTop: 4 }}>{t("site.placementHint")}</div>
+            <div style={{ fontSize: 12, color: "#686B75", marginTop: 4 }}>{t("site.placementHint")}</div>
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
             <div>
@@ -246,7 +246,7 @@ export default function SiteContentEditor() {
         <button type="button" className="btn" disabled={saving} onClick={save} style={{ background: ACCENT, color: "#fff", border: "none", fontSize: 14, fontWeight: 700, padding: "11px 20px", borderRadius: 10 }}>
           {saving ? t("common.saving") : t("site.save")}
         </button>
-        {saved && <span style={{ fontSize: 13, fontWeight: 600, color: "#1FA463" }}>✓ {t("site.saved")}</span>}
+        {saved && <span style={{ fontSize: 13, fontWeight: 600, color: "#167A48" }}>✓ {t("site.saved")}</span>}
       </div>
     </div>
   );

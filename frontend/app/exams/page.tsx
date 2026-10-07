@@ -330,7 +330,7 @@ function ExamsContent() {
 
   async function startTestAttempt() {
     if (!simulatorExam || !simulatorStudentId) {
-      alert("Iltimos, test topshiruvchi talabani tanlang");
+      alert(t("msg.selectExamStudent"));
       return;
     }
 
@@ -428,7 +428,7 @@ function ExamsContent() {
       <div style={{ padding: "24px 32px", borderBottom: "1px solid #EAE8E2", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
         <div>
           <h1 style={{ fontSize: 24, fontWeight: 800 }}>{t("exams.title")}</h1>
-          <p style={{ fontSize: 13, color: "#8A8D96", marginTop: 2 }}>
+          <p style={{ fontSize: 13, color: "#686B75", marginTop: 2 }}>
             {t("ex.subtitle")}
           </p>
         </div>
@@ -445,14 +445,14 @@ function ExamsContent() {
         {loadError !== null ? (
           <LoadError message={loadError || t("adm.loadError")} onRetry={load} />
         ) : loading ? (
-          <div style={{ color: "#8A8D96", fontSize: 14 }}>{t("common.loading")}</div>
+          <div style={{ color: "#686B75", fontSize: 14 }}>{t("common.loading")}</div>
         ) : (
           <>
             {/* KPI Performance Charts */}
             {groupStats.length > 0 && (
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
                 <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 22 }}>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: "#8A8D96", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 12 }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: "#686B75", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 12 }}>
                     {t("exams.avgScore")}
                   </div>
                   <BarChart
@@ -462,7 +462,7 @@ function ExamsContent() {
                   />
                 </div>
                 <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 22 }}>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: "#8A8D96", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 12 }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: "#686B75", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 12 }}>
                     {t("exams.resultsByGroup")}
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -474,7 +474,7 @@ function ExamsContent() {
                       >
                         <span style={{ fontSize: 13.5, fontWeight: 600 }}>{g.name}</span>
                         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                          <span style={{ fontSize: 12, color: "#8A8D96" }}>{g.examCount} {t("exams.examCountUnit")}</span>
+                          <span style={{ fontSize: 12, color: "#686B75" }}>{g.examCount} {t("exams.examCountUnit")}</span>
                           <span style={{ fontSize: 13, fontWeight: 800, color: ACCENT }}>{g.avgPct}%</span>
                         </div>
                       </div>
@@ -497,7 +497,7 @@ function ExamsContent() {
 
             {/* Exam cards list */}
             {filteredExams.length === 0 ? (
-              <div style={{ color: "#8A8D96", fontSize: 14 }}>{t("exams.noExamsYet")}</div>
+              <div style={{ color: "#686B75", fontSize: 14 }}>{t("exams.noExamsYet")}</div>
             ) : (
               <>
                 <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
@@ -511,7 +511,7 @@ function ExamsContent() {
                               {ex.questions?.length || 0} {t("placement.questions")}
                             </span>
                           </div>
-                          <div style={{ fontSize: 12.5, color: "#8A8D96", marginTop: 4 }}>
+                          <div style={{ fontSize: 12.5, color: "#686B75", marginTop: 4 }}>
                             {ex.group?.name || t("homework.groupFallback")} · {t("exams.maxScoreLabel")}: {ex.maxScore}
                             {ex.passingScore != null && ` · ${t("exams.passingScoreLabel")}: ${ex.passingScore}`}
                             {ex.durationMinutes != null && ` · ⏱ ${ex.durationMinutes} ${t("exams.minutesUnit")}`}
@@ -679,9 +679,9 @@ function ExamsContent() {
         {gradeExam && (
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {gradeLoading ? (
-              <div style={{ color: "#8A8D96", fontSize: 13.5 }}>{t("common.loading")}</div>
+              <div style={{ color: "#686B75", fontSize: 13.5 }}>{t("common.loading")}</div>
             ) : gradeStudents.length === 0 ? (
-              <div style={{ color: "#8A8D96", fontSize: 13.5 }}>{t("exams.noGradeStudents")}</div>
+              <div style={{ color: "#686B75", fontSize: 13.5 }}>{t("exams.noGradeStudents")}</div>
             ) : (
               gradeStudents.map((s) => (
                 <div key={s.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
@@ -714,7 +714,7 @@ function ExamsContent() {
       {/* Group Detail Analytics Modal */}
       <Modal open={!!groupDetail} onClose={() => setGroupDetail(null)} title={groupDetail ? `${t("exams.resultsTitlePrefix")} — ${groupDetail.name}` : t("exams.resultsTitlePrefix")}>
         {groupDetailStudents.length === 0 ? (
-          <div style={{ color: "#8A8D96", fontSize: 13.5 }}>{t("exams.noGradedStudentsYet")}</div>
+          <div style={{ color: "#686B75", fontSize: 13.5 }}>{t("exams.noGradedStudentsYet")}</div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             {groupDetailStudents.map((s) => {

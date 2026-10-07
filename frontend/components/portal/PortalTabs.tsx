@@ -33,14 +33,14 @@ export function TabTitle({ title, hint }: { title: string; hint?: string }) {
   return (
     <div style={{ padding: "2px 2px 0" }}>
       <h2 style={{ fontFamily: "'Manrope', sans-serif", fontSize: 21, fontWeight: 800, margin: 0 }}>{title}</h2>
-      {hint && <div style={{ fontSize: 13, color: "#8A8D96", marginTop: 3 }}>{hint}</div>}
+      {hint && <div style={{ fontSize: 13, color: "#686B75", marginTop: 3 }}>{hint}</div>}
     </div>
   );
 }
 
 function Empty({ icon, text }: { icon: string; text: string }) {
   return (
-    <div style={{ ...card, padding: "36px 20px", textAlign: "center", color: "#8A8D96", fontSize: 14 }}>
+    <div style={{ ...card, padding: "36px 20px", textAlign: "center", color: "#686B75", fontSize: 14 }}>
       <div style={{ fontSize: 34, marginBottom: 8 }}>{icon}</div>
       {text}
     </div>
@@ -49,7 +49,7 @@ function Empty({ icon, text }: { icon: string; text: string }) {
 
 function Pill({ children, tone }: { children: React.ReactNode; tone: "green" | "red" | "amber" | "grey" | "accent" }) {
   const tones = {
-    green: { color: "#1FA463", background: "#E9F8EF" },
+    green: { color: "#167A48", background: "#E9F8EF" },
     red: { color: "#DC2626", background: "#FEE2E2" },
     amber: { color: "#B45309", background: "#FEF3C7" },
     grey: { color: "#6B6E78", background: "#F2F1EC" },
@@ -105,7 +105,7 @@ export function ScheduleTab({ schedule, tz = DEFAULT_CENTER_TIMEZONE }: { schedu
                 <div key={l.id} style={{ ...card, display: "flex", gap: 14, alignItems: "center", borderColor: d === today ? "#C7D2FE" : "#EAE8E2" }}>
                   <div style={{ width: 62, flexShrink: 0, textAlign: "center", borderRight: "1px solid #EAE8E2", paddingRight: 12 }}>
                     <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 800, fontSize: 16 }}>{l.startTime}</div>
-                    <div style={{ fontSize: 12, color: "#8A8D96" }}>{l.endTime}</div>
+                    <div style={{ fontSize: 12, color: "#686B75" }}>{l.endTime}</div>
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 15, fontWeight: 700 }}>{l.group?.name ?? "—"}</div>
@@ -182,7 +182,7 @@ function PastLessons() {
   }, [days]);
 
   if (error) return <Empty icon="⚠️" text={t("common.errorGeneric")} />;
-  if (!data) return <div style={{ ...card, color: "#8A8D96", fontSize: 14 }}>{t("common.loading")}</div>;
+  if (!data) return <div style={{ ...card, color: "#686B75", fontSize: 14 }}>{t("common.loading")}</div>;
   if (data.length === 0) return <Empty icon="📚" text={t("pls.none")} />;
 
   return (
@@ -204,7 +204,7 @@ function PastLessons() {
                 <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "flex-start" }}>
                   <div style={{ minWidth: 0 }}>
                     <div style={{ fontSize: 14.5, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l.groupName}</div>
-                    <div style={{ fontSize: 12, color: "#8A8D96", marginTop: 1 }}>
+                    <div style={{ fontSize: 12, color: "#686B75", marginTop: 1 }}>
                       {weekdayOf(l.date, t)}{l.startTime ? ` · ${l.startTime}${l.endTime ? `–${l.endTime}` : ""}` : ""}
                     </div>
                   </div>
@@ -254,7 +254,7 @@ function hwStatus(st: string | null): { key: TranslationKey; tone: "green" | "am
 function Section({ icon, title, children }: { icon: string; title: string; children: React.ReactNode }) {
   return (
     <section style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-      <div style={{ fontSize: 12, fontWeight: 800, color: "#8A8D96", textTransform: "uppercase", letterSpacing: "0.04em" }}>{icon} {title}</div>
+      <div style={{ fontSize: 12, fontWeight: 800, color: "#686B75", textTransform: "uppercase", letterSpacing: "0.04em" }}>{icon} {title}</div>
       {children}
     </section>
   );
@@ -299,7 +299,7 @@ function LessonDetails({ lesson: l, onClose }: { lesson: PortalPastLesson; onClo
                     <Pill tone={st.tone}>{h.status === "GRADED" && h.score != null ? `${h.score}/${h.maxScore}` : t(st.key)}</Pill>
                   </div>
                   {h.description && <div style={{ fontSize: 13, color: "#4A4E58", whiteSpace: "pre-wrap", lineHeight: 1.5 }}>{h.description}</div>}
-                  {h.dueDate && <div style={{ fontSize: 12, color: "#8A8D96" }}>{t("pls.due")}: {formatDate(h.dueDate, lang)}</div>}
+                  {h.dueDate && <div style={{ fontSize: 12, color: "#686B75" }}>{t("pls.due")}: {formatDate(h.dueDate, lang)}</div>}
                   {h.attachmentPath && (
                     <a href={fileUrl(h.attachmentPath) ?? undefined} target="_blank" rel="noreferrer" style={{ fontSize: 12.5, fontWeight: 700, color: ACCENT }}>📎 {h.attachmentName || t("pls.file")}</a>
                   )}
@@ -343,7 +343,7 @@ function LessonDetails({ lesson: l, onClose }: { lesson: PortalPastLesson; onClo
         )}
 
         {l.homework.length === 0 && l.exams.length === 0 && (
-          <div style={{ fontSize: 13, color: "#8A8D96", background: "#F9F8F5", borderRadius: 12, padding: "12px 14px" }}>{t("pls.nothing")}</div>
+          <div style={{ fontSize: 13, color: "#686B75", background: "#F9F8F5", borderRadius: 12, padding: "12px 14px" }}>{t("pls.nothing")}</div>
         )}
       </div>
     </Modal>
@@ -436,7 +436,7 @@ export function AttendanceTab({ attendance, tz = DEFAULT_CENTER_TIMEZONE }: { at
                     <div key={g.groupId}>
                       <div style={{ display: "flex", justifyContent: "space-between", gap: 8, fontSize: 13.5 }}>
                         <span style={{ fontWeight: 700, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                          {g.groupName ?? "—"}{g.subject ? <span style={{ color: "#8A8D96", fontWeight: 500 }}> · {g.subject}</span> : null}
+                          {g.groupName ?? "—"}{g.subject ? <span style={{ color: "#686B75", fontWeight: 500 }}> · {g.subject}</span> : null}
                         </span>
                         <span style={{ fontWeight: 800, color: r >= 80 ? "#1FA463" : r >= 60 ? "#B45309" : "#DC2626" }}>{r}%</span>
                       </div>
@@ -445,7 +445,7 @@ export function AttendanceTab({ attendance, tz = DEFAULT_CENTER_TIMEZONE }: { at
                         <div style={{ width: `${(g.late / Math.max(1, g.total)) * 100}%`, background: "#F59E0B" }} />
                         <div style={{ width: `${(g.absent / Math.max(1, g.total)) * 100}%`, background: "#DC2626" }} />
                       </div>
-                      <div style={{ fontSize: 12, color: "#8A8D96" }}>
+                      <div style={{ fontSize: 12, color: "#686B75" }}>
                         ✅ {g.present} · ⏰ {g.late} · ❌ {g.absent} · {t("pat.of").replace("{n}", String(g.total))}
                       </div>
                     </div>
@@ -456,14 +456,14 @@ export function AttendanceTab({ attendance, tz = DEFAULT_CENTER_TIMEZONE }: { at
             <div style={{ ...card, padding: 0, overflow: "hidden" }}>
               <div style={{ padding: "12px 16px", fontSize: 14, fontWeight: 800, borderBottom: "1px solid #F0EEE8" }}>{t("pat.recent")}</div>
               {records.slice(0, 8).map((r) => {
-                const c = ATT_COLORS[r.status] ?? { dot: "#8A8D96", bg: "#F2F1EC" };
+                const c = ATT_COLORS[r.status] ?? { dot: "#686B75", bg: "#F2F1EC" };
                 return (
                   <div key={r.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, padding: "10px 16px", borderBottom: "1px solid #F7F6F2" }}>
                     <span style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
                       <span style={{ width: 8, height: 8, borderRadius: "50%", background: c.dot, flexShrink: 0 }} />
                       <span style={{ minWidth: 0 }}>
                         <span style={{ display: "block", fontSize: 13.5, fontWeight: 600 }}>{formatDate(`${r.date}T00:00:00`, lang, "short")}</span>
-                        {r.groupName && <span style={{ display: "block", fontSize: 12, color: "#8A8D96", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.groupName}</span>}
+                        {r.groupName && <span style={{ display: "block", fontSize: 12, color: "#686B75", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.groupName}</span>}
                       </span>
                     </span>
                     <Pill tone={r.status === "PRESENT" ? "green" : r.status === "LATE" ? "amber" : "red"}>{STATUS_LABEL[r.status] ?? r.status}</Pill>
@@ -512,13 +512,13 @@ function MonthCalendar({ month, months, onMonth, records, statusLabel, tz }: {
         <button type="button" aria-label="prev" disabled={idx >= months.length - 1} onClick={() => onMonth(months[idx + 1])} style={navBtn(idx >= months.length - 1)}>‹</button>
         <div style={{ textAlign: "center" }}>
           <div style={{ fontFamily: "'Manrope', sans-serif", fontSize: 16, fontWeight: 800 }}>{monthLabel(month, t)}</div>
-          <div style={{ fontSize: 12, color: "#8A8D96" }}>{t("pat.monthSummary").replace("{a}", String(ok)).replace("{n}", String(inMonth.length))}</div>
+          <div style={{ fontSize: 12, color: "#686B75" }}>{t("pat.monthSummary").replace("{a}", String(ok)).replace("{n}", String(inMonth.length))}</div>
         </div>
         <button type="button" aria-label="next" disabled={idx <= 0} onClick={() => onMonth(months[idx - 1])} style={navBtn(idx <= 0)}>›</button>
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(7, minmax(0, 1fr))", gap: 4, textAlign: "center" }}>
         {DAY_KEYS.map((k) => (
-          <div key={k} style={{ fontSize: 11, fontWeight: 700, color: "#8A8D96", padding: "2px 0" }}>{t(k).slice(0, 2)}</div>
+          <div key={k} style={{ fontSize: 11, fontWeight: 700, color: "#686B75", padding: "2px 0" }}>{t(k).slice(0, 2)}</div>
         ))}
         {cells.map((d, i) => {
           if (d === null) return <div key={`e${i}`} />;
@@ -535,7 +535,7 @@ function MonthCalendar({ month, months, onMonth, records, statusLabel, tz }: {
               <span style={{ fontSize: 13, fontWeight: c ? 800 : 500, color: c ? "#181A1F" : "#A3A6AE" }}>{d}</span>
               {recs.length > 0 && (
                 <span style={{ display: "flex", gap: 2 }}>
-                  {recs.slice(0, 3).map((r) => <span key={r.id} style={{ width: 5, height: 5, borderRadius: "50%", background: ATT_COLORS[r.status]?.dot ?? "#8A8D96" }} />)}
+                  {recs.slice(0, 3).map((r) => <span key={r.id} style={{ width: 5, height: 5, borderRadius: "50%", background: ATT_COLORS[r.status]?.dot ?? "#686B75" }} />)}
                 </span>
               )}
             </div>
@@ -584,7 +584,7 @@ export function HomeworkTab({ homework, onSubmit, readOnly = false }: { homework
           ["done", t("hws.stDone")],
         ] as const).map(([k, l]) => (
           <button key={k} type="button" onClick={() => setFilter(k)} style={{ border: "none", cursor: "pointer", whiteSpace: "nowrap", fontSize: 13, fontWeight: 700, padding: "8px 14px", borderRadius: 9, background: filter === k ? "#fff" : "transparent", color: filter === k ? "#181A1F" : "#6B6E78", boxShadow: filter === k ? "0 1px 3px rgba(0,0,0,0.08)" : "none" }}>
-            {l} <span style={{ color: "#8A8D96", fontWeight: 600 }}>{counts[k]}</span>
+            {l} <span style={{ color: "#686B75", fontWeight: 600 }}>{counts[k]}</span>
           </button>
         ))}
       </div>
@@ -646,7 +646,7 @@ function HomeworkCard({ hw, now, readOnly, onSubmit }: { hw: PortalHomework; now
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
         <div style={{ minWidth: 0 }}>
           <div style={{ fontSize: 16, fontWeight: 800, overflowWrap: "anywhere" }}>{hw.title}</div>
-          <div style={{ fontSize: 12.5, color: "#8A8D96", marginTop: 3, display: "flex", flexWrap: "wrap", gap: "2px 10px" }}>
+          <div style={{ fontSize: 12.5, color: "#686B75", marginTop: 3, display: "flex", flexWrap: "wrap", gap: "2px 10px" }}>
             <span>{hw.groupName || t("ptl.general")}</span>
             {due && <span style={{ color: overdue ? "#DC2626" : undefined, fontWeight: overdue ? 700 : 400 }}>⏰ {t("phw.due")}: {formatDate(due, lang)}</span>}
             {hw.maxScore ? <span>🎯 {hw.maxScore} {t("phw.points")}</span> : null}
@@ -656,9 +656,9 @@ function HomeworkCard({ hw, now, readOnly, onSubmit }: { hw: PortalHomework; now
       </div>
 
       <div>
-        <div style={{ fontSize: 11.5, fontWeight: 800, color: "#8A8D96", textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 6 }}>{t("phw.task")}</div>
+        <div style={{ fontSize: 11.5, fontWeight: 800, color: "#686B75", textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 6 }}>{t("phw.task")}</div>
         <div style={{ background: "#F7F7F5", borderRadius: 12, padding: 12, fontSize: 14, color: "#33363D", lineHeight: 1.6, whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>
-          {hw.description || <span style={{ color: "#8A8D96" }}>{hw.attachmentPath ? t("phw.seeFile") : t("phw.noDescription")}</span>}
+          {hw.description || <span style={{ color: "#686B75" }}>{hw.attachmentPath ? t("phw.seeFile") : t("phw.noDescription")}</span>}
         </div>
       </div>
 
@@ -677,7 +677,7 @@ function HomeworkCard({ hw, now, readOnly, onSubmit }: { hw: PortalHomework; now
 
       {sub && (sub.text || sub.file || sub.feedback) && (
         <div style={{ borderTop: "1px dashed #EAE8E2", paddingTop: 10, display: "flex", flexDirection: "column", gap: 8 }}>
-          <div style={{ fontSize: 11.5, fontWeight: 800, color: "#8A8D96", textTransform: "uppercase", letterSpacing: "0.04em" }}>{t("phw.myAnswer")}</div>
+          <div style={{ fontSize: 11.5, fontWeight: 800, color: "#686B75", textTransform: "uppercase", letterSpacing: "0.04em" }}>{t("phw.myAnswer")}</div>
           {sub.text && <div style={{ fontSize: 13.5, whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{sub.text}</div>}
           {sub.file && (isImage(sub.file) ? (
             <a href={fileUrl(sub.file) ?? "#"} target="_blank" rel="noreferrer">
@@ -797,7 +797,7 @@ export function PaymentsTab({ payments, checkoutLoading, onPay, payError }: { pa
       <div style={{ ...card, padding: 0, overflow: "hidden" }}>
         <div style={{ padding: "14px 16px", fontFamily: "'Manrope', sans-serif", fontSize: 16, fontWeight: 700, borderBottom: "1px solid #F0EEE8" }}>{t("ptl.history")}</div>
         {history.length === 0 ? (
-          <div style={{ padding: 24, textAlign: "center", color: "#8A8D96", fontSize: 13.5 }}>{t("ptl.noHistory")}</div>
+          <div style={{ padding: 24, textAlign: "center", color: "#686B75", fontSize: 13.5 }}>{t("ptl.noHistory")}</div>
         ) : (
           history.map((p) => (
             <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 16px", borderBottom: "1px solid #F7F6F2" }}>
@@ -806,7 +806,7 @@ export function PaymentsTab({ payments, checkoutLoading, onPay, payError }: { pa
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 14, fontWeight: 700 }}>{p.forMonth ? monthLabel(p.forMonth, t) : "—"}</div>
-                <div style={{ fontSize: 12, color: "#8A8D96" }}>{p.paidAt ? formatDate(p.paidAt, lang) : "—"}</div>
+                <div style={{ fontSize: 12, color: "#686B75" }}>{p.paidAt ? formatDate(p.paidAt, lang) : "—"}</div>
               </div>
               <div style={{ textAlign: "right" }}>
                 <div style={{ fontFamily: "'Manrope', sans-serif", fontSize: 15, fontWeight: 800 }}>{money(p.amount)}</div>

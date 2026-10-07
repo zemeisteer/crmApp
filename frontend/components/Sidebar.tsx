@@ -340,7 +340,29 @@ export default function Sidebar({ open, onClose }: { open?: boolean; onClose?: (
     } catch {
       // storage unavailable (private mode): start at the top
     }
-    el.querySelector<HTMLElement>("[data-active='true']")?.scrollIntoView({ block: "nearest" });
+    // Scroll the menu itself rather than calling scrollIntoView: in Chromium
+    // that also moves the keyboard's Tab starting point to the active item,
+    // so the first Tab skipped "skip to content", the logo and earlier items.
+    const reveal = () => {
+      const item = el.querySelector<HTMLElement>("[data-active='true']");
+      if (!item) return;
+      const box = el.getBoundingClientRect();
+      const r = item.getBoundingClientRect();
+      // Out of view: bring it to the middle of the menu.
+      if (r.top < box.top || r.bottom > box.bottom) el.scrollTop += r.top + r.height / 2 - (box.top + box.height / 2);
+    };
+    reveal();
+    // The panel's footer (languages, account) renders a moment later and
+    // shrinks the menu; reveal again while it settles, then stop watching so
+    // the user's own scrolling is never overridden.
+    if (typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(reveal);
+    ro.observe(el);
+    const stop = window.setTimeout(() => ro.disconnect(), 1500);
+    return () => {
+      window.clearTimeout(stop);
+      ro.disconnect();
+    };
   }, [pathname]);
   const { lang, setLang, t } = useLanguage();
   const initials = user?.fullName
@@ -477,7 +499,7 @@ export default function Sidebar({ open, onClose }: { open?: boolean; onClose?: (
             style={{
               flex: 1, fontSize: 11, fontWeight: 700, padding: "6px 0", borderRadius: 7, border: "none",
               background: lang === l ? ACCENT : "rgba(255,255,255,0.06)",
-              color: lang === l ? "#fff" : "#71737C",
+              color: lang === l ? "#fff" : "#9A9CA6",
             }}
           >
             {l}
@@ -487,7 +509,7 @@ export default function Sidebar({ open, onClose }: { open?: boolean; onClose?: (
 
       {otherCenters.length > 0 && (
         <div role="group" aria-label={t("nav.otherCenters")} style={{ marginBottom: 6 }}>
-          <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "#71737C", padding: "0 8px 4px" }}>{t("nav.otherCenters")}</div>
+          <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "#9A9CA6", padding: "0 8px 4px" }}>{t("nav.otherCenters")}</div>
           <div style={{ maxHeight: 96, overflowY: "auto" }}>
             {otherCenters.map((w) => (
               <button
@@ -540,7 +562,7 @@ export default function Sidebar({ open, onClose }: { open?: boolean; onClose?: (
         </div>
         <div>
           <div style={{ fontSize: 13, fontWeight: 600, color: "#fff" }}>{user?.fullName ?? "..."}</div>
-          <div style={{ fontSize: 11, color: "#71737C" }}>{tenant?.subdomain ? centerHost(tenant.subdomain) : ""}</div>
+          <div style={{ fontSize: 11, color: "#9A9CA6" }}>{tenant?.subdomain ? centerHost(tenant.subdomain) : ""}</div>
         </div>
       </div>
       </div>

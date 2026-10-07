@@ -23,7 +23,7 @@ const SEVERITY_STYLE: Record<Severity, { border: string; bg: string; badge: stri
   watch: { border: "#D6D3FA", bg: "#F6F5FF", badge: ACCENT },
 };
 
-const pctColor = (p: number | null) => (p === null ? "#8A8D96" : p >= 80 ? "#1FA463" : p >= 60 ? "#D97706" : "#B23A47");
+const pctColor = (p: number | null) => (p === null ? "#686B75" : p >= 80 ? "#1FA463" : p >= 60 ? "#D97706" : "#B23A47");
 
 // Center health, 0-100: the average of the rates we actually have
 // (attendance, fee collection, seat occupancy).
@@ -96,14 +96,14 @@ function AiInsightsContent() {
             {t("aiInsights.autoBadge")}
           </span>
         </h1>
-        <div style={{ fontSize: 12.5, color: "#8A8D96" }}>
+        <div style={{ fontSize: 12.5, color: "#686B75" }}>
           {t("aiInsights.lastUpdated")} {formatTime(updatedAt, lang)}
         </div>
       </div>
 
       <div style={{ flex: 1, minHeight: 0, padding: "26px 32px", overflow: "auto", boxSizing: "border-box", display: "flex", flexDirection: "column", gap: 18 }}>
         {loading ? (
-          <div style={{ color: "#8A8D96", fontSize: 14 }}>{t("common.loading")}</div>
+          <div style={{ color: "#686B75", fontSize: 14 }}>{t("common.loading")}</div>
         ) : (
           <>
             {/* Health overview */}
@@ -135,7 +135,7 @@ function AiInsightsContent() {
                   { label: t("ai2.kpiNew"), value: String(report?.students.newThisMonth ?? "—"), color: "#181A1F" },
                 ].map((k) => (
                   <div key={k.label} style={{ ...card, padding: 16, display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
-                    <div style={{ fontSize: 12, color: "#8A8D96", fontWeight: 600 }}>{k.label}</div>
+                    <div style={{ fontSize: 12, color: "#686B75", fontWeight: 600 }}>{k.label}</div>
                     <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 800, fontSize: 26, color: k.color, marginTop: 8 }}>{k.value}</div>
                   </div>
                 ))}
@@ -164,7 +164,7 @@ function AiInsightsContent() {
             <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 2fr) minmax(280px, 1fr)", gap: 16, alignItems: "start" }}>
               {/* Insight cards, two per row */}
               {shown.length === 0 ? (
-                <div style={{ ...card, color: "#8A8D96", fontSize: 14, textAlign: "center", padding: 32 }}>
+                <div style={{ ...card, color: "#686B75", fontSize: 14, textAlign: "center", padding: 32 }}>
                   {report ? t("aiInsights.allGood") : t("ai2.limited")}
                 </div>
               ) : (
@@ -193,7 +193,7 @@ function AiInsightsContent() {
                 <div style={card}>
                   <div style={{ ...cardTitle, marginBottom: 12 }}>{t("ai2.atRiskTitle")}</div>
                   {(report?.atRisk.length ?? 0) === 0 ? (
-                    <div style={{ fontSize: 13, color: "#8A8D96" }}>{t("ai2.noRisk")}</div>
+                    <div style={{ fontSize: 13, color: "#686B75" }}>{t("ai2.noRisk")}</div>
                   ) : (
                     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                       {report!.atRisk.slice(0, 6).map((s) => (
@@ -211,7 +211,7 @@ function AiInsightsContent() {
                 <div style={card}>
                   <div style={{ ...cardTitle, marginBottom: 12 }}>{t("ai2.weakGroups")}</div>
                   {groupsByAttendance.length === 0 ? (
-                    <div style={{ fontSize: 13, color: "#8A8D96" }}>{t("chart.noData")}</div>
+                    <div style={{ fontSize: 13, color: "#686B75" }}>{t("chart.noData")}</div>
                   ) : (
                     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                       {groupsByAttendance.map((g) => (

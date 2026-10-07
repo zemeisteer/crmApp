@@ -54,7 +54,7 @@ export default function StaffAccessEditor({
         >
           {custom ? t("perm.custom") : t("perm.default")}
         </span>
-        <span style={{ fontSize: 12, color: "#8A8D96" }}>{t("perm.count").replace("{n}", String(current.length)).replace("{m}", String(catalog.keys.length))}</span>
+        <span style={{ fontSize: 12, color: "#686B75" }}>{t("perm.count").replace("{n}", String(current.length)).replace("{m}", String(catalog.keys.length))}</span>
         {custom && (
           <button type="button" className="btn" disabled={disabled} onClick={() => onChange(null)} style={{ marginLeft: "auto", background: "none", border: "none", color: ACCENT, fontSize: 12.5, fontWeight: 700, padding: 0, cursor: "pointer" }}>
             ↺ {t("perm.reset")}
@@ -97,7 +97,7 @@ export default function StaffAccessEditor({
           </fieldset>
         );
       })}
-      <div style={{ fontSize: 11.5, color: "#8A8D96", lineHeight: 1.5 }}>{t("perm.ownerOnly")}</div>
+      <div style={{ fontSize: 11.5, color: "#686B75", lineHeight: 1.5 }}>{t("perm.ownerOnly")}</div>
     </div>
   );
 }

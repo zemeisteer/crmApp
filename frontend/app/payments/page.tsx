@@ -158,7 +158,7 @@ function StudentPicker({
         placeholder={t("payments.picker.searchPlaceholder")}
       />
       {selected && !open && (
-        <div style={{ fontSize: 12, color: "#8A8D96", marginTop: 6 }}>
+        <div style={{ fontSize: 12, color: "#686B75", marginTop: 6 }}>
           {t("payments.picker.groups")}:{" "}
           {selected.enrollments?.map((e) => `${e.group.name} (${e.group.subject})`).join(", ") || "—"}
         </div>
@@ -180,7 +180,7 @@ function StudentPicker({
           }}
         >
           {matches.length === 0 ? (
-            <div style={{ padding: 12, fontSize: 12.5, color: "#8A8D96" }}>
+            <div style={{ padding: 12, fontSize: 12.5, color: "#686B75" }}>
               {t("payments.picker.notFound")}
             </div>
           ) : (
@@ -204,7 +204,7 @@ function StudentPicker({
                 }}
               >
                 <div style={{ fontSize: 13, fontWeight: 600 }}>{s.fullName}</div>
-                <div style={{ fontSize: 11.5, color: "#8A8D96" }}>
+                <div style={{ fontSize: 11.5, color: "#686B75" }}>
                   {s.enrollments?.map((e) => e.group.name).join(", ") || t("payments.picker.noGroup")}
                 </div>
               </button>
@@ -909,7 +909,7 @@ function PaymentsContent() {
                 cursor: "pointer",
                 border: "none",
                 background: activeTab === "history" ? "#fff" : "transparent",
-                color: activeTab === "history" ? "#181A1F" : "#71737C",
+                color: activeTab === "history" ? "#181A1F" : "#686B75",
                 boxShadow: activeTab === "history" ? "0 1px 3px rgba(18,19,26,0.08)" : "none",
                 transition: "all 0.15s ease",
               }}
@@ -926,7 +926,7 @@ function PaymentsContent() {
                 cursor: "pointer",
                 border: "none",
                 background: activeTab === "debtors" ? "#fff" : "transparent",
-                color: activeTab === "debtors" ? "#181A1F" : "#71737C",
+                color: activeTab === "debtors" ? "#181A1F" : "#686B75",
                 boxShadow: activeTab === "debtors" ? "0 1px 3px rgba(18,19,26,0.08)" : "none",
                 display: "flex",
                 alignItems: "center",
@@ -961,7 +961,7 @@ function PaymentsContent() {
                 cursor: "pointer",
                 border: "none",
                 background: activeTab === "invoices" ? "#fff" : "transparent",
-                color: activeTab === "invoices" ? "#181A1F" : "#71737C",
+                color: activeTab === "invoices" ? "#181A1F" : "#686B75",
                 boxShadow: activeTab === "invoices" ? "0 1px 3px rgba(18,19,26,0.08)" : "none",
                 transition: "all 0.15s ease",
               }}
@@ -980,7 +980,7 @@ function PaymentsContent() {
                 cursor: "pointer",
                 border: "none",
                 background: activeTab === "expenses" ? "#fff" : "transparent",
-                color: activeTab === "expenses" ? "#181A1F" : "#71737C",
+                color: activeTab === "expenses" ? "#181A1F" : "#686B75",
                 boxShadow: activeTab === "expenses" ? "0 1px 3px rgba(18,19,26,0.08)" : "none",
                 transition: "all 0.15s ease",
               }}
@@ -999,7 +999,7 @@ function PaymentsContent() {
                 cursor: "pointer",
                 border: "none",
                 background: activeTab === "cash" ? "#fff" : "transparent",
-                color: activeTab === "cash" ? "#181A1F" : "#71737C",
+                color: activeTab === "cash" ? "#181A1F" : "#686B75",
                 boxShadow: activeTab === "cash" ? "0 1px 3px rgba(18,19,26,0.08)" : "none",
                 transition: "all 0.15s ease",
               }}
@@ -1014,7 +1014,7 @@ function PaymentsContent() {
         <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
           {(activeTab === "debtors" || activeTab === "expenses" || activeTab === "invoices") && (
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <span style={{ fontSize: 12, color: "#8A8D96", fontWeight: 600 }}>{t("pay.month")}</span>
+              <span style={{ fontSize: 12, color: "#686B75", fontWeight: 600 }}>{t("pay.month")}</span>
               <MonthPicker value={selectedMonth} onChange={setSelectedMonth} />
             </div>
           )}
@@ -1023,11 +1023,11 @@ function PaymentsContent() {
             <button
               className="btn"
               onClick={async () => {
-                if (!confirm(`${selectedMonth} oyi uchun barcha o'quvchilarga hisob-fakturalar shakllantirilsinmi?`)) return;
+                if (!confirm(t("msg.generateInvoicesConfirm").replace("{month}", selectedMonth))) return;
                 setGeneratingInvoices(true);
                 try {
                   const res = await invoicesApi.generateMonthly(selectedMonth);
-                  alert(`${res.generatedCount} ta hisob-faktura shakllantirildi!`);
+                  alert(t("msg.invoicesGenerated").replace("{count}", String(res.generatedCount)));
                   loadAll();
                 } catch (err) {
                   alert(err instanceof ApiError ? err.message : "Xatolik");
@@ -1149,7 +1149,7 @@ function PaymentsContent() {
                   padding: 18,
                 }}
               >
-                <div style={{ fontSize: 12, color: "#8A8D96" }}>{t("payments.statMonthRevenue")}</div>
+                <div style={{ fontSize: 12, color: "#686B75" }}>{t("payments.statMonthRevenue")}</div>
                 <div
                   style={{
                     fontSize: 24,
@@ -1169,7 +1169,7 @@ function PaymentsContent() {
                   padding: 18,
                 }}
               >
-                <div style={{ fontSize: 12, color: "#8A8D96" }}>{t("payments.statPending")}</div>
+                <div style={{ fontSize: 12, color: "#686B75" }}>{t("payments.statPending")}</div>
                 <div
                   style={{
                     fontSize: 24,
@@ -1189,7 +1189,7 @@ function PaymentsContent() {
                   padding: 18,
                 }}
               >
-                <div style={{ fontSize: 12, color: failedCount > 0 ? "#B23A47" : "#8A8D96" }}>
+                <div style={{ fontSize: 12, color: failedCount > 0 ? "#B23A47" : "#686B75" }}>
                   {t("dashboard.statDebtors")}
                 </div>
                 <div
@@ -1207,11 +1207,11 @@ function PaymentsContent() {
             </div>
 
             {loading ? (
-              <div style={{ color: "#8A8D96", fontSize: 14 }}>{t("common.loading")}</div>
+              <div style={{ color: "#686B75", fontSize: 14 }}>{t("common.loading")}</div>
             ) : payments.length === 0 ? (
               <div
                 style={{
-                  color: "#8A8D96",
+                  color: "#686B75",
                   fontSize: 14,
                   background: "#fff",
                   border: "1px solid #EAE8E2",
@@ -1271,7 +1271,7 @@ function PaymentsContent() {
                             cursor: "pointer",
                             border: "none",
                             background: period === p ? "#fff" : "transparent",
-                            color: period === p ? "#181A1F" : "#8A8D96",
+                            color: period === p ? "#181A1F" : "#686B75",
                             boxShadow: period === p ? "0 1px 3px rgba(18,19,26,0.08)" : "none",
                           }}
                         >
@@ -1325,7 +1325,7 @@ function PaymentsContent() {
                 {filteredPayments.length === 0 ? (
                   <div
                     style={{
-                      color: "#8A8D96",
+                      color: "#686B75",
                       fontSize: 14,
                       background: "#fff",
                       border: "1px solid #EAE8E2",
@@ -1370,7 +1370,7 @@ function PaymentsContent() {
                             <td style={{ fontWeight: 700 }}>
                               {formatMoney(p.amount)} {t("common.sumUnit")}
                               {p.discount > 0 && (
-                                <span style={{ fontSize: 11, color: "#1FA463", fontWeight: 600 }}>
+                                <span style={{ fontSize: 11, color: "#167A48", fontWeight: 600 }}>
                                   {" "}
                                   (-{formatMoney(p.discount)})
                                 </span>
@@ -1431,7 +1431,7 @@ function PaymentsContent() {
                   padding: 18,
                 }}
               >
-                <div style={{ fontSize: 12, color: "#8A8D96" }}>
+                <div style={{ fontSize: 12, color: "#686B75" }}>
                   {t("payments.debtors.totalExpected")}
                 </div>
                 <div
@@ -1454,7 +1454,7 @@ function PaymentsContent() {
                   padding: 18,
                 }}
               >
-                <div style={{ fontSize: 12, color: "#8A8D96" }}>
+                <div style={{ fontSize: 12, color: "#686B75" }}>
                   {t("payments.debtors.totalPaid")}
                 </div>
                 <div
@@ -1481,7 +1481,7 @@ function PaymentsContent() {
                 <div
                   style={{
                     fontSize: 12,
-                    color: (debtorsData?.totalDebt || 0) > 0 ? "#B91C1C" : "#8A8D96",
+                    color: (debtorsData?.totalDebt || 0) > 0 ? "#B91C1C" : "#686B75",
                   }}
                 >
                   {t("payments.debtors.totalDebt")}
@@ -1507,7 +1507,7 @@ function PaymentsContent() {
                   padding: 18,
                 }}
               >
-                <div style={{ fontSize: 12, color: "#8A8D96" }}>
+                <div style={{ fontSize: 12, color: "#686B75" }}>
                   {t("payments.debtors.debtorCount")}
                 </div>
                 <div
@@ -1619,7 +1619,7 @@ function PaymentsContent() {
 
             {/* Debtors List Table */}
             {loading ? (
-              <div style={{ color: "#8A8D96", fontSize: 14 }}>{t("common.loading")}</div>
+              <div style={{ color: "#686B75", fontSize: 14 }}>{t("common.loading")}</div>
             ) : filteredDebtors.length === 0 ? (
               <div
                 style={{
@@ -1664,16 +1664,16 @@ function PaymentsContent() {
                             {d.studentName}
                             {/* The debt is that month's even if the student has since stopped. */}
                             {d.studentStatus && d.studentStatus !== "ACTIVE" && (
-                              <span style={{ marginLeft: 6, fontSize: 11, fontWeight: 600, color: "#8A8D96" }}>({t(`stStatus.${d.studentStatus}`)})</span>
+                              <span style={{ marginLeft: 6, fontSize: 11, fontWeight: 600, color: "#686B75" }}>({t(`stStatus.${d.studentStatus}`)})</span>
                             )}
                           </div>
                           {d.phone && (
-                            <div style={{ fontSize: 11.5, color: "#8A8D96" }}>{d.phone}</div>
+                            <div style={{ fontSize: 11.5, color: "#686B75" }}>{d.phone}</div>
                           )}
                         </td>
                         <td>
                           {d.groups.length === 0 ? (
-                            <span style={{ color: "#8A8D96", fontSize: 12 }}>—</span>
+                            <span style={{ color: "#686B75", fontSize: 12 }}>—</span>
                           ) : (
                             <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
                               {d.groups.map((g) => (
@@ -1697,7 +1697,7 @@ function PaymentsContent() {
                         <td style={{ fontWeight: 600 }}>
                           {formatMoney(d.expectedAmount)} {t("common.sumUnit")}
                         </td>
-                        <td style={{ fontWeight: 600, color: d.paidAmount > 0 ? "#10B981" : "#8A8D96" }}>
+                        <td style={{ fontWeight: 600, color: d.paidAmount > 0 ? "#10B981" : "#686B75" }}>
                           {formatMoney(d.paidAmount)} {t("common.sumUnit")}
                         </td>
                         <td style={{ fontWeight: 800 }}>
@@ -1706,7 +1706,7 @@ function PaymentsContent() {
                               {formatMoney(d.debtAmount)} {t("common.sumUnit")}
                             </span>
                           ) : (
-                            <span style={{ color: d.status === "UNVERIFIED" ? "#8A8D96" : "#10B981" }}>0 {t("common.sumUnit")}</span>
+                            <span style={{ color: d.status === "UNVERIFIED" ? "#686B75" : "#10B981" }}>0 {t("common.sumUnit")}</span>
                           )}
                           {(d.unverifiedDebt || 0) > 0 && (
                             <div style={{ fontSize: 11.5, fontWeight: 600, color: "#B45309" }}>
@@ -1805,25 +1805,25 @@ function PaymentsContent() {
             {/* Top Invoices Cards */}
             <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0,1fr))", gap: 16 }}>
               <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 14, padding: 18 }}>
-                <div style={{ fontSize: 12, color: "#8A8D96" }}>{t("pay.invTotal")}</div>
+                <div style={{ fontSize: 12, color: "#686B75" }}>{t("pay.invTotal")}</div>
                 <div style={{ fontSize: 22, fontWeight: 800, fontFamily: "'Manrope', sans-serif", marginTop: 4 }}>
                   {formatMoney(invoices.reduce((s, inv) => s + inv.amount, 0))} {t("common.sumUnit")}
                 </div>
               </div>
               <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 14, padding: 18 }}>
-                <div style={{ fontSize: 12, color: "#8A8D96" }}>{t("pay.invPaid")}</div>
+                <div style={{ fontSize: 12, color: "#686B75" }}>{t("pay.invPaid")}</div>
                 <div style={{ fontSize: 22, fontWeight: 800, fontFamily: "'Manrope', sans-serif", marginTop: 4, color: "#10B981" }}>
                   {formatMoney(invoices.reduce((s, inv) => s + inv.amountPaid, 0))} {t("common.sumUnit")}
                 </div>
               </div>
               <div style={{ background: invoices.some((i) => i.remainingAmount > 0) ? "#FEF2F2" : "#fff", border: `1px solid ${invoices.some((i) => i.remainingAmount > 0) ? "#FCA5A5" : "#EAE8E2"}`, borderRadius: 14, padding: 18 }}>
-                <div style={{ fontSize: 12, color: invoices.some((i) => i.remainingAmount > 0) ? "#B91C1C" : "#8A8D96" }}>{t("pay.invRemaining")}</div>
+                <div style={{ fontSize: 12, color: invoices.some((i) => i.remainingAmount > 0) ? "#B91C1C" : "#686B75" }}>{t("pay.invRemaining")}</div>
                 <div style={{ fontSize: 22, fontWeight: 800, fontFamily: "'Manrope', sans-serif", marginTop: 4, color: "#DC2626" }}>
                   {formatMoney(invoices.reduce((s, inv) => s + (inv.status !== "CANCELLED" ? inv.remainingAmount : 0), 0))} {t("common.sumUnit")}
                 </div>
               </div>
               <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 14, padding: 18 }}>
-                <div style={{ fontSize: 12, color: "#8A8D96" }}>{t("pay.invOverdue")}</div>
+                <div style={{ fontSize: 12, color: "#686B75" }}>{t("pay.invOverdue")}</div>
                 <div style={{ fontSize: 22, fontWeight: 800, fontFamily: "'Manrope', sans-serif", marginTop: 4, color: "#F59E0B" }}>
                   {invoices.filter((i) => i.status === "OVERDUE").length} ta
                 </div>
@@ -1857,7 +1857,7 @@ function PaymentsContent() {
 
             {/* Invoices Table */}
             {filteredInvoices.length === 0 ? (
-              <div style={{ color: "#8A8D96", fontSize: 14, background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 32, textAlign: "center" }}>
+              <div style={{ color: "#686B75", fontSize: 14, background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 32, textAlign: "center" }}>
                 {t("pay.noInvoices")}
               </div>
             ) : (
@@ -1883,10 +1883,10 @@ function PaymentsContent() {
                         <td>{inv.enrollment?.group?.name || inv.description || "—"}</td>
                         <td>{inv.forMonth}</td>
                         <td style={{ fontWeight: 700 }}>{formatMoney(inv.amount)} {t("common.sumUnit")}</td>
-                        <td style={{ fontWeight: 600, color: inv.amountPaid > 0 ? "#10B981" : "#8A8D96" }}>
+                        <td style={{ fontWeight: 600, color: inv.amountPaid > 0 ? "#10B981" : "#686B75" }}>
                           {formatMoney(inv.amountPaid)} {t("common.sumUnit")}
                         </td>
-                        <td style={{ fontWeight: 800, color: inv.remainingAmount > 0 ? "#DC2626" : "#8A8D96" }}>
+                        <td style={{ fontWeight: 800, color: inv.remainingAmount > 0 ? "#DC2626" : "#686B75" }}>
                           {formatMoney(inv.remainingAmount)} {t("common.sumUnit")}
                         </td>
                         <td>{formatDate(inv.dueDate, lang, "dayMonth")}</td>
@@ -1938,7 +1938,7 @@ function PaymentsContent() {
                   padding: 18,
                 }}
               >
-                <div style={{ fontSize: 12, color: "#8A8D96" }}>
+                <div style={{ fontSize: 12, color: "#686B75" }}>
                   {t("payments.expenses.totalRevenue")}
                 </div>
                 <div
@@ -1962,7 +1962,7 @@ function PaymentsContent() {
                   padding: 18,
                 }}
               >
-                <div style={{ fontSize: 12, color: "#8A8D96" }}>
+                <div style={{ fontSize: 12, color: "#686B75" }}>
                   {t("payments.expenses.totalExpenses")}
                 </div>
                 <div
@@ -1976,7 +1976,7 @@ function PaymentsContent() {
                 >
                   -{formatMoney(financeSummary?.totalExpenses || 0)} {t("common.sumUnit")}
                 </div>
-                <div style={{ fontSize: 11, color: "#8A8D96", marginTop: 4 }}>
+                <div style={{ fontSize: 11, color: "#686B75", marginTop: 4 }}>
                   {t("pay.fsCenter")}: {formatMoney(financeSummary?.totalCenterExpenses || 0)} | {t("pay.fsSalaries")}:{" "}
                   {formatMoney(financeSummary?.totalSalaries || 0)}
                 </div>
@@ -2022,7 +2022,7 @@ function PaymentsContent() {
                   padding: 18,
                 }}
               >
-                <div style={{ fontSize: 12, color: "#8A8D96" }}>
+                <div style={{ fontSize: 12, color: "#686B75" }}>
                   {t("payments.debtors.collectionRate")}
                 </div>
                 <div
@@ -2036,7 +2036,7 @@ function PaymentsContent() {
                 >
                   {financeSummary?.collectionRate ?? 100}%
                 </div>
-                <div style={{ fontSize: 11, color: "#8A8D96", marginTop: 4 }}>
+                <div style={{ fontSize: 11, color: "#686B75", marginTop: 4 }}>
                   {t("pay.fsDebt")}: {formatMoney(financeSummary?.totalOutstandingDebt || 0)}
                 </div>
               </div>
@@ -2100,11 +2100,11 @@ function PaymentsContent() {
 
             {/* Expenses Table */}
             {loading ? (
-              <div style={{ color: "#8A8D96", fontSize: 14 }}>{t("common.loading")}</div>
+              <div style={{ color: "#686B75", fontSize: 14 }}>{t("common.loading")}</div>
             ) : filteredExpenses.length === 0 ? (
               <div
                 style={{
-                  color: "#8A8D96",
+                  color: "#686B75",
                   fontSize: 14,
                   background: "#fff",
                   border: "1px solid #EAE8E2",
@@ -2145,7 +2145,7 @@ function PaymentsContent() {
                           <td>
                             <div style={{ fontWeight: 700 }}>{exp.title}</div>
                             {exp.notes && (
-                              <div style={{ fontSize: 11.5, color: "#8A8D96" }}>{exp.notes}</div>
+                              <div style={{ fontSize: 11.5, color: "#686B75" }}>{exp.notes}</div>
                             )}
                           </td>
                           <td>
@@ -2444,7 +2444,7 @@ function PaymentsContent() {
               Qarzdorlik: {formatMoney(linkDebtor?.debtAmount || 0)} so'm ({debtorsData?.forMonth})
             </div>
             {linkDebtor?.phone && (
-              <div style={{ fontSize: 12, color: "#8A8D96", marginTop: 2 }}>Telefon: {linkDebtor.phone}</div>
+              <div style={{ fontSize: 12, color: "#686B75", marginTop: 2 }}>Telefon: {linkDebtor.phone}</div>
             )}
           </div>
 

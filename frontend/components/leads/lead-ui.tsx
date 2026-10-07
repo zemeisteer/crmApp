@@ -92,7 +92,7 @@ export function formatDate(iso: string | null | undefined, lang: Lang, tz: strin
 export function CenterTimeNote({ tz, text }: { tz: string; text: string }) {
   const browser = Intl.DateTimeFormat().resolvedOptions().timeZone;
   if (browser === tz) return null;
-  return <div style={{ fontSize: 11.5, color: "#8A8D96", marginTop: 4 }}>{text.replace("{tz}", tz)}</div>;
+  return <div style={{ fontSize: 11.5, color: "#686B75", marginTop: 4 }}>{text.replace("{tz}", tz)}</div>;
 }
 
 // DatePicker (YYYY-MM-DD) + TimePicker (HH:MM), on the center's clock -> the

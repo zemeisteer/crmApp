@@ -101,9 +101,9 @@ function RosterModal({ homeworkItem, onClose }: { homeworkItem: Homework; onClos
   return (
     <Modal open onClose={onClose} title={`${t("homework.rosterTitlePrefix")} — ${homeworkItem.title}`}>
       {!roster ? (
-        <div style={{ color: "#8A8D96", fontSize: 13.5 }}>{t("common.loading")}</div>
+        <div style={{ color: "#686B75", fontSize: 13.5 }}>{t("common.loading")}</div>
       ) : roster.length === 0 ? (
-        <div style={{ color: "#8A8D96", fontSize: 13.5 }}>{t("homework.noStudentsInGroup")}</div>
+        <div style={{ color: "#686B75", fontSize: 13.5 }}>{t("homework.noStudentsInGroup")}</div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           <div style={{ fontSize: 12, color: "#64748B" }}>
@@ -296,9 +296,9 @@ function LeaderboardModal({
       </div>
 
       {loading ? (
-        <div style={{ color: "#8A8D96", fontSize: 13.5 }}>{t("common.loading")}</div>
+        <div style={{ color: "#686B75", fontSize: 13.5 }}>{t("common.loading")}</div>
       ) : rows.length === 0 ? (
-        <div style={{ color: "#8A8D96", fontSize: 13.5 }}>{q ? t("leader.notFound") : t("leader.empty")}</div>
+        <div style={{ color: "#686B75", fontSize: 13.5 }}>{q ? t("leader.notFound") : t("leader.empty")}</div>
       ) : (
         <div style={{ maxHeight: 460, overflowY: "auto", border: "1px solid #EAE8E2", borderRadius: 12 }}>
           <table className="table" style={{ margin: 0 }}>
@@ -328,7 +328,7 @@ function LeaderboardModal({
           </table>
         </div>
       )}
-      <div style={{ marginTop: 10, fontSize: 12, color: "#8A8D96" }}>
+      <div style={{ marginTop: 10, fontSize: 12, color: "#686B75" }}>
         {t("leader.shown")}: {rows.length} / {list.length}
       </div>
     </Modal>
@@ -628,9 +628,9 @@ function HomeworkContent() {
         {loadError !== null ? (
           <LoadError message={loadError || t("adm.loadError")} onRetry={load} />
         ) : loading ? (
-          <div style={{ color: "#8A8D96", fontSize: 14 }}>{t("common.loading")}</div>
+          <div style={{ color: "#686B75", fontSize: 14 }}>{t("common.loading")}</div>
         ) : groups.length === 0 ? (
-          <div style={{ color: "#8A8D96", fontSize: 14, background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 32, textAlign: "center" }}>
+          <div style={{ color: "#686B75", fontSize: 14, background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 32, textAlign: "center" }}>
             {t("homework.createGroupFirst")}
           </div>
         ) : (
@@ -644,7 +644,7 @@ function HomeworkContent() {
                   { label: t("hws.notSubmitted"), value: String(hwStats.notSubmitted), danger: hwStats.notSubmitted > 0 },
                 ].map((c) => (
                   <div key={c.label} style={{ background: c.danger ? "#FDEBEC" : "#fff", border: `1px solid ${c.danger ? "#F6D2D6" : "#EAE8E2"}`, borderRadius: 14, padding: 18 }}>
-                    <div style={{ fontSize: 12, color: c.danger ? "#B23A47" : "#8A8D96" }}>{c.label}</div>
+                    <div style={{ fontSize: 12, color: c.danger ? "#B23A47" : "#686B75" }}>{c.label}</div>
                     <div style={{ fontSize: 24, fontWeight: 800, fontFamily: "'Manrope', sans-serif", marginTop: 4, color: c.danger ? "#B23A47" : c.warn ? "#B45309" : "#181A1F" }}>{c.value}</div>
                   </div>
                 ))}
@@ -656,7 +656,7 @@ function HomeworkContent() {
                   <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 14 }}>{t("homework.completionRateTitle")}</div>
                   <BarChart data={groupCompletionChart} color="#1FA463" formatValue={(v) => `${v}%`} />
                   {groupCompletionChart.length === 0 && (
-                    <div style={{ fontSize: 12, color: "#8A8D96", marginTop: 8 }}>{t("homework.noCompletionsYet")}</div>
+                    <div style={{ fontSize: 12, color: "#686B75", marginTop: 8 }}>{t("homework.noCompletionsYet")}</div>
                   )}
                 </div>
                 <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 20 }}>
@@ -667,7 +667,7 @@ function HomeworkContent() {
             )}
 
             {filtered.length === 0 ? (
-              <div style={{ color: "#8A8D96", fontSize: 14, background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 32, textAlign: "center" }}>
+              <div style={{ color: "#686B75", fontSize: 14, background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 32, textAlign: "center" }}>
                 {items.length === 0 ? t("homework.noHomeworkYet") : t("homework.noSearchResults")}
               </div>
             ) : (
@@ -679,7 +679,7 @@ function HomeworkContent() {
                     const st = hwState(h);
                     const badge =
                       st.status === "DONE"
-                        ? { text: t("hws.stDone"), color: "#1FA463", bg: "#E9F8EF" }
+                        ? { text: t("hws.stDone"), color: "#167A48", bg: "#E9F8EF" }
                         : st.status === "TODAY"
                           ? { text: t("hws.stToday"), color: "#B45309", bg: "#FEF3C7" }
                           : st.status === "OVERDUE"
@@ -717,7 +717,7 @@ function HomeworkContent() {
                           )}
                         </div>
                         <div style={{ marginTop: "auto", display: "flex", alignItems: "center", justifyContent: "space-between", paddingTop: 10, borderTop: "1px solid #F1F0EC", flexWrap: "wrap", gap: 8 }}>
-                          <div style={{ fontSize: 12, color: "#8A8D96" }}>{t("homework.due")}: {formatDate(h.dueDate)}</div>
+                          <div style={{ fontSize: 12, color: "#686B75" }}>{t("homework.due")}: {formatDate(h.dueDate)}</div>
                           {h.attachmentPath && (
                             <a
                               href={fileUrl(h.attachmentPath) || "#"}
@@ -832,7 +832,7 @@ function HomeworkContent() {
             ) : (
               <>
                 <input className="field-input" type="file" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
-                {file && aiFile && <div style={{ fontSize: 11.5, color: "#8A8D96", marginTop: 4 }}>{t("hwAi.fileReplaced")}</div>}
+                {file && aiFile && <div style={{ fontSize: 11.5, color: "#686B75", marginTop: 4 }}>{t("hwAi.fileReplaced")}</div>}
               </>
             )}
           </div>
@@ -890,7 +890,7 @@ function HomeworkContent() {
                 <button
                   type="button"
                   onClick={() => setAiSuggestion(null)}
-                  style={{ background: "none", border: "none", color: "#8A8D96", cursor: "pointer", fontSize: 16, lineHeight: 1 }}
+                  style={{ background: "none", border: "none", color: "#686B75", cursor: "pointer", fontSize: 16, lineHeight: 1 }}
                 >
                   ✕
                 </button>
@@ -906,7 +906,7 @@ function HomeworkContent() {
                 </div>
               )}
               {aiSuggestion.dueDate && (
-                <div style={{ fontSize: 11.5, color: "#8A8D96" }}>{t("hwAi.dueSuggested")}: {aiSuggestion.dueDate}</div>
+                <div style={{ fontSize: 11.5, color: "#686B75" }}>{t("hwAi.dueSuggested")}: {aiSuggestion.dueDate}</div>
               )}
               <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
                 <button

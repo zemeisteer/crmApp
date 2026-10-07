@@ -214,7 +214,7 @@ export default function LeadFormModal({ open, onClose, onSaved, lead, managers =
               placeholder={t("common.notSelected")}
               options={[{ value: "", label: t("common.notSelected") }, ...subjects.map((s) => ({ value: s.id, label: s.name }))]}
             />
-            {subjects.length === 0 && <div style={{ marginTop: 5, fontSize: 12, color: "#8A8D96" }}>{t("leadForm.noSubjectsHint")}</div>}
+            {subjects.length === 0 && <div style={{ marginTop: 5, fontSize: 12, color: "#686B75" }}>{t("leadForm.noSubjectsHint")}</div>}
           </div>
           {courses.length > 0 && (
             <div>
@@ -243,7 +243,7 @@ export default function LeadFormModal({ open, onClose, onSaved, lead, managers =
               <label style={label}>{t("adm.fieldFollowUp")}</label>
               <DatePicker value={followDate} onChange={setFollowDate} />
               <CenterTimeNote tz={tz} text={t("adm.centerTime")} />
-              <div style={{ marginTop: 5, fontSize: 12, color: "#8A8D96" }}>{t("leadForm.followUpHint")}</div>
+              <div style={{ marginTop: 5, fontSize: 12, color: "#686B75" }}>{t("leadForm.followUpHint")}</div>
             </div>
           )}
         </div>
@@ -262,7 +262,7 @@ export default function LeadFormModal({ open, onClose, onSaved, lead, managers =
                 <li key={d.id} style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                   <Link href={`/leads/${d.id}`} style={{ fontWeight: 700, color: "#4F46E5" }}>{d.fullName}</Link>
                   <StatusBadge status={d.status} label={t(statusKey(d.status))} />
-                  <span style={{ fontSize: 12, color: "#8A8D96" }}>({d.matchedOn === "phone" ? t("leads.fieldPhone") : t("adm.fieldEmail")})</span>
+                  <span style={{ fontSize: 12, color: "#686B75" }}>({d.matchedOn === "phone" ? t("leads.fieldPhone") : t("adm.fieldEmail")})</span>
                 </li>
               ))}
             </ul>

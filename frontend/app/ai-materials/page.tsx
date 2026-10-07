@@ -205,7 +205,7 @@ function AiMaterialsContent() {
             {t("aim.assistant")}
           </span>
         </h1>
-        <div style={{ fontSize: 13, color: "#8A8D96", marginTop: 2 }}>{t("aiMaterials.subtitle")}</div>
+        <div style={{ fontSize: 13, color: "#686B75", marginTop: 2 }}>{t("aiMaterials.subtitle")}</div>
       </div>
 
       <div style={{ flex: 1, minHeight: 0, padding: "26px 32px", overflow: "auto", boxSizing: "border-box" }}>
@@ -435,7 +435,7 @@ function AiMaterialsContent() {
                         <span
                           style={{
                             background: "#EBF8F2",
-                            color: "#1FA463",
+                            color: "#167A48",
                             fontSize: 11.5,
                             fontWeight: 600,
                             padding: "3px 9px",
@@ -445,7 +445,7 @@ function AiMaterialsContent() {
                           {activeMaterial.level}
                         </span>
                       )}
-                      <span style={{ fontSize: 11.5, color: "#8A8D96" }}>{formatDate(activeMaterial.createdAt)}</span>
+                      <span style={{ fontSize: 11.5, color: "#686B75" }}>{formatDate(activeMaterial.createdAt)}</span>
                     </div>
                     <h2 style={{ fontSize: 17, fontWeight: 800, fontFamily: "'Manrope', sans-serif" }}>
                       {activeMaterial.topic}
@@ -502,7 +502,7 @@ function AiMaterialsContent() {
                   borderRadius: 16,
                   padding: 36,
                   textAlign: "center",
-                  color: "#8A8D96",
+                  color: "#686B75",
                 }}
               >
                 <div style={{ fontSize: 32, marginBottom: 8 }}>💡</div>
@@ -553,7 +553,7 @@ function AiMaterialsContent() {
               </div>
 
               {history.length === 0 ? (
-                <div style={{ fontSize: 13, color: "#8A8D96", textAlign: "center", padding: "16px 0" }}>
+                <div style={{ fontSize: 13, color: "#686B75", textAlign: "center", padding: "16px 0" }}>
                   {t("aim.emptyHistory")}
                 </div>
               ) : (
@@ -592,7 +592,7 @@ function AiMaterialsContent() {
                               {t(MATERIAL_TYPE_LABEL_KEYS[h.type] || "aiMaterials.typeLessonPlan")}
                             </span>
                             <span style={{ fontSize: 11, fontWeight: 600, color: "#4A4E58" }}>{h.subject}</span>
-                            {h.level && <span style={{ fontSize: 11, color: "#8A8D96" }}>· {h.level}</span>}
+                            {h.level && <span style={{ fontSize: 11, color: "#686B75" }}>· {h.level}</span>}
                             <span style={{ fontSize: 10.5, color: "#A0A3AB", marginLeft: "auto" }}>{formatDate(h.createdAt)}</span>
                           </div>
                           <div
@@ -611,7 +611,7 @@ function AiMaterialsContent() {
                             <div
                               style={{
                                 fontSize: 11.5,
-                                color: "#8A8D96",
+                                color: "#686B75",
                                 overflow: "hidden",
                                 textOverflow: "ellipsis",
                                 whiteSpace: "nowrap",

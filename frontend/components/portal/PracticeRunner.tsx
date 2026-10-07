@@ -10,7 +10,7 @@ import { PORTAL_ACCENT as ACCENT, portalCard as card } from "@/components/portal
 type Text = Record<string, string>;
 
 export const percentColor = (p: number | null | undefined) =>
-  p == null ? "#8A8D96" : p >= 85 ? "#1FA463" : p >= 60 ? ACCENT : p >= 40 ? "#D97706" : "#DC2626";
+  p == null ? "#686B75" : p >= 85 ? "#1FA463" : p >= 60 ? ACCENT : p >= 40 ? "#D97706" : "#DC2626";
 
 // One sitting of a practice test: the sections as cards, each with its own
 // clock (server time) from the first start; answers autosave; a finished
@@ -162,7 +162,7 @@ export default function PracticeRunner({ initial, readOnly, onExit }: { initial:
               );
             })}
           </div>
-          <div style={{ fontSize: 12.5, color: "#8A8D96", lineHeight: 1.5 }}>ℹ️ {t("pmk.rules")}</div>
+          <div style={{ fontSize: 12.5, color: "#686B75", lineHeight: 1.5 }}>ℹ️ {t("pmk.rules")}</div>
         </>
       )}
 
@@ -225,7 +225,7 @@ function SectionReview({ a, section, answers }: { a: PortalPracticeAttempt; sect
                 </div>
                 <QuestionInput q={q} value={answers[q.id] ?? ""} onChange={() => undefined} disabled exam examWording={english} />
                 {mark === false && !given && <div style={{ marginTop: 8, fontSize: 12.5, color: "#B45309", fontWeight: 700 }}>— {t("exm.noAnswer")}</div>}
-                {keys && mark === false && <div style={{ marginTop: 6, fontSize: 12.5, color: "#1FA463", fontWeight: 700 }}>✓ {t("pmk.answer")}: {keyLabel(keys[Number(q.id)])}</div>}
+                {keys && mark === false && <div style={{ marginTop: 6, fontSize: 12.5, color: "#167A48", fontWeight: 700 }}>✓ {t("pmk.answer")}: {keyLabel(keys[Number(q.id)])}</div>}
               </div>
             );
           })}
@@ -241,7 +241,7 @@ function SectionReview({ a, section, answers }: { a: PortalPracticeAttempt; sect
             </div>
             <div style={{ fontSize: 14, lineHeight: 1.6, whiteSpace: "pre-wrap", background: "#F7F7F5", borderRadius: 12, padding: 12 }}>{task.prompt}</div>
             <div style={{ fontSize: 14.5, lineHeight: 1.7, whiteSpace: "pre-wrap", border: "1px solid #EAE8E2", borderRadius: 12, padding: 12, background: "#FAFAF8" }}>
-              {answers[`t${i}`]?.trim() || <span style={{ color: "#8A8D96" }}>{t("exm.noAnswer")}</span>}
+              {answers[`t${i}`]?.trim() || <span style={{ color: "#686B75" }}>{t("exm.noAnswer")}</span>}
             </div>
             <div style={{ fontSize: 12.5, color: "#6B6E78" }}>{tr?.words ?? 0} {t("mock.words")}</div>
             {tr?.comment && <div style={{ borderLeft: `3px solid ${ACCENT}`, background: "#EEF0FF", borderRadius: 8, padding: "8px 10px", fontSize: 13.5 }}>🤖 {tr.comment}</div>}

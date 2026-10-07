@@ -59,7 +59,7 @@ function PeriodPills({ value, onChange, options }: { value: string; onChange: (v
           style={{
             fontSize: 11.5, fontWeight: 700, padding: "6px 11px", borderRadius: 7, cursor: "pointer", border: "none",
             background: value === o.key ? "#fff" : "transparent",
-            color: value === o.key ? "#181A1F" : "#8A8D96",
+            color: value === o.key ? "#181A1F" : "#686B75",
             boxShadow: value === o.key ? "0 1px 3px rgba(18,19,26,0.08)" : "none",
           }}
         >
@@ -153,18 +153,18 @@ function DashboardContent() {
       <div style={{ padding: "22px 32px", borderBottom: "1px solid #EAE8E2", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div>
           <h1 style={{ fontSize: 22, fontWeight: 800 }}>{t("dashboard.welcome")}, {user?.fullName?.split(" ")[0] ?? "boss"}</h1>
-          <div style={{ fontSize: 13, color: "#8A8D96", marginTop: 2 }}>
+          <div style={{ fontSize: 13, color: "#686B75", marginTop: 2 }}>
             {today} — {tenant?.name}
           </div>
         </div>
-        <span style={{ fontSize: 12.5, fontWeight: 700, color: "#1FA463", background: "#E9F8EF", padding: "6px 14px", borderRadius: 100 }}>
+        <span style={{ fontSize: 12.5, fontWeight: 700, color: "#167A48", background: "#E9F8EF", padding: "6px 14px", borderRadius: 100 }}>
           ● {t("dashboard.allSystemsOk")}
         </span>
       </div>
 
       <div style={{ padding: "26px 32px", display: "flex", flexDirection: "column", gap: 22, overflow: "auto" }}>
         {loading ? (
-          <div style={{ color: "#8A8D96", fontSize: 14 }}>{t("dashboard.loading")}</div>
+          <div style={{ color: "#686B75", fontSize: 14 }}>{t("dashboard.loading")}</div>
         ) : (
           <>
             <AnnouncementBanners />
@@ -266,7 +266,7 @@ function DashboardContent() {
               <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 20 }}>
                 <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 700, fontSize: 15, marginBottom: 16 }}>{t("dashboard.groupFillRate")}</div>
                 {(data?.groupFill.length ?? 0) === 0 ? (
-                  <div style={{ fontSize: 13, color: "#8A8D96" }}>{t("dashboard.noGroupsYet")}</div>
+                  <div style={{ fontSize: 13, color: "#686B75" }}>{t("dashboard.noGroupsYet")}</div>
                 ) : (
                   <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                     {data!.groupFill.map((g) => (
@@ -285,7 +285,7 @@ function DashboardContent() {
                 <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 700, fontSize: 15, marginBottom: 16 }}>{t("dashboard.paymentStatusThisMonth")}</div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                   <ProgressBar label={t("dashboard.paid")} value={paymentStatus.paid} max={100} color="#1FA463" suffix={`${paymentStatus.paid}%`} />
-                  <ProgressBar label={t("dashboard.pending")} value={paymentStatus.pending} max={100} color="#8A8D96" suffix={`${paymentStatus.pending}%`} />
+                  <ProgressBar label={t("dashboard.pending")} value={paymentStatus.pending} max={100} color="#686B75" suffix={`${paymentStatus.pending}%`} />
                   <ProgressBar label={t("dashboard.overdue")} value={paymentStatus.failed} max={100} color="#B23A47" suffix={`${paymentStatus.failed}%`} />
                 </div>
               </div>}
@@ -298,7 +298,7 @@ function DashboardContent() {
                     <Link href="/payments" style={{ fontSize: 12, color: ACCENT, fontWeight: 600, textDecoration: "none" }}>{t("dashboard.viewAll")}</Link>
                   </div>
                   {finance.topDebtors.length === 0 ? (
-                    <div style={{ fontSize: 13, color: "#1FA463", fontWeight: 600 }}>✓ {t("dash.noDebtors")}</div>
+                    <div style={{ fontSize: 13, color: "#167A48", fontWeight: 600 }}>✓ {t("dash.noDebtors")}</div>
                   ) : (
                     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                       {finance.topDebtors.map((d) => (
@@ -308,7 +308,7 @@ function DashboardContent() {
                           </div>
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ fontSize: 13.5, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{d.fullName}</div>
-                            <div style={{ fontSize: 12, color: "#8A8D96", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{d.groups.join(", ") || "—"}</div>
+                            <div style={{ fontSize: 12, color: "#686B75", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{d.groups.join(", ") || "—"}</div>
                           </div>
                           <div style={{ textAlign: "right", flexShrink: 0 }}>
                             <div style={{ fontSize: 13.5, fontWeight: 700 }}>{formatMoney(d.debt)} {t("common.sumUnit")}</div>
@@ -328,17 +328,17 @@ function DashboardContent() {
                   <Link href="/schedule" style={{ fontSize: 12, color: ACCENT, fontWeight: 600, textDecoration: "none" }}>{t("dashboard.openTimetable")} →</Link>
                 </div>
                 {(data?.todaysLessons.length ?? 0) === 0 ? (
-                  <div style={{ fontSize: 13, color: "#8A8D96" }}>{t("dashboard.noLessonsToday")}</div>
+                  <div style={{ fontSize: 13, color: "#686B75" }}>{t("dashboard.noLessonsToday")}</div>
                 ) : (
                   <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                     {data!.todaysLessons.map((l, i) => {
                       const palette = [["#ECEBFB", ACCENT], ["#FFF1E8", "#EA7A3A"], ["#E9F8EF", "#1FA463"], ["#FDEBEC", "#E15361"]][i % 4];
                       const badge =
                         l.status === "DONE"
-                          ? { text: `${t("dash.lessonDone")}${l.marked ? ` · ${l.present}/${l.marked}` : ""}`, color: "#1FA463", bg: "#E9F8EF" }
+                          ? { text: `${t("dash.lessonDone")}${l.marked ? ` · ${l.present}/${l.marked}` : ""}`, color: "#167A48", bg: "#E9F8EF" }
                           : l.status === "UNMARKED"
                             ? { text: t("dash.lessonUnmarked"), color: "#B45309", bg: "#FEF3C7" }
-                            : { text: t("dash.lessonPlanned"), color: "#8A8D96", bg: "#F2F1EC" };
+                            : { text: t("dash.lessonPlanned"), color: "#686B75", bg: "#F2F1EC" };
                       return (
                         <Link key={l.id} href={`/groups/${l.id}`} style={{ display: "flex", alignItems: "center", gap: 12, textDecoration: "none", color: "#181A1F" }}>
                           <div style={{ width: 36, height: 36, borderRadius: 10, background: palette[0], color: palette[1], display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 12.5, flexShrink: 0 }}>
@@ -346,7 +346,7 @@ function DashboardContent() {
                           </div>
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ fontSize: 13.5, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l.name}</div>
-                            <div style={{ fontSize: 12, color: "#8A8D96", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            <div style={{ fontSize: 12, color: "#686B75", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                               {[l.startTime ?? "—", l.teacherName, `${l.students} ${t("dash.studentsShort")}`].filter(Boolean).join(" · ")}
                             </div>
                           </div>
@@ -362,8 +362,8 @@ function DashboardContent() {
               <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 20 }}>
                 <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 8, flexWrap: "wrap", gap: 8 }}>
                   <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 700, fontSize: 15 }}>{t("dashboard.revenueByMonth")}</div>
-                  <div style={{ fontSize: 12, color: "#8A8D96" }}>
-                    {t("dashboard.yearTotal")}: <strong style={{ color: "#1FA463" }}>{formatMoney(finance.revenueByMonth.reduce((s, m) => s + m.amount, 0))} {t("common.sumUnit")}</strong>
+                  <div style={{ fontSize: 12, color: "#686B75" }}>
+                    {t("dashboard.yearTotal")}: <strong style={{ color: "#167A48" }}>{formatMoney(finance.revenueByMonth.reduce((s, m) => s + m.amount, 0))} {t("common.sumUnit")}</strong>
                   </div>
                 </div>
                 <BarChart data={revenueData} color="#1FA463" formatValue={(v) => formatMoney(v)} unit={t("common.sumUnit")} emptyText={t("dashboard.noPaymentsYet")} />
@@ -389,7 +389,7 @@ function StatCard({ label, value, danger, title }: { label: string; value: strin
         padding: 18,
       }}
     >
-      <div style={{ fontSize: 12, color: danger ? "#B23A47" : "#8A8D96" }}>{label}</div>
+      <div style={{ fontSize: 12, color: danger ? "#B23A47" : "#686B75" }}>{label}</div>
       <div style={{ fontSize: 24, fontWeight: 800, fontFamily: "'Manrope', sans-serif", marginTop: 4, color: danger ? "#B23A47" : "#181A1F" }}>
         {value}
       </div>

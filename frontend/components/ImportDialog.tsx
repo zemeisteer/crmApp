@@ -85,12 +85,12 @@ export default function ImportDialog({ kind, open, onClose, onDone }: { kind: Im
           <button type="button" className="btn" disabled={busy !== null} onClick={() => fileRef.current?.click()} style={{ background: "#F2F1EC", color: "#181A1F", border: "none", fontSize: 13, fontWeight: 700, padding: "9px 14px", borderRadius: 9 }}>
             {busy === "check" ? t("imp.checking") : t("imp.choose")}
           </button>
-          {file && <span style={{ marginLeft: 10, fontSize: 12.5, color: "#8A8D96" }}>{file.name}</span>}
+          {file && <span style={{ marginLeft: 10, fontSize: 12.5, color: "#686B75" }}>{file.name}</span>}
           <input ref={fileRef} type="file" accept=".xlsx" aria-label={t("imp.choose")} onChange={onChoose} style={{ display: "none" }} />
         </div>
 
         {error && <div role="alert" style={{ background: "#FDEBEC", color: "#B23A47", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: 10 }}>{error}</div>}
-        {done && <div role="status" style={{ background: "#EBF8F2", color: "#1FA463", fontSize: 13, fontWeight: 700, padding: "10px 14px", borderRadius: 10 }}>{done}</div>}
+        {done && <div role="status" style={{ background: "#EBF8F2", color: "#167A48", fontSize: 13, fontWeight: 700, padding: "10px 14px", borderRadius: 10 }}>{done}</div>}
 
         {report && (
           <>
@@ -112,14 +112,14 @@ export default function ImportDialog({ kind, open, onClose, onDone }: { kind: Im
                 <tbody>
                   {report.rows.map((r) => (
                     <tr key={r.row}>
-                      <td style={{ color: "#8A8D96" }}>{r.row}</td>
+                      <td style={{ color: "#686B75" }}>{r.row}</td>
                       <td style={{ fontWeight: 600 }}>{r.values[main] || "—"}</td>
                       <td>
                         <span style={{ background: STATUS_STYLE[r.status].bg, color: STATUS_STYLE[r.status].fg, borderRadius: 6, padding: "2px 8px", fontSize: 11.5, fontWeight: 700 }}>
                           {t(`imp.status.${r.status}` as TranslationKey)}
                         </span>
                       </td>
-                      <td style={{ fontSize: 12.5, color: r.errors.length ? "#B23A47" : "#8A8D96" }}>{r.errors.length ? r.errors.join("; ") : r.note ?? ""}</td>
+                      <td style={{ fontSize: 12.5, color: r.errors.length ? "#B23A47" : "#686B75" }}>{r.errors.length ? r.errors.join("; ") : r.note ?? ""}</td>
                     </tr>
                   ))}
                 </tbody>

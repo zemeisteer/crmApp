@@ -488,7 +488,7 @@ export default function StudentPortalPage() {
           </div>
           <div style={{ minWidth: 0 }}>
             <div style={{ fontSize: 13, fontWeight: 600, color: "#fff", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{me?.fullName || t("ptl.student")}</div>
-            <div style={{ fontSize: 11, color: "#71737C" }}>{isParent ? t("ptp.parentView") : t("ptl.student")}</div>
+            <div style={{ fontSize: 11, color: "#686B75" }}>{isParent ? t("ptp.parentView") : t("ptl.student")}</div>
           </div>
         </div>
       </aside>
@@ -516,7 +516,7 @@ export default function StudentPortalPage() {
         {nav.filter((x) => x.bottom).map((tab) => {
           const on = activeTab === tab.id;
           return (
-            <button key={tab.id} type="button" onClick={() => go(tab.id)} aria-current={on ? "page" : undefined} style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 3, padding: "8px 2px 6px", border: "none", background: "transparent", color: on ? ACCENT : "#8A8D96", cursor: "pointer" }}>
+            <button key={tab.id} type="button" onClick={() => go(tab.id)} aria-current={on ? "page" : undefined} style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 3, padding: "8px 2px 6px", border: "none", background: "transparent", color: on ? ACCENT : "#686B75", cursor: "pointer" }}>
               <span aria-hidden style={{ fontSize: 19, lineHeight: 1, filter: on ? "none" : "grayscale(1)", opacity: on ? 1 : 0.75 }}>{tab.icon}</span>
               <span style={{ fontSize: 10.5, fontWeight: on ? 800 : 600, maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t(tab.short)}</span>
               <span style={{ width: 18, height: 3, borderRadius: 3, background: on ? ACCENT : "transparent" }} />

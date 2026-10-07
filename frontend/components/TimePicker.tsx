@@ -51,8 +51,8 @@ export default function TimePicker({
         className="field-input"
         style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, cursor: "pointer", textAlign: "left", width: "100%" }}
       >
-        <span style={{ color: value ? "#181A1F" : "#8A8D96" }}>{value || effectivePlaceholder}</span>
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#8A8D96" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+        <span style={{ color: value ? "#181A1F" : "#686B75" }}>{value || effectivePlaceholder}</span>
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#686B75" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
           <circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" />
         </svg>
       </button>

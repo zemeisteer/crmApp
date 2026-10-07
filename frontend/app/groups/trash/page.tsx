@@ -41,7 +41,7 @@ function TrashContent() {
   return (
     <>
       <div style={{ padding: "22px 32px", borderBottom: "1px solid #EAE8E2" }}>
-        <Link href="/groups" style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 600, color: "#8A8D96", marginBottom: 10 }}>
+        <Link href="/groups" style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 600, color: "#686B75", marginBottom: 10 }}>
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
             <path d="M15 18l-6-6 6-6" />
           </svg>
@@ -52,9 +52,9 @@ function TrashContent() {
 
       <div style={{ flex: 1, minHeight: 0, padding: "26px 32px", overflow: "auto", boxSizing: "border-box" }}>
         {loading ? (
-          <div style={{ color: "#8A8D96", fontSize: 14 }}>{t("common.loading")}</div>
+          <div style={{ color: "#686B75", fontSize: 14 }}>{t("common.loading")}</div>
         ) : groups.length === 0 ? (
-          <div style={{ color: "#8A8D96", fontSize: 14, background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 32, textAlign: "center" }}>
+          <div style={{ color: "#686B75", fontSize: 14, background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 32, textAlign: "center" }}>
             {t("trash.empty")}
           </div>
         ) : (

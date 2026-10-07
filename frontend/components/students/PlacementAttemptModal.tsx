@@ -21,7 +21,7 @@ export default function PlacementAttemptModal({ test, attemptId, onClose, onChan
   return (
     <Modal open onClose={onClose} title={data ? `${data.fullName} — ${test.title}` : test.title} width={760}>
       {error && <div role="alert" style={{ background: "#FDEBEC", color: "#B23A47", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: 10 }}>{error}</div>}
-      {!data && !error && <div style={{ fontSize: 13, color: "#8A8D96" }}>{t("common.loading")}</div>}
+      {!data && !error && <div style={{ fontSize: 13, color: "#686B75" }}>{t("common.loading")}</div>}
       {data && (
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>

@@ -87,7 +87,7 @@ export default function PortalTutor({ firstName }: { firstName?: string }) {
     return (
       <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
         <TabTitle title={`🤖 ${t("tutor.title")}`} />
-        <div style={{ ...card, color: "#8A8D96", fontSize: 14 }}>{notice ?? t("common.loading")}</div>
+        <div style={{ ...card, color: "#686B75", fontSize: 14 }}>{notice ?? t("common.loading")}</div>
       </div>
     );
   }
@@ -204,7 +204,7 @@ export default function PortalTutor({ firstName }: { firstName?: string }) {
           ➤
         </button>
       </form>
-      <div style={{ fontSize: 12, color: "#8A8D96", textAlign: "center" }}>{t("tutor.footer")}</div>
+      <div style={{ fontSize: 12, color: "#686B75", textAlign: "center" }}>{t("tutor.footer")}</div>
       <style>{`
         .tutor-typing{display:inline-flex;gap:4px;padding:4px 0;}
         .tutor-typing i{width:7px;height:7px;border-radius:50%;background:#A5A8B5;display:block;animation:tutorDot 1.2s infinite ease-in-out;}

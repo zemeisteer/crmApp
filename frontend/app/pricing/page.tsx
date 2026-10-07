@@ -60,14 +60,14 @@ function TenantPricing() {
     <>
       <div style={{ padding: "22px 32px", borderBottom: "1px solid #EAE8E2" }}>
         <h1 style={{ fontSize: 22, fontWeight: 800 }}>{t("pricing.title")}</h1>
-        <div style={{ fontSize: 13, color: "#8A8D96", marginTop: 2 }}>
+        <div style={{ fontSize: 13, color: "#686B75", marginTop: 2 }}>
           {t("pricing.currentPlan")}: <strong>{tenant?.plan}</strong> · {t("pricing.status")}: <strong>{tenant?.status}</strong>
         </div>
       </div>
 
       <div style={{ flex: 1, minHeight: 0, padding: "26px 32px", overflow: "auto", boxSizing: "border-box" }}>
         {loading ? (
-          <div style={{ color: "#8A8D96", fontSize: 14 }}>{t("common.loading")}</div>
+          <div style={{ color: "#686B75", fontSize: 14 }}>{t("common.loading")}</div>
         ) : (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 16, maxWidth: 960 }}>
             {plans.map((p) => {
@@ -99,7 +99,7 @@ function TenantPricing() {
                     <span style={{ fontSize: 28, fontWeight: 800, fontFamily: "'Manrope', sans-serif" }}>
                       {p.price === 0 ? t("pricing.free") : formatMoney(p.price)}
                     </span>
-                    {p.price > 0 && <span style={{ fontSize: 13, color: "#8A8D96" }}> {t("pricing.perMonth")}</span>}
+                    {p.price > 0 && <span style={{ fontSize: 13, color: "#686B75" }}> {t("pricing.perMonth")}</span>}
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
                     {p.features.split("\n").filter(Boolean).map((f) => (
@@ -112,7 +112,7 @@ function TenantPricing() {
                     ))}
                   </div>
                   {isCurrent ? null : p.price === 0 ? (
-                    <span style={{ fontSize: 12, color: "#8A8D96" }}>{t("pricing.autoOnSignup")}</span>
+                    <span style={{ fontSize: 12, color: "#686B75" }}>{t("pricing.autoOnSignup")}</span>
                   ) : (
                     <button
                       className="btn"
@@ -132,7 +132,7 @@ function TenantPricing() {
       <Modal open={payOpen} onClose={() => setPayOpen(false)} title={t("pricing.choosePaymentModal")}>
         {link ? (
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-            <div style={{ background: "#E9F8EF", color: "#1FA463", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: 10 }}>
+            <div style={{ background: "#E9F8EF", color: "#167A48", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: 10 }}>
               {t("pricing.linkCreated")}
             </div>
             <a
@@ -250,7 +250,7 @@ function SuperadminPlans() {
       <div style={{ padding: "22px 32px", borderBottom: "1px solid #EAE8E2", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div>
           <h1 style={{ fontSize: 22, fontWeight: 800 }}>{t("pricing.title")}</h1>
-          <div style={{ fontSize: 13, color: "#8A8D96", marginTop: 2 }}>
+          <div style={{ fontSize: 13, color: "#686B75", marginTop: 2 }}>
             {t("pricing.superadminHint")}
           </div>
         </div>
@@ -268,7 +268,7 @@ function SuperadminPlans() {
           <div role="alert" style={{ background: "#FDEBEC", color: "#B23A47", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: 10, marginBottom: 16 }}>{error}</div>
         )}
         {loading ? (
-          <div style={{ color: "#8A8D96", fontSize: 14 }}>{t("common.loading")}</div>
+          <div style={{ color: "#686B75", fontSize: 14 }}>{t("common.loading")}</div>
         ) : (
           <>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16 }}>
@@ -296,7 +296,7 @@ function SuperadminPlans() {
                   </div>
                   <div style={{ fontSize: 26, fontWeight: 800, fontFamily: "'Manrope', sans-serif" }}>
                     {p.price === 0 ? t("pricing.free") : formatMoney(p.price)}
-                    {p.price > 0 && <span style={{ fontSize: 12, color: "#8A8D96", fontWeight: 500 }}> {t("pricing.perMonth")}</span>}
+                    {p.price > 0 && <span style={{ fontSize: 12, color: "#686B75", fontWeight: 500 }}> {t("pricing.perMonth")}</span>}
                   </div>
                   <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 9 }}>
                     {p.features.split("\n").filter(Boolean).map((f) => (
@@ -309,7 +309,7 @@ function SuperadminPlans() {
                     ))}
                   </ul>
                   <div style={{ marginTop: "auto", paddingTop: 14, borderTop: "1px solid #F1F0EC", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
-                    <div style={{ fontSize: 12.5, color: "#8A8D96" }}>
+                    <div style={{ fontSize: 12.5, color: "#686B75" }}>
                       {t("pricing.onThisPlan")} <strong style={{ color: "#181A1F" }}>{p.tenantCount ?? 0} {t("pricing.centersUnit")}</strong>
                     </div>
                     <button

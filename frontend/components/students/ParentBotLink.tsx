@@ -56,7 +56,7 @@ export default function ParentBotLink({ studentId }: { studentId: string }) {
               {copied ? `✓ ${t("pbot.copied")}` : t("pbot.copy")}
             </button>
           </div>
-          <div style={{ fontSize: 11, color: "#8A8D96", marginTop: 6 }}>{t("std.linkExpiry")}</div>
+          <div style={{ fontSize: 11, color: "#686B75", marginTop: 6 }}>{t("std.linkExpiry")}</div>
         </div>
       )}
       {error && <div role="alert" style={{ marginTop: 6, fontSize: 12, color: "#B91C1C" }}>{error}</div>}

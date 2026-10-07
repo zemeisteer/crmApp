@@ -37,9 +37,9 @@ export default function PracticeAttempts({ test }: { test: PracticeTest }) {
   return (
     <div style={{ ...card, padding: 0, overflowX: "auto" }}>
       {rows === null ? (
-        <div style={{ padding: 16, color: "#8A8D96" }}>{t("common.loading")}</div>
+        <div style={{ padding: 16, color: "#686B75" }}>{t("common.loading")}</div>
       ) : rows.length === 0 ? (
-        <div style={{ padding: 30, textAlign: "center", color: "#8A8D96" }}>{t("mock.noAttempts")}</div>
+        <div style={{ padding: 30, textAlign: "center", color: "#686B75" }}>{t("mock.noAttempts")}</div>
       ) : (
         <table className="table" style={{ margin: 0, minWidth: 640 }}>
           <thead>
@@ -87,13 +87,13 @@ function ReviewModal({ test, detail, onClose, onChanged }: { test: PracticeTest;
             return (
               <span key={i} style={{ background: "#F7F7F5", borderRadius: 10, padding: "6px 10px", fontSize: 13 }}>
                 {s.title}: <b style={{ color: percentColor(r?.percent) }}>{r?.percent != null ? `${r.percent}%` : "—"}</b>
-                {r && <span style={{ color: "#8A8D96" }}> ({Math.round(r.raw * 10) / 10}/{r.max})</span>}
+                {r && <span style={{ color: "#686B75" }}> ({Math.round(r.raw * 10) / 10}/{r.max})</span>}
               </span>
             );
           })}
           <span style={{ background: "#EEF0FF", borderRadius: 10, padding: "6px 10px", fontSize: 13, fontWeight: 800, color: ACCENT }}>{t("pre.overall")}: {results.overallPercent != null ? `${results.overallPercent}%` : "—"}</span>
         </div>
-        {withTasks.length === 0 && <div style={{ color: "#8A8D96", fontSize: 13 }}>{t("pre.nothing")}</div>}
+        {withTasks.length === 0 && <div style={{ color: "#686B75", fontSize: 13 }}>{t("pre.nothing")}</div>}
         {withTasks.map(({ s, key }) => (
           <SectionTasks key={key} detail={detail} sectionKey={key} title={s.title} tasks={s.tasks} answers={answers[key] ?? {}} onChanged={onChanged} />
         ))}

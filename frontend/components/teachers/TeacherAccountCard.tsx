@@ -51,7 +51,7 @@ export default function TeacherAccountCard({ teacher, onChanged, canManage }: { 
           <div style={{ fontSize: 13.5, color: "#4A4E58" }}>
             <span className="badge badge-success" style={{ marginRight: 8 }}>{t("tacc.active")}</span>
             {teacher.user?.email ?? done}
-            {done && <div style={{ fontSize: 12.5, color: "#1FA463", marginTop: 6 }}>{t("tacc.shareHint")}</div>}
+            {done && <div style={{ fontSize: 12.5, color: "#167A48", marginTop: 6 }}>{t("tacc.shareHint")}</div>}
           </div>
           {canManage && (
             <button type="button" className="btn" disabled={busy} onClick={remove} style={{ background: "#FDEBEC", color: "#B23A47", border: "none", fontSize: 12.5, fontWeight: 700, padding: "8px 14px", borderRadius: 8 }}>
@@ -61,7 +61,7 @@ export default function TeacherAccountCard({ teacher, onChanged, canManage }: { 
         </div>
       ) : canManage ? (
         <form onSubmit={create} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          <div style={{ fontSize: 12.5, color: "#8A8D96", lineHeight: 1.5 }}>{t("tacc.hint")}</div>
+          <div style={{ fontSize: 12.5, color: "#686B75", lineHeight: 1.5 }}>{t("tacc.hint")}</div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
             <input className="field-input" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="ustoz@markaz.uz" autoComplete="off" />
             <input className="field-input" type="text" required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} placeholder={t("tacc.passwordPh")} autoComplete="new-password" />
@@ -72,7 +72,7 @@ export default function TeacherAccountCard({ teacher, onChanged, canManage }: { 
           </button>
         </form>
       ) : (
-        <div style={{ fontSize: 13, color: "#8A8D96" }}>{t("tacc.none")}</div>
+        <div style={{ fontSize: 13, color: "#686B75" }}>{t("tacc.none")}</div>
       )}
     </div>
   );

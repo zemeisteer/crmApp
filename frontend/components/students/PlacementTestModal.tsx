@@ -210,7 +210,7 @@ export default function PlacementTestModal({ groups, onClose }: { groups: Group[
     <button
       type="button"
       onClick={() => setTab(key)}
-      style={{ flex: 1, padding: "8px 12px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 13, fontWeight: 700, background: tab === key ? "#fff" : "transparent", color: tab === key ? "#181A1F" : "#8A8D96", boxShadow: tab === key ? "0 1px 3px rgba(18,19,26,0.08)" : "none" }}
+      style={{ flex: 1, padding: "8px 12px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 13, fontWeight: 700, background: tab === key ? "#fff" : "transparent", color: tab === key ? "#181A1F" : "#686B75", boxShadow: tab === key ? "0 1px 3px rgba(18,19,26,0.08)" : "none" }}
     >
       {label}
     </button>
@@ -277,9 +277,9 @@ export default function PlacementTestModal({ groups, onClose }: { groups: Group[
               </>
             )}
           </div>
-          {source === "ai" && <div style={{ fontSize: 12, color: "#8A8D96" }}>{t("placement.mixedHint")}</div>}
-          {source === "pdf" && <div style={{ fontSize: 12, color: "#8A8D96" }}>{t("placement.pdfHint")}</div>}
-          {source === "manual" && <div style={{ fontSize: 12, color: "#8A8D96" }}>{t("placement.manualHint")}</div>}
+          {source === "ai" && <div style={{ fontSize: 12, color: "#686B75" }}>{t("placement.mixedHint")}</div>}
+          {source === "pdf" && <div style={{ fontSize: 12, color: "#686B75" }}>{t("placement.pdfHint")}</div>}
+          {source === "manual" && <div style={{ fontSize: 12, color: "#686B75" }}>{t("placement.manualHint")}</div>}
           {error && <div role="alert" style={alertStyle}>{error}</div>}
           <input ref={fileRef} type="file" accept="application/pdf" style={{ display: "none" }} onChange={(e) => onPdf(e.target.files?.[0])} />
           <button
@@ -379,7 +379,7 @@ export default function PlacementTestModal({ groups, onClose }: { groups: Group[
               <button type="button" className="btn" onClick={resetNew} style={ghost}>+ {t("placement.newTest")}</button>
             </div>
           </div>
-          <div style={{ fontSize: 12, color: "#8A8D96" }}>{t("placement.teacherView")}</div>
+          <div style={{ fontSize: 12, color: "#686B75" }}>{t("placement.teacherView")}</div>
           <div style={{ maxHeight: 400, overflowY: "auto", paddingRight: 4 }}>
             <QuestionList questions={created.questions} meta={(q) => <span style={{ fontSize: 11, color: "#94A3B8" }}> · {levelName(q.level ?? 1, created.subject)}</span>} />
           </div>
@@ -389,9 +389,9 @@ export default function PlacementTestModal({ groups, onClose }: { groups: Group[
       {tab === "list" && (
         <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: 540, overflowY: "auto" }}>
           {tests === null ? (
-            <div style={{ fontSize: 13, color: "#8A8D96" }}>{t("common.loading")}</div>
+            <div style={{ fontSize: 13, color: "#686B75" }}>{t("common.loading")}</div>
           ) : tests.length === 0 ? (
-            <div style={{ fontSize: 13, color: "#8A8D96" }}>{t("placement.noTests")}</div>
+            <div style={{ fontSize: 13, color: "#686B75" }}>{t("placement.noTests")}</div>
           ) : (
             tests.map((x) => (
               <div key={x.id} style={{ border: "1px solid #EAE8E2", borderRadius: 12, overflow: "hidden" }}>
@@ -405,7 +405,7 @@ export default function PlacementTestModal({ groups, onClose }: { groups: Group[
                         </span>
                       )}
                     </div>
-                    <div style={{ fontSize: 12, color: "#8A8D96" }}>
+                    <div style={{ fontSize: 12, color: "#686B75" }}>
                       {x.subject} · {x.questionCount} {t("placement.questions")} · {formatDateTime(x.createdAt, lang)}
                     </div>
                   </button>
@@ -430,9 +430,9 @@ export default function PlacementTestModal({ groups, onClose }: { groups: Group[
                 {openTest === x.id && (
                   <div style={{ borderTop: "1px solid #F2F1EC", padding: "8px 12px 12px", overflowX: "auto" }}>
                     {!attempts[x.id] ? (
-                      <div style={{ fontSize: 12.5, color: "#8A8D96" }}>{t("common.loading")}</div>
+                      <div style={{ fontSize: 12.5, color: "#686B75" }}>{t("common.loading")}</div>
                     ) : attempts[x.id].length === 0 ? (
-                      <div style={{ fontSize: 12.5, color: "#8A8D96" }}>{t("placement.noResults")}</div>
+                      <div style={{ fontSize: 12.5, color: "#686B75" }}>{t("placement.noResults")}</div>
                     ) : (
                       <table className="table" style={{ margin: 0 }}>
                         <thead>
@@ -451,7 +451,7 @@ export default function PlacementTestModal({ groups, onClose }: { groups: Group[
                               <td style={{ fontWeight: 600 }}>{a.fullName}</td>
                               <td>{a.phone || "—"}</td>
                               <td style={{ textAlign: "right", fontWeight: 800, whiteSpace: "nowrap", color: a.percent >= 80 ? "#1FA463" : a.percent >= 50 ? "#D97706" : "#B23A47" }}>
-                                {a.percent}% <span style={{ fontWeight: 500, color: "#8A8D96" }}>({a.correct}/{a.total})</span>
+                                {a.percent}% <span style={{ fontWeight: 500, color: "#686B75" }}>({a.correct}/{a.total})</span>
                               </td>
                               <td>{a.reviewStatus === "PENDING" ? "—" : levelName(a.suggestedLevel, x.subject)}</td>
                               <td style={{ whiteSpace: "nowrap" }}>{formatDateTime(a.createdAt, lang)}</td>
@@ -475,7 +475,7 @@ export default function PlacementTestModal({ groups, onClose }: { groups: Group[
               </div>
             ))
           )}
-          {copied && <div style={{ fontSize: 12, color: "#1FA463", fontWeight: 700 }}>✓ {t("placement.copied")}</div>}
+          {copied && <div style={{ fontSize: 12, color: "#167A48", fontWeight: 700 }}>✓ {t("placement.copied")}</div>}
         </div>
       )}
       {review && (

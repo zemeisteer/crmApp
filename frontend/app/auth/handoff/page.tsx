@@ -48,7 +48,7 @@ export default function AuthHandoffPage() {
           <Link href="/login" style={{ background: "#4F46E5", color: "#fff", fontWeight: 700, fontSize: 13.5, padding: "10px 18px", borderRadius: 10, textDecoration: "none" }}>{t("handoff.login")}</Link>
         </div>
       ) : (
-        <div style={{ fontSize: 14, color: "#8A8D96" }}>{t("handoff.moving")}</div>
+        <div style={{ fontSize: 14, color: "#686B75" }}>{t("handoff.moving")}</div>
       )}
     </div>
   );

@@ -25,9 +25,9 @@ const pctText = (v: number | null | undefined) => (v === null || v === undefined
 function Stat({ label, value, sub, danger }: { label: string; value: string; sub?: string; danger?: boolean }) {
   return (
     <div style={{ ...card, padding: 16 }}>
-      <div style={{ fontSize: 12, color: "#8A8D96" }}>{label}</div>
+      <div style={{ fontSize: 12, color: "#686B75" }}>{label}</div>
       <div style={{ fontSize: 22, fontWeight: 800, marginTop: 4, color: danger ? "#B91C1C" : "#181A1F" }}>{value}</div>
-      {sub && <div style={{ fontSize: 11.5, color: "#8A8D96", marginTop: 4 }}>{sub}</div>}
+      {sub && <div style={{ fontSize: 11.5, color: "#686B75", marginTop: 4 }}>{sub}</div>}
     </div>
   );
 }
@@ -67,7 +67,7 @@ export default function ReportsOverview({
 
         <section style={{ ...card, padding: 0, overflow: "hidden" }}>
           <div style={{ ...title, padding: "16px 20px 0" }}>{t("rep.atRiskTitle")}</div>
-          <p style={{ fontSize: 12, color: "#8A8D96", padding: "0 20px" }}>{t("rep.atRiskHint")}</p>
+          <p style={{ fontSize: 12, color: "#686B75", padding: "0 20px" }}>{t("rep.atRiskHint")}</p>
           {atRisk.length === 0 ? (
             <div style={{ padding: 28, textAlign: "center", color: "#15803D", background: "#F0FDF4" }}>{t("rep.noRisk")}</div>
           ) : (
@@ -87,7 +87,7 @@ export default function ReportsOverview({
                     <tr key={s.studentId}>
                       <td>
                         <div style={{ fontWeight: 700 }}>{s.fullName}</div>
-                        <div style={{ fontSize: 11.5, color: "#8A8D96" }}>{s.phone || "—"}</div>
+                        <div style={{ fontSize: 11.5, color: "#686B75" }}>{s.phone || "—"}</div>
                       </td>
                       <td>
                         <span style={{ fontSize: 11, fontWeight: 800, padding: "3px 8px", borderRadius: 6, background: s.risk === "HIGH" ? "#FEE2E2" : "#FEF3C7", color: s.risk === "HIGH" ? "#B91C1C" : "#B45309" }}>
@@ -118,7 +118,7 @@ export default function ReportsOverview({
         <section style={card}>
           <div style={title}>{t("rep.occupancyTitle")}</div>
           {byOccupancy.length === 0 ? (
-            <div style={{ fontSize: 13, color: "#8A8D96" }}>{t("reports.noGroups")}</div>
+            <div style={{ fontSize: 13, color: "#686B75" }}>{t("reports.noGroups")}</div>
           ) : (
             <div style={{ display: "grid", gap: 12 }}>
               {byOccupancy.map((g) => (
@@ -187,14 +187,14 @@ export default function ReportsOverview({
                   : []),
               ].map(([k, v]) => (
                 <div key={k} style={{ display: "flex", justifyContent: "space-between", gap: 12, borderBottom: "1px solid #F2F1EC", paddingBottom: 6 }}>
-                  <span style={{ color: "#8A8D96" }}>{k}</span>
+                  <span style={{ color: "#686B75" }}>{k}</span>
                   <span style={{ fontWeight: 700 }}>{v}</span>
                 </div>
               ))}
             </div>
             <div style={{ ...title, marginTop: 18 }}>{t("reports.paymentMethodsTitle")}</div>
             {methods.length === 0 ? (
-              <div style={{ fontSize: 13, color: "#8A8D96" }}>{t("reports.noData")}</div>
+              <div style={{ fontSize: 13, color: "#686B75" }}>{t("reports.noData")}</div>
             ) : (
               <div style={{ display: "grid", gap: 10 }}>
                 {methods.map(([k, v]) => (
@@ -214,7 +214,7 @@ export default function ReportsOverview({
             <div style={title}>{t("rep.studentStatus")}</div>
             {Object.entries(students.byStatus).map(([k, v]) => (
               <div key={k} style={{ display: "flex", justifyContent: "space-between", fontSize: 13, padding: "5px 0" }}>
-                <span style={{ color: "#8A8D96" }}>{k}</span>
+                <span style={{ color: "#686B75" }}>{k}</span>
                 <strong>{v}</strong>
               </div>
             ))}
@@ -225,7 +225,7 @@ export default function ReportsOverview({
       <section style={{ ...card, padding: 0, overflow: "hidden" }}>
         <div style={{ ...title, padding: "16px 20px 0" }}>{t("rep.groupsTitle")}</div>
         {groups.items.length === 0 ? (
-          <div style={{ color: "#8A8D96", fontSize: 13.5, padding: "8px 20px 20px" }}>{t("reports.noGroups")}</div>
+          <div style={{ color: "#686B75", fontSize: 13.5, padding: "8px 20px 20px" }}>{t("reports.noGroups")}</div>
         ) : (
           <div style={{ overflowX: "auto" }}>
             <table className="adm-table">
@@ -268,7 +268,7 @@ export default function ReportsOverview({
         </section>
       )}
 
-      <p style={{ fontSize: 11.5, color: "#8A8D96" }}>
+      <p style={{ fontSize: 11.5, color: "#686B75" }}>
         {t("rep.footnote")} {report.month} · {report.timezone}
       </p>
     </div>

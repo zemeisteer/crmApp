@@ -13,7 +13,7 @@ const ACCENT = "#4F46E5";
 const LANG_LABELS: Record<LandingLang, string> = { UZ: "O'zbekcha", RU: "Русский", EN: "English" };
 
 const CSS = `
-  .lp-root{--bg:#F7F7F5;--surface:#FFFFFF;--border:#EAE8E2;--text:#181A1F;--text-2:#4A4E58;--muted:#8A8D96;--chip:#F2F1EC;color:var(--text);background:var(--bg);font-family:'Inter',system-ui,sans-serif;min-height:100vh;display:flex;flex-direction:column;}
+  .lp-root{--bg:#F7F7F5;--surface:#FFFFFF;--border:#EAE8E2;--text:#181A1F;--text-2:#4A4E58;--muted:#686B75;--chip:#F2F1EC;color:var(--text);background:var(--bg);font-family:'Inter',system-ui,sans-serif;min-height:100vh;display:flex;flex-direction:column;}
   .lp-root h1,.lp-root h2,.lp-root h3{font-family:'Manrope',system-ui,sans-serif;margin:0;}
   .lp-root a{color:inherit;text-decoration:none;}
   .lp-btn{cursor:pointer;border:none;transition:opacity .15s ease,transform .15s ease;display:inline-flex;align-items:center;justify-content:center;}
@@ -170,7 +170,7 @@ export default function Landing() {
   );
   const paidRow = (name: string, group: string, amount: string) => (
     <div style={{ ...card, display: "flex", alignItems: "center", gap: 12, padding: "12px 14px" }}>
-      <div style={{ width: 36, height: 36, borderRadius: 9, background: "#E9F8EF", display: "flex", alignItems: "center", justifyContent: "center", color: "#1FA463" }}>
+      <div style={{ width: 36, height: 36, borderRadius: 9, background: "#E9F8EF", display: "flex", alignItems: "center", justifyContent: "center", color: "#167A48" }}>
         <Icon d={<path d="M20 6 9 17l-5-5" />} color="currentColor" size={16} />
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
@@ -469,7 +469,7 @@ export default function Landing() {
                       </div>
                       <div style={{ ...card, borderRadius: 14, padding: 15 }}>
                         <div style={{ fontSize: 13.5, color: "var(--muted)" }}>{L.paymentStatus}</div>
-                        <div style={{ fontSize: 15.5, fontWeight: 700, color: "#1FA463", marginTop: 3 }}>{L.paidUntil}</div>
+                        <div style={{ fontSize: 15.5, fontWeight: 700, color: "#167A48", marginTop: 3 }}>{L.paidUntil}</div>
                       </div>
                     </div>
                   </div>
@@ -499,11 +499,11 @@ export default function Landing() {
                       </div>
                       <div style={{ ...card, borderRadius: 14, padding: "14px 15px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
                         <div style={{ fontSize: 14, fontWeight: 600 }}>{L.hw[2]}</div>
-                        <span style={{ fontSize: 12, fontWeight: 700, color: "#1FA463", background: "#E9F8EF", padding: "4px 10px", borderRadius: 100, whiteSpace: "nowrap" }}>{L.hw[3]}</span>
+                        <span style={{ fontSize: 12, fontWeight: 700, color: "#167A48", background: "#E9F8EF", padding: "4px 10px", borderRadius: 100, whiteSpace: "nowrap" }}>{L.hw[3]}</span>
                       </div>
                       <div style={{ ...card, borderRadius: 14, padding: "14px 15px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
                         <div style={{ fontSize: 14, fontWeight: 600 }}>{L.hw[4]}</div>
-                        <span style={{ fontSize: 12, fontWeight: 700, color: "#8A8D96", background: "var(--chip)", padding: "4px 10px", borderRadius: 100, whiteSpace: "nowrap" }}>{L.hw[5]}</span>
+                        <span style={{ fontSize: 12, fontWeight: 700, color: "#686B75", background: "var(--chip)", padding: "4px 10px", borderRadius: 100, whiteSpace: "nowrap" }}>{L.hw[5]}</span>
                       </div>
                     </div>
                   </div>

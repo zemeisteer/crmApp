@@ -112,7 +112,7 @@ function StudentDetailContent() {
       setLinkTokenData(res);
       setCopiedLink(false);
     } catch {
-      alert("Havola yaratishda xatolik yuz berdi");
+      alert(t("msg.linkCreateError"));
     } finally {
       setGeneratingLink(false);
     }
@@ -148,13 +148,13 @@ function StudentDetailContent() {
   useEffect(load, [id]);
 
   if (loading) {
-    return <div style={{ padding: 32, color: "#8A8D96", fontSize: 14 }}>{t("common.loading")}</div>;
+    return <div style={{ padding: 32, color: "#686B75", fontSize: 14 }}>{t("common.loading")}</div>;
   }
 
   if (notFound || !student) {
     return (
       <div style={{ padding: 32 }}>
-        <div style={{ color: "#8A8D96", fontSize: 14, background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 32, textAlign: "center" }}>
+        <div style={{ color: "#686B75", fontSize: 14, background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 32, textAlign: "center" }}>
           {t("studentDetail.notFound")}{" "}
           <Link href="/students" style={{ color: ACCENT, fontWeight: 600 }}>
             {t("studentDetail.back")}
@@ -271,7 +271,7 @@ function StudentDetailContent() {
   return (
     <>
       <div style={{ padding: "22px 32px", borderBottom: "1px solid #EAE8E2" }}>
-        <Link href="/students" style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 600, color: "#8A8D96", marginBottom: 10 }}>
+        <Link href="/students" style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 600, color: "#686B75", marginBottom: 10 }}>
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
             <path d="M15 18l-6-6 6-6" />
           </svg>
@@ -308,7 +308,7 @@ function StudentDetailContent() {
                       borderRadius: 100,
                       fontFamily: "'Inter', sans-serif",
                       ...(payState === "PAID"
-                        ? { color: "#1FA463", background: "#E9F8EF" }
+                        ? { color: "#167A48", background: "#E9F8EF" }
                         : payState === "PENDING"
                           ? { color: "#B45309", background: "#FEF3C7" }
                           : { color: "#B23A47", background: "#FDEBEC" }),
@@ -318,7 +318,7 @@ function StudentDetailContent() {
                   </span>
                 )}
               </h1>
-              <div style={{ fontSize: 13, color: "#8A8D96", marginTop: 2 }}>
+              <div style={{ fontSize: 13, color: "#686B75", marginTop: 2 }}>
                 {student.phone || t("studentDetail.phoneMissing")} · {t("studentDetail.registeredOn")}: {formatDate(student.startDate)}
               </div>
             </div>
@@ -355,23 +355,23 @@ function StudentDetailContent() {
       <div style={{ flex: 1, minHeight: 0, padding: "26px 32px", display: "flex", flexDirection: "column", gap: 20, overflow: "auto", boxSizing: "border-box" }}>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0,1fr))", gap: 16 }}>
           <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 14, padding: 18 }}>
-            <div style={{ fontSize: 12, color: "#8A8D96" }}>{enrollments.length > 1 ? t("stu.currentGroups") : t("stu.currentGroup")}</div>
+            <div style={{ fontSize: 12, color: "#686B75" }}>{enrollments.length > 1 ? t("stu.currentGroups") : t("stu.currentGroup")}</div>
             <div style={{ fontSize: 17, fontWeight: 800, fontFamily: "'Manrope', sans-serif", marginTop: 6, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={enrollments.map((e) => e.group.name).join(", ")}>
               {enrollments.map((e) => e.group.name).join(", ") || "—"}
             </div>
           </div>
           <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 14, padding: 18 }}>
-            <div style={{ fontSize: 12, color: "#8A8D96" }}>{t("studentDetail.statTotalAttendance")}</div>
+            <div style={{ fontSize: 12, color: "#686B75" }}>{t("studentDetail.statTotalAttendance")}</div>
             <div style={{ fontSize: 24, fontWeight: 800, fontFamily: "'Manrope', sans-serif", marginTop: 4 }}>
               {attendancePercent === null ? "—" : `${attendancePercent}%`}
             </div>
           </div>
           <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 14, padding: 18 }}>
-            <div style={{ fontSize: 12, color: "#8A8D96" }}>{t("studentDetail.statTotalPaid")}</div>
+            <div style={{ fontSize: 12, color: "#686B75" }}>{t("studentDetail.statTotalPaid")}</div>
             <div style={{ fontSize: 24, fontWeight: 800, fontFamily: "'Manrope', sans-serif", marginTop: 4 }}>{formatMoney(totalPaid)} {t("common.sumUnit")}</div>
           </div>
           <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 14, padding: 18 }}>
-            <div style={{ fontSize: 12, color: "#8A8D96" }}>{t("stu.studyTime")}</div>
+            <div style={{ fontSize: 12, color: "#686B75" }}>{t("stu.studyTime")}</div>
             <div style={{ fontSize: 24, fontWeight: 800, fontFamily: "'Manrope', sans-serif", marginTop: 4 }}>{studyTime}</div>
           </div>
         </div>
@@ -390,7 +390,7 @@ function StudentDetailContent() {
               </button>
             </div>
             {history.length === 0 ? (
-              <div style={{ color: "#8A8D96", fontSize: 13.5 }}>{t("studentDetail.noGroupsYet")}</div>
+              <div style={{ color: "#686B75", fontSize: 13.5 }}>{t("studentDetail.noGroupsYet")}</div>
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                 {history.map((e) => {
@@ -401,8 +401,8 @@ function StudentDetailContent() {
                       : current
                         ? { text: t("stu.enrCurrent"), color: ACCENT, bg: "#EEF0FF" }
                         : e.status === "COMPLETED"
-                          ? { text: t("stu.enrCompleted"), color: "#1FA463", bg: "#E9F8EF" }
-                          : { text: t("stu.enrLeft"), color: "#8A8D96", bg: "#F2F1EC" };
+                          ? { text: t("stu.enrCompleted"), color: "#167A48", bg: "#E9F8EF" }
+                          : { text: t("stu.enrLeft"), color: "#686B75", bg: "#F2F1EC" };
                   const period = `${monthYear(e.joinedAt)} — ${current ? t("stu.untilNow") : monthYear(e.leftAt) || "—"}`;
                   return (
                     <div
@@ -413,7 +413,7 @@ function StudentDetailContent() {
                         <Link href={`/groups/${e.group.id}`} style={{ fontSize: 13.5, fontWeight: 600, color: current ? ACCENT : "#181A1F" }}>
                           {e.group.name}
                         </Link>
-                        <div style={{ fontSize: 12, color: "#8A8D96", marginTop: 2 }}>
+                        <div style={{ fontSize: 12, color: "#686B75", marginTop: 2 }}>
                           {[period, e.group.teacher?.fullName].filter(Boolean).join(" · ")}
                         </div>
                       </div>
@@ -447,7 +447,7 @@ function StudentDetailContent() {
               {student.notes && <InfoField label={t("stu.notes")} value={student.notes} />}
             </div>
             <div style={{ marginTop: 16, paddingTop: 16, borderTop: "1px solid #EAE8E2" }}>
-              <div style={{ fontSize: 11.5, color: "#8A8D96", marginBottom: 6 }}>{t("studentDetail.telegramNotifications")}</div>
+              <div style={{ fontSize: 11.5, color: "#686B75", marginBottom: 6 }}>{t("studentDetail.telegramNotifications")}</div>
               {student.telegramChatId ? (
                 <span className="badge badge-success">{t("studentDetail.telegramLinked")}</span>
               ) : botUsername ? (
@@ -499,18 +499,18 @@ function StudentDetailContent() {
                           {copiedLink ? "✓ Nusxalandi" : "Nusxalash"}
                         </button>
                       </div>
-                      <div style={{ fontSize: 11, color: "#8A8D96", marginTop: 6 }}>
+                      <div style={{ fontSize: 11, color: "#686B75", marginTop: 6 }}>
                         {t("std.linkExpiry")}
                       </div>
                     </div>
                   ) : (
-                    <div style={{ marginTop: 8, color: "#8A8D96", fontSize: 12 }}>
+                    <div style={{ marginTop: 8, color: "#686B75", fontSize: 12 }}>
                       {t("std.linkHint")}
                     </div>
                   )}
                 </div>
               ) : (
-                <span style={{ fontSize: 12, color: "#8A8D96" }}>{t("studentDetail.telegramNotConfigured")}</span>
+                <span style={{ fontSize: 12, color: "#686B75" }}>{t("studentDetail.telegramNotConfigured")}</span>
               )}
               {botUsername && <ParentBotLink studentId={student.id} />}
             </div>
@@ -540,7 +540,7 @@ function StudentDetailContent() {
             </div>
           </div>
           {payments.length === 0 ? (
-            <div style={{ color: "#8A8D96", fontSize: 14, padding: "24px 20px" }}>{t("studentDetail.noPaymentsYet")}</div>
+            <div style={{ color: "#686B75", fontSize: 14, padding: "24px 20px" }}>{t("studentDetail.noPaymentsYet")}</div>
           ) : (
             <table>
               <thead>
@@ -641,7 +641,7 @@ function StudentDetailContent() {
       <Modal open={billingOpen} onClose={() => setBillingOpen(false)} title={t("studentDetail.modalCreateLink")}>
         {billingResult ? (
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-            <div style={{ background: "#E9F8EF", color: "#1FA463", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: 10 }}>
+            <div style={{ background: "#E9F8EF", color: "#167A48", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: 10 }}>
               {t("studentDetail.linkCreated")}
             </div>
             <code style={{ display: "block", background: "#F7F7F5", padding: "10px 12px", borderRadius: 8, fontSize: 12, wordBreak: "break-all" }}>
@@ -662,7 +662,7 @@ function StudentDetailContent() {
             {billingError && (
               <div style={{ background: "#FDEBEC", color: "#B23A47", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: 10 }}>{billingError}</div>
             )}
-            <div style={{ fontSize: 12, color: "#8A8D96", lineHeight: 1.5 }}>
+            <div style={{ fontSize: 12, color: "#686B75", lineHeight: 1.5 }}>
               {t("studentDetail.billingHint")}
             </div>
             <div>
@@ -781,7 +781,7 @@ function StudentDetailContent() {
 function InfoField({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <div style={{ fontSize: 11.5, color: "#8A8D96" }}>{label}</div>
+      <div style={{ fontSize: 11.5, color: "#686B75" }}>{label}</div>
       <div style={{ fontSize: 13.5, fontWeight: 600, marginTop: 3 }}>{value}</div>
     </div>
   );

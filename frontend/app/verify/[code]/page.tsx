@@ -184,7 +184,7 @@ export default function VerifyCertificatePage() {
               <button
                 onClick={() => {
                   navigator.clipboard.writeText(window.location.href);
-                  alert("Havola nusxalandi!");
+                  alert(t("msg.linkCopied"));
                 }}
                 className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium text-xs inline-flex items-center gap-2 border border-slate-700 transition-all cursor-pointer"
               >

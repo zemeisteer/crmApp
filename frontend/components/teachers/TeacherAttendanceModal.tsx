@@ -10,7 +10,7 @@ import { useCenterClock } from "@/lib/use-center-clock";
 
 const ACCENT = "#4F46E5";
 const STATES: Array<{ key: TeacherMark; label: "ptl.present" | "ptl.late" | "ptl.absent"; color: string }> = [
-  { key: "PRESENT", label: "ptl.present", color: "#1FA463" },
+  { key: "PRESENT", label: "ptl.present", color: "#167A48" },
   { key: "LATE", label: "ptl.late", color: "#D97706" },
   { key: "ABSENT", label: "ptl.absent", color: "#B23A47" },
 ];
@@ -82,13 +82,13 @@ export default function TeacherAttendanceModal({ teachers, onClose }: { teachers
           <button type="button" onClick={allPresent} style={ghost}>✓ {t("tatt.allPresent")}</button>
         )}
       </div>
-      <div style={{ fontSize: 12.5, color: "#8A8D96", marginBottom: 12 }}>{t("tatt.hint")}</div>
+      <div style={{ fontSize: 12.5, color: "#686B75", marginBottom: 12 }}>{t("tatt.hint")}</div>
       {error && <div role="alert" style={{ background: "#FDEBEC", color: "#B23A47", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: 10, marginBottom: 10 }}>{error}</div>}
 
       {lessons === null ? (
-        <div style={{ fontSize: 13, color: "#8A8D96" }}>{t("common.loading")}</div>
+        <div style={{ fontSize: 13, color: "#686B75" }}>{t("common.loading")}</div>
       ) : lessons.length === 0 ? (
-        <div style={{ fontSize: 13, color: "#8A8D96", border: "1px dashed #EAE8E2", borderRadius: 12, padding: 20, textAlign: "center" }}>{t("tatt.noLessons")}</div>
+        <div style={{ fontSize: 13, color: "#686B75", border: "1px dashed #EAE8E2", borderRadius: 12, padding: 20, textAlign: "center" }}>{t("tatt.noLessons")}</div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: 460, overflowY: "auto" }}>
           {lessons.map((l) => {
@@ -99,7 +99,7 @@ export default function TeacherAttendanceModal({ teachers, onClose }: { teachers
                   <span style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 800, color: ACCENT, minWidth: 92 }}>{l.startTime}–{l.endTime}</span>
                   <div style={{ flex: 1, minWidth: 160 }}>
                     <div style={{ fontWeight: 700, fontSize: 13.5 }}>{l.groupName}</div>
-                    <div style={{ fontSize: 12, color: "#8A8D96" }}>{l.teacherName ?? t("tatt.noTeacher")}</div>
+                    <div style={{ fontSize: 12, color: "#686B75" }}>{l.teacherName ?? t("tatt.noTeacher")}</div>
                   </div>
                   <div style={{ display: "flex", gap: 6 }}>
                     {STATES.map((s) => {
@@ -136,7 +136,7 @@ export default function TeacherAttendanceModal({ teachers, onClose }: { teachers
 
       {lessons && lessons.length > 0 && (
         <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 10, marginTop: 14 }}>
-          {saved && <span style={{ fontSize: 13, fontWeight: 700, color: "#1FA463" }}>✓ {t("common.saved")}</span>}
+          {saved && <span style={{ fontSize: 13, fontWeight: 700, color: "#167A48" }}>✓ {t("common.saved")}</span>}
           <button type="button" onClick={save} disabled={saving} style={{ background: ACCENT, color: "#fff", border: "none", fontSize: 13.5, fontWeight: 700, padding: "10px 18px", borderRadius: 9, cursor: "pointer", opacity: saving ? 0.7 : 1 }}>
             {saving ? t("common.saving") : t("common.save")}
           </button>

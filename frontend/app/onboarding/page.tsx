@@ -165,7 +165,7 @@ export default function OnboardingPage() {
         setSlugMessage(res.available ? t("onb.slugFree") : (res.reason || t("onb.slugTaken")));
       } catch {
         setSlugAvailable(false);
-        setSlugMessage("Tekshirishda xatolik yuz berdi");
+        setSlugMessage(t("msg.checkError"));
       } finally {
         setSlugChecking(false);
       }
@@ -475,7 +475,7 @@ export default function OnboardingPage() {
               type="button"
               onClick={() => {
                 navigator.clipboard.writeText(`https://${finalWorkspaceUrl || centerHost(workspaceSlug)}`);
-                alert("URL nusxalandi!");
+                alert(t("msg.urlCopied"));
               }}
               style={{
                 background: "#EEF2FF",

@@ -199,7 +199,7 @@ export default function SchedulePage() {
   async function handleSaveSchedule(e: React.FormEvent) {
     e.preventDefault();
     if (!groupId) {
-      setFormError("Guruhni tanlang");
+      setFormError(t("msg.selectGroup"));
       return;
     }
     if (!startTime || !endTime) {
@@ -238,7 +238,7 @@ export default function SchedulePage() {
       loadData();
     } catch (err: unknown) {
       const apiErr = err as { message?: string; response?: { data?: { message?: string } } };
-      setFormError(apiErr.response?.data?.message || apiErr.message || "Saqlashda xatolik yuz berdi");
+      setFormError(apiErr.response?.data?.message || apiErr.message || t("msg.saveError"));
     } finally {
       setSaving(false);
     }

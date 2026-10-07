@@ -146,7 +146,7 @@ export default function ConvertWizard({ lead, open, onClose }: { lead: Lead; ope
 
   const row = (k: string, v: React.ReactNode) => (
     <div style={{ display: "flex", justifyContent: "space-between", gap: 12, padding: "7px 0", borderBottom: "1px solid #F2F1EC", fontSize: 13 }}>
-      <span style={{ color: "#8A8D96" }}>{k}</span>
+      <span style={{ color: "#686B75" }}>{k}</span>
       <span style={{ fontWeight: 600, textAlign: "right" }}>{v}</span>
     </div>
   );
@@ -165,7 +165,7 @@ export default function ConvertWizard({ lead, open, onClose }: { lead: Lead; ope
               padding: "4px 10px",
               borderRadius: 999,
               background: i === step ? ACCENT : i < step ? "#EEF0FF" : "#F2F1EC",
-              color: i === step ? "#fff" : i < step ? ACCENT : "#8A8D96",
+              color: i === step ? "#fff" : i < step ? ACCENT : "#686B75",
             }}
           >
             {i + 1}. {t(k)}
@@ -188,7 +188,7 @@ export default function ConvertWizard({ lead, open, onClose }: { lead: Lead; ope
         {step === 1 && (
           <div style={{ display: "grid", gap: 10 }}>
             {candidates === null ? (
-              <p style={{ color: "#8A8D96" }}>{t("adm.wiz.checking")}</p>
+              <p style={{ color: "#686B75" }}>{t("adm.wiz.checking")}</p>
             ) : candidates.length === 0 ? (
               <p style={{ fontSize: 13.5 }}>{t("adm.wiz.noMatch")}</p>
             ) : (
@@ -203,7 +203,7 @@ export default function ConvertWizard({ lead, open, onClose }: { lead: Lead; ope
                       onChange={() => setResolution({ mode: "LINK_EXISTING", studentId: c.id })}
                     />
                     <span style={{ fontWeight: 700 }}>{c.fullName}</span>
-                    <span style={{ fontSize: 12, color: "#8A8D96" }}>
+                    <span style={{ fontSize: 12, color: "#686B75" }}>
                       {c.exact ? t("adm.wiz.exact") : c.matchedOn === "parentPhone" ? t("adm.wiz.viaParentPhone") : t("leads.fieldPhone")}
                     </span>
                     <span style={{ marginLeft: "auto", fontSize: 12, color: ACCENT }}>{t("adm.wiz.linkExisting")}</span>
@@ -266,13 +266,13 @@ export default function ConvertWizard({ lead, open, onClose }: { lead: Lead; ope
               options={openGroups.map((g) => ({ value: g.id, label: `${g.name} (max ${g.maxStudents})` }))}
               placeholder={t("common.notSelected")}
             />
-            <p style={{ fontSize: 12, color: "#8A8D96", marginTop: 8 }}>{t("adm.wiz.groupsHint")}</p>
+            <p style={{ fontSize: 12, color: "#686B75", marginTop: 8 }}>{t("adm.wiz.groupsHint")}</p>
           </div>
         )}
 
         {step === 4 && (
           groupIds.length === 0 ? (
-            <p style={{ fontSize: 13.5, color: "#8A8D96" }}>{t("adm.wiz.invoiceNeedsGroup")}</p>
+            <p style={{ fontSize: 13.5, color: "#686B75" }}>{t("adm.wiz.invoiceNeedsGroup")}</p>
           ) : (
             <div style={{ display: "grid", gap: 12 }}>
               <label style={{ display: "flex", gap: 8, alignItems: "center", fontWeight: 600, fontSize: 13.5 }}>
@@ -301,7 +301,7 @@ export default function ConvertWizard({ lead, open, onClose }: { lead: Lead; ope
                   </div>
                 </div>
               )}
-              <p style={{ fontSize: 12, color: "#8A8D96" }}>{t("adm.wiz.invoiceHint")}</p>
+              <p style={{ fontSize: 12, color: "#686B75" }}>{t("adm.wiz.invoiceHint")}</p>
             </div>
           )
         )}
@@ -314,7 +314,7 @@ export default function ConvertWizard({ lead, open, onClose }: { lead: Lead; ope
               t("adm.wiz.summaryInvoice"),
               createInvoice ? `${invoiceMonth} · ${invoiceAmount || selectedGroups[0]?.monthlyPrice || 0} ${t("common.sumUnit")}` : t("adm.wiz.none"),
             )}
-            <p style={{ fontSize: 12, color: "#8A8D96", marginTop: 12 }}>{t("adm.wiz.atomicHint")}</p>
+            <p style={{ fontSize: 12, color: "#686B75", marginTop: 12 }}>{t("adm.wiz.atomicHint")}</p>
           </div>
         )}
       </div>

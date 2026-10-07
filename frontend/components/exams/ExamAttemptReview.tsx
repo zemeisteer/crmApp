@@ -20,7 +20,7 @@ export function ExamAttemptReview({ examId, attemptId, onChanged }: { examId: st
   }, [examId, attemptId, t]);
 
   if (error) return <div role="alert" style={{ background: "#FDEBEC", color: "#B23A47", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: 10 }}>{error}</div>;
-  if (!data) return <div style={{ fontSize: 13, color: "#8A8D96" }}>{t("common.loading")}</div>;
+  if (!data) return <div style={{ fontSize: 13, color: "#686B75" }}>{t("common.loading")}</div>;
 
   const pct = data.maxScore ? Math.round((data.score / data.maxScore) * 100) : 0;
   return (
@@ -82,7 +82,7 @@ export default function ExamAttemptsModal({ exam, onClose, onChanged }: { exam: 
           </div>
         </div>
       ) : attempts.length === 0 ? (
-        <div style={{ fontSize: 13, color: "#8A8D96" }}>{t("review.noAttempts")}</div>
+        <div style={{ fontSize: 13, color: "#686B75" }}>{t("review.noAttempts")}</div>
       ) : (
         <div style={{ overflowX: "auto" }}>
           <table className="table" style={{ margin: 0 }}>

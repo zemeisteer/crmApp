@@ -124,13 +124,13 @@ function GroupDetailContent() {
   }, [group, attendance, attendanceDate, topics]);
 
   if (loading) {
-    return <div style={{ padding: 32, color: "#8A8D96", fontSize: 14 }}>{t("common.loading")}</div>;
+    return <div style={{ padding: 32, color: "#686B75", fontSize: 14 }}>{t("common.loading")}</div>;
   }
 
   if (notFound || !group) {
     return (
       <div style={{ padding: 32 }}>
-        <div style={{ color: "#8A8D96", fontSize: 14, background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 32, textAlign: "center" }}>
+        <div style={{ color: "#686B75", fontSize: 14, background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 32, textAlign: "center" }}>
           {t("groupDetail.notFound")}{" "}
           <Link href="/groups" style={{ color: ACCENT, fontWeight: 600 }}>
             {t("groupDetail.back")}
@@ -237,7 +237,7 @@ function GroupDetailContent() {
   return (
     <>
       <div style={{ padding: "22px 32px", borderBottom: "1px solid #EAE8E2" }}>
-        <Link href="/groups" style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 600, color: "#8A8D96", marginBottom: 10 }}>
+        <Link href="/groups" style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 600, color: "#686B75", marginBottom: 10 }}>
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
             <path d="M15 18l-6-6 6-6" />
           </svg>
@@ -251,14 +251,14 @@ function GroupDetailContent() {
                 const max = group.maxStudents || 0;
                 const b =
                   group.status && group.status !== "ACTIVE"
-                    ? { text: group.status === "PLANNED" ? t("grp.stPlanned") : group.status === "COMPLETED" ? t("grp.stCompleted") : t("grp.stArchived"), color: "#8A8D96", bg: "#F2F1EC" }
+                    ? { text: group.status === "PLANNED" ? t("grp.stPlanned") : group.status === "COMPLETED" ? t("grp.stCompleted") : t("grp.stArchived"), color: "#686B75", bg: "#F2F1EC" }
                     : max > 0 && enrollments.length >= max
-                      ? { text: t("grp.stFull"), color: "#1FA463", bg: "#E9F8EF" }
-                      : { text: t("grp.activeGroup"), color: "#1FA463", bg: "#E9F8EF" };
+                      ? { text: t("grp.stFull"), color: "#167A48", bg: "#E9F8EF" }
+                      : { text: t("grp.activeGroup"), color: "#167A48", bg: "#E9F8EF" };
                 return <span style={{ fontSize: 12, fontWeight: 700, color: b.color, background: b.bg, padding: "4px 10px", borderRadius: 100, fontFamily: "'Inter', sans-serif" }}>{b.text}</span>;
               })()}
             </h1>
-            <div style={{ fontSize: 13, color: "#8A8D96", marginTop: 2 }}>
+            <div style={{ fontSize: 13, color: "#686B75", marginTop: 2 }}>
               {[
                 group.teacher?.fullName,
                 group.subject,
@@ -288,19 +288,19 @@ function GroupDetailContent() {
       <div style={{ flex: 1, minHeight: 0, padding: "26px 32px", display: "flex", flexDirection: "column", gap: 20, overflow: "auto", boxSizing: "border-box" }}>
         <div style={{ display: "grid", gridTemplateColumns: `repeat(${seesPay && dues ? 5 : 3}, minmax(0,1fr))`, gap: 16 }}>
           <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 14, padding: 18 }}>
-            <div style={{ fontSize: 12, color: "#8A8D96" }}>{t("groupDetail.statStudents")}</div>
+            <div style={{ fontSize: 12, color: "#686B75" }}>{t("groupDetail.statStudents")}</div>
             <div style={{ fontSize: 24, fontWeight: 800, fontFamily: "'Manrope', sans-serif", marginTop: 4 }}>
               {enrollments.length} / {group.maxStudents}
             </div>
           </div>
           <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 14, padding: 18 }}>
-            <div style={{ fontSize: 12, color: "#8A8D96" }}>{t("groupDetail.statAvgAttendance")}</div>
+            <div style={{ fontSize: 12, color: "#686B75" }}>{t("groupDetail.statAvgAttendance")}</div>
             <div style={{ fontSize: 24, fontWeight: 800, fontFamily: "'Manrope', sans-serif", marginTop: 4 }}>
               {groupAveragePercent === null ? "—" : `${groupAveragePercent}%`}
             </div>
           </div>
           <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 14, padding: 18 }}>
-            <div style={{ fontSize: 12, color: "#8A8D96" }}>{t("groupDetail.statMonthlyPrice")}</div>
+            <div style={{ fontSize: 12, color: "#686B75" }}>{t("groupDetail.statMonthlyPrice")}</div>
             <div style={{ fontSize: 24, fontWeight: 800, fontFamily: "'Manrope', sans-serif", marginTop: 4 }}>
               {group.monthlyPrice ? `${formatMoney(group.monthlyPrice)} ${t("common.sumUnit")}` : "—"}
             </div>
@@ -308,7 +308,7 @@ function GroupDetailContent() {
           {seesPay && dues && (
             <>
               <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 14, padding: 18 }}>
-                <div style={{ fontSize: 12, color: "#8A8D96" }}>{t("groupDetail.statMonthRevenue")}</div>
+                <div style={{ fontSize: 12, color: "#686B75" }}>{t("groupDetail.statMonthRevenue")}</div>
                 <div style={{ fontSize: 24, fontWeight: 800, fontFamily: "'Manrope', sans-serif", marginTop: 4 }}>
                   {/* What these students paid for the month, at most this group's price each. */}
                   {formatMoney(enrollments.reduce((sum, e) => sum + Math.min(dues.get(e.student.id)?.paidAmount ?? 0, group.monthlyPrice || 0), 0))}{" "}
@@ -333,7 +333,7 @@ function GroupDetailContent() {
             <DatePicker value={attendanceDate} onChange={setAttendanceDate} style={{ width: 170 }} />
           </div>
           {enrollments.length === 0 ? (
-            <div style={{ color: "#8A8D96", fontSize: 13.5 }}>{t("groupDetail.noStudentsForAttendance")}</div>
+            <div style={{ color: "#686B75", fontSize: 13.5 }}>{t("groupDetail.noStudentsForAttendance")}</div>
           ) : (
             <>
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -413,7 +413,7 @@ function GroupDetailContent() {
             )}
           </div>
           {enrollments.length === 0 ? (
-            <div style={{ color: "#8A8D96", fontSize: 14, padding: "24px 20px" }}>{t("groupDetail.noStudentsYet")}</div>
+            <div style={{ color: "#686B75", fontSize: 14, padding: "24px 20px" }}>{t("groupDetail.noStudentsYet")}</div>
           ) : (
             <table>
               <thead>
@@ -438,7 +438,7 @@ function GroupDetailContent() {
                           if (st === "PAID") return <span className="badge badge-success">{t("groupDetail.paid")}</span>;
                           if (st === "PARTIAL") return <span className="badge badge-warning">{t("groupDetail.partial")}</span>;
                           if (st === "UNPAID") return <span className="badge badge-danger">{t("groupDetail.debtor")}</span>;
-                          return <span style={{ color: "#8A8D96" }}>—</span>;
+                          return <span style={{ color: "#686B75" }}>—</span>;
                         })()}
                       </td>
                     )}
@@ -492,7 +492,7 @@ function GroupDetailContent() {
               border: "none",
               opacity: availableStudents.length === 0 ? 0.45 : 1,
               background: enrollMode === "existing" ? "#fff" : "transparent",
-              color: enrollMode === "existing" ? "#181A1F" : "#8A8D96",
+              color: enrollMode === "existing" ? "#181A1F" : "#686B75",
               boxShadow: enrollMode === "existing" ? "0 1px 3px rgba(18,19,26,0.08)" : "none",
               transition: "all 0.15s ease",
             }}
@@ -511,7 +511,7 @@ function GroupDetailContent() {
               cursor: "pointer",
               border: "none",
               background: enrollMode === "new" ? "#fff" : "transparent",
-              color: enrollMode === "new" ? "#181A1F" : "#8A8D96",
+              color: enrollMode === "new" ? "#181A1F" : "#686B75",
               boxShadow: enrollMode === "new" ? "0 1px 3px rgba(18,19,26,0.08)" : "none",
               transition: "all 0.15s ease",
             }}
@@ -536,7 +536,7 @@ function GroupDetailContent() {
                   />
                 </Field>
                 {availableStudents.length === 0 && (
-                  <div style={{ marginTop: 14, fontSize: 13, color: "#8A8D96", textAlign: "center", lineHeight: 1.5 }}>
+                  <div style={{ marginTop: 14, fontSize: 13, color: "#686B75", textAlign: "center", lineHeight: 1.5 }}>
                     {t("grp.allEnrolled")}
                   </div>
                 )}

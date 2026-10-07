@@ -159,7 +159,7 @@ function StudentsContent() {
       <div style={{ padding: "22px 32px", borderBottom: "1px solid #EAE8E2", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
         <div>
           <h1 style={{ fontSize: 22, fontWeight: 800 }}>{t("students.title")}</h1>
-          <Link href="/students/trash" style={{ fontSize: 12, color: "#8A8D96", fontWeight: 600 }}>
+          <Link href="/students/trash" style={{ fontSize: 12, color: "#686B75", fontWeight: 600 }}>
             {t("nav.trash")}
           </Link>
         </div>
@@ -232,13 +232,13 @@ function StudentsContent() {
         {loadError !== null ? (
           <LoadError message={loadError || t("adm.loadError")} onRetry={load} />
         ) : loading ? (
-          <div style={{ color: "#8A8D96", fontSize: 14 }}>{t("common.loading")}</div>
+          <div style={{ color: "#686B75", fontSize: 14 }}>{t("common.loading")}</div>
         ) : students.length === 0 ? (
-          <div style={{ color: "#8A8D96", fontSize: 14, background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 32, textAlign: "center" }}>
+          <div style={{ color: "#686B75", fontSize: 14, background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 32, textAlign: "center" }}>
             {t("students.noStudentsYet")}
           </div>
         ) : filtered.length === 0 ? (
-          <div style={{ color: "#8A8D96", fontSize: 14, background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 32, textAlign: "center" }}>
+          <div style={{ color: "#686B75", fontSize: 14, background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 32, textAlign: "center" }}>
             {t("students.noSearchResults")}
           </div>
         ) : (
@@ -263,7 +263,7 @@ function StudentsContent() {
                     <td>
                       {(() => {
                         const r = summaryById.get(s.id)?.attendanceRate ?? null;
-                        return r === null ? <span style={{ color: "#8A8D96" }}>—</span> : <span style={{ fontWeight: 700, color: r >= 85 ? "#1FA463" : r >= 70 ? "#D97706" : "#B23A47" }}>{r}%</span>;
+                        return r === null ? <span style={{ color: "#686B75" }}>—</span> : <span style={{ fontWeight: 700, color: r >= 85 ? "#1FA463" : r >= 70 ? "#D97706" : "#B23A47" }}>{r}%</span>;
                       })()}
                     </td>
                     <td>{s.phone || "—"}</td>
@@ -272,9 +272,9 @@ function StudentsContent() {
                       <td>
                         {(() => {
                           const st = summaryById.get(s.id)?.payment ?? null;
-                          if (!st || st === "NONE") return <span style={{ color: "#8A8D96" }}>—</span>;
+                          if (!st || st === "NONE") return <span style={{ color: "#686B75" }}>—</span>;
                           const map = {
-                            PAID: { text: t("stu.payPaid"), color: "#1FA463", bg: "#E9F8EF" },
+                            PAID: { text: t("stu.payPaid"), color: "#167A48", bg: "#E9F8EF" },
                             DEBT: { text: t("stu.payDebt"), color: "#B23A47", bg: "#FDEBEC" },
                             PENDING: { text: t("stu.payPending"), color: "#B45309", bg: "#FEF3C7" },
                           } as const;
@@ -347,7 +347,7 @@ function StudentsContent() {
               placeholder={t("students.selectGroups")}
               summary={(n) => `${n} ${t("students.groupsSelected")}`}
             />
-            <div style={{ fontSize: 12, color: "#8A8D96", marginTop: 6 }}>{t("students.multiDirectionHint")}</div>
+            <div style={{ fontSize: 12, color: "#686B75", marginTop: 6 }}>{t("students.multiDirectionHint")}</div>
             {selectedGroups.length > 0 && (
               <div style={{ marginTop: 8, border: "1px solid #EAE8E2", borderRadius: 10, overflow: "hidden" }}>
                 {Array.from(new Set(selectedGroups.map((g) => g.subject))).map((subj) => (

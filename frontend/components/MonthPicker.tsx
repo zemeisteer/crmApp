@@ -58,8 +58,8 @@ export default function MonthPicker({
         className="field-input"
         style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, cursor: "pointer", textAlign: "left", width: "100%" }}
       >
-        <span style={{ color: displayLabel ? "#181A1F" : "#8A8D96" }}>{displayLabel || effectivePlaceholder}</span>
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#8A8D96" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+        <span style={{ color: displayLabel ? "#181A1F" : "#686B75" }}>{displayLabel || effectivePlaceholder}</span>
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#686B75" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
           <rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" />
         </svg>
       </button>

@@ -132,7 +132,7 @@ export default function LoginPage() {
         <form onSubmit={onSubmitCode} style={{ width: 380, background: "#fff", borderRadius: 16, padding: 32, display: "flex", flexDirection: "column", gap: 18, boxShadow: "0 10px 25px rgba(0,0,0,0.05)" }}>
           <div>
             <h2 style={{ fontSize: 20, fontWeight: 800 }}>{t("twofa.title")}</h2>
-            <p style={{ fontSize: 13, color: "#8A8D96", marginTop: 4 }}>{t("twofa.subtitle")}</p>
+            <p style={{ fontSize: 13, color: "#686B75", marginTop: 4 }}>{t("twofa.subtitle")}</p>
           </div>
           {error && (
             <div role="alert" style={{ background: "#FDEBEC", color: "#B23A47", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: 10 }}>{error}</div>
@@ -163,7 +163,7 @@ export default function LoginPage() {
               setPendingToken(null);
               setCode("");
             }}
-            style={{ background: "transparent", color: "#8A8D96", fontSize: 13, fontWeight: 600, padding: 6 }}
+            style={{ background: "transparent", color: "#686B75", fontSize: 13, fontWeight: 600, padding: 6 }}
           >
             {t("twofa.back")}
           </button>
@@ -203,7 +203,7 @@ export default function LoginPage() {
                 border: "none",
                 cursor: "pointer",
                 background: lang === l ? "#fff" : "transparent",
-                color: lang === l ? "#181A1F" : "#8A8D96",
+                color: lang === l ? "#181A1F" : "#686B75",
                 boxShadow: lang === l ? "0 1px 3px rgba(18,19,26,0.08)" : "none",
               }}
             >
@@ -386,7 +386,7 @@ export default function LoginPage() {
               border: "none",
               cursor: "pointer",
               background: lang === l ? "#fff" : "transparent",
-              color: lang === l ? "#181A1F" : "#8A8D96",
+              color: lang === l ? "#181A1F" : "#686B75",
               boxShadow: lang === l ? "0 1px 3px rgba(18,19,26,0.08)" : "none",
             }}
           >

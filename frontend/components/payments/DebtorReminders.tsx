@@ -57,7 +57,7 @@ export default function DebtorRemindersDialog({ forMonth, onClose }: { forMonth:
         {loadError !== null ? (
           <LoadError message={loadError} onRetry={load} />
         ) : !data ? (
-          <div style={{ fontSize: 13, color: "#8A8D96" }}>{t("common.loading")}</div>
+          <div style={{ fontSize: 13, color: "#686B75" }}>{t("common.loading")}</div>
         ) : (
           <>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -71,14 +71,14 @@ export default function DebtorRemindersDialog({ forMonth, onClose }: { forMonth:
             </div>
 
             {result && (
-              <div role="status" style={{ background: "#EBF8F2", color: "#1FA463", fontSize: 13, fontWeight: 700, padding: "10px 14px", borderRadius: 10 }}>
+              <div role="status" style={{ background: "#EBF8F2", color: "#167A48", fontSize: 13, fontWeight: 700, padding: "10px 14px", borderRadius: 10 }}>
                 {t("drem.result").replace("{s}", String(result.sent)).replace("{a}", String(result.alreadyToday)).replace("{u}", String(result.unreachable))}
               </div>
             )}
             {error && <div role="alert" style={{ background: "#FDEBEC", color: "#B23A47", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: 10 }}>{error}</div>}
 
             {data.debtors.length === 0 ? (
-              <div style={{ fontSize: 13, color: "#8A8D96" }}>{t("pay.noDebtors")}</div>
+              <div style={{ fontSize: 13, color: "#686B75" }}>{t("pay.noDebtors")}</div>
             ) : (
               <div style={{ maxHeight: 320, overflow: "auto", border: "1px solid #EAE8E2", borderRadius: 10 }}>
                 <table aria-label={t("drem.listLabel")}>

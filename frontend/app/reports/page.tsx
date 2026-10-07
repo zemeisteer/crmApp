@@ -216,10 +216,10 @@ function ReportsContent() {
         content: smsText.trim(),
         title: "Eslatma",
       });
-      alert("SMS xabar muvaffaqiyatli yuborildi!");
+      alert(t("msg.smsSent"));
       setSmsModalOpen(false);
     } catch (err) {
-      alert(err instanceof Error ? err.message : "SMS yuborishda xatolik yuz berdi");
+      alert(err instanceof Error ? err.message : t("msg.smsError"));
     } finally {
       setSendingSms(false);
     }
@@ -231,7 +231,7 @@ function ReportsContent() {
       <div style={{ display: "grid", gap: 16 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
           <MonthPicker value={reportMonth} onChange={setReportMonth} style={{ width: 200 }} />
-          {reportLoading && <span style={{ fontSize: 12, color: "#8A8D96" }}>{t("common.loading")}</span>}
+          {reportLoading && <span style={{ fontSize: 12, color: "#686B75" }}>{t("common.loading")}</span>}
         </div>
         {reportError ? (
           <div style={{ background: "#FEE2E2", color: "#B91C1C", fontWeight: 600, fontSize: 13, padding: "12px 16px", borderRadius: 12 }}>{reportError}</div>
@@ -258,7 +258,7 @@ function ReportsContent() {
       >
         <div>
           <h1 style={{ fontSize: 22, fontWeight: 800 }}>{t("reports.title")}</h1>
-          <p style={{ fontSize: 12.5, color: "#8A8D96", marginTop: 2 }}>
+          <p style={{ fontSize: 12.5, color: "#686B75", marginTop: 2 }}>
             {t("rep3.subtitle")}
           </p>
         </div>
@@ -272,7 +272,7 @@ function ReportsContent() {
               style={{
                 border: "none",
                 background: activeTab === "director" ? "#fff" : "transparent",
-                color: activeTab === "director" ? "#181A1F" : "#8A8D96",
+                color: activeTab === "director" ? "#181A1F" : "#686B75",
                 fontWeight: 700,
                 fontSize: 12.5,
                 padding: "6px 14px",
@@ -289,7 +289,7 @@ function ReportsContent() {
               style={{
                 border: "none",
                 background: activeTab === "overview" ? "#fff" : "transparent",
-                color: activeTab === "overview" ? "#181A1F" : "#8A8D96",
+                color: activeTab === "overview" ? "#181A1F" : "#686B75",
                 fontWeight: 700,
                 fontSize: 12.5,
                 padding: "6px 14px",
@@ -306,7 +306,7 @@ function ReportsContent() {
               style={{
                 border: "none",
                 background: activeTab === "payroll" ? "#fff" : "transparent",
-                color: activeTab === "payroll" ? "#181A1F" : "#8A8D96",
+                color: activeTab === "payroll" ? "#181A1F" : "#686B75",
                 fontWeight: 700,
                 fontSize: 12.5,
                 padding: "6px 14px",
@@ -323,7 +323,7 @@ function ReportsContent() {
               style={{
                 border: "none",
                 background: activeTab === "retention" ? "#fff" : "transparent",
-                color: activeTab === "retention" ? "#181A1F" : "#8A8D96",
+                color: activeTab === "retention" ? "#181A1F" : "#686B75",
                 fontWeight: 700,
                 fontSize: 12.5,
                 padding: "6px 14px",
@@ -372,7 +372,7 @@ function ReportsContent() {
                 <h2 style={{ fontSize: 17, fontWeight: 800, margin: 0 }}>
                   {t("rep3.payrollTitle")}
                 </h2>
-                <p style={{ fontSize: 12, color: "#8A8D96", margin: "2px 0 0" }}>
+                <p style={{ fontSize: 12, color: "#686B75", margin: "2px 0 0" }}>
                   {t("rep3.payrollHint")}
                 </p>
               </div>
@@ -399,9 +399,9 @@ function ReportsContent() {
                   <LoadError message={payrollError} onRetry={() => loadPayroll(selectedPayrollMonth)} />
                 </div>
               ) : loadingPayroll ? (
-                <div style={{ padding: 32, textAlign: "center", color: "#8A8D96" }}>{t("rep3.calculating")}</div>
+                <div style={{ padding: 32, textAlign: "center", color: "#686B75" }}>{t("rep3.calculating")}</div>
               ) : !payrollData || payrollData.teachers.length === 0 ? (
-                <div style={{ padding: 32, textAlign: "center", color: "#8A8D96" }}>{t("rep2.noTeachers")}</div>
+                <div style={{ padding: 32, textAlign: "center", color: "#686B75" }}>{t("rep2.noTeachers")}</div>
               ) : (
                 <table>
                   <thead>
@@ -421,7 +421,7 @@ function ReportsContent() {
                       <tr key={item.teacherId}>
                         <td>
                           <div style={{ fontWeight: 700 }}>{item.teacherName}</div>
-                          <div style={{ fontSize: 11.5, color: "#8A8D96" }}>{item.subject || t("rep2.noSubject")} • {item.phone || "—"}</div>
+                          <div style={{ fontSize: 11.5, color: "#686B75" }}>{item.subject || t("rep2.noSubject")} • {item.phone || "—"}</div>
                         </td>
                         <td>
                           <span
@@ -450,13 +450,13 @@ function ReportsContent() {
                             </div>
                           )}
                           {(item.details.substitutedLessons ?? 0) > 0 && (
-                            <div style={{ fontSize: 11.5, fontWeight: 600, color: "#1FA463" }}>+{item.details.substitutedLessons} {t("tatt.covered")}</div>
+                            <div style={{ fontSize: 11.5, fontWeight: 600, color: "#167A48" }}>+{item.details.substitutedLessons} {t("tatt.covered")}</div>
                           )}
                         </td>
-                        <td style={{ fontWeight: 600, color: item.paidAmount > 0 ? "#10B981" : "#8A8D96" }}>
+                        <td style={{ fontWeight: 600, color: item.paidAmount > 0 ? "#10B981" : "#686B75" }}>
                           {formatMoney(item.paidAmount)} {t("common.sumUnit")}
                           {item.installments > 1 && (
-                            <div style={{ fontSize: 11.5, fontWeight: 600, color: "#8A8D96" }}>
+                            <div style={{ fontSize: 11.5, fontWeight: 600, color: "#686B75" }}>
                               {t("rep2.installments").replace("{n}", String(item.installments))}
                             </div>
                           )}
@@ -466,7 +466,7 @@ function ReportsContent() {
                         </td>
                         <td>
                           {item.calculatedSalary <= 0 && !item.isPaid ? (
-                            <span style={{ color: "#8A8D96" }}>—</span>
+                            <span style={{ color: "#686B75" }}>—</span>
                           ) : item.isPaid ? (
                             <span className="badge badge-success">✓ {t("rep3.statusPaid")}</span>
                           ) : item.paidAmount > 0 ? (
@@ -529,7 +529,7 @@ function ReportsContent() {
         <form onSubmit={handleDisburseSubmit} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           <div style={{ background: "#F8F8F6", borderRadius: 10, padding: 12, border: "1px solid #EAE8E2" }}>
             <div style={{ fontSize: 14, fontWeight: 700, color: "#181A1F" }}>{disburseTeacher?.teacherName}</div>
-            <div style={{ fontSize: 12, color: "#8A8D96", marginTop: 2 }}>
+            <div style={{ fontSize: 12, color: "#686B75", marginTop: 2 }}>
               {t("rep2.subject")}: {disburseTeacher?.subject || t("rep2.notSet")} • {t("rep3.colModel")}: {disburseTeacher ? salaryTypeLabel(disburseTeacher.salaryType) : ""}
             </div>
             <div style={{ fontSize: 12.5, color: "#4A4E58", marginTop: 6 }}>
@@ -540,10 +540,10 @@ function ReportsContent() {
             </div>
             {monthPayouts && monthPayouts.length > 0 && (
               <div style={{ marginTop: 8, borderTop: "1px solid #EAE8E2", paddingTop: 8 }}>
-                <div style={{ fontSize: 11.5, fontWeight: 700, color: "#8A8D96", marginBottom: 4 }}>{t("rep2.earlierPayouts")}</div>
+                <div style={{ fontSize: 11.5, fontWeight: 700, color: "#686B75", marginBottom: 4 }}>{t("rep2.earlierPayouts")}</div>
                 {monthPayouts.map((p) => (
                   <div key={p.id} style={{ padding: "3px 0" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, fontSize: 12, color: p.reversedAt ? "#8A8D96" : "#4A4E58" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, fontSize: 12, color: p.reversedAt ? "#686B75" : "#4A4E58" }}>
                       <span style={{ textDecoration: p.reversedAt ? "line-through" : undefined }}>
                         {p.paidAt.slice(0, 10)}{p.paymentMethod ? ` · ${p.paymentMethod}` : ""}
                       </span>
@@ -590,7 +590,7 @@ function ReportsContent() {
           )}
 
           {(disburseTeacher?.netPayable ?? 0) <= 0 ? (
-            <div style={{ fontSize: 13, color: "#1FA463", fontWeight: 700 }}>{t("rep2.monthPaid")}</div>
+            <div style={{ fontSize: 13, color: "#167A48", fontWeight: 700 }}>{t("rep2.monthPaid")}</div>
           ) : (
           <>
           <div>
@@ -605,7 +605,7 @@ function ReportsContent() {
               step={1}
               required
             />
-            <div style={{ fontSize: 11.5, color: "#8A8D96", marginTop: 4 }}>{t("rep2.installmentHint")}</div>
+            <div style={{ fontSize: 11.5, color: "#686B75", marginTop: 4 }}>{t("rep2.installmentHint")}</div>
           </div>
 
           <div>
@@ -698,9 +698,9 @@ function ReportsContent() {
 function StatCard({ label, value, delta, danger }: { label: string; value: string; delta?: string; danger?: boolean }) {
   return (
     <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 14, padding: 18 }}>
-      <div style={{ fontSize: 12, color: "#8A8D96" }}>{label}</div>
+      <div style={{ fontSize: 12, color: "#686B75" }}>{label}</div>
       <div style={{ fontSize: 24, fontWeight: 800, fontFamily: "'Manrope', sans-serif", marginTop: 4, color: danger ? "#B23A47" : "#181A1F" }}>{value}</div>
-      {delta && <div style={{ fontSize: 11.5, color: danger ? "#B23A47" : delta.startsWith("↑") ? "#1FA463" : "#8A8D96", marginTop: 4, fontWeight: 600 }}>{delta}</div>}
+      {delta && <div style={{ fontSize: 11.5, color: danger ? "#B23A47" : delta.startsWith("↑") ? "#1FA463" : "#686B75", marginTop: 4, fontWeight: 600 }}>{delta}</div>}
     </div>
   );
 }

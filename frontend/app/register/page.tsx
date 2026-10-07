@@ -75,7 +75,7 @@ export default function RegisterPage() {
               border: "none",
               cursor: "pointer",
               background: lang === l ? "#fff" : "transparent",
-              color: lang === l ? "#181A1F" : "#8A8D96",
+              color: lang === l ? "#181A1F" : "#686B75",
               boxShadow: lang === l ? "0 1px 3px rgba(18,19,26,0.08)" : "none",
             }}
           >

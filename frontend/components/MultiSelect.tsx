@@ -79,7 +79,7 @@ export default function MultiSelect({
       >
         <div style={{ display: "flex", flexWrap: "wrap", gap: 5, flex: 1 }}>
           {selectedLabels.length === 0 ? (
-            <span style={{ color: "#8A8D96" }}>{effectivePlaceholder}</span>
+            <span style={{ color: "#686B75" }}>{effectivePlaceholder}</span>
           ) : summary ? (
             <span style={{ fontWeight: 600 }}>{summary(selectedLabels.length)}</span>
           ) : (
@@ -110,7 +110,7 @@ export default function MultiSelect({
           fill="none"
           style={{ flexShrink: 0, transform: open ? "rotate(180deg)" : "none", transition: "transform 0.18s ease" }}
         >
-          <path d="M1 1.5L6 6.5L11 1.5" stroke={open ? ACCENT : "#8A8D96"} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M1 1.5L6 6.5L11 1.5" stroke={open ? ACCENT : "#686B75"} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       </button>
 
@@ -147,7 +147,7 @@ export default function MultiSelect({
             />
           )}
           {visible.length === 0 ? (
-            <div style={{ padding: "10px 12px", fontSize: 12.5, color: "#8A8D96", textAlign: "center" }}>
+            <div style={{ padding: "10px 12px", fontSize: 12.5, color: "#686B75", textAlign: "center" }}>
               {t("picker.noOptions")}
             </div>
           ) : (
@@ -157,7 +157,7 @@ export default function MultiSelect({
               return (
                 <div key={o.value}>
                 {heading && (
-                  <div style={{ padding: "8px 10px 4px", fontSize: 11, fontWeight: 800, color: "#8A8D96", textTransform: "uppercase", letterSpacing: 0.4 }}>
+                  <div style={{ padding: "8px 10px 4px", fontSize: 11, fontWeight: 800, color: "#686B75", textTransform: "uppercase", letterSpacing: 0.4 }}>
                     {heading}
                   </div>
                 )}

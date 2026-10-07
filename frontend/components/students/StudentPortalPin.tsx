@@ -45,7 +45,7 @@ export default function StudentPortalPin({ studentId, hasPhone }: { studentId: s
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
         <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 700, fontSize: 15 }}>{t("spin.title")}</div>
         {status && (
-          <span style={{ fontSize: 12, fontWeight: 700, padding: "3px 10px", borderRadius: 999, background: status.hasPin ? "#E8F7EF" : "#F2F1EC", color: status.hasPin ? "#1FA463" : "#8A8D96" }}>
+          <span style={{ fontSize: 12, fontWeight: 700, padding: "3px 10px", borderRadius: 999, background: status.hasPin ? "#E8F7EF" : "#F2F1EC", color: status.hasPin ? "#1FA463" : "#686B75" }}>
             {status.hasPin ? `✓ ${t("spin.has")}${status.updatedAt ? ` · ${formatDateTime(status.updatedAt, lang)}` : ""}` : t("spin.none")}
           </span>
         )}
@@ -53,7 +53,7 @@ export default function StudentPortalPin({ studentId, hasPhone }: { studentId: s
       <div style={{ fontSize: 12.5, color: "#4A4E58", margin: "8px 0 12px", lineHeight: 1.5 }}>{t("spin.intro")}</div>
       {portalUrl && (
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12, padding: "8px 10px", borderRadius: 10, background: "#F7F6F2", fontSize: 12.5, flexWrap: "wrap" }}>
-          <span style={{ color: "#8A8D96" }}>{t("spin.portalLink")}:</span>
+          <span style={{ color: "#686B75" }}>{t("spin.portalLink")}:</span>
           <a href={portalUrl} target="_blank" rel="noreferrer" style={{ color: ACCENT, fontWeight: 700, wordBreak: "break-all" }}>{portalUrl.replace(/^https?:\/\//, "")}</a>
           <button
             type="button"

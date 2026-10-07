@@ -58,11 +58,11 @@ export default function GroupTutorReport({ groupId }: { groupId: string }) {
       <div style={{ padding: "16px 20px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
         <div>
           <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 700, fontSize: 15 }}>🤖 {t("tutorRep.title")}</div>
-          <div style={{ fontSize: 12.5, color: "#8A8D96", marginTop: 2 }}>{t("tutorRep.hint")}</div>
+          <div style={{ fontSize: 12.5, color: "#686B75", marginTop: 2 }}>{t("tutorRep.hint")}</div>
         </div>
         <div style={{ display: "flex", background: "#F2F1EC", borderRadius: 9, padding: 3 }}>
           {PERIODS.map((d) => (
-            <button key={d} type="button" onClick={() => { setDays(d); setTopics(null); }} style={{ border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700, padding: "6px 10px", borderRadius: 7, background: days === d ? "#fff" : "transparent", color: days === d ? "#181A1F" : "#8A8D96" }}>
+            <button key={d} type="button" onClick={() => { setDays(d); setTopics(null); }} style={{ border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700, padding: "6px 10px", borderRadius: 7, background: days === d ? "#fff" : "transparent", color: days === d ? "#181A1F" : "#686B75" }}>
               {t("tutorRep.days").replace("{n}", String(d))}
             </button>
           ))}
@@ -70,7 +70,7 @@ export default function GroupTutorReport({ groupId }: { groupId: string }) {
       </div>
 
       {!report ? (
-        <div style={{ padding: "0 20px 18px", fontSize: 13, color: "#8A8D96" }}>{t("common.loading")}</div>
+        <div style={{ padding: "0 20px 18px", fontSize: 13, color: "#686B75" }}>{t("common.loading")}</div>
       ) : (
         <>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0,1fr))", gap: 10, padding: "0 20px 16px" }}>
@@ -80,7 +80,7 @@ export default function GroupTutorReport({ groupId }: { groupId: string }) {
               { label: t("tutorRep.perStudent"), value: report.activeStudents ? Math.round((report.totalQuestions / report.activeStudents) * 10) / 10 : 0, color: "#181A1F" },
             ].map((c) => (
               <div key={c.label} style={{ background: "#F7F6F2", borderRadius: 12, padding: "10px 14px", minWidth: 0 }}>
-                <div style={{ fontSize: 11.5, color: "#8A8D96", fontWeight: 600 }}>{c.label}</div>
+                <div style={{ fontSize: 11.5, color: "#686B75", fontWeight: 600 }}>{c.label}</div>
                 <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 800, fontSize: 20, color: c.color }}>{c.value}</div>
               </div>
             ))}
@@ -119,12 +119,12 @@ export default function GroupTutorReport({ groupId }: { groupId: string }) {
                     <button type="button" onClick={() => setOpen(open === s.studentId ? null : s.studentId)} aria-expanded={open === s.studentId} style={{ width: "100%", display: "flex", alignItems: "center", gap: 12, padding: "12px 20px", background: "none", border: "none", cursor: "pointer", textAlign: "left" }}>
                       <span style={{ flex: 1, minWidth: 0 }}>
                         <span style={{ display: "block", fontSize: 14, fontWeight: 700, color: "#181A1F" }}>{s.fullName}</span>
-                        {s.lastAt && <span style={{ display: "block", fontSize: 12, color: "#8A8D96" }}>{t("tutorRep.last")}: {formatDate(s.lastAt, lang)}</span>}
+                        {s.lastAt && <span style={{ display: "block", fontSize: 12, color: "#686B75" }}>{t("tutorRep.last")}: {formatDate(s.lastAt, lang)}</span>}
                       </span>
                       <span style={{ fontSize: 12.5, fontWeight: 800, color: ACCENT, background: "#EEF0FF", padding: "4px 10px", borderRadius: 100, whiteSpace: "nowrap" }}>
                         {t("tutorRep.count").replace("{n}", String(s.questions))}
                       </span>
-                      <span aria-hidden style={{ color: "#8A8D96" }}>{open === s.studentId ? "▴" : "▾"}</span>
+                      <span aria-hidden style={{ color: "#686B75" }}>{open === s.studentId ? "▴" : "▾"}</span>
                     </button>
                     {open === s.studentId && (
                       <div style={{ padding: "0 20px 14px", display: "flex", flexDirection: "column", gap: 6 }}>
@@ -138,7 +138,7 @@ export default function GroupTutorReport({ groupId }: { groupId: string }) {
                   </div>
                 ))}
                 {silent.length > 0 && (
-                  <div style={{ borderTop: "1px solid #F0EEE8", padding: "12px 20px 16px", fontSize: 12.5, color: "#8A8D96" }}>
+                  <div style={{ borderTop: "1px solid #F0EEE8", padding: "12px 20px 16px", fontSize: 12.5, color: "#686B75" }}>
                     {t("tutorRep.silent")}: {silent.map((s) => s.fullName).join(", ")}
                   </div>
                 )}

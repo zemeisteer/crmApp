@@ -34,7 +34,7 @@ export default function TeacherHome({ data }: { data: DashboardData }) {
         {tiles.map((c) => {
           const body = (
             <div style={{ background: c.warn ? "#FFFBEB" : "#fff", border: `1px solid ${c.warn ? "#FDE68A" : "#EAE8E2"}`, borderRadius: 14, padding: 18, height: "100%", boxSizing: "border-box" }}>
-              <div style={{ fontSize: 12, color: c.warn ? "#92400E" : "#8A8D96" }}>{c.label}</div>
+              <div style={{ fontSize: 12, color: c.warn ? "#92400E" : "#686B75" }}>{c.label}</div>
               <div style={{ fontSize: 22, fontWeight: 800, fontFamily: "'Manrope', sans-serif", marginTop: 4, color: c.warn ? "#B45309" : "#181A1F" }}>{c.value}</div>
             </div>
           );
@@ -49,7 +49,7 @@ export default function TeacherHome({ data }: { data: DashboardData }) {
             <Link href="/schedule" style={{ fontSize: 12, color: ACCENT, fontWeight: 600, textDecoration: "none" }}>{t("dashboard.openTimetable")} →</Link>
           </div>
           {data.todaysLessons.length === 0 ? (
-            <div style={{ fontSize: 13, color: "#8A8D96" }}>{t("dashboard.noLessonsToday")}</div>
+            <div style={{ fontSize: 13, color: "#686B75" }}>{t("dashboard.noLessonsToday")}</div>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {data.todaysLessons.map((l) => {
@@ -59,7 +59,7 @@ export default function TeacherHome({ data }: { data: DashboardData }) {
                     <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 800, fontSize: 14, color: ACCENT, minWidth: 48 }}>{l.startTime ?? "—"}</div>
                     <div style={{ flex: 1, minWidth: 120 }}>
                       <div style={{ fontSize: 13.5, fontWeight: 700 }}>{l.name}</div>
-                      <div style={{ fontSize: 12, color: "#8A8D96" }}>
+                      <div style={{ fontSize: 12, color: "#686B75" }}>
                         {l.students} {t("dash.studentsShort")}
                         {done && l.marked ? ` · ${t("dash.lessonDone")} ${l.present}/${l.marked}` : ""}
                       </div>
@@ -67,7 +67,7 @@ export default function TeacherHome({ data }: { data: DashboardData }) {
                     <Link
                       href={`/groups/${l.id}`}
                       className="btn"
-                      style={{ fontSize: 12.5, fontWeight: 700, padding: "8px 14px", borderRadius: 9, textDecoration: "none", ...(done ? { background: "#E9F8EF", color: "#1FA463" } : { background: ACCENT, color: "#fff" }) }}
+                      style={{ fontSize: 12.5, fontWeight: 700, padding: "8px 14px", borderRadius: 9, textDecoration: "none", ...(done ? { background: "#E9F8EF", color: "#167A48" } : { background: ACCENT, color: "#fff" }) }}
                     >
                       {done ? `✓ ${t("th.marked")}` : t("th.markAttendance")}
                     </Link>
@@ -81,14 +81,14 @@ export default function TeacherHome({ data }: { data: DashboardData }) {
         <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 20 }}>
           <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 700, fontSize: 15, marginBottom: 14 }}>{t("th.myGroups")}</div>
           {data.groupFill.length === 0 ? (
-            <div style={{ fontSize: 13, color: "#8A8D96" }}>{t("th.noGroups")}</div>
+            <div style={{ fontSize: 13, color: "#686B75" }}>{t("th.noGroups")}</div>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {data.groupFill.map((g) => (
                 <Link key={g.id} href={`/groups/${g.id}`} style={{ display: "flex", alignItems: "center", gap: 12, textDecoration: "none", color: "#181A1F" }}>
                   <div style={{ width: 36, height: 36, borderRadius: 10, background: "#ECEBFB", color: ACCENT, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 12.5, flexShrink: 0 }}>{initials(g.name)}</div>
                   <div style={{ flex: 1, minWidth: 0, fontSize: 13.5, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{g.name}</div>
-                  <div style={{ fontSize: 12.5, color: "#8A8D96", whiteSpace: "nowrap" }}>{g.students}/{g.maxStudents}</div>
+                  <div style={{ fontSize: 12.5, color: "#686B75", whiteSpace: "nowrap" }}>{g.students}/{g.maxStudents}</div>
                 </Link>
               ))}
             </div>

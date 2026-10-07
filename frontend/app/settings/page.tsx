@@ -357,7 +357,7 @@ function SettingsContent() {
     <>
       <div style={{ padding: "22px 32px", borderBottom: "1px solid #EAE8E2" }}>
         <h1 style={{ fontSize: 22, fontWeight: 800 }}>{t("settings.title")}</h1>
-        <div style={{ fontSize: 13, color: "#8A8D96", marginTop: 2 }}>{t("settings.subtitle")}</div>
+        <div style={{ fontSize: 13, color: "#686B75", marginTop: 2 }}>{t("settings.subtitle")}</div>
       </div>
 
       <div className="settings-layout" style={{ flex: 1, minHeight: 0, display: "flex", overflow: "hidden" }}>
@@ -404,7 +404,7 @@ function SettingsContent() {
                     >
                       {logoUploading ? t("common.loading") : t("settings.changeLogo")}
                     </button>
-                    <div style={{ fontSize: 11, color: "#8A8D96", marginTop: 6 }}>{t("settings.logoHint")}</div>
+                    <div style={{ fontSize: 11, color: "#686B75", marginTop: 6 }}>{t("settings.logoHint")}</div>
                     <input ref={logoInputRef} type="file" accept="image/png,image/jpeg,image/svg+xml" onChange={onLogoChange} style={{ display: "none" }} />
                   </div>
                 </div>
@@ -414,16 +414,16 @@ function SettingsContent() {
                     <div role="alert" style={{ background: "#FDEBEC", color: "#B23A47", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: 10 }}>{error}</div>
                   )}
                   {saved && (
-                    <div style={{ background: "#E9F8EF", color: "#1FA463", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: 10 }}>{t("common.saved")}</div>
+                    <div style={{ background: "#E9F8EF", color: "#167A48", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: 10 }}>{t("common.saved")}</div>
                   )}
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
                     <div>
                       <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>{t("settings.centerName")}</div>
-                      <input className="field-input" required value={name} onChange={(e) => setName(e.target.value)} />
+                      <input className="field-input" aria-label={t("settings.centerName")} required value={name} onChange={(e) => setName(e.target.value)} />
                     </div>
                     <div>
                       <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>{t("settings.subdomain")}</div>
-                      <input className="field-input" value={tenant?.subdomain ? centerHost(tenant.subdomain) : ""} disabled style={{ opacity: 0.6 }} />
+                      <input className="field-input" aria-label={t("settings.subdomain")} value={tenant?.subdomain ? centerHost(tenant.subdomain) : ""} disabled style={{ opacity: 0.6 }} />
                     </div>
                   </div>
                   <div>
@@ -440,12 +440,12 @@ function SettingsContent() {
                   </div>
                   <div>
                     <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>🤖 {t("settings.aiTutorLimit")}</div>
-                    <input className="field-input" type="number" inputMode="numeric" min={0} max={200} value={aiLimit} onChange={(e) => setAiLimit(e.target.value)} style={{ maxWidth: 160 }} />
-                    <div style={{ fontSize: 12, color: "#8A8D96", marginTop: 5, lineHeight: 1.5 }}>{t("settings.aiTutorHint")}</div>
+                    <input className="field-input" aria-label={t("settings.aiTutorLimit")} type="number" inputMode="numeric" min={0} max={200} value={aiLimit} onChange={(e) => setAiLimit(e.target.value)} style={{ maxWidth: 160 }} />
+                    <div style={{ fontSize: 12, color: "#686B75", marginTop: 5, lineHeight: 1.5 }}>{t("settings.aiTutorHint")}</div>
                   </div>
                   <div>
                     <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>{t("settings.loginEmail")}</div>
-                    <input className="field-input" value={user?.email || ""} disabled style={{ opacity: 0.6 }} />
+                    <input className="field-input" aria-label={t("settings.loginEmail")} value={user?.email || ""} disabled style={{ opacity: 0.6 }} />
                   </div>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
                     <div>
@@ -459,7 +459,7 @@ function SettingsContent() {
                   </div>
                   <div>
                     <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>
-                      {t("settings.direction")} <span style={{ fontWeight: 500, color: "#8A8D96" }}>· {t("set.directionsHint")}</span>
+                      {t("settings.direction")} <span style={{ fontWeight: 500, color: "#686B75" }}>· {t("set.directionsHint")}</span>
                     </div>
                     <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                       {DIRECTION_OPTIONS.map((d) => {
@@ -492,11 +492,14 @@ function SettingsContent() {
 
               <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 22 }}>
                 <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 700, fontSize: 15 }}>{t("settings.brandColor")}</div>
-                <div style={{ fontSize: 12, color: "#8A8D96", marginTop: 4, marginBottom: 16 }}>{t("settings.brandColorHint")}</div>
+                <div style={{ fontSize: 12, color: "#686B75", marginTop: 4, marginBottom: 16 }}>{t("settings.brandColorHint")}</div>
                 <div style={{ display: "flex", gap: 10 }}>
                   {BRAND_COLORS.map((c) => (
                     <button
                       key={c}
+                      type="button"
+                      aria-label={`${t("settings.brandColor")} ${c}`}
+                      aria-pressed={accentColor === c}
                       onClick={async () => {
                         setAccentColor(c);
                         await tenantsApi.updateMe({ accentColor: c });
@@ -511,6 +514,7 @@ function SettingsContent() {
                   ))}
                   <input
                     type="color"
+                    aria-label={t("settings.brandColor")}
                     value={accentColor}
                     onChange={async (e) => {
                       setAccentColor(e.target.value);
@@ -531,17 +535,17 @@ function SettingsContent() {
           {tab === "staff" && (
             <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 22, maxWidth: 720 }}>
               <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 700, fontSize: 15, marginBottom: 4 }}>{t("settings.staffTitle")}</div>
-              <div style={{ fontSize: 12.5, color: "#8A8D96", marginBottom: 16 }}>{t("settings.staffHint")}</div>
+              <div style={{ fontSize: 12.5, color: "#686B75", marginBottom: 16 }}>{t("settings.staffHint")}</div>
 
               <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 18 }}>
                 {staff.length === 0 ? (
-                  <div style={{ fontSize: 13, color: "#8A8D96" }}>{t("common.loading")}</div>
+                  <div style={{ fontSize: 13, color: "#686B75" }}>{t("common.loading")}</div>
                 ) : (
                   staff.map((s) => (
                     <div key={s.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", border: "1px solid #EAE8E2", borderRadius: 10, padding: "10px 12px", gap: 10 }}>
                       <div style={{ minWidth: 0 }}>
                         <div style={{ fontSize: 13.5, fontWeight: 600 }}>{s.fullName}</div>
-                        <div style={{ fontSize: 11.5, color: "#8A8D96" }}>{s.email}</div>
+                        <div style={{ fontSize: 11.5, color: "#686B75" }}>{s.email}</div>
                       </div>
                       <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
                         {accessCatalog && isConfigurableRole(accessCatalog, s.role) && (
@@ -650,7 +654,7 @@ function SettingsContent() {
                   <div style={{ background: "#FDEBEC", color: "#B23A47", fontSize: 12.5, fontWeight: 600, padding: "8px 12px", borderRadius: 8, marginBottom: 8 }}>{twoFaError}</div>
                 )}
                 {twoFaMsg && !twoFaQr && (
-                  <div style={{ background: "#E9F8EF", color: "#1FA463", fontSize: 12.5, fontWeight: 600, padding: "8px 12px", borderRadius: 8, marginBottom: 8 }}>{twoFaMsg}</div>
+                  <div style={{ background: "#E9F8EF", color: "#167A48", fontSize: 12.5, fontWeight: 600, padding: "8px 12px", borderRadius: 8, marginBottom: 8 }}>{twoFaMsg}</div>
                 )}
                 {user?.twoFactorEnabled ? (
                   <form onSubmit={onDisable2FA} style={{ display: "flex", gap: 8 }}>
@@ -661,7 +665,7 @@ function SettingsContent() {
                   </form>
                 ) : twoFaQr ? (
                   <form onSubmit={onConfirm2FA} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                    <div style={{ fontSize: 12, color: "#8A8D96" }}>{t("settings.scanQr")}</div>
+                    <div style={{ fontSize: 12, color: "#686B75" }}>{t("settings.scanQr")}</div>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={twoFaQr} alt="2FA QR" width={160} height={160} style={{ alignSelf: "center", border: "1px solid #EAE8E2", borderRadius: 8 }} />
                     <div style={{ display: "flex", gap: 8 }}>
@@ -689,7 +693,7 @@ function SettingsContent() {
                     <div key={s.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", border: "1px solid #EAE8E2", borderRadius: 10, padding: "8px 12px" }}>
                       <div>
                         <div style={{ fontSize: 12.5, fontWeight: 600 }}>{s.userAgent || t("settings.unknownDevice")}</div>
-                        <div style={{ fontSize: 11, color: "#8A8D96" }}>{s.ip} · {formatDateTime(s.lastUsedAt, lang)}</div>
+                        <div style={{ fontSize: 11, color: "#686B75" }}>{s.ip} · {formatDateTime(s.lastUsedAt, lang)}</div>
                       </div>
                       <button className="btn" onClick={() => onRevokeSession(s.id)} style={{ background: "transparent", color: "#B23A47", fontSize: 11.5, fontWeight: 600, padding: "4px 8px", borderRadius: 8 }}>
                         {t("settings.revoke")}
@@ -703,7 +707,7 @@ function SettingsContent() {
                 <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 700, fontSize: 14, marginBottom: 12 }}>{t("settings.webhooks")}</div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 14 }}>
                   {webhooks.length === 0 ? (
-                    <div style={{ fontSize: 13, color: "#8A8D96" }}>{t("settings.noWebhooks")}</div>
+                    <div style={{ fontSize: 13, color: "#686B75" }}>{t("settings.noWebhooks")}</div>
                   ) : (
                     webhooks.map((w) => (
                       <div key={w.id} style={{ border: "1px solid #EAE8E2", borderRadius: 10, padding: "8px 12px" }}>
@@ -713,7 +717,7 @@ function SettingsContent() {
                             {t("common.delete")}
                           </button>
                         </div>
-                        <div style={{ fontSize: 11, color: "#8A8D96", marginTop: 2 }}>
+                        <div style={{ fontSize: 11, color: "#686B75", marginTop: 2 }}>
                           {t("settings.eventLabel")}: {w.event} · {t("settings.secretLabel")}: <code>{w.secret.slice(0, 12)}...</code>
                         </div>
                       </div>
@@ -746,7 +750,7 @@ function SettingsContent() {
           {tab === "integrations" && (
             <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 22, maxWidth: 640 }}>
               <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 700, fontSize: 15, marginBottom: 4 }}>{t("settings.integrations")}</div>
-              <div style={{ fontSize: 12.5, color: "#8A8D96", marginBottom: 16 }}>{t("settings.integrationsHint")}</div>
+              <div style={{ fontSize: 12.5, color: "#686B75", marginBottom: 16 }}>{t("settings.integrationsHint")}</div>
               <div style={{ display: "flex", flexDirection: "column", gap: 10, fontSize: 13.5 }}>
                 <IntegrationRow
                   label={t("settings.telegramBotLabel")}
@@ -820,7 +824,7 @@ function IntegrationRow({ label, active, hint, activeLabel, inactiveLabel }: { l
     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", border: "1px solid #EAE8E2", borderRadius: 10, padding: "10px 14px" }}>
       <div>
         <div style={{ fontWeight: 600 }}>{label}</div>
-        <div style={{ fontSize: 11.5, color: "#8A8D96", marginTop: 2 }}>{hint}</div>
+        <div style={{ fontSize: 11.5, color: "#686B75", marginTop: 2 }}>{hint}</div>
       </div>
       <span className={`badge ${active ? "badge-success" : "badge-neutral"}`}>{active ? activeLabel : inactiveLabel}</span>
     </div>
@@ -925,7 +929,7 @@ function NotificationsSettingsTab() {
       const updated = await notificationsApi.updateSettings(payload);
       setSettings(updated);
       setTokenInput("");
-      setMsg("Xabarnoma sozlamalari muvaffaqiyatli saqlandi!");
+      setMsg(t("msg.notifSettingsSaved"));
       setTimeout(() => setMsg(null), 4000);
     } catch (err) {
       alert(err instanceof ApiError ? err.message : t("ntf.saveError"));
@@ -945,7 +949,7 @@ function NotificationsSettingsTab() {
         content: testContent.trim(),
       });
       if (res.status === "SENT") {
-        alert("Sinov xabari muvaffaqiyatli yetkazildi!");
+        alert(t("msg.testMessageSent"));
         setTestContent("");
       } else {
         alert(`${t("ntf.errorPrefix")}: ${res.errorMessage || t("ntf.notSent")}`);
@@ -959,7 +963,7 @@ function NotificationsSettingsTab() {
   }
 
   if (loading) {
-    return <div style={{ color: "#8A8D96", fontSize: 13.5 }}>{t("common.loading")}</div>;
+    return <div style={{ color: "#686B75", fontSize: 13.5 }}>{t("common.loading")}</div>;
   }
 
   return (
@@ -967,19 +971,19 @@ function NotificationsSettingsTab() {
       {/* Stat Cards */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 14 }}>
         <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 14, padding: 16 }}>
-          <div style={{ fontSize: 12, color: "#8A8D96" }}>{t("ntf.total")}</div>
+          <div style={{ fontSize: 12, color: "#686B75" }}>{t("ntf.total")}</div>
           <div style={{ fontSize: 22, fontWeight: 800, marginTop: 4 }}>{stats?.total || 0}</div>
         </div>
         <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 14, padding: 16 }}>
-          <div style={{ fontSize: 12, color: "#8A8D96" }}>{t("ntf.smsOk")}</div>
+          <div style={{ fontSize: 12, color: "#686B75" }}>{t("ntf.smsOk")}</div>
           <div style={{ fontSize: 22, fontWeight: 800, color: "#10B981", marginTop: 4 }}>{stats?.smsCount || 0}</div>
         </div>
         <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 14, padding: 16 }}>
-          <div style={{ fontSize: 12, color: "#8A8D96" }}>{t("ntf.telegram")}</div>
+          <div style={{ fontSize: 12, color: "#686B75" }}>{t("ntf.telegram")}</div>
           <div style={{ fontSize: 22, fontWeight: 800, color: ACCENT, marginTop: 4 }}>{stats?.telegramCount || 0}</div>
         </div>
         <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 14, padding: 16 }}>
-          <div style={{ fontSize: 12, color: "#8A8D96" }}>{t("ntf.rate")}</div>
+          <div style={{ fontSize: 12, color: "#686B75" }}>{t("ntf.rate")}</div>
           <div style={{ fontSize: 22, fontWeight: 800, color: "#3B82F6", marginTop: 4 }}>{stats?.successRate || 100}%</div>
         </div>
       </div>
@@ -989,12 +993,12 @@ function NotificationsSettingsTab() {
         <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 700, fontSize: 15, marginBottom: 4 }}>
           {t("ntf.smsTitle")}
         </div>
-        <div style={{ fontSize: 12.5, color: "#8A8D96", marginBottom: 16 }}>
+        <div style={{ fontSize: 12.5, color: "#686B75", marginBottom: 16 }}>
           {t("ntf.smsHint")}
         </div>
 
         {msg && (
-          <div style={{ background: "#E9F8EF", color: "#1FA463", fontSize: 12.5, fontWeight: 600, padding: "8px 12px", borderRadius: 8, marginBottom: 14 }}>
+          <div style={{ background: "#E9F8EF", color: "#167A48", fontSize: 12.5, fontWeight: 600, padding: "8px 12px", borderRadius: 8, marginBottom: 14 }}>
             {msg}
           </div>
         )}
@@ -1112,7 +1116,7 @@ function NotificationsSettingsTab() {
         <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 700, fontSize: 15, marginBottom: 4 }}>
           {t("ntf.testTitle")}
         </div>
-        <div style={{ fontSize: 12.5, color: "#8A8D96", marginBottom: 14 }}>
+        <div style={{ fontSize: 12.5, color: "#686B75", marginBottom: 14 }}>
           {t("ntf.testHint")}
         </div>
         <form onSubmit={handleSendTest} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -1168,7 +1172,7 @@ function NotificationsSettingsTab() {
         </div>
 
         {logs.length === 0 ? (
-          <div style={{ color: "#8A8D96", fontSize: 13 }}>{t("ntf.empty")}</div>
+          <div style={{ color: "#686B75", fontSize: 13 }}>{t("ntf.empty")}</div>
         ) : (
           <div style={{ overflowX: "auto" }}>
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12.5 }}>

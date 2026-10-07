@@ -126,7 +126,7 @@ function MockTestsContent() {
       {importing && <ImportPanel onClose={() => { setImporting(false); load(); }} onOpenTest={(id) => { setImporting(false); load(); openTest(id); }} />}
 
       {tests === null ? (
-        <div style={{ ...card, color: "#8A8D96" }}>{t("common.loading")}</div>
+        <div style={{ ...card, color: "#686B75" }}>{t("common.loading")}</div>
       ) : tests.length === 0 ? (
         <div style={{ ...card, textAlign: "center", padding: "40px 20px", color: "#6B6E78" }}>
           <div style={{ fontSize: 36 }}>🎧📖✍️🎤</div>
@@ -140,7 +140,7 @@ function MockTestsContent() {
               <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "flex-start" }}>
                 <div style={{ minWidth: 0 }}>
                   <div style={{ fontWeight: 800, fontSize: 15 }}>{x.title}</div>
-                  <div style={{ fontSize: 12, color: "#8A8D96" }}>
+                  <div style={{ fontSize: 12, color: "#686B75" }}>
                     {isPracticeTest(x) ? `🎯 ${x.subject}` : `${x.kind}${x.module === "GENERAL" ? " GT" : ""} · ${x.subject} · ${x.level ? t(levelKey(x.level)) : t("mock.levelAll")}`}
                   </div>
                 </div>

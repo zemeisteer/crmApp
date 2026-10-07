@@ -34,7 +34,7 @@ export default function Pagination({
       >
         ‹
       </button>
-      {pages[0] > 1 && <span style={{ color: "#8A8D96", fontSize: 12.5 }}>…</span>}
+      {pages[0] > 1 && <span style={{ color: "#686B75", fontSize: 12.5 }}>…</span>}
       {pages.map((p) => (
         <button
           key={p}
@@ -49,7 +49,7 @@ export default function Pagination({
           {p}
         </button>
       ))}
-      {pages[pages.length - 1] < pageCount && <span style={{ color: "#8A8D96", fontSize: 12.5 }}>…</span>}
+      {pages[pages.length - 1] < pageCount && <span style={{ color: "#686B75", fontSize: 12.5 }}>…</span>}
       <button
         className="btn"
         onClick={() => onChange(page + 1)}

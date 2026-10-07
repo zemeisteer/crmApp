@@ -292,7 +292,7 @@ function GroupsContent() {
         <div>
           <h1 style={{ fontSize: 22, fontWeight: 800 }}>{t("groups.title")}</h1>
           {canManage && (
-            <Link href="/groups/trash" style={{ fontSize: 12, color: "#8A8D96", fontWeight: 600 }}>
+            <Link href="/groups/trash" style={{ fontSize: 12, color: "#686B75", fontWeight: 600 }}>
               {t("nav.trash")}
             </Link>
           )}
@@ -335,13 +335,13 @@ function GroupsContent() {
         {loadError !== null ? (
           <LoadError message={loadError || t("adm.loadError")} onRetry={load} />
         ) : loading ? (
-          <div style={{ color: "#8A8D96", fontSize: 14 }}>{t("common.loading")}</div>
+          <div style={{ color: "#686B75", fontSize: 14 }}>{t("common.loading")}</div>
         ) : groups.length === 0 ? (
-          <div style={{ color: "#8A8D96", fontSize: 14, background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 32, textAlign: "center" }}>
+          <div style={{ color: "#686B75", fontSize: 14, background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 32, textAlign: "center" }}>
             {t("groups.noGroupsYet")}
           </div>
         ) : filtered.length === 0 ? (
-          <div style={{ color: "#8A8D96", fontSize: 14, background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 32, textAlign: "center" }}>
+          <div style={{ color: "#686B75", fontSize: 14, background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 32, textAlign: "center" }}>
             {t("groups.noSearchResults")}
           </div>
         ) : (
@@ -409,7 +409,7 @@ function GroupsContent() {
                     <td>{g.monthlyPrice ? `${new Intl.NumberFormat("uz-UZ").format(g.monthlyPrice)} ${t("common.sumUnit")}` : "—"}</td>
                     <td>
                       <span style={{ fontWeight: 700 }}>{g.studentCount ?? 0}</span>
-                      <span style={{ color: "#8A8D96" }}>/{g.maxStudents || "—"}</span>
+                      <span style={{ color: "#686B75" }}>/{g.maxStudents || "—"}</span>
                     </td>
                     <td>
                       {(() => {
@@ -417,9 +417,9 @@ function GroupsContent() {
                         const max = g.maxStudents || 0;
                         const b =
                           g.status && g.status !== "ACTIVE"
-                            ? { text: g.status === "PLANNED" ? t("grp.stPlanned") : g.status === "COMPLETED" ? t("grp.stCompleted") : t("grp.stArchived"), color: "#8A8D96", bg: "#F2F1EC" }
+                            ? { text: g.status === "PLANNED" ? t("grp.stPlanned") : g.status === "COMPLETED" ? t("grp.stCompleted") : t("grp.stArchived"), color: "#686B75", bg: "#F2F1EC" }
                             : max > 0 && n >= max
-                              ? { text: t("grp.stFull"), color: "#1FA463", bg: "#E9F8EF" }
+                              ? { text: t("grp.stFull"), color: "#167A48", bg: "#E9F8EF" }
                               : max > 0 && n / max < 0.6
                                 ? { text: t("grp.stUnderfilled"), color: "#B45309", bg: "#FEF3C7" }
                                 : { text: t("grp.stActive"), color: ACCENT, bg: "#EEF0FF" };
@@ -533,7 +533,7 @@ function GroupsContent() {
             </Field>
           </div>
           {days.length > 0 && startTime && (
-            <div style={{ fontSize: 12, color: "#8A8D96", marginTop: -6 }}>{t("groups.timetableHint")}</div>
+            <div style={{ fontSize: 12, color: "#686B75", marginTop: -6 }}>{t("groups.timetableHint")}</div>
           )}
           {conflictCheckError && (
             <LoadError compact message={conflictCheckError} onRetry={() => setConflictRetry((n) => n + 1)} />

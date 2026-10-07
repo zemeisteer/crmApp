@@ -173,13 +173,13 @@ function TeacherDetailContent() {
   }, [teacher?.startDate, teacher?.createdAt, lang]);
 
   if (loading) {
-    return <div style={{ padding: 32, color: "#8A8D96", fontSize: 14 }}>{t("common.loading")}</div>;
+    return <div style={{ padding: 32, color: "#686B75", fontSize: 14 }}>{t("common.loading")}</div>;
   }
 
   if (notFound || !teacher) {
     return (
       <div style={{ padding: 32 }}>
-        <div style={{ color: "#8A8D96", fontSize: 14, background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 32, textAlign: "center" }}>
+        <div style={{ color: "#686B75", fontSize: 14, background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 32, textAlign: "center" }}>
           {t("teacherDetail.notFound")}{" "}
           <Link href="/teachers" style={{ color: ACCENT, fontWeight: 600 }}>
             {t("teacherDetail.back")}
@@ -235,7 +235,7 @@ function TeacherDetailContent() {
   return (
     <>
       <div style={{ padding: "22px 32px", borderBottom: "1px solid #EAE8E2" }}>
-        <Link href="/teachers" style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 600, color: "#8A8D96", marginBottom: 10 }}>
+        <Link href="/teachers" style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 600, color: "#686B75", marginBottom: 10 }}>
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
             <path d="M15 18l-6-6 6-6" />
           </svg>
@@ -262,7 +262,7 @@ function TeacherDetailContent() {
             </div>
             <div>
               <h1 style={{ fontSize: 22, fontWeight: 800 }}>{teacher.fullName}</h1>
-              <div style={{ fontSize: 13, color: "#8A8D96", marginTop: 2 }}>
+              <div style={{ fontSize: 13, color: "#686B75", marginTop: 2 }}>
                 {teacher.subject || t("teacherDetail.directionMissing")}
                 {teacher.phone ? ` · ${teacher.phone}` : ""}
               </div>
@@ -290,15 +290,15 @@ function TeacherDetailContent() {
       <div style={{ flex: 1, minHeight: 0, padding: "26px 32px", display: "flex", flexDirection: "column", gap: 20, overflow: "auto", boxSizing: "border-box" }}>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0,1fr))", gap: 16 }}>
           <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 14, padding: 18 }}>
-            <div style={{ fontSize: 12, color: "#8A8D96" }}>{t("teacherDetail.statGroups")}</div>
+            <div style={{ fontSize: 12, color: "#686B75" }}>{t("teacherDetail.statGroups")}</div>
             <div style={{ fontSize: 24, fontWeight: 800, fontFamily: "'Manrope', sans-serif", marginTop: 4 }}>{fullGroups.length}</div>
           </div>
           <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 14, padding: 18 }}>
-            <div style={{ fontSize: 12, color: "#8A8D96" }}>{t("teacherDetail.statTotalStudents")}</div>
+            <div style={{ fontSize: 12, color: "#686B75" }}>{t("teacherDetail.statTotalStudents")}</div>
             <div style={{ fontSize: 24, fontWeight: 800, fontFamily: "'Manrope', sans-serif", marginTop: 4 }}>{totalStudents}</div>
           </div>
           <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 14, padding: 18 }}>
-            <div style={{ fontSize: 12, color: "#8A8D96" }}>{t("teacherDetail.statMonthGroupRevenue")}</div>
+            <div style={{ fontSize: 12, color: "#686B75" }}>{t("teacherDetail.statMonthGroupRevenue")}</div>
             <div style={{ fontSize: 24, fontWeight: 800, fontFamily: "'Manrope', sans-serif", marginTop: 4 }}>{formatMoney(totalRevenue)} {t("common.sumUnit")}</div>
           </div>
           <div style={{ background: "#ECEBFB", border: "1px solid #D7D3F8", borderRadius: 14, padding: 18 }}>
@@ -337,16 +337,16 @@ function TeacherDetailContent() {
               📅
             </div>
             <div>
-              <div style={{ fontSize: 12, color: "#8A8D96", fontWeight: 600 }}>Bugungi darslar ({todayWeekday})</div>
+              <div style={{ fontSize: 12, color: "#686B75", fontWeight: 600 }}>Bugungi darslar ({todayWeekday})</div>
               <div style={{ fontSize: 20, fontWeight: 800, fontFamily: "'Manrope', sans-serif", color: "#181A1F" }}>{lessonsStats.daily} ta dars</div>
             </div>
           </div>
           <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 14, padding: "16px 18px", display: "flex", alignItems: "center", gap: 14 }}>
-            <div style={{ width: 44, height: 44, borderRadius: 10, background: "#EBF8F2", color: "#1FA463", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20 }}>
+            <div style={{ width: 44, height: 44, borderRadius: 10, background: "#EBF8F2", color: "#167A48", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20 }}>
               🗓️
             </div>
             <div>
-              <div style={{ fontSize: 12, color: "#8A8D96", fontWeight: 600 }}>{t("tch.weeklyLessons")}</div>
+              <div style={{ fontSize: 12, color: "#686B75", fontWeight: 600 }}>{t("tch.weeklyLessons")}</div>
               <div style={{ fontSize: 20, fontWeight: 800, fontFamily: "'Manrope', sans-serif", color: "#181A1F" }}>{lessonsStats.weekly} ta dars</div>
             </div>
           </div>
@@ -355,7 +355,7 @@ function TeacherDetailContent() {
               ⏳
             </div>
             <div>
-              <div style={{ fontSize: 12, color: "#8A8D96", fontWeight: 600 }}>{t("tch.monthlyLessons")}</div>
+              <div style={{ fontSize: 12, color: "#686B75", fontWeight: 600 }}>{t("tch.monthlyLessons")}</div>
               <div style={{ fontSize: 20, fontWeight: 800, fontFamily: "'Manrope', sans-serif", color: "#181A1F" }}>{lessonsStats.monthly} ta dars</div>
             </div>
           </div>
@@ -402,7 +402,7 @@ function TeacherDetailContent() {
         <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, overflow: "hidden" }}>
           <div style={{ padding: "16px 20px 4px", fontFamily: "'Manrope', sans-serif", fontWeight: 700, fontSize: 15 }}>{t("teacherDetail.groupsTitle")}</div>
           {fullGroups.length === 0 ? (
-            <div style={{ color: "#8A8D96", fontSize: 14, padding: "24px 20px" }}>{t("teacherDetail.noGroupsAssigned")}</div>
+            <div style={{ color: "#686B75", fontSize: 14, padding: "24px 20px" }}>{t("teacherDetail.noGroupsAssigned")}</div>
           ) : (
             <table>
               <thead>
@@ -441,7 +441,7 @@ function TeacherDetailContent() {
         <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, overflow: "hidden" }}>
           <div style={{ padding: "16px 20px 4px", fontFamily: "'Manrope', sans-serif", fontWeight: 700, fontSize: 15 }}>{t("teacherDetail.salaryHistory")}</div>
           {salaryPayments.length === 0 ? (
-            <div style={{ color: "#8A8D96", fontSize: 14, padding: "24px 20px" }}>{t("teacherDetail.noSalaryPayments")}</div>
+            <div style={{ color: "#686B75", fontSize: 14, padding: "24px 20px" }}>{t("teacherDetail.noSalaryPayments")}</div>
           ) : (
             <table>
               <thead>
@@ -455,7 +455,7 @@ function TeacherDetailContent() {
                 {salaryPayments.map((s) => (
                   <tr key={s.id}>
                     <td style={{ fontWeight: 600 }}>{s.forMonth}</td>
-                    <td style={{ textDecoration: s.reversedAt ? "line-through" : undefined, color: s.reversedAt ? "#8A8D96" : undefined }}>
+                    <td style={{ textDecoration: s.reversedAt ? "line-through" : undefined, color: s.reversedAt ? "#686B75" : undefined }}>
                       {formatMoney(s.amount)} {t("common.sumUnit")}
                       {s.reversedAt && <span className="badge badge-neutral" style={{ marginLeft: 8 }} title={s.reversalReason ?? undefined}>{t("rep2.reversed")}</span>}
                     </td>
@@ -540,7 +540,7 @@ function TeacherDetailContent() {
 function InfoField({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <div style={{ fontSize: 11.5, color: "#8A8D96" }}>{label}</div>
+      <div style={{ fontSize: 11.5, color: "#686B75" }}>{label}</div>
       <div style={{ fontSize: 13.5, fontWeight: 600, marginTop: 3 }}>{value}</div>
     </div>
   );

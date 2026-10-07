@@ -98,10 +98,10 @@ export default function PublicPlacementPage() {
             <div style={{ textAlign: "center", padding: 24 }}>
               <div style={{ fontSize: 34 }}>🔒</div>
               <div style={{ fontWeight: 800, fontSize: 17, marginTop: 8 }}>{t("pt.notFound")}</div>
-              <div style={{ fontSize: 13, color: "#8A8D96", marginTop: 6 }}>{t("pt.notFoundHint")}</div>
+              <div style={{ fontSize: 13, color: "#686B75", marginTop: 6 }}>{t("pt.notFoundHint")}</div>
             </div>
           ) : !test ? (
-            <div style={{ color: "#8A8D96", fontSize: 14 }}>{t("common.loading")}</div>
+            <div style={{ color: "#686B75", fontSize: 14 }}>{t("common.loading")}</div>
           ) : step === "intro" ? (
             <form onSubmit={start} style={{ display: "flex", flexDirection: "column", gap: 14 }} noValidate>
               <div>
@@ -161,7 +161,7 @@ export default function PublicPlacementPage() {
                     {t("placement.suggested")}: {placementLevelName(test.subject, result.suggestedLevel, t)}
                   </div>
                 )}
-                <div style={{ fontSize: 13, color: "#8A8D96", marginTop: 16, lineHeight: 1.5 }}>{t("pt.contactSoon")}</div>
+                <div style={{ fontSize: 13, color: "#686B75", marginTop: 16, lineHeight: 1.5 }}>{t("pt.contactSoon")}</div>
               </div>
             )
           )}

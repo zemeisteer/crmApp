@@ -54,13 +54,13 @@ function ResetPasswordForm() {
     <form onSubmit={onSubmit} style={{ display: "flex", flexDirection: "column", gap: 18 }}>
       <div>
         <h1 style={{ fontSize: 20, fontWeight: 800 }}>{t("resetPw.newPasswordTitle")}</h1>
-        <p style={{ fontSize: 13, color: "#8A8D96", marginTop: 4 }}>{t("resetPw.newPasswordHint")}</p>
+        <p style={{ fontSize: 13, color: "#686B75", marginTop: 4 }}>{t("resetPw.newPasswordHint")}</p>
       </div>
       {error && (
         <div role="alert" style={{ background: "#FDEBEC", color: "#B23A47", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: 10 }}>{error}</div>
       )}
       {message ? (
-        <div style={{ background: "#E9F8EF", color: "#1FA463", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: 10 }}>
+        <div style={{ background: "#E9F8EF", color: "#167A48", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: 10 }}>
           {message} {t("resetPw.redirecting")}
         </div>
       ) : (
@@ -92,7 +92,7 @@ export default function ResetPasswordPage() {
   return (
     <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#F7F7F5" }}>
       <div style={{ width: 380, background: "#fff", borderRadius: 16, padding: 32 }}>
-        <Suspense fallback={<div style={{ color: "#8A8D96", fontSize: 14 }}>{t("common.loading")}</div>}>
+        <Suspense fallback={<div style={{ color: "#686B75", fontSize: 14 }}>{t("common.loading")}</div>}>
           <ResetPasswordForm />
         </Suspense>
       </div>

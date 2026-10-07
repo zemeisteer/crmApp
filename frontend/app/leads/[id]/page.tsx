@@ -205,7 +205,7 @@ function LeadProfile() {
       </div>
     );
   }
-  if (!lead) return <div className="adm-page" style={{ color: "#8A8D96" }}>{t("common.loading")}</div>;
+  if (!lead) return <div className="adm-page" style={{ color: "#686B75" }}>{t("common.loading")}</div>;
 
   const archived = !!lead.archivedAt;
   const editable = !archived && can("admissions.update");
@@ -237,7 +237,7 @@ function LeadProfile() {
 
   const detail = (k: string, v: React.ReactNode) => (
     <div style={{ display: "grid", gridTemplateColumns: "140px minmax(0,1fr)", gap: 10, padding: "8px 0", borderBottom: "1px solid #F2F1EC", fontSize: 13 }}>
-      <span style={{ color: "#8A8D96" }}>{k}</span>
+      <span style={{ color: "#686B75" }}>{k}</span>
       <span style={{ fontWeight: 600, wordBreak: "break-word" }}>{v}</span>
     </div>
   );
@@ -344,11 +344,11 @@ function LeadProfile() {
             <section style={card}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
                 <h2 style={{ fontSize: 15, fontWeight: 800 }}>{t("adm.test")}</h2>
-                <span style={{ fontSize: 11.5, color: "#8A8D96" }}>{t("adm.flowSteps")}</span>
+                <span style={{ fontSize: 11.5, color: "#686B75" }}>{t("adm.flowSteps")}</span>
               </div>
               {attempts.length === 0 ? (
                 <div style={{ display: "grid", gap: 10 }}>
-                  <p style={{ fontSize: 13, color: "#8A8D96", margin: 0 }}>{t("adm.testNone")}</p>
+                  <p style={{ fontSize: 13, color: "#686B75", margin: 0 }}>{t("adm.testNone")}</p>
                   {shareTest && (
                     <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                       <button
@@ -385,7 +385,7 @@ function LeadProfile() {
                     <li key={a.id} style={{ border: "1px solid #F2F1EC", borderRadius: 10, padding: 12, display: "grid", gap: 8 }}>
                       <div style={{ display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
                         <strong style={{ fontSize: 13.5 }}>{a.testTitle}</strong>
-                        <span style={{ fontSize: 11.5, color: "#8A8D96" }}>{formatDateTime(a.createdAt, lang, tz)}</span>
+                        <span style={{ fontSize: 11.5, color: "#686B75" }}>{formatDateTime(a.createdAt, lang, tz)}</span>
                       </div>
                       <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
                         <span style={{ fontFamily: "'Manrope',sans-serif", fontWeight: 800, fontSize: 24, color: a.percent >= 70 ? "#15803D" : a.percent >= 40 ? "#B45309" : "#B91C1C" }}>{a.percent}%</span>
@@ -409,12 +409,12 @@ function LeadProfile() {
                   <div style={{ fontSize: 12.5, color: "#5B5F6A" }}>{t("adm.flowTrial")}</div>
                   {matchingGroups.length > 0 && (
                     <div style={{ display: "grid", gap: 6 }}>
-                      <div style={{ fontSize: 11.5, color: "#8A8D96", fontWeight: 600 }}>{t("adm.flowGroups")}</div>
+                      <div style={{ fontSize: 11.5, color: "#686B75", fontWeight: 600 }}>{t("adm.flowGroups")}</div>
                       {matchingGroups.map((g) => (
                         <div key={g.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, flexWrap: "wrap", background: "#FAFAF8", border: "1px solid #F2F1EC", borderRadius: 9, padding: "8px 10px" }}>
                           <div style={{ minWidth: 0 }}>
                             <div style={{ fontSize: 13, fontWeight: 700 }}>{g.name}</div>
-                            <div style={{ fontSize: 11.5, color: "#8A8D96" }}>
+                            <div style={{ fontSize: 11.5, color: "#686B75" }}>
                               {[g.level, scheduleDaysLabel(g.scheduleDays, t), g.startTime, g.teacher?.fullName].filter(Boolean).join(" · ")}
                               {typeof g.studentCount === "number" ? ` · ${g.studentCount}/${g.maxStudents}` : ""}
                             </div>
@@ -501,7 +501,7 @@ function LeadProfile() {
             <section style={card}>
               <h2 style={{ fontSize: 15, fontWeight: 800, marginBottom: 8 }}>{t("adm.trials")}</h2>
               {(lead.trials ?? []).length === 0 ? (
-                <p style={{ fontSize: 13, color: "#8A8D96" }}>{t("adm.noTrials")}</p>
+                <p style={{ fontSize: 13, color: "#686B75" }}>{t("adm.noTrials")}</p>
               ) : (
                 <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gap: 10 }}>
                   {lead.trials!.map((tr) => (
@@ -513,7 +513,7 @@ function LeadProfile() {
                       <div style={{ fontSize: 12.5, color: "#5B5F6A" }}>
                         {[tr.group?.name, tr.teacher?.fullName, tr.room?.name].filter(Boolean).join(" · ") || "—"}
                       </div>
-                      {tr.outcomeNote && <div style={{ fontSize: 12.5, color: "#8A8D96" }}>{tr.outcomeNote}</div>}
+                      {tr.outcomeNote && <div style={{ fontSize: 12.5, color: "#686B75" }}>{tr.outcomeNote}</div>}
                       {editable && tr.status === "BOOKED" && (
                         <div className="adm-actions">
                           <button type="button" className="btn" style={{ ...primaryBtn, padding: "6px 12px", fontSize: 12 }} disabled={busy} onClick={() => { if (trialHappened(tr.scheduledAt, t("adm.trialNotYet"))) run(() => leadsApi.attendTrial(lead.id, tr.id)); }}>{t("adm.trialAttend")}</button>
@@ -574,7 +574,7 @@ function LeadProfile() {
                     )}
                   </div>
                   {a.body && <div style={{ fontSize: 13, whiteSpace: "pre-wrap", marginTop: 3 }}>{a.body}</div>}
-                  <div style={{ fontSize: 11.5, color: "#8A8D96", marginTop: 3 }}>
+                  <div style={{ fontSize: 11.5, color: "#686B75", marginTop: 3 }}>
                     {formatDateTime(a.occurredAt, lang, tz)} · {a.actor?.fullName ?? t("adm.system")}
                   </div>
                 </li>

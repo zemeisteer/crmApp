@@ -14,7 +14,7 @@ export default function TermsPage() {
           {t("legal.backToHome")}
         </Link>
         <h1 style={{ fontSize: 28, fontWeight: 800, marginTop: 20, fontFamily: "'Manrope', sans-serif" }}>{t("terms.title")}</h1>
-        <p style={{ fontSize: 13, color: "#8A8D96", marginTop: 6 }}>{t("legal.lastUpdated")}</p>
+        <p style={{ fontSize: 13, color: "#686B75", marginTop: 6 }}>{t("legal.lastUpdated")}</p>
 
         <div style={{ marginTop: 28, display: "flex", flexDirection: "column", gap: 20, fontSize: 14.5, lineHeight: 1.7, color: "#181A1F" }}>
           <section>

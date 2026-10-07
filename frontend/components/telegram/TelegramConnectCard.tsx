@@ -25,7 +25,7 @@ export default function TelegramConnectCard() {
   // Only admins can fix a missing bot, so only they see that note.
   if (!state.configured) {
     return user?.role === "ADMIN" || user?.role === "OWNER" ? (
-      <div style={{ fontSize: 12, color: "#8A8D96" }}>📨 {t("tg.title")}: {t("tg.notConfigured")}</div>
+      <div style={{ fontSize: 12, color: "#686B75" }}>📨 {t("tg.title")}: {t("tg.notConfigured")}</div>
     ) : null;
   }
 

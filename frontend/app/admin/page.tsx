@@ -143,7 +143,7 @@ function AdminContent() {
   if (user && user.role !== "SUPERADMIN") {
     return (
       <div style={{ padding: 32 }}>
-        <div style={{ color: "#8A8D96", fontSize: 14, background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 32, textAlign: "center" }}>
+        <div style={{ color: "#686B75", fontSize: 14, background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 32, textAlign: "center" }}>
           {t("admin.superadminOnly")}
         </div>
       </div>
@@ -155,7 +155,7 @@ function AdminContent() {
       <div style={{ padding: "22px 32px", borderBottom: "1px solid #EAE8E2", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div>
           <h1 style={{ fontSize: 22, fontWeight: 800 }}>{t("admin.title")}</h1>
-          <div style={{ fontSize: 13, color: "#8A8D96", marginTop: 2 }}>{t("admin.subtitle")}</div>
+          <div style={{ fontSize: 13, color: "#686B75", marginTop: 2 }}>{t("admin.subtitle")}</div>
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
         <Link href="/pricing" className="btn" style={{ background: "#fff", color: "#181A1F", border: "1px solid #EAE8E2", fontSize: 13.5, fontWeight: 700, padding: "10px 16px", borderRadius: 9 }}>
@@ -186,9 +186,9 @@ function AdminContent() {
               { label: t("sa.revenue"), value: `${money(overview.totals.monthRevenue)} ${t("common.sumUnit")}`, sub: t("sa.revenueHint") },
             ].map((c) => (
               <div key={c.label} style={{ background: c.danger ? "#FDEBEC" : "#fff", border: `1px solid ${c.danger ? "#F6D2D6" : "#EAE8E2"}`, borderRadius: 14, padding: 18 }}>
-                <div style={{ fontSize: 12, color: c.danger ? "#B23A47" : "#8A8D96" }}>{c.label}</div>
+                <div style={{ fontSize: 12, color: c.danger ? "#B23A47" : "#686B75" }}>{c.label}</div>
                 <div style={{ fontSize: 22, fontWeight: 800, fontFamily: "'Manrope', sans-serif", marginTop: 4, color: c.danger ? "#B23A47" : "#181A1F" }}>{c.value}</div>
-                {c.sub && <div style={{ fontSize: 11.5, color: "#8A8D96", marginTop: 2 }}>{c.sub}</div>}
+                {c.sub && <div style={{ fontSize: 11.5, color: "#686B75", marginTop: 2 }}>{c.sub}</div>}
               </div>
             ))}
           </div>
@@ -206,9 +206,9 @@ function AdminContent() {
         </div>
 
         {loading ? (
-          <div style={{ color: "#8A8D96", fontSize: 14 }}>{t("common.loading")}</div>
+          <div style={{ color: "#686B75", fontSize: 14 }}>{t("common.loading")}</div>
         ) : tenants.length === 0 ? (
-          <div style={{ color: "#8A8D96", fontSize: 14, background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 32, textAlign: "center" }}>
+          <div style={{ color: "#686B75", fontSize: 14, background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 32, textAlign: "center" }}>
             {t("admin.noCentersYet")}
           </div>
         ) : (
@@ -233,12 +233,12 @@ function AdminContent() {
                     <tr key={tn.id}>
                       <td>
                         <div style={{ fontWeight: 700 }}>{tn.name}</div>
-                        <div style={{ fontSize: 12, color: "#8A8D96", wordBreak: "break-all" }}>{centerHost(tn.subdomain)}</div>
+                        <div style={{ fontSize: 12, color: "#686B75", wordBreak: "break-all" }}>{centerHost(tn.subdomain)}</div>
                         {tn.owner && <div style={{ fontSize: 12, color: "#4A4E58" }}>{tn.owner.fullName} · {tn.owner.email}</div>}
                       </td>
                       <td style={{ fontSize: 12.5, whiteSpace: "nowrap" }}>
                         <div><b>{tn.students}</b> {t("sa.studentsShort")}</div>
-                        <div style={{ color: "#8A8D96" }}>{tn.groups} {t("sa.groupsShort")} · {tn.teachers} {t("sa.teachersShort")}</div>
+                        <div style={{ color: "#686B75" }}>{tn.groups} {t("sa.groupsShort")} · {tn.teachers} {t("sa.teachersShort")}</div>
                       </td>
                       <td style={{ fontWeight: 700, whiteSpace: "nowrap" }}>{tn.monthRevenue ? `${money(tn.monthRevenue)} ${t("common.sumUnit")}` : "—"}</td>
                       <td>
@@ -261,14 +261,14 @@ function AdminContent() {
                           style={{ minWidth: 150 }}
                         />
                         {left !== null && (
-                          <div style={{ fontSize: 11.5, marginTop: 4, fontWeight: 600, color: left <= 3 ? "#B23A47" : "#8A8D96" }}>
+                          <div style={{ fontSize: 11.5, marginTop: 4, fontWeight: 600, color: left <= 3 ? "#B23A47" : "#686B75" }}>
                             {left > 0 ? t("sa.trialLeft").replace("{n}", String(left)) : t("sa.trialEnded")}
                           </div>
                         )}
                       </td>
                       <td style={{ fontSize: 12.5, color: "#4A4E58", whiteSpace: "nowrap" }}>
                         <div>{tn.lastActivityAt ? formatDate(tn.lastActivityAt, lang, "short") : "—"}</div>
-                        <div style={{ fontSize: 11.5, color: "#8A8D96" }}>{t("sa.since")} {formatDate(tn.createdAt, lang, "short")}</div>
+                        <div style={{ fontSize: 11.5, color: "#686B75" }}>{t("sa.since")} {formatDate(tn.createdAt, lang, "short")}</div>
                       </td>
                       <td style={{ textAlign: "right", whiteSpace: "nowrap" }}>
                         <button className="btn" onClick={() => onOpen(tn.id)} disabled={savingId === tn.id} style={{ background: "#EEF0FF", color: ACCENT, border: "none", fontSize: 12, fontWeight: 700, padding: "6px 10px", borderRadius: 8, marginRight: 4 }}>

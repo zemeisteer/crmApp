@@ -80,7 +80,7 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
   if (loading) {
     return (
       <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#F7F7F5" }}>
-        <div style={{ color: "#8A8D96", fontSize: 14 }}>{t("common.loading")}</div>
+        <div style={{ color: "#686B75", fontSize: 14 }}>{t("common.loading")}</div>
       </div>
     );
   }
@@ -89,8 +89,10 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
 
   return (
     <div style={{ display: "flex", background: "#F7F7F5", minHeight: "100vh" }}>
+      {/* Keyboard users jump past the ~17 menu links straight to the page. */}
+      <a href="#main-content" className="skip-link">{t("shell.skipToContent")}</a>
       <Sidebar open={menuOpen} onClose={() => setMenuOpen(false)} />
-      <div className="dashboard-content" style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
+      <main id="main-content" tabIndex={-1} className="dashboard-content" style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0, outline: "none" }}>
         <button
           className="mobile-menu-btn btn"
           onClick={() => setMenuOpen(true)}
@@ -120,13 +122,13 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
         ) : (
           <div role="alert" style={{ flex: 1, display: "grid", placeContent: "center", justifyItems: "center", gap: 10, padding: 24, textAlign: "center" }}>
             <div style={{ fontFamily: "'Manrope', sans-serif", fontSize: 17, fontWeight: 800 }}>{t("shell.noAccessTitle")}</div>
-            <div style={{ fontSize: 13.5, color: "#8A8D96" }}>{t("shell.noAccessText")}</div>
+            <div style={{ fontSize: 13.5, color: "#686B75" }}>{t("shell.noAccessText")}</div>
             <Link href="/dashboard" style={{ marginTop: 6, background: ACCENT, color: "#fff", fontWeight: 700, fontSize: 13.5, padding: "10px 18px", borderRadius: 10, textDecoration: "none" }}>
               {t("shell.noAccessBack")}
             </Link>
           </div>
         )}
-      </div>
+      </main>
     </div>
   );
 }

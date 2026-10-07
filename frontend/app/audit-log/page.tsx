@@ -95,7 +95,7 @@ function AuditLogContent() {
     <>
       <div style={{ padding: "22px 32px", borderBottom: "1px solid #EAE8E2" }}>
         <h1 style={{ fontSize: 22, fontWeight: 800 }}>{t("auditLog.title")}</h1>
-        <div style={{ fontSize: 13, color: "#8A8D96", marginTop: 2, maxWidth: 640, lineHeight: 1.5 }}>
+        <div style={{ fontSize: 13, color: "#686B75", marginTop: 2, maxWidth: 640, lineHeight: 1.5 }}>
           {t("auditLog.subtitle")}
         </div>
       </div>
@@ -135,9 +135,9 @@ function AuditLogContent() {
         </div>
 
         {loading ? (
-          <div style={{ color: "#8A8D96", fontSize: 14 }}>{t("common.loading")}</div>
+          <div style={{ color: "#686B75", fontSize: 14 }}>{t("common.loading")}</div>
         ) : filtered.length === 0 ? (
-          <div style={{ color: "#8A8D96", fontSize: 14, background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 32, textAlign: "center" }}>
+          <div style={{ color: "#686B75", fontSize: 14, background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 32, textAlign: "center" }}>
             {logs.length === 0 ? t("auditLog.noRecords") : t("auditLog.noFilterResults")}
           </div>
         ) : (

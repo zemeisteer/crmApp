@@ -45,7 +45,7 @@ export default function GroupInfoCard({ group, students, lessonsHeld }: { group:
           <div key={r.label} style={{ display: "flex", gap: 10, alignItems: "flex-start", background: "#F7F6F2", borderRadius: 10, padding: "9px 11px", minWidth: 0 }}>
             <span style={{ fontSize: 16, lineHeight: "20px" }} aria-hidden>{r.icon}</span>
             <div style={{ minWidth: 0 }}>
-              <div style={{ fontSize: 11, color: "#8A8D96", fontWeight: 600 }}>{r.label}</div>
+              <div style={{ fontSize: 11, color: "#686B75", fontWeight: 600 }}>{r.label}</div>
               <div style={{ fontSize: 13, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={r.value}>{r.value}</div>
             </div>
           </div>

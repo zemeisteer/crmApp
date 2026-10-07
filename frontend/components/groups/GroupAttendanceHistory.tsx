@@ -46,7 +46,7 @@ export default function GroupAttendanceHistory({ students, records }: { students
       </div>
 
       {dates.length === 0 ? (
-        <div style={{ fontSize: 13, color: "#8A8D96" }}>{t("att.noHistory")}</div>
+        <div style={{ fontSize: 13, color: "#686B75" }}>{t("att.noHistory")}</div>
       ) : (
         <>
           <div style={{ overflowX: "auto", border: "1px solid #F2F1EC", borderRadius: 12 }}>
@@ -55,7 +55,7 @@ export default function GroupAttendanceHistory({ students, records }: { students
                 <tr style={{ background: "#FAFAF8" }}>
                   <th style={{ ...cell, textAlign: "left", position: "sticky", left: 0, background: "#FAFAF8", minWidth: 150 }}>{t("groupExams.student")}</th>
                   {dates.map((d) => (
-                    <th key={d} style={{ ...cell, color: "#8A8D96", fontWeight: 700 }}>{Number(d.slice(8))}</th>
+                    <th key={d} style={{ ...cell, color: "#686B75", fontWeight: 700 }}>{Number(d.slice(8))}</th>
                   ))}
                   <th style={{ ...cell, textAlign: "right" }}>%</th>
                 </tr>
@@ -79,14 +79,14 @@ export default function GroupAttendanceHistory({ students, records }: { students
                           </td>
                         );
                       })}
-                      <td style={{ ...cell, textAlign: "right", fontWeight: 800, color: r === null ? "#8A8D96" : r >= 80 ? "#1FA463" : r >= 60 ? "#D97706" : "#B23A47" }}>{r === null ? "—" : `${r}%`}</td>
+                      <td style={{ ...cell, textAlign: "right", fontWeight: 800, color: r === null ? "#686B75" : r >= 80 ? "#1FA463" : r >= 60 ? "#D97706" : "#B23A47" }}>{r === null ? "—" : `${r}%`}</td>
                     </tr>
                   );
                 })}
               </tbody>
             </table>
           </div>
-          <div style={{ display: "flex", gap: 14, flexWrap: "wrap", marginTop: 10, fontSize: 12, color: "#8A8D96" }}>
+          <div style={{ display: "flex", gap: 14, flexWrap: "wrap", marginTop: 10, fontSize: 12, color: "#686B75" }}>
             {(["PRESENT", "LATE", "ABSENT"] as const).map((k) => (
               <span key={k} style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
                 <span style={{ display: "inline-flex", width: 18, height: 18, alignItems: "center", justifyContent: "center", borderRadius: 5, background: MARK[k].bg, color: MARK[k].fg, fontWeight: 800, fontSize: 11 }}>{MARK[k].sym}</span>

@@ -72,7 +72,7 @@ export default function ImportPanel({ onClose, onOpenTest }: { onClose: () => vo
             >
               <div style={{ fontSize: 30 }}>📚 🎧</div>
               <div style={{ fontWeight: 700, marginTop: 6 }}>{t("mimp.drop")}</div>
-              <div style={{ fontSize: 12, color: "#8A8D96", marginTop: 4 }}>{t("mimp.dropHint")}</div>
+              <div style={{ fontSize: 12, color: "#686B75", marginTop: 4 }}>{t("mimp.dropHint")}</div>
               <input ref={input} type="file" multiple hidden accept="application/pdf,audio/*,.pdf,.mp3,.m4a,.wav,.ogg" onChange={(e) => { add(e.target.files); e.target.value = ""; }} />
             </div>
             {files.length > 0 && (
@@ -81,7 +81,7 @@ export default function ImportPanel({ onClose, onOpenTest }: { onClose: () => vo
                   <div key={f.name + f.size} style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 13, background: "#F7F7F5", borderRadius: 10, padding: "7px 10px" }}>
                     <span>{pdfs.includes(f) ? "📄" : "🎵"}</span>
                     <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.name}</span>
-                    <span style={{ color: "#8A8D96", fontSize: 12 }}>{mb(f.size)}</span>
+                    <span style={{ color: "#686B75", fontSize: 12 }}>{mb(f.size)}</span>
                     <button type="button" onClick={() => setFiles((p) => p.filter((x) => x !== f))} style={{ background: "none", border: "none", color: "#B23A47", cursor: "pointer" }}>✕</button>
                   </div>
                 ))}
@@ -116,7 +116,7 @@ export default function ImportPanel({ onClose, onOpenTest }: { onClose: () => vo
             {job.status === "FAILED" && <div style={{ background: "#FDEBEC", color: "#B23A47", padding: "10px 12px", borderRadius: 10, fontSize: 13.5 }}>❌ {job.error}</div>}
             {job.status === "DONE" && (
               <>
-                <div style={{ fontWeight: 800, color: "#1FA463" }}>✅ {job.progress.message}{job.result.book ? ` · ${job.result.book}` : ""}</div>
+                <div style={{ fontWeight: 800, color: "#167A48" }}>✅ {job.progress.message}{job.result.book ? ` · ${job.result.book}` : ""}</div>
                 {(job.result.tests ?? []).map((x) => (
                   <div key={x.id} style={{ border: "1px solid #EAE8E2", borderRadius: 12, padding: 12, display: "grid", gap: 8 }}>
                     <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center" }}>
@@ -146,7 +146,7 @@ export default function ImportPanel({ onClose, onOpenTest }: { onClose: () => vo
 
         {!job && recent.length > 0 && (
           <div style={{ display: "grid", gap: 6 }}>
-            <div style={{ fontSize: 12, fontWeight: 800, color: "#8A8D96", textTransform: "uppercase" }}>{t("mimp.recent")}</div>
+            <div style={{ fontSize: 12, fontWeight: 800, color: "#686B75", textTransform: "uppercase" }}>{t("mimp.recent")}</div>
             {recent.slice(0, 5).map((r) => (
               <button key={r.id} type="button" onClick={() => setJob(r)} style={{ ...ghost, textAlign: "left", fontWeight: 500, display: "flex", justifyContent: "space-between", gap: 8 }}>
                 <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.files.map((f) => f.name).join(", ")}</span>

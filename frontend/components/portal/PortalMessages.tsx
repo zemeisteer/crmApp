@@ -54,7 +54,7 @@ export default function PortalMessages({
         {(["all", "unread"] as const).map((f) => (
           <button key={f} type="button" onClick={() => setFilter(f)} style={{ border: "none", cursor: "pointer", padding: "7px 14px", borderRadius: 9, fontSize: 13, fontWeight: 700, background: filter === f ? "#fff" : "transparent", color: filter === f ? "#181A1F" : "#6B6E78", boxShadow: filter === f ? "0 1px 3px rgba(0,0,0,0.08)" : "none", display: "inline-flex", gap: 6, alignItems: "center" }}>
             {f === "all" ? t("common.all") : t("pms.unread")}
-            {f === "all" ? <span style={{ color: "#8A8D96" }}>{announcements.length}</span> : unread > 0 && <span style={{ background: "#EF4444", color: "#fff", fontSize: 11, fontWeight: 800, padding: "1px 7px", borderRadius: 100 }}>{unread}</span>}
+            {f === "all" ? <span style={{ color: "#686B75" }}>{announcements.length}</span> : unread > 0 && <span style={{ background: "#EF4444", color: "#fff", fontSize: 11, fontWeight: 800, padding: "1px 7px", borderRadius: 100 }}>{unread}</span>}
           </button>
         ))}
       </div>
@@ -78,7 +78,7 @@ export default function PortalMessages({
         <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: "40px 20px", textAlign: "center" }}>
           <div style={{ fontSize: 34, marginBottom: 8 }}>🎉</div>
           <div style={{ fontSize: 15, fontWeight: 700 }}>{t("ptl.noNotifs")}</div>
-          <div style={{ fontSize: 13, color: "#8A8D96", marginTop: 4 }}>{t("ptl.allRead")}</div>
+          <div style={{ fontSize: 13, color: "#686B75", marginTop: 4 }}>{t("ptl.allRead")}</div>
         </div>
       ) : (
         <div className="pms-grid">
@@ -94,7 +94,7 @@ export default function PortalMessages({
               >
                 <span style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 4, background: p.bar }} />
                 <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center" }}>
-                  <span style={{ fontSize: 11.5, color: "#8A8D96" }}>{formatDateTime(a.createdAt, lang)}</span>
+                  <span style={{ fontSize: 11.5, color: "#686B75" }}>{formatDateTime(a.createdAt, lang)}</span>
                   <span style={{ display: "flex", gap: 6, alignItems: "center" }}>
                     {p.key && <span style={{ fontSize: 10.5, fontWeight: 800, padding: "2px 8px", borderRadius: 100, background: p.bg, color: p.color }}>{t(p.key)}</span>}
                     {!a.read && <span title={t("pms.new")} style={{ width: 9, height: 9, borderRadius: "50%", background: "#EF4444" }} />}

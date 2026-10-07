@@ -120,7 +120,7 @@ export default function PortalHome({
           {!payments || payments.expectedTuition === 0 ? (
             <div style={{ fontSize: 15.5, fontWeight: 700, marginTop: 3, color: "#94A3B8" }}>—</div>
           ) : payments.status === "PAID" ? (
-            <div style={{ fontSize: 15.5, fontWeight: 700, marginTop: 3, color: "#1FA463" }}>{t("pth.paidFor").replace("{month}", month)}</div>
+            <div style={{ fontSize: 15.5, fontWeight: 700, marginTop: 3, color: "#167A48" }}>{t("pth.paidFor").replace("{month}", month)}</div>
           ) : (
             <div style={{ fontSize: 15.5, fontWeight: 700, marginTop: 3, color: "#DC2626" }}>
               {t("pth.debt").replace("{sum}", `${money(payments.debtAmount)} ${t("common.sumUnit")}`)}
@@ -156,7 +156,7 @@ export default function PortalHome({
                       padding: "4px 10px",
                       borderRadius: 100,
                       whiteSpace: "nowrap",
-                      ...(h.completed ? { color: "#1FA463", background: "#E9F8EF" } : late ? { color: "#DC2626", background: "#FEE2E2" } : { color: "#8A8D96", background: "#F2F1EC" }),
+                      ...(h.completed ? { color: "#167A48", background: "#E9F8EF" } : late ? { color: "#DC2626", background: "#FEE2E2" } : { color: "#686B75", background: "#F2F1EC" }),
                     }}
                   >
                     {h.completed ? t("hws.stDone") : late ? t("hws.stOverdue") : t("pth.todo")}

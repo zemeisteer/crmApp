@@ -34,9 +34,9 @@ export default function MockAttempts({ test }: { test: MockTest }) {
   return (
     <div style={{ ...card, padding: 0, overflowX: "auto" }}>
       {rows === null ? (
-        <div style={{ padding: 16, color: "#8A8D96" }}>{t("common.loading")}</div>
+        <div style={{ padding: 16, color: "#686B75" }}>{t("common.loading")}</div>
       ) : rows.length === 0 ? (
-        <div style={{ padding: 30, textAlign: "center", color: "#8A8D96" }}>{t("mock.noAttempts")}</div>
+        <div style={{ padding: 30, textAlign: "center", color: "#686B75" }}>{t("mock.noAttempts")}</div>
       ) : (
         <table className="table" style={{ margin: 0, minWidth: 860, width: "100%", tableLayout: "fixed" }}>
           <colgroup>
@@ -53,7 +53,7 @@ export default function MockAttempts({ test }: { test: MockTest }) {
               {MOCK_SECTIONS.map((s) => (
                 <th key={s} style={{ textAlign: "center", padding: "12px 8px" }} title={t(sectionKey(s))}>
                   <div style={{ fontSize: 16, lineHeight: 1 }}>{SECTION_ICON[s]}</div>
-                  <div style={{ fontSize: 10.5, fontWeight: 600, color: "#8A8D96", marginTop: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t(sectionKey(s))}</div>
+                  <div style={{ fontSize: 10.5, fontWeight: 600, color: "#686B75", marginTop: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t(sectionKey(s))}</div>
                 </th>
               ))}
               <th style={{ textAlign: "center", padding: "12px 8px" }}>{t("mock.overall")}</th>
@@ -116,7 +116,7 @@ function ReviewModal({ detail, onClose, onChanged }: { detail: MockAttemptDetail
           {MOCK_SECTIONS.map((s) => (
             <span key={s} style={{ background: "#F7F7F5", borderRadius: 10, padding: "6px 10px", fontSize: 13 }}>
               {SECTION_ICON[s]} {t(sectionKey(s))}: <b style={{ color: bandColor(detail.results[s]?.band) }}>{detail.results[s]?.band ?? "—"}</b>
-              {detail.results[s]?.raw !== undefined && <span style={{ color: "#8A8D96" }}> ({detail.results[s]?.raw}/{detail.results[s]?.max})</span>}
+              {detail.results[s]?.raw !== undefined && <span style={{ color: "#686B75" }}> ({detail.results[s]?.raw}/{detail.results[s]?.max})</span>}
             </span>
           ))}
           <span style={{ background: "#EEF0FF", borderRadius: 10, padding: "6px 10px", fontSize: 13, fontWeight: 800, color: ACCENT }}>{t("mock.overall")}: {detail.results.overall ?? "—"}</span>
@@ -159,7 +159,7 @@ function ReviewModal({ detail, onClose, onChanged }: { detail: MockAttemptDetail
                   return (
                     <div key={qi} style={{ border: "1px solid #EAE8E2", borderRadius: 10, padding: 10, fontSize: 13, display: "grid", gap: 6 }}>
                       <div style={{ color: "#4A4E58" }}>❓ {q}</div>
-                      {a?.audio ? <audio controls src={fileUrl(a.audio) ?? undefined} style={{ width: "100%", height: 36 }} /> : <span style={{ color: "#8A8D96" }}>{t("mock.noRecording")}</span>}
+                      {a?.audio ? <audio controls src={fileUrl(a.audio) ?? undefined} style={{ width: "100%", height: 36 }} /> : <span style={{ color: "#686B75" }}>{t("mock.noRecording")}</span>}
                       {a?.transcript && <div style={{ fontStyle: "italic", color: "#33363D" }}>“{a.transcript}”</div>}
                     </div>
                   );
@@ -181,7 +181,7 @@ function ReviewModal({ detail, onClose, onChanged }: { detail: MockAttemptDetail
             </div>
           </section>
         )}
-        {!detail.sectionDone.writing && !detail.sectionDone.speaking && <div style={{ color: "#8A8D96", fontSize: 13 }}>{t("mock.nothingToReview")}</div>}
+        {!detail.sectionDone.writing && !detail.sectionDone.speaking && <div style={{ color: "#686B75", fontSize: 13 }}>{t("mock.nothingToReview")}</div>}
       </div>
     </Modal>
   );

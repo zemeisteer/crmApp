@@ -108,7 +108,7 @@ export default function BarChart({
       )}
       <div style={{ display: "flex", alignItems: "flex-end", gap: 10, height, width: "100%", overflowX: "auto", position: "relative", paddingBottom: 4 }}>
         {isEmpty ? (
-          <div style={{ color: "#8A8D96", fontSize: 13, margin: "auto", textAlign: "center", maxWidth: 320 }}>{emptyText ?? t("chart.noData")}</div>
+          <div style={{ color: "#686B75", fontSize: 13, margin: "auto", textAlign: "center", maxWidth: 320 }}>{emptyText ?? t("chart.noData")}</div>
         ) : (
           data.map((d, i) => {
             const isSelected = activeIdx === i;
@@ -154,7 +154,7 @@ export default function BarChart({
                 <div
                   style={{
                     fontSize: 10.5,
-                    color: isSelected ? color : "#8A8D96",
+                    color: isSelected ? color : "#686B75",
                     fontWeight: isSelected ? 700 : 500,
                     textAlign: "center",
                     maxWidth: 56,
@@ -209,7 +209,7 @@ export function DonutChart({
       </svg>
       <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
         <div style={{ fontSize: 18, fontWeight: 800 }}>{Math.round(pct * 100)}%</div>
-        {label && <div style={{ fontSize: 10, color: "#8A8D96" }}>{label}</div>}
+        {label && <div style={{ fontSize: 10, color: "#686B75" }}>{label}</div>}
       </div>
     </div>
   );

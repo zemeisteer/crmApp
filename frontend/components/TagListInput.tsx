@@ -44,7 +44,7 @@ export default function TagListInput({
         <div key={i} style={{ display: "flex", gap: 6, alignItems: "center" }}>
           {prefix && (
             <div style={{ display: "flex", alignItems: "center", border: "1px solid #EAE8E2", borderRadius: 10, overflow: "hidden", flex: 1 }}>
-              <span style={{ padding: "12px 10px 12px 14px", background: "#F7F7F5", color: "#8A8D96", fontSize: 13.5, borderRight: "1px solid #EAE8E2" }}>{prefix}</span>
+              <span style={{ padding: "12px 10px 12px 14px", background: "#F7F7F5", color: "#686B75", fontSize: 13.5, borderRight: "1px solid #EAE8E2" }}>{prefix}</span>
               <input
                 className="field-input"
                 style={{ border: "none", borderRadius: 0 }}

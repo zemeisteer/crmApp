@@ -99,7 +99,7 @@ export default function PracticeEditor({ test, onSaved }: { test: PracticeTest; 
           const n = s.parts.reduce((m, p) => m + p.questions.length, 0) + s.tasks.length;
           return (
             <button key={i} type="button" onClick={() => setSi(i)} style={{ border: `1.5px solid ${si === i ? ACCENT : "#EAE8E2"}`, background: si === i ? "#EEF0FF" : "#fff", color: si === i ? ACCENT : "#4A4E58", borderRadius: 11, padding: "9px 14px", fontWeight: 700, fontSize: 13.5, cursor: "pointer", maxWidth: 260, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-              {i + 1}. {s.title} <span style={{ color: "#8A8D96", fontWeight: 600 }}>{n}</span>
+              {i + 1}. {s.title} <span style={{ color: "#686B75", fontWeight: 600 }}>{n}</span>
             </button>
           );
         })}

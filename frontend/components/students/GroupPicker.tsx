@@ -40,10 +40,10 @@ export default function GroupPicker({
     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
       <input className="field-input" value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("groupPicker.search")} />
       <div style={{ maxHeight: 360, overflowY: "auto", display: "flex", flexDirection: "column", gap: 12, paddingRight: 2 }}>
-        {sections.length === 0 && <div style={{ fontSize: 13, color: "#8A8D96", padding: 8 }}>{t("groupPicker.none")}</div>}
+        {sections.length === 0 && <div style={{ fontSize: 13, color: "#686B75", padding: 8 }}>{t("groupPicker.none")}</div>}
         {sections.map((s) => (
           <div key={s.subject}>
-            <div style={{ fontSize: 11.5, fontWeight: 800, color: "#8A8D96", textTransform: "uppercase", letterSpacing: 0.4, margin: "0 2px 6px" }}>
+            <div style={{ fontSize: 11.5, fontWeight: 800, color: "#686B75", textTransform: "uppercase", letterSpacing: 0.4, margin: "0 2px 6px" }}>
               {s.subject} · {s.items.length}
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
@@ -74,9 +74,9 @@ export default function GroupPicker({
                     <span style={{ minWidth: 0 }}>
                       <span style={{ display: "block", fontSize: 13.5, fontWeight: 700, color: selected ? ACCENT : "#181A1F" }}>
                         {g.name}
-                        {g.level ? <span style={{ fontWeight: 500, color: "#8A8D96" }}> · {g.level}</span> : null}
+                        {g.level ? <span style={{ fontWeight: 500, color: "#686B75" }}> · {g.level}</span> : null}
                       </span>
-                      <span style={{ display: "block", fontSize: 12, color: "#8A8D96", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      <span style={{ display: "block", fontSize: 12, color: "#686B75", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                         {[g.teacher?.fullName, time].filter(Boolean).join(" · ") || "—"}
                       </span>
                     </span>

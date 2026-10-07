@@ -152,7 +152,7 @@ export default function MockRunner({ initial, readOnly, onExit }: { initial: Por
             ⏱ {mmss(left)}
           </div>
         )}
-        {section && !done(section) && section !== "speaking" && <span style={{ fontSize: 12, color: saved === "error" ? "#B23A47" : "#8A8D96" }}>{saved === "saving" ? t("pmk.saving") : saved === "saved" ? `✓ ${t("pmk.saved")}` : saved === "error" ? `⚠ ${t("exm.saveError")}` : ""}</span>}
+        {section && !done(section) && section !== "speaking" && <span style={{ fontSize: 12, color: saved === "error" ? "#B23A47" : "#686B75" }}>{saved === "saving" ? t("pmk.saving") : saved === "saved" ? `✓ ${t("pmk.saved")}` : saved === "error" ? `⚠ ${t("exm.saveError")}` : ""}</span>}
       </div>
       {error && <div role="alert" style={{ ...card, color: "#B23A47", fontSize: 13 }}>{error}</div>}
 
@@ -196,7 +196,7 @@ export default function MockRunner({ initial, readOnly, onExit }: { initial: Por
               );
             })}
           </div>
-          <div style={{ fontSize: 12.5, color: "#8A8D96", lineHeight: 1.5 }}>ℹ️ {t("pmk.rules")}</div>
+          <div style={{ fontSize: 12.5, color: "#686B75", lineHeight: 1.5 }}>ℹ️ {t("pmk.rules")}</div>
         </>
       )}
 
@@ -257,7 +257,7 @@ function ListeningPlayer({ part }: { part: PortalMockAttempt["test"]["content"][
         {speaking ? `🔊 ${t("pmk.playing")}` : `▶ ${t("pmk.play")}`}
       </button>
       {speaking && <button type="button" onClick={() => { window.speechSynthesis.cancel(); setSpeaking(false); }} style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 10, padding: "9px 12px", cursor: "pointer" }}>■</button>}
-      <span style={{ fontSize: 12, color: "#8A8D96" }}>{canSpeak ? t("pmk.playsLeft").replace("{n}", String(Math.max(0, 2 - plays))) : t("pmk.noTts")}</span>
+      <span style={{ fontSize: 12, color: "#686B75" }}>{canSpeak ? t("pmk.playsLeft").replace("{n}", String(Math.max(0, 2 - plays))) : t("pmk.noTts")}</span>
     </div>
   );
 }
@@ -292,7 +292,7 @@ function ObjectiveSection({ a, section, answers, onAnswer, readOnly, children }:
             </div>
             <QuestionInput q={q} value={answers[q.id] ?? ""} onChange={(v) => onAnswer(q.id, v)} disabled={readOnly} exam />
             {keys && mark === false && !(answers[q.id] ?? "").trim() && <div style={{ marginTop: 8, fontSize: 12.5, color: "#B45309", fontWeight: 700 }}>— {t("exm.noAnswer")}</div>}
-            {keys && mark === false && <div style={{ marginTop: 6, fontSize: 12.5, color: "#1FA463", fontWeight: 700 }}>✓ {t("pmk.answer")}: {keys[Number(q.id)]}</div>}
+            {keys && mark === false && <div style={{ marginTop: 6, fontSize: 12.5, color: "#167A48", fontWeight: 700 }}>✓ {t("pmk.answer")}: {keys[Number(q.id)]}</div>}
           </div>
         );
       })}
@@ -304,7 +304,7 @@ function ObjectiveSection({ a, section, answers, onAnswer, readOnly, children }:
       {r && (
         <div style={{ ...card, display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap" }}>
           <div style={{ textAlign: "center" }}>
-            <div style={{ fontSize: 11, fontWeight: 800, color: "#8A8D96", letterSpacing: "0.06em" }}>BAND</div>
+            <div style={{ fontSize: 11, fontWeight: 800, color: "#686B75", letterSpacing: "0.06em" }}>BAND</div>
             <div style={{ fontSize: 30, fontWeight: 800, color: bandColor(r.band), lineHeight: 1.1 }}>{r.band}</div>
           </div>
           <div style={{ fontSize: 13.5 }}><b>{r.raw}/{r.max}</b> {t("pmk.correct")}{r.late ? ` · ${t("pmk.late")}` : ""}</div>

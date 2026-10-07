@@ -89,7 +89,7 @@ export default function Select({
           transition: "border-color 0.15s, box-shadow 0.15s",
         }}
       >
-        <span style={{ color: selectedLabel ? "#181A1F" : "#8A8D96", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: wrap ? "normal" : "nowrap", lineHeight: wrap ? 1.35 : undefined }}>
+        <span style={{ color: selectedLabel ? "#181A1F" : "#686B75", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: wrap ? "normal" : "nowrap", lineHeight: wrap ? 1.35 : undefined }}>
           {selectedLabel || effectivePlaceholder}
         </span>
         <svg
@@ -99,13 +99,13 @@ export default function Select({
           fill="none"
           style={{ flexShrink: 0, transform: open ? "rotate(180deg)" : "none", transition: "transform 0.18s ease" }}
         >
-          <path d="M1 1.5L6 6.5L11 1.5" stroke={open ? ACCENT : "#8A8D96"} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M1 1.5L6 6.5L11 1.5" stroke={open ? ACCENT : "#686B75"} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       </button>
 
       {open && (() => {
         const list = options.length === 0 ? (
-          <div style={{ padding: "10px 12px", fontSize: 12.5, color: "#8A8D96", textAlign: "center" }}>
+          <div style={{ padding: "10px 12px", fontSize: 12.5, color: "#686B75", textAlign: "center" }}>
             {t("common.noOptions")}
           </div>
         ) : (
