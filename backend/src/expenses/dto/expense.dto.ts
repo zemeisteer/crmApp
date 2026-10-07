@@ -1,4 +1,5 @@
-import { IsIn, IsInt, IsNotEmpty, IsOptional, IsPositive, IsString } from 'class-validator';
+import { IsIn, IsInt, IsNotEmpty, IsOptional, IsPositive, IsString, Max } from 'class-validator';
+import { MAX_MONEY } from '../../common/money';
 
 export class CreateExpenseDto {
   @IsString()
@@ -11,6 +12,7 @@ export class CreateExpenseDto {
 
   @IsInt()
   @IsPositive()
+  @Max(MAX_MONEY)
   amount: number;
 
   @IsOptional()
@@ -42,6 +44,7 @@ export class UpdateExpenseDto {
   @IsOptional()
   @IsInt()
   @IsPositive()
+  @Max(MAX_MONEY)
   amount?: number;
 
   @IsOptional()

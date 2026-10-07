@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { and, asc, desc, eq, inArray, isNull, lt, ne, notExists, sql } from 'drizzle-orm';
 import { DB, Database } from '../db/db.module';
+import { STUDENT_LIST_COLUMNS } from '../common/teacher-scope';
 import { enrollments, invoices, paymentAllocations, payments, students } from '../db/schema';
 import { AuditService } from '../audit/audit.service';
 import { LedgerService } from '../ledger/ledger.service';
@@ -93,7 +94,7 @@ export class InvoicesService {
     return this.db.query.invoices.findMany({
       where: and(...conditions),
       with: {
-        student: true,
+        student: { columns: STUDENT_LIST_COLUMNS },
         enrollment: {
           with: {
             group: true,
@@ -113,7 +114,7 @@ export class InvoicesService {
     const invoice = await this.db.query.invoices.findFirst({
       where: and(eq(invoices.id, id), eq(invoices.tenantId, tenantId)),
       with: {
-        student: true,
+        student: { columns: STUDENT_LIST_COLUMNS },
         enrollment: {
           with: {
             group: true,

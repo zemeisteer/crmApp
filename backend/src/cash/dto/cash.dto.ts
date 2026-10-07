@@ -1,4 +1,5 @@
-import { IsInt, IsOptional, IsString, Matches, MaxLength, Min } from 'class-validator';
+import { IsInt, IsOptional, IsString, Matches, MaxLength, Min, Max } from 'class-validator';
+import { MAX_MONEY } from '../../common/money';
 
 export class CloseCashDayDto {
   @IsString()
@@ -8,6 +9,7 @@ export class CloseCashDayDto {
   // The cash actually counted in the drawer.
   @IsInt()
   @Min(0)
+  @Max(MAX_MONEY)
   countedCash: number;
 
   @IsOptional()

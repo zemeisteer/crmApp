@@ -17,11 +17,11 @@ describe('Audit hardening (e2e)', () => {
 
   // Org A: owner, T1 (teaches G1), T2 (teaches G2), a parent member.
   const A: Record<string, string> = {};
-  let ownerA: string, t1: string, t2: string, parentA: string;
+  let ownerA: string, t1: string, t2: string;
   let g1: string, g2: string, s1: string, s2: string;
   let hw1: string, exam1: string, cert1: string, sched1: string;
-  // Org B: an owner and one student, to probe cross-tenant.
-  let ownerB: string, branchB: string, studentB: string;
+  // Org B: an owner, to probe cross-tenant.
+  let ownerB: string;
 
   const register = async (key: string) =>
     (await http().post('/api/auth/register')
@@ -43,7 +43,7 @@ describe('Audit hardening (e2e)', () => {
     ownerA = regA.accessToken;
     const invT1 = await invite(ownerA, 'TEACHER', 't1'); t1 = invT1.token;
     const invT2 = await invite(ownerA, 'TEACHER', 't2'); t2 = invT2.token;
-    const invP = await invite(ownerA, 'PARENT', 'par'); parentA = invP.token; A.parentId = invP.userId;
+    const invP = await invite(ownerA, 'PARENT', 'par'); A.parentId = invP.userId;
     const tch1 = (await http().post('/api/teachers').set(bearer(ownerA)).send({ fullName: 'T1', userId: invT1.userId, subject: 'Math' }).expect(201)).body.id;
     const tch2 = (await http().post('/api/teachers').set(bearer(ownerA)).send({ fullName: 'T2', userId: invT2.userId, subject: 'Math' }).expect(201)).body.id;
     g1 = (await http().post('/api/groups').set(bearer(ownerA)).send({ name: 'G1', subject: 'Math', teacherId: tch1, scheduleDays: 'Dushanba', startTime: '10:00', endTime: '11:00' }).expect(201)).body.id;
@@ -59,8 +59,6 @@ describe('Audit hardening (e2e)', () => {
 
     const regB = await register('b');
     ownerB = regB.accessToken;
-    branchB = (await http().post('/api/branches').set(bearer(ownerB)).send({ name: 'B branch' }).expect(201)).body.id;
-    studentB = (await http().post('/api/students').set(bearer(ownerB)).send({ fullName: 'B Student', phone: '+998905550001' }).expect(201)).body.id;
   }, 180_000);
 
   afterAll(async () => { await app?.close(); });
@@ -179,6 +177,26 @@ describe('Audit hardening (e2e)', () => {
       expect(served.headers['x-content-type-options']).toBe('nosniff');
       expect(served.headers['content-disposition']).toBe('attachment');
       expect(served.headers['content-security-policy']).toContain('sandbox');
+    });
+  });
+
+  describe('F-13 / F-14 money: big totals and oversized values', () => {
+    it('reports stay correct past 2^31 so\'m (sums are bigint)', async () => {
+      // Two payments of 1.5 billion: 3 billion in total, above PostgreSQL int.
+      for (const k of ['big-1', 'big-2']) {
+        await http().post('/api/payments').set(bearer(ownerA))
+          .send({ studentId: s2, amount: 1_500_000_000, forMonth: month, method: 'BANK_TRANSFER', idempotencyKey: `${k}-${suffix}` }).expect(201);
+      }
+      const overview = (await http().get('/api/reports/overview').set(bearer(ownerA)).expect(200)).body;
+      expect(overview.finance.yearToDate.thisYear).toBeGreaterThanOrEqual(3_000_000_000);
+      await http().get('/api/reports/director').set(bearer(ownerA)).expect(200);
+      await http().get(`/api/payments/finance-summary?forMonth=${month}`).set(bearer(ownerA)).expect(200);
+    });
+    it('refuses a value the money columns cannot hold with 400, not 500', async () => {
+      await http().post('/api/payments').set(bearer(ownerA)).send({ studentId: s2, amount: 3_000_000_000, forMonth: month, method: 'CASH' }).expect(400);
+      await http().post('/api/expenses').set(bearer(ownerA)).send({ title: 'x', amount: 3_000_000_000, date: today }).expect(400);
+      await http().post('/api/groups').set(bearer(ownerA)).send({ name: 'big', subject: 'M', monthlyPrice: 3_000_000_000 }).expect(400);
+      await http().post('/api/invoices').set(bearer(ownerA)).send({ studentId: s2, amount: 3_000_000_000, dueDate: `${today}T12:00:00.000Z`, forMonth: month }).expect(400);
     });
   });
 });

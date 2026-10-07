@@ -34,7 +34,7 @@ export class TenantsService {
       this.db.select({ tenantId: teachers.tenantId, n: sql<number>`count(*)::int` }).from(teachers)
         .where(isNull(teachers.deletedAt)).groupBy(teachers.tenantId).then(toMap),
     ]);
-    const revenueRows = await this.db.select({ tenantId: payments.tenantId, amount: sql<number>`coalesce(sum(${payments.amount}), 0)::int` })
+    const revenueRows = await this.db.select({ tenantId: payments.tenantId, amount: sql<number>`coalesce(sum(${payments.amount}), 0)::bigint`.mapWith(Number) })
       .from(payments).where(and(eq(payments.status, 'PAID'), eq(payments.forMonth, month))).groupBy(payments.tenantId);
     const revenue = new Map(revenueRows.map((r) => [r.tenantId, r.amount]));
     const activityRows = await this.db.select({ tenantId: auditLogs.tenantId, last: sql<Date>`max(${auditLogs.createdAt})` })

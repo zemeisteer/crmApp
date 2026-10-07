@@ -1,4 +1,5 @@
-import { IsInt, IsOptional, IsString, Min } from 'class-validator';
+import { IsInt, IsOptional, IsString, Min, Max } from 'class-validator';
+import { MAX_MONEY } from '../../common/money';
 
 export class GeneratePaymentLinkDto {
   @IsString()
@@ -10,6 +11,7 @@ export class GeneratePaymentLinkDto {
 
   @IsInt()
   @Min(1000)
+  @Max(MAX_MONEY)
   amount: number;
 
   @IsString()

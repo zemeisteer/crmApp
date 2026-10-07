@@ -2,6 +2,7 @@ import { BadRequestException, ConflictException, Inject, Injectable, NotFoundExc
 import { createHash } from 'crypto';
 import { and, eq, isNull, like } from 'drizzle-orm';
 import { DB, Database } from '../db/db.module';
+import { STUDENT_LIST_COLUMNS } from '../common/teacher-scope';
 import { expenses, invoices, payments, salaryPayments, students } from '../db/schema';
 import { LedgerService } from '../ledger/ledger.service';
 import { allocateToInvoices, LedgerTx, lockInvoice, lockOpenInvoices, lockStudentLedger } from './allocation';
@@ -97,7 +98,7 @@ export class PaymentsService {
     return this.db.query.payments.findMany({
       where: eq(payments.tenantId, tenantId),
       columns: { idempotencyKey: false, requestHash: false },
-      with: { student: true, invoice: true, allocations: true },
+      with: { student: { columns: STUDENT_LIST_COLUMNS }, invoice: true, allocations: true },
       orderBy: (p, { desc }) => desc(p.paidAt),
     });
   }

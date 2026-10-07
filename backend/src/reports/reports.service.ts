@@ -183,11 +183,11 @@ export class ReportsService {
       topDebtors: Array<{ studentId: string; fullName: string; groups: string[]; debt: number; overdueDays: number | null }>;
     } = null;
     if (!scope && PAYMENT_READ_ROLES.includes(viewer.role)) {
-      const rows = await this.db.select({ status: payments.status, n: sql<number>`count(*)::int`, amount: sql<number>`coalesce(sum(${payments.amount}), 0)::int` })
+      const rows = await this.db.select({ status: payments.status, n: sql<number>`count(*)::int`, amount: sql<number>`coalesce(sum(${payments.amount}), 0)::bigint`.mapWith(Number) })
         .from(payments).where(and(eq(payments.tenantId, tenantId), eq(payments.forMonth, month))).groupBy(payments.status);
       const get = (s: string) => rows.find((r) => r.status === s);
       const debtors = await this.paymentsService.getDebtors(tenantId, month, false);
-      const revenue = await this.db.select({ month: payments.forMonth, amount: sql<number>`coalesce(sum(${payments.amount}), 0)::int` })
+      const revenue = await this.db.select({ month: payments.forMonth, amount: sql<number>`coalesce(sum(${payments.amount}), 0)::bigint`.mapWith(Number) })
         .from(payments)
         .where(and(eq(payments.tenantId, tenantId), eq(payments.status, 'PAID'), inArray(payments.forMonth, yearMonths)))
         .groupBy(payments.forMonth);
@@ -377,7 +377,7 @@ export class ReportsService {
       .groupBy(attendance.groupId);
     // Money collected against this month's invoices, attributed to a group
     // through the invoice's enrollment.
-    const revenue = await this.db.select({ groupId: enrollments.groupId, collected: sql<number>`coalesce(sum(${invoices.amountPaid}), 0)::int` })
+    const revenue = await this.db.select({ groupId: enrollments.groupId, collected: sql<number>`coalesce(sum(${invoices.amountPaid}), 0)::bigint`.mapWith(Number) })
       .from(invoices)
       .innerJoin(enrollments, eq(enrollments.id, invoices.enrollmentId))
       .where(and(eq(invoices.tenantId, tenantId), eq(invoices.forMonth, month), inArray(enrollments.groupId, ids)))
@@ -421,7 +421,7 @@ export class ReportsService {
       .where(and(eq(attendance.tenantId, tenantId), sql`${attendance.date} like ${month + '%'}`))
       .groupBy(attendance.studentId)
       .having(sql`count(*) >= 3 and count(*) filter (where ${attendance.status} in ('PRESENT', 'LATE')) < 0.6 * count(*)`);
-    const overdue = await this.db.select({ studentId: invoices.studentId, amount: sql<number>`sum(${invoices.remainingAmount})::int` })
+    const overdue = await this.db.select({ studentId: invoices.studentId, amount: sql<number>`sum(${invoices.remainingAmount})::bigint`.mapWith(Number) })
       .from(invoices)
       .where(and(eq(invoices.tenantId, tenantId), eq(invoices.status, 'OVERDUE')))
       .groupBy(invoices.studentId);
@@ -451,7 +451,7 @@ export class ReportsService {
     // never compared with a full one.
     const [y, m] = month.split('-').map(Number);
     const ytd = async (year: number) => {
-      const [{ total }] = await this.db.select({ total: sql<number>`coalesce(sum(${payments.amount}), 0)::int` }).from(payments)
+      const [{ total }] = await this.db.select({ total: sql<number>`coalesce(sum(${payments.amount}), 0)::bigint`.mapWith(Number) }).from(payments)
         .where(and(eq(payments.tenantId, tenantId), eq(payments.status, 'PAID'),
           gte(payments.forMonth, `${year}-01`), sql`${payments.forMonth} <= ${`${year}-${String(m).padStart(2, '0')}`}`));
       return total;
@@ -512,13 +512,13 @@ export class ReportsService {
     const salariesByMonth: Record<string, number> = {};
     if (includeProfit) {
       const ex = await this.db
-        .select({ m: sql<string>`substring(${expenses.date}, 1, 7)`, total: sql<number>`coalesce(sum(${expenses.amount}), 0)::int` })
+        .select({ m: sql<string>`substring(${expenses.date}, 1, 7)`, total: sql<number>`coalesce(sum(${expenses.amount}), 0)::bigint`.mapWith(Number) })
         .from(expenses)
         .where(and(eq(expenses.tenantId, tenantId), gte(expenses.date, `${first}-01`), sql`${expenses.date} < ${`${month}-99`}`))
         .groupBy(sql`substring(${expenses.date}, 1, 7)`);
       for (const r of ex) expensesByMonth[r.m] = r.total;
       const sal = await this.db
-        .select({ m: salaryPayments.forMonth, total: sql<number>`coalesce(sum(${salaryPayments.amount}), 0)::int` })
+        .select({ m: salaryPayments.forMonth, total: sql<number>`coalesce(sum(${salaryPayments.amount}), 0)::bigint`.mapWith(Number) })
         .from(salaryPayments)
         .where(and(
           eq(salaryPayments.tenantId, tenantId),

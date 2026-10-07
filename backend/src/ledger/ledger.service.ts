@@ -161,7 +161,7 @@ export class LedgerService {
           studentId: payments.studentId, forMonth: payments.forMonth, amount: payments.amount, discount: payments.discount,
           // Spelled out: inside a single-table select drizzle writes column
           // names without their table, which a subquery would misread.
-          allocated: sql<number | null>`(select sum(pa.amount)::int from payment_allocations pa where pa.payment_id = "payments"."id")`,
+          allocated: sql<number | null>`(select sum(pa.amount)::bigint from payment_allocations pa where pa.payment_id = "payments"."id")`.mapWith(Number),
         })
         .from(payments)
         .where(and(

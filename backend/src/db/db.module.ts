@@ -1,4 +1,4 @@
-import { Global, Module } from '@nestjs/common';
+import { Global, Logger, Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { drizzle, NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
@@ -26,6 +26,12 @@ export const DB = 'DB';
           max: Number(config.get<string>('DB_POOL_MAX')) || 10,
           options: '-c TimeZone=UTC',
         });
+        // An idle connection dropped by the server (Postgres restart,
+        // failover, network blip) is reported as an 'error' event; unhandled,
+        // it ends the whole process. Log it: the pool opens a fresh
+        // connection for the next query.
+        const logger = new Logger('Database');
+        pool.on('error', (err) => logger.error(`Idle database connection lost: ${err.message}`));
         return drizzle(pool, { schema });
       },
     },

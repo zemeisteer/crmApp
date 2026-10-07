@@ -1,4 +1,5 @@
-import { IsIn, IsInt, IsOptional, IsString, Matches, MaxLength, Min } from 'class-validator';
+import { IsIn, IsInt, IsOptional, IsString, Matches, MaxLength, Min, Max } from 'class-validator';
+import { MAX_MONEY } from '../../common/money';
 
 // One payout (installment) of a teacher's month.
 export class DisburseSalaryDto {
@@ -7,6 +8,7 @@ export class DisburseSalaryDto {
 
   @IsInt()
   @Min(1)
+  @Max(MAX_MONEY)
   amount: number;
 
   @IsString()

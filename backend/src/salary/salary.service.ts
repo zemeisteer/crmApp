@@ -283,7 +283,7 @@ export class SalaryService {
         // One payout at a time for this teacher and month.
         await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${`salary:${tenantId}:${dto.teacherId}:${dto.forMonth}`}, 0))`);
         const [{ paid }] = await tx
-          .select({ paid: sql<number>`coalesce(sum(${salaryPayments.amount}), 0)::int` })
+          .select({ paid: sql<number>`coalesce(sum(${salaryPayments.amount}), 0)::bigint`.mapWith(Number) })
           .from(salaryPayments)
           .where(and(
             eq(salaryPayments.tenantId, tenantId),

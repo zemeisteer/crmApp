@@ -1,4 +1,5 @@
-import { IsEmail, IsInt, IsOptional, IsString, MinLength } from 'class-validator';
+import { IsEmail, IsInt, IsOptional, IsString, MinLength, Max } from 'class-validator';
+import { MAX_MONEY } from '../../common/money';
 
 export class CreateTeacherDto {
   @IsString()
@@ -11,7 +12,7 @@ export class CreateTeacherDto {
   @IsOptional() @IsString() birthDate?: string;
   @IsOptional() @IsString() startDate?: string;
   @IsOptional() @IsString() salaryType?: string;
-  @IsOptional() @IsInt() salaryValue?: number;
+  @IsOptional() @IsInt() @Max(MAX_MONEY) salaryValue?: number;
 }
 
 export class UpdateTeacherDto {
@@ -23,7 +24,7 @@ export class UpdateTeacherDto {
   @IsOptional() @IsString() birthDate?: string;
   @IsOptional() @IsString() startDate?: string;
   @IsOptional() @IsString() salaryType?: string;
-  @IsOptional() @IsInt() salaryValue?: number;
+  @IsOptional() @IsInt() @Max(MAX_MONEY) salaryValue?: number;
 }
 
 // Login for a teacher: email + first password (they can change it later).

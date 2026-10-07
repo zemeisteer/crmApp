@@ -1,4 +1,5 @@
-import { IsBoolean, IsInt, IsOptional, IsString, Min } from 'class-validator';
+import { IsBoolean, IsInt, IsOptional, IsString, Min, Max } from 'class-validator';
+import { MAX_MONEY } from '../../common/money';
 
 export class CreatePlanDto {
   @IsString()
@@ -9,6 +10,7 @@ export class CreatePlanDto {
 
   @IsInt()
   @Min(0)
+  @Max(MAX_MONEY)
   price: number;
 
   @IsOptional()
@@ -22,7 +24,7 @@ export class CreatePlanDto {
 
 export class UpdatePlanDto {
   @IsOptional() @IsString() name?: string;
-  @IsOptional() @IsInt() @Min(0) price?: number;
+  @IsOptional() @IsInt() @Min(0) @Max(MAX_MONEY) price?: number;
   @IsOptional() @IsString() features?: string;
   @IsOptional() @IsBoolean() popular?: boolean;
   @IsOptional() @IsBoolean() active?: boolean;

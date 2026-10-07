@@ -1,4 +1,5 @@
-import { IsEnum, IsInt, IsISO8601, IsOptional, IsPositive, IsString, Matches } from 'class-validator';
+import { IsEnum, IsInt, IsISO8601, IsOptional, IsPositive, IsString, Matches, Max } from 'class-validator';
+import { MAX_MONEY } from '../../common/money';
 
 export class CreateInvoiceDto {
   @IsString()
@@ -10,6 +11,7 @@ export class CreateInvoiceDto {
 
   @IsInt()
   @IsPositive()
+  @Max(MAX_MONEY)
   amount: number;
 
   @IsISO8601()

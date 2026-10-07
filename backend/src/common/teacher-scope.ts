@@ -25,6 +25,10 @@ export async function assertTeacherGroups(db: Database, tenantId: string, viewer
 // What staff screens need about a student; never the internal keys.
 export const STUDENT_STAFF_COLUMNS = { idempotencyKey: false, requestHash: false, telegramChatId: false } as const;
 
+// A student as a line in a money list (payments, invoices): who it is and
+// how to reach them - not the whole profile.
+export const STUDENT_LIST_COLUMNS = { id: true, fullName: true, phone: true, parentPhone: true, status: true, deletedAt: true } as const;
+
 // Teachers only work with their own groups: their attendance lists, QR
 // check-ins and student rosters are limited to groups where they are the
 // assigned teacher. Returns null for every other role (no restriction) and

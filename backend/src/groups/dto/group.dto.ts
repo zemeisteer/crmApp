@@ -1,4 +1,5 @@
-import { IsIn, IsInt, IsOptional, IsString, Matches, MaxLength, Min } from 'class-validator';
+import { IsIn, IsInt, IsOptional, IsString, Matches, MaxLength, Min, Max } from 'class-validator';
+import { MAX_MONEY } from '../../common/money';
 
 export class CreateGroupDto {
   @IsString()
@@ -55,6 +56,7 @@ export class CreateGroupDto {
   @IsOptional()
   @IsInt()
   @Min(0)
+  @Max(MAX_MONEY)
   monthlyPrice?: number;
 
   @IsOptional()
@@ -81,7 +83,7 @@ export class UpdateGroupDto {
   @IsOptional() @IsString() scheduleDays?: string;
   @IsOptional() @IsString() startTime?: string;
   @IsOptional() @IsString() endTime?: string;
-  @IsOptional() @IsInt() @Min(0) monthlyPrice?: number;
+  @IsOptional() @IsInt() @Min(0) @Max(MAX_MONEY) monthlyPrice?: number;
   @IsOptional() @IsString() description?: string;
   @IsOptional() @IsInt() @Min(1) durationMonths?: number;
 }
@@ -93,6 +95,7 @@ export class ConfirmGroupPriceDto {
 
   @IsInt()
   @Min(0)
+  @Max(MAX_MONEY)
   monthlyPrice: number;
 
   @IsOptional()
