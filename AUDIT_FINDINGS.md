@@ -10,7 +10,9 @@ Reproduction scripts live outside the repo during the run (audit scratchpad: `pr
 
 All code findings are fixed on the working branch, verified by re-running the
 black-box probe against the rebuilt backend, and pinned by regression tests
-(`backend/test/audit-hardening.e2e-spec.ts` + unit specs). Commit `7f95958`.
+(`backend/test/audit-hardening.e2e-spec.ts` + unit specs). Commits `7f95958`
+(F-01…F-11), `513334f` (F-12…F-14, payload trim) and `4b18fa6` (A-01…A-05,
+L-01: accessibility and translation fixes in the frontend).
 
 | ID | Severity | Area | Title | Status |
 |---|---|---|---|---|
@@ -24,6 +26,17 @@ black-box probe against the rebuilt backend, and pinned by regression tests
 | F-08 | Low | Misleading success | Cross-tenant `PATCH`/`DELETE /webhooks/:id` and foreign `DELETE /auth/sessions/:id` answered 200 although nothing changed | FIXED AND VERIFIED |
 | F-10 | Medium | Sessions | Cabinet (student/parent) tokens (30 d) could not be revoked; survived PIN re-issue and student deletion | FIXED AND VERIFIED |
 | F-11 | High | Stored XSS | Uploaded `.html`/`.svg` kept the client extension and was served from the app origin as runnable script | FIXED AND VERIFIED |
+| F-12 | Medium | Availability | A PostgreSQL restart (or any dropped idle connection) crashed the API process: no `error` handler on the pg pool | FIXED AND VERIFIED |
+| F-13 | Medium | Finance / reports | Report, salary, ledger and platform totals cast `sum()` to `int`; once a total passed 2,147,483,647 so'm `/reports/overview` etc. answered 500 | FIXED AND VERIFIED |
+| F-14 | Low | Validation | Money inputs (payment, discount, expense, invoice, group price, salary, plan price, cash count) had no upper bound; values above int4 reached the DB and answered 500 | FIXED AND VERIFIED |
+| P-01 | Low | Performance | `/payments` and `/invoices` embedded the full student profile in every row (5.4 MB / 2.1 MB on a 2,400-student center) | FIXED AND VERIFIED (3.0 MB / 1.2 MB) |
+| A-01 | Medium | Accessibility | Muted grey and green text below WCAG AA contrast (237 failing nodes across 16 scanned pages) | FIXED AND VERIFIED (24 left, see notes) |
+| A-02 | Medium | Accessibility | Inputs showed no focus indicator; no skip link; no `<main>` landmark | FIXED AND VERIFIED |
+| A-03 | Medium | Accessibility | Modals: focus stayed behind the dialog, Tab escaped it, close button had no name, focus not restored | FIXED AND VERIFIED |
+| A-04 | Medium | Accessibility | Settings: 5 inputs and the brand-colour swatches had no accessible name (axe "critical" ×10) | FIXED AND VERIFIED |
+| A-05 | Low | Accessibility | Sidebar `scrollIntoView` moved the keyboard Tab start point into the menu; on short screens the active item ended up out of view | FIXED AND VERIFIED |
+| L-01 | Low | Localization | 13 alerts/confirms/errors hard-coded in Uzbek (shown untranslated in RU/EN) | FIXED AND VERIFIED |
+| L-02 | Low | Localization | Tariff plan feature lists are free text stored once (Uzbek) and shown as-is on the RU/EN landing page | NOT FIXED (backlog: needs per-language plan text, schema change) |
 | N-01 | Info | Files | `/uploads/*` served without per-object authentication (unguessable 24-char cuid names; now `nosniff`+sandbox) | NOT A FINDING (accepted; see notes) |
 | N-02 | Info | Design | A teacher can see the center-wide schedule and teacher directory (group names, not student PII) | NOT A FINDING (access catalog grants `schedule.view`/`teachers.view` to all staff) |
 
@@ -63,6 +76,30 @@ Details follow per finding (reproduction, impact, fix, regression evidence).
   PDF/recordings inline, everything else a sandboxed download, always
   `nosniff`. Unit: `upload.util.spec.ts`; regression: "F-11".
 
+- **F-12** `db/db.module.ts`: `pool.on('error')` logs the lost client; the pool
+  opens a new one on the next query. Verified: `service postgresql restart`
+  while the API runs — process stays up, next request 200.
+- **F-13** `reports/reports.service.ts` (7 sums), `salary`, `ledger`, `tenants`:
+  `sum(...)::bigint` mapped to `Number`. Verified on a seeded tenant with
+  2.56 bn so'm year-to-date: `/reports/overview` 200, totals equal SQL.
+  Regression: "F-13 / F-14 money" (two 1.5 bn payments → 200, total ≥ 3 bn).
+- **F-14** `common/money.ts` `MAX_MONEY = 2_000_000_000`, `@Max` on 13 DTO
+  money fields. Regression: oversized payment/expense/group/invoice → 400.
+- **P-01** `STUDENT_LIST_COLUMNS` for the payment and invoice lists (the
+  screens only show name/phone/status).
+- **A-01…A-05** (frontend, commit `4b18fa6`): `#8A8D96`/`#71737C` muted text →
+  `#686B75`, green text `#1FA463` → `#167A48` (fills unchanged); global
+  `:focus-visible` ring on inputs; skip link + `<main id="main-content">` in
+  `DashboardShell`; `Modal` focus management (initial focus, Tab trap, Escape,
+  restore, named close button); settings `aria-label`s and `aria-pressed`
+  swatches; sidebar keeps the active item centred by adjusting `scrollTop`
+  (no focus side effect) and re-checks while the panel resizes. Verified with
+  axe-core 4.14 and scripted keyboard runs (25 Tab presses never leave an open
+  dialog; Escape closes; focus returns to the opener).
+- **L-01** new `msg.*` keys in `lib/i18n.ts` (UZ/RU/EN) used by settings,
+  exams, students/[id], schedule, announcements, onboarding, reports,
+  verify/[code], payments.
+
 ### Notes on accepted items
 
 - **N-01 uploads auth.** Attachments are served statically under
@@ -97,3 +134,55 @@ Details follow per finding (reproduction, impact, fix, regression evidence).
 | Unassigned teacher marks attendance / grades homework in another group | PASS — 403 |
 | Existing user accepting an invitation without password | PASS — 400; with password 201, second membership created |
 | Schedule conflict: same teacher/group same slot | PASS — 409 with both conflicts listed |
+
+## Accessibility scan (axe-core 4.14, WCAG 2.0/2.1 A+AA, 16 pages, 2026-10-07)
+
+| | Before | After |
+|---|---|---|
+| Critical violations | 10 (unnamed inputs/buttons on settings) | **0** |
+| Serious: colour contrast (nodes) | 237 | **24** |
+| Keyboard: visible focus on inputs | FAIL | PASS |
+| Keyboard: skip to content, main landmark | FAIL | PASS |
+| Keyboard: modal focus trap / restore | FAIL | PASS |
+
+The 24 remaining contrast nodes are status colours chosen inside ternaries
+(`#3EAF7A`, `#EA7A3A`, `#6760e9`, `#9CA3AF` on tinted chips) and the landing
+hero mock-up; listed for the design backlog. Screen readers (NVDA/VoiceOver)
+were NOT TESTED — no assistive technology is available in this container.
+
+## Performance sample (seeded tenant, 2026-10-07)
+
+Fixture (seeded directly with SQL into the disposable DB, labelled `perf-*`):
+2,400 students, 80 groups, 20 teachers, 31,200 attendance rows, 6,400
+payments, 2,400 invoices, 1,000 leads. One warm request each, measured with
+`pg_stat_statements` (q = SQL statements per request).
+
+| Endpoint | ms | KB | q | DB ms |
+|---|---|---|---|---|
+| `/reports/overview` | 1020 | 14 | 32 | 79 |
+| `/reports/director` | 843 | 222 | 12 | 60 |
+| `/reports/dashboard` | 788 | 10 | 19 | 59 |
+| `/notifications/debtor-reminders/preview` | 733 | 92 | 11 | 46 |
+| `/payments/debtors` | 619 | 703 | 8 | 31 |
+| `/attendance` (no filter, not used by the UI) | 458 | 6413 | 4 | 31 |
+| `/students` | 211 | 2796 | 4 | 47 |
+| `/payments` | 170 | 3054 (was 5.4 MB) | 4 | 29 |
+| `/invoices` | 82 | 1247 (was 2.1 MB) | 5 | 22 |
+| `/groups`, `/teachers`, `/leads`, `/schedule`, `/auth/me` | 7–19 | ≤ 61 | 4–6 | ≤ 7 |
+
+No N+1 patterns: query counts are constant (4–32) regardless of row counts.
+Report latency is dominated by in-process aggregation in Node (DB time is
+50–100 ms of ~0.8–1 s). Backlog (not defects at this size): server-side
+pagination/search for `/students`, `/payments`, `/attendance`; the group page's
+"add student" picker loads every student; SQL-side aggregation for reports.
+Load/concurrency testing: NOT TESTED.
+
+## Localization check (2026-10-07)
+
+- Dictionary `lib/i18n.ts`: 2,980 keys + 13 new, every key has UZ/RU/EN; all
+  2,396 keys referenced in code exist (0 missing). Six empty values are
+  intentional word-order suffixes (e.g. RU/EN put the number last).
+- RU and EN crawl of 23 pages (public, staff, cabinet): no untranslated UI
+  strings except L-02 (plan feature text from the DB) and the language name
+  "O'zbek tili" (correct). Hard-coded Uzbek messages found by code search →
+  L-01, fixed.

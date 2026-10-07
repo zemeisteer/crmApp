@@ -1,7 +1,7 @@
 # CRMApp — final audit report
 
-**Date:** 2026-10-06 · **Branch:** `claude/admiring-goldberg-jkri02` ·
-**Base commit:** `c6e480b` · **Audit commit:** `7f95958` (+ reports commit) ·
+**Date:** 2026-10-06 – 2026-10-07 · **Branch:** `claude/admiring-goldberg-jkri02` ·
+**Base commit:** `c6e480b` · **Audit commits:** `7f95958`, `513334f`, `4b18fa6` (+ reports commits) ·
 **Mode:** local only — nothing pushed, no PR, no deploy.
 
 ## 1. Overall result
@@ -20,12 +20,23 @@ were found, fixed, and verified** (1 high stored-XSS, 5 high auth/SSRF/privacy,
 further items were examined and consciously accepted as not-findings with
 reasons recorded.
 
+A second pass (2026-10-07) covered resilience, money limits, performance,
+accessibility and localization: **3 more backend defects** (F-12 API crash on
+a database restart, F-13 reports failing with 500 once totals pass 2^31 so'm,
+F-14 oversized amounts → 500), a payload trim on the payment/invoice lists,
+**5 accessibility fixes** (axe critical 10 → 0, contrast nodes 237 → 24,
+keyboard focus, modal focus trap) and **13 untranslated messages** were fixed
+and verified. One localization gap (plan feature text, L-02) is left for the
+backlog because it needs a schema change.
+
 What remains uncertain / out of scope: real external integrations (Telegram,
 SMS, Click/Payme live merchant, Resend e-mail) were not exercised with real
 credentials — their code paths are covered by mocked e2e tests only; Docker
 image build and the restore rehearsal could not run in this environment
 (network policy blocks the Alpine package CDN) and rely on GitHub CI for the
-same commit; load/scale behaviour was not measured.
+same commit; a single-user performance sample on a 2,400-student seeded
+tenant was taken (no N+1, reports ~0.8–1 s), but concurrent load was not
+measured; no screen reader was available for the accessibility pass.
 
 ## 2. Starting branch/commit and final local change inventory
 
@@ -41,6 +52,13 @@ same commit; load/scale behaviour was not measured.
   `students/students.service.ts`, `portal/portal-auth.guard.ts`,
   `email/email.service.ts`, `webhooks/webhooks.service.ts`,
   `docker-compose.prod.yml`.
+- Second pass, new: `backend/src/common/money.ts`. Modified: `db/db.module.ts`,
+  13 money DTOs (billing, cash, expenses, groups, invoices, payments, plans,
+  salary, teachers), `reports`/`salary`/`ledger`/`tenants` services,
+  `payments`/`invoices` services, `common/teacher-scope.ts`,
+  `test/audit-hardening.e2e-spec.ts`; frontend: `globals.css`,
+  `components/{DashboardShell,Modal,Sidebar}.tsx`, `lib/i18n.ts`, colour
+  tokens in ~90 page/component files, 9 pages for translated messages.
 - New files (reports): `AUDIT_FINDINGS.md`, `UI_TEST_MATRIX.md`,
   `COMPETITOR_GAP_ANALYSIS.md`, `OVERNIGHT_PROGRESS.md`, this file.
 
@@ -51,7 +69,11 @@ teacher reads another group's student PII; F-04 cross-tenant user disclosure +
 membership injection via guardian link; F-05 webhook SSRF; F-01 shared
 rate-limit bucket behind nginx. Medium: F-10 unrevocable cabinet tokens. Low:
 F-06 tokens in logs; F-07 empty-PATCH 500; F-08 false-success cross-tenant
-writes. Full reproduction, impact and fix per finding: `AUDIT_FINDINGS.md`.
+writes. Second pass: Medium F-12 (crash on DB restart), F-13 (report sums
+overflow), A-01…A-04 (contrast, focus, modal, unnamed inputs); Low F-14
+(oversized money → 500), P-01 (list payloads), A-05 (sidebar focus start),
+L-01 (hard-coded Uzbek messages), L-02 (plan text, not fixed). Full
+reproduction, impact and fix per finding: `AUDIT_FINDINGS.md`.
 
 ## 4. Fixes implemented (affected files)
 
@@ -62,6 +84,11 @@ outbound-URL guard blocks SSRF; uploads are stored and served as non-
 executable; `trust proxy` is set behind nginx; cabinet tokens end on PIN
 re-issue and student deletion; request logs and the dev e-mail fallback no
 longer leak tokens; empty/cross-tenant writes return correct codes.
+Second pass (`513334f`, `4b18fa6`): the pg pool survives lost connections;
+money totals are summed as bigint; money inputs are capped at 2 bn; the
+payment/invoice lists send only the student's list fields; frontend contrast,
+focus ring, skip link, `<main>`, modal focus management, settings labels,
+sidebar scroll without focus side effects, and `msg.*` translations.
 
 ## 5. Features added
 
@@ -77,12 +104,21 @@ Disposable DB `talimcrm_test` (unit) / `*_e2e` (e2e), `crmapp_audit` (probes).
 | Suite | Command | Result |
 |---|---|---|
 | Backend unit | `cd backend && npm run test` | 48 files, **290/290** (was 44/273; +17 audit unit tests) |
-| Backend e2e | `cd backend && npm run test:e2e` | 40 files, **248/248** (was 39/236; +12, `audit-hardening`) |
+| Backend e2e | `cd backend && npm run test:e2e` | 40 files, **250/250** (was 39/236; +14, `audit-hardening`) |
 | Backend typecheck / lint / build | `npx tsc --noEmit` · `npm run lint` · `npm run build` | pass · 0 errors (71 warnings) · pass |
 | Frontend typecheck / lint / build | `npx tsc --noEmit` · `npm run lint` · `npm run build` | pass · 0 errors (71 warnings) · pass |
 | Frontend unit | `TZ=America/Los_Angeles npm test` | **9/9** |
-| Browser (Playwright) | `cd e2e-browser && npm run build:frontend && npm test` | **20/20** |
+| Browser (Playwright) | `cd e2e-browser && NODE_ENV=production npm run build:frontend && npm test` | **20/20** (re-run after the second pass) |
+| Accessibility | axe-core 4.14 WCAG 2.1 A/AA, 16 pages | critical **0** (was 10); contrast nodes 24 (was 237) |
+| Performance | 27 endpoints, seeded 2,400-student tenant, `pg_stat_statements` | no N+1 (4–32 queries/request); slowest `/reports/overview` 1.0 s |
+| Localization | dictionary check + RU/EN crawl of 23 pages | 0 missing keys; L-01 fixed; L-02 open |
 | DB migrations | `npm run db:migrate` · `db:check-drift` · `db:verify-migrations` | pass (40 migrations, no drift, 7 upgrade scenarios) |
+
+All rows above were re-run on the final commit `4b18fa6` on 2026-10-07.
+Note: in this workspace `backend/.env` sets `NODE_ENV=development`, which the
+browser-test build inherits and then fails prerendering; set
+`NODE_ENV=production` for `build:frontend` locally (CI has no `.env`, so it is
+unaffected).
 
 Not runnable here (network policy): Docker image build / smoke / restore
 rehearsal — covered by GitHub CI `images`/`recovery` on `c6e480b`.
@@ -128,7 +164,12 @@ saved-card auto-charge. Sources and the full gap matrix:
   only mock-tested; need sandbox credentials. BLOCKED on credentials.
 - Docker image build & restore rehearsal — BLOCKED here (Alpine CDN denied);
   rely on GitHub CI.
-- Load/scale and real-dataset performance — NOT TESTED.
+- Concurrent load testing — NOT TESTED (single-user sample only, see
+  `AUDIT_FINDINGS.md` "Performance sample"). Backlog: server-side pagination
+  for students/payments/attendance, SQL-side report aggregation.
+- Screen-reader testing — NOT TESTED (no assistive technology here); 24
+  contrast nodes on status chips remain (design backlog).
+- L-02 plan feature text is stored in one language — backlog (schema change).
 - Backlog product gaps (section 10) — NOT STARTED by design.
 - N-01 per-object `/uploads` authorization — accepted with nosniff+sandbox;
   signed-URL/proxy download is a future hardening.
@@ -156,7 +197,7 @@ cd e2e-browser && npm run build:frontend && PW_EXECUTABLE_PATH=<chromium> npm te
 In the repo root: `FINAL_AUDIT_REPORT.md` (this), `AUDIT_FINDINGS.md`,
 `UI_TEST_MATRIX.md`, `COMPETITOR_GAP_ANALYSIS.md`, `OVERNIGHT_PROGRESS.md`.
 Code + tests are committed locally on `claude/admiring-goldberg-jkri02`
-(`7f95958` and the reports commit). A portable patch bundle covering all audit
+(`7f95958`, `513334f`, `4b18fa6` and the reports commits). A portable patch bundle covering all audit
 changes is written to the scratchpad and its location is reported in the chat
 summary.
 

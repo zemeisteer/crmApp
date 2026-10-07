@@ -18,6 +18,17 @@ API responses (`:4000/api/*`), browser console errors and page errors.
 | Parent cabinet (`/portal`, mobile) | 1 | 1 | 0 | 0 | 0 |
 | **Total** | 41 page routes exist | **122 page loads** | **0** | **0** | **0** |
 
+Second pass (2026-10-07, after commits `513334f` / `4b18fa6`):
+
+| Pass | Pages | Result |
+|---|---|---|
+| axe-core WCAG 2.1 A/AA scan (public, owner, cabinet) | 16 | PASS for critical (0); 24 serious contrast nodes left on 8 pages (status chips, landing mock-up) — see AUDIT_FINDINGS "Accessibility scan" |
+| Keyboard: Tab from page load, skip link, sidebar, modal open/Tab×25/Escape/restore | dashboard, students, settings, audit-log | PASS |
+| RU crawl (public + staff + cabinet) | 23 | PASS except L-02 (plan features on landing, from DB) |
+| EN crawl (public + staff + cabinet) | 23 | PASS |
+| Browser e2e suite after the changes (`e2e-browser`, Chromium) | 20 tests | PASS 20/20 |
+| Screen reader (NVDA / VoiceOver / TalkBack) | — | NOT TESTED (not available in the container) |
+
 Frontend routes discovered: 41 `page.tsx` files. Public/auth routes
 (`/login`, `/register`, `/onboarding`, `/invite/[token]`, `/verify/[code]`,
 `/t/[token]`, `/site/[subdomain]`, `/forgot-password`, `/reset-password`,

@@ -83,3 +83,19 @@ Phases 0-10 done. 10 defects fixed + verified + regression-tested; 2 accepted.
 - Portable bundle: see FINAL_AUDIT_REPORT §13 and the chat summary.
 
 Nothing pushed, no PR, no deploy.
+
+## Checkpoint — second pass complete (2026-10-07)
+
+Optional passes requested afterwards: resilience/money limits, performance,
+accessibility, localization.
+
+- Commit `513334f` (backend): F-12 pool error handler, F-13 bigint sums,
+  F-14 money caps, P-01 list payload trim; regression tests added.
+- Commit `4b18fa6` (frontend): A-01…A-05 accessibility, L-01 translations.
+- Verification on `4b18fa6`: backend tsc/lint/build pass, unit 290/290,
+  e2e 250/250; frontend tsc pass, lint 0 errors, unit 9/9, build pass;
+  browser 20/20; axe critical 0; RU/EN crawl clean except L-02.
+- Performance fixture seeded by SQL into `crmapp_audit` (tenant `perf-*`),
+  27 endpoints measured — table in AUDIT_FINDINGS.
+
+Nothing pushed, no PR, no deploy.
