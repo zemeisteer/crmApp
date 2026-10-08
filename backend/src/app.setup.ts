@@ -1,8 +1,7 @@
-import { join } from 'path';
 import { ValidationPipe } from '@nestjs/common';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { corsOriginChecker } from './common/cors';
-import { setUploadHeaders } from './common/upload.util';
+import { FilesService } from './files/files.service';
 
 /**
  * TRUST_PROXY: how many reverse proxies stand in front of the API (the
@@ -31,11 +30,13 @@ export function configureApp(app: NestExpressApplication, env: NodeJS.ProcessEnv
     credentials: true,
   });
 
-  // Uploaded homework/exam attachments — local disk in dev. For a
-  // multi-instance or ephemeral-filesystem production deploy, swap this
-  // for S3 (same pattern as the other optional integrations). Served from
-  // the app's own origin, hence the strict headers (common/upload.util.ts).
-  app.useStaticAssets(join(__dirname, '..', 'uploads'), { prefix: '/uploads/', setHeaders: setUploadHeaders });
+  // Uploaded files (local disk). /uploads/<name> serves only public files -
+  // a center's logo and public-site pictures; every private file (homework,
+  // submissions, exam materials, mock-test recordings) is reachable only
+  // through a signed link from /api/files/sign (files/files.service.ts).
+  // Served from the app's own origin, hence the strict headers
+  // (common/upload.util.ts).
+  app.getHttpAdapter().getInstance().get('/uploads/:name', app.get(FilesService).servePublic);
   app.useGlobalPipes(
     new ValidationPipe({ whitelist: true, transform: true, forbidNonWhitelisted: false }),
   );

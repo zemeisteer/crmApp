@@ -7,6 +7,7 @@ import { normalizeSiteContent, parseSiteContent } from './site-content';
 import { seatHeldWhere } from '../common/seats';
 import { LeadsService } from '../leads/leads.service';
 import { CreateTenantDto, UpdateTenantDto, UpdateTenantStatusDto, PublicApplyDto } from './dto/tenant.dto';
+import { FilesService } from '../files/files.service';
 
 // Faster than any human can fill the form in.
 const PUBLIC_FORM_MIN_FILL_MS = 2_000;
@@ -18,6 +19,7 @@ export class TenantsService {
   constructor(
     @Inject(DB) private readonly db: Database,
     private readonly leads: LeadsService,
+    private readonly files: FilesService,
   ) {}
 
   // Superadmin: every center with its size, this month's income, owner and
@@ -301,6 +303,9 @@ export class TenantsService {
       .where(eq(tenants.id, tenantId))
       .returning();
     if (!tenant) throw new NotFoundException('Mijoz topilmadi');
+    // The logo is public (login page, public site).
+    await this.files.unregister('PUBLIC_LOGO', tenantId);
+    await this.files.register(tenantId, file.filename, 'PUBLIC_LOGO', tenantId);
     return tenant;
   }
 

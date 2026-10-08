@@ -9,6 +9,7 @@ import { CurrentUser } from '../common/current-user.decorator';
 import { attachmentStorage, ATTACHMENT_MAX_SIZE } from '../common/upload.util';
 import { TenantsService } from './tenants.service';
 import { CreateTenantDto, UpdateTenantDto, UpdateTenantStatusDto, PublicApplyDto } from './dto/tenant.dto';
+import { FilesService } from '../files/files.service';
 
 class DeleteMyTenantDto {
   @IsString()
@@ -17,7 +18,10 @@ class DeleteMyTenantDto {
 
 @Controller('tenants')
 export class TenantsController {
-  constructor(private readonly service: TenantsService) {}
+  constructor(
+    private readonly service: TenantsService,
+    private readonly files: FilesService,
+  ) {}
 
   // Public: resolve a subdomain (used by the login page / public site)
   @Get('by-subdomain/:subdomain')
@@ -94,8 +98,10 @@ export class TenantsController {
     limits: { fileSize: 5 * 1024 * 1024 },
     fileFilter: (_req, file, cb) => cb(null, /^image\/(jpeg|png|webp)$/.test(file.mimetype)),
   }))
-  uploadSiteImage(@UploadedFile() file?: Express.Multer.File) {
+  async uploadSiteImage(@CurrentUser('tenantId') tenantId: string, @UploadedFile() file?: Express.Multer.File) {
     if (!file) throw new BadRequestException('JPG, PNG yoki WEBP rasm yuklang (5 MB gacha)');
+    // Pictures of the public site are public.
+    await this.files.register(tenantId, file.filename, 'PUBLIC_SITE', tenantId);
     return { path: file.filename };
   }
 

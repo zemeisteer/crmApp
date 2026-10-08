@@ -281,6 +281,27 @@
       "when": 1794000000000,
       "tag": "0039_member_access",
       "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1794100000000,
+      "tag": "0040_file_refs",
+      "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1794200000000,
+      "tag": "0041_custom_fields",
+      "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1794300000000,
+      "tag": "0042_makeup_lessons",
+      "breakpoints": true
     }
   ]
 }

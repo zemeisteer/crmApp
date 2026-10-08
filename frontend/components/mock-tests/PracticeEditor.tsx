@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { ApiError, fileUrl, mockTestsApi, type MockTest, type PracticeContent, type PracticeTest } from "@/lib/api";
+import { ApiError, mockTestsApi, type MockTest, type PracticeContent, type PracticeTest } from "@/lib/api";
 import { useLanguage } from "@/lib/i18n-context";
 import { ImageField, PartHeader, QuestionsEditor } from "@/components/mock-tests/MockTestEditor";
+import { PrivateImg } from "@/components/PrivateFile";
 
 const ACCENT = "#4F46E5";
 const card: React.CSSProperties = { background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 16 };
@@ -161,8 +162,7 @@ export default function PracticeEditor({ test, onSaved }: { test: PracticeTest; 
                   <input type="number" min={0} max={2000} className="field-input" style={{ width: 90 }} value={task.minWords} onChange={(e) => edit((c) => { c.sections[si].tasks[ti].minWords = Number(e.target.value) || 0; })} />
                   {task.imagePath ? (
                     <>
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={fileUrl(task.imagePath) ?? ""} alt="" style={{ height: 60, borderRadius: 8, border: "1px solid #EAE8E2" }} />
+                      <PrivateImg name={task.imagePath} scope="staff" alt="" style={{ height: 60, borderRadius: 8, border: "1px solid #EAE8E2" }} />
                       <button type="button" style={{ ...ghost, color: "#B23A47" }} onClick={() => edit((c) => { c.sections[si].tasks[ti].imagePath = null; })}>✕</button>
                     </>
                   ) : (
