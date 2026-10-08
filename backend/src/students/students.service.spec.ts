@@ -97,7 +97,8 @@ describe('StudentsService', () => {
       mockDb.query.students.findFirst.mockResolvedValue(student);
 
       const result = await service.findOne('tenant-1', 'st-1');
-      expect(result).toEqual(student);
+      // The center's own fields come with the student (none here).
+      expect(result).toEqual({ ...student, customFields: {} });
     });
 
     it('throws NotFoundException when student not found', async () => {
@@ -150,7 +151,7 @@ describe('StudentsService', () => {
       mockDb.update().set().where().returning.mockResolvedValue([updated]);
 
       const result = await service.update('tenant-1', 'user-1', 'st-1', { fullName: 'Yangi Ism' });
-      expect(result).toEqual(updated);
+      expect(result).toEqual({ ...updated, customFields: {} });
       expect(mockAudit.log).toHaveBeenCalledWith(expect.objectContaining({
         action: 'update',
         entityType: 'student',

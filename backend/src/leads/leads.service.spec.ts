@@ -152,7 +152,7 @@ describe('LeadsService', () => {
       updateResults.push([updated]);
 
       const result = await service.update('tenant-1', admin, 'lead-1', { fullName: 'Rustam Bek' });
-      expect(result).toEqual(updated);
+      expect(result).toEqual({ ...updated, customFields: {} });
     });
 
     it('refuses status changes through PATCH (they must use the transition policy)', async () => {
