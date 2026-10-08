@@ -1,4 +1,4 @@
-import { IsArray, IsBoolean, IsIn, IsOptional, IsString } from 'class-validator';
+import { IsArray, IsBoolean, IsIn, IsObject, IsOptional, IsString } from 'class-validator';
 
 export const LEFT_REASONS = ['PRICE', 'SCHEDULE', 'MOVED', 'RESULTS', 'TEACHER', 'GOAL_REACHED', 'OTHER'] as const;
 
@@ -19,6 +19,8 @@ export class CreateStudentDto {
   @IsOptional() @IsString() avatarUrl?: string;
   @IsOptional() @IsString() groupId?: string;
   @IsOptional() @IsArray() @IsString({ each: true }) groupIds?: string[];
+  // The center's own fields: definition id -> value (custom-fields).
+  @IsOptional() @IsObject() customFields?: Record<string, unknown>;
 }
 
 export class UpdateStudentDto {
@@ -36,6 +38,8 @@ export class UpdateStudentDto {
   @IsOptional() @IsString() avatarUrl?: string;
   // Why the student left (status LEFT); see LEFT_REASONS.
   @IsOptional() @IsIn(LEFT_REASONS) leftReason?: (typeof LEFT_REASONS)[number];
+  // Only the fields sent change; null clears one.
+  @IsOptional() @IsObject() customFields?: Record<string, unknown>;
 }
 
 export class LinkGuardianDto {

@@ -4,16 +4,30 @@ import ExcelJS from 'exceljs';
 import PDFDocument from 'pdfkit';
 import { DB, Database } from '../db/db.module';
 import { students, payments, tenants } from '../db/schema';
+import { CustomFieldsService } from '../custom-fields/custom-fields.service';
+import { spreadsheetSafe } from '../custom-fields/custom-field-values';
+
+// Every text cell goes through spreadsheetSafe: a name like "=HYPERLINK(...)"
+// typed into a form must not become a formula when the file is opened.
+function safeRow(row: Record<string, unknown>) {
+  return Object.fromEntries(Object.entries(row).map(([k, v]) => [k, spreadsheetSafe(v)]));
+}
 
 @Injectable()
 export class ExportService {
-  constructor(@Inject(DB) private readonly db: Database) {}
+  constructor(
+    @Inject(DB) private readonly db: Database,
+    private readonly customFields: CustomFieldsService,
+  ) {}
 
   async studentsWorkbook(tenantId: string): Promise<ExcelJS.Buffer> {
     const rows = await this.db.query.students.findMany({
       where: and(eq(students.tenantId, tenantId), isNull(students.deletedAt)),
       with: { enrollments: { with: { group: true } } },
     });
+
+    // The center's own fields, one column each (archived ones marked).
+    const custom = await this.customFields.exportColumns(tenantId, rows.map((s) => s.id));
 
     const wb = new ExcelJS.Workbook();
     const ws = wb.addWorksheet("O'quvchilar");
@@ -24,16 +38,18 @@ export class ExportService {
       { header: 'Manzil', key: 'address', width: 24 },
       { header: 'Guruhlar', key: 'groups', width: 30 },
       { header: "Ro'yxatdan o'tgan", key: 'startDate', width: 16 },
+      ...custom.columns.map((c) => ({ header: String(spreadsheetSafe(c.header)), key: `cf_${c.id}`, width: 20 })),
     ];
     for (const s of rows) {
-      ws.addRow({
+      ws.addRow(safeRow({
         fullName: s.fullName,
         phone: s.phone || '',
         parentPhone: s.parentPhone || '',
         address: s.address || '',
         groups: (s.enrollments || []).map((e) => e.group.name).join(', '),
         startDate: s.startDate ? new Date(s.startDate).toISOString().slice(0, 10) : '',
-      });
+        ...Object.fromEntries(custom.columns.map((c) => [`cf_${c.id}`, custom.text(s.id, c.id)])),
+      }));
     }
     ws.getRow(1).font = { bold: true };
     return wb.xlsx.writeBuffer();
@@ -57,14 +73,14 @@ export class ExportService {
       { header: 'Sana', key: 'paidAt', width: 16 },
     ];
     for (const p of rows) {
-      ws.addRow({
+      ws.addRow(safeRow({
         student: p.student?.fullName || '',
         forMonth: p.forMonth,
         amount: p.amount,
         method: p.method,
         status: p.status,
         paidAt: p.paidAt ? new Date(p.paidAt).toISOString().slice(0, 10) : '',
-      });
+      }));
     }
     ws.getRow(1).font = { bold: true };
     return wb.xlsx.writeBuffer();

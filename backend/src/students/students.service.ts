@@ -12,6 +12,7 @@ import { countOccupiedSeats } from '../common/seats';
 import { assertNoStudentTimeClash } from '../common/student-schedule';
 import { studentIdsInGroups, teacherGroupIds } from '../common/teacher-scope';
 import { WebhooksService } from '../webhooks/webhooks.service';
+import { CustomFieldsService } from '../custom-fields/custom-fields.service';
 
 @Injectable()
 export class StudentsService {
@@ -19,6 +20,7 @@ export class StudentsService {
     @Inject(DB) private readonly db: Database,
     private readonly audit: AuditService,
     private readonly webhooks: WebhooksService,
+    private readonly customFields: CustomFieldsService,
   ) {}
 
   // Guardian user rows are loaded with safe columns only: `user: true` used to
@@ -69,9 +71,10 @@ export class StudentsService {
       },
     });
     if (!student) throw new NotFoundException("O'quvchi topilmadi");
+    const customFields = await this.customFields.read(tenantId, 'STUDENT', id);
     // Payment history is finance data, not part of a teacher's view.
-    if (scope) return { ...student, payments: [] };
-    return student;
+    if (scope) return { ...student, payments: [], customFields };
+    return { ...student, customFields };
   }
 
   // Profile page: the student plus how they found the center, when they
@@ -96,8 +99,10 @@ export class StudentsService {
     // the same form returns the student made the first time, with nothing
     // done twice; the same key with a different form is a conflict.
     const key = idempotencyKey(rawKey);
-    const { groupId: _single, groupIds: _many, ...fields } = dto;
-    const hash = key ? requestHash('student.create', { ...fields, status: dto.status || 'ACTIVE', groupIds }) : null;
+    const { groupId: _single, groupIds: _many, customFields: customInput, ...fields } = dto;
+    // The center's required fields must be answered; checked before anything is written.
+    const customValues = await this.customFields.validate(tenantId, 'STUDENT', customInput, 'create');
+    const hash = key ? requestHash('student.create', { ...fields, status: dto.status || 'ACTIVE', groupIds, ...(customInput ? { customFields: customInput } : {}) }) : null;
     const replay = async (db: Pick<Database, 'select'>) => {
       if (!key) return null;
       const [prior] = await db
@@ -137,6 +142,8 @@ export class StudentsService {
             requestHash: hash,
           })
           .returning();
+
+        await this.customFields.write(tx, tenantId, 'STUDENT', student.id, customValues, userId);
 
         if (groupIds.length > 0) {
           const validGroups = await tx.query.groups.findMany({
@@ -181,6 +188,8 @@ export class StudentsService {
 
   async update(tenantId: string, userId: string, id: string, dto: UpdateStudentDto) {
     const before = await this.findOne(tenantId, id);
+    const { customFields: customInput, ...coreDto } = dto;
+    const customValues = await this.customFields.validate(tenantId, 'STUDENT', customInput, 'update', id);
 
     // Churn: remember when (and why) a student stops studying; coming back
     // clears it.
@@ -227,8 +236,10 @@ export class StudentsService {
       })
       .where(and(eq(students.id, id), eq(students.tenantId, tenantId)))
       .returning();
-    this.audit.log({ tenantId, userId, action: 'update', entityType: 'student', entityId: id, meta: dto });
-    return student;
+    await this.customFields.write(this.db, tenantId, 'STUDENT', id, customValues, userId);
+    // Custom values are logged by field, not by content.
+    this.audit.log({ tenantId, userId, action: 'update', entityType: 'student', entityId: id, meta: { ...coreDto, ...(customInput ? { customFields: Object.keys(customValues) } : {}) } });
+    return { ...student, customFields: await this.customFields.read(tenantId, 'STUDENT', id) };
   }
 
   async remove(tenantId: string, userId: string, id: string) {

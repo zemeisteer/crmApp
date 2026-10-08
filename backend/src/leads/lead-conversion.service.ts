@@ -11,6 +11,7 @@ import { AdmissionsEventsService } from './admissions-events.service';
 import { Actor, LeadsService, Tx } from './leads.service';
 import { normalizePhone } from './phone';
 import { ConvertLeadDto } from './dto/lead.dto';
+import { CustomFieldsService } from '../custom-fields/custom-fields.service';
 
 type StudentRow = typeof students.$inferSelect;
 
@@ -37,6 +38,7 @@ export class LeadConversionService {
     private readonly audit: AuditService,
     private readonly webhooks: WebhooksService,
     private readonly events: AdmissionsEventsService,
+    private readonly customFields: CustomFieldsService,
   ) {}
 
   // Students in the tenant whose own phone or parent phone is the same
@@ -120,6 +122,11 @@ export class LeadConversionService {
         }
       }
 
+      // The student's own fields: mapped lead values carried over, the form's
+      // values on top, the student's required fields answered. Checked
+      // before the student is written; an uncarriable value is an error.
+      const customValues = await this.customFields.valuesForConversion(tenantId, lead.id, dto.customFields, student?.id ?? null, tx);
+
       if (!student) {
         const branchId = dto.branchId || lead.preferredBranchId || null;
         if (branchId) {
@@ -139,6 +146,7 @@ export class LeadConversionService {
         }).returning();
         studentCreated = true;
       }
+      await this.customFields.write(tx, tenantId, 'STUDENT', student.id, customValues, actor.userId);
 
       // ---- 2. enrollments (existing Enrollment model, capacity enforced) ----
       const createdEnrollments: (typeof enrollments.$inferSelect)[] = [];

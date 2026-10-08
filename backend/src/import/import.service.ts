@@ -9,6 +9,8 @@ import { TeachersService } from '../teachers/teachers.service';
 import { countOccupiedSeats } from '../common/seats';
 import { normalizePhone } from '../leads/phone';
 import { AuditService } from '../audit/audit.service';
+import { CustomFieldsService } from '../custom-fields/custom-fields.service';
+import { type FieldDef, fieldForHeader, parseCell, validateForm } from '../custom-fields/custom-field-values';
 import {
   COLUMNS, MAX_ROWS, cellText, mapHeader, nameKey, parseGroup, parseStudent, parseTeacher, slotsOverlap,
   type GroupRow, type ImportKind, type StudentRow,
@@ -32,7 +34,7 @@ export interface ImportReport {
 type Plan =
   | { kind: 'teachers'; row: ImportRow; data: NonNullable<ReturnType<typeof parseTeacher>['value']> }
   | { kind: 'groups'; row: ImportRow; data: GroupRow & { teacherId?: string; branchId?: string } }
-  | { kind: 'students'; row: ImportRow; data: StudentRow & { groupIds: string[] } };
+  | { kind: 'students'; row: ImportRow; data: StudentRow & { groupIds: string[]; customFields: Record<string, unknown> } };
 
 /**
  * Excel import of teachers, groups and students, in two steps:
@@ -54,12 +56,21 @@ export class ImportService {
     private readonly groupsService: GroupsService,
     private readonly studentsService: StudentsService,
     private readonly audit: AuditService,
+    private readonly customFields: CustomFieldsService,
   ) {}
 
-  async template(kind: ImportKind) {
+  async template(kind: ImportKind, tenantId?: string) {
     const wb = new ExcelJS.Workbook();
     const ws = wb.addWorksheet('Import');
-    const cols = COLUMNS[kind];
+    // Students: the center's own fields are columns too (by their label).
+    const custom = kind === 'students' && tenantId ? await this.customFields.list(tenantId, 'STUDENT') : [];
+    const cols = [
+      ...COLUMNS[kind],
+      ...custom.map((d) => ({
+        key: `cf_${d.id}`, title: d.label, aliases: [], required: d.required, example: '',
+        hint: d.options.length ? d.options.filter((o) => !o.archived).map((o) => o.label).join(' | ') : d.fieldType,
+      })),
+    ];
     ws.columns = cols.map((c) => ({ header: c.required ? `${c.title} *` : c.title, key: c.key, width: Math.max(14, c.title.length + 4, c.example.length + 2) }));
     ws.addRow(Object.fromEntries(cols.map((c) => [c.key, c.example])));
     ws.getRow(1).font = { bold: true };
@@ -82,12 +93,15 @@ export class ImportService {
     const header: string[] = [];
     ws.getRow(1).eachCell({ includeEmpty: true }, (cell, col) => { header[col] = cellText(cell.value).replace(/\s*\*$/, ''); });
     const { at, unknown, missing } = mapHeader(kind, header);
+    // Columns no built-in field claims: kept by their header, for the center's own fields.
+    const extra = header.map((h, col) => ({ h, col })).filter(({ h, col }) => h && !Object.values(at).includes(col));
     if (missing.length) throw new BadRequestException(`Majburiy ustun yo'q: ${missing.join(', ')}. Shablonni yuklab oling.`);
     const rows: Array<{ row: number; values: Record<string, string> }> = [];
     ws.eachRow({ includeEmpty: false }, (r, n) => {
       if (n === 1) return;
       const values: Record<string, string> = {};
       for (const [key, col] of Object.entries(at)) values[key] = cellText(r.getCell(col).value).trim();
+      for (const { h, col } of extra) values[`@${h}`] = cellText(r.getCell(col).value).trim();
       if (Object.values(values).some(Boolean)) rows.push({ row: n, values });
     });
     if (rows.length === 0) throw new BadRequestException("Faylda ma'lumot qatori yo'q");
@@ -171,15 +185,31 @@ export class ImportService {
     }
 
     if (kind === 'students') {
+      // Custom-field columns by label or "cf:<key>"; they are no longer "unknown".
+      const defs = (await this.customFields.list(tenantId, 'STUDENT')) as (FieldDef & { key: string })[];
+      const customCols = new Map<string, FieldDef & { key: string }>();
+      for (const u of unknown) {
+        const d = fieldForHeader(defs, u);
+        if (d) customCols.set(u, d);
+      }
+      for (const u of customCols.keys()) unknown.splice(unknown.indexOf(u), 1);
       const gs = await this.db.select({ id: groups.id, name: groups.name, maxStudents: groups.maxStudents }).from(groups).where(and(eq(groups.tenantId, tenantId), isNull(groups.deletedAt)));
       const ss = await this.db.select({ fullName: students.fullName, phone: students.phone, parentPhone: students.parentPhone }).from(students).where(and(eq(students.tenantId, tenantId), isNull(students.deletedAt)));
       const key = (s: { fullName: string; phone?: string | null; parentPhone?: string | null }) => `${nameKey(s.fullName)}|${normalizePhone(s.phone) ?? ''}|${normalizePhone(s.parentPhone) ?? ''}`;
       const existing = new Set(ss.map(key));
       const wanted = new Map<string, number>(); // group id -> seats this file takes
-      const pending: Array<{ r: ImportRow; data: StudentRow & { groupIds: string[] } }> = [];
+      const pending: Array<{ r: ImportRow; data: StudentRow & { groupIds: string[]; customFields: Record<string, unknown> } }> = [];
       for (const { row, values } of rows) {
         const p = parseStudent(values);
-        const r: ImportRow = { row, values, status: 'create', errors: [...p.errors] };
+        const r: ImportRow = { row, values: Object.fromEntries(Object.entries(values).filter(([k]) => !k.startsWith('@'))), status: 'create', errors: [...p.errors] };
+        const customInput: Record<string, unknown> = {};
+        for (const [header, def] of customCols) {
+          const c = parseCell(def, values[`@${header}`] ?? '');
+          if (c.error) r.errors.push(`${def.label}: ${c.error}`);
+          else if (c.value !== undefined) customInput[def.id] = c.value;
+          if (values[`@${header}`]) r.values[header] = values[`@${header}`];
+        }
+        for (const e of validateForm(defs, customInput, 'create').errors) r.errors.push(`${e.label}: ${e.error}`);
         if (p.value) {
           const st = p.value;
           dup(`s:${key(st)}`, row, r);
@@ -194,7 +224,7 @@ export class ImportService {
             r.note = "Bu o'quvchi bor";
           } else if (!r.errors.length) {
             for (const id of groupIds) wanted.set(id, (wanted.get(id) ?? 0) + 1);
-            pending.push({ r, data: { ...st, groupIds } });
+            pending.push({ r, data: { ...st, groupIds, customFields: customInput } });
           }
         }
         out.push(r);
@@ -240,7 +270,7 @@ export class ImportService {
           });
         } else {
           const s = p.data;
-          await this.studentsService.create(tenantId, userId, { fullName: s.fullName, phone: s.phone, parentPhone: s.parentPhone, birthDate: s.birthDate, gender: s.gender, groupIds: s.groupIds });
+          await this.studentsService.create(tenantId, userId, { fullName: s.fullName, phone: s.phone, parentPhone: s.parentPhone, birthDate: s.birthDate, gender: s.gender, groupIds: s.groupIds, customFields: s.customFields });
         }
         created++;
       } catch (err) {

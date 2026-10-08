@@ -27,9 +27,9 @@ export class ImportController {
   constructor(private readonly service: ImportService) {}
 
   @Get(':kind/template.xlsx')
-  async template(@Param('kind') kind: string, @Res() res: Response) {
+  async template(@CurrentUser('tenantId') tenantId: string, @Param('kind') kind: string, @Res() res: Response) {
     const k = kindOf(kind);
-    const buffer = await this.service.template(k);
+    const buffer = await this.service.template(k, tenantId);
     res.set({ 'Content-Type': XLSX, 'Content-Disposition': `attachment; filename="import-${k}.xlsx"` });
     res.send(Buffer.from(buffer));
   }

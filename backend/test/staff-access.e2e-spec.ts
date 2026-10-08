@@ -78,6 +78,8 @@ describe('Staff access lists (e2e)', () => {
       // Links to uploaded files: open to all staff, each file checked against
       // the record it belongs to and the caller's own list (files.service.ts).
       'POST /api/files/sign',
+      // The center's custom-field definitions: every form needs them to render.
+      'GET /api/custom-fields',
     ]);
     const unclassified = app.get(RouteAccessService).routes()
       .filter((r) => (r.rolesGuard || r.permissionsGuard) && CONFIGURABLE_ROLES.some((role) => RouteAccessService.allows(r, role)))

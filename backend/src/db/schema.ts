@@ -9,6 +9,7 @@ import {
   primaryKey,
   index,
   jsonb,
+  check,
   type AnyPgColumn,
 } from 'drizzle-orm/pg-core';
 import { relations, sql } from 'drizzle-orm';
@@ -1688,4 +1689,53 @@ export const fileRefs = pgTable('file_refs', {
   pk: primaryKey({ columns: [t.name, t.kind, t.ownerId] }),
   nameIdx: index('file_refs_name_idx').on(t.name),
   ownerIdx: index('file_refs_owner_idx').on(t.kind, t.ownerId),
+}));
+
+// ---------------------------------------------------------------------------
+// Custom fields a center defines for its students and leads
+// (custom-fields/custom-fields.service.ts). Options carry stable ids, so a
+// renamed option keeps every record that chose it; archived fields keep
+// their values.
+export const customFieldDefinitions = pgTable('custom_field_definitions', {
+  id: text('id').primaryKey().$defaultFn(() => createId()),
+  tenantId: text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  entityType: text('entity_type').notNull(), // STUDENT | LEAD
+  key: text('key').notNull(),
+  label: text('label').notNull(),
+  // TEXT | LONG_TEXT | NUMBER | DATE | BOOLEAN | SELECT | MULTI_SELECT
+  fieldType: text('field_type').notNull(),
+  required: boolean('required').notNull().default(false),
+  sortOrder: integer('sort_order').notNull().default(0),
+  options: jsonb('options').$type<{ id: string; label: string; archived?: boolean }[]>().notNull().default([]),
+  // Shown (read-only) in the student's cabinet; off unless the center turns it on.
+  portalVisible: boolean('portal_visible').notNull().default(false),
+  // A lead field's value goes to this student field when the lead becomes a student.
+  studentFieldId: text('student_field_id').references((): AnyPgColumn => customFieldDefinitions.id, { onDelete: 'set null' }),
+  // Lead option id -> student option id, for select fields.
+  optionMap: jsonb('option_map').$type<Record<string, string>>(),
+  archivedAt: timestamp('archived_at'),
+  createdByUserId: text('created_by_user_id').references(() => users.id, { onDelete: 'set null' }),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+}, (t) => ({
+  keyUniq: uniqueIndex('custom_field_definitions_key_uniq').on(t.tenantId, t.entityType, t.key),
+  tenantIdx: index('custom_field_definitions_tenant_idx').on(t.tenantId, t.entityType),
+}));
+
+// One row per record and field: editing one field never touches another.
+export const customFieldValues = pgTable('custom_field_values', {
+  id: text('id').primaryKey().$defaultFn(() => createId()),
+  tenantId: text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  definitionId: text('definition_id').notNull().references(() => customFieldDefinitions.id, { onDelete: 'cascade' }),
+  studentId: text('student_id').references(() => students.id, { onDelete: 'cascade' }),
+  leadId: text('lead_id').references(() => leads.id, { onDelete: 'cascade' }),
+  value: jsonb('value').$type<string | number | boolean | string[]>().notNull(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+  updatedByUserId: text('updated_by_user_id').references(() => users.id, { onDelete: 'set null' }),
+}, (t) => ({
+  studentUniq: uniqueIndex('custom_field_values_student_uniq').on(t.definitionId, t.studentId),
+  leadUniq: uniqueIndex('custom_field_values_lead_uniq').on(t.definitionId, t.leadId),
+  studentIdx: index('custom_field_values_student_idx').on(t.tenantId, t.studentId),
+  leadIdx: index('custom_field_values_lead_idx').on(t.tenantId, t.leadId),
+  oneOwner: check('custom_field_values_one_owner', sql`(${t.studentId} IS NULL) <> (${t.leadId} IS NULL)`),
 }));

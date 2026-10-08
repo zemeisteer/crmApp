@@ -28,8 +28,8 @@ describe('LeadConversionService', () => {
     mockDb.transaction = vi.fn(async (cb: (tx: unknown) => unknown) => cb(mockDb));
     events = { emit: vi.fn() };
     const audit = { log: vi.fn() };
-    const leads = new LeadsService(mockDb, audit as any, events as any);
-    service = new LeadConversionService(mockDb, leads, {} as any, audit as any, { dispatch: vi.fn() } as any, events as any);
+    const leads = new LeadsService(mockDb, audit as any, events as any, { validate: vi.fn().mockResolvedValue({}), write: vi.fn(), read: vi.fn().mockResolvedValue({}), valuesForConversion: vi.fn().mockResolvedValue({}) } as any);
+    service = new LeadConversionService(mockDb, leads, {} as any, audit as any, { dispatch: vi.fn() } as any, events as any, { valuesForConversion: vi.fn().mockResolvedValue({}), write: vi.fn() } as any);
   });
 
   it('returns the existing student if lead was already converted (idempotent, no writes)', async () => {

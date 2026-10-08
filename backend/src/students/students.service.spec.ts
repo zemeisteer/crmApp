@@ -64,7 +64,7 @@ describe('StudentsService', () => {
       dispatch: vi.fn().mockResolvedValue(undefined),
     };
 
-    service = new StudentsService(mockDb, mockAudit, mockWebhooks);
+    service = new StudentsService(mockDb, mockAudit, mockWebhooks, { validate: vi.fn().mockResolvedValue({}), write: vi.fn(), read: vi.fn().mockResolvedValue({}) } as any);
   });
 
   describe('findAll', () => {

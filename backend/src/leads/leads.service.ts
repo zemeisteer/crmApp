@@ -38,6 +38,7 @@ import {
   type TransitionContext,
 } from './lead-lifecycle';
 import { maskPhone, normalizeEmail, normalizePhone } from './phone';
+import { CustomFieldsService } from '../custom-fields/custom-fields.service';
 import {
   AssignLeadDto,
   CreateActivityDto,
@@ -103,6 +104,7 @@ export class LeadsService {
     @Inject(DB) private readonly db: Database,
     private readonly audit: AuditService,
     private readonly events: AdmissionsEventsService,
+    private readonly customFields: CustomFieldsService,
   ) {}
 
   // ==================== READ ====================
@@ -257,7 +259,8 @@ export class LeadsService {
       createdBy: createdBy ?? null,
       utm: meta.utm ?? null,
     };
-    return { ...lead, assignedManagerActive, allowedTransitions: allowedTransitions(lead.status, { tookPlacementTest: attempts.length > 0 }), origin, placementAttempts: attempts };
+    const customFields = await this.customFields.read(tenantId, 'LEAD', id);
+    return { ...lead, assignedManagerActive, allowedTransitions: allowedTransitions(lead.status, { tookPlacementTest: attempts.length > 0 }), origin, placementAttempts: attempts, customFields };
   }
 
   async timeline(tenantId: string, id: string) {
@@ -479,6 +482,9 @@ export class LeadsService {
     if (duplicates.length > 0 && !dto.allowDuplicate) throw this.duplicateConflict(duplicates);
     const duplicateOfLeadId = duplicates.length > 0 ? duplicates[0].id : null;
 
+    // The center's required lead fields (staff form; public forms do not ask them).
+    const customValues = await this.customFields.validate(tenantId, 'LEAD', dto.customFields, 'create');
+
     let lead: LeadRow;
     try {
       lead = await this.db.transaction(async (tx) => {
@@ -514,6 +520,7 @@ export class LeadsService {
             metadata: { followUpAt: row.followUpAt.toISOString() },
           });
         }
+        await this.customFields.write(tx, tenantId, 'LEAD', row.id, customValues, actor.userId);
         return row;
       });
     } catch (err) {
@@ -657,6 +664,7 @@ export class LeadsService {
     }
     const lead = await this.getLeadRow(this.db, tenantId, id);
     this.assertMutable(lead);
+    const customValues = await this.customFields.validate(tenantId, 'LEAD', dto.customFields, 'update', id);
     await this.validateRefs(this.db, tenantId, dto, lead);
 
     const set: Partial<typeof leads.$inferInsert> = { updatedAt: new Date() };
@@ -694,7 +702,8 @@ export class LeadsService {
         .where(and(eq(leads.id, id), eq(leads.tenantId, tenantId), isNull(leads.archivedAt)))
         .returning();
       if (!updated) throw new ConflictException({ code: 'LEAD_ARCHIVED', message: 'Lid arxivlangan' });
-      return updated;
+      await this.customFields.write(this.db, tenantId, 'LEAD', id, customValues, actor.userId);
+      return { ...updated, customFields: await this.customFields.read(tenantId, 'LEAD', id) };
     } catch (err) {
       if (isUniqueViolation(err)) {
         throw this.duplicateConflict(await this.findDuplicates(this.db, tenantId, set.phoneNormalized ?? null, set.emailNormalized ?? null, id));

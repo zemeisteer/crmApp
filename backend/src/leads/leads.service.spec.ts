@@ -47,7 +47,7 @@ describe('LeadsService', () => {
     mockDb.transaction = vi.fn(async (cb: (tx: unknown) => unknown) => cb(mockDb));
     audit = { log: vi.fn() };
     events = { emit: vi.fn() };
-    service = new LeadsService(mockDb, audit as any, events as any);
+    service = new LeadsService(mockDb, audit as any, events as any, { validate: vi.fn().mockResolvedValue({}), write: vi.fn(), read: vi.fn().mockResolvedValue({}), valuesForConversion: vi.fn().mockResolvedValue({}) } as any);
   });
 
   describe('findAll', () => {
