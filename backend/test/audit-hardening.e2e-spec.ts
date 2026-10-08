@@ -173,7 +173,10 @@ describe('Audit hardening (e2e)', () => {
         .expect(201);
       const stored: string = res.body.attachmentPath;
       expect(stored.endsWith('.html')).toBe(false);
-      const served = await http().get(`/uploads/${stored}`).expect(200);
+      // A homework file is private: not by name, only through a signed link.
+      await http().get(`/uploads/${stored}`).expect(404);
+      const link: string = (await http().post('/api/files/sign').set(bearer(t1)).send({ names: [stored] }).expect(201)).body[stored];
+      const served = await http().get(link).expect(200);
       expect(served.headers['x-content-type-options']).toBe('nosniff');
       expect(served.headers['content-disposition']).toBe('attachment');
       expect(served.headers['content-security-policy']).toContain('sandbox');

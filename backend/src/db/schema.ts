@@ -9,6 +9,7 @@ import {
   primaryKey,
   index,
   jsonb,
+  check,
   type AnyPgColumn,
 } from 'drizzle-orm/pg-core';
 import { relations, sql } from 'drizzle-orm';
@@ -222,6 +223,8 @@ export const tenants = pgTable('tenants', {
   teachingCategories: text('teaching_categories').array(),
   country: text('country').notNull().default('UZ'),
   timezone: text('timezone').notNull().default('Asia/Tashkent'),
+  // Make-up credits expire this many days after they are issued; null: never.
+  makeupCreditDays: integer('makeup_credit_days'),
   // Public site content written by the center (JSON, see tenants/site-content.ts).
   siteContent: text('site_content'),
   // Questions a student may ask the AI tutor in Telegram per day (0 = off).
@@ -1666,3 +1669,166 @@ export const notificationsRelations = relations(notifications, ({ one }) => ({
 
 
 
+
+// ---------------------------------------------------------------------------
+// Uploaded files and what each one belongs to. A file is readable only
+// through one of its references: PUBLIC_* kinds by anyone at /uploads/<name>,
+// every other kind through a short-lived signed link handed out after the
+// caller is checked against the owning record (files/files.service.ts).
+// One name can belong to several records (the same recording in two tests).
+export const fileRefs = pgTable('file_refs', {
+  tenantId: text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  name: text('name').notNull(),
+  // PUBLIC_LOGO | PUBLIC_SITE | HOMEWORK_ATTACHMENT | HOMEWORK_SUBMISSION |
+  // EXAM_MATERIAL | MOCK_ASSET | MOCK_IMPORT | MOCK_SPEAKING
+  kind: text('kind').notNull(),
+  // The owning record (homework, exam, mock test, import or attempt id; the tenant for PUBLIC_*).
+  ownerId: text('owner_id').notNull(),
+  // The student a submission or recording belongs to.
+  studentId: text('student_id'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+}, (t) => ({
+  pk: primaryKey({ columns: [t.name, t.kind, t.ownerId] }),
+  nameIdx: index('file_refs_name_idx').on(t.name),
+  ownerIdx: index('file_refs_owner_idx').on(t.kind, t.ownerId),
+}));
+
+// ---------------------------------------------------------------------------
+// Custom fields a center defines for its students and leads
+// (custom-fields/custom-fields.service.ts). Options carry stable ids, so a
+// renamed option keeps every record that chose it; archived fields keep
+// their values.
+export const customFieldDefinitions = pgTable('custom_field_definitions', {
+  id: text('id').primaryKey().$defaultFn(() => createId()),
+  tenantId: text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  entityType: text('entity_type').notNull(), // STUDENT | LEAD
+  key: text('key').notNull(),
+  label: text('label').notNull(),
+  // TEXT | LONG_TEXT | NUMBER | DATE | BOOLEAN | SELECT | MULTI_SELECT
+  fieldType: text('field_type').notNull(),
+  required: boolean('required').notNull().default(false),
+  sortOrder: integer('sort_order').notNull().default(0),
+  options: jsonb('options').$type<{ id: string; label: string; archived?: boolean }[]>().notNull().default([]),
+  // Shown (read-only) in the student's cabinet; off unless the center turns it on.
+  portalVisible: boolean('portal_visible').notNull().default(false),
+  // A lead field's value goes to this student field when the lead becomes a student.
+  studentFieldId: text('student_field_id').references((): AnyPgColumn => customFieldDefinitions.id, { onDelete: 'set null' }),
+  // Lead option id -> student option id, for select fields.
+  optionMap: jsonb('option_map').$type<Record<string, string>>(),
+  archivedAt: timestamp('archived_at'),
+  createdByUserId: text('created_by_user_id').references(() => users.id, { onDelete: 'set null' }),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+}, (t) => ({
+  keyUniq: uniqueIndex('custom_field_definitions_key_uniq').on(t.tenantId, t.entityType, t.key),
+  tenantIdx: index('custom_field_definitions_tenant_idx').on(t.tenantId, t.entityType),
+}));
+
+// One row per record and field: editing one field never touches another.
+export const customFieldValues = pgTable('custom_field_values', {
+  id: text('id').primaryKey().$defaultFn(() => createId()),
+  tenantId: text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  definitionId: text('definition_id').notNull().references(() => customFieldDefinitions.id, { onDelete: 'cascade' }),
+  studentId: text('student_id').references(() => students.id, { onDelete: 'cascade' }),
+  leadId: text('lead_id').references(() => leads.id, { onDelete: 'cascade' }),
+  value: jsonb('value').$type<string | number | boolean | string[]>().notNull(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+  updatedByUserId: text('updated_by_user_id').references(() => users.id, { onDelete: 'set null' }),
+}, (t) => ({
+  studentUniq: uniqueIndex('custom_field_values_student_uniq').on(t.definitionId, t.studentId),
+  leadUniq: uniqueIndex('custom_field_values_lead_uniq').on(t.definitionId, t.leadId),
+  studentIdx: index('custom_field_values_student_idx').on(t.tenantId, t.studentId),
+  leadIdx: index('custom_field_values_lead_idx').on(t.tenantId, t.leadId),
+  oneOwner: check('custom_field_values_one_owner', sql`(${t.studentId} IS NULL) <> (${t.leadId} IS NULL)`),
+}));
+
+// ---------------------------------------------------------------------------
+// One occurrence of a group's weekly lesson called off (a holiday, the
+// teacher ill). The weekly timetable stays as it is; calendars show the day
+// as cancelled and its students may get a make-up credit.
+export const lessonCancellations = pgTable('lesson_cancellations', {
+  id: text('id').primaryKey().$defaultFn(() => createId()),
+  tenantId: text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  groupId: text('group_id').notNull().references(() => groups.id, { onDelete: 'cascade' }),
+  date: text('date').notNull(), // YYYY-MM-DD, center-local
+  reason: text('reason'),
+  cancelledByUserId: text('cancelled_by_user_id').references(() => users.id, { onDelete: 'set null' }),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+}, (t) => ({
+  occurrence: uniqueIndex('lesson_cancellations_group_date_uniq').on(t.groupId, t.date),
+  tenantIdx: index('lesson_cancellations_tenant_idx').on(t.tenantId, t.date),
+}));
+
+// A make-up lesson owed to a student for one missed occurrence (group, date).
+// Issued by staff, never automatically; no cash value. Status:
+// ISSUED -> BOOKED -> USED (attended) | FORFEITED (missed the make-up);
+// a booking cancelled puts it back to ISSUED; staff may reinstate a
+// forfeited credit or void (CANCELLED) an unused one.
+export const makeupCredits = pgTable('makeup_credits', {
+  id: text('id').primaryKey().$defaultFn(() => createId()),
+  tenantId: text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  studentId: text('student_id').notNull().references(() => students.id, { onDelete: 'cascade' }),
+  originGroupId: text('origin_group_id').notNull().references(() => groups.id, { onDelete: 'cascade' }),
+  originDate: text('origin_date').notNull(), // YYYY-MM-DD
+  reason: text('reason').notNull(), // ABSENT | LESSON_CANCELLED
+  status: text('status').notNull().default('ISSUED'),
+  note: text('note'),
+  issuedByUserId: text('issued_by_user_id').references(() => users.id, { onDelete: 'set null' }),
+  issuedAt: timestamp('issued_at').notNull().defaultNow(),
+  expiresAt: timestamp('expires_at'),
+  closedAt: timestamp('closed_at'),
+  closedByUserId: text('closed_by_user_id').references(() => users.id, { onDelete: 'set null' }),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+}, (t) => ({
+  // One live credit per missed occurrence (a voided one frees it again).
+  oncePerOccurrence: uniqueIndex('makeup_credits_once_per_occurrence').on(t.studentId, t.originGroupId, t.originDate).where(sql`status <> 'CANCELLED'`),
+  tenantIdx: index('makeup_credits_tenant_idx').on(t.tenantId, t.status),
+  studentIdx: index('makeup_credits_student_idx').on(t.studentId),
+}));
+
+// Where and when a credit is used: a seat in another group's lesson on a
+// date (GROUP_LESSON) or a dedicated session with a teacher (SESSION).
+export const makeupBookings = pgTable('makeup_bookings', {
+  id: text('id').primaryKey().$defaultFn(() => createId()),
+  tenantId: text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  creditId: text('credit_id').notNull().references(() => makeupCredits.id, { onDelete: 'cascade' }),
+  studentId: text('student_id').notNull().references(() => students.id, { onDelete: 'cascade' }),
+  mode: text('mode').notNull(), // GROUP_LESSON | SESSION
+  targetGroupId: text('target_group_id').references(() => groups.id, { onDelete: 'cascade' }),
+  date: text('date').notNull(), // YYYY-MM-DD, center-local
+  startTime: text('start_time').notNull(), // HH:MM
+  endTime: text('end_time').notNull(),
+  teacherId: text('teacher_id').references(() => teachers.id, { onDelete: 'set null' }),
+  roomId: text('room_id').references(() => rooms.id, { onDelete: 'set null' }),
+  branchId: text('branch_id').references(() => branches.id, { onDelete: 'set null' }),
+  status: text('status').notNull().default('BOOKED'), // BOOKED | ATTENDED | MISSED | CANCELLED
+  note: text('note'),
+  createdByUserId: text('created_by_user_id').references(() => users.id, { onDelete: 'set null' }),
+  markedByUserId: text('marked_by_user_id').references(() => users.id, { onDelete: 'set null' }),
+  markedAt: timestamp('marked_at'),
+  cancelledAt: timestamp('cancelled_at'),
+  cancelledByUserId: text('cancelled_by_user_id').references(() => users.id, { onDelete: 'set null' }),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+}, (t) => ({
+  // A credit is used by one live booking at most.
+  oneLiveBooking: uniqueIndex('makeup_bookings_one_live_per_credit').on(t.creditId).where(sql`status IN ('BOOKED', 'ATTENDED')`),
+  tenantDateIdx: index('makeup_bookings_tenant_date_idx').on(t.tenantId, t.date),
+  groupDateIdx: index('makeup_bookings_group_date_idx').on(t.targetGroupId, t.date),
+  teacherIdx: index('makeup_bookings_teacher_idx').on(t.teacherId, t.date),
+  studentIdx: index('makeup_bookings_student_idx').on(t.studentId, t.date),
+}));
+
+export const makeupCreditsRelations = relations(makeupCredits, ({ one, many }) => ({
+  student: one(students, { fields: [makeupCredits.studentId], references: [students.id] }),
+  originGroup: one(groups, { fields: [makeupCredits.originGroupId], references: [groups.id] }),
+  bookings: many(makeupBookings),
+}));
+
+export const makeupBookingsRelations = relations(makeupBookings, ({ one }) => ({
+  credit: one(makeupCredits, { fields: [makeupBookings.creditId], references: [makeupCredits.id] }),
+  student: one(students, { fields: [makeupBookings.studentId], references: [students.id] }),
+  targetGroup: one(groups, { fields: [makeupBookings.targetGroupId], references: [groups.id] }),
+  teacher: one(teachers, { fields: [makeupBookings.teacherId], references: [teachers.id] }),
+  room: one(rooms, { fields: [makeupBookings.roomId], references: [rooms.id] }),
+}));

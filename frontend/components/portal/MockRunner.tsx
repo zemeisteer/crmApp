@@ -5,9 +5,10 @@ import QuestionInput from "@/components/tests/QuestionInput";
 import ExamMode from "@/components/portal/ExamMode";
 import FeedbackView, { bandColor } from "@/components/mock-tests/FeedbackView";
 import { SECTION_ICON, sectionKey } from "@/components/mock-tests/sections";
-import { ApiError, fileUrl, MOCK_SECTIONS, portalMockApi, type MockSection, type PortalMockAttempt } from "@/lib/api";
+import { ApiError, MOCK_SECTIONS, portalMockApi, type MockSection, type PortalMockAttempt } from "@/lib/api";
 import { useLanguage } from "@/lib/i18n-context";
 import { PORTAL_ACCENT as ACCENT, portalCard as card } from "@/components/portal/PortalTabs";
+import { PrivateImg, PrivateAudio } from "@/components/PrivateFile";
 
 type Text = Record<string, string>;
 const DURATION_SPEAKING_MIN = 15;
@@ -235,7 +236,7 @@ function ListeningPlayer({ part }: { part: PortalMockAttempt["test"]["content"][
   const { t } = useLanguage();
   const [plays, setPlays] = useState(0);
   const [speaking, setSpeaking] = useState(false);
-  if (part.audioPath) return <audio controls controlsList="nodownload" src={fileUrl(part.audioPath) ?? undefined} style={{ width: "100%" }} />;
+  if (part.audioPath) return <PrivateAudio controls controlsList="nodownload" name={part.audioPath} scope="portal" style={{ width: "100%" }} />;
   if (!part.tts) return null;
   const canSpeak = typeof window !== "undefined" && "speechSynthesis" in window;
   function play() {
@@ -347,8 +348,7 @@ function WritingSection({ a, answers, onAnswer, readOnly }: { a: PortalMockAttem
             </div>
             <div style={{ fontSize: 14, lineHeight: 1.6, whiteSpace: "pre-wrap", background: "#F7F7F5", borderRadius: 12, padding: 12 }}>{task.prompt}</div>
             {task.imagePath && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={fileUrl(task.imagePath) ?? ""} alt="" style={{ maxWidth: "100%", maxHeight: 360, objectFit: "contain", borderRadius: 12, border: "1px solid #EAE8E2" }} />
+              <PrivateImg name={task.imagePath} scope="portal" alt="" style={{ maxWidth: "100%", maxHeight: 360, objectFit: "contain", borderRadius: 12, border: "1px solid #EAE8E2" }} />
             )}
             <textarea
               value={text}
@@ -547,7 +547,7 @@ function SpeakingQuestion({ attemptId, k, question, prep, limit, saved, readOnly
       {phase === "rec" && live && <div style={{ fontSize: 13, color: "#4A4E58", fontStyle: "italic" }}>{live}</div>}
       {saved && phase === "idle" && (
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-          {saved.audio && <audio controls src={fileUrl(saved.audio) ?? undefined} style={{ width: "100%", height: 36 }} />}
+          {saved.audio && <PrivateAudio controls name={saved.audio} scope="portal" style={{ width: "100%", height: 36 }} />}
           <div style={{ fontSize: 12.5, color: "#6B6E78" }}>
             ✓ {t("pmk.recorded")}{saved.seconds ? ` · ${saved.seconds}s` : ""}{saved.transcript ? ` · “${saved.transcript}”` : ""}
           </div>

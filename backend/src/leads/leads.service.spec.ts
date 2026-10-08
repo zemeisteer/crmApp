@@ -47,7 +47,7 @@ describe('LeadsService', () => {
     mockDb.transaction = vi.fn(async (cb: (tx: unknown) => unknown) => cb(mockDb));
     audit = { log: vi.fn() };
     events = { emit: vi.fn() };
-    service = new LeadsService(mockDb, audit as any, events as any);
+    service = new LeadsService(mockDb, audit as any, events as any, { validate: vi.fn().mockResolvedValue({}), write: vi.fn(), read: vi.fn().mockResolvedValue({}), valuesForConversion: vi.fn().mockResolvedValue({}) } as any);
   });
 
   describe('findAll', () => {
@@ -152,7 +152,7 @@ describe('LeadsService', () => {
       updateResults.push([updated]);
 
       const result = await service.update('tenant-1', admin, 'lead-1', { fullName: 'Rustam Bek' });
-      expect(result).toEqual(updated);
+      expect(result).toEqual({ ...updated, customFields: {} });
     });
 
     it('refuses status changes through PATCH (they must use the transition policy)', async () => {

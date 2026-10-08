@@ -5,7 +5,9 @@ export class AttendanceEntryDto {
   @IsString()
   studentId: string;
 
-  @IsIn(['PRESENT', 'ABSENT', 'LATE', 'EXCUSED'])
+  // The values the database's attendance_status type holds; anything else
+  // (EXCUSED was accepted here once) would fail at the database with a 500.
+  @IsIn(['PRESENT', 'ABSENT', 'LATE'])
   status: string;
 }
 

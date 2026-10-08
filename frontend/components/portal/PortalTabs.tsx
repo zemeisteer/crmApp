@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { fileUrl, portalApi, type PortalAttendance, type PortalHomework, type PortalPastLesson, type PortalPayments, type PortalSchedule } from "@/lib/api";
+import { portalApi, type PortalAttendance, type PortalHomework, type PortalPastLesson, type PortalPayments, type PortalSchedule } from "@/lib/api";
 import { useLanguage } from "@/lib/i18n-context";
 import { formatDate } from "@/lib/format-date";
 import { DEFAULT_CENTER_TIMEZONE, centerToday, centerWallClock } from "@/lib/center-time";
 import { MONTH_KEYS, MONTH_SHORT_KEYS, type TranslationKey } from "@/lib/i18n";
 import Modal from "@/components/Modal";
+import { PrivateImg, PrivateLink } from "@/components/PrivateFile";
 
 // The student cabinet's tabs in the same look as PortalHome: light cards,
 // big tap targets, lists instead of tables so nothing scrolls sideways on
@@ -301,7 +302,7 @@ function LessonDetails({ lesson: l, onClose }: { lesson: PortalPastLesson; onClo
                   {h.description && <div style={{ fontSize: 13, color: "#4A4E58", whiteSpace: "pre-wrap", lineHeight: 1.5 }}>{h.description}</div>}
                   {h.dueDate && <div style={{ fontSize: 12, color: "#686B75" }}>{t("pls.due")}: {formatDate(h.dueDate, lang)}</div>}
                   {h.attachmentPath && (
-                    <a href={fileUrl(h.attachmentPath) ?? undefined} target="_blank" rel="noreferrer" style={{ fontSize: 12.5, fontWeight: 700, color: ACCENT }}>📎 {h.attachmentName || t("pls.file")}</a>
+                    <PrivateLink name={h.attachmentPath} scope="portal" style={{ fontSize: 12.5, fontWeight: 700, color: ACCENT }}>📎 {h.attachmentName || t("pls.file")}</PrivateLink>
                   )}
                   {h.feedback && (
                     <div style={{ borderLeft: `3px solid ${ACCENT}`, background: "#EEF0FF", borderRadius: 8, padding: "8px 10px", fontSize: 13 }}>
@@ -664,14 +665,13 @@ function HomeworkCard({ hw, now, readOnly, onSubmit }: { hw: PortalHomework; now
 
       {hw.attachmentPath && (
         isImage(hw.attachmentName ?? hw.attachmentPath) ? (
-          <a href={fileUrl(hw.attachmentPath) ?? "#"} target="_blank" rel="noreferrer">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={fileUrl(hw.attachmentPath) ?? ""} alt={hw.attachmentName ?? ""} style={{ width: "100%", maxHeight: 320, objectFit: "contain", borderRadius: 12, border: "1px solid #EAE8E2", background: "#FAFAF8" }} />
-          </a>
+          <PrivateLink name={hw.attachmentPath} scope="portal">
+            <PrivateImg name={hw.attachmentPath} scope="portal" alt={hw.attachmentName ?? ""} style={{ width: "100%", maxHeight: 320, objectFit: "contain", borderRadius: 12, border: "1px solid #EAE8E2", background: "#FAFAF8" }} />
+          </PrivateLink>
         ) : (
-          <a href={fileUrl(hw.attachmentPath) || "#"} target="_blank" rel="noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "10px 14px", borderRadius: 11, border: "1px solid #C7D2FE", background: "#EEF0FF", color: "#4338CA", fontSize: 13, fontWeight: 700, textDecoration: "none", maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", alignSelf: "flex-start" }}>
+          <PrivateLink name={hw.attachmentPath} scope="portal" style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "10px 14px", borderRadius: 11, border: "1px solid #C7D2FE", background: "#EEF0FF", color: "#4338CA", fontSize: 13, fontWeight: 700, textDecoration: "none", maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", alignSelf: "flex-start" }}>
             📎 {hw.attachmentName || t("homework.file")} ↓
-          </a>
+          </PrivateLink>
         )
       )}
 
@@ -680,12 +680,11 @@ function HomeworkCard({ hw, now, readOnly, onSubmit }: { hw: PortalHomework; now
           <div style={{ fontSize: 11.5, fontWeight: 800, color: "#686B75", textTransform: "uppercase", letterSpacing: "0.04em" }}>{t("phw.myAnswer")}</div>
           {sub.text && <div style={{ fontSize: 13.5, whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{sub.text}</div>}
           {sub.file && (isImage(sub.file) ? (
-            <a href={fileUrl(sub.file) ?? "#"} target="_blank" rel="noreferrer">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={fileUrl(sub.file) ?? ""} alt="" style={{ maxWidth: "100%", maxHeight: 220, borderRadius: 10, border: "1px solid #EAE8E2" }} />
-            </a>
+            <PrivateLink name={sub.file} scope="portal">
+              <PrivateImg name={sub.file} scope="portal" alt="" style={{ maxWidth: "100%", maxHeight: 220, borderRadius: 10, border: "1px solid #EAE8E2" }} />
+            </PrivateLink>
           ) : (
-            <a href={fileUrl(sub.file) ?? "#"} target="_blank" rel="noreferrer" style={{ fontSize: 13, fontWeight: 700, color: ACCENT }}>📎 {t("phw.myFile")}</a>
+            <PrivateLink name={sub.file} scope="portal" style={{ fontSize: 13, fontWeight: 700, color: ACCENT }}>📎 {t("phw.myFile")}</PrivateLink>
           ))}
           {sub.feedback && (
             <div style={{ background: "#ECFDF5", border: "1px solid #BBF7D0", borderRadius: 10, padding: 10, fontSize: 13, color: "#14532D" }}>

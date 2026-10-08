@@ -11,6 +11,7 @@ import { attachmentStorage } from '../common/upload.util';
 import { MockTestsService } from './mock-tests.service';
 import { CreateMockTestDto, GenerateMockQuestionsDto, RegradeMockAttemptDto, ReviewMockAttemptDto, ReviewPracticeDto, UpdateMockTestDto } from './dto/mock-tests.dto';
 import { AiService } from '../ai/ai.service';
+import { FilesService } from '../files/files.service';
 
 // Recordings for Listening and pictures (charts) for Writing Task 1.
 const ASSET_TYPES = /^(audio\/(mpeg|mp3|mp4|x-m4a|aac|wav|x-wav|ogg|webm)|image\/(jpeg|png|webp|gif))$/;
@@ -23,6 +24,7 @@ export class MockTestsController {
     private readonly service: MockTestsService,
     private readonly imports: MockImportService,
     private readonly ai: AiService,
+    private readonly files: FilesService,
   ) {}
 
   // Questions for a practice test part, written by the AI (the editor adds
@@ -121,6 +123,7 @@ export class MockTestsController {
   async asset(@CurrentUser('tenantId') tenantId: string, @Param('id') id: string, @UploadedFile() file?: Express.Multer.File) {
     if (!file) throw new BadRequestException('Audio (mp3, m4a, wav, ogg) yoki rasm yuklang');
     await this.service.get(tenantId, id);
+    await this.files.register(tenantId, file.filename, 'MOCK_ASSET', id);
     return { path: file.filename, name: file.originalname, type: file.mimetype };
   }
 }

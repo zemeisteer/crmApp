@@ -12,6 +12,7 @@ import { missingKeys, normalizeContent, sectionQuestions } from '../ielts';
 import { mergePdfs, pageTexts, subPdf } from './pdf';
 import { matchAudio, normalizePlan, planFromLabels, type BookPlan, type TestPlan } from './plan';
 import { labelPagesPrompt, listeningPrompt, locatePrompt, parseJsonObject, readingPrompt, speakingPrompt, writingPrompt } from './import-prompts';
+import { FilesService } from '../../files/files.service';
 
 export interface ImportFile { path: string; name: string; type: string; size: number }
 export interface ImportProgress { step: 'queued' | 'reading' | 'locating' | 'extracting' | 'saving' | 'done'; message: string; done: number; total: number }
@@ -75,6 +76,7 @@ export class MockImportService implements OnModuleInit, OnModuleDestroy {
     @Inject(DB) private readonly db: Database,
     private readonly ai: AiService,
     private readonly config: ConfigService,
+    private readonly files: FilesService,
   ) {
     // Imports read whole books and call the AI many times: a small, fixed
     // number at once per server keeps memory and AI rate limits in check.
@@ -114,6 +116,7 @@ export class MockImportService implements OnModuleInit, OnModuleDestroy {
     }
     const progress: ImportProgress = { step: 'queued', message: 'Navbatda', done: 0, total: 0 };
     const [row] = await this.db.insert(mockImports).values({ tenantId, createdBy: userId ?? null, queue: this.queue, files: JSON.stringify(files), progress: JSON.stringify(progress) }).returning();
+    for (const f of files) await this.files.register(tenantId, f.path, 'MOCK_IMPORT', row.id);
     void this.kick();
     return this.view(row);
   }
@@ -261,6 +264,7 @@ export class MockImportService implements OnModuleInit, OnModuleDestroy {
       drop.push(...files.filter((f) => f.type.startsWith('audio/') && !used.includes(f.path)));
     }
     await Promise.all(drop.map((f) => unlink(join(UPLOAD_DIR, f.path)).catch(() => undefined)));
+    for (const f of drop) await this.files.unregister('MOCK_IMPORT', row.id, f.path);
   }
 
   // ------------------------------------------------------------------ job
@@ -359,6 +363,8 @@ export class MockImportService implements OnModuleInit, OnModuleDestroy {
         tenantId: row.tenantId, title, source: plan.book, level: t.level, module: plan.module, importId: id, importIndex: ti, content: JSON.stringify(content),
       }).onConflictDoNothing({ target: [mockTests.importId, mockTests.importIndex] }).returning();
       const test = made ?? (await this.db.select().from(mockTests).where(and(eq(mockTests.importId, id), eq(mockTests.importIndex, ti))))[0];
+      // The recordings it plays become the test's own files (readable by its students).
+      await this.files.syncMockTestAssets(row.tenantId, test.id, test.content);
       result.tests!.push(summary(test, warnings));
       // Saved as it goes, so a retry knows what is done and with what notes.
       await this.report(id, { step: 'saving', message: `${t.title}: saqlandi`, done, total: steps }, { result: JSON.stringify(result) });

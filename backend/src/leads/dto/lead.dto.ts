@@ -7,6 +7,7 @@ import {
   IsIn,
   IsInt,
   IsISO8601,
+  IsObject,
   IsOptional,
   IsString,
   Matches,
@@ -95,6 +96,11 @@ export class CreateLeadDto {
   @MinLength(3)
   @MaxLength(500)
   duplicateReason?: string;
+
+  // The center's own lead fields: definition id -> value.
+  @IsOptional()
+  @IsObject()
+  customFields?: Record<string, unknown>;
 }
 
 // Profile fields only. `status` is accepted solely so a legacy client that
@@ -148,6 +154,11 @@ export class UpdateLeadDto {
   @IsOptional()
   @IsString()
   status?: string;
+
+  // Only the fields sent change; null clears one.
+  @IsOptional()
+  @IsObject()
+  customFields?: Record<string, unknown>;
 }
 
 export class TransitionLeadDto {
@@ -471,4 +482,10 @@ export class ConvertLeadDto {
   @IsInt()
   @Min(1)
   invoiceAmount?: number;
+
+  // Values for the new (or linked) student's own fields; mapped lead
+  // fields are carried over too (custom-fields).
+  @IsOptional()
+  @IsObject()
+  customFields?: Record<string, unknown>;
 }
