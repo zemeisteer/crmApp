@@ -19,6 +19,13 @@ export class CreateTenantDto {
 }
 
 export class UpdateTenantDto {
+  // Make-up credits expire this many days after issue; null: never.
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(365)
+  makeupCreditDays?: number | null;
+
   @IsOptional()
   @IsString()
   name?: string;
