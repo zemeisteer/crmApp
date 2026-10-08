@@ -59,7 +59,7 @@ describe('HomeworkService', () => {
       notifyHomework: vi.fn(),
     };
 
-    service = new HomeworkService(mockDb, mockTelegram, mockNotifications as any);
+    service = new HomeworkService(mockDb, mockTelegram, mockNotifications as any, { register: vi.fn(), unregister: vi.fn() } as any);
   });
 
   describe('submit', () => {

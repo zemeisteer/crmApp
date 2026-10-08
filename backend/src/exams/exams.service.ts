@@ -15,6 +15,7 @@ import { TelegramService } from '../telegram/telegram.service';
 import { AiService } from '../ai/ai.service';
 import { gradeAnswer, normalizeQuestion, publicQuestion, type TestQuestion } from '../common/test-questions';
 import { assertTeacherGroups, STUDENT_STAFF_COLUMNS, teacherGroupIds, Viewer } from '../common/teacher-scope';
+import { FilesService } from '../files/files.service';
 
 @Injectable()
 export class ExamsService {
@@ -22,6 +23,7 @@ export class ExamsService {
     @Inject(DB) private readonly db: Database,
     private readonly telegram: TelegramService,
     private readonly ai: AiService,
+    private readonly files: FilesService,
   ) {}
 
   async findAll(tenantId: string, groupId?: string, viewer?: Viewer) {
@@ -97,6 +99,8 @@ export class ExamsService {
       .set({ materialPath: file.filename, materialName: file.originalname })
       .where(and(eq(exams.id, id), eq(exams.tenantId, tenantId)))
       .returning();
+    await this.files.unregister('EXAM_MATERIAL', id);
+    await this.files.register(tenantId, file.filename, 'EXAM_MATERIAL', id);
     return exam;
   }
 
@@ -145,6 +149,7 @@ export class ExamsService {
       await unlink(join(__dirname, '..', '..', 'uploads', exam.materialPath)).catch(() => undefined);
     }
     await this.db.delete(exams).where(and(eq(exams.id, id), eq(exams.tenantId, tenantId)));
+    await this.files.unregister('EXAM_MATERIAL', id);
     return { success: true };
   }
 

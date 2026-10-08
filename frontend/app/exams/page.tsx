@@ -23,9 +23,9 @@ import {
   SubmitAttemptResult,
   Group,
   ApiError,
-  fileUrl,
-} from "@/lib/api";
+  } from "@/lib/api";
 import { useLanguage } from "@/lib/i18n-context";
+import { PrivateLink } from "@/components/PrivateFile";
 
 const ACCENT = "#4F46E5";
 
@@ -519,9 +519,9 @@ function ExamsContent() {
                           </div>
                           {ex.description && <div style={{ fontSize: 13, color: "#4A4E58", marginTop: 8, maxWidth: 600 }}>{ex.description}</div>}
                           {ex.materialPath && (
-                            <a href={fileUrl(ex.materialPath) || "#"} target="_blank" rel="noreferrer" style={{ fontSize: 12, color: ACCENT, fontWeight: 700, marginTop: 6, display: "inline-block" }}>
+                            <PrivateLink name={ex.materialPath} style={{ fontSize: 12, color: ACCENT, fontWeight: 700, marginTop: 6, display: "inline-block" }}>
                               📎 {ex.materialName || t("exams.material")}
-                            </a>
+                            </PrivateLink>
                           )}
                         </div>
 

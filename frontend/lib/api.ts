@@ -1852,11 +1852,27 @@ async function uploadFile<T>(path: string, file: File): Promise<T> {
   return body as T;
 }
 
+/**
+ * Address of a PUBLIC upload (center logo, public-site pictures). Private
+ * files (homework, submissions, exam materials, mock-test recordings) are
+ * not served by name: use useFileUrl / useFileUrls from lib/files.ts.
+ */
 export function fileUrl(path: string | null | undefined): string | null {
   if (!path) return null;
   const base = API_URL.replace(/\/api\/?$/, "");
   return `${base}/uploads/${path}`;
 }
+
+/** Absolute address of a path the API handed out (a signed /api/files/... link or /uploads/...). */
+export function apiHref(path: string): string {
+  return `${API_URL.replace(/\/api\/?$/, "")}${path}`;
+}
+
+/** Signed links for private files, keyed by name; a name the caller may not open is left out. */
+export const filesApi = {
+  sign: (names: string[]) => request<Record<string, string>>("/files/sign", { method: "POST", body: JSON.stringify({ names }) }),
+  signPortal: (names: string[]) => request<Record<string, string>>("/portal/files/sign", { method: "POST", body: JSON.stringify({ names }) }),
+};
 
 export const homeworkApi = {
   list: (groupId?: string) => request<Homework[]>(`/homework${groupId ? `?groupId=${groupId}` : ""}`),

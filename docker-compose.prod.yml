@@ -157,7 +157,8 @@ services:
       - ./nginx/conf.d:/etc/nginx/conf.d:ro
       - certbot_conf:/etc/letsencrypt
       - certbot_www:/var/www/certbot
-      - uploads_prod_data:/app/uploads:ro
+      # No uploads volume: nginx never serves files from disk, so a private
+      # file cannot bypass the backend's checks (files/files.service.ts).
     depends_on:
       - frontend
       - backend

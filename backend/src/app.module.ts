@@ -37,6 +37,7 @@ import { LeadsModule } from './leads/leads.module';
 import { ReportsModule } from './reports/reports.module';
 import { CertificatesModule } from './certificates/certificates.module';
 import { AnnouncementsModule } from './announcements/announcements.module';
+import { FilesModule } from './files/files.module';
 import { ScheduleModule } from './schedule/schedule.module';
 import { ExpensesModule } from './expenses/expenses.module';
 import { PortalModule } from './portal/portal.module';
@@ -87,6 +88,7 @@ import { InvoicesModule } from './invoices/invoices.module';
     ReportsModule,
     CertificatesModule,
     AnnouncementsModule,
+    FilesModule,
     ScheduleModule,
     ExpensesModule,
     PortalModule,

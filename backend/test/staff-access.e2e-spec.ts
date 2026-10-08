@@ -75,6 +75,9 @@ describe('Staff access lists (e2e)', () => {
       'GET /api/feature-flags', 'GET /api/telegram/me', 'POST /api/telegram/me/link', 'DELETE /api/telegram/me', 'GET /api/telegram/status', 'POST /api/telegram/link-token',
       'POST /api/auth/handoff', 'GET /api/branches', 'GET /api/reports/dashboard', 'GET /api/reports/students-summary', 'GET /api/announcements/banners',
       'POST /api/announcements/:id/read', 'POST /api/invitations', 'GET /api/invitations', 'GET /api/subjects', 'GET /api/subjects/courses', 'GET /api/subjects/:id',
+      // Links to uploaded files: open to all staff, each file checked against
+      // the record it belongs to and the caller's own list (files.service.ts).
+      'POST /api/files/sign',
     ]);
     const unclassified = app.get(RouteAccessService).routes()
       .filter((r) => (r.rolesGuard || r.permissionsGuard) && CONFIGURABLE_ROLES.some((role) => RouteAccessService.allows(r, role)))

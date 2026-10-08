@@ -103,7 +103,7 @@ describe('ExamsService (Question Bank & Auto-Grading)', () => {
       ]),
     };
 
-    service = new ExamsService(mockDb, mockTelegram, mockAi);
+    service = new ExamsService(mockDb, mockTelegram, mockAi, { register: vi.fn(), unregister: vi.fn() } as any);
   });
 
   it('sanitizes questions in startAttempt to prevent client-side answer leakage', async () => {

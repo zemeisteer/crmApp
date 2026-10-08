@@ -3,11 +3,12 @@
 import { useState } from "react";
 import QuestionEditor, { emptyQuestion } from "@/components/tests/QuestionEditor";
 import Select from "@/components/Select";
-import { ApiError, fileUrl, MOCK_LEVELS, mockTestsApi, type MockContent, type MockLevel, type MockSection, type MockTest } from "@/lib/api";
+import { ApiError, MOCK_LEVELS, mockTestsApi, type MockContent, type MockLevel, type MockSection, type MockTest } from "@/lib/api";
 import { hasAnswer, type TestQuestion } from "@/lib/tests";
 import { useLanguage } from "@/lib/i18n-context";
 import { SECTION_ICON, sectionKey } from "@/components/mock-tests/sections";
 import { levelKey } from "@/components/mock-tests/levels";
+import { PrivateImg, PrivateAudio } from "@/components/PrivateFile";
 
 const ACCENT = "#4F46E5";
 const card: React.CSSProperties = { background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 16 };
@@ -146,7 +147,7 @@ export default function MockTestEditor({ test, onSaved }: { test: MockTest; onSa
             <span style={{ fontWeight: 700, fontSize: 13.5 }}>🎧 {t("mock.sectionAudio")}</span>
             {content.listening.audioPath ? (
               <>
-                <audio controls src={fileUrl(content.listening.audioPath) ?? undefined} style={{ height: 36 }} />
+                <PrivateAudio controls name={content.listening.audioPath} scope="staff" style={{ height: 36 }} />
                 <button type="button" style={{ ...ghost, color: "#B23A47" }} onClick={() => edit((c) => { c.listening.audioPath = null; return c; })}>✕</button>
               </>
             ) : (
@@ -164,7 +165,7 @@ export default function MockTestEditor({ test, onSaved }: { test: MockTest; onSa
               <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
                 {p.audioPath ? (
                   <>
-                    <audio controls src={fileUrl(p.audioPath) ?? undefined} style={{ height: 36 }} />
+                    <PrivateAudio controls name={p.audioPath} scope="staff" style={{ height: 36 }} />
                     <button type="button" style={{ ...ghost, color: "#B23A47" }} onClick={() => edit((c) => { c.listening.parts[pi].audioPath = null; return c; })}>✕ {t("mock.removeAudio")}</button>
                   </>
                 ) : (
@@ -219,8 +220,7 @@ export default function MockTestEditor({ test, onSaved }: { test: MockTest; onSa
                 <input type="number" min={20} max={1000} className="field-input" style={{ width: 90 }} value={task.minWords} onChange={(e) => edit((c) => { c.writing.tasks[ti].minWords = Number(e.target.value) || 0; return c; })} />
                 {task.imagePath ? (
                   <>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={fileUrl(task.imagePath) ?? ""} alt="" style={{ height: 60, borderRadius: 8, border: "1px solid #EAE8E2" }} />
+                    <PrivateImg name={task.imagePath} scope="staff" alt="" style={{ height: 60, borderRadius: 8, border: "1px solid #EAE8E2" }} />
                     <button type="button" style={{ ...ghost, color: "#B23A47" }} onClick={() => edit((c) => { c.writing.tasks[ti].imagePath = null; return c; })}>✕</button>
                   </>
                 ) : (
@@ -278,8 +278,7 @@ export function ImageField({ path, onUpload, onClear }: { path: string | null; o
     <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
       {path ? (
         <>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={fileUrl(path) ?? ""} alt="" style={{ height: 70, borderRadius: 8, border: "1px solid #EAE8E2" }} />
+          <PrivateImg name={path} scope="staff" alt="" style={{ height: 70, borderRadius: 8, border: "1px solid #EAE8E2" }} />
           <button type="button" style={{ ...ghost, color: "#B23A47" }} onClick={onClear}>✕</button>
         </>
       ) : (

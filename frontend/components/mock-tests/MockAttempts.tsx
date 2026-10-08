@@ -4,9 +4,10 @@ import { useCallback, useEffect, useState } from "react";
 import Modal from "@/components/Modal";
 import FeedbackView, { bandColor } from "@/components/mock-tests/FeedbackView";
 import { SECTION_ICON, sectionKey } from "@/components/mock-tests/sections";
-import { ApiError, fileUrl, MOCK_SECTIONS, mockTestsApi, type MockAttemptDetail, type MockAttemptRow, type MockTest } from "@/lib/api";
+import { ApiError, MOCK_SECTIONS, mockTestsApi, type MockAttemptDetail, type MockAttemptRow, type MockTest } from "@/lib/api";
 import { useLanguage } from "@/lib/i18n-context";
 import { formatDateTime } from "@/lib/format-date";
+import { PrivateAudio } from "@/components/PrivateFile";
 
 const ACCENT = "#4F46E5";
 const card: React.CSSProperties = { background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 16 };
@@ -159,7 +160,7 @@ function ReviewModal({ detail, onClose, onChanged }: { detail: MockAttemptDetail
                   return (
                     <div key={qi} style={{ border: "1px solid #EAE8E2", borderRadius: 10, padding: 10, fontSize: 13, display: "grid", gap: 6 }}>
                       <div style={{ color: "#4A4E58" }}>❓ {q}</div>
-                      {a?.audio ? <audio controls src={fileUrl(a.audio) ?? undefined} style={{ width: "100%", height: 36 }} /> : <span style={{ color: "#686B75" }}>{t("mock.noRecording")}</span>}
+                      {a?.audio ? <PrivateAudio controls name={a.audio} scope="staff" style={{ width: "100%", height: 36 }} /> : <span style={{ color: "#686B75" }}>{t("mock.noRecording")}</span>}
                       {a?.transcript && <div style={{ fontStyle: "italic", color: "#33363D" }}>“{a.transcript}”</div>}
                     </div>
                   );

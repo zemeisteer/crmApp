@@ -14,6 +14,9 @@
 //   6. a database with tables but no record is refused until --baseline
 //   7. a database at 0034 with payroll rows the old code wrote -> 0035:
 //      rows untouched, nothing linked, installments allowed
+//   8. a database at 0039 with uploaded files referenced the old way -> 0040:
+//      every existing reference becomes a file_refs row (so the files stay
+//      reachable for the people allowed to see them), rows untouched
 //
 //   node scripts/verify-migrations.cjs            (DATABASE_URL = any admin-capable URL)
 require('dotenv').config({ quiet: true });
@@ -300,7 +303,48 @@ async function rows(url) {
   expect(/No schema drift/.test(drift(v34)), 'upgraded schema matches schema.ts');
   expect(/up to date/.test(runner(v34)), 're-running reports nothing to do');
 
-  for (const s of ['empty', 'upgrade', 'enum', 'v31', 'drizzle', 'v34']) await drop(s);
+  console.log('8. upgrade from 0039 with files referenced the old way');
+  const v39 = await recreate('v39');
+  runner(v39, '--through', '0039_member_access');
+  const F = (n) => `${n}aaaaaaaaaaaaaaaaaaaaa`.slice(0, 24);
+  await query(v39, `
+    INSERT INTO tenants (id, name, subdomain, logo_url, site_content) VALUES ('tF', 'Files Center', 'files-center', '${F('logo')}.png', '{"gallery":["${F('gal')}.jpg"],"about":"x"}');
+    INSERT INTO groups (id, tenant_id, name, subject) VALUES ('gF', 'tF', 'G', 'English');
+    INSERT INTO students (id, tenant_id, full_name) VALUES ('sF', 'tF', 'S');
+    INSERT INTO homework (id, tenant_id, group_id, title, attachment_path) VALUES ('hF', 'tF', 'gF', 'HW', '${F('hw')}.pdf');
+    INSERT INTO homework_completions (id, homework_id, student_id, submission_attachment_url) VALUES ('cF', 'hF', 'sF', '${F('sub')}.jpg');
+    INSERT INTO homework_completions (id, homework_id, student_id, submission_attachment_url) VALUES ('cF2', 'hF', 'sF', 'https://elsewhere.example/x.jpg')
+      ON CONFLICT DO NOTHING;
+    INSERT INTO exams (id, tenant_id, group_id, title, material_path) VALUES ('eF', 'tF', 'gF', 'Ex', '${F('key')}.pdf');
+    INSERT INTO mock_tests (id, tenant_id, title, content) VALUES ('mF', 'tF', 'Mock', '{"listening":{"audioPath":"${F('aud')}.mp3","parts":[{"audioPath":null,"imagePath":"${F('img')}.png"}]}}');
+    INSERT INTO mock_tests (id, tenant_id, title, content) VALUES ('mBad', 'tF', 'Broken', 'not json');
+    INSERT INTO mock_attempts (id, tenant_id, test_id, student_id, answers) VALUES ('aF', 'tF', 'mF', 'sF', '{"speaking":{"1.0":{"audio":"${F('spk')}.webm","transcript":"hi"}}}');
+    INSERT INTO mock_imports (id, tenant_id, files) VALUES ('iF', 'tF', '[{"path":"${F('imp')}.mp3","name":"a.mp3","type":"audio/mpeg","size":1}]');
+  `);
+  const before39 = await dump(v39);
+  const out39 = runner(v39);
+  expect(/applied 0040_/.test(out39) && !/applied 0039_/.test(out39), '0040 is applied');
+  const refs = (await query(v39, 'SELECT name, kind, owner_id, student_id FROM file_refs ORDER BY kind, name')).map((r) => `${r.kind}:${r.name}:${r.owner_id}:${r.student_id ?? ''}`);
+  const want = [
+    `EXAM_MATERIAL:${F('key')}.pdf:eF:`,
+    `HOMEWORK_ATTACHMENT:${F('hw')}.pdf:hF:`,
+    `HOMEWORK_SUBMISSION:${F('sub')}.jpg:hF:sF`,
+    `MOCK_ASSET:${F('aud')}.mp3:mF:`,
+    `MOCK_ASSET:${F('img')}.png:mF:`,
+    `MOCK_IMPORT:${F('imp')}.mp3:iF:`,
+    `MOCK_SPEAKING:${F('spk')}.webm:aF:sF`,
+    `PUBLIC_LOGO:${F('logo')}.png:tF:`,
+    `PUBLIC_SITE:${F('gal')}.jpg:tF:`,
+  ];
+  expect(JSON.stringify(refs) === JSON.stringify(want), `every existing file reference is registered (${refs.length}), an outside URL and broken JSON are skipped`);
+  const after39 = await dump(v39);
+  for (const t of ['tenants', 'homework', 'homework_completions', 'exams', 'mock_tests', 'mock_attempts', 'mock_imports']) {
+    expect(before39[t] === after39[t], `${t}: rows unchanged`);
+  }
+  expect(/No schema drift/.test(drift(v39)), 'upgraded schema matches schema.ts');
+  expect(/up to date/.test(runner(v39)), 're-running reports nothing to do');
+
+  for (const s of ['empty', 'upgrade', 'enum', 'v31', 'drizzle', 'v34', 'v39']) await drop(s);
   console.log('Migration chain verified.');
 })().catch(async (err) => {
   console.error(err.stderr ? String(err.stderr) : err.message);

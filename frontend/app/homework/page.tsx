@@ -10,11 +10,12 @@ import Pagination, { usePagedSlice } from "@/components/Pagination";
 import Select from "@/components/Select";
 import DatePicker from "@/components/DatePicker";
 import MarkdownLite from "@/components/MarkdownLite";
-import { homeworkApi, groupsApi, aiApi, Homework, Group, ApiError, fileUrl, type LeaderboardEntry } from "@/lib/api";
+import { homeworkApi, groupsApi, aiApi, Homework, Group, ApiError, type LeaderboardEntry } from "@/lib/api";
 import { useLanguage } from "@/lib/i18n-context";
 import { matchesSubject, extractUniqueSubjects } from "@/lib/subject";
 import { formatDate as fmtDate } from "@/lib/format-date";
 import { useCenterClock } from "@/lib/use-center-clock";
+import { PrivateImg, PrivateLink } from "@/components/PrivateFile";
 
 const ACCENT = "#4F46E5";
 
@@ -151,14 +152,13 @@ function RosterModal({ homeworkItem, onClose }: { homeworkItem: Homework; onClos
               )}
               {r.submissionAttachmentUrl && (
                 // The student's photo of the notebook (or a file) from the cabinet.
-                <a href={fileUrl(r.submissionAttachmentUrl) ?? "#"} target="_blank" rel="noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 12, fontWeight: 600, color: "#4F46E5" }}>
+                <PrivateLink name={r.submissionAttachmentUrl} style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 12, fontWeight: 600, color: "#4F46E5" }}>
                   {/\.(jpe?g|png|webp|gif)$/i.test(r.submissionAttachmentUrl) ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={fileUrl(r.submissionAttachmentUrl) ?? ""} alt="" style={{ width: 120, maxHeight: 120, objectFit: "cover", borderRadius: 8, border: "1px solid #DBEAFE" }} />
+                    <PrivateImg name={r.submissionAttachmentUrl} scope="staff" alt="" style={{ width: 120, maxHeight: 120, objectFit: "cover", borderRadius: 8, border: "1px solid #DBEAFE" }} />
                   ) : (
                     <span>📎 {t("homework.file")}</span>
                   )}
-                </a>
+                </PrivateLink>
               )}
 
               <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 2 }}>
@@ -719,14 +719,12 @@ function HomeworkContent() {
                         <div style={{ marginTop: "auto", display: "flex", alignItems: "center", justifyContent: "space-between", paddingTop: 10, borderTop: "1px solid #F1F0EC", flexWrap: "wrap", gap: 8 }}>
                           <div style={{ fontSize: 12, color: "#686B75" }}>{t("homework.due")}: {formatDate(h.dueDate)}</div>
                           {h.attachmentPath && (
-                            <a
-                              href={fileUrl(h.attachmentPath) || "#"}
-                              target="_blank"
-                              rel="noreferrer"
+                            <PrivateLink
+                              name={h.attachmentPath}
                               style={{ fontSize: 12, color: ACCENT, fontWeight: 700, textDecoration: "none", display: "flex", alignItems: "center", gap: 4 }}
                             >
                               📎 {h.attachmentName || t("homework.file")}
-                            </a>
+                            </PrivateLink>
                           )}
                         </div>
                         <button

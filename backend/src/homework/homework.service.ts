@@ -24,6 +24,7 @@ import {
 } from './dto/homework.dto';
 import { TelegramService } from '../telegram/telegram.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { FilesService } from '../files/files.service';
 
 export interface LeaderboardEntry {
   rank: number;
@@ -43,6 +44,7 @@ export class HomeworkService {
     @Inject(DB) private readonly db: Database,
     private readonly telegram: TelegramService,
     private readonly notifications: NotificationsService,
+    private readonly files: FilesService,
   ) {}
 
   async findAll(tenantId: string, groupId?: string, viewer?: Viewer) {
@@ -301,6 +303,8 @@ export class HomeworkService {
       .set({ attachmentPath: stored, attachmentName: pdfFileName(title), updatedAt: new Date() })
       .where(and(eq(homework.id, id), eq(homework.tenantId, tenantId)))
       .returning();
+    await this.files.unregister('HOMEWORK_ATTACHMENT', id);
+    await this.files.register(tenantId, stored, 'HOMEWORK_ATTACHMENT', id);
     return updated;
   }
 
@@ -311,6 +315,8 @@ export class HomeworkService {
       .set({ attachmentPath: file.filename, attachmentName: file.originalname, updatedAt: new Date() })
       .where(and(eq(homework.id, id), eq(homework.tenantId, tenantId)))
       .returning();
+    await this.files.unregister('HOMEWORK_ATTACHMENT', id);
+    await this.files.register(tenantId, file.filename, 'HOMEWORK_ATTACHMENT', id);
     return hw;
   }
 
@@ -320,6 +326,8 @@ export class HomeworkService {
       await unlink(join(__dirname, '..', '..', 'uploads', hw.attachmentPath)).catch(() => undefined);
     }
     await this.db.delete(homework).where(and(eq(homework.id, id), eq(homework.tenantId, tenantId)));
+    await this.files.unregister('HOMEWORK_ATTACHMENT', id);
+    await this.files.unregister('HOMEWORK_SUBMISSION', id);
     return { success: true };
   }
 

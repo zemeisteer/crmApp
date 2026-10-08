@@ -1666,3 +1666,26 @@ export const notificationsRelations = relations(notifications, ({ one }) => ({
 
 
 
+
+// ---------------------------------------------------------------------------
+// Uploaded files and what each one belongs to. A file is readable only
+// through one of its references: PUBLIC_* kinds by anyone at /uploads/<name>,
+// every other kind through a short-lived signed link handed out after the
+// caller is checked against the owning record (files/files.service.ts).
+// One name can belong to several records (the same recording in two tests).
+export const fileRefs = pgTable('file_refs', {
+  tenantId: text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  name: text('name').notNull(),
+  // PUBLIC_LOGO | PUBLIC_SITE | HOMEWORK_ATTACHMENT | HOMEWORK_SUBMISSION |
+  // EXAM_MATERIAL | MOCK_ASSET | MOCK_IMPORT | MOCK_SPEAKING
+  kind: text('kind').notNull(),
+  // The owning record (homework, exam, mock test, import or attempt id; the tenant for PUBLIC_*).
+  ownerId: text('owner_id').notNull(),
+  // The student a submission or recording belongs to.
+  studentId: text('student_id'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+}, (t) => ({
+  pk: primaryKey({ columns: [t.name, t.kind, t.ownerId] }),
+  nameIdx: index('file_refs_name_idx').on(t.name),
+  ownerIdx: index('file_refs_owner_idx').on(t.kind, t.ownerId),
+}));

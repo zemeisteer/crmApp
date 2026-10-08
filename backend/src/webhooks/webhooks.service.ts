@@ -4,7 +4,7 @@ import { and, eq, or } from 'drizzle-orm';
 import { DB, Database } from '../db/db.module';
 import { webhooks } from '../db/schema';
 import { CreateWebhookDto, UpdateWebhookDto } from './dto/webhook.dto';
-import { assertPublicHttpUrl, OutboundUrlError } from '../common/outbound-url';
+import { assertPublicHttpUrl, OutboundUrlError, postToPublicUrl, privateTargetsAllowed, urlForLog } from '../common/outbound-url';
 
 // A subscriber gets this long to answer; the request that triggered the
 // event never waits for it (dispatch is fire-and-forget).
@@ -16,9 +16,10 @@ export class WebhooksService {
 
   constructor(@Inject(DB) private readonly db: Database) {}
 
-  // Local development may point a webhook at a receiver on the same machine.
+  // Local development may point a webhook at a receiver on the same machine
+  // (never in production).
   private get allowPrivate() {
-    return process.env.WEBHOOK_ALLOW_PRIVATE === 'true';
+    return privateTargetsAllowed();
   }
 
   // The URL is the center's own choice, but the request comes from our
@@ -79,19 +80,17 @@ export class WebhooksService {
 
   private async deliver(sub: { url: string; secret: string }, event: string, payload: unknown) {
     try {
-      // Checked again at delivery time: the name may resolve elsewhere now.
-      await assertPublicHttpUrl(sub.url, this.allowPrivate);
+      // Checked again at delivery time, on the connection itself: the name
+      // may resolve elsewhere now.
       const body = JSON.stringify({ event, data: payload, sentAt: new Date().toISOString() });
       const signature = createHmac('sha256', sub.secret).update(body).digest('hex');
-      await fetch(sub.url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-TalimCRM-Signature': signature },
-        body,
-        redirect: 'manual',
-        signal: AbortSignal.timeout(DELIVERY_TIMEOUT_MS),
+      const status = await postToPublicUrl(sub.url, body, { 'Content-Type': 'application/json', 'X-TalimCRM-Signature': signature }, {
+        allowPrivate: this.allowPrivate,
+        timeoutMs: DELIVERY_TIMEOUT_MS,
       });
+      if (status < 200 || status >= 300) this.logger.warn(`Webhook delivery to ${urlForLog(sub.url)} answered ${status}`);
     } catch (err) {
-      this.logger.warn(`Webhook delivery failed for ${sub.url}: ${(err as Error).message}`);
+      this.logger.warn(`Webhook delivery failed for ${urlForLog(sub.url)}: ${(err as Error).message}`);
     }
   }
 }

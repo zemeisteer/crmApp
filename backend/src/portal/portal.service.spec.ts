@@ -84,7 +84,7 @@ describe('PortalService', () => {
       currentMonth: vi.fn().mockResolvedValue(new Date().toISOString().slice(0, 7)),
       load: vi.fn().mockResolvedValue({ students: [], due: vi.fn() }),
     };
-    service = new PortalService(mockDb, mockJwt, mockConfig, mockBilling as any, {} as any, { sendMessage: vi.fn() } as any, mockLedger);
+    service = new PortalService(mockDb, mockJwt, mockConfig, mockBilling as any, {} as any, { sendMessage: vi.fn() } as any, mockLedger, { register: vi.fn(), unregister: vi.fn() } as any);
   });
 
   describe('loginWithToken', () => {

@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { fileUrl, type MockPublicQuestion, type PortalPracticeAttempt, type PortalPracticeSection } from "@/lib/api";
+import { type MockPublicQuestion, type PortalPracticeAttempt, type PortalPracticeSection } from "@/lib/api";
 import { useLanguage } from "@/lib/i18n-context";
 import { BLUE, confirmSubmit, EXAM_CSS, ExamHeader, INK, LINE, NavBar, PaneTabs, Passage, QuestionBlock, useFlags, useFullscreen, wordsOf } from "@/components/portal/ExamMode";
+import { PrivateImg } from "@/components/PrivateFile";
 
 type Text = Record<string, string>;
 
@@ -153,8 +154,7 @@ function Body({ attempt, section, answers, onAnswer, onSubmit }: {
                     <div style={{ fontWeight: 800 }}>{task.title}</div>
                     <div style={{ whiteSpace: "pre-wrap", lineHeight: 1.65 }}>{task.prompt}</div>
                     {task.imagePath && (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={fileUrl(task.imagePath) ?? ""} alt="" style={{ maxWidth: "100%", border: `1px solid ${LINE}` }} />
+                      <PrivateImg name={task.imagePath} scope="portal" alt="" style={{ maxWidth: "100%", border: `1px solid ${LINE}` }} />
                     )}
                     <textarea value={text} onChange={(e) => onAnswer(`t${i}`, e.target.value)} spellCheck={false} rows={12}
                       style={{ width: "100%", boxSizing: "border-box", border: "1px solid #9CA3AF", borderRadius: 4, padding: 12, fontSize: "inherit", fontFamily: "inherit", lineHeight: 1.7, resize: "vertical" }} />

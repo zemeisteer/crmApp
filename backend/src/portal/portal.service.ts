@@ -41,6 +41,7 @@ import { TelegramService } from '../telegram/telegram.service';
 import { normalizePhone } from '../leads/phone';
 import { createHash, randomInt } from 'crypto';
 import * as bcrypt from 'bcryptjs';
+import { FilesService } from '../files/files.service';
 
 export type PortalViewer = 'student' | 'parent';
 
@@ -69,6 +70,7 @@ export class PortalService {
     private readonly exams: ExamsService,
     private readonly telegram: TelegramService,
     private readonly ledger: LedgerService,
+    private readonly files: FilesService,
   ) {}
 
   private async signPortalToken(student: { id: string; tenantId: string; fullName: string }, viewer: PortalViewer = 'student') {
@@ -541,6 +543,7 @@ export class PortalService {
       .values({ homeworkId, studentId, ...values })
       .onConflictDoUpdate({ target: [homeworkCompletions.homeworkId, homeworkCompletions.studentId], set: values })
       .returning();
+    if (body.fileName) await this.files.register(tenantId, body.fileName, 'HOMEWORK_SUBMISSION', homeworkId, studentId);
     return { success: true, record };
   }
 

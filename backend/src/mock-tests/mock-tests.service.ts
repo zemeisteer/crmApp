@@ -45,6 +45,7 @@ import {
   type PracticeTaskResult,
 } from './practice';
 import { DEFAULT_TIMEZONE, isValidTimeZone, zonedParts } from '../common/timezone';
+import { FilesService } from '../files/files.service';
 
 type Tx = Parameters<Parameters<Database['transaction']>[0]>[0];
 
@@ -111,6 +112,7 @@ export class MockTestsService {
   constructor(
     @Inject(DB) private readonly db: Database,
     private readonly ai: AiService,
+    private readonly files: FilesService,
   ) {}
 
   // ---------------------------------------------------------------- staff
@@ -161,6 +163,7 @@ export class MockTestsService {
       const [row] = await this.db.insert(mockTests).values({
         tenantId, kind: PRACTICE_KIND, title: (dto.title?.trim() || tpl.title).slice(0, 200), subject, content: JSON.stringify(content),
       }).returning();
+      await this.files.syncMockTestAssets(tenantId, row.id, content);
       return { ...row, content };
     }
     const content = normalizeContent(dto.sample ? SAMPLE_IELTS.content : dto.content ?? {});
@@ -169,6 +172,7 @@ export class MockTestsService {
       tenantId, title: title.slice(0, 200), subject: dto.subject?.trim().slice(0, 120) || 'Ingliz tili', content: JSON.stringify(content),
       level: isLevel(dto.level) ? dto.level : null, module: dto.module === 'GENERAL' ? 'GENERAL' : 'ACADEMIC',
     }).returning();
+    await this.files.syncMockTestAssets(tenantId, row.id, content);
     return { ...row, content };
   }
 
@@ -194,6 +198,7 @@ export class MockTestsService {
         set.status = dto.status;
       }
       const [row] = await this.db.update(mockTests).set(set).where(and(eq(mockTests.id, id), eq(mockTests.tenantId, tenantId))).returning();
+      if (set.content !== undefined) await this.files.syncMockTestAssets(tenantId, id, row.content);
       return { ...row, content: normalizePractice(parse(row.content, {})) };
     }
     if (dto.level !== undefined) set.level = isLevel(dto.level) ? dto.level : null;
@@ -211,12 +216,14 @@ export class MockTestsService {
       set.status = dto.status;
     }
     const [row] = await this.db.update(mockTests).set(set).where(and(eq(mockTests.id, id), eq(mockTests.tenantId, tenantId))).returning();
+    if (set.content !== undefined) await this.files.syncMockTestAssets(tenantId, id, row.content);
     return { ...row, content: normalizeContent(parse(row.content, {})) };
   }
 
   async remove(tenantId: string, id: string) {
     await this.row(tenantId, id);
     await this.db.delete(mockTests).where(and(eq(mockTests.id, id), eq(mockTests.tenantId, tenantId)));
+    await this.files.unregister('MOCK_ASSET', id);
     return { success: true };
   }
 
@@ -490,6 +497,7 @@ export class MockTestsService {
       };
       return { answers: all };
     });
+    if (data.audio) await this.files.register(tenantId, data.audio, 'MOCK_SPEAKING', attemptId, studentId);
     return { saved: true };
   }
 

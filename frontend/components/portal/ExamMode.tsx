@@ -2,8 +2,10 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import QuestionInput from "@/components/tests/QuestionInput";
-import { ApiError, fileUrl, portalMockApi, type MockSection, type PortalMockAttempt } from "@/lib/api";
+import { ApiError, portalMockApi, type MockSection, type PortalMockAttempt } from "@/lib/api";
 import { useLanguage } from "@/lib/i18n-context";
+import { PrivateImg } from "@/components/PrivateFile";
+import { useFileUrls } from "@/lib/files";
 
 // The exam screen, laid out like computer-delivered IELTS: a plain top bar
 // with the clock, the task in the middle, and a bar at the bottom with the
@@ -426,8 +428,7 @@ function ListeningExam(props: ExamProps & { volume: number; onAudioDone: () => v
         <div style={{ maxWidth: 900, margin: "0 auto" }}>
           {L.parts[part]?.instruction && <div style={{ fontStyle: "italic", margin: "8px 0" }}>{L.parts[part].instruction}</div>}
           {L.parts[part]?.imagePath && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={fileUrl(L.parts[part].imagePath) ?? ""} alt="" style={{ maxWidth: "100%", maxHeight: 420, objectFit: "contain", border: `1px solid ${LINE}`, margin: "8px 0" }} />
+            <PrivateImg name={L.parts[part].imagePath} scope="portal" alt="" style={{ maxWidth: "100%", maxHeight: 420, objectFit: "contain", border: `1px solid ${LINE}`, margin: "8px 0" }} />
           )}
           {L.parts[part]?.questions.map((q, i, list) => (
             <QuestionBlock key={q.id} q={q} prev={list[i - 1]} value={answers[q.id] ?? ""} onAnswer={(v) => onAnswer(q.id, v)} flagged={flags.has(q.id)} onFlag={() => toggle(q.id)} sectionKey="listening" />
@@ -452,16 +453,20 @@ function useListeningAudio(attempt: PortalMockAttempt, volume: number, onDone: (
   const audio = useRef<HTMLAudioElement | null>(null);
   const doneRef = useRef(onDone);
   useEffect(() => { doneRef.current = onDone; }, [onDone]);
-  const sources = useMemo(() => {
-    if (L.audioPath) return [fileUrl(L.audioPath)!];
-    return L.parts.map((p) => (p.audioPath ? fileUrl(p.audioPath) : null)).filter((x): x is string => !!x);
-  }, [L]);
+  // Signed links (private recordings): playback starts once all are known.
+  const names = useMemo(() => (L.audioPath ? [L.audioPath] : L.parts.map((p) => p.audioPath).filter((x): x is string => !!x)), [L]);
+  const links = useFileUrls(names, "portal");
+  const ready = names.every((n) => n in links);
+  const sources = useMemo(() => (ready ? names.map((n) => links[n]).filter((x): x is string => !!x) : null), [ready, names, links]);
 
   useEffect(() => {
     if (audio.current) audio.current.volume = volume;
   }, [volume]);
 
+  const started = useRef(false);
   useEffect(() => {
+    if (sources === null || started.current) return;
+    started.current = true;
     let cancelled = false;
     const startedAt = Date.parse(attempt.sectionStarted.listening ?? new Date().toISOString());
     const finish = () => { if (!cancelled) { setStatus(`✓ ${t("exm.audioEnded")}`); doneRef.current(); } };
@@ -533,8 +538,8 @@ function useListeningAudio(attempt: PortalMockAttempt, volume: number, onDone: (
       play(index, offset);
     })();
     return () => { cancelled = true; audio.current?.pause(); };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- play once per mount
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- play once per mount, when the links are known
+  }, [sources]);
 
   return { status, progress };
 }
@@ -616,8 +621,7 @@ export function Passage({ title, text, imagePath }: { title: string; text: strin
       <div ref={box} onClick={onClick}>
         <h2 style={{ fontSize: "1.2em", margin: "10px 0 14px" }}>{title}</h2>
         {imagePath && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={fileUrl(imagePath) ?? ""} alt="" style={{ maxWidth: "100%", marginBottom: 12, border: `1px solid ${LINE}` }} />
+          <PrivateImg name={imagePath} scope="portal" alt="" style={{ maxWidth: "100%", marginBottom: 12, border: `1px solid ${LINE}` }} />
         )}
         {text.split(/\n\s*\n/).map((para, i) => <p key={i} style={{ lineHeight: 1.75, margin: "0 0 14px", whiteSpace: "pre-wrap" }}>{para}</p>)}
       </div>
@@ -652,8 +656,7 @@ function WritingExam(props: ExamProps) {
         <section className="exm-text" style={{ overflowY: "auto", padding: "16px 24px" }}>
           <div style={{ whiteSpace: "pre-wrap", lineHeight: 1.65 }}>{tk?.prompt}</div>
           {tk?.imagePath && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={fileUrl(tk.imagePath) ?? ""} alt="" style={{ maxWidth: "100%", marginTop: 14, border: `1px solid ${LINE}` }} />
+            <PrivateImg name={tk.imagePath} scope="portal" alt="" style={{ maxWidth: "100%", marginTop: 14, border: `1px solid ${LINE}` }} />
           )}
         </section>
         <main className="exm-q" style={{ display: "flex", flexDirection: "column", padding: 16, borderLeft: `1px solid ${LINE}`, minHeight: 320 }}>
