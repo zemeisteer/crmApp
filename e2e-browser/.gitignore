@@ -3,3 +3,5 @@ test-results/
 playwright-report/
 test-results-staging/
 playwright-report-staging/
+test-results-google/
+playwright-report-google/

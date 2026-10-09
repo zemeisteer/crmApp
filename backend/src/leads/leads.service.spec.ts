@@ -47,7 +47,7 @@ describe('LeadsService', () => {
     mockDb.transaction = vi.fn(async (cb: (tx: unknown) => unknown) => cb(mockDb));
     audit = { log: vi.fn() };
     events = { emit: vi.fn() };
-    service = new LeadsService(mockDb, audit as any, events as any, { validate: vi.fn().mockResolvedValue({}), write: vi.fn(), read: vi.fn().mockResolvedValue({}), valuesForConversion: vi.fn().mockResolvedValue({}) } as any);
+    service = new LeadsService(mockDb, audit as any, events as any, { validate: vi.fn().mockResolvedValue({}), write: vi.fn(), read: vi.fn().mockResolvedValue({}), valuesOfMany: vi.fn().mockResolvedValue(new Map([['lead-1', { 'field-1': 'Kechki' }]])), valuesForConversion: vi.fn().mockResolvedValue({}) } as any);
   });
 
   describe('findAll', () => {
@@ -57,7 +57,8 @@ describe('LeadsService', () => {
       mockDb.query.leads.findMany.mockResolvedValue(mockLeads);
 
       const result = await service.findAll('tenant-1', 'user-1', { status: 'NEW', search: 'Shaxzod' });
-      expect(result).toEqual({ items: mockLeads, total: 1, page: 1, pageSize: 25 });
+      // Each lead carries its custom field values (for the list's columns).
+      expect(result).toEqual({ items: [{ ...mockLeads[0], customFields: { 'field-1': 'Kechki' } }], total: 1, page: 1, pageSize: 25 });
       expect(mockDb.query.leads.findMany).toHaveBeenCalledWith(expect.objectContaining({ limit: 25, offset: 0 }));
     });
   });
