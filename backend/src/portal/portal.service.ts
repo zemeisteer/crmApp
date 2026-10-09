@@ -73,7 +73,9 @@ export class PortalService {
     private readonly files: FilesService,
   ) {}
 
-  private async signPortalToken(student: { id: string; tenantId: string; fullName: string }, viewer: PortalViewer = 'student') {
+  // parentUserId: the cabinet was opened from that parent's account; the
+  // guard then also requires the guardian link (unlinking ends it).
+  private async signPortalToken(student: { id: string; tenantId: string; fullName: string }, viewer: PortalViewer = 'student', parentUserId?: string) {
     return this.jwt.signAsync(
       {
         sub: student.id,
@@ -82,6 +84,7 @@ export class PortalService {
         fullName: student.fullName,
         role: 'STUDENT',
         viewer,
+        ...(parentUserId ? { parentUserId } : {}),
       },
       {
         expiresIn: '30d',
@@ -250,11 +253,11 @@ export class PortalService {
     });
     const kids = links.map((l) => l.student).filter((s) => s && !s.deletedAt && s.tenant);
     if (kids.length === 0) throw new NotFoundException("Sizga biriktirilgan o'quvchi topilmadi. Markaz bilan bog'laning.");
-    return { sessions: await Promise.all(kids.map((s) => this.portalSession(s as typeof s & { tenant: NonNullable<typeof s.tenant> }, 'parent'))) };
+    return { sessions: await Promise.all(kids.map((s) => this.portalSession(s as typeof s & { tenant: NonNullable<typeof s.tenant> }, 'parent', parentUserId))) };
   }
 
-  private async portalSession(student: { id: string; tenantId: string; fullName: string; phone: string | null; tenant: { id: string; name: string; subdomain: string; logoUrl: string | null; phone: string | null; address: string | null } }, viewer: PortalViewer = 'student') {
-    const accessToken = await this.signPortalToken(student, viewer);
+  private async portalSession(student: { id: string; tenantId: string; fullName: string; phone: string | null; tenant: { id: string; name: string; subdomain: string; logoUrl: string | null; phone: string | null; address: string | null } }, viewer: PortalViewer = 'student', parentUserId?: string) {
+    const accessToken = await this.signPortalToken(student, viewer, parentUserId);
     return {
       accessToken,
       viewer,

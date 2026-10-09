@@ -42,6 +42,7 @@ import { CustomFieldsModule } from './custom-fields/custom-fields.module';
 import { LessonsModule } from './lessons/lessons.module';
 import { MakeupsModule } from './makeups/makeups.module';
 import { CalendarModule } from './calendar/calendar.module';
+import { ChatModule } from './chat/chat.module';
 import { ScheduleModule } from './schedule/schedule.module';
 import { ExpensesModule } from './expenses/expenses.module';
 import { PortalModule } from './portal/portal.module';
@@ -97,6 +98,7 @@ import { InvoicesModule } from './invoices/invoices.module';
     LessonsModule,
     MakeupsModule,
     CalendarModule,
+    ChatModule,
     ScheduleModule,
     ExpensesModule,
     PortalModule,

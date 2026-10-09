@@ -10,6 +10,8 @@ import {
   index,
   jsonb,
   check,
+  bigint,
+  bigserial,
   type AnyPgColumn,
 } from 'drizzle-orm/pg-core';
 import { relations, sql } from 'drizzle-orm';
@@ -1313,9 +1315,10 @@ export const cashClosings = pgTable('cash_closings', {
   id: text('id').primaryKey().$defaultFn(() => createId()),
   tenantId: text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
   date: text('date').notNull(), // the center's calendar day, "YYYY-MM-DD"
-  expectedCash: integer('expected_cash').notNull(),
-  countedCash: integer('counted_cash').notNull(),
-  difference: integer('difference').notNull(), // counted - expected
+  // bigint: a busy day's cash can pass the int4 limit (2,147,483,647).
+  expectedCash: bigint('expected_cash', { mode: 'number' }).notNull(),
+  countedCash: bigint('counted_cash', { mode: 'number' }).notNull(),
+  difference: bigint('difference', { mode: 'number' }).notNull(), // counted - expected
   totals: text('totals').notNull(), // JSON: the day's figures at closing
   note: text('note'),
   closedById: text('closed_by_id').references(() => users.id, { onDelete: 'set null' }),
@@ -1910,4 +1913,57 @@ export const calendarEventLinks = pgTable('calendar_event_links', {
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 }, (t) => ({
   keyUniq: uniqueIndex('calendar_event_links_key_uniq').on(t.connectionId, t.eventKey),
+}));
+
+// ---------------------------------------------------------------------------
+// Two-way messages between people (chat/). Who may read or write a
+// conversation is decided from live data on every request (chat-access.ts);
+// these rows only say what the conversation is about.
+export const chatConversations = pgTable('chat_conversations', {
+  id: text('id').primaryKey().$defaultFn(() => createId()),
+  tenantId: text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  // STUDENT_CENTER (a student's cabinet and the center) | STUDENT_TEACHER | GROUP
+  kind: text('kind').notNull(),
+  studentId: text('student_id').references(() => students.id, { onDelete: 'cascade' }),
+  teacherUserId: text('teacher_user_id').references(() => users.id, { onDelete: 'cascade' }),
+  groupId: text('group_id').references(() => groups.id, { onDelete: 'cascade' }),
+  createdByUserId: text('created_by_user_id').references(() => users.id, { onDelete: 'set null' }),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  lastMessageAt: timestamp('last_message_at'),
+}, (t) => ({
+  centerUniq: uniqueIndex('chat_conversations_center_uniq').on(t.tenantId, t.studentId).where(sql`kind = 'STUDENT_CENTER'`),
+  teacherUniq: uniqueIndex('chat_conversations_teacher_uniq').on(t.tenantId, t.studentId, t.teacherUserId).where(sql`kind = 'STUDENT_TEACHER'`),
+  groupUniq: uniqueIndex('chat_conversations_group_uniq').on(t.tenantId, t.groupId).where(sql`kind = 'GROUP'`),
+  tenantIdx: index('chat_conversations_tenant_idx').on(t.tenantId, t.kind),
+}));
+
+export const chatMessages = pgTable('chat_messages', {
+  id: text('id').primaryKey().$defaultFn(() => createId()),
+  tenantId: text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  conversationId: text('conversation_id').notNull().references(() => chatConversations.id, { onDelete: 'cascade' }),
+  // Server order: increasing across the database, so per conversation too.
+  seq: bigserial('seq', { mode: 'number' }).notNull(),
+  // u:<userId> for an account, c:<studentId> for a student's cabinet.
+  senderKey: text('sender_key').notNull(),
+  senderType: text('sender_type').notNull(), // USER | CABINET
+  senderUserId: text('sender_user_id').references(() => users.id, { onDelete: 'set null' }),
+  senderStudentId: text('sender_student_id').references(() => students.id, { onDelete: 'set null' }),
+  senderViewer: text('sender_viewer'), // student | parent (cabinet)
+  senderName: text('sender_name').notNull(),
+  body: text('body').notNull(),
+  clientMessageId: text('client_message_id').notNull(),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+}, (t) => ({
+  // A retried send is the same message.
+  once: uniqueIndex('chat_messages_client_once').on(t.conversationId, t.senderKey, t.clientMessageId),
+  convSeq: index('chat_messages_conversation_seq_idx').on(t.conversationId, t.seq),
+}));
+
+export const chatReads = pgTable('chat_reads', {
+  conversationId: text('conversation_id').notNull().references(() => chatConversations.id, { onDelete: 'cascade' }),
+  participantKey: text('participant_key').notNull(),
+  lastReadSeq: bigint('last_read_seq', { mode: 'number' }).notNull().default(0),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+}, (t) => ({
+  pk: primaryKey({ columns: [t.conversationId, t.participantKey] }),
 }));
