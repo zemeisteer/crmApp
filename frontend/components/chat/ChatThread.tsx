@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { ApiError, type ChatClient, type ChatConversation, type ChatMessage } from "@/lib/api";
 import {
-  MAX_CHAT_BODY, checkBody, dropConfirmed, failPending, firstSeq, lastSeq, mergeMessages, newClientMessageId, removePending, upsertPending, type PendingMessage,
+  MAX_CHAT_BODY, checkBody, dropConfirmed, failPending, firstSeq, lastSeq, mergeMessages, newClientMessageId, removePending, senderLabel, upsertPending, type PendingMessage,
 } from "@/lib/chat";
 import { useLanguage } from "@/lib/i18n-context";
 import { CHAT_ACCENT as ACCENT, conversationTitle, kindLabel, messageTime, srOnly } from "./shared";
@@ -324,7 +324,7 @@ export default function ChatThread({
                 <div role="log" aria-live="polite" aria-relevant="additions" aria-label={t("chat.messagesLabel")}>
                 <ol style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 8 }}>
                   {messages.map((m) => (
-                    <Bubble key={m.id} mine={m.mine} name={m.mine ? t("chat.you") : m.senderName} time={messageTime(m.createdAt, lang)} body={m.body} />
+                    <Bubble key={m.id} mine={m.mine} name={m.mine ? t("chat.you") : senderLabel(m, { parentOf: t("chat.parentOf"), parentNamed: t("chat.parentNamed") })} time={messageTime(m.createdAt, lang)} body={m.body} />
                   ))}
                   {visiblePending.map((p) => (
                     <Bubble

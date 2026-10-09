@@ -1952,7 +1952,13 @@ export const chatMessages = pgTable('chat_messages', {
   senderUserId: text('sender_user_id').references(() => users.id, { onDelete: 'set null' }),
   senderStudentId: text('sender_student_id').references(() => students.id, { onDelete: 'set null' }),
   senderViewer: text('sender_viewer'), // student | parent (cabinet)
+  // A ready label (Uzbek), kept for any reader of the raw row.
   senderName: text('sender_name').notNull(),
+  // The parts the pages put together in the reader's language: the
+  // sender's own name (null for a parent signed in with the child's PIN)
+  // and, when a parent writes, the child they write about.
+  senderPerson: text('sender_person'),
+  senderAbout: text('sender_about'),
   body: text('body').notNull(),
   clientMessageId: text('client_message_id').notNull(),
   createdAt: timestamp('created_at').notNull().defaultNow(),

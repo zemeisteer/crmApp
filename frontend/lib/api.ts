@@ -3564,7 +3564,7 @@ export interface ChatConversation {
   studentName: string | null;
   groupName: string | null;
   teacherName: string | null;
-  lastMessage: { body: string; senderName: string; createdAt: string; seq: number } | null;
+  lastMessage: { body: string; senderName: string; senderRole?: "staff" | "student" | "parent"; senderPerson?: string | null; senderAbout?: string | null; createdAt: string; seq: number } | null;
   lastMessageAt: string | null;
   unread: number;
   lastReadSeq: number;
@@ -3578,7 +3578,13 @@ export interface ChatMessage {
   seq: number;
   senderType: "USER" | "CABINET";
   senderViewer: "student" | "parent" | null;
+  /** A ready Uzbek label; pages build their own from the parts below (lib/chat.ts senderLabel). */
   senderName: string;
+  senderRole?: "staff" | "student" | "parent";
+  /** The sender's own name; null for a parent signed in with the child's PIN. */
+  senderPerson?: string | null;
+  /** When a parent writes: the child. */
+  senderAbout?: string | null;
   body: string;
   clientMessageId: string;
   createdAt: string;
