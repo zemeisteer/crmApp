@@ -6,6 +6,10 @@ describe('redactUrl', () => {
     expect(redactUrl('/api/invitations/abc123deadbeef/accept')).toBe('/api/invitations/[redacted]/accept');
     expect(redactUrl('/api/invitations/abc123deadbeef/validate')).toBe('/api/invitations/[redacted]/validate');
     expect(redactUrl('/api/public/placement/sometoken/submit')).toBe('/api/public/placement/[redacted]/submit');
+    expect(redactUrl('/api/calendar/feed/Zq3secretFeedKey.ics')).toBe('/api/calendar/feed/[redacted]');
+  });
+  it('masks the OAuth callback code and state', () => {
+    expect(redactUrl('/api/calendar/google/callback?code=4/abc&state=xyz&scope=x')).toBe('/api/calendar/google/callback?code=[redacted]&state=[redacted]&scope=x');
   });
   it('masks token / code / password in the query', () => {
     expect(redactUrl('/api/auth/verify-email?token=secretvalue')).toBe('/api/auth/verify-email?token=[redacted]');

@@ -7,8 +7,7 @@ import {
   Patch,
   Post,
   Query,
-  UseGuards,
-} from '@nestjs/common';
+  UseGuards, UseInterceptors } from '@nestjs/common';
 import { JwtAuthGuard } from '../common/jwt-auth.guard';
 import { RolesGuard } from '../common/roles.guard';
 import { TrialGuard } from '../common/trial.guard';
@@ -16,9 +15,11 @@ import { Roles } from '../common/roles.decorator';
 import { CurrentUser } from '../common/current-user.decorator';
 import { GroupsService } from './groups.service';
 import { ConfirmGroupPriceDto, CreateGroupDto, UpdateGroupDto } from './dto/group.dto';
+import { CalendarTouch } from '../lessons/calendar-touch.interceptor';
 
 @UseGuards(JwtAuthGuard, RolesGuard, TrialGuard)
 @Controller('groups')
+@UseInterceptors(CalendarTouch)
 export class GroupsController {
   constructor(private readonly service: GroupsService) {}
 
