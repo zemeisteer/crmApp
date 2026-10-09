@@ -124,3 +124,24 @@ Next: F1 custom fields.
 - Interrupted once by an API rate limit, resumed.
 - Verified by me: tsc PASS; lint 0 errors / 71 warnings (baseline); unit 17/17
   (9 + 8 new); `custom-fields.spec.ts` 3/3 in Chromium.
+
+**F4 chat backend, cash, schedule race, pagination.** Commits `6f4b74a`, `ab3e518`.
+- Tested: `chat.e2e-spec`, `schedule-race.e2e-spec` 3, `list-pagination.e2e-spec` 3.
+
+**Frontend agent (make-ups and calendar).** Commit `ea8c8e5`.
+- Verified by me after the agent: tsc PASS; lint 0 errors / 71 warnings; unit 24/24;
+  backend rebuilt, browser build rebuilt, **full browser suite 26/26** in Chromium.
+
+**L-02 and contrast.** Commit `7c1a66c`.
+- Plans get `features_ru` / `features_en` (migration 0046 translates the shipped tiers
+  only when untouched). The site and the pricing page show the visitor's language with
+  an Uzbek fallback. The platform admin edits all three.
+- Tested: `plan-languages.e2e` 2/2; `db:verify-migrations` scenario 9 PASS;
+  `db:check-migrations` 47 agree; drift check "No schema changes"; `plans.test` 2/2.
+- Contrast: late/medium chips `#EA7A3A` → `#B4531A` (5.0:1 with white), grey hints
+  `#9CA3AF` → `#686B75`.
+
+**Cross-feature (in progress).**
+- The timetable page shows this week's make-ups on their day (`makeups.spec` extended).
+- The chat frontend is being built by an agent; nothing from it is committed or claimed
+  yet.

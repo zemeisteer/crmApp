@@ -10,6 +10,7 @@ import { useAuth } from "@/lib/auth-context";
 import { can } from "@/lib/access";
 import { useLanguage } from "@/lib/i18n-context";
 import { useCenterClock } from "@/lib/use-center-clock";
+import { addDays } from "@/lib/makeups";
 import {
   ApiError,
   scheduleApi,
@@ -22,6 +23,8 @@ import {
   Group,
   Teacher,
   Branch,
+  makeupsApi,
+  type MakeupRosterItem,
 } from "@/lib/api";
 
 const ACCENT = "#4F46E5";
@@ -108,6 +111,23 @@ export default function SchedulePage() {
   useEffect(() => {
     loadData();
   }, []);
+
+  // This week's make-up lessons (dated, on the center's clock) beside the
+  // weekly timetable, for whoever runs or teaches them.
+  const [weekMakeups, setWeekMakeups] = useState<MakeupRosterItem[]>([]);
+  const seesMakeups = can(user, "makeups.attend");
+  useEffect(() => {
+    if (!seesMakeups) return;
+    const monday = addDays(clock.today(), 1 - clock.weekday());
+    let current = true;
+    makeupsApi
+      .roster(monday, addDays(monday, 6))
+      .then((list) => current && setWeekMakeups(list.filter((m) => m.status !== "CANCELLED")))
+      .catch(() => current && setWeekMakeups([]));
+    return () => {
+      current = false;
+    };
+  }, [seesMakeups, clock]);
 
   // Live conflict check when form inputs change. Only the answer for the
   // current inputs counts: an older, slower answer is dropped, so the
@@ -280,6 +300,19 @@ export default function SchedulePage() {
     });
     return map;
   }, [filteredSchedules]);
+
+  const makeupsByDay = useMemo(() => {
+    const map: Record<number, MakeupRosterItem[]> = {};
+    for (const m of weekMakeups) {
+      if (filterGroup && m.targetGroupId !== filterGroup) continue;
+      if (filterTeacher && m.teacherId !== filterTeacher) continue;
+      if (filterRoom && m.roomId !== filterRoom) continue;
+      const d = new Date(`${m.date}T00:00:00Z`).getUTCDay() || 7;
+      (map[d] ??= []).push(m);
+    }
+    Object.values(map).forEach((l) => l.sort((a, b) => a.startTime.localeCompare(b.startTime)));
+    return map;
+  }, [weekMakeups, filterGroup, filterTeacher, filterRoom]);
 
   return (
     <DashboardShell>
@@ -465,7 +498,7 @@ export default function SchedulePage() {
 
                 {/* Day Lessons List */}
                 <div style={{ padding: 10, display: "flex", flexDirection: "column", gap: 10, flex: 1 }}>
-                  {dayLessons.length === 0 ? (
+                  {dayLessons.length === 0 && !makeupsByDay[day]?.length ? (
                     <div
                       style={{
                         margin: "auto",
@@ -608,6 +641,29 @@ export default function SchedulePage() {
                         </div>
                       );
                     })
+                  )}
+                  {(makeupsByDay[day] ?? []).length > 0 && (
+                    <div aria-label={t("schedule.makeupsThisWeek")} style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 4 }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: "#686B75", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                        {t("schedule.makeupsThisWeek")}
+                      </div>
+                      {makeupsByDay[day].map((m) => (
+                        <div
+                          key={m.id}
+                          data-testid="schedule-makeup"
+                          style={{ background: "#FFFFFF", border: "1px dashed #8B84E8", borderRadius: 10, padding: "8px 10px", fontSize: 12, color: "#181A1F" }}
+                        >
+                          <div style={{ fontWeight: 700 }}>
+                            {m.startTime}–{m.endTime} · {t("schedule.makeupBadge")}
+                          </div>
+                          <div>{m.student.fullName}</div>
+                          <div style={{ color: "#686B75" }}>
+                            {m.date}
+                            {m.groupName ? ` · ${m.groupName}` : ""}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   )}
                 </div>
               </div>

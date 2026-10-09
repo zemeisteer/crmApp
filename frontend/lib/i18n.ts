@@ -3477,6 +3477,8 @@ export const dict = {
   "cf.portalTitle": { UZ: "Qo'shimcha ma'lumotlar", RU: "Дополнительные сведения", EN: "Additional details" },
   // ---- Make-up lessons (credits, bookings, lesson cancellations) ----
   "mk.nav": { UZ: "Qoplash darslari", RU: "Отработки", EN: "Make-up lessons" },
+  "schedule.makeupsThisWeek": { UZ: "Shu haftadagi qoplash darslari", RU: "Отработки на этой неделе", EN: "Make-ups this week" },
+  "schedule.makeupBadge": { UZ: "Qoplash", RU: "Отработка", EN: "Make-up" },
   "mk.title": { UZ: "Qoplash darslari", RU: "Отработки занятий", EN: "Make-up lessons" },
   "mk.subtitle": { UZ: "Qoldirilgan yoki bekor qilingan dars uchun o'quvchiga qoplash krediti bering va uni boshqa guruh darsiga yoki alohida mashg'ulotga yozing. Kreditning pul qiymati yo'q.", RU: "Выдайте ученику кредит за пропущенное или отменённое занятие и запишите его на урок другой группы или на отдельное занятие. Кредит не имеет денежной стоимости.", EN: "Give a student a credit for a missed or cancelled lesson and book it into another group's lesson or a separate session. Credits have no cash value." },
   "mk.subtitleTeacher": { UZ: "Siz o'tadigan qoplash darslari: kelgan yoki kelmaganini belgilang.", RU: "Отработки, которые вы ведёте: отметьте, пришёл ли ученик.", EN: "Make-up lessons you teach: mark whether the student came." },

@@ -4,8 +4,8 @@ import { api, centerDay, centerUrl, cleanUpStagingCenters, expectCenterDashboard
 // Make-up lessons: the owner sets credits to expire after 30 days in
 // Settings; a student marked absent gets a credit on the "Missed lessons"
 // tab, the credit is booked into another group's lesson from the Book
-// dialog, the make-up shows in the roster and is marked attended - the
-// credit is then used. On the group page a lesson is called off, listed
+// dialog, the make-up shows in the roster and on the week's timetable and
+// is marked attended - the credit is then used. On the group page a lesson is called off, listed
 // and restored.
 cleanUpStagingCenters();
 
@@ -101,8 +101,16 @@ test('a missed lesson becomes a credit, is booked into another group, attended a
   await expect(rosterItem).toContainText('Keldi');
   await expect(rosterItem.getByRole('button')).toHaveCount(0);
 
-  // --- After a reload the credit is used ---------------------------------
-  await page.reload();
+  // --- The timetable shows this week's make-up on its day ---------------
+  await page.goto(centerUrl(a.sub, '/schedule'));
+  const onTimetable = page.getByTestId('schedule-makeup').filter({ hasText: 'Makeup Student' });
+  await expect(onTimetable).toHaveCount(1);
+  await expect(onTimetable).toContainText('15:00–16:00');
+  await expect(onTimetable).toContainText('Host Evening');
+  await expect(onTimetable).toContainText(today);
+
+  // --- After a fresh load the credit is used -----------------------------
+  await page.goto(centerUrl(a.sub, '/makeups'));
   await page.getByRole('tab', { name: 'Kreditlar' }).click();
   await expect(page.getByRole('list', { name: 'Kreditlar' }).getByRole('listitem').filter({ hasText: 'Makeup Student' })).toContainText('Ishlatilgan');
   credits = await api<Credit[]>('GET', '/makeups/credits', { token: a.token });

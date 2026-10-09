@@ -123,7 +123,8 @@ has it. Import supports teachers, groups and students, with declared columns.
 ### Authorization
 - Every new route is in the access catalog with a template that equals its `@Roles`.
 - New keys:
-  - `customFields.manage` (no configurable role by default; owner/admin);
+  - (as built) no `customFields.manage` key: definitions are OWNER/ADMIN only through `@Roles('ADMIN')`, listed in the fixed part of `staff-access.e2e`;
+  - `chat.use` (ALL) and `chat.center` (M, R; answering the center's inbox);
   - `makeups.view` (ALL);
   - `makeups.manage` (M, R);
   - `makeups.attend` (T);
@@ -201,7 +202,7 @@ All new variables are optional and documented in `.env.production.example`.
   Everything else gets 404, so an old private URL stops working.
 
 **Private files** are served only through `GET /api/files/<name>?e=<expiry>&s=<hmac>`.
-- The signature is HMAC-SHA256 over `name|expiry` and lives 15 minutes.
+- The signature is HMAC-SHA256 over `name|expiry` and lives 30 minutes (as built: `SIGNED_URL_TTL_SECONDS`).
 - `Cache-Control: private, max-age=…`.
 
 **Signing** (`POST /api/files/sign`, `POST /api/portal/files/sign`) checks that the caller
@@ -281,8 +282,8 @@ anonymously; existing homework and exam attachments still open for authorized us
 | multi-select picks | ≤ 50 |
 
 **Permissions.**
-- **Definitions:** managed by OWNER/ADMIN (`customFields.manage`, no default for other
-  roles). Any staff member may list them to render forms.
+- **Definitions:** managed by OWNER/ADMIN only (as built there is no separate access key).
+  Any staff member may list them to render forms.
 - **Values:** read and written through the existing student and lead routes. They follow
   `students.view/edit`, `leads.view/edit` and the teacher scope.
 - **Portal:** never shows fields unless `portalVisible` (students only, read-only).
