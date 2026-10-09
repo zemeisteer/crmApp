@@ -23,6 +23,8 @@ import { useAuth } from "@/lib/auth-context";
 import { LEAD_SOURCES, label, primaryBtn, ghostBtn, sourceKey, statusKey, StatusBadge, toIsoFromParts, useCenterTimeZone, CenterTimeNote } from "./lead-ui";
 import PhoneInput from "@/components/PhoneInput";
 import { phoneOrEmpty } from "@/lib/validation";
+import CustomFieldInputs, { cfSubmitError, useCfDraft, useCustomFieldDefs } from "@/components/custom-fields/CustomFieldInputs";
+import { activeDefs, cfPayload, cfValidate, draftFrom } from "@/lib/custom-fields";
 
 // Same rules as the server (backend/src/leads/phone.ts), plus a length
 // check for Uzbek numbers: +998 followed by exactly 9 digits.
@@ -84,6 +86,16 @@ export default function LeadFormModal({ open, onClose, onSaved, lead, managers =
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [saving, setSaving] = useState(false);
 
+  // The center's own lead fields; an edit sends only the ones changed.
+  const cfDefs = useCustomFieldDefs("LEAD", { enabled: open });
+  const cf = useCfDraft();
+  // Drafts start from the lead's values once the fields are known.
+  const [cfReady, setCfReady] = useState(false);
+  if (cfDefs.defs && !cfReady) {
+    setCfReady(true);
+    cf.setDraft(draftFrom(activeDefs(cfDefs.defs), lead?.customFields));
+  }
+
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
@@ -119,7 +131,12 @@ export default function LeadFormModal({ open, onClose, onSaved, lead, managers =
     setError(null);
     const errs = validate();
     setFieldErrors(errs);
-    if (Object.values(errs).some(Boolean)) return;
+    const defs = cfDefs.defs ?? [];
+    const cfErrs = cfValidate(defs, cf.draft, editing ? "update" : "create", lead?.customFields);
+    cf.setErrors(cfErrs);
+    if (Object.keys(cfErrs).length) setError(t("cf.formError"));
+    if (Object.values(errs).some(Boolean) || Object.keys(cfErrs).length) return;
+    const customFields = cfPayload(defs, cf.draft, editing ? "update" : "create", lead?.customFields);
     setSaving(true);
     try {
       let saved: Lead;
@@ -134,6 +151,7 @@ export default function LeadFormModal({ open, onClose, onSaved, lead, managers =
           desiredCourseId: courseId || null,
           preferredBranchId: branchId || null,
           notes: notes.trim() || null,
+          customFields,
         });
       } else {
         saved = await leadsApi.create({
@@ -148,6 +166,7 @@ export default function LeadFormModal({ open, onClose, onSaved, lead, managers =
           assignedManagerUserId: managerId || undefined,
           followUpAt: followDate ? toIsoFromParts(followDate, "10:00", tz) : undefined,
           notes: notes.trim() || undefined,
+          customFields,
           ...(override ? { allowDuplicate: true, duplicateReason: overrideReason.trim() } : {}),
         });
       }
@@ -157,7 +176,9 @@ export default function LeadFormModal({ open, onClose, onSaved, lead, managers =
       if (err instanceof ApiError && err.body?.code === "DUPLICATE_LEAD") {
         setDuplicates((err.body.duplicates as LeadDuplicate[]) ?? []);
       }
-      setError(err instanceof ApiError ? err.message : t("common.errorGeneric"));
+      const { fields, message } = cfSubmitError(err, cfDefs.defs ?? [], t);
+      if (fields) cf.setErrors(fields);
+      setError(message);
     } finally {
       setSaving(false);
     }
@@ -251,6 +272,11 @@ export default function LeadFormModal({ open, onClose, onSaved, lead, managers =
         <div style={{ marginTop: 14 }}>
           <label style={label}>{t("leads.fieldNotes")}</label>
           <textarea className="field-input" rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} maxLength={5000} />
+        </div>
+
+        {cfDefs.error && <div role="alert" style={{ marginTop: 14, fontSize: 12.5, fontWeight: 600, color: "#B45309" }}>{t("cf.defsError")}</div>}
+        <div style={{ marginTop: 14 }}>
+          <CustomFieldInputs defs={cfDefs.defs ?? []} values={cf.draft} errors={cf.errors} onChange={cf.change} idPrefix={editing ? "lead-edit-cf" : "lead-new-cf"} title={t("cf.section")} />
         </div>
 
         {duplicates.length > 0 && (

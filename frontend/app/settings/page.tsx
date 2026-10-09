@@ -7,6 +7,7 @@ import AccessMatrixPanel from "@/components/settings/AccessMatrix";
 import StaffAccessEditor, { isConfigurableRole } from "@/components/settings/StaffAccessEditor";
 import SiteContentEditor from "@/components/settings/SiteContentEditor";
 import BranchesManager from "@/components/settings/BranchesManager";
+import CustomFieldsManager from "@/components/settings/CustomFieldsManager";
 import Select from "@/components/Select";
 import TagListInput from "@/components/TagListInput";
 import { useAuth } from "@/lib/auth-context";
@@ -52,7 +53,10 @@ function joinList(arr: string[]): string {
   return arr.map((v) => v.trim()).filter(Boolean).join(",");
 }
 
-type Tab = "profile" | "branches" | "site" | "staff" | "security" | "notifications" | "integrations" | "data";
+type Tab = "profile" | "branches" | "site" | "staff" | "fields" | "security" | "notifications" | "integrations" | "data";
+// Sections only the owner and admins manage (the server checks again).
+const ADMIN_ONLY_TABS: Tab[] = ["fields"];
+const isAdminRole = (role?: string) => role === "OWNER" || role === "ADMIN" || role === "SUPERADMIN";
 
 const TAB_DEFS: { key: Tab; labelKey: TranslationKey; icon: React.ReactNode }[] = [
   {
@@ -70,6 +74,10 @@ const TAB_DEFS: { key: Tab; labelKey: TranslationKey; icon: React.ReactNode }[] 
   {
     key: "staff", labelKey: "settings.tabStaff",
     icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" /></svg>,
+  },
+  {
+    key: "fields", labelKey: "cf.tab",
+    icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="16" rx="2" /><path d="M7 9h10M7 13h6M7 17h8" /></svg>,
   },
   {
     key: "security", labelKey: "settings.tabSecurity",
@@ -362,7 +370,7 @@ function SettingsContent() {
 
       <div className="settings-layout" style={{ flex: 1, minHeight: 0, display: "flex", overflow: "hidden" }}>
         <div className="settings-nav" style={{ width: 220, flexShrink: 0, borderRight: "1px solid #EAE8E2", padding: 18, display: "flex", flexDirection: "column", gap: 4, overflow: "auto" }}>
-          {TAB_DEFS.map((td) => (
+          {TAB_DEFS.filter((td) => !ADMIN_ONLY_TABS.includes(td.key) || isAdminRole(user?.role)).map((td) => (
             <button
               key={td.key}
               onClick={() => setTab(td.key)}
@@ -529,6 +537,8 @@ function SettingsContent() {
           )}
 
           {tab === "branches" && <BranchesManager />}
+
+          {tab === "fields" && isAdminRole(user?.role) && <CustomFieldsManager />}
 
           {tab === "site" && <SiteContentEditor />}
 

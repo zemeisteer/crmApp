@@ -19,6 +19,8 @@ import { useCenterClock } from "@/lib/use-center-clock";
 import { useLanguage } from "@/lib/i18n-context";
 import type { TranslationKey } from "@/lib/i18n";
 import PhoneInput from "@/components/PhoneInput";
+import CustomFieldInputs, { cfSubmitError, useCfDraft, useCustomFieldDefs } from "@/components/custom-fields/CustomFieldInputs";
+import { cfPayload, cfValidate } from "@/lib/custom-fields";
 
 const ACCENT = "#4F46E5";
 
@@ -77,8 +79,12 @@ function GroupDetailContent() {
 
   // One key per submission of the "new student" form (see retryKey).
   const createKey = useRef<{ sig: string; key: string } | null>(null);
+  // The center's own student fields: a new student answers the required ones here too.
+  const cfDefs = useCustomFieldDefs("STUDENT", { enabled: enrollOpen && enrollMode === "new" });
+  const cf = useCfDraft();
   function resetEnrollForm() {
     createKey.current = null;
+    cf.reset();
     setEnrollStudentId("");
     setNewFullName("");
     setNewGender("");
@@ -201,6 +207,13 @@ function GroupDetailContent() {
           setSaving(false);
           return;
         }
+        const cfErrs = cfValidate(cfDefs.defs ?? [], cf.draft, "create");
+        cf.setErrors(cfErrs);
+        if (Object.keys(cfErrs).length) {
+          setEnrollError(t("cf.formError"));
+          setSaving(false);
+          return;
+        }
         const body = {
           fullName: newFullName.trim(),
           gender: newGender ? (newGender as Gender) : null,
@@ -208,6 +221,7 @@ function GroupDetailContent() {
           parentPhone: phoneOrEmpty(newParentPhone) || undefined,
           birthDate: newBirthDate || undefined,
           groupId: id,
+          customFields: cfPayload(cfDefs.defs ?? [], cf.draft, "create"),
         };
         await studentsApi.create(body, retryKey(createKey, body));
         createKey.current = null;
@@ -216,7 +230,9 @@ function GroupDetailContent() {
       resetEnrollForm();
       load();
     } catch (err) {
-      setEnrollError(err instanceof ApiError ? err.message : t("common.errorGeneric"));
+      const { fields, message } = cfSubmitError(err, enrollMode === "new" ? cfDefs.defs ?? [] : [], t);
+      if (fields) cf.setErrors(fields);
+      setEnrollError(message);
     } finally {
       setSaving(false);
     }
@@ -606,6 +622,9 @@ function GroupDetailContent() {
                   />
                 </Field>
               </div>
+
+              {cfDefs.error && <div role="alert" style={{ fontSize: 12.5, fontWeight: 600, color: "#B45309" }}>{t("cf.defsError")}</div>}
+              <CustomFieldInputs defs={cfDefs.defs ?? []} values={cf.draft} errors={cf.errors} onChange={cf.change} idPrefix="group-new-student-cf" title={t("cf.section")} />
 
               <button
                 className="btn"
