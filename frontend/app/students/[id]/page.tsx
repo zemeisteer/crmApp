@@ -23,6 +23,7 @@ import { useCustomFieldDefs } from "@/components/custom-fields/CustomFieldInputs
 import CustomFieldValues, { hasCustomFieldContent } from "@/components/custom-fields/CustomFieldValues";
 import CustomFieldsEditModal from "@/components/custom-fields/CustomFieldsEditModal";
 import { activeDefs } from "@/lib/custom-fields";
+import { listReturnHref } from "@/lib/list-paging";
 
 const ACCENT = "#4F46E5";
 
@@ -276,7 +277,9 @@ function StudentDetailContent() {
   async function onDeleteStudent() {
     if (!confirm(t("studentDetail.confirmDelete"))) return;
     await studentsApi.remove(id);
-    router.push("/students");
+    // Back to the page of the list the user came from (it moves to the last
+    // page that still has rows if this was the only one on it).
+    router.push(listReturnHref("students", "/students"));
   }
 
   return (
@@ -516,7 +519,7 @@ function StudentDetailContent() {
                           className="btn"
                           onClick={onCopyLink}
                           style={{
-                            background: copiedLink ? "#1FA463" : ACCENT,
+                            background: copiedLink ? "#16794A" : ACCENT,
                             color: "#fff",
                             border: "none",
                             fontSize: 12,

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import DashboardShell from "@/components/DashboardShell";
 import Modal from "@/components/Modal";
 import LoadError from "@/components/LoadError";
-import Pagination, { usePagedSlice } from "@/components/Pagination";
+import ListPager from "@/components/ListPager";
 import Select from "@/components/Select";
 import BarChart from "@/components/BarChart";
 import DatePicker from "@/components/DatePicker";
@@ -19,6 +19,7 @@ import {
   notificationsApi,
   billingApi,
   invoicesApi,
+  reportsApi,
   Invoice,
   Payment,
   Student,
@@ -30,7 +31,9 @@ import {
   FinanceSummary,
   ApiError,
   retryKey,
+  type PageOf,
 } from "@/lib/api";
+import { clampPage, slicePage } from "@/lib/list-paging";
 import { useCenterClock } from "@/lib/use-center-clock";
 import CashDayPanel from "@/components/payments/CashDay";
 import DebtorRemindersDialog from "@/components/payments/DebtorReminders";
@@ -42,6 +45,10 @@ import { MONTH_KEYS, MONTH_SHORT_KEYS, type TranslationKey } from "@/lib/i18n";
 import { formatDate } from "@/lib/format-date";
 
 const ACCENT = "#4F46E5";
+// Rows per page of the payment history; the server pages (GET /payments?page&pageSize).
+const PAGE_SIZE = 20;
+// The server's largest page, for fetching a chart's payments in few requests.
+const MAX_PAGE_SIZE = 200;
 
 function formatMoney(n: number) {
   return new Intl.NumberFormat("uz-UZ").format(n);
@@ -120,6 +127,28 @@ type Period = "day" | "week" | "month" | "year";
 
 function localDayStr(d: Date) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+/** First day (YYYY-MM-DD, center clock) the daily or weekly chart shows. */
+function chartWindowStart(period: "day" | "week", tz: string) {
+  const now = centerWallClock(new Date(), tz)!;
+  const d = new Date(now);
+  if (period === "day") d.setDate(now.getDate() - 6);
+  else d.setDate(now.getDate() - 5 * 7 - now.getDay());
+  return localDayStr(d);
+}
+
+/** Paid payments, newest first, back to `fromDay` (and a little before: whole pages). */
+async function paidSince(fromDay: string, dateOf: (iso: string) => string | null): Promise<Payment[]> {
+  const out: Payment[] = [];
+  for (let page = 1; ; page++) {
+    const res = await paymentsApi.page({ status: "PAID", page, pageSize: MAX_PAGE_SIZE });
+    out.push(...res.items);
+    if (res.items.length < MAX_PAGE_SIZE || page * MAX_PAGE_SIZE >= res.total) return out;
+    const last = res.items[res.items.length - 1];
+    const day = last.paidAt ? dateOf(last.paidAt) : null;
+    if (day && day < fromDay) return out;
+  }
 }
 
 function StudentPicker({
@@ -453,7 +482,12 @@ function PaymentsContent() {
   const { tenant, user } = useAuth();
 
   const [activeTab, setActiveTab] = useState<TabType>("history");
-  const [payments, setPayments] = useState<Payment[]>([]);
+  // How many payments the center has at all ("no payments yet" vs "nothing
+  // matches"), and this year's paid totals from the server (the stat card
+  // and the monthly chart): no longer summed from a full list in the page.
+  const [allCount, setAllCount] = useState<number | null>(null);
+  // undefined: loading; null: not available.
+  const [revenue, setRevenue] = useState<{ monthRevenue: number; byMonth: Array<{ month: string; amount: number }> } | null | undefined>(undefined);
   const [students, setStudents] = useState<Student[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
   const [loading, setLoading] = useState(true);
@@ -506,9 +540,13 @@ function PaymentsContent() {
   const [expenseNotes, setExpenseNotes] = useState("");
 
   // History filters
+  const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [groupFilter, setGroupFilter] = useState("");
+  const [monthFilter, setMonthFilter] = useState("");
+  // Bumped after a new payment: the current page and the chart load again.
+  const [reloadKey, setReloadKey] = useState(0);
   const [debtorGroupFilter, setDebtorGroupFilter] = useState("");
   const [methodFilter, setMethodFilter] = useState("");
   const [remindersOpen, setRemindersOpen] = useState(false);
@@ -522,7 +560,7 @@ function PaymentsContent() {
   function loadAll() {
     setLoading(true);
     Promise.all([
-      paymentsApi.list(),
+      paymentsApi.page({ page: 1, pageSize: 1 }),
       studentsApi.list(),
       branchesApi.list().catch(() => [] as Branch[]),
       paymentsApi.debtors({ forMonth: selectedMonth }),
@@ -531,7 +569,7 @@ function PaymentsContent() {
       seesInvoices ? invoicesApi.list({ forMonth: selectedMonth }).catch(() => [] as Invoice[]) : Promise.resolve([] as Invoice[]),
     ])
       .then(([p, s, b, d, fs, exp, invs]) => {
-        setPayments(p);
+        setAllCount(p.total);
         setStudents(s);
         setBranches(b);
         setDebtorsData(d);
@@ -543,6 +581,19 @@ function PaymentsContent() {
       .catch((err) => setLoadError(err instanceof ApiError ? err.message : t("common.errorGeneric")))
       .finally(() => setLoading(false));
   }
+
+  // This month's revenue and the monthly chart, summed on the server (the
+  // same figures as the dashboard); again after a new payment.
+  useEffect(() => {
+    let live = true;
+    reportsApi
+      .dashboard()
+      .then((d) => live && setRevenue(d.finance ? { monthRevenue: d.finance.monthRevenue, byMonth: d.finance.revenueByMonth } : null))
+      .catch(() => live && setRevenue(null));
+    return () => {
+      live = false;
+    };
+  }, [reloadKey]);
 
   useEffect(() => {
     loadAll();
@@ -644,9 +695,9 @@ function PaymentsContent() {
   }
 
   const currentMonth = clock.month();
-  const monthPaid = payments
-    .filter((p) => p.forMonth === currentMonth && p.status === "PAID")
-    .reduce((sum, p) => sum + p.amount, 0);
+  // Paid for this month, all payments of the center: summed on the server
+  // (the dashboard's figure; the finance summary when that is this month's).
+  const monthPaid = revenue?.monthRevenue ?? (financeSummary?.forMonth === currentMonth ? financeSummary.totalRevenue : null);
   // Same meaning as the dashboard: money still expected for the selected
   // month, and how many students owe it (previously PENDING payments of
   // any month and FAILED attempts, which read as 0 while students owed).
@@ -660,22 +711,78 @@ function PaymentsContent() {
     return [...map.entries()].sort((a, b) => a[1].localeCompare(b[1])).map(([value, label]) => ({ value, label }));
   }, [students]);
 
-  const filteredPayments = useMemo(() => {
-    return payments.filter((p) => {
-      if (statusFilter && p.status !== statusFilter) return false;
-      if (methodFilter && p.method !== methodFilter) return false;
-      if (groupFilter && !students.find((s) => s.id === p.studentId)?.enrollments?.some((e) => e.groupId === groupFilter)) return false;
-      if (search) {
-        const q = search.toLowerCase();
-        if (!studentName(p.studentId).toLowerCase().includes(q) && !p.forMonth.includes(q))
-          return false;
-      }
-      return true;
-    });
-  }, [payments, search, statusFilter, methodFilter, groupFilter, studentName]);
+  // Typing is applied once it pauses, and starts again on page 1.
+  useEffect(() => {
+    const q = searchInput.trim();
+    if (q === search) return;
+    const id = setTimeout(() => {
+      setSearch(q);
+      setPage(1);
+    }, 300);
+    return () => clearTimeout(id);
+  }, [searchInput, search]);
 
-  useEffect(() => setPage(1), [search, statusFilter, methodFilter, groupFilter, activeTab]);
-  const pageItems = usePagedSlice(filteredPayments, page);
+  // The students (with their groups) as last loaded, for the two filters the
+  // server does not have (read when the page is fetched, not on every reload).
+  const studentsRef = useRef<Student[]>([]);
+  useEffect(() => {
+    studentsRef.current = students;
+  }, [students]);
+
+  // The current page of the history. Month, status and method are server
+  // filters. The text search (student name or month) and the group filter
+  // are not: while one of them is on, the server-filtered list is fetched
+  // whole and searched and paged here, so the totals stay those of the
+  // whole list, never of one page.
+  const listKey = JSON.stringify([page, search, statusFilter, methodFilter, groupFilter, monthFilter, reloadKey]);
+  const [list, setList] = useState<{ key: string; data: PageOf<Payment> | null; error: string | null } | null>(null);
+  useEffect(() => {
+    let live = true;
+    const key = JSON.stringify([page, search, statusFilter, methodFilter, groupFilter, monthFilter, reloadKey]);
+    const filters = { status: statusFilter || undefined, method: methodFilter || undefined, forMonth: monthFilter || undefined };
+    const request: Promise<PageOf<Payment>> =
+      search || groupFilter
+        ? paymentsApi.list(filters).then((all) => {
+            const byId = new Map(studentsRef.current.map((s) => [s.id, s]));
+            const q = search.toLowerCase();
+            return slicePage(
+              all.filter((p) => {
+                const st = byId.get(p.studentId);
+                if (groupFilter && !st?.enrollments?.some((e) => e.groupId === groupFilter)) return false;
+                if (q && !(p.student?.fullName ?? st?.fullName ?? "").toLowerCase().includes(q) && !p.forMonth.includes(q)) return false;
+                return true;
+              }),
+              page,
+              PAGE_SIZE,
+            );
+          })
+        : paymentsApi.page({ ...filters, page, pageSize: PAGE_SIZE });
+    request
+      .then((data) => {
+        if (!live) return;
+        const fit = clampPage(page, data.total, PAGE_SIZE);
+        if (fit !== page) setPage(fit);
+        else setList({ key, data, error: null });
+      })
+      .catch((err) => live && setList({ key, data: null, error: err instanceof ApiError ? err.message : "" }));
+    return () => {
+      live = false;
+    };
+  }, [page, search, statusFilter, methodFilter, groupFilter, monthFilter, reloadKey]);
+  const listLoading = !list || list.key !== listKey;
+  const pageData = list?.data ?? null;
+  const pageItems = pageData?.items ?? [];
+
+  // Months for the month filter: from two months ahead (paid in advance)
+  // back two years.
+  const monthOptions = useMemo(() => {
+    const [y, m] = currentMonth.split("-").map(Number);
+    return Array.from({ length: 27 }, (_, i) => {
+      const d = new Date(Date.UTC(y, m - 1 + 2 - i, 1));
+      const value = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
+      return { value, label: `${t(MONTH_KEYS[d.getUTCMonth()])} ${d.getUTCFullYear()}` };
+    });
+  }, [currentMonth, t]);
 
   // Filtered debtors
   const filteredDebtors = useMemo(() => {
@@ -713,8 +820,44 @@ function PaymentsContent() {
     });
   }, [expenses, expenseCategoryFilter]);
 
+  // The chart's figures. Monthly: the server's monthly totals (loaded with
+  // the page). Daily and weekly: the paid payments of the last weeks - the
+  // server lists payments newest first, so pages are fetched until they reach
+  // the start of the window. Yearly (four years): the paid payments, fetched
+  // only when that view is opened. Never the rows of one history page.
+  const chartKey = `${period}:${reloadKey}`;
+  const [chartPaid, setChartPaid] = useState<{ key: string; items: Payment[] | null } | null>(null);
+  useEffect(() => {
+    if (period === "month") return;
+    let live = true;
+    const key = `${period}:${reloadKey}`;
+    const request =
+      period === "year"
+        ? paymentsApi.list({ status: "PAID" })
+        : paidSince(chartWindowStart(period, clock.tz), (iso) => clock.dateOf(iso));
+    request
+      .then((items) => live && setChartPaid({ key, items }))
+      .catch(() => live && setChartPaid({ key, items: null }));
+    return () => {
+      live = false;
+    };
+  }, [period, reloadKey, clock]);
+
   const chartData = useMemo(() => {
-    const paid = payments.filter((p) => p.status === "PAID");
+    if (period === "month") {
+      if (!revenue) return null;
+      // January to December of the current year.
+      const year = Number(clock.month().slice(0, 4));
+      const months = Array.from({ length: 12 }, (_, i) => `${year}-${String(i + 1).padStart(2, "0")}`);
+      return months.map((m, i) => ({
+        label: t(MONTH_SHORT_KEYS[i]),
+        title: t(MONTH_KEYS[i]),
+        isCurrent: m === clock.month(),
+        value: revenue.byMonth.find((r) => r.month === m)?.amount ?? 0,
+      }));
+    }
+    if (!chartPaid || chartPaid.key !== chartKey || !chartPaid.items) return null;
+    const paid = chartPaid.items.filter((p) => p.status === "PAID");
     if (period === "day") {
       const days = Array.from({ length: 7 }, (_, i) => {
         const d = centerWallClock(new Date(), clock.tz)!;
@@ -755,16 +898,9 @@ function PaymentsContent() {
         value: paid.filter((p) => p.forMonth.startsWith(String(y))).reduce((s, p) => s + p.amount, 0),
       }));
     }
-    // January to December of the current year.
-    const year = Number(clock.month().slice(0, 4));
-    const months = Array.from({ length: 12 }, (_, i) => `${year}-${String(i + 1).padStart(2, "0")}`);
-    return months.map((m, i) => ({
-      label: t(MONTH_SHORT_KEYS[i]),
-      title: t(MONTH_KEYS[i]),
-      isCurrent: m === clock.month(),
-      value: paid.filter((p) => p.forMonth === m).reduce((s, p) => s + p.amount, 0),
-    }));
-  }, [payments, period, t, clock]);
+    return null;
+  }, [revenue, chartPaid, chartKey, period, t, clock]);
+  const chartFailed = period === "month" ? false : chartPaid?.key === chartKey && chartPaid.items === null;
 
   // Sending the same form again (double click, lost answer) is one payment.
   const paymentKey = useRef<{ sig: string; key: string } | null>(null);
@@ -819,6 +955,8 @@ function PaymentsContent() {
       setModalOpen(false);
       resetPaymentForm();
       loadAll();
+      // The history page and the chart show it too.
+      setReloadKey((k) => k + 1);
       // Optionally open receipt voucher right after payment
       setReceiptPayment(created);
     } catch (err) {
@@ -1158,7 +1296,7 @@ function PaymentsContent() {
                     marginTop: 4,
                   }}
                 >
-                  {formatMoney(monthPaid)} {t("common.sumUnit")}
+                  {monthPaid === null ? "…" : `${formatMoney(monthPaid)} ${t("common.sumUnit")}`}
                 </div>
               </div>
               <div
@@ -1206,9 +1344,9 @@ function PaymentsContent() {
               </div>
             </div>
 
-            {loading ? (
+            {loading || allCount === null ? (
               <div style={{ color: "#686B75", fontSize: 14 }}>{t("common.loading")}</div>
-            ) : payments.length === 0 ? (
+            ) : allCount === 0 ? (
               <div
                 style={{
                   color: "#686B75",
@@ -1280,16 +1418,31 @@ function PaymentsContent() {
                       ))}
                     </div>
                   </div>
-                  <BarChart data={chartData} color={ACCENT} height={190} defaultActiveIdx={chartData.length - 1} formatValue={(v) => new Intl.NumberFormat("uz-UZ").format(v)} unit={t("common.sumUnit")} />
+                  {chartData ? (
+                    <BarChart data={chartData} color={ACCENT} height={190} defaultActiveIdx={chartData.length - 1} formatValue={(v) => new Intl.NumberFormat("uz-UZ").format(v)} unit={t("common.sumUnit")} />
+                  ) : (
+                    <div style={{ height: 190, display: "flex", alignItems: "center", justifyContent: "center", color: "#686B75", fontSize: 13 }}>
+                      {chartFailed || (period === "month" && revenue === null) ? t("adm.loadError") : t("common.loading")}
+                    </div>
+                  )}
                 </div>
 
                 <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
                   <input
                     className="field-input"
+                    type="search"
+                    aria-label={t("payments.searchLabel")}
                     placeholder={t("payments.searchPlaceholder")}
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
+                    value={searchInput}
+                    onChange={(e) => setSearchInput(e.target.value)}
                     style={{ maxWidth: 260 }}
+                  />
+                  <Select
+                    ariaLabel={t("payments.monthFilter")}
+                    options={[{ value: "", label: t("payments.allMonths") }, ...monthOptions]}
+                    value={monthFilter}
+                    onChange={(v) => { setMonthFilter(v); setPage(1); }}
+                    style={{ width: 170 }}
                   />
                   <Select
                     options={[
@@ -1298,8 +1451,9 @@ function PaymentsContent() {
                       { value: "PENDING", label: t("payment.statusPending") },
                       { value: "FAILED", label: t("payment.statusFailed") },
                     ]}
+                    ariaLabel={t("payments.statusFilter")}
                     value={statusFilter}
-                    onChange={setStatusFilter}
+                    onChange={(v) => { setStatusFilter(v); setPage(1); }}
                     style={{ width: 170 }}
                   />
                   <Select
@@ -1310,19 +1464,25 @@ function PaymentsContent() {
                       { value: "PAYME", label: t("payment.methodPayme") },
                       { value: "BANK_TRANSFER", label: t("payment.methodBankTransfer") },
                     ]}
+                    ariaLabel={t("payments.methodFilter")}
                     value={methodFilter}
-                    onChange={setMethodFilter}
+                    onChange={(v) => { setMethodFilter(v); setPage(1); }}
                     style={{ width: 170 }}
                   />
                   <Select
                     options={[{ value: "", label: t("pay.allGroups") }, ...groupOptions]}
+                    ariaLabel={t("payments.groupFilter")}
                     value={groupFilter}
-                    onChange={setGroupFilter}
+                    onChange={(v) => { setGroupFilter(v); setPage(1); }}
                     style={{ width: 190 }}
                   />
                 </div>
 
-                {filteredPayments.length === 0 ? (
+                {list?.error != null && !listLoading ? (
+                  <LoadError message={list.error || t("adm.loadError")} onRetry={() => setReloadKey((k) => k + 1)} />
+                ) : !pageData ? (
+                  <div style={{ color: "#686B75", fontSize: 14 }}>{t("common.loading")}</div>
+                ) : pageData.total === 0 ? (
                   <div
                     style={{
                       color: "#686B75",
@@ -1343,7 +1503,9 @@ function PaymentsContent() {
                       border: "1px solid #EAE8E2",
                       borderRadius: 16,
                       overflow: "hidden",
+                      opacity: listLoading ? 0.6 : 1,
                     }}
+                    aria-busy={listLoading}
                   >
                     <table>
                       <thead>
@@ -1365,7 +1527,7 @@ function PaymentsContent() {
                                 ? formatDate(p.paidAt, lang, "dayMonth")
                                 : "—"}
                             </td>
-                            <td style={{ fontWeight: 600 }}>{studentName(p.studentId)}</td>
+                            <td style={{ fontWeight: 600 }}>{p.student?.fullName || studentName(p.studentId)}</td>
                             <td>{groupNames(p.studentId)}</td>
                             <td style={{ fontWeight: 700 }}>
                               {formatMoney(p.amount)} {t("common.sumUnit")}
@@ -1408,7 +1570,15 @@ function PaymentsContent() {
                         ))}
                       </tbody>
                     </table>
-                    <Pagination page={page} total={filteredPayments.length} onChange={setPage} />
+                    <ListPager
+                      label={t("payments.pagerLabel")}
+                      page={pageData.page}
+                      pageSize={PAGE_SIZE}
+                      total={pageData.total}
+                      shown={pageItems.length}
+                      busy={listLoading}
+                      onChange={setPage}
+                    />
                   </div>
                 )}
               </>

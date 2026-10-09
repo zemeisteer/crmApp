@@ -2,6 +2,8 @@
 
 import type { PublicQuestion, QuestionType, TestQuestion } from "./tests";
 import { connectChatStream, type ChatStreamHandle, type ChatStreamOptions } from "./chat-stream";
+import { pageQuery, type PageOf } from "./list-paging";
+export type { PageOf } from "./list-paging";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api";
 const TOKEN_KEY = "talimcrm_token";
@@ -544,7 +546,7 @@ export interface Lead {
     utm: { source?: string; medium?: string; campaign?: string } | null;
   };
   placementAttempts?: LeadPlacementAttempt[];
-  // Detail view: the center's own fields (definition id -> value).
+  // The center's own fields (definition id -> value): detail view and list.
   customFields?: Record<string, CustomFieldValue>;
   createdAt: string;
   updatedAt: string;
@@ -1427,13 +1429,19 @@ export const groupsApi = {
 // ---- Students ----
 
 export const studentsApi = {
-  list: (params?: { status?: string; branchId?: string }) => {
+  // The whole list (selectors, group and certificate pages). `search` is
+  // matched on the server (name, phone, parent phone).
+  list: (params?: { status?: string; branchId?: string; search?: string }) => {
     const qs = new URLSearchParams();
     if (params?.status) qs.set("status", params.status);
     if (params?.branchId) qs.set("branchId", params.branchId);
+    if (params?.search) qs.set("search", params.search);
     const suffix = qs.toString() ? `?${qs.toString()}` : "";
     return request<Student[]>(`/students${suffix}`);
   },
+  // One page and the total (pageSize up to 200), newest first.
+  page: (q: { page: number; pageSize?: number; search?: string; status?: string; branchId?: string }) =>
+    request<PageOf<Student>>(`/students${pageQuery({ search: q.search, status: q.status, branchId: q.branchId, page: q.page, pageSize: q.pageSize })}`),
   trash: () => request<Student[]>("/students/trash"),
   get: (id: string) => request<Student>(`/students/${id}`),
   // idempotencyKey: one per submission (see retryKey) - a retry of the same
@@ -1476,8 +1484,20 @@ export const teachersApi = {
 
 // ---- Payments ----
 
+export interface PaymentFilters {
+  forMonth?: string;
+  studentId?: string;
+  method?: string;
+  status?: string;
+}
+
 export const paymentsApi = {
-  list: () => request<Payment[]>("/payments"),
+  // The whole list, newest first; the filters run on the server.
+  list: (filters?: PaymentFilters) =>
+    request<Payment[]>(`/payments${pageQuery({ forMonth: filters?.forMonth, studentId: filters?.studentId, method: filters?.method, status: filters?.status })}`),
+  // One page and the total (pageSize up to 200), newest payment first.
+  page: (q: PaymentFilters & { page: number; pageSize?: number }) =>
+    request<PageOf<Payment>>(`/payments${pageQuery({ forMonth: q.forMonth, studentId: q.studentId, method: q.method, status: q.status, page: q.page, pageSize: q.pageSize })}`),
   get: (id: string) => request<Payment>(`/payments/${id}`),
   summary: () => request<PaymentsSummary>("/payments/summary"),
   debtors: (params?: { forMonth?: string; onlyDebtors?: boolean }) => {
