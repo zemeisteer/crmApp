@@ -29,7 +29,7 @@ npm test
 ```
 
 - Baza: `DATABASE_URL` nomiga `_browser_e2e` qo'shilgan baza (har yurishda qayta yaratiladi) yoki `BROWSER_DATABASE_URL` (nomi `_e2e`/`_test` bilan tugashi shart).
-- Portlar: API 4300, sahifalar 3300 (`BROWSER_API_PORT`, `BROWSER_WEB_PORT`). Band bo'lsa test boshlanmaydi.
+- Portlar: API 4300, sahifalar 3300 (`BROWSER_API_PORT`, `BROWSER_WEB_PORT`). Band bo'lsa test boshlanmaydi. Ikkita yugurish yonma-yon kerak bo'lsa: boshqa portlar, `BROWSER_DATABASE_URL` (nomi `_e2e` bilan tugaydi) va `BROWSER_DIST_DIR` (masalan `.next-browser-b`).
 - Backend `NODE_ENV=development` bilan ishlaydi — faqat `http://*.localhost` uchun CORS qoidalari sababli; kod production build. Tashqi xizmatlar (AI, email, SMS, Telegram, Click, Payme) o'chiq.
 - Server bir manzildan daqiqasiga 8 ta ro'yxatdan o'tish va 8 ta kirishga ruxsat beradi (lokal, staging va production bir xil). Testlar bu limitni pasaytirmaydi: `authSlot` (tests/support.ts) bo'sh joyni kutadi, shuning uchun to'plam ~2 daqiqa davom etadi.
 - O'rnatilgan boshqa reviziyadagi Chromium: `PW_EXECUTABLE_PATH=/path/to/chrome npm test`.
