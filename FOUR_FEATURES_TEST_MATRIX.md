@@ -81,7 +81,15 @@ Notes:
 | DELETE cancellation | manager | with credits / after void | 409 / 200 | as expected | makeups.e2e | PASS |
 | GET /portal/makeups | cabinet | own vs other student | own only | own only | makeups.e2e | PASS |
 | expiry | owner | policy 30 days; expired credit | expiresAt set; book 409 CREDIT_EXPIRED | as expected | makeups.e2e | PASS |
-| Make-ups UI | – | – | – | – | (frontend in progress) | NOT TESTED yet |
+| Settings → make-up policy | owner | set 30 days, reload | saved, kept | kept | makeups.spec (browser) | PASS |
+| Make-ups → Missed lessons | owner | issue credit with note | listed "Open"; API ISSUED, expires in 30 days | as expected | makeups.spec (browser) | PASS |
+| Make-ups → Credits → Book | owner | book a seat in another group's lesson | own group not offered; only lesson days; BOOKED | as expected | makeups.spec (browser) | PASS |
+| Make-ups → Roster | owner | mark attended | "Attended", buttons gone; credit USED after reload | as expected | makeups.spec (browser) | PASS |
+| Schedule page | owner | this week's make-up on its day | card with time, group, date | as expected | makeups.spec (browser) | PASS |
+| Group page → lesson cancellations | owner | cancel one date with reason, restore | listed; API cancelled; restored | as expected | makeups.spec (browser) | PASS |
+| Cabinet → make-ups | student cabinet | see own credits and bookings | shown | shown | calendar.spec (browser) | PASS |
+| Make-ups → separate SESSION booking, void, reinstate, cancel booking | owner | UI | – | – | API rows above only | NOT TESTED (browser) |
+| Mobile 390px | owner | /makeups | no horizontal scroll | none | mobile.spec (browser) | PASS |
 
 ## F3 Calendar
 
@@ -107,7 +115,12 @@ Notes:
 | invalid_grant | – | sync | NEEDS_RECONNECT, sync now 409 | as expected | calendar.e2e (mock) | PASS |
 | disconnect | teacher | – | only our events deleted, grant revoked | as expected | calendar.e2e (mock) | PASS |
 | live Google | – | real OAuth + API | – | – | no credentials, network policy | BLOCKED |
-| Calendar UI | – | – | – | – | (frontend in progress) | NOT TESTED yet |
+| Calendar page → subscription link | staff | create, copy, fetch with a calendar client | ICS served | as expected | calendar.spec (browser) | PASS |
+| Calendar page | staff | make a new link; turn off | old link 404; new link 404 after off | as expected | calendar.spec (browser) | PASS |
+| Calendar page → Google | staff | Google not configured on the test server | "not set up" shown, no connect button | as expected | calendar.spec (browser) | PASS |
+| Cabinet → calendar link | student cabinet | create own link | ICS of the child's lessons | as expected | calendar.spec (browser) | PASS |
+| Calendar page → Google connected states | staff | connect / choose calendar / sync / disconnect UI | – | – | API rows above (mock) only | NOT TESTED (browser) |
+| Mobile 390px | staff | /calendar | no horizontal scroll | none | mobile.spec (browser) | PASS |
 
 ## F4 Chat
 
@@ -132,6 +145,15 @@ Notes:
 | revoke (new PIN) | cabinet | stream | closed | closed | chat.e2e | PASS |
 | audit | owner | audit log | `chat.open`, no bodies | as expected | chat.e2e | PASS |
 | Chat UI (two browser contexts) | – | – | – | – | (frontend pending) | NOT TESTED yet |
+
+## L-02 / contrast
+
+| Screen/API | Role | Action | Expected | Actual | Evidence | Status |
+|---|---|---|---|---|---|---|
+| POST/PATCH /plans | superadmin | RU/EN feature lists; clear EN | stored; public list carries them | as expected | plan-languages.e2e | PASS |
+| PATCH /plans/:id | center owner | edit translations | 403 | 403 | plan-languages.e2e | PASS |
+| migration 0046 | – | shipped tiers / edited tier | translated / left alone | as expected | verify-migrations scenario 9 | PASS |
+| main site tariffs | visitor | UZ / RU / EN | the language's list, Uzbek fallback | see final browser run | landing-plans.spec (browser) | see report |
 
 ## Cross-cutting
 
