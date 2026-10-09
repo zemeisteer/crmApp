@@ -273,6 +273,8 @@ export interface Tenant {
   country?: string;
   timezone?: string;
   studentAiDailyLimit?: number;
+  /** Make-up credits expire this many days after issue; null: never. */
+  makeupCreditDays?: number | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -1779,7 +1781,7 @@ export const tenantsApi = {
     name?: string; accentColor?: string; category?: TenantCategory; phone?: string; address?: string;
     email?: string; telegramUsername?: string; website?: string; websiteLabel?: string;
     language?: "UZ" | "RU" | "EN"; currency?: "UZS" | "USD" | "RUB"; teachingCategories?: string[];
-    studentAiDailyLimit?: number;
+    studentAiDailyLimit?: number; makeupCreditDays?: number | null;
   }) => request<Tenant>("/tenants/me", { method: "PATCH", body: JSON.stringify(data) }),
   uploadLogo: (file: File) => uploadFile<Tenant>("/tenants/me/logo", file),
   getSite: () => request<SiteContent>("/tenants/me/site"),
@@ -3331,4 +3333,196 @@ export const portalMockApi = {
     if (data.seconds !== undefined) form.append("seconds", String(Math.round(data.seconds)));
     return postForm<{ saved: boolean }>(`/portal/mock-tests/attempts/${attemptId}/speaking/${key}`, form, getPortalToken());
   },
+};
+
+// ---- Dated lessons and cancellations ----
+
+export interface LessonOccurrence {
+  uid: string;
+  groupId: string;
+  date: string; // YYYY-MM-DD, center-local
+  startTime: string;
+  endTime: string;
+  teacherId: string | null;
+  roomId: string | null;
+  branchId: string | null;
+  kind: "WEEKLY" | "ONE_OFF";
+  scheduleId: string | null;
+  cancelled: boolean;
+  cancellationId: string | null;
+}
+
+export interface LessonCancellation {
+  id: string;
+  groupId: string;
+  date: string;
+  reason: string | null;
+  cancelledByUserId: string | null;
+  createdAt: string;
+}
+
+const rangeQs = (from: string, to: string, extra?: Record<string, string | undefined>) => {
+  const qs = new URLSearchParams({ from, to });
+  for (const [k, v] of Object.entries(extra ?? {})) if (v) qs.set(k, v);
+  return qs.toString();
+};
+
+export const lessonsApi = {
+  // At most 120 days per request.
+  list: (from: string, to: string, groupId?: string) => request<LessonOccurrence[]>(`/lessons?${rangeQs(from, to, { groupId })}`),
+  cancellations: (from: string, to: string) => request<LessonCancellation[]>(`/lessons/cancellations?${rangeQs(from, to)}`),
+  cancel: (data: { groupId: string; date: string; reason?: string }) =>
+    request<{ cancellation: LessonCancellation; releasedBookings: number }>("/lessons/cancellations", { method: "POST", body: JSON.stringify(data) }),
+  restore: (id: string) => request<unknown>(`/lessons/cancellations/${id}`, { method: "DELETE" }),
+};
+
+// ---- Make-up lessons ----
+
+export type MakeupReason = "ABSENT" | "LESSON_CANCELLED";
+export type MakeupCreditStatus = "ISSUED" | "BOOKED" | "USED" | "FORFEITED" | "CANCELLED";
+export type MakeupBookingStatus = "BOOKED" | "ATTENDED" | "MISSED" | "CANCELLED";
+export type MakeupMode = "GROUP_LESSON" | "SESSION";
+
+export interface MakeupEligible {
+  studentId: string;
+  studentName: string;
+  groupId: string;
+  groupName: string;
+  date: string;
+  reason: MakeupReason;
+  credit: { id: string; status: MakeupCreditStatus } | null;
+}
+
+export interface MakeupBooking {
+  id: string;
+  mode: MakeupMode;
+  targetGroupId: string | null;
+  date: string;
+  startTime: string;
+  endTime: string;
+  teacherId: string | null;
+  roomId: string | null;
+  status: MakeupBookingStatus;
+  targetGroup: { id: string; name: string } | null;
+  teacher: { id: string; fullName: string } | null;
+  room: { id: string; name: string } | null;
+}
+
+export interface MakeupCredit {
+  id: string;
+  studentId: string;
+  originGroupId: string;
+  originDate: string;
+  reason: MakeupReason;
+  status: MakeupCreditStatus;
+  note: string | null;
+  issuedAt: string;
+  expiresAt: string | null;
+  expired: boolean;
+  student: { id: string; fullName: string; phone: string | null } | null;
+  originGroup: { id: string; name: string } | null;
+  bookings: MakeupBooking[];
+}
+
+export interface MakeupRosterItem {
+  id: string;
+  creditId: string;
+  mode: MakeupMode;
+  date: string;
+  startTime: string;
+  endTime: string;
+  status: MakeupBookingStatus;
+  student: { id: string; fullName: string };
+  targetGroupId: string | null;
+  groupName: string | null;
+  teacherId: string | null;
+  roomId: string | null;
+}
+
+export type MakeupBookInput =
+  | { mode: "GROUP_LESSON"; targetGroupId: string; date: string; note?: string }
+  | { mode: "SESSION"; date: string; startTime: string; endTime: string; teacherId: string; roomId?: string; note?: string };
+
+export const makeupsApi = {
+  eligible: (from: string, to: string) => request<MakeupEligible[]>(`/makeups/eligible?${rangeQs(from, to)}`),
+  credits: (params?: { status?: MakeupCreditStatus; studentId?: string }) => {
+    const qs = new URLSearchParams();
+    if (params?.status) qs.set("status", params.status);
+    if (params?.studentId) qs.set("studentId", params.studentId);
+    const suffix = qs.toString() ? `?${qs.toString()}` : "";
+    return request<MakeupCredit[]>(`/makeups/credits${suffix}`);
+  },
+  issue: (data: { studentId: string; groupId: string; date: string; reason: MakeupReason; note?: string }) =>
+    request<MakeupCredit>("/makeups/credits", { method: "POST", body: JSON.stringify(data) }),
+  voidCredit: (id: string) => request<MakeupCredit>(`/makeups/credits/${id}/cancel`, { method: "POST" }),
+  reinstate: (id: string) => request<MakeupCredit>(`/makeups/credits/${id}/reinstate`, { method: "POST" }),
+  book: (creditId: string, data: MakeupBookInput) =>
+    request<MakeupBooking>(`/makeups/credits/${creditId}/book`, { method: "POST", body: JSON.stringify(data) }),
+  cancelBooking: (id: string) => request<MakeupBooking>(`/makeups/bookings/${id}/cancel`, { method: "POST" }),
+  roster: (from: string, to: string) => request<MakeupRosterItem[]>(`/makeups/roster?${rangeQs(from, to)}`),
+  mark: (bookingId: string, status: "ATTENDED" | "MISSED") =>
+    request<MakeupBooking>(`/makeups/bookings/${bookingId}/attendance`, { method: "POST", body: JSON.stringify({ status }) }),
+};
+
+export interface PortalMakeups {
+  credits: Array<{ id: string; originDate: string; reason: MakeupReason; status: MakeupCreditStatus; expiresAt: string | null; originGroupName: string | null }>;
+  bookings: Array<{
+    id: string; creditId: string; mode: MakeupMode; date: string; startTime: string; endTime: string; status: MakeupBookingStatus;
+    groupName: string | null; teacherName: string | null; roomName: string | null; branchName: string | null;
+  }>;
+}
+
+export const portalMakeupsApi = {
+  get: () => request<PortalMakeups>("/portal/makeups"),
+};
+
+// ---- Calendar sync (ICS subscription links, Google Calendar) ----
+
+export type CalendarScope = "TEACHER" | "PARENT" | "CENTER" | "STUDENT";
+
+export interface CalendarFeedInfo {
+  id: string;
+  scope: CalendarScope;
+  tokenHint: string;
+  createdAt: string;
+  lastFetchedAt?: string | null;
+}
+
+/** A new link: the URL is only ever shown in this response. */
+export interface CalendarFeedCreated extends CalendarFeedInfo {
+  url: string;
+}
+
+export interface GoogleCalendarStatus {
+  configured: boolean;
+  connection: null | {
+    status: "ACTIVE" | "NEEDS_RECONNECT" | string;
+    scope: CalendarScope;
+    calendarId: string | null;
+    calendarName: string | null;
+    lastSyncAt: string | null;
+    lastError: string | null;
+    pending: boolean;
+    nextAttemptAt: string | null;
+  };
+}
+
+export const calendarApi = {
+  feed: () => request<{ scope: CalendarScope; feed: CalendarFeedInfo | null }>("/calendar/feed"),
+  createFeed: () => request<CalendarFeedCreated>("/calendar/feed", { method: "POST" }),
+  revokeFeed: () => request<{ success: boolean }>("/calendar/feed", { method: "DELETE" }),
+  google: () => request<GoogleCalendarStatus>("/calendar/google"),
+  connectGoogle: (returnTo = "/calendar") =>
+    request<{ url: string }>("/calendar/google/connect", { method: "POST", body: JSON.stringify({ returnTo }) }),
+  googleCalendars: () => request<Array<{ id: string; summary: string; primary?: boolean }>>("/calendar/google/calendars"),
+  chooseGoogleCalendar: (calendarId: string) =>
+    request<GoogleCalendarStatus>("/calendar/google", { method: "PATCH", body: JSON.stringify({ calendarId }) }),
+  syncGoogle: () => request<GoogleCalendarStatus>("/calendar/google/sync", { method: "POST" }),
+  disconnectGoogle: () => request<{ removedEvents: number; notRemoved: number }>("/calendar/google", { method: "DELETE" }),
+};
+
+export const portalCalendarApi = {
+  feed: () => request<{ scope: "STUDENT"; feed: CalendarFeedInfo | null }>("/portal/calendar/feed"),
+  createFeed: () => request<CalendarFeedCreated>("/portal/calendar/feed", { method: "POST" }),
+  revokeFeed: () => request<{ success: boolean }>("/portal/calendar/feed", { method: "DELETE" }),
 };
