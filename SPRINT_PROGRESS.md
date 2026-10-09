@@ -156,3 +156,23 @@ resumed. Verified by me after it finished:
 
 **Full backend e2e after the container restart** (PostgreSQL had to be restarted):
 48 files / 319 PASS.
+
+**Follow-up round: "finish what is not complete".** Commits `db85867`..`3aa5997`, plus docs.
+- Browser runs can now be configured to run side by side: `BROWSER_DIST_DIR` plus their
+  own ports and database. Two agents ran their browser suites in parallel this way.
+- Chat across two API instances on one database (`chat-instances.e2e`). Fails with NOTIFY
+  switched off, passes with it.
+- Lists: the students and payments pages use server paging (agent; verified by me).
+- Missing browser coverage (agent; verified by me):
+  - make-up session, cancel, forfeit, reinstate, void;
+  - group chat;
+  - Google connected states against a local fake Google;
+  - parent calendar link;
+  - leads custom-field column. Its backend defect is fixed: the list API now returns
+    values.
+- Accessibility: the axe-core spec found 25 serious contrast findings and none of any
+  other kind. Colours were fixed and the result is now 0.
+- Final, run by me:
+  - browser 38/38 and Google 1/1;
+  - backend e2e 49 files / 320, unit 320;
+  - frontend unit 55, tsc 0, lint 0 errors / 67 warnings.
