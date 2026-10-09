@@ -1,7 +1,7 @@
 "use client";
 
 import PortalHome from "@/components/portal/PortalHome";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useLanguage } from "@/lib/i18n-context";
 import { centerTimeZone } from "@/lib/center-time";
 import PortalExamList from "@/components/portal/PortalExams";
@@ -14,9 +14,11 @@ import PortalPractice from "@/components/portal/PortalPractice";
 import PortalCustomFields from "@/components/portal/PortalCustomFields";
 import PortalMakeups from "@/components/portal/PortalMakeups";
 import PortalCalendar from "@/components/portal/PortalCalendar";
+import PortalChat from "@/components/portal/PortalChat";
 import type { Lang, TranslationKey } from "@/lib/i18n";
 import {
   portalApi,
+  portalChatApi,
   fileUrl,
   getPortalToken,
   setPortalToken,
@@ -37,7 +39,7 @@ import {
 
 const ACCENT = "#4F46E5";
 
-type PortalTab = "home" | "schedule" | "attendance" | "homework" | "ai" | "practice" | "exams" | "payments" | "notifications";
+type PortalTab = "home" | "schedule" | "attendance" | "homework" | "ai" | "practice" | "exams" | "payments" | "notifications" | "chat";
 const NAV: Array<{ id: PortalTab; icon: string; label: TranslationKey; short: TranslationKey; bottom: boolean }> = [
   { id: "home", icon: "🏠", label: "ptn.home", short: "ptn.home", bottom: true },
   { id: "schedule", icon: "🗓️", label: "ptn.schedule", short: "ptn.schedule", bottom: true },
@@ -47,6 +49,7 @@ const NAV: Array<{ id: PortalTab; icon: string; label: TranslationKey; short: Tr
   { id: "exams", icon: "📝", label: "ptn.exams", short: "ptn.examsShort", bottom: true },
   { id: "payments", icon: "💳", label: "ptn.payments", short: "ptn.paymentsShort", bottom: true },
   { id: "attendance", icon: "✅", label: "ptn.attendance", short: "ptn.attendance", bottom: false },
+  { id: "chat", icon: "💬", label: "chat.portalNav", short: "chat.portalNav", bottom: false },
   { id: "notifications", icon: "🔔", label: "ptn.notifications", short: "ptn.notifications", bottom: false },
 ];
 const PORTAL_CSS = `
@@ -90,6 +93,7 @@ const ICONS: Record<PortalTab | "logout" | "logo", React.ReactNode> = {
   exams: svg(<><path d="M9 11l3 3L22 4" /><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" /></>),
   payments: svg(<><rect x="2" y="5" width="20" height="14" rx="2" /><path d="M2 10h20" /></>),
   attendance: svg(<><path d="M16 3.13a4 4 0 0 1 0 7.75M21 21v-2a4 4 0 0 0-3-3.87M3 21v-2a4 4 0 0 1 4-4h6a4 4 0 0 1 4 4v2" /><circle cx="10" cy="7" r="4" /></>),
+  chat: svg(<><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /><path d="M8 9h8M8 13h5" /></>),
   notifications: svg(<><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.73 21a2 2 0 0 1-3.46 0" /></>),
   logout: svg(<><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><path d="M16 17l5-5-5-5" /><path d="M21 12H9" /></>),
   logo: (
@@ -280,6 +284,33 @@ export default function StudentPortalPage() {
   }, [token, reloadKey]);
 
   // Unread announcements, plus the debt reminder while money is owed.
+  // Unread chat messages of the child shown: asked when the cabinet opens,
+  // on focus and once a minute; exact (live) while the chat tab is open.
+  // Kept with the session it was counted for: another child's starts at 0.
+  const [chatCount, setChatCount] = useState<{ token: string | null; n: number }>({ token: null, n: 0 });
+  const chatUnread = chatCount.token === token ? chatCount.n : 0;
+  const setChatUnread = useCallback((n: number) => setChatCount({ token, n }), [token]);
+  const onChatTab = activeTab === "chat";
+  useEffect(() => {
+    if (!token || onChatTab) return;
+    let alive = true;
+    const check = () => {
+      if (document.visibilityState !== "visible") return;
+      portalChatApi
+        .unread()
+        .then((r) => alive && setChatUnread(r.unread))
+        .catch(() => undefined);
+    };
+    check();
+    const timer = window.setInterval(check, 60_000);
+    window.addEventListener("focus", check);
+    return () => {
+      alive = false;
+      window.clearInterval(timer);
+      window.removeEventListener("focus", check);
+    };
+  }, [token, onChatTab, setChatUnread]);
+
   const notifCount = announcements.filter((a) => !a.read).length + (payments && payments.debtAmount > 0 ? 1 : 0);
 
   // One id, or every announcement when none is given. The badge updates at
@@ -475,6 +506,7 @@ export default function StudentPortalPage() {
                 {ICONS[tab.id]}
                 <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis" }}>{t(tab.label)}</span>
                 {tab.id === "notifications" && notifCount > 0 && <span className="ptl-count">{notifCount}</span>}
+                {tab.id === "chat" && chatUnread > 0 && <span className="ptl-count" aria-label={t("chat.unreadN").replace("{n}", String(chatUnread))}>{chatUnread}</span>}
                 {tab.id === "ai" && <span className="ptl-ai-badge">AI</span>}
               </button>
             );
@@ -507,6 +539,10 @@ export default function StudentPortalPage() {
           </div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+          <button type="button" onClick={() => go("chat")} aria-label={chatUnread > 0 ? `${t("chat.portalNav")}: ${t("chat.unreadN").replace("{n}", String(chatUnread))}` : t("chat.portalNav")} className="ptl-bell">
+            {ICONS.chat}
+            {chatUnread > 0 && <span className="ptl-count" aria-hidden="true">{chatUnread}</span>}
+          </button>
           <button type="button" onClick={() => go("notifications")} aria-label={t("ptl.messages")} className="ptl-bell">
             {ICONS.notifications}
             {notifCount > 0 && <span className="ptl-count">{notifCount}</span>}
@@ -724,6 +760,9 @@ export default function StudentPortalPage() {
         {/* ========================================================================= */}
         {/* TAB: NOTIFICATIONS                                                        */}
         {/* ========================================================================= */}
+        {/* Conversations belong to the child shown: remounted per session. */}
+        {activeTab === "chat" && <PortalChat key={`chat-${token ?? ""}`} onUnread={setChatUnread} />}
+
         {activeTab === "notifications" && (
           <PortalMessages
             announcements={announcements}
