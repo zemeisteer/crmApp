@@ -1,6 +1,6 @@
 // Where the browser tests run: their own database, ports and secrets.
 // Nothing here points at a development or production service, and every
-// external provider (AI, e-mail, SMS, Telegram, Click, Payme) is switched off.
+// external provider (AI, e-mail, SMS, Telegram, Click, Payme, Google Calendar) is switched off.
 const path = require('path');
 const { randomBytes } = require('crypto');
 
@@ -37,10 +37,14 @@ const backendEnv = {
   NODE_ENV: 'development',
   ROOT_DOMAIN: 'localhost',
   FRONTEND_URL: `http://localhost:${WEB_PORT}`,
+  // The API is on its own port here (in production it is the site's /api):
+  // calendar subscription links must point at it.
+  PUBLIC_API_URL: `http://localhost:${API_PORT}/api`,
   JWT_SECRET: process.env.BROWSER_JWT_SECRET || randomBytes(32).toString('hex'),
   GEMINI_API_KEY: '', ANTHROPIC_API_KEY: '', RESEND_API_KEY: '', SMTP_HOST: '',
   TELEGRAM_BOT_TOKEN: '', TELEGRAM_POLLING: 'false', ESKIZ_API_TOKEN: '', PLAYMOBILE_API_TOKEN: '',
   CLICK_MERCHANT_ID: '', CLICK_SERVICE_ID: '', CLICK_SECRET_KEY: '', PAYME_MERCHANT_ID: '', PAYME_KEY: '',
+  GOOGLE_CLIENT_ID: '', GOOGLE_CLIENT_SECRET: '', GOOGLE_REDIRECT_URI: '',
   SENTRY_DSN: '', REMINDER_SCAN_MS: '0', IMPORT_POLL_MS: '0', IMPORT_QUEUE: 'browser-tests',
 };
 
