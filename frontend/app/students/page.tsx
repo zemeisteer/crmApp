@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import DashboardShell from "@/components/DashboardShell";
 import LoadError from "@/components/LoadError";
 import ImportDialog from "@/components/ImportDialog";
@@ -10,10 +11,11 @@ import { can } from "@/lib/access";
 import Modal from "@/components/Modal";
 import MultiSelect from "@/components/MultiSelect";
 import PlacementTestModal from "@/components/students/PlacementTestModal";
-import Pagination, { usePagedSlice } from "@/components/Pagination";
+import ListPager from "@/components/ListPager";
 import Select from "@/components/Select";
 import DatePicker from "@/components/DatePicker";
-import { studentsApi, groupsApi, exportApi, reportsApi, retryKey, Student, Group, Gender, ApiError } from "@/lib/api";
+import { studentsApi, groupsApi, exportApi, reportsApi, retryKey, Student, Group, Gender, ApiError, type PageOf } from "@/lib/api";
+import { clampPage, pageQuery, parsePageParam, rememberListQuery, slicePage } from "@/lib/list-paging";
 import { NAME_PATTERN, NAME_TITLE } from "@/lib/validation";
 import { useLanguage } from "@/lib/i18n-context";
 import { matchesSubject, extractUniqueSubjects } from "@/lib/subject";
@@ -22,6 +24,8 @@ import CustomFieldInputs, { cfSubmitError, useCfDraft, useCustomFieldDefs } from
 import { cfPayload, cfValidate } from "@/lib/custom-fields";
 
 const ACCENT = "#4F46E5";
+// Rows per page; the server pages (GET /students?page&pageSize).
+const PAGE_SIZE = 20;
 
 function StudentsContent() {
   const { t } = useLanguage();
@@ -29,17 +33,21 @@ function StudentsContent() {
   // Import creates students: the admins' (and owner's) job, as the form.
   const canImport = can(user, "import.run");
   const [importOpen, setImportOpen] = useState(false);
-  const [students, setStudents] = useState<Student[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
-  const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const [search, setSearch] = useState("");
+  // The search and the page live in the address (?q=…&page=…), so going back
+  // from a profile, or reloading, returns to the same page of the list.
+  const searchParams = useSearchParams();
+  const [searchInput, setSearchInput] = useState(() => searchParams.get("q") ?? "");
+  const [search, setSearch] = useState(() => (searchParams.get("q") ?? "").trim());
   const [filterDirection, setFilterDirection] = useState("");
   const [filterGroupId, setFilterGroupId] = useState("");
   const [filterGender, setFilterGender] = useState("");
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useState(() => parsePageParam(searchParams.get("page")));
+  // Bumped after a change (new student, import) to load the current page again.
+  const [reloadKey, setReloadKey] = useState(0);
   // One key per submission of the "new student" form (see retryKey).
   const createKey = useRef<{ sig: string; key: string } | null>(null);
 
@@ -86,21 +94,85 @@ function StudentsContent() {
   // A failed load is shown with a retry, not as an empty page ("" = no
   // message from the server; null = no error).
   const [loadError, setLoadError] = useState<string | null>(null);
+  // How many students the center has at all (the teacher: in their groups),
+  // to tell "no students yet" from "nothing matches".
+  const [allCount, setAllCount] = useState<number | null>(null);
 
-  function load() {
-    setLoading(true);
-    Promise.all([studentsApi.list(), groupsApi.list()])
-      .then(([s, g]) => {
-        setStudents(s);
+  // Groups (filters, form), the overall count and the summary columns.
+  useEffect(() => {
+    let live = true;
+    Promise.all([groupsApi.list(), studentsApi.page({ page: 1, pageSize: 1 })])
+      .then(([g, c]) => {
+        if (!live) return;
         setGroups(g);
+        setAllCount(c.total);
+        setLoadError(null);
       })
-      .then(() => setLoadError(null))
-      .catch((err) => setLoadError(err instanceof ApiError ? err.message : ""))
-      .finally(() => setLoading(false));
-    reportsApi.studentsSummary().then(setSummary).catch(() => setSummary(null));
-  }
+      .catch((err) => live && setLoadError(err instanceof ApiError ? err.message : ""));
+    reportsApi.studentsSummary().then((s) => live && setSummary(s)).catch(() => live && setSummary(null));
+    return () => {
+      live = false;
+    };
+  }, [reloadKey]);
 
-  useEffect(load, []);
+  // Typing is sent to the server once it pauses, and starts again on page 1.
+  useEffect(() => {
+    const q = searchInput.trim();
+    if (q === search) return;
+    const id = setTimeout(() => {
+      setSearch(q);
+      setPage(1);
+    }, 300);
+    return () => clearTimeout(id);
+  }, [searchInput, search]);
+
+  // The current page. Name and phone search run on the server. Direction,
+  // group and gender are not server filters: while one of them is on, the
+  // (searched) list is fetched whole and filtered and paged here, so the
+  // totals stay those of the whole list, never of one page.
+  const listKey = JSON.stringify([search, page, filterDirection, filterGroupId, filterGender, reloadKey]);
+  const [list, setList] = useState<{ key: string; data: PageOf<Student> | null; error: string | null } | null>(null);
+  useEffect(() => {
+    let live = true;
+    const key = JSON.stringify([search, page, filterDirection, filterGroupId, filterGender, reloadKey]);
+    const term = search || undefined;
+    const keep = (s: Student) => {
+      if (filterGender && s.gender !== filterGender) return false;
+      if (filterGroupId && !(s.enrollments || []).some((e) => e.groupId === filterGroupId)) return false;
+      if (filterDirection && !(s.enrollments || []).some((e) => matchesSubject(e.group.subject, filterDirection))) return false;
+      return true;
+    };
+    const request: Promise<PageOf<Student>> =
+      filterDirection || filterGroupId || filterGender
+        ? studentsApi.list({ search: term }).then((all) => slicePage(all.filter(keep), page, PAGE_SIZE))
+        : studentsApi.page({ search: term, page, pageSize: PAGE_SIZE });
+    request
+      .then((data) => {
+        if (!live) return;
+        // Past the end (the last student of the last page was deleted, or an
+        // old link): go to the last page that has rows.
+        const fit = clampPage(page, data.total, PAGE_SIZE);
+        if (fit !== page) setPage(fit);
+        else setList({ key, data, error: null });
+      })
+      .catch((err) => live && setList({ key, data: null, error: err instanceof ApiError ? err.message : "" }));
+    return () => {
+      live = false;
+    };
+  }, [search, page, filterDirection, filterGroupId, filterGender, reloadKey]);
+  const listLoading = !list || list.key !== listKey;
+  const pageData = list?.data ?? null;
+
+  // Keep the address in step with the list (no new history entry per page).
+  useEffect(() => {
+    const qs = pageQuery({ q: search, page: page > 1 ? page : undefined });
+    if (window.location.search !== qs) window.history.replaceState(null, "", `${window.location.pathname}${qs}`);
+    rememberListQuery("students", qs);
+  }, [search, page]);
+
+  function reload() {
+    setReloadKey((k) => k + 1);
+  }
 
   function resetForm() {
     setFullName("");
@@ -141,7 +213,7 @@ function StudentsContent() {
       createKey.current = null;
       setModalOpen(false);
       resetForm();
-      load();
+      reload();
     } catch (err) {
       const { fields, message } = cfSubmitError(err, cfDefs.defs ?? [], t);
       if (fields) cf.setErrors(fields);
@@ -151,24 +223,7 @@ function StudentsContent() {
     }
   }
 
-  const filtered = useMemo(() => {
-    return students.filter((s) => {
-      if (filterGender && s.gender !== filterGender) return false;
-      if (filterGroupId && !(s.enrollments || []).some((e) => e.groupId === filterGroupId)) return false;
-      if (filterDirection && !(s.enrollments || []).some((e) => matchesSubject(e.group.subject, filterDirection))) return false;
-      const q = search.trim().toLowerCase();
-      if (!q) return true;
-      return (
-        s.fullName.toLowerCase().includes(q) ||
-        (s.phone || "").includes(q) ||
-        (s.parentPhone || "").includes(q) ||
-        (s.enrollments || []).some((e) => e.group.name.toLowerCase().includes(q) || e.group.subject.toLowerCase().includes(q))
-      );
-    });
-  }, [students, search, filterGroupId, filterDirection, filterGender]);
-
-  useEffect(() => setPage(1), [search, filterGroupId, filterDirection, filterGender]);
-  const pageItems = usePagedSlice(filtered, page);
+  const pageItems = pageData?.items ?? [];
 
   return (
     <>
@@ -196,7 +251,7 @@ function StudentsContent() {
               {t("students.importExcel")}
             </button>
           )}
-          <ImportDialog kind="students" open={importOpen} onClose={() => setImportOpen(false)} onDone={load} />
+          <ImportDialog kind="students" open={importOpen} onClose={() => setImportOpen(false)} onDone={reload} />
           <button
             className="btn"
             type="button"
@@ -216,49 +271,54 @@ function StudentsContent() {
       </div>
 
       <div style={{ flex: 1, minHeight: 0, padding: "26px 32px", overflow: "auto", boxSizing: "border-box" }}>
-        {!loading && students.length > 0 && (
+        {!!allCount && (
           <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap", alignItems: "center" }}>
             <input
               className="field-input"
+              type="search"
+              aria-label={t("students.searchLabel")}
               placeholder={t("students.searchPlaceholder")}
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
               style={{ width: 260, maxWidth: "100%", flexShrink: 0 }}
             />
             <Select
               options={[{ value: "", label: t("students.allDirections") }, ...subjects.map((s) => ({ value: s, label: s }))]}
               value={filterDirection}
-              onChange={(v) => { setFilterDirection(v); setFilterGroupId(""); }}
+              onChange={(v) => { setFilterDirection(v); setFilterGroupId(""); setPage(1); }}
               style={{ width: 180 }}
             />
             <Select
               options={[{ value: "", label: t("students.allGroups") }, ...filterGroupsInDirection.map((g) => ({ value: g.id, label: g.name }))]}
               value={filterGroupId}
-              onChange={setFilterGroupId}
+              onChange={(v) => { setFilterGroupId(v); setPage(1); }}
               style={{ width: 180 }}
             />
             <Select
               options={[{ value: "", label: t("students.genderFilter") }, { value: "MALE", label: t("students.male") }, { value: "FEMALE", label: t("students.female") }]}
               value={filterGender}
-              onChange={setFilterGender}
+              onChange={(v) => { setFilterGender(v); setPage(1); }}
               style={{ width: 150 }}
             />
           </div>
         )}
         {loadError !== null ? (
-          <LoadError message={loadError || t("adm.loadError")} onRetry={load} />
-        ) : loading ? (
+          <LoadError message={loadError || t("adm.loadError")} onRetry={reload} />
+        ) : list?.error != null && !listLoading ? (
+          <LoadError message={list.error || t("adm.loadError")} onRetry={reload} />
+        ) : allCount === null || !pageData ? (
           <div style={{ color: "#686B75", fontSize: 14 }}>{t("common.loading")}</div>
-        ) : students.length === 0 ? (
+        ) : allCount === 0 ? (
           <div style={{ color: "#686B75", fontSize: 14, background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 32, textAlign: "center" }}>
             {t("students.noStudentsYet")}
           </div>
-        ) : filtered.length === 0 ? (
+        ) : pageData.total === 0 ? (
           <div style={{ color: "#686B75", fontSize: 14, background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 32, textAlign: "center" }}>
             {t("students.noSearchResults")}
           </div>
         ) : (
-          <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, overflowX: "auto" }}>
+          <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, overflow: "hidden", opacity: listLoading ? 0.6 : 1 }} aria-busy={listLoading}>
+            <div style={{ overflowX: "auto" }}>
             <table>
               <thead>
                 <tr>
@@ -279,7 +339,7 @@ function StudentsContent() {
                     <td>
                       {(() => {
                         const r = summaryById.get(s.id)?.attendanceRate ?? null;
-                        return r === null ? <span style={{ color: "#686B75" }}>—</span> : <span style={{ fontWeight: 700, color: r >= 85 ? "#1FA463" : r >= 70 ? "#D97706" : "#B23A47" }}>{r}%</span>;
+                        return r === null ? <span style={{ color: "#686B75" }}>—</span> : <span style={{ fontWeight: 700, color: r >= 85 ? "#16794A" : r >= 70 ? "#D97706" : "#B23A47" }}>{r}%</span>;
                       })()}
                     </td>
                     <td>{s.phone || "—"}</td>
@@ -312,7 +372,16 @@ function StudentsContent() {
                 ))}
               </tbody>
             </table>
-            <Pagination page={page} total={filtered.length} onChange={setPage} />
+            </div>
+            <ListPager
+              label={t("students.pagerLabel")}
+              page={pageData.page}
+              pageSize={PAGE_SIZE}
+              total={pageData.total}
+              shown={pageItems.length}
+              busy={listLoading}
+              onChange={setPage}
+            />
           </div>
         )}
       </div>
@@ -416,7 +485,10 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 export default function StudentsPage() {
   return (
     <DashboardShell>
-      <StudentsContent />
+      {/* The list reads its page and search from the address. */}
+      <Suspense fallback={null}>
+        <StudentsContent />
+      </Suspense>
     </DashboardShell>
   );
 }
