@@ -1,5 +1,5 @@
 import { expect, test, type Browser, type Page } from '@playwright/test';
-import { PASSWORD, api, centerUrl, cleanUpStagingCenters, expectCenterDashboard, loginOnMainSite, newCenter, run } from './support';
+import { PASSWORD, api, authSlot, centerUrl, cleanUpStagingCenters, expectCenterDashboard, loginOnMainSite, newCenter, run } from './support';
 
 // Two-way messages: a teacher (staff, context A) and their student's cabinet
 // (context B) - two separate browser sessions - write to each other and see
@@ -313,4 +313,48 @@ test("a teacher opens their group's conversation; both students get it live, a r
   // Nor can it open the group's conversation itself.
   await expect(api('POST', '/portal/chat/conversations', { token: outsider.accessToken, body: { kind: 'GROUP', groupId: group.id } })).rejects.toThrow(/-> 404/);
   expect(await bodies(teacherToken, convId)).toEqual(['Ertaga dars 15:00 da boshlanadi.', 'Tushunarli, rahmat!']);
+});
+
+test("a parent's messages carry the parent's name and the child in the reader's language", async ({ page }) => {
+  const a = await newCenter('chat-parent');
+  const local = `93${String(Date.now()).slice(-7)}`;
+  const parentLocal = `92${String(Date.now()).slice(-7)}`;
+  const kid = await api('POST', '/students', { token: a.token, body: { fullName: 'Label Kid', phone: `+998${local}` } });
+  await api('PATCH', `/students/${kid.id}`, { token: a.token, body: { parentPhone: `+998${parentLocal}` } });
+  const { pin } = await api('POST', `/students/${kid.id}/portal-pin`, { token: a.token });
+  // Fixtures through the API: a parent with the child's PIN, and a parent with their own account.
+  const pinParent = await api<{ accessToken: string }>('POST', '/portal/auth/phone/verify', { body: { phone: `+998${parentLocal}`, pin, subdomain: a.sub } });
+  const conv = await api<{ id: string }>('POST', '/portal/chat/conversations', { token: pinParent.accessToken, body: { kind: 'STUDENT_CENTER' } });
+  await api('POST', `/portal/chat/conversations/${conv.id}/messages`, { token: pinParent.accessToken, body: { body: 'PIN orqali yozdim', clientMessageId: `pin-${run}-1` } });
+  const email = `zzbr-chatparent-${run}@example.test`;
+  const inv = await api('POST', '/invitations', { token: a.token, body: { email, role: 'PARENT' } });
+  await authSlot('register');
+  const parent = await api('POST', `/invitations/${inv.token}/accept`, { body: { fullName: 'Dilnoza Parent', password: PASSWORD } });
+  await api('POST', `/students/${kid.id}/guardians`, { token: a.token, body: { userId: parent.user.id, relationship: 'Ona' } });
+  const sessions = await api<{ sessions: Array<{ accessToken: string }> }>('POST', '/portal/auth/parent-account', { token: parent.accessToken });
+  await api('POST', `/portal/chat/conversations/${conv.id}/messages`, { token: sessions.sessions[0].accessToken, body: { body: 'Hisobim orqali yozdim', clientMessageId: `acc-${run}-1` } });
+
+  await loginOnMainSite(page, a.email);
+  await expectCenterDashboard(page, a.sub);
+  const names = async () => {
+    await page.goto(centerUrl(a.sub, `/messages?c=${conv.id}`));
+    await expect(page.locator('[data-chat-live="open"]')).toHaveCount(1);
+    const log = page.getByRole('log');
+    await expect(log).toContainText('Hisobim orqali yozdim');
+    return log;
+  };
+  let log = await names();
+  await expect(log).toContainText('Label Kidning ota-onasi');
+  await expect(log).toContainText('Dilnoza Parent (Label Kidning ota-onasi)');
+  // The same messages read in Russian and in English: no Uzbek label left.
+  await page.evaluate(() => localStorage.setItem('talimcrm_lang', 'RU'));
+  log = await names();
+  await expect(log).toContainText('Родитель: Label Kid');
+  await expect(log).toContainText('Dilnoza Parent (родитель: Label Kid)');
+  await expect(log).not.toContainText('ota-ona');
+  await page.evaluate(() => localStorage.setItem('talimcrm_lang', 'EN'));
+  log = await names();
+  await expect(log).toContainText("Label Kid's parent");
+  await expect(log).toContainText("Dilnoza Parent (Label Kid's parent)");
+  await expect(log).not.toContainText('ota-ona');
 });

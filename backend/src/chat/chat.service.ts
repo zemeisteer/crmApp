@@ -12,6 +12,12 @@ export const MAX_BODY = 2000;
 const PAGE = 50;
 const CLIENT_ID_RE = /^[A-Za-z0-9_-]{8,64}$/;
 
+/** staff, the student, or a parent (with their own account or the child's PIN). */
+function senderRole(m: { senderType: string; senderViewer: string | null }): 'staff' | 'student' | 'parent' {
+  if (m.senderType === 'USER') return 'staff';
+  return m.senderViewer === 'parent' ? 'parent' : 'student';
+}
+
 export interface OpenDto {
   kind: 'STUDENT_CENTER' | 'STUDENT_TEACHER' | 'GROUP';
   studentId?: string;
@@ -118,7 +124,7 @@ export class ChatService {
       this.db.select({ id: students.id, name: students.fullName }).from(students).where(inArray(students.id, [...list.map((c) => c.studentId).filter(Boolean) as string[], '__none__'])),
       this.db.select({ id: groups.id, name: groups.name }).from(groups).where(inArray(groups.id, [...list.map((c) => c.groupId).filter(Boolean) as string[], '__none__'])),
       this.db.select({ id: users.id, name: users.fullName }).from(users).where(inArray(users.id, [...list.map((c) => c.teacherUserId).filter(Boolean) as string[], '__none__'])),
-      this.db.select({ conversationId: chatMessages.conversationId, body: chatMessages.body, senderName: chatMessages.senderName, createdAt: chatMessages.createdAt, seq: chatMessages.seq })
+      this.db.select({ conversationId: chatMessages.conversationId, body: chatMessages.body, senderName: chatMessages.senderName, senderType: chatMessages.senderType, senderViewer: chatMessages.senderViewer, senderPerson: chatMessages.senderPerson, senderAbout: chatMessages.senderAbout, createdAt: chatMessages.createdAt, seq: chatMessages.seq })
         .from(chatMessages).where(and(inArray(chatMessages.conversationId, ids), sql`${chatMessages.seq} = (SELECT max(m2.seq) FROM chat_messages m2 WHERE m2.conversation_id = ${chatMessages.conversationId})`)),
     ]);
     const unread = await this.db.select({ conversationId: chatMessages.conversationId, n: sql<number>`count(*)::int` }).from(chatMessages)
@@ -139,7 +145,7 @@ export class ChatService {
         studentName: c.studentId ? sName.get(c.studentId) ?? null : null,
         groupName: c.groupId ? gName.get(c.groupId) ?? null : null,
         teacherName: c.teacherUserId ? tName.get(c.teacherUserId) ?? null : null,
-        lastMessage: m ? { body: m.body.slice(0, 140), senderName: m.senderName, createdAt: m.createdAt, seq: Number(m.seq) } : null,
+        lastMessage: m ? { body: m.body.slice(0, 140), senderName: m.senderName, senderRole: senderRole(m), senderPerson: m.senderPerson, senderAbout: m.senderAbout, createdAt: m.createdAt, seq: Number(m.seq) } : null,
         lastMessageAt: c.lastMessageAt,
         unread: un.get(c.id) ?? 0,
         lastReadSeq: Number(reads.find((r) => r.conversationId === c.id)?.lastReadSeq ?? 0),
@@ -166,7 +172,7 @@ export class ChatService {
     if ((before !== null && !Number.isSafeInteger(before)) || (after !== null && !Number.isSafeInteger(after))) throw new BadRequestException("Kursor noto'g'ri");
     const cols = {
       id: chatMessages.id, seq: chatMessages.seq, senderType: chatMessages.senderType, senderUserId: chatMessages.senderUserId, senderStudentId: chatMessages.senderStudentId,
-      senderViewer: chatMessages.senderViewer, senderName: chatMessages.senderName, body: chatMessages.body, clientMessageId: chatMessages.clientMessageId, createdAt: chatMessages.createdAt,
+      senderViewer: chatMessages.senderViewer, senderName: chatMessages.senderName, senderPerson: chatMessages.senderPerson, senderAbout: chatMessages.senderAbout, body: chatMessages.body, clientMessageId: chatMessages.clientMessageId, createdAt: chatMessages.createdAt,
     };
     let rows;
     if (after !== null) {
@@ -183,8 +189,9 @@ export class ChatService {
 
   private out(actor: ChatActor) {
     const me = participantKey(actor);
-    return (m: { id: string; seq: number; senderType: string; senderUserId: string | null; senderStudentId: string | null; senderViewer: string | null; senderName: string; body: string; clientMessageId: string; createdAt: Date }) => ({
-      id: m.id, seq: Number(m.seq), senderType: m.senderType, senderViewer: m.senderViewer, senderName: m.senderName, body: m.body,
+    return (m: { id: string; seq: number; senderType: string; senderUserId: string | null; senderStudentId: string | null; senderViewer: string | null; senderName: string; senderPerson: string | null; senderAbout: string | null; body: string; clientMessageId: string; createdAt: Date }) => ({
+      id: m.id, seq: Number(m.seq), senderType: m.senderType, senderViewer: m.senderViewer, senderName: m.senderName,
+      senderRole: senderRole(m), senderPerson: m.senderPerson, senderAbout: m.senderAbout, body: m.body,
       clientMessageId: m.clientMessageId, createdAt: m.createdAt,
       mine: (m.senderType === 'USER' ? `u:${m.senderUserId}` : `c:${m.senderStudentId}`) === me,
     });
@@ -203,14 +210,14 @@ export class ChatService {
     const { c, access } = await this.conversation(actor, conversationId);
     if (!access.write) throw new ForbiddenException('Bu suhbatga yozish huquqi yo\'q');
     const key = participantKey(actor);
-    const senderName = await this.senderName(actor);
+    const who = await this.sender(actor);
     const [made] = await this.db.insert(chatMessages).values({
       tenantId: actor.tenantId, conversationId, senderKey: key,
       senderType: actor.kind === 'staff' ? 'USER' : 'CABINET',
       senderUserId: actor.kind === 'staff' ? actor.userId : actor.parentUserId ?? null,
       senderStudentId: actor.kind === 'cabinet' ? actor.studentId : null,
       senderViewer: actor.kind === 'cabinet' ? actor.viewer : null,
-      senderName, body, clientMessageId: dto.clientMessageId,
+      ...who, body, clientMessageId: dto.clientMessageId,
     }).onConflictDoNothing().returning();
     if (!made) {
       const [prior] = await this.db.select().from(chatMessages)
@@ -224,17 +231,21 @@ export class ChatService {
     return { message: this.out(actor)(made), duplicate: false };
   }
 
-  private async senderName(actor: ChatActor) {
+  /** Who is writing: the stored label and its parts (see chatMessages). */
+  private async sender(actor: ChatActor): Promise<{ senderName: string; senderPerson: string | null; senderAbout: string | null }> {
     if (actor.kind === 'staff') {
       const [u] = await this.db.select({ name: users.fullName }).from(users).where(eq(users.id, actor.userId));
-      return u?.name ?? 'Xodim';
+      const name = u?.name ?? 'Xodim';
+      return { senderName: name, senderPerson: name, senderAbout: null };
     }
     const [s] = await this.db.select({ name: students.fullName }).from(students).where(eq(students.id, actor.studentId));
+    const child = s?.name ?? '';
     if (actor.parentUserId) {
       const [p] = await this.db.select({ name: users.fullName }).from(users).where(eq(users.id, actor.parentUserId));
-      if (p) return `${p.name} (${s?.name ?? ''} — ota-ona)`;
+      if (p) return { senderName: `${p.name} (${child} — ota-ona)`, senderPerson: p.name, senderAbout: child };
     }
-    return actor.viewer === 'parent' ? `${s?.name ?? ''} (ota-ona)` : s?.name ?? '';
+    if (actor.viewer === 'parent') return { senderName: `${child} (ota-ona)`, senderPerson: null, senderAbout: child };
+    return { senderName: child, senderPerson: child, senderAbout: null };
   }
 
   /** Moves the reader's position forward (never back). */

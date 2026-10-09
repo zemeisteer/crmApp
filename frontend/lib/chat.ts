@@ -112,3 +112,24 @@ export function newClientMessageId(cryptoImpl: Pick<Crypto, "getRandomValues"> &
 export function unreadTotal(list: readonly { unread: number }[]): number {
   return list.reduce((n, c) => n + (c.unread > 0 ? c.unread : 0), 0);
 }
+
+/** What a message says about its sender (see ChatMessage in lib/api.ts). */
+export interface SenderParts {
+  senderName: string;
+  senderRole?: "staff" | "student" | "parent";
+  senderPerson?: string | null;
+  senderAbout?: string | null;
+}
+
+/**
+ * The sender's name in the reader's language. `parentOf` and `parentNamed`
+ * are that language's templates ({child}, {name}); messages from an older
+ * server without the parts fall back to the stored label.
+ */
+export function senderLabel(m: SenderParts, templates: { parentOf: string; parentNamed: string }): string {
+  if (m.senderRole !== "parent" || !m.senderAbout) return m.senderPerson || m.senderName;
+  const child = m.senderAbout;
+  return m.senderPerson
+    ? templates.parentNamed.replace("{name}", m.senderPerson).replace("{child}", child)
+    : templates.parentOf.replace("{child}", child);
+}

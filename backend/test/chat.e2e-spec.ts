@@ -210,6 +210,13 @@ describe('Chat (e2e)', () => {
   it('a parent account writes as itself; unlinking ends that cabinet', async () => {
     const res = (await send(parentCab, center, 'Ota-onadan salom', cid(), true).expect(201)).body.message;
     expect(res.senderName).toBe('PARENT par (Chat Student One — ota-ona)');
+    // The parts the pages put together in the reader's language.
+    expect(res).toMatchObject({ senderRole: 'parent', senderPerson: 'PARENT par', senderAbout: 'Chat Student One' });
+    const history = (await msgs(recA, center)).body.messages as Array<{ body: string; senderRole: string; senderPerson: string | null; senderAbout: string | null }>;
+    expect(history.find((m) => m.body === 'Salom, dars jadvali qachon?')).toMatchObject({ senderRole: 'student', senderPerson: 'Chat Student One', senderAbout: null });
+    expect(history.find((m) => m.body === 'Javob 1')).toMatchObject({ senderRole: 'staff', senderPerson: 'RECEPTIONIST rec', senderAbout: null });
+    const row = (await http().get('/api/chat/conversations').set(bearer(recA)).expect(200)).body.find((c: { id: string }) => c.id === center);
+    expect(row.lastMessage).toMatchObject({ senderRole: 'parent', senderPerson: 'PARENT par', senderAbout: 'Chat Student One' });
     await http().delete(`/api/students/${s1}/guardians/${parentUser}`).set(bearer(ownerA)).expect(200);
     await msgs(parentCab, center, '', true).expect(401);
     await send(parentCab, center, 'still here?', cid(), true).expect(401);

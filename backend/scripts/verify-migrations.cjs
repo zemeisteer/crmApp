@@ -20,6 +20,8 @@
 //   9. a database at 0045 with the shipped tariffs, one edited -> 0046:
 //      the shipped lists get their Russian and English text, an edited one
 //      does not (the site keeps showing its Uzbek list)
+//  10. chat messages written before 0047 get their sender parts filled in
+//      (staff, student, parent with an account, parent with the child's PIN)
 //
 //   node scripts/verify-migrations.cjs            (DATABASE_URL = any admin-capable URL)
 require('dotenv').config({ quiet: true });
@@ -365,7 +367,32 @@ async function rows(url) {
   expect(/No schema drift/.test(drift(v45)), 'upgraded schema matches schema.ts');
   expect(/up to date/.test(runner(v45)), 're-running reports nothing to do');
 
-  for (const s of ['empty', 'upgrade', 'enum', 'v31', 'drizzle', 'v34', 'v39', 'v45']) await drop(s);
+  console.log('10. chat messages written before 0047');
+  const v46 = await recreate('v46');
+  runner(v46, '--through', '0046_plan_feature_languages');
+  await query(v46, `
+    INSERT INTO tenants (id, name, subdomain) VALUES ('tC', 'Chat Center', 'chat-center');
+    INSERT INTO users (id, tenant_id, email, password_hash, full_name, role) VALUES ('uS', 'tC', 'staff@chat.uz', 'x', 'Staff Person', 'ADMIN'), ('uP', 'tC', 'parent@chat.uz', 'x', 'Parent Person', 'PARENT');
+    INSERT INTO students (id, tenant_id, full_name) VALUES ('sC', 'tC', 'Child Name');
+    INSERT INTO chat_conversations (id, tenant_id, kind, student_id) VALUES ('cC', 'tC', 'STUDENT_CENTER', 'sC');
+    INSERT INTO chat_messages (id, tenant_id, conversation_id, sender_key, sender_type, sender_user_id, sender_student_id, sender_viewer, sender_name, body, client_message_id) VALUES
+      ('m1', 'tC', 'cC', 'u:uS', 'USER', 'uS', NULL, NULL, 'Staff Person', 'a', 'cid-000001'),
+      ('m2', 'tC', 'cC', 'c:sC', 'CABINET', NULL, 'sC', 'student', 'Child Name', 'b', 'cid-000002'),
+      ('m3', 'tC', 'cC', 'c:sC', 'CABINET', 'uP', 'sC', 'parent', 'Parent Person (Child Name — ota-ona)', 'c', 'cid-000003'),
+      ('m4', 'tC', 'cC', 'c:sC', 'CABINET', NULL, 'sC', 'parent', 'Child Name (ota-ona)', 'd', 'cid-000004');
+  `);
+  const out46 = runner(v46);
+  expect(/applied 0047_/.test(out46) && !/applied 0046_/.test(out46), '0047 is applied');
+  const parts = Object.fromEntries((await query(v46, 'SELECT id, sender_name, sender_person, sender_about FROM chat_messages')).map((r) => [r.id, r]));
+  expect(parts.m1.sender_person === 'Staff Person' && parts.m1.sender_about === null, 'staff: own name');
+  expect(parts.m2.sender_person === 'Child Name' && parts.m2.sender_about === null, 'student: own name');
+  expect(parts.m3.sender_person === 'Parent Person' && parts.m3.sender_about === 'Child Name', "parent with an account: the account's name and the child");
+  expect(parts.m4.sender_person === null && parts.m4.sender_about === 'Child Name', "parent with the child's PIN: the child only");
+  expect(['m1', 'm2', 'm3', 'm4'].every((k) => parts[k].sender_name !== null), 'the stored labels are kept');
+  expect(/No schema drift/.test(drift(v46)), 'upgraded schema matches schema.ts');
+  expect(/up to date/.test(runner(v46)), 're-running reports nothing to do');
+
+  for (const s of ['empty', 'upgrade', 'enum', 'v31', 'drizzle', 'v34', 'v39', 'v45', 'v46']) await drop(s);
   console.log('Migration chain verified.');
 })().catch(async (err) => {
   console.error(err.stderr ? String(err.stderr) : err.message);

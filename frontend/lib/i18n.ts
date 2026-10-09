@@ -3754,6 +3754,8 @@ export const dict = {
   "chat.emptyThread": { UZ: "Hali xabar yo'q. Birinchi bo'lib yozing.", RU: "Сообщений пока нет. Напишите первым.", EN: "No messages yet. Write the first one." },
   "chat.messagesLabel": { UZ: "Xabarlar", RU: "Сообщения", EN: "Messages" },
   "chat.you": { UZ: "Siz", RU: "Вы", EN: "You" },
+  "chat.parentOf": { UZ: "{child}ning ota-onasi", RU: "Родитель: {child}", EN: "{child}'s parent" },
+  "chat.parentNamed": { UZ: "{name} ({child}ning ota-onasi)", RU: "{name} (родитель: {child})", EN: "{name} ({child}'s parent)" },
   "chat.sending": { UZ: "Yuborilmoqda…", RU: "Отправляется…", EN: "Sending…" },
   "chat.sendFailed": { UZ: "Yuborilmadi.", RU: "Не отправлено.", EN: "Not sent." },
   "chat.tooFast": { UZ: "Juda tez yozyapsiz. Birozdan keyin qayta yuboring.", RU: "Слишком часто. Отправьте ещё раз чуть позже.", EN: "Too many messages at once. Send it again in a moment." },
