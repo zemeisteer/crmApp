@@ -69,7 +69,7 @@ export default function DirectorReport({ month, onMonth, onSms }: { month: strin
         <>
           {/* Headline numbers */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))", gap: 12 }}>
-            <Tile label={t("dir.collected")} value={`${money(now.collected)}`} sub={delta === null ? t("dir.sumUnit") : `${delta >= 0 ? "▲" : "▼"} ${Math.abs(delta)}% ${t("dir.vsPrev")}`} subColor={delta === null ? undefined : delta >= 0 ? "#1FA463" : "#DC2626"} />
+            <Tile label={t("dir.collected")} value={`${money(now.collected)}`} sub={delta === null ? t("dir.sumUnit") : `${delta >= 0 ? "▲" : "▼"} ${Math.abs(delta)}% ${t("dir.vsPrev")}`} subColor={delta === null ? undefined : delta >= 0 ? "#16794A" : "#DC2626"} />
             <Tile label={t("dir.expected")} value={money(now.expected)} sub={now.collectionRate === null ? "—" : `${t("dir.covered")} ${now.collectionRate}%`} />
             <Tile label={t("dir.debt")} value={money(data.debtors.totalDebt)} sub={t("dir.debtSub").replace("{n}", String(data.debtors.count)).replace("{m}", String(data.debtors.multiMonth))} subColor={data.debtors.multiMonth > 0 ? "#DC2626" : undefined} />
             {typeof now.net === "number" && <Tile label={t("dir.net")} value={money(now.net)} sub={`${t("dir.expenses")}: ${money((now.expenses ?? 0) + (now.salaries ?? 0))}`} valueColor={now.net < 0 ? "#DC2626" : undefined} />}

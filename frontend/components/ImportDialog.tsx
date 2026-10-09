@@ -10,7 +10,7 @@ const ACCENT = "#4F46E5";
 // The column that names a row in the preview.
 const MAIN_FIELD: Record<ImportKind, string> = { teachers: "fullName", groups: "name", students: "fullName" };
 const STATUS_STYLE = {
-  create: { bg: "#EBF8F2", fg: "#1FA463" },
+  create: { bg: "#EBF8F2", fg: "#16794A" },
   exists: { bg: "#F3F4F6", fg: "#4B5563" },
   error: { bg: "#FDEBEC", fg: "#B23A47" },
 } as const;

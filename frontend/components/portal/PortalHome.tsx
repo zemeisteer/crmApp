@@ -78,7 +78,7 @@ export default function PortalHome({
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "4px 2px" }}>
         <div>
-          <div style={{ fontSize: 13, color: "#64748B" }}>{parent ? t("ptp.yourChild") : t("ptl.welcome")}</div>
+          <div style={{ fontSize: 13, color: "#5B6577" }}>{parent ? t("ptp.yourChild") : t("ptl.welcome")}</div>
           <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 800, fontSize: 20 }}>{parent ? me?.fullName ?? "" : me?.fullName?.split(" ")[0] ?? ""}</div>
         </div>
         <div style={{ width: 42, height: 42, borderRadius: "50%", background: ACCENT, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800 }}>
@@ -88,37 +88,37 @@ export default function PortalHome({
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 12 }}>
         <button type="button" onClick={() => onOpen("schedule")} style={{ ...card, textAlign: "left", cursor: "pointer" }}>
-          <div style={{ fontSize: 13, color: "#64748B" }}>{t("pth.nextLesson")}</div>
+          <div style={{ fontSize: 13, color: "#5B6577" }}>{t("pth.nextLesson")}</div>
           {next ? (
             <>
               <div style={{ fontSize: 15.5, fontWeight: 700, marginTop: 3 }}>{next.l.group?.name ?? "—"} — {nextWhen}</div>
-              <div style={{ fontSize: 12.5, color: "#94A3B8", marginTop: 2 }}>
+              <div style={{ fontSize: 12.5, color: "#5B6577", marginTop: 2 }}>
                 {[next.l.teacher?.fullName, next.l.room?.name].filter(Boolean).join(" · ")}
               </div>
             </>
           ) : (
-            <div style={{ fontSize: 14, fontWeight: 600, color: "#94A3B8", marginTop: 3 }}>{t("pth.noLessons")}</div>
+            <div style={{ fontSize: 14, fontWeight: 600, color: "#5B6577", marginTop: 3 }}>{t("pth.noLessons")}</div>
           )}
         </button>
 
         <button type="button" onClick={() => onOpen("attendance")} style={{ ...card, textAlign: "left", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
           <div>
-            <div style={{ fontSize: 13, color: "#64748B" }}>{t("ptl.attendanceRate")}</div>
+            <div style={{ fontSize: 13, color: "#5B6577" }}>{t("ptl.attendanceRate")}</div>
             <div style={{ fontSize: 15.5, fontWeight: 700, marginTop: 3 }}>{total > 0 ? t("pth.lessonsOf").replace("{n}", String(present)).replace("{total}", String(total)) : "—"}</div>
           </div>
           <svg width="44" height="44" viewBox="0 0 36 36" aria-hidden>
             <circle cx="18" cy="18" r="15" fill="none" stroke="#E2E8F0" strokeWidth="4" />
             {rate !== null && (
-              <circle cx="18" cy="18" r="15" fill="none" stroke={rate >= 80 ? ACCENT : "#EA7A3A"} strokeWidth="4" strokeDasharray={`${(rate / 100) * 94.2} 100`} strokeLinecap="round" transform="rotate(-90 18 18)" />
+              <circle cx="18" cy="18" r="15" fill="none" stroke={rate >= 80 ? ACCENT : "#B4531A"} strokeWidth="4" strokeDasharray={`${(rate / 100) * 94.2} 100`} strokeLinecap="round" transform="rotate(-90 18 18)" />
             )}
             <text x="18" y="21" textAnchor="middle" fontSize="8.5" fontWeight="700" fill="#1E293B">{rate === null ? "—" : `${rate}%`}</text>
           </svg>
         </button>
 
         <button type="button" onClick={() => onOpen("payments")} style={{ ...card, textAlign: "left", cursor: "pointer" }}>
-          <div style={{ fontSize: 13, color: "#64748B" }}>{t("pth.payment")}</div>
+          <div style={{ fontSize: 13, color: "#5B6577" }}>{t("pth.payment")}</div>
           {!payments || payments.expectedTuition === 0 ? (
-            <div style={{ fontSize: 15.5, fontWeight: 700, marginTop: 3, color: "#94A3B8" }}>—</div>
+            <div style={{ fontSize: 15.5, fontWeight: 700, marginTop: 3, color: "#5B6577" }}>—</div>
           ) : payments.status === "PAID" ? (
             <div style={{ fontSize: 15.5, fontWeight: 700, marginTop: 3, color: "#167A48" }}>{t("pth.paidFor").replace("{month}", month)}</div>
           ) : (
@@ -137,7 +137,7 @@ export default function PortalHome({
           </button>
         </div>
         {homework.length === 0 ? (
-          <div style={{ fontSize: 13, color: "#94A3B8" }}>{t("pth.noHomework")}</div>
+          <div style={{ fontSize: 13, color: "#5B6577" }}>{t("pth.noHomework")}</div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {[...openHw, ...homework.filter((h) => h.completed)].slice(0, 4).map((h) => {
@@ -147,7 +147,7 @@ export default function PortalHome({
                 <div key={h.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, padding: "10px 12px", borderRadius: 12, border: "1px solid #EDF2F7" }}>
                   <div style={{ minWidth: 0 }}>
                     <div style={{ fontSize: 14, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{h.title}</div>
-                    {!h.completed && due && <div style={{ fontSize: 12, color: late ? "#DC2626" : "#94A3B8" }}>{t("pth.due")}: {formatDate(due, lang)}</div>}
+                    {!h.completed && due && <div style={{ fontSize: 12, color: late ? "#DC2626" : "#5B6577" }}>{t("pth.due")}: {formatDate(due, lang)}</div>}
                   </div>
                   <span
                     style={{
@@ -192,9 +192,9 @@ export default function PortalHome({
                   <span aria-hidden style={{ width: 8, height: 8, borderRadius: "50%", background: urgent ? "#E11D48" : ACCENT, flexShrink: 0 }} />
                   <span style={{ flex: 1, minWidth: 0 }}>
                     <span style={{ display: "block", fontSize: 13.5, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.title}</span>
-                    <span style={{ display: "block", fontSize: 12.5, color: "#64748B", marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.content}</span>
+                    <span style={{ display: "block", fontSize: 12.5, color: "#5B6577", marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.content}</span>
                   </span>
-                  <span aria-hidden style={{ color: "#94A3B8", fontSize: 16 }}>›</span>
+                  <span aria-hidden style={{ color: "#5B6577", fontSize: 16 }}>›</span>
                 </button>
               );
             })}
@@ -204,7 +204,7 @@ export default function PortalHome({
 
       {openNews && (
         <Modal open onClose={() => setOpenNews(null)} title={openNews.title} width={520}>
-          <div style={{ fontSize: 12.5, color: "#94A3B8", marginTop: -8, marginBottom: 12 }}>{formatDateTime(openNews.createdAt, lang)}</div>
+          <div style={{ fontSize: 12.5, color: "#5B6577", marginTop: -8, marginBottom: 12 }}>{formatDateTime(openNews.createdAt, lang)}</div>
           <div style={{ fontSize: 14.5, lineHeight: 1.6, color: "#2A2D35", whiteSpace: "pre-wrap" }}>{openNews.content}</div>
           <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 18 }}>
             <button type="button" onClick={() => setOpenNews(null)} style={{ background: ACCENT, color: "#fff", border: "none", fontSize: 13, fontWeight: 700, padding: "9px 16px", borderRadius: 9, cursor: "pointer" }}>

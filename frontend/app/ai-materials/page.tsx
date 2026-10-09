@@ -471,7 +471,7 @@ function AiMaterialsContent() {
                     onClick={() => copyToClipboard(activeMaterial.content, activeMaterial.id)}
                     style={{
                       background: copiedId === activeMaterial.id ? "#EBF8F2" : "#F2F1EC",
-                      color: copiedId === activeMaterial.id ? "#1FA463" : "#181A1F",
+                      color: copiedId === activeMaterial.id ? "#16794A" : "#181A1F",
                       fontSize: 12.5,
                       fontWeight: 700,
                       padding: "8px 14px",
@@ -630,7 +630,7 @@ function AiMaterialsContent() {
                             title={t("aim.copy")}
                             style={{
                               background: copiedId === h.id ? "#EBF8F2" : "#fff",
-                              color: copiedId === h.id ? "#1FA463" : "#4A4E58",
+                              color: copiedId === h.id ? "#16794A" : "#4A4E58",
                               border: "1px solid #EAE8E2",
                               borderRadius: 7,
                               padding: "6px 8px",

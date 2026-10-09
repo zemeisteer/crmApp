@@ -7,7 +7,7 @@ import { useCenterClock } from "@/lib/use-center-clock";
 import { MONTH_KEYS } from "@/lib/i18n";
 
 const MARK: Record<string, { sym: string; bg: string; fg: string }> = {
-  PRESENT: { sym: "✓", bg: "#E8F7EF", fg: "#1FA463" },
+  PRESENT: { sym: "✓", bg: "#E8F7EF", fg: "#16794A" },
   LATE: { sym: "⏱", bg: "#FEF3E2", fg: "#D97706" },
   ABSENT: { sym: "✗", bg: "#FDEBEC", fg: "#B23A47" },
   EXCUSED: { sym: "E", bg: "#EEF0FF", fg: "#4F46E5" },
@@ -79,7 +79,7 @@ export default function GroupAttendanceHistory({ students, records }: { students
                           </td>
                         );
                       })}
-                      <td style={{ ...cell, textAlign: "right", fontWeight: 800, color: r === null ? "#686B75" : r >= 80 ? "#1FA463" : r >= 60 ? "#D97706" : "#B23A47" }}>{r === null ? "—" : `${r}%`}</td>
+                      <td style={{ ...cell, textAlign: "right", fontWeight: 800, color: r === null ? "#686B75" : r >= 80 ? "#16794A" : r >= 60 ? "#D97706" : "#B23A47" }}>{r === null ? "—" : `${r}%`}</td>
                     </tr>
                   );
                 })}

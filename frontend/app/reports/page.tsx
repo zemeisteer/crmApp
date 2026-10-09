@@ -700,7 +700,7 @@ function StatCard({ label, value, delta, danger }: { label: string; value: strin
     <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 14, padding: 18 }}>
       <div style={{ fontSize: 12, color: "#686B75" }}>{label}</div>
       <div style={{ fontSize: 24, fontWeight: 800, fontFamily: "'Manrope', sans-serif", marginTop: 4, color: danger ? "#B23A47" : "#181A1F" }}>{value}</div>
-      {delta && <div style={{ fontSize: 11.5, color: danger ? "#B23A47" : delta.startsWith("↑") ? "#1FA463" : "#686B75", marginTop: 4, fontWeight: 600 }}>{delta}</div>}
+      {delta && <div style={{ fontSize: 11.5, color: danger ? "#B23A47" : delta.startsWith("↑") ? "#16794A" : "#686B75", marginTop: 4, fontWeight: 600 }}>{delta}</div>}
     </div>
   );
 }

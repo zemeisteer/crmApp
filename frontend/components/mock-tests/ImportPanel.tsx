@@ -150,7 +150,7 @@ export default function ImportPanel({ onClose, onOpenTest }: { onClose: () => vo
             {recent.slice(0, 5).map((r) => (
               <button key={r.id} type="button" onClick={() => setJob(r)} style={{ ...ghost, textAlign: "left", fontWeight: 500, display: "flex", justifyContent: "space-between", gap: 8 }}>
                 <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.files.map((f) => f.name).join(", ")}</span>
-                <span style={{ color: r.status === "DONE" ? "#1FA463" : r.status === "FAILED" ? "#B23A47" : ACCENT, fontWeight: 700 }}>{r.status === "DONE" ? `${r.result.tests?.length ?? 0} ✓` : r.status === "FAILED" ? "✕" : "⏳"}</span>
+                <span style={{ color: r.status === "DONE" ? "#16794A" : r.status === "FAILED" ? "#B23A47" : ACCENT, fontWeight: 700 }}>{r.status === "DONE" ? `${r.result.tests?.length ?? 0} ✓` : r.status === "FAILED" ? "✕" : "⏳"}</span>
               </button>
             ))}
           </div>

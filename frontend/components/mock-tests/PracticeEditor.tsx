@@ -80,10 +80,10 @@ export default function PracticeEditor({ test, onSaved }: { test: PracticeTest; 
           </div>
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-          <span style={{ fontSize: 12, fontWeight: 800, padding: "3px 10px", borderRadius: 100, background: test.status === "PUBLISHED" ? "#E9F8EF" : "#F2F1EC", color: test.status === "PUBLISHED" ? "#1FA463" : "#6B6E78" }}>
+          <span style={{ fontSize: 12, fontWeight: 800, padding: "3px 10px", borderRadius: 100, background: test.status === "PUBLISHED" ? "#E9F8EF" : "#F2F1EC", color: test.status === "PUBLISHED" ? "#16794A" : "#6B6E78" }}>
             {test.status === "PUBLISHED" ? t("mock.published") : t("mock.draft")}
           </span>
-          {msg && <span style={{ fontSize: 12.5, fontWeight: 600, color: msg.ok ? "#1FA463" : "#B23A47" }}>{msg.text}</span>}
+          {msg && <span style={{ fontSize: 12.5, fontWeight: 600, color: msg.ok ? "#16794A" : "#B23A47" }}>{msg.text}</span>}
           <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
             <button type="button" className="btn" disabled={busy || !dirty} onClick={() => save()} style={{ ...ghost, opacity: dirty ? 1 : 0.5 }}>💾 {t("common.save")}</button>
             {test.status === "PUBLISHED" ? (
@@ -212,7 +212,7 @@ function AiQuestions({ subject, onAdd }: { subject: string; onAdd: (qs: import("
       <input className="field-input" value={topic} onChange={(e) => setTopic(e.target.value)} placeholder={t("pre.aiTopicPh")} style={{ flex: "1 1 200px" }} />
       <input type="number" min={1} max={30} className="field-input" value={count} onChange={(e) => setCount(Math.max(1, Math.min(30, Number(e.target.value) || 1)))} style={{ width: 70 }} aria-label="count" />
       <button type="button" className="btn" disabled={busy} onClick={run} style={{ ...ghost, background: ACCENT, color: "#fff", border: "none" }}>{busy ? "⏳" : "✨"} {t("pre.aiAdd")}</button>
-      {note && <span style={{ fontSize: 12.5, fontWeight: 600, color: note.ok ? "#1FA463" : "#B23A47", width: "100%" }}>{note.text}</span>}
+      {note && <span style={{ fontSize: 12.5, fontWeight: 600, color: note.ok ? "#16794A" : "#B23A47", width: "100%" }}>{note.text}</span>}
     </div>
   );
 }

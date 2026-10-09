@@ -77,7 +77,7 @@ function Icon({ d, color, size = 20 }: { d: ReactNode; color: string; size?: num
 }
 
 const Check = () => (
-  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1FA463" strokeWidth="2.6" strokeLinecap="round" style={{ flexShrink: 0, marginTop: 2 }}>
+  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#16794A" strokeWidth="2.6" strokeLinecap="round" style={{ flexShrink: 0, marginTop: 2 }}>
     <path d="M20 6 9 17l-5-5" />
   </svg>
 );
@@ -190,8 +190,8 @@ export default function Landing() {
   ];
   const featureStyles = [
     { bg: "#ECEBFB", stroke: ACCENT, d: <><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M3 10h18M8 2v4M16 2v4" /></> },
-    { bg: "#E9F8EF", stroke: "#1FA463", d: <><rect x="2" y="5" width="20" height="14" rx="2" /><path d="M2 10h20" /></> },
-    { bg: "#FFF1E8", stroke: "#EA7A3A", d: <><rect x="5" y="2" width="14" height="20" rx="2" /><path d="M9 18h6" /></> },
+    { bg: "#E9F8EF", stroke: "#16794A", d: <><rect x="2" y="5" width="20" height="14" rx="2" /><path d="M2 10h20" /></> },
+    { bg: "#FFF1E8", stroke: "#B4531A", d: <><rect x="5" y="2" width="14" height="20" rx="2" /><path d="M9 18h6" /></> },
     { bg: "#FDEBEC", stroke: "#E15361", d: <><path d="M3 3v18h18" /><path d="M7 15l4-5 3 3 5-7" /></> },
   ];
   const aiIcons = [
@@ -201,8 +201,8 @@ export default function Landing() {
   ];
   const whyStyles = [
     { bg: "#ECEBFB", stroke: ACCENT, d: <path d="M12 2 4 5v6c0 5 3.4 8.7 8 11 4.6-2.3 8-6 8-11V5l-8-3Z" /> },
-    { bg: "#E9F8EF", stroke: "#1FA463", d: <><path d="M21 11.5a8.4 8.4 0 0 1-9.9 8.3A8.4 8.4 0 1 1 21 11.5Z" /><path d="M8 12h.01M12 12h.01M16 12h.01" /></> },
-    { bg: "#FFF1E8", stroke: "#EA7A3A", d: <><path d="M4 4v16h16" /><path d="M7 15l4-5 3 3 5-7" /></> },
+    { bg: "#E9F8EF", stroke: "#16794A", d: <><path d="M21 11.5a8.4 8.4 0 0 1-9.9 8.3A8.4 8.4 0 1 1 21 11.5Z" /><path d="M8 12h.01M12 12h.01M16 12h.01" /></> },
+    { bg: "#FFF1E8", stroke: "#B4531A", d: <><path d="M4 4v16h16" /><path d="M7 15l4-5 3 3 5-7" /></> },
     { bg: "#FDEBEC", stroke: "#E15361", d: <><rect x="3" y="11" width="18" height="10" rx="2" /><path d="M7 11V8a5 5 0 0 1 10 0v3" /></> },
   ];
   const planNames = ["Basic", "Pro", "Business"];
@@ -301,7 +301,7 @@ export default function Landing() {
                   {paneHead(L.todayLessons, L.online, ACCENT, "#ECEBFB")}
                   <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                     {lessonRow("IE", "#ECEBFB", ACCENT, "IELTS Speaking — B2", `14:00 · 18 ${L.students}`, "70%")}
-                    {lessonRow("GR", "#FFF1E8", "#EA7A3A", "Grammar — A2", `16:30 · 12 ${L.students}`, "40%")}
+                    {lessonRow("GR", "#FFF1E8", "#B4531A", "Grammar — A2", `16:30 · 12 ${L.students}`, "40%")}
                   </div>
                   <div style={{ display: "flex", gap: 10 }}>
                     {stat(L.monthIncome, `24 500 000 ${L.som}`)}
@@ -311,14 +311,14 @@ export default function Landing() {
               )}
               {hero === 1 && (
                 <div key="h1" className="lp-pane" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-                  {paneHead(L.lastPayments, L.newCount, "#1FA463", "#E9F8EF")}
+                  {paneHead(L.lastPayments, L.newCount, "#16794A", "#E9F8EF")}
                   <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                     {paidRow("Madina Yusupova", "IELTS Speaking — B2", `320 000 ${L.som}`)}
                     {paidRow("Jasur Ergashev", "Grammar — A2", `280 000 ${L.som}`)}
                   </div>
                   <div style={{ display: "flex", gap: 10 }}>
                     {stat(L.paidToday, `1 240 000 ${L.som}`)}
-                    {stat(L.waiting, L.waitingCount, "#EA7A3A")}
+                    {stat(L.waiting, L.waitingCount, "#B4531A")}
                   </div>
                 </div>
               )}
@@ -331,7 +331,7 @@ export default function Landing() {
                     ))}
                   </div>
                   <div style={{ display: "flex", gap: 10 }}>
-                    {stat(L.growth, "+18%", "#1FA463")}
+                    {stat(L.growth, "+18%", "#16794A")}
                     {stat(L.avgAttendance, "92%")}
                   </div>
                 </div>

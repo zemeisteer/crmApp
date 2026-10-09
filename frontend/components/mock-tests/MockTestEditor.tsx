@@ -109,10 +109,10 @@ export default function MockTestEditor({ test, onSaved }: { test: MockTest; onSa
           )}
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-          <span style={{ fontSize: 12, fontWeight: 800, padding: "3px 10px", borderRadius: 100, background: test.status === "PUBLISHED" ? "#E9F8EF" : "#F2F1EC", color: test.status === "PUBLISHED" ? "#1FA463" : "#6B6E78" }}>
+          <span style={{ fontSize: 12, fontWeight: 800, padding: "3px 10px", borderRadius: 100, background: test.status === "PUBLISHED" ? "#E9F8EF" : "#F2F1EC", color: test.status === "PUBLISHED" ? "#16794A" : "#6B6E78" }}>
             {test.status === "PUBLISHED" ? t("mock.published") : t("mock.draft")}
           </span>
-          {msg && <span style={{ fontSize: 12.5, fontWeight: 600, color: msg.ok ? "#1FA463" : "#B23A47" }}>{msg.text}</span>}
+          {msg && <span style={{ fontSize: 12.5, fontWeight: 600, color: msg.ok ? "#16794A" : "#B23A47" }}>{msg.text}</span>}
           <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
             <button type="button" className="btn" disabled={busy || !dirty} onClick={() => save()} style={{ ...ghost, opacity: dirty ? 1 : 0.5 }}>💾 {t("common.save")}</button>
             {test.status === "PUBLISHED" ? (

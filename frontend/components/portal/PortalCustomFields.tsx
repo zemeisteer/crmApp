@@ -31,7 +31,7 @@ export default function PortalCustomFields({ token }: { token: string | null }) 
       <dl style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 220px), 1fr))", gap: "12px 16px", margin: 0 }}>
         {items.map((it) => (
           <div key={it.id} style={{ minWidth: 0 }}>
-            <dt style={{ fontSize: 12.5, color: "#64748B" }}>{it.label}</dt>
+            <dt style={{ fontSize: 12.5, color: "#5B6577" }}>{it.label}</dt>
             <dd style={{ margin: "3px 0 0", fontSize: 14.5, fontWeight: 600, overflowWrap: "anywhere", whiteSpace: "pre-wrap" }}>{it.value || "—"}</dd>
           </div>
         ))}

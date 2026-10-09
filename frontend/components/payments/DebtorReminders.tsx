@@ -61,8 +61,8 @@ export default function DebtorRemindersDialog({ forMonth, onClose }: { forMonth:
         ) : (
           <>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              {chip(`SMS: ${data.channels.sms ? t("drem.on") : t("drem.off")}`, data.channels.sms ? "#EBF8F2" : "#FDEBEC", data.channels.sms ? "#1FA463" : "#B23A47")}
-              {chip(`Telegram: ${data.channels.telegram ? t("drem.on") : t("drem.off")}`, data.channels.telegram ? "#EBF8F2" : "#FDEBEC", data.channels.telegram ? "#1FA463" : "#B23A47")}
+              {chip(`SMS: ${data.channels.sms ? t("drem.on") : t("drem.off")}`, data.channels.sms ? "#EBF8F2" : "#FDEBEC", data.channels.sms ? "#16794A" : "#B23A47")}
+              {chip(`Telegram: ${data.channels.telegram ? t("drem.on") : t("drem.off")}`, data.channels.telegram ? "#EBF8F2" : "#FDEBEC", data.channels.telegram ? "#16794A" : "#B23A47")}
             </div>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               {chip(t("drem.willSend").replace("{n}", String(data.totals.reachable)), "#EEF2FF", ACCENT)}
@@ -96,7 +96,7 @@ export default function DebtorRemindersDialog({ forMonth, onClose }: { forMonth:
                         <tr key={d.studentId}>
                           <td style={{ fontWeight: 600 }}>{d.fullName}</td>
                           <td style={{ textAlign: "right", whiteSpace: "nowrap" }}>{money(d.debt)} {t("common.sumUnit")}</td>
-                          <td style={{ fontSize: 12.5, color: d.remindedToday ? "#4B5563" : via ? "#1FA463" : "#B45309" }}>
+                          <td style={{ fontSize: 12.5, color: d.remindedToday ? "#4B5563" : via ? "#16794A" : "#B45309" }}>
                             {d.remindedToday ? t("drem.sentToday") : via || t("drem.noContact")}
                           </td>
                         </tr>

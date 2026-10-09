@@ -55,7 +55,7 @@ export default function GroupExamResults({ groupId, students }: { groupId: strin
     };
   }, [grid, exams]);
 
-  const pctColor = (p: number | null) => (p === null ? "#686B75" : p >= 80 ? "#1FA463" : p >= 60 ? "#D97706" : "#B23A47");
+  const pctColor = (p: number | null) => (p === null ? "#686B75" : p >= 80 ? "#16794A" : p >= 60 ? "#D97706" : "#B23A47");
 
   return (
     <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, overflow: "hidden" }}>
@@ -111,7 +111,7 @@ export default function GroupExamResults({ groupId, students }: { groupId: strin
                   {cells.map((c, i) => (
                     <td key={columns[i].id} style={{ textAlign: "center" }}>
                       {c ? (
-                        <span style={{ display: "inline-block", minWidth: 44, padding: "3px 8px", borderRadius: 7, fontSize: 12.5, fontWeight: 700, background: c.passed ? "#E8F7EF" : "#FDEBEC", color: c.passed ? "#1FA463" : "#B23A47" }}>
+                        <span style={{ display: "inline-block", minWidth: 44, padding: "3px 8px", borderRadius: 7, fontSize: 12.5, fontWeight: 700, background: c.passed ? "#E8F7EF" : "#FDEBEC", color: c.passed ? "#16794A" : "#B23A47" }}>
                           {c.score}
                         </span>
                       ) : (

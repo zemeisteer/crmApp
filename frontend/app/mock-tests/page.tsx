@@ -144,7 +144,7 @@ function MockTestsContent() {
                     {isPracticeTest(x) ? `🎯 ${x.subject}` : `${x.kind}${x.module === "GENERAL" ? " GT" : ""} · ${x.subject} · ${x.level ? t(levelKey(x.level)) : t("mock.levelAll")}`}
                   </div>
                 </div>
-                <span style={{ fontSize: 11.5, fontWeight: 800, padding: "3px 10px", borderRadius: 100, background: x.status === "PUBLISHED" ? "#E9F8EF" : "#F2F1EC", color: x.status === "PUBLISHED" ? "#1FA463" : "#6B6E78", whiteSpace: "nowrap" }}>
+                <span style={{ fontSize: 11.5, fontWeight: 800, padding: "3px 10px", borderRadius: 100, background: x.status === "PUBLISHED" ? "#E9F8EF" : "#F2F1EC", color: x.status === "PUBLISHED" ? "#16794A" : "#6B6E78", whiteSpace: "nowrap" }}>
                   {x.status === "PUBLISHED" ? t("mock.published") : t("mock.draft")}
                 </span>
               </div>

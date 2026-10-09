@@ -45,7 +45,7 @@ export default function StudentPortalPin({ studentId, hasPhone }: { studentId: s
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
         <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 700, fontSize: 15 }}>{t("spin.title")}</div>
         {status && (
-          <span style={{ fontSize: 12, fontWeight: 700, padding: "3px 10px", borderRadius: 999, background: status.hasPin ? "#E8F7EF" : "#F2F1EC", color: status.hasPin ? "#1FA463" : "#686B75" }}>
+          <span style={{ fontSize: 12, fontWeight: 700, padding: "3px 10px", borderRadius: 999, background: status.hasPin ? "#E8F7EF" : "#F2F1EC", color: status.hasPin ? "#16794A" : "#686B75" }}>
             {status.hasPin ? `✓ ${t("spin.has")}${status.updatedAt ? ` · ${formatDateTime(status.updatedAt, lang)}` : ""}` : t("spin.none")}
           </span>
         )}

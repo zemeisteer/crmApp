@@ -50,7 +50,7 @@ export default function StaffAccessEditor({
       <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
         <span
           className="badge"
-          style={{ background: custom ? "#FEF3C7" : "#EBF8F2", color: custom ? "#B45309" : "#1FA463", fontWeight: 700, fontSize: 11.5, borderRadius: 7, padding: "3px 9px" }}
+          style={{ background: custom ? "#FEF3C7" : "#EBF8F2", color: custom ? "#B45309" : "#16794A", fontWeight: 700, fontSize: 11.5, borderRadius: 7, padding: "3px 9px" }}
         >
           {custom ? t("perm.custom") : t("perm.default")}
         </span>

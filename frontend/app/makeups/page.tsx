@@ -60,7 +60,7 @@ function MakeupsContent() {
                     onKeyDown={(e) => onTabKey(e, i)}
                     style={{
                       border: "none", cursor: "pointer", padding: "8px 14px", borderRadius: 9, fontSize: 13, fontWeight: 700, whiteSpace: "nowrap",
-                      background: tab === k ? "#fff" : "transparent", color: tab === k ? ACCENT : "#6B6E78",
+                      background: tab === k ? "#fff" : "transparent", color: tab === k ? ACCENT : "#5F626B",
                       boxShadow: tab === k ? "0 1px 3px rgba(0,0,0,0.08)" : "none",
                     }}
                   >

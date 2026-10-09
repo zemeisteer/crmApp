@@ -275,7 +275,7 @@ function DashboardContent() {
                         label={g.name}
                         value={g.students}
                         max={g.maxStudents || 1}
-                        color={g.students >= g.maxStudents ? "#1FA463" : ACCENT}
+                        color={g.students >= g.maxStudents ? "#16794A" : ACCENT}
                       />
                     ))}
                   </div>
@@ -284,7 +284,7 @@ function DashboardContent() {
               {finance && <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 20 }}>
                 <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 700, fontSize: 15, marginBottom: 16 }}>{t("dashboard.paymentStatusThisMonth")}</div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-                  <ProgressBar label={t("dashboard.paid")} value={paymentStatus.paid} max={100} color="#1FA463" suffix={`${paymentStatus.paid}%`} />
+                  <ProgressBar label={t("dashboard.paid")} value={paymentStatus.paid} max={100} color="#16794A" suffix={`${paymentStatus.paid}%`} />
                   <ProgressBar label={t("dashboard.pending")} value={paymentStatus.pending} max={100} color="#686B75" suffix={`${paymentStatus.pending}%`} />
                   <ProgressBar label={t("dashboard.overdue")} value={paymentStatus.failed} max={100} color="#B23A47" suffix={`${paymentStatus.failed}%`} />
                 </div>
@@ -332,7 +332,7 @@ function DashboardContent() {
                 ) : (
                   <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                     {data!.todaysLessons.map((l, i) => {
-                      const palette = [["#ECEBFB", ACCENT], ["#FFF1E8", "#EA7A3A"], ["#E9F8EF", "#1FA463"], ["#FDEBEC", "#E15361"]][i % 4];
+                      const palette = [["#ECEBFB", ACCENT], ["#FFF1E8", "#B4531A"], ["#E9F8EF", "#16794A"], ["#FDEBEC", "#E15361"]][i % 4];
                       const badge =
                         l.status === "DONE"
                           ? { text: `${t("dash.lessonDone")}${l.marked ? ` · ${l.present}/${l.marked}` : ""}`, color: "#167A48", bg: "#E9F8EF" }
@@ -366,7 +366,7 @@ function DashboardContent() {
                     {t("dashboard.yearTotal")}: <strong style={{ color: "#167A48" }}>{formatMoney(finance.revenueByMonth.reduce((s, m) => s + m.amount, 0))} {t("common.sumUnit")}</strong>
                   </div>
                 </div>
-                <BarChart data={revenueData} color="#1FA463" formatValue={(v) => formatMoney(v)} unit={t("common.sumUnit")} emptyText={t("dashboard.noPaymentsYet")} />
+                <BarChart data={revenueData} color="#16794A" formatValue={(v) => formatMoney(v)} unit={t("common.sumUnit")} emptyText={t("dashboard.noPaymentsYet")} />
               </div>
             )}
             </>

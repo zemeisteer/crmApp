@@ -14,7 +14,7 @@ const CRITERIA: Record<string, string> = {
 
 export function bandColor(b: number | null | undefined) {
   if (b == null) return "#686B75";
-  return b >= 7 ? "#1FA463" : b >= 5.5 ? "#4F46E5" : b >= 4 ? "#B45309" : "#DC2626";
+  return b >= 7 ? "#16794A" : b >= 5.5 ? "#4F46E5" : b >= 4 ? "#B45309" : "#DC2626";
 }
 
 // The AI examiner's (or teacher's) feedback: criterion bars, strengths,

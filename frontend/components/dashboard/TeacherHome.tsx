@@ -115,7 +115,7 @@ export default function TeacherHome({ data }: { data: DashboardData }) {
               </div>
             )}
             <div>
-              {t("th.paidOut")}: <b style={{ color: pay.isPaid ? "#1FA463" : "#181A1F" }}>{money(pay.paidAmount)} {t("common.sumUnit")}</b>
+              {t("th.paidOut")}: <b style={{ color: pay.isPaid ? "#16794A" : "#181A1F" }}>{money(pay.paidAmount)} {t("common.sumUnit")}</b>
             </div>
           </div>
         </div>

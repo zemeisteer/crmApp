@@ -185,7 +185,7 @@ export default function MockRunner({ initial, readOnly, onExit }: { initial: Por
                     {count} {s === "writing" ? t("pmk.tasks") : t("pmk.questions")} · ⏱ {minutes(s)} {t("pmk.min")}
                   </div>
                   {done(s) ? (
-                    <div style={{ fontSize: 12.5, color: r?.status === "REVIEW" ? "#B45309" : r?.status === "PENDING" ? ACCENT : "#1FA463", fontWeight: 700 }}>
+                    <div style={{ fontSize: 12.5, color: r?.status === "REVIEW" ? "#B45309" : r?.status === "PENDING" ? ACCENT : "#16794A", fontWeight: 700 }}>
                       {r?.status === "PENDING" ? t("pmk.aiMarking") : r?.status === "REVIEW" ? t("pmk.teacherMarks") : r?.raw !== undefined ? `${r.raw}/${r.max} ${t("pmk.correct")}` : t("pmk.marked")}
                     </div>
                   ) : null}
@@ -359,7 +359,7 @@ function WritingSection({ a, answers, onAnswer, readOnly }: { a: PortalMockAttem
               placeholder={t("pmk.writeHere")}
               style={{ width: "100%", boxSizing: "border-box", borderRadius: 12, border: "1px solid #D9D6CE", padding: 14, fontSize: 15, lineHeight: 1.7, fontFamily: "inherit", resize: "vertical", background: readOnly ? "#FAFAF8" : "#fff" }}
             />
-            <div style={{ fontSize: 12.5, fontWeight: 700, color: words >= task.minWords ? "#1FA463" : "#B45309" }}>
+            <div style={{ fontSize: 12.5, fontWeight: 700, color: words >= task.minWords ? "#16794A" : "#B45309" }}>
               {words} / {task.minWords}+ {t("mock.words")}
             </div>
             {tr?.feedback && <FeedbackView fb={tr.feedback} />}

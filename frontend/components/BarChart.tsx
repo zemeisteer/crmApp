@@ -79,7 +79,7 @@ export default function BarChart({
               {selectedItem.title ?? selectedItem.label}: <strong>{formatValue ? formatValue(selectedItem.value) : selectedItem.value}</strong>
               {unit && ` ${unit}`}
               {!isCustomSelected && selectedItem.isCurrent && (
-                <span style={{ fontSize: 11, opacity: 0.85, marginLeft: 4, fontWeight: 500 }}>
+                <span style={{ fontSize: 11, marginLeft: 4, fontWeight: 500 }}>
                   ({t("chart.current")})
                 </span>
               )}

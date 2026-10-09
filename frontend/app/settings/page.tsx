@@ -360,7 +360,7 @@ function SettingsContent() {
     }
   }
 
-  const BRAND_COLORS = ["#4F46E5", "#0D9488", "#EA7A3A", "#B23A47", "#1FA463"];
+  const BRAND_COLORS = ["#4F46E5", "#0D9488", "#B4531A", "#B23A47", "#16794A"];
 
   return (
     <>
