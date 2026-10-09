@@ -423,7 +423,7 @@ export default function PlacementTestModal({ groups, onClose }: { groups: Group[
                       ✈️ Telegram
                     </a>
                   )}
-                  <button type="button" className="btn" onClick={() => toggleActive(x)} style={{ ...ghost, padding: "6px 10px", color: x.active ? "#B23A47" : "#1FA463" }}>
+                  <button type="button" className="btn" onClick={() => toggleActive(x)} style={{ ...ghost, padding: "6px 10px", color: x.active ? "#B23A47" : "#16794A" }}>
                     {x.active ? t("placement.close") : t("placement.reopen")}
                   </button>
                 </div>
@@ -450,7 +450,7 @@ export default function PlacementTestModal({ groups, onClose }: { groups: Group[
                             <tr key={a.id}>
                               <td style={{ fontWeight: 600 }}>{a.fullName}</td>
                               <td>{a.phone || "—"}</td>
-                              <td style={{ textAlign: "right", fontWeight: 800, whiteSpace: "nowrap", color: a.percent >= 80 ? "#1FA463" : a.percent >= 50 ? "#D97706" : "#B23A47" }}>
+                              <td style={{ textAlign: "right", fontWeight: 800, whiteSpace: "nowrap", color: a.percent >= 80 ? "#16794A" : a.percent >= 50 ? "#D97706" : "#B23A47" }}>
                                 {a.percent}% <span style={{ fontWeight: 500, color: "#686B75" }}>({a.correct}/{a.total})</span>
                               </td>
                               <td>{a.reviewStatus === "PENDING" ? "—" : levelName(a.suggestedLevel, x.subject)}</td>

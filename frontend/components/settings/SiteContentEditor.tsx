@@ -153,7 +153,7 @@ export default function SiteContentEditor() {
 
       <div style={card}>
         <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 700, fontSize: 15 }}>{t("site.secTestimonials")}</div>
-        <div style={{ fontSize: 12.5, color: site.testimonials.length >= 10 ? "#1FA463" : "#B45309", margin: "4px 0 12px", fontWeight: 600 }}>
+        <div style={{ fontSize: 12.5, color: site.testimonials.length >= 10 ? "#16794A" : "#B45309", margin: "4px 0 12px", fontWeight: 600 }}>
           {t("site.testimonialsHint").replace("{n}", String(site.testimonials.length))}
         </div>
         {rows("testimonials", 20, { name: "", role: "", text: "" }, (r, u) => (

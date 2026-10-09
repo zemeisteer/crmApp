@@ -79,7 +79,7 @@ export default function CashDayPanel({ canClose }: { canClose: boolean }) {
     return d ? `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}` : "";
   };
   const diffLabel = (n: number) => (n === 0 ? t("cash.exact") : n < 0 ? t("cash.short") : t("cash.over"));
-  const diffColor = (n: number) => (n === 0 ? "#1FA463" : "#B23A47");
+  const diffColor = (n: number) => (n === 0 ? "#16794A" : "#B23A47");
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>

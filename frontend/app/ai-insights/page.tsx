@@ -19,11 +19,11 @@ const cardTitle: React.CSSProperties = { fontFamily: "'Manrope', sans-serif", fo
 const SEVERITY_STYLE: Record<Severity, { border: string; bg: string; badge: string }> = {
   high: { border: "#F5C2C7", bg: "#FFF5F6", badge: "#B23A47" },
   medium: { border: "#FAD7B5", bg: "#FFF9F2", badge: "#B4531A" },
-  opportunity: { border: "#BDE8CF", bg: "#F3FBF6", badge: "#1FA463" },
+  opportunity: { border: "#BDE8CF", bg: "#F3FBF6", badge: "#16794A" },
   watch: { border: "#D6D3FA", bg: "#F6F5FF", badge: ACCENT },
 };
 
-const pctColor = (p: number | null) => (p === null ? "#686B75" : p >= 80 ? "#1FA463" : p >= 60 ? "#D97706" : "#B23A47");
+const pctColor = (p: number | null) => (p === null ? "#686B75" : p >= 80 ? "#16794A" : p >= 60 ? "#D97706" : "#B23A47");
 
 // Center health, 0-100: the average of the rates we actually have
 // (attendance, fee collection, seat occupancy).
@@ -243,7 +243,7 @@ function AiInsightsContent() {
                   <DonutChart
                     value={report?.students.byStatus.ACTIVE ?? dash?.counts.activeStudents ?? 0}
                     max={Math.max(1, Object.values(report?.students.byStatus ?? {}).reduce((s, n) => s + n, 0) || dash?.counts.activeStudents || 1)}
-                    color="#1FA463"
+                    color="#16794A"
                     label={t("ai2.activeShare")}
                   />
                 </div>

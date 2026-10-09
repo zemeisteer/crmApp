@@ -120,10 +120,10 @@ function TestCardView({ x, readOnly, busy, onOpen }: { x: TestCard; readOnly: bo
     <div style={{ ...card, display: "flex", flexDirection: "column", gap: 12, background: x.mine ? "linear-gradient(160deg, #fff 60%, #ECFDF5)" : "linear-gradient(160deg, #fff 60%, #F5F3FF)" }}>
       <div>
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 6 }}>
-          {x.mine && <span style={pill("#E9F8EF", "#1FA463")}>🤖 {t("prx.mine")}</span>}
+          {x.mine && <span style={pill("#E9F8EF", "#16794A")}>🤖 {t("prx.mine")}</span>}
           {!practice && <span style={pill("#F2F1EC", "#4A4E58")}>{x.level ? t(levelKey(x.level)) : t("mock.levelAll")}</span>}
           {!practice && x.module === "GENERAL" && <span style={pill("#F2F1EC", "#4A4E58")}>General Training</span>}
-          {x.recommended && <span style={pill("#E9F8EF", "#1FA463")}>✓ {t("pmk.forYou")}</span>}
+          {x.recommended && <span style={pill("#E9F8EF", "#16794A")}>✓ {t("pmk.forYou")}</span>}
         </div>
         <div style={{ fontSize: 16, fontWeight: 800 }}>{x.title}</div>
         <div style={{ fontSize: 12, color: "#686B75", marginTop: 2 }}>

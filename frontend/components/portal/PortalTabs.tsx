@@ -161,7 +161,7 @@ const PAST_CSS = `
 `;
 
 const ATT_ACCENT: Record<string, { bar: string; bg: string; fg: string }> = {
-  green: { bar: "#1FA463", bg: "#E9F8EF", fg: "#15803D" },
+  green: { bar: "#16794A", bg: "#E9F8EF", fg: "#15803D" },
   amber: { bar: "#F59E0B", bg: "#FEF3C7", fg: "#B45309" },
   red: { bar: "#DC2626", bg: "#FEE2E2", fg: "#B91C1C" },
   grey: { bar: "#CBD5E1", bg: "#F2F1EC", fg: "#6B6E78" },
@@ -354,7 +354,7 @@ function LessonDetails({ lesson: l, onClose }: { lesson: PortalPastLesson; onClo
 // -------------------------------------------------------------- attendance
 
 const ATT_COLORS: Record<string, { dot: string; bg: string }> = {
-  PRESENT: { dot: "#1FA463", bg: "#E9F8EF" },
+  PRESENT: { dot: "#16794A", bg: "#E9F8EF" },
   LATE: { dot: "#F59E0B", bg: "#FEF3C7" },
   ABSENT: { dot: "#DC2626", bg: "#FEE2E2" },
 };
@@ -417,7 +417,7 @@ export function AttendanceTab({ attendance, tz = DEFAULT_CENTER_TIMEZONE }: { at
 
       <div className="pat-stats">
         {stat("📚", total, t("pat.lessons"), "#181A1F", "#F2F1EC")}
-        {stat("✅", present, t("ptl.present"), "#1FA463", "#E9F8EF")}
+        {stat("✅", present, t("ptl.present"), "#16794A", "#E9F8EF")}
         {stat("⏰", late, t("ptl.late"), "#B45309", "#FEF3C7")}
         {stat("❌", absent, t("ptl.absent"), "#DC2626", "#FEE2E2")}
       </div>
@@ -439,10 +439,10 @@ export function AttendanceTab({ attendance, tz = DEFAULT_CENTER_TIMEZONE }: { at
                         <span style={{ fontWeight: 700, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                           {g.groupName ?? "—"}{g.subject ? <span style={{ color: "#686B75", fontWeight: 500 }}> · {g.subject}</span> : null}
                         </span>
-                        <span style={{ fontWeight: 800, color: r >= 80 ? "#1FA463" : r >= 60 ? "#B45309" : "#DC2626" }}>{r}%</span>
+                        <span style={{ fontWeight: 800, color: r >= 80 ? "#16794A" : r >= 60 ? "#B45309" : "#DC2626" }}>{r}%</span>
                       </div>
                       <div style={{ height: 8, borderRadius: 99, background: "#F2F1EC", overflow: "hidden", margin: "6px 0 4px", display: "flex" }}>
-                        <div style={{ width: `${(g.present / Math.max(1, g.total)) * 100}%`, background: "#1FA463" }} />
+                        <div style={{ width: `${(g.present / Math.max(1, g.total)) * 100}%`, background: "#16794A" }} />
                         <div style={{ width: `${(g.late / Math.max(1, g.total)) * 100}%`, background: "#F59E0B" }} />
                         <div style={{ width: `${(g.absent / Math.max(1, g.total)) * 100}%`, background: "#DC2626" }} />
                       </div>
@@ -809,7 +809,7 @@ export function PaymentsTab({ payments, checkoutLoading, onPay, payError }: { pa
               </div>
               <div style={{ textAlign: "right" }}>
                 <div style={{ fontFamily: "'Manrope', sans-serif", fontSize: 15, fontWeight: 800 }}>{money(p.amount)}</div>
-                <div style={{ fontSize: 11.5, color: p.status === "PAID" ? "#1FA463" : "#DC2626", fontWeight: 700 }}>{p.status === "PAID" ? t("ptl.paidStatus") : p.status}</div>
+                <div style={{ fontSize: 11.5, color: p.status === "PAID" ? "#16794A" : "#DC2626", fontWeight: 700 }}>{p.status === "PAID" ? t("ptl.paidStatus") : p.status}</div>
               </div>
             </div>
           ))
