@@ -88,7 +88,8 @@ Notes:
 | Schedule page | owner | this week's make-up on its day | card with time, group, date | as expected | makeups.spec (browser) | PASS |
 | Group page → lesson cancellations | owner | cancel one date with reason, restore | listed; API cancelled; restored | as expected | makeups.spec (browser) | PASS |
 | Cabinet → make-ups | student cabinet | see own credits and bookings | shown | shown | calendar.spec (browser) | PASS |
-| Make-ups → separate SESSION booking, void, reinstate, cancel booking | owner | UI | – | – | API rows above only | NOT TESTED (browser) |
+| Make-ups → Book as separate session → Roster → Cancel booking | owner | book (teacher, room, date, 11:00–12:00), cancel | in roster; credit back to Open | as expected | makeups.spec (browser) | PASS |
+| Make-ups → Roster missed → Reinstate; Void another | owner | forfeit, reinstate, void | FORFEITED → ISSUED; voided credit lets the lesson earn a new one | as expected | makeups.spec (browser) | PASS |
 | Mobile 390px | owner | /makeups | no horizontal scroll | none | mobile.spec (browser) | PASS |
 
 ## F3 Calendar
@@ -119,7 +120,8 @@ Notes:
 | Calendar page | staff | make a new link; turn off | old link 404; new link 404 after off | as expected | calendar.spec (browser) | PASS |
 | Calendar page → Google | staff | Google not configured on the test server | "not set up" shown, no connect button | as expected | calendar.spec (browser) | PASS |
 | Cabinet → calendar link | student cabinet | create own link | ICS of the child's lessons | as expected | calendar.spec (browser) | PASS |
-| Calendar page → Google connected states | staff | connect / choose calendar / sync / disconnect UI | – | – | API rows above (mock) only | NOT TESTED (browser) |
+| Calendar page → Google (local fake Google) | staff | connect via consent redirect (PKCE), sync error, choose calendar, sync now, invalid_grant → reconnect, disconnect | connected; events written once; reconnect no duplicates; our events deleted, grant revoked | as expected | tests-google/google-calendar.spec (browser, `npm run test:google`) | PASS |
+| Cabinet (parent account) → parent's calendar | parent account | open link | parent-scope link with both children's groups; not shown in a student's cabinet | as expected | calendar.spec (browser) | PASS |
 | Mobile 390px | staff | /calendar | no horizontal scroll | none | mobile.spec (browser) | PASS |
 
 ## F4 Chat
@@ -155,7 +157,8 @@ Notes:
 | /messages at 390px | owner (center inbox) | cabinet writes; owner replies | live both ways; list/thread are two screens; no horizontal scroll | as expected | chat.spec, mobile.spec (browser) | PASS |
 | stream client | – | parser, backoff, 401 refresh once, revoked stops, abort on unmount, token only in header | as specified | as expected | chat-stream.test (13 unit) | PASS |
 | merge/pending | – | merge by seq, pending by client id, body rules | as specified | as expected | chat.test (7 unit) | PASS |
-| GROUP conversations UI | – | – | – | – | API rows above only | NOT TESTED (browser) |
+| /messages → group conversation | teacher + two student cabinets (separate contexts) | open, send, reply | both cabinets live; reply reaches everyone; outsider 404 | as expected | chat.spec (browser) | PASS |
+| two API instances | teacher on A, cabinet on B | send through A and through B | each stream hears each message once; fails with NOTIFY off | as expected | chat-instances.e2e | PASS |
 
 ## L-02 / contrast
 
@@ -166,13 +169,23 @@ Notes:
 | migration 0046 | – | shipped tiers / edited tier | translated / left alone | as expected | verify-migrations scenario 9 | PASS |
 | main site tariffs | visitor | UZ / RU / EN | the language's list, Uzbek fallback | as expected | landing-plans.spec (browser, 3) | PASS |
 
+## Follow-up round
+
+| Screen/API | Role | Action | Expected | Actual | Evidence | Status |
+|---|---|---|---|---|---|---|
+| /students | owner | 45 students: page through, search, group filter, reload | 1–20/21–40/41–45; server `search`; no duplicates | as expected | list-paging.spec (browser) | PASS |
+| /students | owner | create / delete on page 2 | stays on a valid page | as expected | list-paging.spec (browser) | PASS |
+| /payments | owner | pages, method/month/status filters, totals | server filters; totals center-wide | as expected | list-paging.spec (browser) | PASS |
+| /leads | owner | custom field value in the list | column (desktop), chip (390 px) | as expected | custom-fields.spec (browser), custom-fields.e2e | PASS |
+| 21 pages | all | axe-core WCAG 2.0/2.1 A+AA | 0 critical or serious | 0 (was 25) | a11y.spec (browser) | PASS |
+
 ## Cross-cutting
 
 | Screen/API | Role | Action | Expected | Actual | Evidence | Status |
 |---|---|---|---|---|---|---|
 | list pages | owner / teacher / other tenant | students, payments, attendance pages | totals right, no overlap, scope kept | as expected | list-pagination.e2e | PASS |
 | access catalog | configurable roles | every new route in catalog or deliberately fixed; templates = guards | staff-access.e2e | PASS | staff-access.e2e | PASS |
-| full browser suite | all | 20 earlier + 11 new (custom fields 3, make-ups 1, calendar 2, landing 3, chat 2) | pass | 31/31 (Chromium, 4.6 min) | e2e-browser full run | PASS |
-| full backend e2e | all | 48 files | pass | 319/319 | `npm run test:e2e` | PASS |
+| full browser suite | all | 38 tests | pass | 38/38 (Chromium, 6.1 min) + Google 1/1 | e2e-browser full run | PASS |
+| full backend e2e | all | 49 files | pass | 320/320 | `npm run test:e2e` | PASS |
 | backend unit | – | 50 files | pass | 320/320 | `npm test` | PASS |
-| frontend unit | – | node --test | pass | 46/46 | `npm test` | PASS |
+| frontend unit | – | node --test | pass | 55/55 | `npm test` | PASS |
