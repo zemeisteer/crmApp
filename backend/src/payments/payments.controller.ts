@@ -24,8 +24,11 @@ export class PaymentsController {
     @Query('studentId') studentId?: string,
     @Query('method') method?: string,
     @Query('status') status?: string,
+    // Checked in the service (bad value: 400).
+    @Query('groupId') groupId?: unknown,
+    @Query('search') search?: unknown,
   ) {
-    return this.service.list(tenantId, { page: page ? Number(page) || 1 : undefined, pageSize: pageSize ? Number(pageSize) : undefined, forMonth, studentId, method, status });
+    return this.service.list(tenantId, { page: page ? Number(page) || 1 : undefined, pageSize: pageSize ? Number(pageSize) : undefined, forMonth, studentId, method, status, groupId, search });
   }
 
   @Roles('ADMIN', 'OWNER', 'MANAGER', 'ACCOUNTANT', 'RECEPTIONIST')

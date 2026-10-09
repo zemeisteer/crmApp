@@ -1,4 +1,4 @@
-import { Controller, ForbiddenException, Get, Query, UseGuards } from '@nestjs/common';
+import { BadRequestException, Controller, ForbiddenException, Get, Query, UseGuards } from '@nestjs/common';
 import { CurrentUser } from '../common/current-user.decorator';
 import { JwtAuthGuard } from '../common/jwt-auth.guard';
 import { JwtPayload } from '../common/jwt.strategy';
@@ -38,6 +38,24 @@ export class ReportsController {
       { role: user.role, permissions: getEffectivePermissions(user.role, user.permissions) },
       month,
     );
+  }
+
+  // Paid money per year (by the month a payment is for), for the payments
+  // page's yearly chart: `years` (1-20, default 4) up to the current one.
+  // Whoever reads the payments list sees it (payments.view): the page used
+  // to add the same numbers up from that list.
+  @Roles('ADMIN', 'OWNER', 'MANAGER', 'ACCOUNTANT', 'RECEPTIONIST')
+  @Get('revenue-by-year')
+  revenueByYear(@CurrentUser() user: JwtPayload, @Query('years') years?: unknown) {
+    if (!user?.tenantId) throw new ForbiddenException('Tashkilot tanlanmagan');
+    let count = 4;
+    if (years !== undefined) {
+      if (typeof years !== 'string' || !/^\d{1,2}$/.test(years) || Number(years) < 1 || Number(years) > 20) {
+        throw new BadRequestException("years 1 dan 20 gacha butun son bo'lishi kerak");
+      }
+      count = Number(years);
+    }
+    return this.reports.revenueByYear(user.tenantId, count);
   }
 
   // Director's report: money trend, debt over months, churn with reasons.

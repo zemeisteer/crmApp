@@ -31,11 +31,19 @@ export class StudentsController {
     @CurrentUser('sub') userId: string,
     @Query('status') status?: string,
     @Query('branchId') branchId?: string,
-    @Query('search') search?: string,
+    @Query('search') search?: unknown,
     @Query('page') page?: string,
     @Query('pageSize') pageSize?: string,
+    // Filters of the students page; checked in the service (bad value: 400).
+    @Query('groupId') groupId?: unknown,
+    @Query('direction') direction?: unknown,
+    @Query('gender') gender?: unknown,
   ) {
-    return this.service.findAll(tenantId, { status, branchId, search, page: page ? Number(page) || 1 : undefined, pageSize: pageSize ? Number(pageSize) : undefined }, { role, userId });
+    return this.service.findAll(
+      tenantId,
+      { status, branchId, search, groupId, direction, gender, page: page ? Number(page) || 1 : undefined, pageSize: pageSize ? Number(pageSize) : undefined },
+      { role, userId },
+    );
   }
 
   @Roles('ADMIN')

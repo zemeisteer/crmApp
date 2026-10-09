@@ -45,16 +45,6 @@ export function pageQuery(params: Record<string, string | number | null | undefi
   return s ? `?${s}` : "";
 }
 
-/**
- * One page of a list already in memory, in the server's page shape. Used
- * when a filter the server cannot apply is on: the whole (server-filtered)
- * list is fetched, filtered here, and paged here, so totals stay right.
- */
-export function slicePage<T>(items: T[], page: number, pageSize: number): PageOf<T> {
-  const start = (page - 1) * pageSize;
-  return { items: items.slice(start, start + pageSize), total: items.length, page, pageSize };
-}
-
 /** Text with {name} placeholders filled in ("{from}–{to} of {total}"). */
 export function fill(template: string, values: Record<string, string | number>): string {
   return template.replace(/\{(\w+)\}/g, (m, k: string) => (k in values ? String(values[k]) : m));

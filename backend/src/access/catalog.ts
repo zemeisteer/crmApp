@@ -142,7 +142,7 @@ export const ACCESS_CATALOG: AccessKey[] = [
   // ---- Finance ----
   {
     key: 'payments.view', area: 'finance', template: [M, R, A],
-    routes: ['GET /api/payments', 'GET /api/payments/:id', 'GET /api/payments/summary', 'GET /api/payments/debtors', 'GET /api/payments/finance-summary'],
+    routes: ['GET /api/payments', 'GET /api/payments/:id', 'GET /api/payments/summary', 'GET /api/payments/debtors', 'GET /api/payments/finance-summary', 'GET /api/reports/revenue-by-year'],
   },
   { key: 'payments.take', area: 'finance', template: [A], routes: ['POST /api/payments'] },
   { key: 'payments.onlineLink', area: 'finance', template: [M, R, A], routes: ['POST /api/billing/click/link', 'POST /api/billing/payme/link'] },

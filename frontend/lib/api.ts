@@ -1439,9 +1439,14 @@ export const studentsApi = {
     const suffix = qs.toString() ? `?${qs.toString()}` : "";
     return request<Student[]>(`/students${suffix}`);
   },
-  // One page and the total (pageSize up to 200), newest first.
-  page: (q: { page: number; pageSize?: number; search?: string; status?: string; branchId?: string }) =>
-    request<PageOf<Student>>(`/students${pageQuery({ search: q.search, status: q.status, branchId: q.branchId, page: q.page, pageSize: q.pageSize })}`),
+  // One page and the total (pageSize up to 200), newest first. Every filter
+  // runs on the server: `search` (name, phones, group name or subject),
+  // `groupId` (enrolled in it), `direction` (a group subject, the
+  // matchesSubject rule) and `gender`.
+  page: (q: { page: number; pageSize?: number; search?: string; status?: string; branchId?: string; groupId?: string; direction?: string; gender?: string }) =>
+    request<PageOf<Student>>(
+      `/students${pageQuery({ search: q.search, status: q.status, branchId: q.branchId, groupId: q.groupId, direction: q.direction, gender: q.gender, page: q.page, pageSize: q.pageSize })}`,
+    ),
   trash: () => request<Student[]>("/students/trash"),
   get: (id: string) => request<Student>(`/students/${id}`),
   // idempotencyKey: one per submission (see retryKey) - a retry of the same
@@ -1489,15 +1494,32 @@ export interface PaymentFilters {
   studentId?: string;
   method?: string;
   status?: string;
+  // Payments of students enrolled in this group.
+  groupId?: string;
+  // The student's name or the month paid for.
+  search?: string;
+}
+
+function paymentQuery(f: PaymentFilters | undefined, paging?: { page: number; pageSize?: number }) {
+  return pageQuery({
+    forMonth: f?.forMonth,
+    studentId: f?.studentId,
+    method: f?.method,
+    status: f?.status,
+    groupId: f?.groupId,
+    search: f?.search,
+    page: paging?.page,
+    pageSize: paging?.pageSize,
+  });
 }
 
 export const paymentsApi = {
   // The whole list, newest first; the filters run on the server.
   list: (filters?: PaymentFilters) =>
-    request<Payment[]>(`/payments${pageQuery({ forMonth: filters?.forMonth, studentId: filters?.studentId, method: filters?.method, status: filters?.status })}`),
+    request<Payment[]>(`/payments${paymentQuery(filters)}`),
   // One page and the total (pageSize up to 200), newest payment first.
   page: (q: PaymentFilters & { page: number; pageSize?: number }) =>
-    request<PageOf<Payment>>(`/payments${pageQuery({ forMonth: q.forMonth, studentId: q.studentId, method: q.method, status: q.status, page: q.page, pageSize: q.pageSize })}`),
+    request<PageOf<Payment>>(`/payments${paymentQuery(q, q)}`),
   get: (id: string) => request<Payment>(`/payments/${id}`),
   summary: () => request<PaymentsSummary>("/payments/summary"),
   debtors: (params?: { forMonth?: string; onlyDebtors?: boolean }) => {
@@ -2336,6 +2358,10 @@ export const reportsApi = {
   // Students list columns: attendance % (last 30 days) and this month's payment state.
   studentsSummary: () =>
     request<{ withPayments: boolean; items: Array<{ studentId: string; attendanceRate: number | null; payment: "PAID" | "DEBT" | "PENDING" | "NONE" | null }> }>("/reports/students-summary"),
+  // Paid money per calendar year of the center (its timezone), summed on the
+  // server: the last `years` years up to the current one, oldest first.
+  revenueByYear: (years = 4) =>
+    request<{ timezone: string; currentYear: number; years: Array<{ year: number; amount: number }> }>(`/reports/revenue-by-year?years=${years}`),
 };
 
 // ---- Certificates (Spec Section 23) ----
