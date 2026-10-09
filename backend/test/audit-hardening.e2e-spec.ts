@@ -195,6 +195,18 @@ describe('Audit hardening (e2e)', () => {
       await http().get('/api/reports/director').set(bearer(ownerA)).expect(200);
       await http().get(`/api/payments/finance-summary?forMonth=${month}`).set(bearer(ownerA)).expect(200);
     });
+    it("a day's cash past 2^31 so'm can be counted and closed (closing amounts are bigint)", async () => {
+      for (const k of ['cash-1', 'cash-2']) {
+        await http().post('/api/payments').set(bearer(ownerA))
+          .send({ studentId: s2, amount: 1_200_000_000, forMonth: month, method: 'CASH', idempotencyKey: `${k}-${suffix}` }).expect(201);
+      }
+      const day = (await http().get(`/api/cash/day?date=${today}`).set(bearer(ownerA)).expect(200)).body;
+      expect(day.expectedCash).toBeGreaterThanOrEqual(2_400_000_000);
+      await http().post('/api/cash/day/close').set(bearer(ownerA)).send({ date: today, countedCash: 2_000_000_000 }).expect(201);
+      const closed = (await http().get(`/api/cash/day?date=${today}`).set(bearer(ownerA)).expect(200)).body.closed;
+      expect(closed.expectedCash).toBe(day.expectedCash);
+      expect(closed.difference).toBe(2_000_000_000 - day.expectedCash);
+    });
     it('refuses a value the money columns cannot hold with 400, not 500', async () => {
       await http().post('/api/payments').set(bearer(ownerA)).send({ studentId: s2, amount: 3_000_000_000, forMonth: month, method: 'CASH' }).expect(400);
       await http().post('/api/expenses').set(bearer(ownerA)).send({ title: 'x', amount: 3_000_000_000, date: today }).expect(400);

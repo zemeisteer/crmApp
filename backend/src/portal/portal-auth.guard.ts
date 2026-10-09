@@ -9,7 +9,7 @@ import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { and, eq, isNull } from 'drizzle-orm';
 import { DB, Database } from '../db/db.module';
-import { studentPortalPins, students } from '../db/schema';
+import { organizationMemberships, studentGuardians, studentPortalPins, students } from '../db/schema';
 
 @Injectable()
 export class PortalAuthGuard implements CanActivate {
@@ -46,11 +46,21 @@ export class PortalAuthGuard implements CanActivate {
       if (row.pinUpdatedAt && typeof payload.iat === 'number' && payload.iat < Math.floor(row.pinUpdatedAt.getTime() / 1000)) {
         throw new UnauthorizedException('PIN yangilangan, qaytadan kiring');
       }
+      // Opened from a parent's account: only while that parent is still
+      // linked to the student and a member of the center.
+      if (payload.parentUserId) {
+        const [g] = await this.db.select({ id: studentGuardians.id }).from(studentGuardians)
+          .innerJoin(organizationMemberships, and(eq(organizationMemberships.userId, studentGuardians.userId), eq(organizationMemberships.tenantId, studentGuardians.tenantId)))
+          .where(and(eq(studentGuardians.studentId, payload.studentId), eq(studentGuardians.userId, payload.parentUserId), eq(studentGuardians.tenantId, payload.tenantId), eq(organizationMemberships.status, 'ACTIVE')));
+        if (!g) throw new UnauthorizedException("Ota-ona bog'lanishi bekor qilingan");
+      }
       req.portalUser = {
         studentId: payload.studentId,
         tenantId: payload.tenantId,
         fullName: payload.fullName,
         viewer: payload.viewer === 'parent' ? 'parent' : 'student',
+        parentUserId: typeof payload.parentUserId === 'string' ? payload.parentUserId : undefined,
+        iat: typeof payload.iat === 'number' ? payload.iat : undefined,
       };
       return true;
     } catch {
