@@ -293,7 +293,7 @@ export default function Landing() {
               <span style={{ width: 10, height: 10, borderRadius: "50%", background: "#FF5F57" }} />
               <span style={{ width: 10, height: 10, borderRadius: "50%", background: "#FEBC2E" }} />
               <span style={{ width: 10, height: 10, borderRadius: "50%", background: "#28C840" }} />
-              <div style={{ marginLeft: 14, background: "#282B36", color: "var(--muted)", fontSize: 12, padding: "5px 14px", borderRadius: 6 }}>azizbek.crmapp.uz</div>
+              <div style={{ marginLeft: 14, background: "#282B36", color: "#A3A6B1", fontSize: 12, padding: "5px 14px", borderRadius: 6 }}>azizbek.crmapp.uz</div>
             </div>
             <div style={{ background: "var(--bg)", padding: "22px 22px 40px", height: 336, boxSizing: "border-box", position: "relative", overflow: "hidden" }}>
               {hero === 0 && (
