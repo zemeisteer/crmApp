@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import Link from "next/link";
 import { useLanguage } from "@/lib/i18n-context";
+import { planFeatureLines } from "@/lib/plans";
 import { LANDING_TEXT, type LandingLang } from "./landing-text";
 import { plansApi, type Plan } from "@/lib/api";
 
@@ -219,7 +220,7 @@ export default function Landing() {
         price: p.price > 0 ? new Intl.NumberFormat("uz-UZ").format(p.price).replace(/,/g, " ") : FREE[lang as keyof typeof FREE] ?? FREE.UZ,
         monthly: p.price > 0,
         sub: "",
-        items: p.features.split(/\r?\n/).map((x) => x.trim()).filter(Boolean),
+        items: planFeatureLines(p, lang),
         highlight: p.popular,
         cta: L.choose,
       }))

@@ -2834,6 +2834,8 @@ export const dict = {
   "pricing.fieldName": { UZ: "Nomi", RU: "Название", EN: "Name" },
   "pricing.fieldPrice": { UZ: "Narx (so'm/oy)", RU: "Цена (сум/мес.)", EN: "Price (sum/month)" },
   "pricing.fieldFeatures": { UZ: "Imkoniyatlar (har birini alohida qatorga yozing)", RU: "Возможности (каждую с новой строки)", EN: "Features (each on its own line)" },
+  "pricing.fieldFeaturesRu": { UZ: "Imkoniyatlar ruscha (bo'sh qolsa, o'zbekchasi ko'rsatiladi)", RU: "Возможности на русском (если пусто, показывается узбекский список)", EN: "Features in Russian (empty: the Uzbek list is shown)" },
+  "pricing.fieldFeaturesEn": { UZ: "Imkoniyatlar inglizcha (bo'sh qolsa, o'zbekchasi ko'rsatiladi)", RU: "Возможности на английском (если пусто, показывается узбекский список)", EN: "Features in English (empty: the Uzbek list is shown)" },
   "pricing.markPopular": { UZ: "Mashhur deb belgilash", RU: "Отметить как популярный", EN: "Mark as popular" },
   "pricing.activeVisible": { UZ: "Faol (ko'rinadi)", RU: "Активен (виден)", EN: "Active (visible)" },
   "pricing.saving": { UZ: "Saqlanmoqda...", RU: "Сохранение...", EN: "Saving..." },

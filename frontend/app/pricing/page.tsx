@@ -8,6 +8,7 @@ import { useAuth } from "@/lib/auth-context";
 import { platformBillingApi, plansApi, Plan, ApiError } from "@/lib/api";
 import { useCenterClock } from "@/lib/use-center-clock";
 import { useLanguage } from "@/lib/i18n-context";
+import { planFeatureLines } from "@/lib/plans";
 
 const ACCENT = "#4F46E5";
 
@@ -20,7 +21,7 @@ function formatMoney(n: number) {
 function TenantPricing() {
   const { tenant } = useAuth();
   const clock = useCenterClock();
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const [plans, setPlans] = useState<Plan[]>([]);
   const [loading, setLoading] = useState(true);
   const [payOpen, setPayOpen] = useState(false);
@@ -102,7 +103,7 @@ function TenantPricing() {
                     {p.price > 0 && <span style={{ fontSize: 13, color: "#686B75" }}> {t("pricing.perMonth")}</span>}
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
-                    {p.features.split("\n").filter(Boolean).map((f) => (
+                    {planFeatureLines(p, lang).map((f) => (
                       <div key={f} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "#4A4E58" }}>
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1FA463" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
                           <path d="M20 6 9 17l-5-5" />
@@ -176,7 +177,7 @@ function TenantPricing() {
 // ---- Superadmin-facing: manage plans platform-wide ----
 
 function SuperadminPlans() {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const [plans, setPlans] = useState<Plan[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -187,6 +188,8 @@ function SuperadminPlans() {
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
   const [features, setFeatures] = useState("");
+  const [featuresRu, setFeaturesRu] = useState("");
+  const [featuresEn, setFeaturesEn] = useState("");
   const [popular, setPopular] = useState(false);
   const [active, setActive] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -204,6 +207,8 @@ function SuperadminPlans() {
     setName("");
     setPrice("");
     setFeatures("");
+    setFeaturesRu("");
+    setFeaturesEn("");
     setPopular(false);
     setActive(true);
     setEditOpen(true);
@@ -215,6 +220,8 @@ function SuperadminPlans() {
     setName(p.name);
     setPrice(String(p.price));
     setFeatures(p.features);
+    setFeaturesRu(p.featuresRu ?? "");
+    setFeaturesEn(p.featuresEn ?? "");
     setPopular(p.popular);
     setActive(p.active);
     setEditOpen(true);
@@ -226,9 +233,9 @@ function SuperadminPlans() {
     setError(null);
     try {
       if (editing) {
-        await plansApi.update(editing.id, { name, price: Number(price), features, popular, active });
+        await plansApi.update(editing.id, { name, price: Number(price), features, featuresRu, featuresEn, popular, active });
       } else {
-        await plansApi.create({ key, name, price: Number(price), features, popular, active });
+        await plansApi.create({ key, name, price: Number(price), features, featuresRu, featuresEn, popular, active });
       }
       setEditOpen(false);
       load();
@@ -299,7 +306,7 @@ function SuperadminPlans() {
                     {p.price > 0 && <span style={{ fontSize: 12, color: "#686B75", fontWeight: 500 }}> {t("pricing.perMonth")}</span>}
                   </div>
                   <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 9 }}>
-                    {p.features.split("\n").filter(Boolean).map((f) => (
+                    {planFeatureLines(p, lang).map((f) => (
                       <li key={f} style={{ fontSize: 13, color: "#4A4E58", display: "flex", alignItems: "center", gap: 8 }}>
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1FA463" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
                           <path d="M20 6 9 17l-5-5" />
@@ -355,6 +362,14 @@ function SuperadminPlans() {
           <div>
             <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>{t("pricing.fieldFeatures")}</div>
             <textarea className="field-input" rows={4} value={features} onChange={(e) => setFeatures(e.target.value)} placeholder={"Cheksiz o'quvchi\nAI tahlil"} style={{ resize: "vertical" }} />
+          </div>
+          <div>
+            <label htmlFor="plan-features-ru" style={{ display: "block", fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>{t("pricing.fieldFeaturesRu")}</label>
+            <textarea id="plan-features-ru" className="field-input" rows={4} value={featuresRu} onChange={(e) => setFeaturesRu(e.target.value)} placeholder={"Без ограничения учеников\nИИ-аналитика"} style={{ resize: "vertical" }} />
+          </div>
+          <div>
+            <label htmlFor="plan-features-en" style={{ display: "block", fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>{t("pricing.fieldFeaturesEn")}</label>
+            <textarea id="plan-features-en" className="field-input" rows={4} value={featuresEn} onChange={(e) => setFeaturesEn(e.target.value)} placeholder={"Unlimited students\nAI analysis"} style={{ resize: "vertical" }} />
           </div>
           <div style={{ display: "flex", gap: 16 }}>
             <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 600 }}>
