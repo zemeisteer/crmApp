@@ -8,8 +8,7 @@ import {
   Headers,
   Post,
   Query,
-  UseGuards,
-} from '@nestjs/common';
+  UseGuards, UseInterceptors } from '@nestjs/common';
 import { JwtAuthGuard } from '../common/jwt-auth.guard';
 import { RolesGuard } from '../common/roles.guard';
 import { TrialGuard } from '../common/trial.guard';
@@ -17,9 +16,11 @@ import { Roles } from '../common/roles.decorator';
 import { CurrentUser } from '../common/current-user.decorator';
 import { StudentsService } from './students.service';
 import { CreateStudentDto, LinkGuardianDto, UpdateStudentDto } from './dto/student.dto';
+import { CalendarTouch } from '../lessons/calendar-touch.interceptor';
 
 @UseGuards(JwtAuthGuard, RolesGuard, TrialGuard)
 @Controller('students')
+@UseInterceptors(CalendarTouch)
 export class StudentsController {
   constructor(private readonly service: StudentsService) {}
 

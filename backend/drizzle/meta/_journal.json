@@ -302,6 +302,13 @@
       "when": 1794300000000,
       "tag": "0042_makeup_lessons",
       "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1794400000000,
+      "tag": "0043_calendar_sync",
+      "breakpoints": true
     }
   ]
 }
