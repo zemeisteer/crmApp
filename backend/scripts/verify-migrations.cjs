@@ -17,6 +17,9 @@
 //   8. a database at 0039 with uploaded files referenced the old way -> 0040:
 //      every existing reference becomes a file_refs row (so the files stay
 //      reachable for the people allowed to see them), rows untouched
+//   9. a database at 0045 with the shipped tariffs, one edited -> 0046:
+//      the shipped lists get their Russian and English text, an edited one
+//      does not (the site keeps showing its Uzbek list)
 //
 //   node scripts/verify-migrations.cjs            (DATABASE_URL = any admin-capable URL)
 require('dotenv').config({ quiet: true });
@@ -346,7 +349,23 @@ async function rows(url) {
   expect(/No schema drift/.test(drift(v39)), 'upgraded schema matches schema.ts');
   expect(/up to date/.test(runner(v39)), 're-running reports nothing to do');
 
-  for (const s of ['empty', 'upgrade', 'enum', 'v31', 'drizzle', 'v34', 'v39']) await drop(s);
+  console.log('9. upgrade from 0045 with the shipped tariffs, one of them edited');
+  const v45 = await recreate('v45');
+  runner(v45, '--through', '0045_cash_bigint');
+  await query(v45, `
+    INSERT INTO plans (id, key, name, price, features) VALUES
+      ('plS', 'STARTER', 'Starter', 0, E'1 filial\\n50 tagacha o''quvchi\\nAsosiy CRUD'),
+      ('plP', 'PREMIUM', 'Premium', 600000, E'Hammasi\\nTahrirlangan');
+  `);
+  const out45 = runner(v45);
+  expect(/applied 0046_/.test(out45) && !/applied 0045_/.test(out45), '0046 is applied');
+  const pl = Object.fromEntries((await query(v45, 'SELECT key, features, features_ru, features_en FROM plans')).map((r) => [r.key, r]));
+  expect(pl.STARTER.features_ru.startsWith('1 филиал') && pl.STARTER.features_en.startsWith('1 branch') && pl.STARTER.features.startsWith('1 filial'), 'the shipped list gets its translations, the Uzbek one is kept');
+  expect(pl.PREMIUM.features_ru === '' && pl.PREMIUM.features_en === '' && pl.PREMIUM.features === 'Hammasi\nTahrirlangan', 'an edited list is left alone');
+  expect(/No schema drift/.test(drift(v45)), 'upgraded schema matches schema.ts');
+  expect(/up to date/.test(runner(v45)), 're-running reports nothing to do');
+
+  for (const s of ['empty', 'upgrade', 'enum', 'v31', 'drizzle', 'v34', 'v39', 'v45']) await drop(s);
   console.log('Migration chain verified.');
 })().catch(async (err) => {
   console.error(err.stderr ? String(err.stderr) : err.message);

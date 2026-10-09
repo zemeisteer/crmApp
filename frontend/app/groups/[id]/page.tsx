@@ -37,7 +37,7 @@ const ATTENDANCE_LABEL_KEYS: Record<AttendanceStatus, TranslationKey> = {
 
 const ATTENDANCE_COLOR: Record<AttendanceStatus, string> = {
   PRESENT: "#1FA463",
-  LATE: "#EA7A3A",
+  LATE: "#B4531A",
   ABSENT: "#B23A47",
 };
 

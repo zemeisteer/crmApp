@@ -58,9 +58,24 @@ export class PlansService {
     const count = await this.db.query.plans.findFirst();
     if (count) return;
     await this.db.insert(plans).values([
-      { key: 'STARTER', name: 'Starter', price: 0, features: "1 filial\n50 tagacha o'quvchi\nAsosiy CRUD", popular: false },
-      { key: 'STANDARD', name: 'Standard', price: 300_000, features: "Cheksiz filial\n500 tagacha o'quvchi\nDavomat, hisobotlar\nTelegram xabarnomalar", popular: true },
-      { key: 'PREMIUM', name: 'Premium', price: 600_000, features: "Cheksiz o'quvchi\nAI tahlil va materiallar\nClick/Payme integratsiya\nUstuvor qo'llab-quvvatlash", popular: false },
+      {
+        key: 'STARTER', name: 'Starter', price: 0, popular: false,
+        features: "1 filial\n50 tagacha o'quvchi\nAsosiy CRUD",
+        featuresRu: '1 филиал\nДо 50 учеников\nОсновные функции',
+        featuresEn: '1 branch\nUp to 50 students\nCore features',
+      },
+      {
+        key: 'STANDARD', name: 'Standard', price: 300_000, popular: true,
+        features: "Cheksiz filial\n500 tagacha o'quvchi\nDavomat, hisobotlar\nTelegram xabarnomalar",
+        featuresRu: 'Без ограничения филиалов\nДо 500 учеников\nПосещаемость, отчёты\nУведомления в Telegram',
+        featuresEn: 'Unlimited branches\nUp to 500 students\nAttendance, reports\nTelegram notifications',
+      },
+      {
+        key: 'PREMIUM', name: 'Premium', price: 600_000, popular: false,
+        features: "Cheksiz o'quvchi\nAI tahlil va materiallar\nClick/Payme integratsiya\nUstuvor qo'llab-quvvatlash",
+        featuresRu: 'Без ограничения учеников\nИИ-аналитика и материалы\nИнтеграция Click/Payme\nПриоритетная поддержка',
+        featuresEn: 'Unlimited students\nAI analysis and materials\nClick/Payme integration\nPriority support',
+      },
     // Several app instances (or parallel test suites) can boot against the
     // same empty table at once; whoever loses the race just skips.
     ]).onConflictDoNothing({ target: plans.key });

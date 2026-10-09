@@ -18,7 +18,7 @@ const cardTitle: React.CSSProperties = { fontFamily: "'Manrope', sans-serif", fo
 
 const SEVERITY_STYLE: Record<Severity, { border: string; bg: string; badge: string }> = {
   high: { border: "#F5C2C7", bg: "#FFF5F6", badge: "#B23A47" },
-  medium: { border: "#FAD7B5", bg: "#FFF9F2", badge: "#EA7A3A" },
+  medium: { border: "#FAD7B5", bg: "#FFF9F2", badge: "#B4531A" },
   opportunity: { border: "#BDE8CF", bg: "#F3FBF6", badge: "#1FA463" },
   watch: { border: "#D6D3FA", bg: "#F6F5FF", badge: ACCENT },
 };

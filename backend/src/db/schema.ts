@@ -716,6 +716,9 @@ export const plans = pgTable('plans', {
   name: text('name').notNull(),
   price: integer('price').notNull(),
   features: text('features').notNull().default(''), // one feature per line
+  // The same list for the Russian and English site; empty: the Uzbek list is shown.
+  featuresRu: text('features_ru').notNull().default(''),
+  featuresEn: text('features_en').notNull().default(''),
   popular: boolean('popular').notNull().default(false),
   active: boolean('active').notNull().default(true),
   createdAt: timestamp('created_at').notNull().defaultNow(),

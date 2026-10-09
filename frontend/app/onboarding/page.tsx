@@ -909,7 +909,7 @@ export default function OnboardingPage() {
                       <button
                         type="button"
                         onClick={() => removeSubject(subj)}
-                        style={{ background: "transparent", border: "none", cursor: "pointer", color: "#9CA3AF", padding: 0 }}
+                        style={{ background: "transparent", border: "none", cursor: "pointer", color: "#686B75", padding: 0 }}
                       >
                         &times;
                       </button>
@@ -935,7 +935,7 @@ export default function OnboardingPage() {
                         borderRadius: 8,
                         border: "1px dashed #D1D5DB",
                         background: subjectsList.includes(s) ? "#F9FAFB" : "#FFFFFF",
-                        color: subjectsList.includes(s) ? "#9CA3AF" : "#4B5563",
+                        color: subjectsList.includes(s) ? "#686B75" : "#4B5563",
                         fontSize: 12.5,
                         cursor: subjectsList.includes(s) ? "default" : "pointer",
                       }}

@@ -1143,6 +1143,9 @@ export interface Plan {
   name: string;
   price: number;
   features: string;
+  /** Russian and English lists; empty: the Uzbek one is shown. */
+  featuresRu: string;
+  featuresEn: string;
   popular: boolean;
   active: boolean;
   tenantCount?: number;
@@ -2025,9 +2028,9 @@ export const examsApi = {
 export const plansApi = {
   listPublic: () => request<Plan[]>("/plans/public"),
   listAll: () => request<Plan[]>("/plans"),
-  create: (data: { key: string; name: string; price: number; features?: string; popular?: boolean; active?: boolean }) =>
+  create: (data: { key: string; name: string; price: number; features?: string; featuresRu?: string; featuresEn?: string; popular?: boolean; active?: boolean }) =>
     request<Plan>("/plans", { method: "POST", body: JSON.stringify(data) }),
-  update: (id: string, data: Partial<{ name: string; price: number; features: string; popular: boolean; active: boolean }>) =>
+  update: (id: string, data: Partial<{ name: string; price: number; features: string; featuresRu: string; featuresEn: string; popular: boolean; active: boolean }>) =>
     request<Plan>(`/plans/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
   remove: (id: string) => request<{ success: boolean }>(`/plans/${id}`, { method: "DELETE" }),
 };
