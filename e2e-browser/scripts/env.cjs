@@ -26,6 +26,8 @@ function browserDatabase() {
 
 const API_PORT = Number(process.env.BROWSER_API_PORT || 4300);
 const WEB_PORT = Number(process.env.BROWSER_WEB_PORT || 3300);
+// Another folder lets two runs (other ports, other database) work side by side.
+const DIST_DIR = process.env.BROWSER_DIST_DIR || '.next-browser';
 
 const db = browserDatabase();
 const backendEnv = {
@@ -48,4 +50,4 @@ const backendEnv = {
   SENTRY_DSN: '', REMINDER_SCAN_MS: '0', IMPORT_POLL_MS: '0', IMPORT_QUEUE: 'browser-tests',
 };
 
-module.exports = { ROOT, BACKEND, FRONTEND, db, API_PORT, WEB_PORT, backendEnv, backendRequire };
+module.exports = { ROOT, BACKEND, FRONTEND, db, API_PORT, WEB_PORT, DIST_DIR, backendEnv, backendRequire };
