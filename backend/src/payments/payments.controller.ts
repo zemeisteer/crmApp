@@ -16,8 +16,16 @@ export class PaymentsController {
   // (which takes payments) only.
   @Roles('ADMIN', 'OWNER', 'MANAGER', 'ACCOUNTANT', 'RECEPTIONIST')
   @Get()
-  findAll(@CurrentUser('tenantId') tenantId: string) {
-    return this.service.findAll(tenantId);
+  findAll(
+    @CurrentUser('tenantId') tenantId: string,
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string,
+    @Query('forMonth') forMonth?: string,
+    @Query('studentId') studentId?: string,
+    @Query('method') method?: string,
+    @Query('status') status?: string,
+  ) {
+    return this.service.list(tenantId, { page: page ? Number(page) || 1 : undefined, pageSize: pageSize ? Number(pageSize) : undefined, forMonth, studentId, method, status });
   }
 
   @Roles('ADMIN', 'OWNER', 'MANAGER', 'ACCOUNTANT', 'RECEPTIONIST')

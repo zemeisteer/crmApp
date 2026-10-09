@@ -1,5 +1,5 @@
 import { BadRequestException, ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { and, eq, isNotNull, isNull, inArray, or } from 'drizzle-orm';
+import { and, count, eq, ilike, isNotNull, isNull, inArray, or } from 'drizzle-orm';
 import { DB, Database } from '../db/db.module';
 import { branches, enrollments, groups, leads, organizationMemberships, studentGuardians, studentPortalPins, students, users } from '../db/schema';
 import { randomInt } from 'crypto';
@@ -25,7 +25,13 @@ export class StudentsService {
 
   // Guardian user rows are loaded with safe columns only: `user: true` used to
   // return password/reset-token hashes and the 2FA secret to the client.
-  async findAll(tenantId: string, filters?: { status?: string; branchId?: string }, viewer?: { role?: string; userId?: string }) {
+  /**
+   * The student list. Without `page` the whole list (as before); with `page`
+   * one page of `pageSize` (default 50, max 200) and the total, so a large
+   * center does not send thousands of rows. `search` filters by name or
+   * phone on the server either way.
+   */
+  async findAll(tenantId: string, filters?: { status?: string; branchId?: string; search?: string; page?: number; pageSize?: number }, viewer?: { role?: string; userId?: string }) {
     const conditions = [eq(students.tenantId, tenantId), isNull(students.deletedAt)];
     // Teachers see only students actively enrolled in their own groups.
     const scope = await teacherGroupIds(this.db, tenantId, viewer?.role, viewer?.userId);
@@ -36,16 +42,27 @@ export class StudentsService {
     }
     if (filters?.status) conditions.push(eq(students.status, filters.status as any));
     if (filters?.branchId) conditions.push(eq(students.branchId, filters.branchId));
+    const term = filters?.search?.trim().slice(0, 80);
+    if (term) {
+      const like = `%${term.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
+      conditions.push(or(ilike(students.fullName, like), ilike(students.phone, like), ilike(students.parentPhone, like))!);
+    }
 
-    return this.db.query.students.findMany({
+    const list = (limit?: number, offset?: number) => this.db.query.students.findMany({
       where: and(...conditions),
       with: {
         enrollments: { with: { group: true } },
         guardians: { with: { user: { columns: { id: true, fullName: true, email: true, phone: true } } } },
         branch: true,
       },
-      orderBy: (s, { desc }) => desc(s.createdAt),
+      orderBy: (st, { desc }) => [desc(st.createdAt), desc(st.id)],
+      ...(limit ? { limit, offset } : {}),
     });
+    if (!filters?.page) return list();
+    const pageSize = Math.min(Math.max(filters.pageSize ?? 50, 1), 200);
+    const page = Math.max(filters.page, 1);
+    const [{ total }] = await this.db.select({ total: count() }).from(students).where(and(...conditions));
+    return { items: await list(pageSize, (page - 1) * pageSize), total: Number(total), page, pageSize };
   }
 
   trash(tenantId: string) {

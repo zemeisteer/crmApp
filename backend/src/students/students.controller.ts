@@ -31,8 +31,11 @@ export class StudentsController {
     @CurrentUser('sub') userId: string,
     @Query('status') status?: string,
     @Query('branchId') branchId?: string,
+    @Query('search') search?: string,
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string,
   ) {
-    return this.service.findAll(tenantId, { status, branchId }, { role, userId });
+    return this.service.findAll(tenantId, { status, branchId, search, page: page ? Number(page) || 1 : undefined, pageSize: pageSize ? Number(pageSize) : undefined }, { role, userId });
   }
 
   @Roles('ADMIN')

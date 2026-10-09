@@ -1,6 +1,6 @@
 import { BadRequestException, ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { createHash } from 'crypto';
-import { and, eq, isNull, like } from 'drizzle-orm';
+import { and, count, eq, isNull, like } from 'drizzle-orm';
 import { DB, Database } from '../db/db.module';
 import { STUDENT_LIST_COLUMNS } from '../common/teacher-scope';
 import { expenses, invoices, payments, salaryPayments, students } from '../db/schema';
@@ -94,6 +94,37 @@ export class PaymentsService {
     private readonly ledger: LedgerService,
   ) {}
 
+  /**
+   * Payments, newest first. Without `page` the whole list (as before); with
+   * `page` one page (pageSize default 50, max 200) and the total. Optional
+   * filters run on the server: forMonth, studentId, method, status.
+   */
+  async list(tenantId: string, q: { page?: number; pageSize?: number; forMonth?: string; studentId?: string; method?: string; status?: string } = {}) {
+    // Filters on enum columns: an unknown value is a 400, not a database error.
+    if (q.method && !['CLICK', 'PAYME', 'BANK_TRANSFER', 'CASH'].includes(q.method)) throw new BadRequestException("To'lov usuli noto'g'ri");
+    if (q.status && !['PAID', 'PENDING', 'FAILED'].includes(q.status)) throw new BadRequestException("Holat noto'g'ri");
+    const where = and(
+      eq(payments.tenantId, tenantId),
+      q.forMonth ? eq(payments.forMonth, q.forMonth) : undefined,
+      q.studentId ? eq(payments.studentId, q.studentId) : undefined,
+      q.method ? eq(payments.method, q.method as typeof payments.$inferSelect.method) : undefined,
+      q.status ? eq(payments.status, q.status as typeof payments.$inferSelect.status) : undefined,
+    );
+    const list = (limit?: number, offset?: number) => this.db.query.payments.findMany({
+      where,
+      columns: { idempotencyKey: false, requestHash: false },
+      with: { student: { columns: STUDENT_LIST_COLUMNS }, invoice: true, allocations: true },
+      orderBy: (p, { desc }) => [desc(p.paidAt), desc(p.id)],
+      ...(limit ? { limit, offset } : {}),
+    });
+    if (!q.page) return list();
+    const pageSize = Math.min(Math.max(q.pageSize ?? 50, 1), 200);
+    const page = Math.max(q.page, 1);
+    const [{ total }] = await this.db.select({ total: count() }).from(payments).where(where);
+    return { items: await list(pageSize, (page - 1) * pageSize), total: Number(total), page, pageSize };
+  }
+
+  /** The whole list (internal callers). */
   findAll(tenantId: string) {
     return this.db.query.payments.findMany({
       where: eq(payments.tenantId, tenantId),
