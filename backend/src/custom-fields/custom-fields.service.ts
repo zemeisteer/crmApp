@@ -290,6 +290,22 @@ export class CustomFieldsService {
     }
   }
 
+  /** Values of many records of one kind (a list page): record id -> definition id -> value. */
+  async valuesOfMany(tenantId: string, entityType: EntityType, entityIds: string[], db: Executor = this.db): Promise<Map<string, Record<string, FieldValue>>> {
+    const out = new Map<string, Record<string, FieldValue>>();
+    if (entityIds.length === 0) return out;
+    const col = this.col(entityType);
+    const rows = await db.select({ entityId: col, definitionId: customFieldValues.definitionId, value: customFieldValues.value }).from(customFieldValues)
+      .where(and(eq(customFieldValues.tenantId, tenantId), inArray(col, entityIds)));
+    for (const r of rows) {
+      if (!r.entityId) continue;
+      const m = out.get(r.entityId) ?? {};
+      m[r.definitionId] = r.value as FieldValue;
+      out.set(r.entityId, m);
+    }
+    return out;
+  }
+
   /** Values for a record known to exist in this center (the caller checked access). */
   async read(tenantId: string, entityType: EntityType, entityId: string) {
     return this.valuesOf(tenantId, entityType, entityId);

@@ -5,7 +5,8 @@
   "scripts": {
     "build:frontend": "node scripts/build-frontend.cjs",
     "test": "playwright test",
-    "test:staging": "playwright test -c playwright.staging.config.ts"
+    "test:staging": "playwright test -c playwright.staging.config.ts",
+    "test:google": "playwright test -c playwright.google.config.ts"
   },
   "devDependencies": {
     "@playwright/test": "^1.63.0",

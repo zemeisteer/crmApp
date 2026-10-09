@@ -3,7 +3,8 @@ import { api, centerUrl, cleanUpStagingCenters, expectCenterDashboard, loginOnMa
 
 // Custom fields: the owner defines the center's own fields in Settings, a
 // new student must answer the required one, the value is shown and edited
-// on the student's page, and an archived field leaves the forms.
+// on the student's page, and an archived field leaves the forms. A lead's
+// field shows as a column of the leads list (chips on a phone's cards).
 cleanUpStagingCenters();
 
 type Def = { id: string; key: string; label: string; fieldType: string; required: boolean; archivedAt: string | null; studentFieldId: string | null; optionMap: Record<string, string> | null; options: Array<{ id: string; label: string; archived?: boolean }> };
@@ -168,6 +169,17 @@ test("a lead's field is edited on the lead and carried into the student when con
   await expect(page.getByRole('region', { name: "Qo'shimcha ma'lumotlar" })).toContainText('Kuchli');
   expect((await api('GET', `/leads/${lead.id}`, { token: a.token })).customFields).toEqual({ [wish.id]: opt(wish, 'Kuchli') });
 
+  // The leads list shows the field as a column, with the lead's value (the list API carries it).
+  const listed = (await api<{ items: Array<{ id: string; customFields: Record<string, unknown> }> }>('GET', '/leads', { token: a.token })).items;
+  expect(listed.find((l) => l.id === lead.id)?.customFields).toEqual({ [wish.id]: opt(wish, 'Kuchli') });
+  await page.goto(centerUrl(a.sub, '/leads'));
+  const table = page.getByRole('table');
+  await expect(table.getByRole('columnheader', { name: 'Kutilgan daraja' })).toBeVisible();
+  const row = table.getByRole('row').filter({ hasText: 'Carry Lead' });
+  const column = await table.getByRole('columnheader').evaluateAll((ths) => ths.findIndex((th) => th.textContent === 'Kutilgan daraja'));
+  await expect(row.getByRole('cell').nth(column)).toHaveText('Kuchli');
+  await page.goto(centerUrl(a.sub, `/leads/${lead.id}`));
+
   // The wizard shows the carried value and sends only what the user typed.
   await page.getByRole('button', { name: "O'quvchiga aylantirish" }).click();
   dialog = page.getByRole('dialog', { name: "O'quvchiga aylantirish" });
@@ -248,6 +260,17 @@ test.describe('on a phone', () => {
     await dialog.getByRole('button', { name: "O'quvchini qo'shish" }).scrollIntoViewIfNeeded();
     await expect(dialog.getByRole('button', { name: "O'quvchini qo'shish" })).toBeInViewport();
     await page.keyboard.press('Escape');
+
+    // The leads list on a phone is cards: the lead's own fields are chips on its card.
+    const heard = await api<Def>('POST', '/custom-fields', { token: a.token, body: { entityType: 'LEAD', label: 'Qayerdan eshitdi', fieldType: 'TEXT' } });
+    await api<Def>('POST', '/custom-fields', { token: a.token, body: { entityType: 'LEAD', label: 'Izoh', fieldType: 'TEXT' } });
+    await api('POST', '/leads', { token: a.token, body: { fullName: 'Phone Lead', phone: '+998901112266', source: 'PHONE', customFields: { [heard.id]: "Instagram reklamasi orqali, do'stining tavsiyasi bilan, Chilonzor filialida" } } });
+    await page.goto(centerUrl(a.sub, '/leads'));
+    const card = page.getByRole('link').filter({ hasText: 'Phone Lead' });
+    const chips = card.getByRole('list', { name: "Qo'shimcha ma'lumotlar" });
+    await expect(chips.getByRole('listitem')).toHaveCount(1);
+    await expect(chips.getByRole('listitem')).toContainText('Qayerdan eshitdi: Instagram reklamasi');
+    expect(await overflow()).toEqual([]);
 
     await page.goto(centerUrl(a.sub, `/students/${kid.id}`));
     await expect(page.getByRole('region', { name: "Qo'shimcha ma'lumotlar" })).toContainText('45-maktab');

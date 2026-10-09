@@ -14,6 +14,7 @@ import PortalPractice from "@/components/portal/PortalPractice";
 import PortalCustomFields from "@/components/portal/PortalCustomFields";
 import PortalMakeups from "@/components/portal/PortalMakeups";
 import PortalCalendar from "@/components/portal/PortalCalendar";
+import { openedFromParentAccount } from "@/lib/portal-token";
 import PortalChat from "@/components/portal/PortalChat";
 import type { Lang, TranslationKey } from "@/lib/i18n";
 import {
@@ -461,7 +462,7 @@ export default function StudentPortalPage() {
           alignItems: "center",
           justifyContent: "center",
           fontFamily: "'Inter', sans-serif",
-          color: "#64748B",
+          color: "#5B6577",
           fontSize: 14,
         }}
       >
@@ -497,7 +498,7 @@ export default function StudentPortalPage() {
             {me?.tenant?.name || t("ptl.center")}
           </span>
         </div>
-        <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", color: "#5B5E68", padding: "0 10px 8px" }}>{t("ptl.cabinet")}</div>
+        <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", color: "#9A9DA8", padding: "0 10px 8px" }}>{t("ptl.cabinet")}</div>
         <nav className="ptl-side-nav" aria-label="menu">
           {nav.map((tab) => {
             const on = activeTab === tab.id;
@@ -523,7 +524,7 @@ export default function StudentPortalPage() {
           </div>
           <div style={{ minWidth: 0 }}>
             <div style={{ fontSize: 13, fontWeight: 600, color: "#fff", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{me?.fullName || t("ptl.student")}</div>
-            <div style={{ fontSize: 11, color: "#686B75" }}>{isParent ? t("ptp.parentView") : t("ptl.student")}</div>
+            <div style={{ fontSize: 11, color: "#9A9DA8" }}>{isParent ? t("ptp.parentView") : t("ptl.student")}</div>
           </div>
         </div>
       </aside>
@@ -535,7 +536,7 @@ export default function StudentPortalPage() {
           <div style={{ flexShrink: 0, width: 36, height: 36, borderRadius: 11, background: "#EEF2FF", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>🎓</div>
           <div style={{ minWidth: 0 }}>
             <div style={{ fontSize: 14, fontWeight: 800, color: "#1E293B", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{me?.tenant?.name || t("ptl.center")}</div>
-            <div style={{ fontSize: 11.5, color: "#64748B", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{me?.fullName || t("ptl.student")}</div>
+            <div style={{ fontSize: 11.5, color: "#5B6577", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{me?.fullName || t("ptl.student")}</div>
           </div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
@@ -601,7 +602,7 @@ export default function StudentPortalPage() {
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, gap: 10 }}>
               <div>
                 <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 800, fontSize: 16 }}>{t("ptp.addChild")}</div>
-                <div style={{ fontSize: 12.5, color: "#94A3B8", marginTop: 2 }}>{t("ptp.addChildHint")}</div>
+                <div style={{ fontSize: 12.5, color: "#5B6577", marginTop: 2 }}>{t("ptp.addChildHint")}</div>
               </div>
               <button type="button" onClick={() => setAddingChild(false)} aria-label={t("common.cancel")} style={{ background: "rgba(255,255,255,0.1)", border: "none", color: "#fff", borderRadius: 8, width: 32, height: 32, cursor: "pointer", fontSize: 16 }}>✕</button>
             </div>
@@ -636,7 +637,7 @@ export default function StudentPortalPage() {
         {activeTab === "schedule" && <ScheduleTab key={token ?? ""} schedule={schedule} tz={centerTimeZone(me?.tenant?.timezone)} />}
         {/* Make-up lessons and the calendar link belong to the child shown: remounted per session. */}
         {activeTab === "schedule" && <PortalMakeups key={`mk-${token ?? ""}`} tz={centerTimeZone(me?.tenant?.timezone)} />}
-        {activeTab === "schedule" && <PortalCalendar key={`cal-${token ?? ""}`} />}
+        {activeTab === "schedule" && <PortalCalendar key={`cal-${token ?? ""}`} parentAccount={openedFromParentAccount(token)} />}
         {activeTab === "attendance" && <AttendanceTab attendance={attendance} tz={centerTimeZone(me?.tenant?.timezone)} />}
         {activeTab === "homework" && <HomeworkTab homework={homework} onSubmit={handleHomeworkSubmit} readOnly={isParent} />}
         {activeTab === "ai" && !isParent && <PortalTutor firstName={me?.fullName?.split(" ")[0]} />}
@@ -714,7 +715,7 @@ export default function StudentPortalPage() {
                     borderRadius: 16,
                     padding: 32,
                     textAlign: "center",
-                    color: "#64748B",
+                    color: "#5B6577",
                   }}
                 >
                   {t("ptl.noResults")}
@@ -739,7 +740,7 @@ export default function StudentPortalPage() {
                           {r.examTitle || t("ptl.exam")}
                         </div>
                         {r.note && (
-                          <div style={{ fontSize: 12, color: "#64748B", marginTop: 2 }}>
+                          <div style={{ fontSize: 12, color: "#5B6577", marginTop: 2 }}>
                             {r.note}
                           </div>
                         )}

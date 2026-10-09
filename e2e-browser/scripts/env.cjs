@@ -1,6 +1,7 @@
 // Where the browser tests run: their own database, ports and secrets.
 // Nothing here points at a development or production service, and every
-// external provider (AI, e-mail, SMS, Telegram, Click, Payme, Google Calendar) is switched off.
+// external provider (AI, e-mail, SMS, Telegram, Click, Payme, Google Calendar) is switched off
+// (the Google suite talks to a local fake Google instead).
 const path = require('path');
 const { randomBytes } = require('crypto');
 
@@ -29,6 +30,21 @@ const WEB_PORT = Number(process.env.BROWSER_WEB_PORT || 3300);
 // Another folder lets two runs (other ports, other database) work side by side.
 const DIST_DIR = process.env.BROWSER_DIST_DIR || '.next-browser';
 
+// The Google suite (playwright.google.config.ts sets BROWSER_GOOGLE=fake):
+// Google's endpoints are a local fake (scripts/fake-google.cjs) on its own
+// port; the default suite has Google switched off.
+const FAKE_GOOGLE_PORT = Number(process.env.BROWSER_FAKE_GOOGLE_PORT || 4399);
+const FAKE_GOOGLE = `http://127.0.0.1:${FAKE_GOOGLE_PORT}`;
+const googleEnv = process.env.BROWSER_GOOGLE === 'fake'
+  ? {
+    GOOGLE_CLIENT_ID: 'browser-test-client', GOOGLE_CLIENT_SECRET: 'browser-test-secret',
+    GOOGLE_REDIRECT_URI: `http://localhost:${API_PORT}/api/calendar/google/callback`,
+    GOOGLE_AUTH_BASE: FAKE_GOOGLE, GOOGLE_OAUTH_BASE: FAKE_GOOGLE, GOOGLE_CALENDAR_API_BASE: `${FAKE_GOOGLE}/calendar/v3`,
+    // The poller looks every second (production: every minute).
+    CALENDAR_SYNC_MS: '1000', CALENDAR_TOKEN_KEY: randomBytes(32).toString('base64'),
+  }
+  : { GOOGLE_CLIENT_ID: '', GOOGLE_CLIENT_SECRET: '', GOOGLE_REDIRECT_URI: '', GOOGLE_AUTH_BASE: '', GOOGLE_OAUTH_BASE: '', GOOGLE_CALENDAR_API_BASE: '' };
+
 const db = browserDatabase();
 const backendEnv = {
   ...process.env,
@@ -46,8 +62,8 @@ const backendEnv = {
   GEMINI_API_KEY: '', ANTHROPIC_API_KEY: '', RESEND_API_KEY: '', SMTP_HOST: '',
   TELEGRAM_BOT_TOKEN: '', TELEGRAM_POLLING: 'false', ESKIZ_API_TOKEN: '', PLAYMOBILE_API_TOKEN: '',
   CLICK_MERCHANT_ID: '', CLICK_SERVICE_ID: '', CLICK_SECRET_KEY: '', PAYME_MERCHANT_ID: '', PAYME_KEY: '',
-  GOOGLE_CLIENT_ID: '', GOOGLE_CLIENT_SECRET: '', GOOGLE_REDIRECT_URI: '',
+  ...googleEnv,
   SENTRY_DSN: '', REMINDER_SCAN_MS: '0', IMPORT_POLL_MS: '0', IMPORT_QUEUE: 'browser-tests',
 };
 
-module.exports = { ROOT, BACKEND, FRONTEND, db, API_PORT, WEB_PORT, DIST_DIR, backendEnv, backendRequire };
+module.exports = { ROOT, BACKEND, FRONTEND, db, API_PORT, WEB_PORT, DIST_DIR, FAKE_GOOGLE_PORT, backendEnv, backendRequire };

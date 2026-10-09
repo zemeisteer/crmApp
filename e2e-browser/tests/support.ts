@@ -73,7 +73,10 @@ let seq = 0;
 // Every center a test made, so the staging run can delete exactly those.
 const created: Array<{ token: string; sub: string }> = [];
 export async function newCenter(tag: string) {
-  const n = `${tag}-${run}-${++seq}`.toLowerCase();
+  // The server takes subdomains of at most 30 characters ("zzbr-" + this):
+  // the tag is shortened when the run id and a growing counter need the room.
+  const tail = `-${run}-${++seq}`;
+  const n = `${tag.slice(0, Math.max(1, 30 - 'zzbr-'.length - tail.length))}${tail}`.toLowerCase();
   const email = `zzbr-owner-${n}@example.test`;
   await authSlot('register');
   const r = await api('POST', '/auth/register', { body: { centerName: `ZZ Browser ${n}`, subdomain: `zzbr-${n}`, email, password: PASSWORD, fullName: `Owner ${tag}` } });
