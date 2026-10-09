@@ -9,8 +9,7 @@ import {
   Patch,
   Post,
   Query,
-  UseGuards,
-} from '@nestjs/common';
+  UseGuards, UseInterceptors } from '@nestjs/common';
 import { CurrentUser } from '../common/current-user.decorator';
 import { JwtAuthGuard } from '../common/jwt-auth.guard';
 import { JwtPayload } from '../common/jwt.strategy';
@@ -39,12 +38,14 @@ import {
 import { Actor, LeadsService } from './leads.service';
 import { LeadTrialsService } from './lead-trials.service';
 import { LeadConversionService } from './lead-conversion.service';
+import { CalendarTouch } from '../lessons/calendar-touch.interceptor';
 
 // Admissions & Sales CRM API. Authorization is permission-based
 // (admissions.*) and the tenant always comes from the verified token —
 // never from the request body or query.
 @Controller('leads')
 @UseGuards(JwtAuthGuard, PermissionsGuard, TrialGuard)
+@UseInterceptors(CalendarTouch)
 export class LeadsController {
   constructor(
     private readonly leadsService: LeadsService,

@@ -322,7 +322,8 @@ async function rows(url) {
     INSERT INTO mock_imports (id, tenant_id, files) VALUES ('iF', 'tF', '[{"path":"${F('imp')}.mp3","name":"a.mp3","type":"audio/mpeg","size":1}]');
   `);
   const before39 = await dump(v39);
-  const out39 = runner(v39);
+  // Just 0040 first (later migrations add columns to some of these tables).
+  const out39 = runner(v39, '--through', '0040_file_refs');
   expect(/applied 0040_/.test(out39) && !/applied 0039_/.test(out39), '0040 is applied');
   const refs = (await query(v39, 'SELECT name, kind, owner_id, student_id FROM file_refs ORDER BY kind, name')).map((r) => `${r.kind}:${r.name}:${r.owner_id}:${r.student_id ?? ''}`);
   const want = [
@@ -341,6 +342,7 @@ async function rows(url) {
   for (const t of ['tenants', 'homework', 'homework_completions', 'exams', 'mock_tests', 'mock_attempts', 'mock_imports']) {
     expect(before39[t] === after39[t], `${t}: rows unchanged`);
   }
+  runner(v39);
   expect(/No schema drift/.test(drift(v39)), 'upgraded schema matches schema.ts');
   expect(/up to date/.test(runner(v39)), 're-running reports nothing to do');
 

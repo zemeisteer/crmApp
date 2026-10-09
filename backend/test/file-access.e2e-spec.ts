@@ -57,9 +57,10 @@ describe('Private file access (e2e)', () => {
     const g2 = (await http().post('/api/groups').set(bearer(ownerA)).send({ name: 'G2', subject: 'Math', teacherId: tch2, scheduleDays: 'Seshanba', startTime: '12:00', endTime: '13:00' }).expect(201)).body.id;
     const s1 = (await http().post('/api/students').set(bearer(ownerA)).send({ fullName: 'File One', phone: '+998901230001', parentPhone: '+998901230091', groupIds: [g1] }).expect(201)).body.id;
     const s2 = (await http().post('/api/students').set(bearer(ownerA)).send({ fullName: 'File Two', phone: '+998901230002', groupIds: [g2] }).expect(201)).body.id;
-    s1Cab = await cabinet(ownerA, s1, '+998901230001');
-    parentS1Cab = (await http().post('/api/portal/auth/phone/verify').send({ phone: '+998901230091', pin: (await http().post(`/api/students/${s1}/portal-pin`).set(bearer(ownerA)).expect(201)).body.pin }).expect(201)).body.accessToken;
-    s1Cab = await cabinet(ownerA, s1, '+998901230001'); // the new PIN above signed the old cabinet out
+    // One PIN for both: the student's own phone and the parent's phone (a new PIN would sign the other out).
+    const pin1 = (await http().post(`/api/students/${s1}/portal-pin`).set(bearer(ownerA)).expect(201)).body.pin;
+    s1Cab = (await http().post('/api/portal/auth/phone/verify').send({ phone: '+998901230001', pin: pin1 }).expect(201)).body.accessToken;
+    parentS1Cab = (await http().post('/api/portal/auth/phone/verify').send({ phone: '+998901230091', pin: pin1 }).expect(201)).body.accessToken;
     s2Cab = await cabinet(ownerA, s2, '+998901230002');
 
     const hw1 = (await http().post('/api/homework').set(bearer(ownerA)).send({ groupIds: [g1], title: 'HW1', description: 'x' }).expect(201)).body[0].id;

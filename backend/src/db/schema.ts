@@ -1832,3 +1832,82 @@ export const makeupBookingsRelations = relations(makeupBookings, ({ one }) => ({
   teacher: one(teachers, { fields: [makeupBookings.teacherId], references: [teachers.id] }),
   room: one(rooms, { fields: [makeupBookings.roomId], references: [rooms.id] }),
 }));
+
+// ---------------------------------------------------------------------------
+// Calendar subscription links (ICS). The key is shown once; only its SHA-256
+// is kept. Access is re-checked on every fetch (calendar/calendar-feeds.service.ts).
+export const calendarFeeds = pgTable('calendar_feeds', {
+  id: text('id').primaryKey().$defaultFn(() => createId()),
+  tenantId: text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  // TEACHER | PARENT | CENTER (a staff or parent account) | STUDENT (a cabinet)
+  scope: text('scope').notNull(),
+  userId: text('user_id').references(() => users.id, { onDelete: 'cascade' }),
+  studentId: text('student_id').references(() => students.id, { onDelete: 'cascade' }),
+  tokenHash: text('token_hash').notNull(),
+  tokenHint: text('token_hint').notNull(),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  revokedAt: timestamp('revoked_at'),
+  lastFetchedAt: timestamp('last_fetched_at'),
+}, (t) => ({
+  tokenUniq: uniqueIndex('calendar_feeds_token_uniq').on(t.tokenHash),
+  userIdx: index('calendar_feeds_user_idx').on(t.tenantId, t.userId),
+  studentIdx: index('calendar_feeds_student_idx').on(t.tenantId, t.studentId),
+}));
+
+// A user's Google Calendar, written to (never read from) by the sync.
+// Tokens are encrypted (calendar/token-crypto.ts).
+export const calendarConnections = pgTable('calendar_connections', {
+  id: text('id').primaryKey().$defaultFn(() => createId()),
+  tenantId: text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  provider: text('provider').notNull().default('GOOGLE'),
+  scope: text('scope').notNull(), // TEACHER | PARENT | CENTER
+  calendarId: text('calendar_id').notNull().default('primary'),
+  calendarName: text('calendar_name'),
+  accessTokenEnc: text('access_token_enc'),
+  refreshTokenEnc: text('refresh_token_enc'),
+  tokenExpiresAt: timestamp('token_expires_at'),
+  status: text('status').notNull().default('ACTIVE'), // ACTIVE | NEEDS_RECONNECT
+  syncRequestedAt: timestamp('sync_requested_at'),
+  nextAttemptAt: timestamp('next_attempt_at'),
+  attempts: integer('attempts').notNull().default(0),
+  lockedUntil: timestamp('locked_until'),
+  lastSyncAt: timestamp('last_sync_at'),
+  lastError: text('last_error'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+}, (t) => ({
+  oneEach: uniqueIndex('calendar_connections_user_provider_uniq').on(t.tenantId, t.userId, t.provider),
+  dueIdx: index('calendar_connections_due_idx').on(t.status, t.nextAttemptAt),
+}));
+
+// One-time OAuth state (PKCE verifier kept encrypted); the callback trusts
+// only what is stored here, never the query.
+export const calendarOauthStates = pgTable('calendar_oauth_states', {
+  id: text('id').primaryKey().$defaultFn(() => createId()),
+  stateHash: text('state_hash').notNull(),
+  tenantId: text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  verifierEnc: text('verifier_enc').notNull(),
+  returnTo: text('return_to'),
+  expiresAt: timestamp('expires_at').notNull(),
+  usedAt: timestamp('used_at'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+}, (t) => ({
+  stateUniq: uniqueIndex('calendar_oauth_states_state_uniq').on(t.stateHash),
+}));
+
+// Which provider event each CRM lesson became, so updates patch it and a
+// retry never creates a second one.
+export const calendarEventLinks = pgTable('calendar_event_links', {
+  id: text('id').primaryKey().$defaultFn(() => createId()),
+  connectionId: text('connection_id').notNull().references(() => calendarConnections.id, { onDelete: 'cascade' }),
+  eventKey: text('event_key').notNull(),
+  calendarId: text('calendar_id').notNull(),
+  providerEventId: text('provider_event_id').notNull(),
+  hash: text('hash').notNull(),
+  date: text('date').notNull(), // YYYY-MM-DD of the lesson (old links are dropped)
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+}, (t) => ({
+  keyUniq: uniqueIndex('calendar_event_links_key_uniq').on(t.connectionId, t.eventKey),
+}));

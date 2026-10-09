@@ -1,10 +1,11 @@
 // Request logs keep the path and query, but never a credential that travels
 // in them: invitation and placement-test links carry their token in the
 // path, e-mail verification in the query. A log reader must not be able to
-// accept someone's invitation from a log line.
+// accept someone's invitation from a log line. Calendar subscription links
+// carry their key in the path too; the OAuth callback its code and state.
 
-const SECRET_PATH = /^(\/api\/(?:invitations|public\/placement)\/)[^/?#]+/;
-const SECRET_KEYS = new Set(['token', 'code', 'secret', 'pin', 'password', 'refreshtoken']);
+const SECRET_PATH = /^(\/api\/(?:invitations|public\/placement|calendar\/feed)\/)[^/?#]+/;
+const SECRET_KEYS = new Set(['token', 'code', 'secret', 'pin', 'password', 'refreshtoken', 'state']);
 const MASK = '[redacted]';
 
 export function redactUrl(url: string | undefined): string | undefined {

@@ -7,8 +7,7 @@ import {
   Patch,
   Post,
   Query,
-  UseGuards,
-} from '@nestjs/common';
+  UseGuards, UseInterceptors } from '@nestjs/common';
 import { JwtAuthGuard } from '../common/jwt-auth.guard';
 import { RolesGuard } from '../common/roles.guard';
 import { TrialGuard } from '../common/trial.guard';
@@ -17,9 +16,11 @@ import { CurrentUser } from '../common/current-user.decorator';
 import { ScheduleService } from './schedule.service';
 import { CreateRoomDto, UpdateRoomDto } from './dto/room.dto';
 import { CheckConflictDto, CreateScheduleDto, UpdateScheduleDto } from './dto/schedule.dto';
+import { CalendarTouch } from '../lessons/calendar-touch.interceptor';
 
 @Controller('schedule')
 @UseGuards(JwtAuthGuard, RolesGuard, TrialGuard)
+@UseInterceptors(CalendarTouch)
 export class ScheduleController {
   constructor(private readonly service: ScheduleService) {}
 

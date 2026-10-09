@@ -80,6 +80,10 @@ describe('Staff access lists (e2e)', () => {
       'POST /api/files/sign',
       // The center's custom-field definitions: every form needs them to render.
       'GET /api/custom-fields',
+      // One's own calendar (subscription link, Google connection): everyone's own.
+      'GET /api/calendar/feed', 'POST /api/calendar/feed', 'DELETE /api/calendar/feed',
+      'GET /api/calendar/google', 'POST /api/calendar/google/connect', 'GET /api/calendar/google/calendars',
+      'PATCH /api/calendar/google', 'POST /api/calendar/google/sync', 'DELETE /api/calendar/google',
     ]);
     const unclassified = app.get(RouteAccessService).routes()
       .filter((r) => (r.rolesGuard || r.permissionsGuard) && CONFIGURABLE_ROLES.some((role) => RouteAccessService.allows(r, role)))
