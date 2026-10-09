@@ -33,7 +33,7 @@ import {
   retryKey,
   type PageOf,
 } from "@/lib/api";
-import { clampPage, slicePage } from "@/lib/list-paging";
+import { clampPage } from "@/lib/list-paging";
 import { useCenterClock } from "@/lib/use-center-clock";
 import CashDayPanel from "@/components/payments/CashDay";
 import DebtorRemindersDialog from "@/components/payments/DebtorReminders";
@@ -556,6 +556,9 @@ function PaymentsContent() {
   // managers and reception. A failed load is shown, with a retry.
   const seesExpenses = can(user, "expenses.view");
   const seesInvoices = can(user, "invoices.manage");
+  // The yearly chart (GET /reports/revenue-by-year) is open to whoever
+  // reads payments, like the rest of this page.
+  const seesYearly = can(user, "payments.view");
   const [loadError, setLoadError] = useState<string | null>(null);
   function loadAll() {
     setLoading(true);
@@ -722,42 +725,25 @@ function PaymentsContent() {
     return () => clearTimeout(id);
   }, [searchInput, search]);
 
-  // The students (with their groups) as last loaded, for the two filters the
-  // server does not have (read when the page is fetched, not on every reload).
-  const studentsRef = useRef<Student[]>([]);
-  useEffect(() => {
-    studentsRef.current = students;
-  }, [students]);
-
-  // The current page of the history. Month, status and method are server
-  // filters. The text search (student name or month) and the group filter
-  // are not: while one of them is on, the server-filtered list is fetched
-  // whole and searched and paged here, so the totals stay those of the
-  // whole list, never of one page.
+  // The current page of the history. Every filter runs on the server:
+  // month, status, method, the group (payments of students enrolled in it)
+  // and the text search (student name or month), so only one page is ever
+  // loaded and the totals are those of the whole filtered list.
   const listKey = JSON.stringify([page, search, statusFilter, methodFilter, groupFilter, monthFilter, reloadKey]);
   const [list, setList] = useState<{ key: string; data: PageOf<Payment> | null; error: string | null } | null>(null);
   useEffect(() => {
     let live = true;
     const key = JSON.stringify([page, search, statusFilter, methodFilter, groupFilter, monthFilter, reloadKey]);
-    const filters = { status: statusFilter || undefined, method: methodFilter || undefined, forMonth: monthFilter || undefined };
-    const request: Promise<PageOf<Payment>> =
-      search || groupFilter
-        ? paymentsApi.list(filters).then((all) => {
-            const byId = new Map(studentsRef.current.map((s) => [s.id, s]));
-            const q = search.toLowerCase();
-            return slicePage(
-              all.filter((p) => {
-                const st = byId.get(p.studentId);
-                if (groupFilter && !st?.enrollments?.some((e) => e.groupId === groupFilter)) return false;
-                if (q && !(p.student?.fullName ?? st?.fullName ?? "").toLowerCase().includes(q) && !p.forMonth.includes(q)) return false;
-                return true;
-              }),
-              page,
-              PAGE_SIZE,
-            );
-          })
-        : paymentsApi.page({ ...filters, page, pageSize: PAGE_SIZE });
-    request
+    paymentsApi
+      .page({
+        status: statusFilter || undefined,
+        method: methodFilter || undefined,
+        forMonth: monthFilter || undefined,
+        groupId: groupFilter || undefined,
+        search: search || undefined,
+        page,
+        pageSize: PAGE_SIZE,
+      })
       .then((data) => {
         if (!live) return;
         const fit = clampPage(page, data.total, PAGE_SIZE);
@@ -821,23 +807,28 @@ function PaymentsContent() {
   }, [expenses, expenseCategoryFilter]);
 
   // The chart's figures. Monthly: the server's monthly totals (loaded with
-  // the page). Daily and weekly: the paid payments of the last weeks - the
-  // server lists payments newest first, so pages are fetched until they reach
-  // the start of the window. Yearly (four years): the paid payments, fetched
-  // only when that view is opened. Never the rows of one history page.
+  // the page). Yearly (four years): the server's sums per year of the
+  // center's calendar (by payment date), fetched only when that view is
+  // opened. Daily and weekly: the paid payments of the last weeks - the
+  // server lists payments newest first, so pages are fetched until they
+  // reach the start of the window. Never the rows of one history page.
   const chartKey = `${period}:${reloadKey}`;
   const [chartPaid, setChartPaid] = useState<{ key: string; items: Payment[] | null } | null>(null);
+  const [chartYears, setChartYears] = useState<{ key: string; years: Array<{ year: number; amount: number }> | null } | null>(null);
   useEffect(() => {
     if (period === "month") return;
     let live = true;
     const key = `${period}:${reloadKey}`;
-    const request =
-      period === "year"
-        ? paymentsApi.list({ status: "PAID" })
-        : paidSince(chartWindowStart(period, clock.tz), (iso) => clock.dateOf(iso));
-    request
-      .then((items) => live && setChartPaid({ key, items }))
-      .catch(() => live && setChartPaid({ key, items: null }));
+    if (period === "year") {
+      reportsApi
+        .revenueByYear(4)
+        .then((r) => live && setChartYears({ key, years: r.years }))
+        .catch(() => live && setChartYears({ key, years: null }));
+    } else {
+      paidSince(chartWindowStart(period, clock.tz), (iso) => clock.dateOf(iso))
+        .then((items) => live && setChartPaid({ key, items }))
+        .catch(() => live && setChartPaid({ key, items: null }));
+    }
     return () => {
       live = false;
     };
@@ -855,6 +846,10 @@ function PaymentsContent() {
         isCurrent: m === clock.month(),
         value: revenue.byMonth.find((r) => r.month === m)?.amount ?? 0,
       }));
+    }
+    if (period === "year") {
+      if (!chartYears || chartYears.key !== chartKey || !chartYears.years) return null;
+      return chartYears.years.map((y) => ({ label: String(y.year), value: y.amount }));
     }
     if (!chartPaid || chartPaid.key !== chartKey || !chartPaid.items) return null;
     const paid = chartPaid.items.filter((p) => p.status === "PAID");
@@ -890,17 +885,14 @@ function PaymentsContent() {
         return { label: `${weekStart.getDate()}/${weekStart.getMonth() + 1}`, value };
       });
     }
-    if (period === "year") {
-      const thisYear = Number(clock.month().slice(0, 4));
-      const years = Array.from({ length: 4 }, (_, i) => thisYear - (3 - i));
-      return years.map((y) => ({
-        label: String(y),
-        value: paid.filter((p) => p.forMonth.startsWith(String(y))).reduce((s, p) => s + p.amount, 0),
-      }));
-    }
     return null;
-  }, [revenue, chartPaid, chartKey, period, t, clock]);
-  const chartFailed = period === "month" ? false : chartPaid?.key === chartKey && chartPaid.items === null;
+  }, [revenue, chartPaid, chartYears, chartKey, period, t, clock]);
+  const chartFailed =
+    period === "month"
+      ? false
+      : period === "year"
+        ? chartYears?.key === chartKey && chartYears.years === null
+        : chartPaid?.key === chartKey && chartPaid.items === null;
 
   // Sending the same form again (double click, lost answer) is one payment.
   const paymentKey = useRef<{ sig: string; key: string } | null>(null);
@@ -1395,7 +1387,8 @@ function PaymentsContent() {
                           ["day", t("payments.periodDay")],
                           ["week", t("payments.periodWeek")],
                           ["month", t("payments.periodMonth")],
-                          ["year", t("payments.periodYear")],
+                          // Yearly sums: same audience as the payments list (payments.view).
+                          ...(seesYearly ? [["year", t("payments.periodYear")]] : []),
                         ] as [Period, string][]
                       ).map(([p, l]) => (
                         <button

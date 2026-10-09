@@ -15,7 +15,7 @@ import ListPager from "@/components/ListPager";
 import Select from "@/components/Select";
 import DatePicker from "@/components/DatePicker";
 import { studentsApi, groupsApi, exportApi, reportsApi, retryKey, Student, Group, Gender, ApiError, type PageOf } from "@/lib/api";
-import { clampPage, pageQuery, parsePageParam, rememberListQuery, slicePage } from "@/lib/list-paging";
+import { clampPage, pageQuery, parsePageParam, rememberListQuery } from "@/lib/list-paging";
 import { NAME_PATTERN, NAME_TITLE } from "@/lib/validation";
 import { useLanguage } from "@/lib/i18n-context";
 import { matchesSubject, extractUniqueSubjects } from "@/lib/subject";
@@ -126,27 +126,23 @@ function StudentsContent() {
     return () => clearTimeout(id);
   }, [searchInput, search]);
 
-  // The current page. Name and phone search run on the server. Direction,
-  // group and gender are not server filters: while one of them is on, the
-  // (searched) list is fetched whole and filtered and paged here, so the
-  // totals stay those of the whole list, never of one page.
+  // The current page. The search (name, phone, group name) and the
+  // direction, group and gender filters all run on the server, so only one
+  // page is ever loaded and the totals are those of the whole filtered list.
   const listKey = JSON.stringify([search, page, filterDirection, filterGroupId, filterGender, reloadKey]);
   const [list, setList] = useState<{ key: string; data: PageOf<Student> | null; error: string | null } | null>(null);
   useEffect(() => {
     let live = true;
     const key = JSON.stringify([search, page, filterDirection, filterGroupId, filterGender, reloadKey]);
-    const term = search || undefined;
-    const keep = (s: Student) => {
-      if (filterGender && s.gender !== filterGender) return false;
-      if (filterGroupId && !(s.enrollments || []).some((e) => e.groupId === filterGroupId)) return false;
-      if (filterDirection && !(s.enrollments || []).some((e) => matchesSubject(e.group.subject, filterDirection))) return false;
-      return true;
-    };
-    const request: Promise<PageOf<Student>> =
-      filterDirection || filterGroupId || filterGender
-        ? studentsApi.list({ search: term }).then((all) => slicePage(all.filter(keep), page, PAGE_SIZE))
-        : studentsApi.page({ search: term, page, pageSize: PAGE_SIZE });
-    request
+    studentsApi
+      .page({
+        search: search || undefined,
+        direction: filterDirection || undefined,
+        groupId: filterGroupId || undefined,
+        gender: filterGender || undefined,
+        page,
+        pageSize: PAGE_SIZE,
+      })
       .then((data) => {
         if (!live) return;
         // Past the end (the last student of the last page was deleted, or an

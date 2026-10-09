@@ -1,7 +1,7 @@
 import { BadRequestException, ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { and, count, eq, ilike, isNotNull, isNull, inArray, or } from 'drizzle-orm';
 import { DB, Database } from '../db/db.module';
-import { branches, enrollments, groups, leads, organizationMemberships, studentGuardians, studentPortalPins, students, users } from '../db/schema';
+import { branches, enrollments, genderEnum, groups, leads, organizationMemberships, studentGuardians, studentPortalPins, students, users } from '../db/schema';
 import { randomInt } from 'crypto';
 import * as bcrypt from 'bcryptjs';
 import { CreateStudentDto, LinkGuardianDto, UpdateStudentDto } from './dto/student.dto';
@@ -11,6 +11,7 @@ import { isUniqueViolation } from '../common/db-errors';
 import { countOccupiedSeats } from '../common/seats';
 import { assertNoStudentTimeClash } from '../common/student-schedule';
 import { studentIdsInGroups, teacherGroupIds } from '../common/teacher-scope';
+import { containsPattern, enrolledInDirection, enrolledInGroup, enrolledInGroupNamed, queryText } from '../common/list-filters';
 import { WebhooksService } from '../webhooks/webhooks.service';
 import { CustomFieldsService } from '../custom-fields/custom-fields.service';
 
@@ -28,24 +29,45 @@ export class StudentsService {
   /**
    * The student list. Without `page` the whole list (as before); with `page`
    * one page of `pageSize` (default 50, max 200) and the total, so a large
-   * center does not send thousands of rows. `search` filters by name or
-   * phone on the server either way.
+   * center does not send thousands of rows. All filters run on the server
+   * either way:
+   * - `search`: name, phone, parent phone, or the name or subject of a group
+   *   the student is enrolled in;
+   * - `groupId`: enrolled in that group (a group of another center: nothing);
+   * - `direction`: enrolled in a group whose subject matches it (the
+   *   page's matchesSubject rule, see common/list-filters);
+   * - `gender`: MALE or FEMALE (anything else is a 400).
+   * Enrollments of any status count, as the list's "groups" column shows them.
    */
-  async findAll(tenantId: string, filters?: { status?: string; branchId?: string; search?: string; page?: number; pageSize?: number }, viewer?: { role?: string; userId?: string }) {
+  async findAll(
+    tenantId: string,
+    filters?: { status?: string; branchId?: string; search?: unknown; groupId?: unknown; direction?: unknown; gender?: unknown; page?: number; pageSize?: number },
+    viewer?: { role?: string; userId?: string },
+  ) {
+    const term = queryText(filters?.search, 'search', 1000)?.slice(0, 80);
+    const groupId = queryText(filters?.groupId, 'groupId', 64);
+    const direction = queryText(filters?.direction, 'direction', 100);
+    const gender = queryText(filters?.gender, 'gender', 10);
+    if (gender && !(genderEnum.enumValues as readonly string[]).includes(gender)) throw new BadRequestException("Jins noto'g'ri");
+    const pageSize = Math.min(Math.max(filters?.pageSize ?? 50, 1), 200);
+    const page = Math.max(filters?.page ?? 1, 1);
+
     const conditions = [eq(students.tenantId, tenantId), isNull(students.deletedAt)];
     // Teachers see only students actively enrolled in their own groups.
     const scope = await teacherGroupIds(this.db, tenantId, viewer?.role, viewer?.userId);
     if (scope) {
       const ids = await studentIdsInGroups(this.db, scope);
-      if (ids.length === 0) return [];
+      if (ids.length === 0) return filters?.page ? { items: [], total: 0, page, pageSize } : [];
       conditions.push(inArray(students.id, ids));
     }
     if (filters?.status) conditions.push(eq(students.status, filters.status as any));
     if (filters?.branchId) conditions.push(eq(students.branchId, filters.branchId));
-    const term = filters?.search?.trim().slice(0, 80);
+    if (gender) conditions.push(eq(students.gender, gender as (typeof genderEnum.enumValues)[number]));
+    if (groupId) conditions.push(enrolledInGroup(students.id, tenantId, groupId));
+    if (direction) conditions.push(enrolledInDirection(students.id, tenantId, direction));
     if (term) {
-      const like = `%${term.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
-      conditions.push(or(ilike(students.fullName, like), ilike(students.phone, like), ilike(students.parentPhone, like))!);
+      const like = containsPattern(term);
+      conditions.push(or(ilike(students.fullName, like), ilike(students.phone, like), ilike(students.parentPhone, like), enrolledInGroupNamed(students.id, tenantId, like))!);
     }
 
     const list = (limit?: number, offset?: number) => this.db.query.students.findMany({
@@ -59,8 +81,6 @@ export class StudentsService {
       ...(limit ? { limit, offset } : {}),
     });
     if (!filters?.page) return list();
-    const pageSize = Math.min(Math.max(filters.pageSize ?? 50, 1), 200);
-    const page = Math.max(filters.page, 1);
     const [{ total }] = await this.db.select({ total: count() }).from(students).where(and(...conditions));
     return { items: await list(pageSize, (page - 1) * pageSize), total: Number(total), page, pageSize };
   }
