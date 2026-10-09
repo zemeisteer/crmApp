@@ -110,6 +110,16 @@ services:
       SMTP_USER: ${SMTP_USER:-}
       SMTP_PASS: ${SMTP_PASS:-}
       SMTP_FROM: ${SMTP_FROM:-TalimCRM <no-reply@crmapp.uz>}
+      # Signed links to private files (default: derived from JWT_SECRET).
+      FILE_URL_SECRET: ${FILE_URL_SECRET:-}
+      # Calendar: links point at PUBLIC_API_URL (default FRONTEND_URL + /api);
+      # Google tokens are encrypted with CALENDAR_TOKEN_KEY (base64, 32 bytes).
+      # Google Calendar stays off until all three GOOGLE_* are set.
+      PUBLIC_API_URL: ${PUBLIC_API_URL:-}
+      CALENDAR_TOKEN_KEY: ${CALENDAR_TOKEN_KEY:-}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI:-}
       SENTRY_DSN: ${SENTRY_DSN:-}
     volumes:
       - uploads_prod_data:/app/uploads
