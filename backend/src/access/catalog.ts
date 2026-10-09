@@ -169,6 +169,18 @@ export const ACCESS_CATALOG: AccessKey[] = [
   // list and card (common/teacher-columns.ts).
   { key: 'payroll.rates', area: 'payroll', template: [A], routes: [] },
 
+  // ---- Messages ----
+  {
+    key: 'chat.use', area: 'center', template: ALL,
+    routes: [
+      'GET /api/chat/conversations', 'POST /api/chat/conversations', 'GET /api/chat/conversations/:id/messages', 'POST /api/chat/conversations/:id/messages',
+      'POST /api/chat/conversations/:id/read', 'GET /api/chat/unread', 'GET /api/chat/contacts', 'GET /api/chat/stream',
+    ],
+  },
+  // Not a route: answering the center's inbox (conversations with a
+  // student's cabinet on behalf of the center); owner and admins always.
+  { key: 'chat.center', area: 'center', template: [M, R], routes: [] },
+
   // ---- Center ----
   { key: 'announcements.view', area: 'center', template: [T], routes: ['GET /api/announcements', 'GET /api/announcements/:id'] },
   { key: 'announcements.manage', area: 'center', template: [], routes: ['POST /api/announcements', 'DELETE /api/announcements/:id'] },

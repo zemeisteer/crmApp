@@ -1,5 +1,5 @@
 import { ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { and, eq, ne, isNull } from 'drizzle-orm';
+import { and, eq, ne, isNull, sql } from 'drizzle-orm';
 import { DB, Database } from '../db/db.module';
 import { groups, rooms, schedules, teachers } from '../db/schema';
 import { TEACHER_PUBLIC_COLUMNS } from '../common/teacher-columns';
@@ -53,6 +53,15 @@ export function occursOnSameDay(
   const dowA = a.date ? isoWeekday(a.date) : a.dayOfWeek;
   const dowB = b.date ? isoWeekday(b.date) : b.dayOfWeek;
   return !!dowA && dowA === dowB;
+}
+
+type Tx = Parameters<Parameters<Database['transaction']>[0]>[0];
+
+/** Advisory locks for a lesson slot: teacher, room, group - always in this order. */
+async function lockSlot(tx: Tx, tenantId: string, teacherId: string | null, roomId: string | null, groupId: string) {
+  for (const key of [teacherId && `trial:t:${tenantId}:${teacherId}`, roomId && `trial:r:${tenantId}:${roomId}`, `sched:g:${groupId}`]) {
+    if (key) await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${key}))`);
+  }
 }
 
 @Injectable()
@@ -292,44 +301,50 @@ export class ScheduleService {
     const teacherId = dto.teacherId || group.teacherId || null;
     const branchId = dto.branchId || group.branchId || null;
 
-    // 2. Collision detection
-    if (!dto.allowCollision) {
-      const conflicts = await this.findConflicts(tenantId, {
-        groupId: dto.groupId,
-        teacherId,
-        roomId: dto.roomId || null,
-        dayOfWeek: dto.dayOfWeek,
-        date: dto.date,
-        startTime: dto.startTime,
-        endTime: dto.endTime,
-      });
-
-      if (conflicts.length > 0) {
-        throw new ConflictException({
-          message: 'Dars jadvalida to\'qnashuv aniqlandi',
-          conflicts,
+    // 2. Collision detection and the insert, serialized per teacher, room and
+    // group (the same lock keys lead trials and make-up sessions take), so two
+    // requests at once cannot both pass the check.
+    const created = await this.db.transaction(async (tx) => {
+      await lockSlot(tx, tenantId, teacherId, dto.roomId || null, dto.groupId);
+      if (!dto.allowCollision) {
+        const conflicts = await this.findConflicts(tenantId, {
+          groupId: dto.groupId,
+          teacherId,
+          roomId: dto.roomId || null,
+          dayOfWeek: dto.dayOfWeek,
+          date: dto.date,
+          startTime: dto.startTime,
+          endTime: dto.endTime,
         });
-      }
-    }
 
-    const [created] = await this.db
-      .insert(schedules)
-      .values({
-        tenantId,
-        groupId: dto.groupId,
-        teacherId,
-        roomId: dto.roomId || null,
-        branchId,
-        dayOfWeek: dto.dayOfWeek || null,
-        date: dto.date || null,
-        startTime: dto.startTime,
-        endTime: dto.endTime,
-        isRecurring: dto.isRecurring ?? true,
-        onlineMeetingUrl: dto.onlineMeetingUrl || null,
-        status: dto.status ?? 'SCHEDULED',
-        topic: dto.topic || null,
-      })
-      .returning();
+        if (conflicts.length > 0) {
+          throw new ConflictException({
+            message: 'Dars jadvalida to\'qnashuv aniqlandi',
+            conflicts,
+          });
+        }
+      }
+
+      const [row] = await tx
+        .insert(schedules)
+        .values({
+          tenantId,
+          groupId: dto.groupId,
+          teacherId,
+          roomId: dto.roomId || null,
+          branchId,
+          dayOfWeek: dto.dayOfWeek || null,
+          date: dto.date || null,
+          startTime: dto.startTime,
+          endTime: dto.endTime,
+          isRecurring: dto.isRecurring ?? true,
+          onlineMeetingUrl: dto.onlineMeetingUrl || null,
+          status: dto.status ?? 'SCHEDULED',
+          topic: dto.topic || null,
+        })
+        .returning();
+      return row;
+    });
 
     return this.findOneSchedule(tenantId, created.id);
   }
@@ -369,44 +384,47 @@ export class ScheduleService {
     const startTime = dto.startTime ?? current.startTime;
     const endTime = dto.endTime ?? current.endTime;
 
-    if (!dto.allowCollision) {
-      const conflicts = await this.findConflicts(tenantId, {
-        groupId,
-        teacherId,
-        roomId,
-        dayOfWeek,
-        date,
-        startTime,
-        endTime,
-        excludeScheduleId: id,
-      });
-
-      if (conflicts.length > 0) {
-        throw new ConflictException({
-          message: 'Dars jadvalida to\'qnashuv aniqlandi',
-          conflicts,
+    await this.db.transaction(async (tx) => {
+      await lockSlot(tx, tenantId, teacherId, roomId, groupId);
+      if (!dto.allowCollision) {
+        const conflicts = await this.findConflicts(tenantId, {
+          groupId,
+          teacherId,
+          roomId,
+          dayOfWeek,
+          date,
+          startTime,
+          endTime,
+          excludeScheduleId: id,
         });
-      }
-    }
 
-    await this.db
-      .update(schedules)
-      .set({
-        ...(dto.groupId !== undefined ? { groupId: dto.groupId } : {}),
-        ...(dto.teacherId !== undefined ? { teacherId: dto.teacherId || null } : {}),
-        ...(dto.roomId !== undefined ? { roomId: dto.roomId || null } : {}),
-        ...(dto.branchId !== undefined ? { branchId: dto.branchId || null } : {}),
-        ...(dto.dayOfWeek !== undefined ? { dayOfWeek: dto.dayOfWeek || null } : {}),
-        ...(dto.date !== undefined ? { date: dto.date || null } : {}),
-        ...(dto.startTime !== undefined ? { startTime: dto.startTime } : {}),
-        ...(dto.endTime !== undefined ? { endTime: dto.endTime } : {}),
-        ...(dto.isRecurring !== undefined ? { isRecurring: dto.isRecurring } : {}),
-        ...(dto.onlineMeetingUrl !== undefined ? { onlineMeetingUrl: dto.onlineMeetingUrl || null } : {}),
-        ...(dto.status !== undefined ? { status: dto.status } : {}),
-        ...(dto.topic !== undefined ? { topic: dto.topic || null } : {}),
-        updatedAt: new Date(),
-      })
-      .where(and(eq(schedules.id, id), eq(schedules.tenantId, tenantId)));
+        if (conflicts.length > 0) {
+          throw new ConflictException({
+            message: 'Dars jadvalida to\'qnashuv aniqlandi',
+            conflicts,
+          });
+        }
+      }
+
+      await tx
+        .update(schedules)
+        .set({
+          ...(dto.groupId !== undefined ? { groupId: dto.groupId } : {}),
+          ...(dto.teacherId !== undefined ? { teacherId: dto.teacherId || null } : {}),
+          ...(dto.roomId !== undefined ? { roomId: dto.roomId || null } : {}),
+          ...(dto.branchId !== undefined ? { branchId: dto.branchId || null } : {}),
+          ...(dto.dayOfWeek !== undefined ? { dayOfWeek: dto.dayOfWeek || null } : {}),
+          ...(dto.date !== undefined ? { date: dto.date || null } : {}),
+          ...(dto.startTime !== undefined ? { startTime: dto.startTime } : {}),
+          ...(dto.endTime !== undefined ? { endTime: dto.endTime } : {}),
+          ...(dto.isRecurring !== undefined ? { isRecurring: dto.isRecurring } : {}),
+          ...(dto.onlineMeetingUrl !== undefined ? { onlineMeetingUrl: dto.onlineMeetingUrl || null } : {}),
+          ...(dto.status !== undefined ? { status: dto.status } : {}),
+          ...(dto.topic !== undefined ? { topic: dto.topic || null } : {}),
+          updatedAt: new Date(),
+        })
+        .where(and(eq(schedules.id, id), eq(schedules.tenantId, tenantId)));
+    });
 
     return this.findOneSchedule(tenantId, id);
   }
