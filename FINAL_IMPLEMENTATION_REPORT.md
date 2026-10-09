@@ -2,7 +2,7 @@
 
 - **Branch:** `claude/admiring-goldberg-jkri02`
 - **Starting commit:** `fc4149b`. It equals `origin/dev` and the remote branch.
-- **Local commits on top:** 22 (this report included), kept in this cloud workspace. **Nothing was pushed.**
+- **Local commits on top:** 25 (this report included), kept in this cloud workspace. **Nothing was pushed.**
 - **Follow-up round** ("finish what is not complete"): commits `db85867`..HEAD, see sections 5, 6 and 8.
 
 Companion documents:
@@ -31,9 +31,15 @@ Companion documents:
 | Chat across several API instances | IMPLEMENTED AND VERIFIED (two instances, one database) |
 | Leads list custom-field column; parent cabinet → parent calendar link | IMPLEMENTED AND VERIFIED |
 
-The students and payments pages load 20 rows at a time, with server search and
-filters, and the page number is kept in the address. Payment totals come from the
-center-wide report, never from one page's rows.
+The students and payments pages load 20 rows at a time, and every filter and search
+runs on the server, so neither page loads a whole list to filter it:
+- **Students:** group, direction, gender, and a search that also matches group names.
+- **Payments:** method, status, month, group, and a text search.
+
+The page number is kept in the address. Payment totals come from center-wide sums,
+never from one page's rows. The yearly chart is summed in SQL
+(`GET /api/reports/revenue-by-year`, by the month a payment is for, the same audience
+as the payments list).
 
 ## 2. How to use
 
@@ -100,6 +106,7 @@ are listed in `SECURITY_RECHECK.md` with their tests.
 | 0044_chat | Conversations, participants, messages |
 | 0045_cash_bigint | `cash_closings` amounts → bigint |
 | 0046_plan_feature_languages | `plans.features_ru/en`; fills the shipped tiers only if untouched |
+| 0047_chat_sender_parts | `chat_messages.sender_person/sender_about`; fills older messages |
 
 **Configuration** (all optional; passed through `docker-compose.prod.yml`, described in
 `.env.production.example`):
@@ -119,16 +126,16 @@ are listed in `SECURITY_RECHECK.md` with their tests.
 |---|---|
 | `backend: npm run lint` (oxlint) | clean |
 | `backend: npm test` | 50 files, **320/320** |
-| `backend: npm run test:e2e` (disposable PostgreSQL 16) | 49 files, **320/320** |
-| `backend: npm run db:check-migrations` | 47 migrations, journal and files agree |
-| `backend: npm run db:verify-migrations` | scenarios 1–9 PASS |
+| `backend: npm run test:e2e` (disposable PostgreSQL 16) | 50 files, **332/332** |
+| `backend: npm run db:check-migrations` | 48 migrations, journal and files agree |
+| `backend: npm run db:verify-migrations` | scenarios 1–10 PASS |
 | `backend: npx drizzle-kit generate` | "No schema changes" |
 | `backend: npm run build` | OK |
 | `frontend: npx tsc --noEmit` | 0 errors |
 | `frontend: npm run lint` | 0 errors, 67 warnings (71 at the start) |
 | `frontend: TZ=America/Los_Angeles npm test` | **55/55** |
 | `e2e-browser: NODE_ENV=production npm run build:frontend` | OK (production build) |
-| `e2e-browser: npx playwright test` (Chromium) | **38/38**, 6.1 min (including the axe check) |
+| `e2e-browser: npx playwright test` (Chromium) | **39/39**, 6.3 min (including the axe check) |
 | `e2e-browser: npm run test:google` (local fake Google) | **1/1** |
 | `docker compose -f docker-compose.prod.yml config` | valid |
 
@@ -197,21 +204,15 @@ Added in the follow-up round:
 
 ## 8. Limitations and follow-ups
 
-- **List paging, partial cases:**
-  - The students filters by direction, group and gender, and the payments text search and
-    group filter, are not server filters. While one of them is on, the page loads all
-    matching rows and pages them in the browser.
-  - The payments yearly chart loads all paid payments, but only when that view is opened;
-    there is no yearly-sum endpoint.
-  - Student search no longer matches group names; use the group filter.
+- **Payments form:** the payments page still loads the full student list, for the
+  payment form's student picker and the group names. It is not used for filtering.
+- **Students filters:** they are not kept in the address bar (as before).
 - **Chat stream scope:** the live stream runs on the Messages page only. Elsewhere the
   menu badge refreshes on load, on focus and once a minute. An always-open stream would
   keep Playwright's `networkidle` from ever settling.
 - **Chat fan-out:** two API instances in one test process share PostgreSQL LISTEN/NOTIFY.
   The test fails when NOTIFY is switched off. Separate OS processes behind a real load
   balancer were not run.
-- **Chat sender names:** a parent's sender name carries "(ota-ona)" in Uzbek in every
-  language (it comes from the server).
 - **Accessibility:** automated axe rules only. Screen readers and keyboard-only journeys
   were not tested in this round, and only Chromium was used.
 - **Google reconnect:** after a reconnect the target calendar goes back to the primary
