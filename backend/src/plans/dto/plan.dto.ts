@@ -17,6 +17,9 @@ export class CreatePlanDto {
   @IsString()
   features?: string;
 
+  @IsOptional() @IsString() featuresRu?: string;
+  @IsOptional() @IsString() featuresEn?: string;
+
   @IsOptional()
   @IsBoolean()
   popular?: boolean;
@@ -26,6 +29,8 @@ export class UpdatePlanDto {
   @IsOptional() @IsString() name?: string;
   @IsOptional() @IsInt() @Min(0) @Max(MAX_MONEY) price?: number;
   @IsOptional() @IsString() features?: string;
+  @IsOptional() @IsString() featuresRu?: string;
+  @IsOptional() @IsString() featuresEn?: string;
   @IsOptional() @IsBoolean() popular?: boolean;
   @IsOptional() @IsBoolean() active?: boolean;
 }

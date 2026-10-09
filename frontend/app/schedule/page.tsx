@@ -470,7 +470,7 @@ export default function SchedulePage() {
                       style={{
                         margin: "auto",
                         textAlign: "center",
-                        color: "#9CA3AF",
+                        color: "#686B75",
                         fontSize: 12,
                         padding: "20px 8px",
                       }}
@@ -517,7 +517,7 @@ export default function SchedulePage() {
                                   background: "transparent",
                                   border: "none",
                                   cursor: "pointer",
-                                  color: "#9CA3AF",
+                                  color: "#686B75",
                                   padding: 2,
                                 }}
                                 title={t("common.edit")}
