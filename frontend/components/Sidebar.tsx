@@ -18,8 +18,8 @@ interface NavItem {
   icon: React.ReactNode;
   badge?: string;
   roles?: Role[];
-  /** The access item that opens this page for staff whose access the owner sets. */
-  access?: string;
+  /** The access item(s) that open this page for staff whose access the owner sets (any of them). */
+  access?: string | string[];
 }
 
 const CONFIGURABLE: Role[] = ["MANAGER", "RECEPTIONIST", "ACCOUNTANT", "TEACHER"];
@@ -28,7 +28,10 @@ const CONFIGURABLE: Role[] = ["MANAGER", "RECEPTIONIST", "ACCOUNTANT", "TEACHER"
 // list (the server answers the same way); otherwise the role decides, and
 // the owner has every admin right (same rule as the backend RolesGuard).
 function canSee(item: NavItem, role?: Role, access?: string[]) {
-  if (role && item.access && access && CONFIGURABLE.includes(role)) return access.includes(item.access);
+  if (role && item.access && access && CONFIGURABLE.includes(role)) {
+    const keys = Array.isArray(item.access) ? item.access : [item.access];
+    return keys.some((k) => access.includes(k));
+  }
   if (!item.roles) return true;
   if (!role) return false;
   return item.roles.includes(role) || (role === "OWNER" && item.roles.includes("ADMIN"));
@@ -81,6 +84,34 @@ const NAV_ITEMS: NavItem[] = [
         <line x1="16" y1="2" x2="16" y2="6" />
         <line x1="8" y1="2" x2="8" y2="6" />
         <line x1="3" y1="10" x2="21" y2="10" />
+      </svg>
+    ),
+  },
+  {
+    // Front desk and managers: credits and bookings; teachers: their roster.
+    href: "/makeups",
+    access: ["makeups.view", "makeups.attend"],
+    labelKey: "mk.nav",
+    roles: ["SUPERADMIN", "ADMIN", "MANAGER", "RECEPTIONIST", "TEACHER"],
+    icon: (
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M21 12a9 9 0 1 1-3-6.7" />
+        <path d="M21 4v5h-5" />
+        <path d="M12 8v4l3 2" />
+      </svg>
+    ),
+  },
+  {
+    // Everyone with an account has their own calendar (the role decides
+    // which lessons); no access item: it is the person's own data.
+    href: "/calendar",
+    labelKey: "cal.nav",
+    roles: ["ADMIN", "MANAGER", "RECEPTIONIST", "ACCOUNTANT", "TEACHER", "PARENT"],
+    icon: (
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3" y="4" width="18" height="17" rx="2" />
+        <path d="M16 2v4M8 2v4M3 10h18" />
+        <path d="M9 15.5l2 2 4-4" />
       </svg>
     ),
   },

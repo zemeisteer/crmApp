@@ -20,7 +20,7 @@ test('the main pages fit a phone screen', async ({ page }) => {
   const paths = [
     '/dashboard', '/students', `/students/${kid.id}`, '/groups', `/groups/${group.id}`, '/teachers', `/teachers/${teacher.id}`,
     '/schedule', '/payments', '/reports', '/reports?tab=payroll', '/leads', `/leads/${lead.id}`, '/homework', '/exams',
-    '/ai-materials', '/settings', '/announcements',
+    '/ai-materials', '/settings', '/announcements', '/makeups', '/calendar',
   ];
   const problems: string[] = [];
   for (const path of paths) {

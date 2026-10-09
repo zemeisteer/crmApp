@@ -8,6 +8,7 @@ import StaffAccessEditor, { isConfigurableRole } from "@/components/settings/Sta
 import SiteContentEditor from "@/components/settings/SiteContentEditor";
 import BranchesManager from "@/components/settings/BranchesManager";
 import CustomFieldsManager from "@/components/settings/CustomFieldsManager";
+import MakeupPolicyCard from "@/components/settings/MakeupPolicyCard";
 import Select from "@/components/Select";
 import TagListInput from "@/components/TagListInput";
 import { useAuth } from "@/lib/auth-context";
@@ -533,6 +534,8 @@ function SettingsContent() {
                   />
                 </div>
               </div>
+
+              <MakeupPolicyCard />
             </div>
           )}
 

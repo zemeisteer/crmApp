@@ -14,7 +14,9 @@ Eng muhim oqimlar haqiqiy brauzerda, backend va frontendning **production build*
 | `parent-portal.spec.ts` | Ota-ona telefon va PIN bilan kiradi, farzandini faqat kuzatadi (AI repetitor yo'q) |
 | `reports.spec.ts` | Direktor hisobotida oylik to'lovi xarajatda bir marta hisoblanadi |
 | `import.spec.ts` | Yangi markaz Excel'dan to'ldiriladi: o'qituvchilar, guruhlar, o'quvchilar; qayta yuklash hech narsa qo'shmaydi; xatoli qator importni to'xtatadi (fayllar backend'dagi `exceljs` bilan yasaladi) |
-| `mobile.spec.ts` | 390 px ekranda 18 ta asosiy sahifa sig'adi: sahifa yonga surilmaydi, keng jadval faqat o'z kartochkasi ichida suriladi |
+| `makeups.spec.ts` | Kelmagan o'quvchiga "Qoldirilgan darslar"da kredit beriladi, boshqa guruh darsiga yoziladi, jadvalda "Keldi" belgilanadi — kredit ishlatilgan bo'ladi; guruh sahifasida bitta dars bekor qilinadi va tiklanadi |
+| `calendar.spec.ts` | Kalendar sahifasida ICS havola yaratiladi va nusxalanadi, kalendar ilovasi uni o'qiydi (`text/calendar`); yangi havoladan keyin eskisi 404, o'chirilgandan keyin yangisi ham 404; Google Calendar sozlanmaganini aytadi |
+| `mobile.spec.ts` | 390 px ekranda 20 ta asosiy sahifa sig'adi: sahifa yonga surilmaydi, keng jadval faqat o'z kartochkasi ichida suriladi |
 
 ```bash
 cd e2e-browser

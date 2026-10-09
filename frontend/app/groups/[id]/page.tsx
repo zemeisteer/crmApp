@@ -11,6 +11,7 @@ import GroupExamResults from "@/components/groups/GroupExamResults";
 import GroupInfoCard from "@/components/groups/GroupInfoCard";
 import GroupAttendanceHistory from "@/components/groups/GroupAttendanceHistory";
 import GroupTutorReport from "@/components/groups/GroupTutorReport";
+import GroupLessonCancellations from "@/components/groups/GroupLessonCancellations";
 import { groupsApi, studentsApi, paymentsApi, attendanceApi, Group, Student, Gender, AttendanceRecord, AttendanceStatus, ApiError, retryKey, type DebtorItem } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { can } from "@/lib/access";
@@ -411,6 +412,8 @@ function GroupDetailContent() {
         </div>
 
         <GroupAttendanceHistory students={enrollments.map((e) => e.student)} records={attendance} />
+
+        {can(user, "lessons.cancel") && <GroupLessonCancellations groupId={id} />}
 
         <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, overflow: "hidden" }}>
           <div style={{ padding: "16px 20px 4px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>

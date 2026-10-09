@@ -12,6 +12,8 @@ import PortalTutor from "@/components/portal/PortalTutor";
 import PortalMessages from "@/components/portal/PortalMessages";
 import PortalPractice from "@/components/portal/PortalPractice";
 import PortalCustomFields from "@/components/portal/PortalCustomFields";
+import PortalMakeups from "@/components/portal/PortalMakeups";
+import PortalCalendar from "@/components/portal/PortalCalendar";
 import type { Lang, TranslationKey } from "@/lib/i18n";
 import {
   portalApi,
@@ -596,6 +598,9 @@ export default function StudentPortalPage() {
         {activeTab === "home" && <PortalCustomFields key={token ?? ""} token={token} />}
 
         {activeTab === "schedule" && <ScheduleTab key={token ?? ""} schedule={schedule} tz={centerTimeZone(me?.tenant?.timezone)} />}
+        {/* Make-up lessons and the calendar link belong to the child shown: remounted per session. */}
+        {activeTab === "schedule" && <PortalMakeups key={`mk-${token ?? ""}`} tz={centerTimeZone(me?.tenant?.timezone)} />}
+        {activeTab === "schedule" && <PortalCalendar key={`cal-${token ?? ""}`} />}
         {activeTab === "attendance" && <AttendanceTab attendance={attendance} tz={centerTimeZone(me?.tenant?.timezone)} />}
         {activeTab === "homework" && <HomeworkTab homework={homework} onSubmit={handleHomeworkSubmit} readOnly={isParent} />}
         {activeTab === "ai" && !isParent && <PortalTutor firstName={me?.fullName?.split(" ")[0]} />}
