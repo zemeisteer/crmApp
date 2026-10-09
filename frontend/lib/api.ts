@@ -1,6 +1,7 @@
 // TalimCRM — typed API client wrapping fetch calls to the NestJS backend.
 
 import type { PublicQuestion, QuestionType, TestQuestion } from "./tests";
+import { connectChatStream, type ChatStreamHandle, type ChatStreamOptions } from "./chat-stream";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api";
 const TOKEN_KEY = "talimcrm_token";
@@ -3529,3 +3530,105 @@ export const portalCalendarApi = {
   createFeed: () => request<CalendarFeedCreated>("/portal/calendar/feed", { method: "POST" }),
   revokeFeed: () => request<{ success: boolean }>("/portal/calendar/feed", { method: "DELETE" }),
 };
+
+// ---- Chat (two-way messages: staff and the students' cabinets) ----
+
+export type ChatKind = "STUDENT_CENTER" | "STUDENT_TEACHER" | "GROUP";
+
+export interface ChatConversation {
+  id: string;
+  kind: ChatKind;
+  studentId: string | null;
+  groupId: string | null;
+  teacherUserId: string | null;
+  studentName: string | null;
+  groupName: string | null;
+  teacherName: string | null;
+  lastMessage: { body: string; senderName: string; createdAt: string; seq: number } | null;
+  lastMessageAt: string | null;
+  unread: number;
+  lastReadSeq: number;
+  canWrite: boolean;
+  /** Owner/admin reading a teacher's or a group's conversation (read-only). */
+  oversight: boolean;
+}
+
+export interface ChatMessage {
+  id: string;
+  seq: number;
+  senderType: "USER" | "CABINET";
+  senderViewer: "student" | "parent" | null;
+  senderName: string;
+  body: string;
+  clientMessageId: string;
+  createdAt: string;
+  mine: boolean;
+}
+
+export interface ChatPage {
+  messages: ChatMessage[];
+  hasMore: boolean;
+}
+
+export interface ChatContacts {
+  /** May write on behalf of the center (staff) / to the center (cabinet). */
+  center: boolean;
+  teachers: Array<{ userId: string; name: string }>;
+  groups: Array<{ id: string; name: string }>;
+  students: Array<{ id: string; name: string }>;
+}
+
+export interface ChatOpenDto {
+  kind: ChatKind;
+  studentId?: string;
+  teacherUserId?: string;
+  groupId?: string;
+}
+
+/** The same calls for staff (/chat) and for a student's cabinet (/portal/chat). */
+export interface ChatClient {
+  side: "staff" | "cabinet";
+  list: () => Promise<ChatConversation[]>;
+  open: (dto: ChatOpenDto) => Promise<ChatConversation>;
+  messages: (id: string, q?: { before?: number; after?: number; limit?: number }) => Promise<ChatPage>;
+  send: (id: string, body: string, clientMessageId: string) => Promise<{ message: ChatMessage; duplicate: boolean }>;
+  read: (id: string, seq: number) => Promise<{ lastReadSeq: number }>;
+  unread: () => Promise<{ unread: number }>;
+  contacts: (q?: string) => Promise<ChatContacts>;
+  /** The live stream (fetch with the bearer header; see lib/chat-stream.ts). */
+  stream: (opts: Omit<ChatStreamOptions, "url" | "getToken" | "refresh">) => ChatStreamHandle;
+}
+
+function makeChatClient(side: "staff" | "cabinet"): ChatClient {
+  const base = side === "staff" ? "/chat" : "/portal/chat";
+  const enc = encodeURIComponent;
+  return {
+    side,
+    list: () => request<ChatConversation[]>(`${base}/conversations`),
+    open: (dto) => request<ChatConversation>(`${base}/conversations`, { method: "POST", body: JSON.stringify(dto) }),
+    messages: (id, q = {}) => {
+      const p = new URLSearchParams();
+      if (q.before !== undefined) p.set("before", String(q.before));
+      if (q.after !== undefined) p.set("after", String(q.after));
+      if (q.limit !== undefined) p.set("limit", String(q.limit));
+      const qs = p.toString();
+      return request<ChatPage>(`${base}/conversations/${enc(id)}/messages${qs ? `?${qs}` : ""}`);
+    },
+    send: (id, body, clientMessageId) =>
+      request<{ message: ChatMessage; duplicate: boolean }>(`${base}/conversations/${enc(id)}/messages`, { method: "POST", body: JSON.stringify({ body, clientMessageId }) }),
+    read: (id, seq) => request<{ lastReadSeq: number }>(`${base}/conversations/${enc(id)}/read`, { method: "POST", body: JSON.stringify({ seq }) }),
+    unread: () => request<{ unread: number }>(`${base}/unread`),
+    contacts: (q) => request<ChatContacts>(`${base}/contacts${q ? `?q=${enc(q)}` : ""}`),
+    stream: (opts) =>
+      connectChatStream({
+        ...opts,
+        url: `${API_URL}${base}/stream`,
+        getToken: side === "staff" ? getToken : getPortalToken,
+        // Staff: an expired access token is renewed once, as request() does.
+        refresh: side === "staff" ? tryRefresh : undefined,
+      }),
+  };
+}
+
+export const chatApi = makeChatClient("staff");
+export const portalChatApi = makeChatClient("cabinet");

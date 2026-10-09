@@ -14,19 +14,30 @@ test('the main pages fit a phone screen', async ({ page }) => {
   const kid = await api('POST', '/students', { token: a.token, body: { fullName: 'Mobile Student Abdurakhmonov', phone: '+998901234567', groupIds: [group.id] } });
   await api('POST', '/payments', { token: a.token, body: { studentId: kid.id, amount: 450000, forMonth: centerMonth(), method: 'CASH' } });
   const lead = await api('POST', '/leads', { token: a.token, body: { fullName: 'Mobile Lead', phone: '+998901112244', source: 'PHONE' } });
+  // A conversation with a long message, for the Messages list and thread screens.
+  const conv = await api('POST', '/chat/conversations', { token: a.token, body: { kind: 'STUDENT_CENTER', studentId: kid.id } });
+  await api('POST', `/chat/conversations/${conv.id}/messages`, { token: a.token, body: { body: `Mobile message ${'uzun-so‘z-'.repeat(12)} end`, clientMessageId: `mobile-${Date.now()}` } });
 
   await loginOnMainSite(page, a.email);
   await expectCenterDashboard(page, a.sub);
   const paths = [
     '/dashboard', '/students', `/students/${kid.id}`, '/groups', `/groups/${group.id}`, '/teachers', `/teachers/${teacher.id}`,
     '/schedule', '/payments', '/reports', '/reports?tab=payroll', '/leads', `/leads/${lead.id}`, '/homework', '/exams',
-    '/ai-materials', '/settings', '/announcements', '/makeups', '/calendar',
+    '/ai-materials', '/settings', '/announcements', '/makeups', '/calendar', '/messages', `/messages?c=${conv.id}`,
   ];
   const problems: string[] = [];
   for (const path of paths) {
     await page.goto(centerUrl(a.sub, path));
-    // The pages poll nothing: once the network is quiet, the page is drawn.
-    await page.waitForLoadState('networkidle');
+    if (path.startsWith('/messages')) {
+      // The Messages page holds its live stream open, so the network is never
+      // quiet there: wait until it is connected and the list or thread is drawn.
+      await expect(page.locator('[data-chat-live="open"]')).toHaveCount(1);
+      if (path.includes('?c=')) await expect(page.getByRole('log', { name: 'Xabarlar' })).toContainText('Mobile message');
+      else await expect(page.getByRole('list', { name: 'Suhbatlar' })).toContainText('Mobile Student Abdurakhmonov');
+    } else {
+      // The pages poll nothing: once the network is quiet, the page is drawn.
+      await page.waitForLoadState('networkidle');
+    }
     const found = await page.evaluate(() => {
       const vw = document.documentElement.clientWidth;
       const out: string[] = [];

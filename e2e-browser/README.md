@@ -16,7 +16,8 @@ Eng muhim oqimlar haqiqiy brauzerda, backend va frontendning **production build*
 | `import.spec.ts` | Yangi markaz Excel'dan to'ldiriladi: o'qituvchilar, guruhlar, o'quvchilar; qayta yuklash hech narsa qo'shmaydi; xatoli qator importni to'xtatadi (fayllar backend'dagi `exceljs` bilan yasaladi) |
 | `makeups.spec.ts` | Kelmagan o'quvchiga "Qoldirilgan darslar"da kredit beriladi, boshqa guruh darsiga yoziladi, jadvalda "Keldi" belgilanadi — kredit ishlatilgan bo'ladi; guruh sahifasida bitta dars bekor qilinadi va tiklanadi |
 | `calendar.spec.ts` | Kalendar sahifasida ICS havola yaratiladi va nusxalanadi, kalendar ilovasi uni o'qiydi (`text/calendar`); yangi havoladan keyin eskisi 404, o'chirilgandan keyin yangisi ham 404; Google Calendar sozlanmaganini aytadi |
-| `mobile.spec.ts` | 390 px ekranda 20 ta asosiy sahifa sig'adi: sahifa yonga surilmaydi, keng jadval faqat o'z kartochkasi ichida suriladi |
+| `chat.spec.ts` | Ikki alohida brauzer sessiyasi: o'qituvchi (xodim) va o'quvchi kabineti bir-biriga yozadi, xabar sahifani yangilamasdan keladi (SSE oqimi); menyudagi o'qilmaganlar belgisi ko'tariladi va suhbat ochilganda tozalanadi; "Yuborish"ni ikki marta bosish, bir zumda ikki bosish va javobi yo'qolgan xabarni qayta yuborish — har biri bitta xabar; boshqa o'qituvchi va boshqa markaz egasi suhbatni id bilan ocha olmaydi (sahifada "topilmadi", API 404); kabinet markazga yozadi, markaz (ega) telefonda javob beradi — ro'yxat va suhbat ikki alohida ekran |
+| `mobile.spec.ts` | 390 px ekranda 22 ta asosiy sahifa sig'adi (Xabarlar ro'yxati va suhbat ham): sahifa yonga surilmaydi, keng jadval faqat o'z kartochkasi ichida suriladi. Xabarlar sahifasi jonli oqimni ochiq tutadi, shuning uchun u "tarmoq tinch" emas, ulangani va chizilgani kutiladi |
 
 ```bash
 cd e2e-browser
