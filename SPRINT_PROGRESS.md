@@ -176,3 +176,21 @@ resumed. Verified by me after it finished:
   - browser 38/38 and Google 1/1;
   - backend e2e 49 files / 320, unit 320;
   - frontend unit 55, tsc 0, lint 0 errors / 67 warnings.
+
+**Third round: "do other things until I'm home".** Commits `08a0938`, `c8e647c`.
+- **Chat sender labels:** a parent's messages are labelled in the reader's language.
+  Migration 0047 adds the label parts and fills older rows (verify-migrations scenario 10).
+  Tested by chat.e2e and by a browser test in UZ, RU and EN.
+- **Lists, server filters (agent; verified and adjusted by me):**
+  - Students: group, direction, gender, and search by group name.
+  - Payments: group and text search.
+  - Yearly revenue is summed in SQL.
+- **My adjustments to the agent's version:**
+  - The yearly view stays visible to the front desk (`payments.view`, as before).
+  - Years are counted by the month a payment is for, as the monthly chart and the old page
+    did, not by payment date.
+  - The browser expectation no longer depends on the month the test runs in.
+- **Final results, run by me:**
+  - backend e2e 50 files / 332, unit 320, oxlint clean;
+  - frontend unit 55, tsc 0, lint 0 errors / 67 warnings;
+  - browser 39/39, Google 1/1.
