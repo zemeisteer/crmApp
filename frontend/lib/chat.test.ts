@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  MAX_CHAT_BODY, checkBody, dropConfirmed, failPending, firstSeq, lastSeq, mergeMessages, newClientMessageId, removePending, unreadTotal, upsertPending,
+  MAX_CHAT_BODY, checkBody, dropConfirmed, failPending, firstSeq, lastSeq, mergeMessages, newClientMessageId, removePending, unreadTotal, upsertPending, senderLabel,
   type PendingMessage,
 } from "./chat.ts";
 
@@ -80,4 +80,14 @@ test("client message ids are unique and in the form the server accepts", () => {
 test("the unread total adds every conversation's count", () => {
   assert.equal(unreadTotal([]), 0);
   assert.equal(unreadTotal([{ unread: 2 }, { unread: 0 }, { unread: 5 }]), 7);
+});
+
+test("sender names are built in the reader's language from the parts", () => {
+  const tpl = { parentOf: "{child}'s parent", parentNamed: "{name} ({child}'s parent)" };
+  assert.equal(senderLabel({ senderName: "Staff", senderRole: "staff", senderPerson: "Staff", senderAbout: null }, tpl), "Staff");
+  assert.equal(senderLabel({ senderName: "Ali", senderRole: "student", senderPerson: "Ali", senderAbout: null }, tpl), "Ali");
+  assert.equal(senderLabel({ senderName: "Ona (Ali — ota-ona)", senderRole: "parent", senderPerson: "Ona", senderAbout: "Ali" }, tpl), "Ona (Ali's parent)");
+  assert.equal(senderLabel({ senderName: "Ali (ota-ona)", senderRole: "parent", senderPerson: null, senderAbout: "Ali" }, tpl), "Ali's parent");
+  // An older server without the parts: the stored label.
+  assert.equal(senderLabel({ senderName: "Ali (ota-ona)" }, tpl), "Ali (ota-ona)");
 });
