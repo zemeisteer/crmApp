@@ -1,8 +1,9 @@
 import { BadRequestException, ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { createHash } from 'crypto';
-import { and, count, eq, isNull, like } from 'drizzle-orm';
+import { and, count, eq, ilike, isNull, like, or, sql } from 'drizzle-orm';
 import { DB, Database } from '../db/db.module';
 import { STUDENT_LIST_COLUMNS } from '../common/teacher-scope';
+import { containsPattern, enrolledInGroup, queryText } from '../common/list-filters';
 import { expenses, invoices, payments, salaryPayments, students } from '../db/schema';
 import { LedgerService } from '../ledger/ledger.service';
 import { allocateToInvoices, LedgerTx, lockInvoice, lockOpenInvoices, lockStudentLedger } from './allocation';
@@ -97,18 +98,35 @@ export class PaymentsService {
   /**
    * Payments, newest first. Without `page` the whole list (as before); with
    * `page` one page (pageSize default 50, max 200) and the total. Optional
-   * filters run on the server: forMonth, studentId, method, status.
+   * filters run on the server: forMonth, studentId, method, status, and
+   * - `groupId`: payments of students enrolled (any status) in that group -
+   *   payments carry no group of their own; a group of another center
+   *   matches nothing;
+   * - `search`: the student's name, or the month paid for ("2026-09").
    */
-  async list(tenantId: string, q: { page?: number; pageSize?: number; forMonth?: string; studentId?: string; method?: string; status?: string } = {}) {
+  async list(
+    tenantId: string,
+    q: { page?: number; pageSize?: number; forMonth?: string; studentId?: string; method?: string; status?: string; groupId?: unknown; search?: unknown } = {},
+  ) {
     // Filters on enum columns: an unknown value is a 400, not a database error.
     if (q.method && !['CLICK', 'PAYME', 'BANK_TRANSFER', 'CASH'].includes(q.method)) throw new BadRequestException("To'lov usuli noto'g'ri");
     if (q.status && !['PAID', 'PENDING', 'FAILED'].includes(q.status)) throw new BadRequestException("Holat noto'g'ri");
+    const groupId = queryText(q.groupId, 'groupId', 64);
+    const term = queryText(q.search, 'search', 1000)?.slice(0, 80);
+    const pattern = term ? containsPattern(term) : null;
     const where = and(
       eq(payments.tenantId, tenantId),
       q.forMonth ? eq(payments.forMonth, q.forMonth) : undefined,
       q.studentId ? eq(payments.studentId, q.studentId) : undefined,
       q.method ? eq(payments.method, q.method as typeof payments.$inferSelect.method) : undefined,
       q.status ? eq(payments.status, q.status as typeof payments.$inferSelect.status) : undefined,
+      groupId ? enrolledInGroup(payments.studentId, tenantId, groupId) : undefined,
+      pattern
+        ? or(
+            ilike(payments.forMonth, pattern),
+            sql`exists (select 1 from students ps where ps.id = ${payments.studentId} and ps.tenant_id = ${tenantId} and ps.full_name ilike ${pattern})`,
+          )
+        : undefined,
     );
     const list = (limit?: number, offset?: number) => this.db.query.payments.findMany({
       where,

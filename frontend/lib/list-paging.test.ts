@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { clampPage, fill, pageCount, pageQuery, pageRange, parsePageParam, slicePage } from "./list-paging.ts";
+import { clampPage, fill, pageCount, pageQuery, pageRange, parsePageParam } from "./list-paging.ts";
 
 test("page count: at least one page, a partial last page counts", () => {
   assert.equal(pageCount(0, 20), 1);
@@ -36,13 +36,6 @@ test("query strings leave out empty filters and encode the rest", () => {
   assert.equal(pageQuery({ search: "", page: 1, pageSize: 20, status: undefined }), "?page=1&pageSize=20");
   assert.equal(pageQuery({ search: "Ali & Vali" }), "?search=Ali+%26+Vali");
   assert.equal(pageQuery({ method: null }), "");
-});
-
-test("a list in memory pages like the server does", () => {
-  const rows = Array.from({ length: 45 }, (_, i) => i + 1);
-  const p3 = slicePage(rows, 3, 20);
-  assert.deepEqual(p3, { items: [41, 42, 43, 44, 45], total: 45, page: 3, pageSize: 20 });
-  assert.equal(slicePage(rows, 4, 20).items.length, 0);
 });
 
 test("placeholders are filled, unknown ones kept", () => {

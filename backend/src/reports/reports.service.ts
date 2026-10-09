@@ -1,5 +1,5 @@
 import { BadRequestException, Inject, Injectable } from '@nestjs/common';
-import { and, eq, gte, inArray, isNull, lt, sql } from 'drizzle-orm';
+import { and, eq, gte, inArray, isNull, lt, lte, sql } from 'drizzle-orm';
 import { DB, Database } from '../db/db.module';
 import { LedgerService } from '../ledger/ledger.service';
 import { attendance, enrollments, expenses, groups, homework, homeworkCompletions, invoices, payments, salaryPayments, students, teachers } from '../db/schema';
@@ -470,6 +470,35 @@ export class ReportsService {
       ...(includeProfit
         ? { expenses: summary.totalExpenses, salaries: summary.totalSalaries, netProfit: summary.netProfit, expensesByCategory: summary.expensesByCategory }
         : {}),
+    };
+  }
+
+  /**
+   * Paid money per year (payments page, yearly chart): the sum of PAID
+   * payments by the year of the month they are for (forMonth), as the
+   * monthly chart counts them, so the year is the sum of its months. The
+   * last `count` years up to the current one on the center's clock, oldest
+   * first. Summed in SQL; no rows reach the browser.
+   */
+  async revenueByYear(tenantId: string, count = 4) {
+    const tz = await this.leadsService.tenantTimezone(tenantId).catch(() => DEFAULT_TIMEZONE);
+    const currentYear = zonedParts(new Date(), tz).year;
+    const years = Array.from({ length: count }, (_, i) => currentYear - count + 1 + i);
+    const year = sql<string>`left(${payments.forMonth}, 4)`;
+    const rows = await this.db.select({ year, amount: sql<number>`coalesce(sum(${payments.amount}), 0)::bigint`.mapWith(Number) })
+      .from(payments)
+      .where(and(
+        eq(payments.tenantId, tenantId),
+        eq(payments.status, 'PAID'),
+        gte(payments.forMonth, `${years[0]}-01`),
+        lte(payments.forMonth, `${currentYear}-12`),
+      ))
+      .groupBy(year);
+    const byYear = new Map(rows.map((r) => [Number(r.year), Number(r.amount)]));
+    return {
+      timezone: tz,
+      currentYear,
+      years: years.map((y) => ({ year: y, amount: byYear.get(y) ?? 0 })),
     };
   }
 
