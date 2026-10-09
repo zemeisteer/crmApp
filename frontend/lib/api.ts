@@ -541,6 +541,8 @@ export interface Lead {
     utm: { source?: string; medium?: string; campaign?: string } | null;
   };
   placementAttempts?: LeadPlacementAttempt[];
+  // Detail view: the center's own fields (definition id -> value).
+  customFields?: Record<string, CustomFieldValue>;
   createdAt: string;
   updatedAt: string;
 }
@@ -662,6 +664,8 @@ export interface ConvertLeadInput {
   invoiceForMonth?: string;
   invoiceDueDate?: string;
   invoiceAmount?: number;
+  // Student custom fields set by the form (mapped lead values are carried by the server).
+  customFields?: Record<string, CustomFieldValue | null>;
 }
 
 export interface ConvertLeadResult {
@@ -713,7 +717,58 @@ export interface Student {
   enrollments?: { id: string; groupId: string; status?: string; enrolledAt?: string; joinedAt?: string; leftAt?: string | null; group: Group & { teacher?: { id: string; fullName: string } | null } }[];
   // Set when the student came through admissions (lead source).
   origin?: { leadId: string; source: LeadSource; convertedAt: string | null } | null;
+  // Detail view: the center's own fields (definition id -> value).
+  customFields?: Record<string, CustomFieldValue>;
 }
+
+// ---- Custom fields (center-defined fields on students and leads) ----
+
+export type CustomFieldEntity = "STUDENT" | "LEAD";
+export type CustomFieldType = "TEXT" | "LONG_TEXT" | "NUMBER" | "DATE" | "BOOLEAN" | "SELECT" | "MULTI_SELECT";
+export const CUSTOM_FIELD_TYPES: CustomFieldType[] = ["TEXT", "LONG_TEXT", "NUMBER", "DATE", "BOOLEAN", "SELECT", "MULTI_SELECT"];
+/** Text, number, "YYYY-MM-DD", yes/no, an option id, or a list of option ids. */
+export type CustomFieldValue = string | number | boolean | string[];
+export interface CustomFieldOption {
+  id: string;
+  label: string;
+  archived?: boolean;
+}
+export interface CustomFieldDef {
+  id: string;
+  tenantId: string;
+  entityType: CustomFieldEntity;
+  key: string;
+  label: string;
+  fieldType: CustomFieldType;
+  required: boolean;
+  sortOrder: number;
+  options: CustomFieldOption[];
+  portalVisible: boolean;
+  studentFieldId: string | null;
+  optionMap: Record<string, string> | null;
+  archivedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+export interface CustomFieldInput {
+  entityType: CustomFieldEntity;
+  label: string;
+  key?: string;
+  fieldType: CustomFieldType;
+  required?: boolean;
+  sortOrder?: number;
+  options?: Array<{ id?: string; label: string; archived?: boolean }>;
+  portalVisible?: boolean;
+  studentFieldId?: string | null;
+  optionMap?: Record<string, string> | null;
+}
+/** A field error of a 400 CUSTOM_FIELDS_INVALID answer. */
+export interface CustomFieldError {
+  fieldId: string;
+  label: string;
+  error: string;
+}
+export type CustomFieldPayload = Record<string, CustomFieldValue | null>;
 
 export interface Teacher {
   id: string;
@@ -1377,9 +1432,9 @@ export const studentsApi = {
   get: (id: string) => request<Student>(`/students/${id}`),
   // idempotencyKey: one per submission (see retryKey) - a retry of the same
   // form returns the student made the first time.
-  create: (data: Partial<Student> & { groupId?: string; groupIds?: string[] }, idempotencyKey?: string) =>
+  create: (data: Omit<Partial<Student>, "customFields"> & { groupId?: string; groupIds?: string[]; customFields?: CustomFieldPayload }, idempotencyKey?: string) =>
     request<Student>("/students", { method: "POST", body: JSON.stringify(data), headers: idempotencyKey ? { "Idempotency-Key": idempotencyKey } : undefined }),
-  update: (id: string, data: Partial<Student>) =>
+  update: (id: string, data: Omit<Partial<Student>, "customFields"> & { customFields?: CustomFieldPayload }) =>
     request<Student>(`/students/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
   remove: (id: string) => request<void>(`/students/${id}`, { method: "DELETE" }),
   restore: (id: string) => request<Student>(`/students/${id}/restore`, { method: "POST" }),
@@ -2093,6 +2148,7 @@ export const leadsApi = {
     notes?: string;
     allowDuplicate?: boolean;
     duplicateReason?: string;
+    customFields?: CustomFieldPayload;
   }) => postJson<Lead>("/leads", data),
   update: (id: string, data: {
     fullName?: string;
@@ -2104,6 +2160,7 @@ export const leadsApi = {
     desiredCourseId?: string | null;
     preferredBranchId?: string | null;
     notes?: string | null;
+    customFields?: CustomFieldPayload;
   }) => request<Lead>(`/leads/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
   transition: (id: string, toStatus: LeadStatus, note?: string) => postJson<Lead>(`/leads/${id}/transition`, { toStatus, note }),
   lose: (id: string, reason: LeadLostReason, note?: string) => postJson<Lead>(`/leads/${id}/lose`, { reason, note: note || undefined }),
@@ -2124,6 +2181,18 @@ export const leadsApi = {
   archive: (id: string, reason?: string) => postJson<Lead>(`/leads/${id}/archive`, { reason }),
   restore: (id: string) => postJson<Lead>(`/leads/${id}/restore`),
   exportCsv: (query?: LeadQuery) => download(`/leads/export${leadQueryString(query)}`, "leads.csv"),
+};
+
+// ---- Custom fields ----
+
+export const customFieldsApi = {
+  list: (entityType: CustomFieldEntity, includeArchived = false) =>
+    request<CustomFieldDef[]>(`/custom-fields?entityType=${entityType}${includeArchived ? "&includeArchived=1" : ""}`),
+  create: (data: CustomFieldInput) => postJson<CustomFieldDef>("/custom-fields", data),
+  update: (id: string, data: Partial<Omit<CustomFieldInput, "entityType" | "key">>) =>
+    request<CustomFieldDef>(`/custom-fields/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
+  archive: (id: string) => postJson<CustomFieldDef>(`/custom-fields/${id}/archive`),
+  restore: (id: string) => postJson<CustomFieldDef>(`/custom-fields/${id}/restore`),
 };
 
 // ---- Reports (server-side monthly overview) ----
@@ -2683,6 +2752,8 @@ export const portalApi = {
       body: JSON.stringify(data),
     }),
   getAnnouncements: () => request<PortalAnnouncement[]>("/portal/announcements"),
+  // The center's own fields it shows in the cabinet, already as text.
+  customFields: () => request<Array<{ id: string; label: string; value: string }>>("/portal/custom-fields"),
   readAnnouncement: (id: string) => request<{ marked: number }>(`/portal/announcements/${id}/read`, { method: "POST" }),
   readAllAnnouncements: () => request<{ marked: number }>("/portal/announcements/read-all", { method: "POST" }),
 };

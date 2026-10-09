@@ -20,6 +20,7 @@ export default function MultiSelect({
   placeholder,
   style,
   summary,
+  ariaLabel,
 }: {
   options: MultiSelectOption[];
   selected: string[];
@@ -29,6 +30,8 @@ export default function MultiSelect({
   // When set, the closed field shows this text instead of one chip per
   // selected option (for pages that list the picks themselves).
   summary?: (count: number) => string;
+  // The field's name for screen readers (the button shows the picks).
+  ariaLabel?: string;
 }) {
   const { t } = useLanguage();
   const effectivePlaceholder = placeholder ?? t("picker.select");
@@ -62,6 +65,8 @@ export default function MultiSelect({
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
+        aria-label={ariaLabel ? `${ariaLabel}: ${selectedLabels.join(", ") || effectivePlaceholder}` : undefined}
+        aria-expanded={open}
         className="field-input"
         style={{
           display: "flex",

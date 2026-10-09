@@ -11,6 +11,7 @@ import { AttendanceTab, HomeworkTab, PaymentsTab, ScheduleTab, TabTitle } from "
 import PortalTutor from "@/components/portal/PortalTutor";
 import PortalMessages from "@/components/portal/PortalMessages";
 import PortalPractice from "@/components/portal/PortalPractice";
+import PortalCustomFields from "@/components/portal/PortalCustomFields";
 import type { Lang, TranslationKey } from "@/lib/i18n";
 import {
   portalApi,
@@ -592,6 +593,7 @@ export default function StudentPortalPage() {
             parent={isParent}
           />
         )}
+        {activeTab === "home" && <PortalCustomFields key={token ?? ""} token={token} />}
 
         {activeTab === "schedule" && <ScheduleTab key={token ?? ""} schedule={schedule} tz={centerTimeZone(me?.tenant?.timezone)} />}
         {activeTab === "attendance" && <AttendanceTab attendance={attendance} tz={centerTimeZone(me?.tenant?.timezone)} />}
