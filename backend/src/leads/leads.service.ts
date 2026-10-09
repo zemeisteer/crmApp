@@ -132,8 +132,10 @@ export class LeadsService {
       limit: pageSize,
       offset: (page - 1) * pageSize,
     });
+    // The center's own fields of each lead on the page (for list columns).
+    const values = await this.customFields.valuesOfMany(tenantId, 'LEAD', items.map((l) => l.id));
 
-    return { items, total, page, pageSize };
+    return { items: items.map((l) => ({ ...l, customFields: values.get(l.id) ?? {} })), total, page, pageSize };
   }
 
   private buildFilters(tenantId: string, userId: string | null, q: QueryLeadDto, tz: string): SQL[] {

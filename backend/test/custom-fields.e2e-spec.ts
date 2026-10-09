@@ -100,6 +100,10 @@ describe('Custom fields (e2e)', () => {
     const lead = (await http().post('/api/leads').set(bearer(ownerA)).send({ fullName: 'CF Lead', phone: phone(), customFields: { [levelL.id]: beg.id } }).expect(201)).body;
     leadId = lead.id;
     expect((await http().get(`/api/leads/${leadId}`).set(bearer(ownerA)).expect(200)).body.customFields).toEqual({ [levelL.id]: beg.id });
+    // The list carries each lead's values too (the list page shows them as columns).
+    const page = (await http().get('/api/leads?pageSize=100').set(bearer(ownerA)).expect(200)).body.items as Array<{ id: string; customFields: Record<string, unknown> }>;
+    expect(page.find((l) => l.id === leadId)?.customFields).toEqual({ [levelL.id]: beg.id });
+    expect(page.every((l) => l.customFields && typeof l.customFields === 'object')).toBe(true);
 
     await qualify(leadId);
     const conv = (await http().post(`/api/leads/${leadId}/convert`).set(bearer(ownerA)).send({ studentResolution: 'CREATE_NEW', groupIds: [groupA] }).expect(201)).body;

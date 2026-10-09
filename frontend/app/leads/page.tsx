@@ -7,6 +7,10 @@ import Select from "@/components/Select";
 import Pagination from "@/components/Pagination";
 import LeadFormModal from "@/components/leads/LeadFormModal";
 import TelegramConnectCard from "@/components/telegram/TelegramConnectCard";
+import { useCustomFieldDefs } from "@/components/custom-fields/CustomFieldInputs";
+import { formatCfValue } from "@/components/custom-fields/CustomFieldValues";
+import CustomFieldChips from "@/components/custom-fields/CustomFieldChips";
+import { activeDefs } from "@/lib/custom-fields";
 import {
   ApiError,
   leadsApi,
@@ -67,6 +71,9 @@ function LeadsContent() {
   const [followUps, setFollowUps] = useState<FollowUpSummary | null>(null);
   const [managers, setManagers] = useState<AssignableManager[]>([]);
   const [createOpen, setCreateOpen] = useState(false);
+  // The center's own lead fields: a column each in the table, chips on a phone's cards.
+  const cfDefs = useCustomFieldDefs("LEAD", { enabled: canRead });
+  const cfColumns = useMemo(() => activeDefs(cfDefs.defs ?? []), [cfDefs.defs]);
 
   // Debounce typing so every keystroke doesn't hit the server.
   useEffect(() => {
@@ -302,6 +309,9 @@ function LeadsContent() {
                     <th>{t("leads.colSubject")}</th>
                     <th>{t("adm.colManager")}</th>
                     <th>{t("adm.colFollowUp")}</th>
+                    {cfColumns.map((d) => (
+                      <th key={d.id} scope="col">{d.label}</th>
+                    ))}
                     <th>{t("leads.colDate")}</th>
                   </tr>
                 </thead>
@@ -324,6 +334,14 @@ function LeadsContent() {
                       <td style={{ color: isOverdue(l.followUpAt) && OPEN_STATUSES.includes(l.status) ? "#B91C1C" : undefined, fontWeight: isOverdue(l.followUpAt) ? 700 : 400 }}>
                         {formatDateTime(l.followUpAt, lang, tz)}
                       </td>
+                      {cfColumns.map((d) => {
+                        const text = formatCfValue(d, l.customFields?.[d.id], t, lang);
+                        return (
+                          <td key={d.id} style={{ maxWidth: 220 }}>
+                            <span title={text} style={{ display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: text === "—" ? "#686B75" : undefined }}>{text}</span>
+                          </td>
+                        );
+                      })}
                       <td>{formatDate(l.createdAt, lang, tz)}</td>
                     </tr>
                   ))}
@@ -344,6 +362,7 @@ function LeadsContent() {
                       {t("adm.colFollowUp")}: {formatDateTime(l.followUpAt, lang, tz)}
                     </div>
                   )}
+                  <CustomFieldChips defs={cfColumns} values={l.customFields} />
                 </Link>
               ))}
             </div>

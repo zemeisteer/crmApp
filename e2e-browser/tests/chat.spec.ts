@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Browser, type Page } from '@playwright/test';
 import { PASSWORD, api, centerUrl, cleanUpStagingCenters, expectCenterDashboard, loginOnMainSite, newCenter, run } from './support';
 
 // Two-way messages: a teacher (staff, context A) and their student's cabinet
@@ -9,12 +9,32 @@ import { PASSWORD, api, centerUrl, cleanUpStagingCenters, expectCenterDashboard,
 // instant, and a retry after a lost answer each store one message. Another
 // teacher of the center and another center's owner cannot open the
 // conversation by its id (the page says not found; the API answers 404).
+// A group conversation: the teacher opens it for their group, two
+// students' cabinets (two more browser sessions) receive it live, one
+// student's reply reaches the teacher and the other student, and a student
+// of another group never sees it (404 by id).
 cleanUpStagingCenters();
 
 /** The session token a signed-in page holds (staff). */
 const staffToken = (page: Page) => page.evaluate(() => localStorage.getItem('talimcrm_token')) as Promise<string>;
 
 type Msg = { body: string; seq: number; clientMessageId: string };
+
+/** A student's cabinet in its own browser context, on the Messages tab with the live stream open. */
+async function cabinetOnMessages(browser: Browser, sub: string, local: string, pin: string, name: string) {
+  const ctx = await browser.newContext();
+  const cab = await ctx.newPage();
+  await cab.goto(centerUrl(sub, '/portal'));
+  await cab.getByRole('textbox').first().pressSequentially(local);
+  await cab.getByRole('button', { name: 'Davom etish' }).click();
+  await cab.getByPlaceholder('••••••').fill(String(pin));
+  await cab.getByRole('button', { name: 'Kabinetga kirish' }).click();
+  await expect(cab.getByText(name).first()).toBeVisible();
+  await cab.locator('.ptl-side').getByRole('button', { name: /^Yozishmalar/ }).click();
+  await expect(cab.getByRole('heading', { name: 'Yozishmalar' })).toBeVisible();
+  await expect(cab.locator('[data-chat-live="open"]')).toHaveCount(1);
+  return { ctx, cab };
+}
 const bodies = async (token: string, convId: string) =>
   (await api<{ messages: Msg[] }>('GET', `/chat/conversations/${convId}/messages?limit=100`, { token })).messages.map((m) => m.body);
 
@@ -217,4 +237,80 @@ test("the cabinet writes to the center; the center's inbox answers on a phone (l
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
   await ctxA.close();
   await ctxB.close();
+});
+
+test("a teacher opens their group's conversation; both students get it live, a reply reaches everyone in it, an outsider never sees it", async ({ page, browser }) => {
+  const a = await newCenter('chatgroup');
+  const teacherEmail = `zzbr-chat-gt-${run}@example.test`;
+  const t1 = await api('POST', '/teachers', { token: a.token, body: { fullName: 'Group Chat Teacher', subject: 'English' } });
+  await api('POST', `/teachers/${t1.id}/account`, { token: a.token, body: { email: teacherEmail, password: PASSWORD } });
+  const group = await api('POST', '/groups', { token: a.token, body: { name: 'Team Group', subject: 'English', teacherId: t1.id, maxStudents: 10 } });
+  // The same teacher's other group: its student is the teacher's, but not in this group.
+  const otherGroup = await api('POST', '/groups', { token: a.token, body: { name: 'Side Group', subject: 'English', teacherId: t1.id, maxStudents: 10 } });
+  const base = String(Date.now()).slice(-6);
+  const kids = [
+    { name: 'Group Kid One', local: `931${base}`, groupId: group.id },
+    { name: 'Group Kid Two', local: `932${base}`, groupId: group.id },
+    { name: 'Outside Kid', local: `933${base}`, groupId: otherGroup.id },
+  ];
+  const pins: string[] = [];
+  for (const k of kids) {
+    const s = await api('POST', '/students', { token: a.token, body: { fullName: k.name, phone: `+998${k.local}`, groupIds: [k.groupId] } });
+    pins.push(String((await api('POST', `/students/${s.id}/portal-pin`, { token: a.token })).pin));
+  }
+
+  // --- The two students of the group wait in their cabinets -----------------
+  const one = await cabinetOnMessages(browser, a.sub, kids[0].local, pins[0], kids[0].name);
+  const two = await cabinetOnMessages(browser, a.sub, kids[1].local, pins[1], kids[1].name);
+
+  // --- The teacher opens the group's conversation and writes -----------------
+  await loginOnMainSite(page, teacherEmail);
+  await expectCenterDashboard(page, a.sub);
+  await page.goto(centerUrl(a.sub, '/messages'));
+  await expect(page.locator('[data-chat-live="open"]')).toHaveCount(1);
+  await page.getByRole('button', { name: '+ Yangi suhbat' }).click();
+  const picker = page.getByRole('region', { name: 'Kimga yozasiz?' });
+  await expect(picker.getByRole('button', { name: 'Yozish: Side Group' })).toBeVisible();
+  await picker.getByRole('button', { name: 'Yozish: Team Group' }).click();
+  await expect(page.getByRole('heading', { name: 'Team Group', level: 2 })).toBeVisible();
+  await expect(page).toHaveURL(/\/messages\?c=/);
+  const convId = new URL(page.url()).searchParams.get('c')!;
+  const text = page.getByRole('textbox', { name: 'Xabar matni' });
+  await text.fill('Ertaga dars 15:00 da boshlanadi.');
+  await text.press('Enter');
+  const log = page.getByRole('log', { name: 'Xabarlar' });
+  await expect(log.getByRole('listitem').filter({ hasText: 'Ertaga dars 15:00 da boshlanadi.' })).toHaveCount(1);
+  const teacherToken = await staffToken(page);
+  expect(await bodies(teacherToken, convId)).toEqual(['Ertaga dars 15:00 da boshlanadi.']);
+
+  // --- Both cabinets receive it live (no reload) -------------------------------
+  for (const { cab } of [one, two]) {
+    const row = cab.getByRole('list', { name: 'Suhbatlar' }).getByRole('button', { name: /Team Group/ });
+    await expect(row).toContainText('Ertaga dars 15:00 da boshlanadi.');
+    await expect(row).toContainText('Guruh suhbati');
+    await row.click();
+    await expect(cab.getByRole('heading', { name: 'Team Group', level: 2 })).toBeVisible();
+    await expect(cab.getByRole('log', { name: 'Xabarlar' }).getByRole('listitem').filter({ hasText: 'Ertaga dars 15:00 da boshlanadi.' })).toContainText('Group Chat Teacher');
+  }
+
+  // --- One student replies; the teacher and the other student see it live ---------
+  const oneText = one.cab.getByRole('textbox', { name: 'Xabar matni' });
+  await oneText.fill('Tushunarli, rahmat!');
+  await oneText.press('Enter');
+  await expect(one.cab.getByRole('log', { name: 'Xabarlar' }).getByRole('listitem').filter({ hasText: 'Tushunarli, rahmat!' })).toContainText('Siz');
+  await expect(log.getByRole('listitem').filter({ hasText: 'Tushunarli, rahmat!' })).toContainText('Group Kid One');
+  await expect(two.cab.getByRole('log', { name: 'Xabarlar' }).getByRole('listitem').filter({ hasText: 'Tushunarli, rahmat!' })).toContainText('Group Kid One');
+  expect(await bodies(teacherToken, convId)).toEqual(['Ertaga dars 15:00 da boshlanadi.', 'Tushunarli, rahmat!']);
+  await one.ctx.close();
+  await two.ctx.close();
+
+  // --- A student of another group: not listed, 404 by id ---------------------------
+  const outsider = await api<{ accessToken: string }>('POST', '/portal/auth/phone/verify', { body: { phone: `+998${kids[2].local}`, pin: pins[2], subdomain: a.sub } });
+  const list = await api<Array<{ id: string }>>('GET', '/portal/chat/conversations', { token: outsider.accessToken });
+  expect(list.map((c) => c.id)).not.toContain(convId);
+  await expect(api('GET', `/portal/chat/conversations/${convId}/messages`, { token: outsider.accessToken })).rejects.toThrow(/-> 404/);
+  await expect(api('POST', `/portal/chat/conversations/${convId}/messages`, { token: outsider.accessToken, body: { body: 'x', clientMessageId: `zz-${run}-g1` } })).rejects.toThrow(/-> 404/);
+  // Nor can it open the group's conversation itself.
+  await expect(api('POST', '/portal/chat/conversations', { token: outsider.accessToken, body: { kind: 'GROUP', groupId: group.id } })).rejects.toThrow(/-> 404/);
+  expect(await bodies(teacherToken, convId)).toEqual(['Ertaga dars 15:00 da boshlanadi.', 'Tushunarli, rahmat!']);
 });

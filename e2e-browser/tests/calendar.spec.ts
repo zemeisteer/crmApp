@@ -1,10 +1,13 @@
 import { expect, test } from '@playwright/test';
-import { api, centerDay, centerUrl, cleanUpStagingCenters, expectCenterDashboard, loginOnMainSite, newCenter } from './support';
+import { PASSWORD, api, authSlot, centerDay, centerUrl, cleanUpStagingCenters, expectCenterDashboard, loginOnMainSite, newCenter, run } from './support';
 
 // Calendar sync: a staff member makes a subscription link (ICS) on the
 // Calendar page, copies it, a calendar app can read it; a new link turns the
 // old one off, and turning it off stops the new one. Google Calendar is not
 // set up on the test server, so the page says so instead of offering it.
+// A cabinet opened from a parent's own account points to that parent's
+// calendar (all their children); a cabinet opened with a phone and PIN
+// does not.
 cleanUpStagingCenters();
 
 test('a staff member makes, copies, replaces and turns off a calendar link; Google is not configured', async ({ page, context }) => {
@@ -110,6 +113,9 @@ test("the cabinet shows the child's make-ups and makes the child's own calendar 
 
   const feed = page.getByRole('region', { name: 'Kalendar havolasi (ICS)' });
   await expect(feed).toContainText("O'quvchining darslari va qoplash darslari");
+  // Signed in with a phone and PIN: no parent account, so no parent calendar.
+  await expect(page.getByRole('region', { name: 'Barcha farzandlaringiz kalendari' })).toHaveCount(0);
+  await expect(page.getByRole('link', { name: 'Mening kalendarimni ochish' })).toHaveCount(0);
   await feed.getByRole('button', { name: 'Havola yaratish' }).click();
   const url = await feed.getByLabel('Kalendar havolangiz').inputValue();
   const ics = await page.request.get(url);
@@ -121,4 +127,72 @@ test("the cabinet shows the child's make-ups and makes the child's own calendar 
   await feed.getByRole('button', { name: "Havolani o'chirish" }).click();
   await expect(feed).toContainText("Havola o'chirildi.");
   expect((await page.request.get(url)).status()).toBe(404);
+});
+
+test("a parent account's cabinet links to the parent's own calendar of all their children; the student's cabinet does not", async ({ page, browser }) => {
+  const a = await newCenter('calparent');
+  const everyDay = 'Dushanba,Seshanba,Chorshanba,Payshanba,Juma,Shanba,Yakshanba';
+  const teacher = await api('POST', '/teachers', { token: a.token, body: { fullName: 'Family Teacher', subject: 'English' } });
+  const morning = await api('POST', '/groups', { token: a.token, body: { name: 'Family Morning', subject: 'English', teacherId: teacher.id, scheduleDays: everyDay, startTime: '09:00', endTime: '10:00', maxStudents: 10 } });
+  const evening = await api('POST', '/groups', { token: a.token, body: { name: 'Family Evening', subject: 'English', teacherId: teacher.id, scheduleDays: everyDay, startTime: '17:00', endTime: '18:00', maxStudents: 10 } });
+  const local = `95${String(Date.now()).slice(-7)}`;
+  const older = await api('POST', '/students', { token: a.token, body: { fullName: 'Older Child', phone: `+998${local}`, groupIds: [morning.id] } });
+  const younger = await api('POST', '/students', { token: a.token, body: { fullName: 'Younger Child', groupIds: [evening.id] } });
+  const { pin } = await api('POST', `/students/${older.id}/portal-pin`, { token: a.token });
+
+  // The parent's own account (role PARENT), linked as guardian of both.
+  const parentEmail = `zzbr-parent-${run}@example.test`;
+  const inv = await api('POST', '/invitations', { token: a.token, body: { email: parentEmail, role: 'PARENT' } });
+  await authSlot('register');
+  const parent = await api('POST', `/invitations/${inv.token}/accept`, { body: { fullName: 'Family Parent', password: PASSWORD } });
+  for (const kid of [older, younger]) await api('POST', `/students/${kid.id}/guardians`, { token: a.token, body: { userId: parent.user.id, relationship: 'Ona' } });
+
+  // Signed in with the account: the cabinet opens with the children.
+  await loginOnMainSite(page, parentEmail);
+  await expect(page).toHaveURL(/\/portal$/);
+  await expect(page.getByText('Ota-ona').first()).toBeVisible();
+  await page.getByRole('button', { name: 'Jadval', exact: true }).first().click();
+  const own = page.getByRole('region', { name: 'Barcha farzandlaringiz kalendari' });
+  await expect(own).toContainText('ota-ona hisobingiz bilan');
+  const link = own.getByRole('link', { name: 'Mening kalendarimni ochish' });
+  await expect(link).toHaveAttribute('href', '/calendar');
+  // The child's own link is still offered next to it.
+  await expect(page.getByRole('region', { name: 'Kalendar havolasi (ICS)' })).toContainText("O'quvchining darslari va qoplash darslari");
+  // Fits a phone.
+  await page.setViewportSize({ width: 390, height: 844 });
+  await link.scrollIntoViewIfNeeded();
+  await expect(link).toBeInViewport();
+  const box = (await own.boundingBox())!;
+  expect(box.x + box.width).toBeLessThanOrEqual(390);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+  await page.setViewportSize({ width: 1280, height: 720 });
+
+  // The parent's calendar page: one link with both children's lessons.
+  await link.click();
+  await expect(page).toHaveURL(/\/calendar$/);
+  await expect(page.getByRole('heading', { name: 'Kalendar bilan ulash' })).toBeVisible();
+  const feed = page.getByRole('region', { name: 'Kalendar havolasi (ICS)' });
+  await expect(feed).toContainText('Farzandlaringizning darslari');
+  await feed.getByRole('button', { name: 'Havola yaratish' }).click();
+  const url = await feed.getByLabel('Kalendar havolangiz').inputValue();
+  const ics = await (await page.request.get(url)).text();
+  expect(ics).toContain('BEGIN:VCALENDAR');
+  expect(ics).toContain('Family Morning');
+  expect(ics).toContain('Family Evening');
+  expect((await api('GET', '/calendar/feed', { token: (await page.evaluate(() => localStorage.getItem('talimcrm_token')))! })).scope).toBe('PARENT');
+
+  // The older child's own cabinet (phone and PIN, another browser): no parent calendar.
+  const ctx = await browser.newContext();
+  const cab = await ctx.newPage();
+  await cab.goto(centerUrl(a.sub, '/portal'));
+  await cab.getByRole('textbox').first().pressSequentially(local);
+  await cab.getByRole('button', { name: 'Davom etish' }).click();
+  await cab.getByPlaceholder('••••••').fill(String(pin));
+  await cab.getByRole('button', { name: 'Kabinetga kirish' }).click();
+  await expect(cab.getByText('Older Child').first()).toBeVisible();
+  await cab.getByRole('button', { name: 'Jadval', exact: true }).first().click();
+  await expect(cab.getByRole('region', { name: 'Kalendar havolasi (ICS)' })).toContainText("O'quvchining darslari va qoplash darslari");
+  await expect(cab.getByRole('region', { name: 'Barcha farzandlaringiz kalendari' })).toHaveCount(0);
+  await expect(cab.getByRole('link', { name: 'Mening kalendarimni ochish' })).toHaveCount(0);
+  await ctx.close();
 });
