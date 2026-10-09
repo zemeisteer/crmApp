@@ -144,7 +144,18 @@ Notes:
 | revoke (staff removed) | receptionist | stream | `revoked` event, stream closed, API 401 | as expected | chat.e2e | PASS |
 | revoke (new PIN) | cabinet | stream | closed | closed | chat.e2e | PASS |
 | audit | owner | audit log | `chat.open`, no bodies | as expected | chat.e2e | PASS |
-| Chat UI (two browser contexts) | – | – | – | – | (frontend pending) | NOT TESTED yet |
+| /messages + cabinet (two browser contexts) | fresh teacher (A), student cabinet via phone+PIN (B) | B sends | A sees it live in the list; menu badge 1 (API agrees) | as expected | chat.spec (browser) | PASS |
+| /messages | teacher | open conversation | badge clears; API unread 0 | as expected | chat.spec (browser) | PASS |
+| composer | teacher | Shift+Enter newline, counter, send | B sees reply live | as expected | chat.spec (browser) | PASS |
+| composer | cabinet | double-click Send; two clicks at once | exactly one stored message each | one | chat.spec (browser) | PASS |
+| composer | cabinet | reply lost after server stored it → Retry | "not sent" + Retry; retry reuses id; one stored message | as expected | chat.spec (browser) | PASS |
+| cabinet contacts | cabinet | new conversation | center + own teacher only | as expected | chat.spec (browser) | PASS |
+| /messages?c=<id> | second teacher of same center | open by id | "conversation not found"; API 404 read and send | as expected | chat.spec (browser) | PASS |
+| /messages?c=<id> | owner of another center | open by id | 404, not in list | as expected | chat.spec (browser) | PASS |
+| /messages at 390px | owner (center inbox) | cabinet writes; owner replies | live both ways; list/thread are two screens; no horizontal scroll | as expected | chat.spec, mobile.spec (browser) | PASS |
+| stream client | – | parser, backoff, 401 refresh once, revoked stops, abort on unmount, token only in header | as specified | as expected | chat-stream.test (13 unit) | PASS |
+| merge/pending | – | merge by seq, pending by client id, body rules | as specified | as expected | chat.test (7 unit) | PASS |
+| GROUP conversations UI | – | – | – | – | API rows above only | NOT TESTED (browser) |
 
 ## L-02 / contrast
 
@@ -153,7 +164,7 @@ Notes:
 | POST/PATCH /plans | superadmin | RU/EN feature lists; clear EN | stored; public list carries them | as expected | plan-languages.e2e | PASS |
 | PATCH /plans/:id | center owner | edit translations | 403 | 403 | plan-languages.e2e | PASS |
 | migration 0046 | – | shipped tiers / edited tier | translated / left alone | as expected | verify-migrations scenario 9 | PASS |
-| main site tariffs | visitor | UZ / RU / EN | the language's list, Uzbek fallback | see final browser run | landing-plans.spec (browser) | see report |
+| main site tariffs | visitor | UZ / RU / EN | the language's list, Uzbek fallback | as expected | landing-plans.spec (browser, 3) | PASS |
 
 ## Cross-cutting
 
@@ -161,4 +172,7 @@ Notes:
 |---|---|---|---|---|---|---|
 | list pages | owner / teacher / other tenant | students, payments, attendance pages | totals right, no overlap, scope kept | as expected | list-pagination.e2e | PASS |
 | access catalog | configurable roles | every new route in catalog or deliberately fixed; templates = guards | staff-access.e2e | PASS | staff-access.e2e | PASS |
-| existing browser suite | all | 20 legacy + 3 new | pass | 23/23 | e2e-browser full run | PASS |
+| full browser suite | all | 20 earlier + 11 new (custom fields 3, make-ups 1, calendar 2, landing 3, chat 2) | pass | 31/31 (Chromium, 4.6 min) | e2e-browser full run | PASS |
+| full backend e2e | all | 48 files | pass | 319/319 | `npm run test:e2e` | PASS |
+| backend unit | – | 50 files | pass | 320/320 | `npm test` | PASS |
+| frontend unit | – | node --test | pass | 46/46 | `npm test` | PASS |

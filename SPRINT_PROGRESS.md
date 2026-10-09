@@ -145,3 +145,14 @@ Next: F1 custom fields.
 - The timetable page shows this week's make-ups on their day (`makeups.spec` extended).
 - The chat frontend is being built by an agent; nothing from it is committed or claimed
   yet.
+
+**Chat frontend.** Commit `de03f14`. The agent was stopped once by a usage limit and
+resumed. Verified by me after it finished:
+- tsc PASS; lint 0 errors / 71 warnings (unchanged); frontend unit 46/46.
+- Backend and browser builds rebuilt; **full browser suite 31/31** (Chromium, 4.6 min).
+- The stream runs on /messages only. Elsewhere the badge polls on load, on focus and
+  once a minute. An always-open stream would keep Playwright's `networkidle` from ever
+  settling on every page.
+
+**Full backend e2e after the container restart** (PostgreSQL had to be restarted):
+48 files / 319 PASS.
