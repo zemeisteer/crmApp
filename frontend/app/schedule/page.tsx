@@ -462,7 +462,7 @@ export default function SchedulePage() {
                 <div
                   style={{
                     padding: "12px 14px",
-                    background: isToday ? "#9333EA" : "#FFFFFF",
+                    background: isToday ? "#7E22CE" : "#FFFFFF",
                     color: isToday ? "#fff" : "#111827",
                     borderBottom: isToday ? "none" : "1px solid #E5E7EB",
                     display: "flex",
