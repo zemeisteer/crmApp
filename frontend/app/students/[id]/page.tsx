@@ -17,6 +17,12 @@ import { useLanguage } from "@/lib/i18n-context";
 import { MONTH_KEYS, type TranslationKey } from "@/lib/i18n";
 import { formatDate as fmtDate } from "@/lib/format-date";
 import { ROOT_DOMAIN } from "@/lib/domain";
+import { useAuth } from "@/lib/auth-context";
+import { can } from "@/lib/access";
+import { useCustomFieldDefs } from "@/components/custom-fields/CustomFieldInputs";
+import CustomFieldValues, { hasCustomFieldContent } from "@/components/custom-fields/CustomFieldValues";
+import CustomFieldsEditModal from "@/components/custom-fields/CustomFieldsEditModal";
+import { activeDefs } from "@/lib/custom-fields";
 
 const ACCENT = "#4F46E5";
 
@@ -58,6 +64,11 @@ function StudentDetailContent() {
   const id = params.id;
   const { t, lang } = useLanguage();
   const clock = useCenterClock();
+  const { user } = useAuth();
+  // Teachers see the center's own fields; editing is for who may edit students.
+  const canEditStudent = can(user, "students.edit");
+  const cfDefs = useCustomFieldDefs("STUDENT", { includeArchived: true });
+  const [cfEditOpen, setCfEditOpen] = useState(false);
 
   function formatDate(iso: string | null) {
     if (!iso) return "—";
@@ -446,6 +457,25 @@ function StudentDetailContent() {
               <InfoField label={t("stu.foundUs")} value={student.origin ? t(`adm.source.${student.origin.source}` as TranslationKey) : "—"} />
               {student.notes && <InfoField label={t("stu.notes")} value={student.notes} />}
             </div>
+            {cfDefs.defs && (hasCustomFieldContent(cfDefs.defs, student.customFields) || (canEditStudent && activeDefs(cfDefs.defs).length > 0)) && (
+              <section aria-labelledby="student-cf-title" style={{ marginTop: 16, paddingTop: 16, borderTop: "1px solid #EAE8E2" }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 12 }}>
+                  <h3 id="student-cf-title" style={{ fontSize: 13.5, fontWeight: 700 }}>{t("cf.section")}</h3>
+                  {canEditStudent && activeDefs(cfDefs.defs).length > 0 && (
+                    <button
+                      type="button"
+                      className="btn"
+                      onClick={() => setCfEditOpen(true)}
+                      aria-label={`${t("common.edit")}: ${t("cf.section")}`}
+                      style={{ background: "#F2F1EC", color: "#181A1F", border: "none", fontSize: 12, fontWeight: 700, padding: "6px 12px", borderRadius: 8 }}
+                    >
+                      {t("common.edit")}
+                    </button>
+                  )}
+                </div>
+                <CustomFieldValues defs={cfDefs.defs} values={student.customFields} />
+              </section>
+            )}
             <div style={{ marginTop: 16, paddingTop: 16, borderTop: "1px solid #EAE8E2" }}>
               <div style={{ fontSize: 11.5, color: "#686B75", marginBottom: 6 }}>{t("studentDetail.telegramNotifications")}</div>
               {student.telegramChatId ? (
@@ -693,6 +723,18 @@ function StudentDetailContent() {
         )}
       </Modal>
 
+      {cfEditOpen && cfDefs.defs && (
+        <CustomFieldsEditModal
+          defs={cfDefs.defs}
+          values={student.customFields}
+          idPrefix="student-cf"
+          onClose={() => setCfEditOpen(false)}
+          onSave={async (customFields) => {
+            const saved = await studentsApi.update(id, { customFields });
+            setStudent((prev) => (prev ? { ...prev, customFields: saved.customFields ?? prev.customFields } : prev));
+          }}
+        />
+      )}
       {/* Student QR ID Card Modal */}
       <StudentStatusModal student={student} open={statusOpen} onClose={() => setStatusOpen(false)} onSaved={(s) => { setStudent((prev) => (prev ? { ...prev, ...s } : prev)); load(); }} />
       <Modal open={qrCardOpen} onClose={() => setQrCardOpen(false)} title={t("std.idCardTitle")}>

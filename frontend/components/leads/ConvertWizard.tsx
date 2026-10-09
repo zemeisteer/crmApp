@@ -24,6 +24,9 @@ import type { TranslationKey } from "@/lib/i18n";
 import { ACCENT, ghostBtn, label, primaryBtn, sourceKey, statusKey, StatusBadge } from "./lead-ui";
 import PhoneInput from "@/components/PhoneInput";
 import { phoneOrEmpty } from "@/lib/validation";
+import CustomFieldInputs, { cfSubmitError, useCfDraft, useCustomFieldDefs } from "@/components/custom-fields/CustomFieldInputs";
+import { formatCfValue } from "@/components/custom-fields/CustomFieldValues";
+import { activeDefs, cfValidate, conversionPayload, draftFrom, fromDraft, mappedStudentValues } from "@/lib/custom-fields";
 
 type Resolution = { mode: "AUTO" } | { mode: "CREATE_NEW" } | { mode: "LINK_EXISTING"; studentId: string };
 
@@ -35,7 +38,7 @@ function nextMonth() {
 }
 
 export default function ConvertWizard({ lead, open, onClose }: { lead: Lead; open: boolean; onClose: () => void }) {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const router = useRouter();
 
   const [step, setStep] = useState(0);
@@ -56,6 +59,23 @@ export default function ConvertWizard({ lead, open, onClose }: { lead: Lead; ope
   const [branches, setBranches] = useState<Branch[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  // The student's custom fields: prefilled with what the lead carries over
+  // (lead field -> student field, options through the map), so the user
+  // sees it; only what they change, or answer where nothing is carried, is sent.
+  const studentDefs = useCustomFieldDefs("STUDENT", { enabled: open });
+  const leadDefs = useCustomFieldDefs("LEAD", { includeArchived: true, enabled: open });
+  const cf = useCfDraft();
+  const carried = useMemo(
+    () => mappedStudentValues(leadDefs.defs ?? [], studentDefs.defs ?? [], lead.customFields),
+    [leadDefs.defs, studentDefs.defs, lead.customFields],
+  );
+  const [cfReady, setCfReady] = useState(false);
+  if (studentDefs.defs && leadDefs.defs && !cfReady) {
+    setCfReady(true);
+    cf.setDraft(draftFrom(activeDefs(studentDefs.defs), carried.values));
+  }
+  const cfList = activeDefs(studentDefs.defs ?? []);
 
   useEffect(() => {
     if (!open) return;
@@ -99,6 +119,21 @@ export default function ConvertWizard({ lead, open, onClose }: { lead: Lead; ope
   const linkedName = linking ? candidates?.find((c) => c.id === resolution.studentId)?.fullName : null;
   const selectedGroups = openGroups.filter((g) => groupIds.includes(g.id));
 
+  // Leaving the details step: a new student must answer the required
+  // fields (an existing one keeps its own answers); values must parse.
+  function next() {
+    if (step === 2) {
+      const errs = cfValidate(studentDefs.defs ?? [], cf.draft, linking ? "update" : "create");
+      cf.setErrors(errs);
+      if (Object.keys(errs).length) {
+        setError(t("cf.formError"));
+        return;
+      }
+    }
+    setError(null);
+    setStep(step + 1);
+  }
+
   function canContinue() {
     if (step === 1 && candidates && candidates.length > 0 && resolution.mode === "AUTO") return false;
     if (step === 2 && !linking && fullName.trim().length < 2) return false;
@@ -120,6 +155,7 @@ export default function ConvertWizard({ lead, open, onClose }: { lead: Lead; ope
       guardianPhone: linking || !phoneOrEmpty(guardianPhone) ? undefined : phoneOrEmpty(guardianPhone),
       branchId: linking || !branchId ? undefined : branchId,
       groupIds: groupIds.length ? groupIds : undefined,
+      customFields: conversionPayload(studentDefs.defs ?? [], cf.draft, carried.values),
       ...(createInvoice
         ? {
             createInvoice: true,
@@ -133,7 +169,13 @@ export default function ConvertWizard({ lead, open, onClose }: { lead: Lead; ope
       const res = await leadsApi.convert(lead.id, payload);
       router.push(`/students/${res.student.id}`);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Xatolik yuz berdi");
+      const { fields, message } = cfSubmitError(err, studentDefs.defs ?? [], t);
+      setError(message);
+      // A field the server refused: back to the details step, marked.
+      if (fields) {
+        cf.setErrors(fields);
+        setStep(2);
+      }
       // Ambiguous match found at submit time: send the user back to choose.
       if (err instanceof ApiError && err.body?.code === "STUDENT_MATCH_AMBIGUOUS") {
         setCandidates((err.body.candidates as StudentMatchCandidate[]) ?? []);
@@ -218,7 +260,9 @@ export default function ConvertWizard({ lead, open, onClose }: { lead: Lead; ope
           </div>
         )}
 
-        {step === 2 && (linking ? (
+        {step === 2 && (
+          <div style={{ display: "grid", gap: 16 }}>
+        {linking ? (
           <p style={{ fontSize: 13.5 }}>{t("adm.wiz.detailsLinked")} <strong>{linkedName}</strong></p>
         ) : (
           <div className="adm-grid2">
@@ -255,7 +299,25 @@ export default function ConvertWizard({ lead, open, onClose }: { lead: Lead; ope
               <input className="field-input" value={address} onChange={(e) => setAddress(e.target.value)} />
             </div>
           </div>
-        ))}
+        )}
+            {cfList.length > 0 && (
+              <div>
+                <p style={{ fontSize: 12, color: "#686B75", marginBottom: 4 }}>{linking ? t("cf.wizLinkedHint") : t("cf.wizCarriedHint")}</p>
+                <CustomFieldInputs
+                  defs={studentDefs.defs ?? []}
+                  values={cf.draft}
+                  errors={cf.errors}
+                  onChange={cf.change}
+                  idPrefix="convert-cf"
+                  title={t("cf.wizTitle")}
+                  carried={new Set(Object.keys(carried.values))}
+                  notes={Object.fromEntries(carried.unmapped.map((id) => [id, t("cf.unmapped")]))}
+                />
+              </div>
+            )}
+            {studentDefs.error && <div role="alert" style={{ fontSize: 12.5, fontWeight: 600, color: "#B45309" }}>{t("cf.defsError")}</div>}
+          </div>
+        )}
 
         {step === 3 && (
           <div>
@@ -314,6 +376,10 @@ export default function ConvertWizard({ lead, open, onClose }: { lead: Lead; ope
               t("adm.wiz.summaryInvoice"),
               createInvoice ? `${invoiceMonth} · ${invoiceAmount || selectedGroups[0]?.monthlyPrice || 0} ${t("common.sumUnit")}` : t("adm.wiz.none"),
             )}
+            {cfList.map((d) => {
+              const v = fromDraft(d, cf.draft[d.id]);
+              return v === undefined ? null : <div key={d.id}>{row(d.label, formatCfValue(d, v, t, lang))}</div>;
+            })}
             <p style={{ fontSize: 12, color: "#686B75", marginTop: 12 }}>{t("adm.wiz.atomicHint")}</p>
           </div>
         )}
@@ -326,7 +392,7 @@ export default function ConvertWizard({ lead, open, onClose }: { lead: Lead; ope
           {step === 0 ? t("common.cancel") : t("adm.wiz.prev")}
         </button>
         {step < STEPS.length - 1 ? (
-          <button type="button" className="btn" style={{ ...primaryBtn, opacity: canContinue() ? 1 : 0.5 }} disabled={!canContinue()} onClick={() => setStep(step + 1)}>
+          <button type="button" className="btn" style={{ ...primaryBtn, opacity: canContinue() ? 1 : 0.5 }} disabled={!canContinue()} onClick={next}>
             {t("adm.wiz.next")}
           </button>
         ) : (

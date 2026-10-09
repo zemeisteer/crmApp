@@ -18,6 +18,8 @@ import { NAME_PATTERN, NAME_TITLE } from "@/lib/validation";
 import { useLanguage } from "@/lib/i18n-context";
 import { matchesSubject, extractUniqueSubjects } from "@/lib/subject";
 import PhoneInput from "@/components/PhoneInput";
+import CustomFieldInputs, { cfSubmitError, useCfDraft, useCustomFieldDefs } from "@/components/custom-fields/CustomFieldInputs";
+import { cfPayload, cfValidate } from "@/lib/custom-fields";
 
 const ACCENT = "#4F46E5";
 
@@ -48,6 +50,9 @@ function StudentsContent() {
   const [birthDate, setBirthDate] = useState("");
   const [groupIds, setGroupIds] = useState<string[]>([]);
   const [placementOpen, setPlacementOpen] = useState(false);
+  // The center's own student fields (loaded with the form; required ones must be answered).
+  const cfDefs = useCustomFieldDefs("STUDENT", { enabled: modalOpen });
+  const cf = useCfDraft();
 
   const subjects = useMemo(() => extractUniqueSubjects(groups), [groups]);
   const selectedGroups = groups.filter((g) => groupIds.includes(g.id));
@@ -105,12 +110,20 @@ function StudentsContent() {
     setBirthDate("");
     setGroupIds([]);
     setError(null);
+    cf.reset();
     createKey.current = null;
   }
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    const defs = cfDefs.defs ?? [];
+    const cfErrs = cfValidate(defs, cf.draft, "create");
+    cf.setErrors(cfErrs);
+    if (Object.keys(cfErrs).length) {
+      setError(t("cf.formError"));
+      return;
+    }
     setSaving(true);
     try {
       const cleanPhone = phone.replace(/\D/g, "").length >= 9 ? phone : undefined;
@@ -122,6 +135,7 @@ function StudentsContent() {
         parentPhone: cleanParentPhone,
         birthDate: birthDate || undefined,
         groupIds: groupIds.length > 0 ? groupIds : undefined,
+        customFields: cfPayload(defs, cf.draft, "create"),
       };
       await studentsApi.create(body, retryKey(createKey, body));
       createKey.current = null;
@@ -129,7 +143,9 @@ function StudentsContent() {
       resetForm();
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : t("common.errorGeneric"));
+      const { fields, message } = cfSubmitError(err, cfDefs.defs ?? [], t);
+      if (fields) cf.setErrors(fields);
+      setError(message);
     } finally {
       setSaving(false);
     }
@@ -372,6 +388,8 @@ function StudentsContent() {
               </div>
             )}
           </Field>
+          {cfDefs.error && <div role="alert" style={{ fontSize: 12.5, fontWeight: 600, color: "#B45309" }}>{t("cf.defsError")}</div>}
+          <CustomFieldInputs defs={cfDefs.defs ?? []} values={cf.draft} errors={cf.errors} onChange={cf.change} idPrefix="new-student-cf" title={t("cf.section")} />
           <button
             className="btn"
             type="submit"

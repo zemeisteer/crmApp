@@ -12,6 +12,8 @@ import DatePicker from "@/components/DatePicker";
 import TimePicker from "@/components/TimePicker";
 import LeadFormModal from "@/components/leads/LeadFormModal";
 import ConvertWizard from "@/components/leads/ConvertWizard";
+import { useCustomFieldDefs } from "@/components/custom-fields/CustomFieldInputs";
+import CustomFieldValues, { hasCustomFieldContent } from "@/components/custom-fields/CustomFieldValues";
 import PlacementAttemptModal from "@/components/students/PlacementAttemptModal";
 import { placementLevelName, placementLink, placementShareText, telegramShareUrl } from "@/lib/placement";
 import {
@@ -92,6 +94,7 @@ function LeadProfile() {
   const tz = useCenterTimeZone();
 
   const [lead, setLead] = useState<Lead | null>(null);
+  const cfDefs = useCustomFieldDefs("LEAD", { includeArchived: true });
   const [timeline, setTimeline] = useState<LeadActivity[]>([]);
   const [managers, setManagers] = useState<AssignableManager[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
@@ -468,6 +471,13 @@ function LeadProfile() {
               {detail(t("adm.createdBy"), formatDateTime(lead.createdAt, lang, tz))}
               {detail(t("adm.lastUpdated"), formatDateTime(lead.updatedAt, lang, tz))}
             </section>
+
+            {cfDefs.defs && hasCustomFieldContent(cfDefs.defs, lead.customFields) && (
+              <section style={card} aria-labelledby="lead-cf-title">
+                <h2 id="lead-cf-title" style={{ fontSize: 15, fontWeight: 800, marginBottom: 12 }}>{t("cf.section")}</h2>
+                <CustomFieldValues defs={cfDefs.defs} values={lead.customFields} />
+              </section>
+            )}
 
             <section style={card}>
               <h2 style={{ fontSize: 15, fontWeight: 800, marginBottom: 8 }}>{t("adm.followUp")}</h2>
