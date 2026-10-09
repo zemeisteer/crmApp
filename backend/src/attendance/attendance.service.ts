@@ -1,5 +1,5 @@
 import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { and, desc, eq, inArray, isNull } from 'drizzle-orm';
+import { and, count, desc, eq, gte, inArray, isNull, lte } from 'drizzle-orm';
 import { DB, Database } from '../db/db.module';
 import { attendance, enrollments, groups, lessonTopics, payments, students, teachers } from '../db/schema';
 import { MarkAttendanceDto, QrCheckInDto, QueryAttendanceDto } from './dto/attendance.dto';
@@ -130,11 +130,24 @@ export class AttendanceService {
     if (query.groupId) conditions.push(eq(attendance.groupId, query.groupId));
     if (query.date) conditions.push(eq(attendance.date, query.date));
     if (query.studentId) conditions.push(eq(attendance.studentId, query.studentId));
+    if (query.from) conditions.push(gte(attendance.date, query.from));
+    if (query.to) conditions.push(lte(attendance.date, query.to));
 
-    return this.db.query.attendance.findMany({
+    if (!query.page) {
+      return this.db.query.attendance.findMany({
+        where: and(...conditions),
+        orderBy: (a, { desc }) => desc(a.date),
+      });
+    }
+    const pageSize = Math.min(query.pageSize ?? 100, 500);
+    const [{ total }] = await this.db.select({ total: count() }).from(attendance).where(and(...conditions));
+    const items = await this.db.query.attendance.findMany({
       where: and(...conditions),
-      orderBy: (a, { desc }) => desc(a.date),
+      orderBy: (a, { desc }) => [desc(a.date), desc(a.id)],
+      limit: pageSize,
+      offset: (query.page - 1) * pageSize,
     });
+    return { items, total: Number(total), page: query.page, pageSize };
   }
 
   async qrCheckIn(tenantId: string, dto: QrCheckInDto, viewer?: { role?: string; userId?: string }) {
