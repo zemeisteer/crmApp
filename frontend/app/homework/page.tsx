@@ -654,7 +654,7 @@ function HomeworkContent() {
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 20 }}>
                 <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 20 }}>
                   <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 14 }}>{t("homework.completionRateTitle")}</div>
-                  <BarChart data={groupCompletionChart} color="#1FA463" formatValue={(v) => `${v}%`} />
+                  <BarChart data={groupCompletionChart} color="#16794A" formatValue={(v) => `${v}%`} />
                   {groupCompletionChart.length === 0 && (
                     <div style={{ fontSize: 12, color: "#686B75", marginTop: 8 }}>{t("homework.noCompletionsYet")}</div>
                   )}

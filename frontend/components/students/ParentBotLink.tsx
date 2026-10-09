@@ -51,7 +51,7 @@ export default function ParentBotLink({ studentId }: { studentId: string }) {
                 setCopied(true);
                 setTimeout(() => setCopied(false), 2500);
               }}
-              style={{ background: copied ? "#1FA463" : ACCENT, color: "#fff", border: "none", fontSize: 12, fontWeight: 700, padding: "8px 12px", borderRadius: 8, whiteSpace: "nowrap" }}
+              style={{ background: copied ? "#16794A" : ACCENT, color: "#fff", border: "none", fontSize: 12, fontWeight: 700, padding: "8px 12px", borderRadius: 8, whiteSpace: "nowrap" }}
             >
               {copied ? `✓ ${t("pbot.copied")}` : t("pbot.copy")}
             </button>

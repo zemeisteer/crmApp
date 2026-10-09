@@ -10,7 +10,7 @@ import { PORTAL_ACCENT as ACCENT, portalCard as card } from "@/components/portal
 type Text = Record<string, string>;
 
 export const percentColor = (p: number | null | undefined) =>
-  p == null ? "#686B75" : p >= 85 ? "#1FA463" : p >= 60 ? ACCENT : p >= 40 ? "#D97706" : "#DC2626";
+  p == null ? "#686B75" : p >= 85 ? "#16794A" : p >= 60 ? ACCENT : p >= 40 ? "#D97706" : "#DC2626";
 
 // One sitting of a practice test: the sections as cards, each with its own
 // clock (server time) from the first start; answers autosave; a finished
@@ -150,7 +150,7 @@ export default function PracticeRunner({ initial, readOnly, onExit }: { initial:
                     {[qn ? `${qn} ${t("pmk.questions")}` : null, s.tasks.length ? `${s.tasks.length} ${t("pmk.tasks")}` : null].filter(Boolean).join(" · ")} · ⏱ {s.durationMin} {t("pmk.min")}
                   </div>
                   {done(s.key) && (
-                    <div style={{ fontSize: 12.5, fontWeight: 700, color: r?.status === "REVIEW" ? "#B45309" : r?.status === "PENDING" ? ACCENT : "#1FA463" }}>
+                    <div style={{ fontSize: 12.5, fontWeight: 700, color: r?.status === "REVIEW" ? "#B45309" : r?.status === "PENDING" ? ACCENT : "#16794A" }}>
                       {r?.status === "PENDING" ? t("prx.aiMarking") : r?.status === "REVIEW" ? t("pmk.teacherMarks") : `${Math.round((r?.raw ?? 0) * 10) / 10}/${r?.max ?? 0} ${t("prx.points")}`}
                     </div>
                   )}

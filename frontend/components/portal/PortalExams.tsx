@@ -105,16 +105,16 @@ export default function PortalExams({ onFinished, readOnly = false }: { onFinish
       )}
       {error && <div role="alert" style={alertStyle}>{error}</div>}
       {list === null ? (
-        <div style={{ fontSize: 13, color: "#64748B" }}>{t("common.loading")}</div>
+        <div style={{ fontSize: 13, color: "#5B6577" }}>{t("common.loading")}</div>
       ) : list.length === 0 ? (
-        <div style={{ fontSize: 13, color: "#64748B" }}>{t("pex.none")}</div>
+        <div style={{ fontSize: 13, color: "#5B6577" }}>{t("pex.none")}</div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {list.map((e) => (
             <div key={e.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 12, border: "1px solid #E2E8F0", flexWrap: "wrap" }}>
               <div style={{ flex: 1, minWidth: 180 }}>
                 <div style={{ fontWeight: 700, fontSize: 14 }}>{e.title}</div>
-                <div style={{ fontSize: 12, color: "#64748B" }}>
+                <div style={{ fontSize: 12, color: "#5B6577" }}>
                   {e.groupName ? `${e.groupName} · ` : ""}{e.questionCount} {t("placement.questions")}
                 </div>
               </div>

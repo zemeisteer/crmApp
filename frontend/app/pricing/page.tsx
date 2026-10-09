@@ -105,7 +105,7 @@ function TenantPricing() {
                   <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
                     {planFeatureLines(p, lang).map((f) => (
                       <div key={f} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "#4A4E58" }}>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1FA463" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#16794A" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
                           <path d="M20 6 9 17l-5-5" />
                         </svg>
                         {f}
@@ -308,7 +308,7 @@ function SuperadminPlans() {
                   <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 9 }}>
                     {planFeatureLines(p, lang).map((f) => (
                       <li key={f} style={{ fontSize: 13, color: "#4A4E58", display: "flex", alignItems: "center", gap: 8 }}>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1FA463" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#16794A" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
                           <path d="M20 6 9 17l-5-5" />
                         </svg>
                         {f}

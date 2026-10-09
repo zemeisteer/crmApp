@@ -99,7 +99,7 @@ export default function RosterTab({ canMark }: { canMark: boolean }) {
                           disabled={busyId === r.id}
                           onClick={() => mark(r, "ATTENDED")}
                           aria-label={`${t("mk.attended")}: ${r.student.fullName}`}
-                          style={{ background: "#1FA463", color: "#fff", border: "none", fontSize: 12.5, fontWeight: 700, padding: "7px 12px", borderRadius: 8 }}
+                          style={{ background: "#16794A", color: "#fff", border: "none", fontSize: 12.5, fontWeight: 700, padding: "7px 12px", borderRadius: 8 }}
                         >
                           {t("mk.attended")}
                         </button>

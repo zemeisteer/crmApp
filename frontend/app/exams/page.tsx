@@ -718,7 +718,7 @@ function ExamsContent() {
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             {groupDetailStudents.map((s) => {
-              const barColor = s.avgPct >= 80 ? "#1FA463" : s.avgPct >= 60 ? "#EA7A3A" : "#B23A47";
+              const barColor = s.avgPct >= 80 ? "#16794A" : s.avgPct >= 60 ? "#B4531A" : "#B23A47";
               return (
                 <div key={s.fullName} style={{ border: "1px solid #EAE8E2", borderRadius: 12, padding: 14 }}>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
@@ -737,7 +737,7 @@ function ExamsContent() {
                           style={{
                             fontSize: 11.5, fontWeight: 700, padding: "4px 10px", borderRadius: 100,
                             background: passed === true ? "#E9F8EF" : passed === false ? "#FDEBEC" : "#F2F1EC",
-                            color: passed === true ? "#1FA463" : passed === false ? "#B23A47" : "#4A4E58",
+                            color: passed === true ? "#16794A" : passed === false ? "#B23A47" : "#4A4E58",
                           }}
                         >
                           {sc.title}: {sc.score}/{sc.maxScore}
