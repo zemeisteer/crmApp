@@ -122,6 +122,14 @@ export class CalendarController {
     return this.sync.disconnect(ownerOf(user).tenantId, user.sub);
   }
 
+  // "I have seen it": forgets the events that could not be removed from Google.
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(...ACCOUNT_ROLES)
+  @Delete('calendar/google/leftovers')
+  dismissLeftovers(@CurrentUser() user: JwtPayload) {
+    return this.sync.dismissLeftovers(ownerOf(user).tenantId, user.sub);
+  }
+
   // ---- the student's cabinet (student or parent viewing that student) ----
 
   @UseGuards(PortalAuthGuard)

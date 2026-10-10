@@ -351,6 +351,13 @@
       "when": 1795000000000,
       "tag": "0049_group_timetable_managed",
       "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1795100000000,
+      "tag": "0050_calendar_connection_epoch",
+      "breakpoints": true
     }
   ]
 }

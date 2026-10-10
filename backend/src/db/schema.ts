@@ -1889,7 +1889,20 @@ export const calendarConnections = pgTable('calendar_connections', {
   accessTokenEnc: text('access_token_enc'),
   refreshTokenEnc: text('refresh_token_enc'),
   tokenExpiresAt: timestamp('token_expires_at'),
-  status: text('status').notNull().default('ACTIVE'), // ACTIVE | NEEDS_RECONNECT
+  // ACTIVE | NEEDS_RECONNECT | DISCONNECTING (our events are still being
+  // removed from Google; retried) | CLEANUP_FAILED (the grant is gone and
+  // events were left behind: kept until the user has seen it).
+  status: text('status').notNull().default('ACTIVE'),
+  // The Google account the grant belongs to (its primary calendar's id).
+  // Reconnecting the same account keeps the chosen calendar and the events;
+  // another account starts clean.
+  accountKey: text('account_key'),
+  // Raised by every disconnect, reconnect and calendar switch. A sync that
+  // started before it stops at its next write.
+  epoch: integer('epoch').notNull().default(0),
+  // Events that could not be removed from an account that is no longer
+  // reachable (shown to the user, who removes them by hand).
+  leftoverEvents: integer('leftover_events').notNull().default(0),
   syncRequestedAt: timestamp('sync_requested_at'),
   nextAttemptAt: timestamp('next_attempt_at'),
   attempts: integer('attempts').notNull().default(0),

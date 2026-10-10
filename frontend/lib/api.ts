@@ -3667,7 +3667,8 @@ export interface CalendarFeedCreated extends CalendarFeedInfo {
 export interface GoogleCalendarStatus {
   configured: boolean;
   connection: null | {
-    status: "ACTIVE" | "NEEDS_RECONNECT" | string;
+    /** DISCONNECTING: our events are still being removed from Google. CLEANUP_FAILED: the grant is gone and events were left behind. */
+    status: "ACTIVE" | "NEEDS_RECONNECT" | "DISCONNECTING" | "CLEANUP_FAILED" | string;
     scope: CalendarScope;
     calendarId: string | null;
     calendarName: string | null;
@@ -3675,6 +3676,10 @@ export interface GoogleCalendarStatus {
     lastError: string | null;
     pending: boolean;
     nextAttemptAt: string | null;
+    /** While disconnecting or after a failed clean-up: the events still in Google, and their dates. */
+    cleanup?: { events: number; from: string | null; to: string | null } | null;
+    /** Events left in a Google account this connection was moved away from. */
+    leftoverEvents?: number;
   };
 }
 
@@ -3689,7 +3694,9 @@ export const calendarApi = {
   chooseGoogleCalendar: (calendarId: string) =>
     request<GoogleCalendarStatus>("/calendar/google", { method: "PATCH", body: JSON.stringify({ calendarId }) }),
   syncGoogle: () => request<GoogleCalendarStatus>("/calendar/google/sync", { method: "POST" }),
-  disconnectGoogle: () => request<{ removedEvents: number; notRemoved: number }>("/calendar/google", { method: "DELETE" }),
+  /** pending: still being removed in the background; notRemoved: cannot be removed by us (the grant is gone). */
+  disconnectGoogle: () => request<{ removedEvents: number; notRemoved: number; pending?: number }>("/calendar/google", { method: "DELETE" }),
+  dismissGoogleLeftovers: () => request<{ removedEvents: number; notRemoved: number; pending?: number }>("/calendar/google/leftovers", { method: "DELETE" }),
 };
 
 export const portalCalendarApi = {

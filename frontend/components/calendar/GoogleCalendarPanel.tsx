@@ -6,7 +6,7 @@ import LoadError from "@/components/LoadError";
 import { ApiError, calendarApi, type GoogleCalendarStatus } from "@/lib/api";
 import { useLanguage } from "@/lib/i18n-context";
 import type { TranslationKey } from "@/lib/i18n";
-import { formatDateTime } from "@/lib/format-date";
+import { formatDate, formatDateTime } from "@/lib/format-date";
 import { SCOPE_KEYS } from "./FeedLinkPanel";
 
 const ACCENT = "#4F46E5";
@@ -94,11 +94,21 @@ export default function GoogleCalendarPanel() {
     if (!window.confirm(t("cal.g.confirmDisconnect"))) return;
     void run("disconnect", () => calendarApi.disconnectGoogle(), (r) => {
       setCalendars(null);
-      setStatus((s) => (s ? { ...s, connection: null } : s));
-      const text = t("cal.g.disconnected").replace("{n}", String(r.removedEvents));
-      setMessage({ tone: "ok", text: r.notRemoved > 0 ? `${text} ${t("cal.g.notRemoved").replace("{n}", String(r.notRemoved))}` : text });
+      // Removed now, still being removed in the background, or left behind:
+      // the panel shows which (the connection may still exist).
+      const parts = [t("cal.g.disconnected").replace("{n}", String(r.removedEvents))];
+      if (r.pending) parts.push(t("cal.g.cleanupPending").replace("{n}", String(r.pending)));
+      if (r.notRemoved > 0) parts.push(t("cal.g.notRemoved").replace("{n}", String(r.notRemoved)));
+      setMessage({ tone: r.notRemoved > 0 ? "error" : "ok", text: parts.join(" ") });
+      reload();
     });
   };
+
+  const dismiss = () =>
+    run("dismiss", () => calendarApi.dismissGoogleLeftovers(), () => {
+      setMessage(null);
+      reload();
+    });
 
   const c = status?.connection ?? null;
   const calendarLabel = c ? c.calendarName || (c.calendarId === "primary" || !c.calendarId ? t("cal.g.primary") : c.calendarId) : "";
@@ -131,8 +141,36 @@ export default function GoogleCalendarPanel() {
               {busy === "connect" ? t("common.loading") : t("cal.g.connect")}
             </button>
           </div>
+        ) : c.status === "DISCONNECTING" || c.status === "CLEANUP_FAILED" ? (
+          <div style={{ display: "flex", flexDirection: "column", gap: 10, alignItems: "flex-start" }}>
+            <div role={c.status === "CLEANUP_FAILED" ? "alert" : "status"} style={{ background: c.status === "CLEANUP_FAILED" ? "#FDEBEC" : "#FFF7E6", color: c.status === "CLEANUP_FAILED" ? "#B23A47" : "#A15C00", fontSize: 13, fontWeight: 600, padding: "12px 14px", borderRadius: 10, lineHeight: 1.6 }}>
+              {(c.status === "CLEANUP_FAILED" ? t("cal.g.cleanupFailed") : t("cal.g.disconnecting")).replace("{n}", String(c.cleanup?.events ?? 0))}
+              {c.cleanup?.from && c.cleanup.to ? <div style={{ fontWeight: 500 }}>{t("cal.g.cleanupDates").replace("{from}", formatDate(c.cleanup.from, lang, "short")).replace("{to}", formatDate(c.cleanup.to, lang, "short"))}</div> : null}
+              {c.status === "DISCONNECTING" && c.lastError ? <div style={{ fontWeight: 500 }}>{t("cal.g.lastError")}: {c.lastError}{c.nextAttemptAt ? ` · ${t("cal.g.nextAttempt").replace("{date}", formatDateTime(c.nextAttemptAt, lang))}` : ""}</div> : null}
+            </div>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              {c.status === "CLEANUP_FAILED" ? (
+                <button type="button" className="btn" disabled={busy !== null} onClick={dismiss} style={{ ...btn, background: ACCENT, color: "#fff" }}>
+                  {busy === "dismiss" ? t("common.loading") : t("cal.g.understood")}
+                </button>
+              ) : (
+                <button type="button" className="btn" disabled={busy !== null} onClick={reload} style={{ ...btn, background: "#fff", color: "#181A1F", border: "1px solid #EAE8E2" }}>
+                  {t("cal.g.refresh")}
+                </button>
+              )}
+              <button type="button" className="btn" disabled={busy !== null} onClick={connect} style={{ ...btn, background: "#fff", color: "#181A1F", border: "1px solid #EAE8E2" }}>
+                {busy === "connect" ? t("common.loading") : t("cal.g.reconnect")}
+              </button>
+            </div>
+          </div>
         ) : (
           <>
+            {(c.leftoverEvents ?? 0) > 0 ? (
+              <div role="status" style={{ background: "#FFF7E6", color: "#A15C00", fontSize: 13, fontWeight: 600, padding: "12px 14px", borderRadius: 10, lineHeight: 1.6, display: "flex", gap: 10, alignItems: "center", justifyContent: "space-between", flexWrap: "wrap" }}>
+                <span>{t("cal.g.leftover").replace("{n}", String(c.leftoverEvents))}</span>
+                <button type="button" className="btn" disabled={busy !== null} onClick={dismiss} style={{ ...btn, background: "#fff", color: "#181A1F", border: "1px solid #EAE8E2" }}>{t("cal.g.understood")}</button>
+              </div>
+            ) : null}
             {c.status !== "ACTIVE" ? (
               <div role="alert" style={{ background: "#FFF7E6", color: "#A15C00", fontSize: 13, fontWeight: 600, padding: "12px 14px", borderRadius: 10, lineHeight: 1.5 }}>
                 {t("cal.g.needsReconnect")}
