@@ -131,7 +131,10 @@ describe('Chat across API instances (e2e)', () => {
     const fromB = await call(b, 'GET', `/api/portal/chat/conversations/${group}/messages`, cabinet, undefined, 200);
     expect(fromB.messages.map((m: { body: string }) => m.body)).toEqual(['A orqali', 'B orqali']);
 
-    // Each stream heard each message exactly once (no echo from the second instance).
+    // Each stream heard each message exactly once (no echo from the second
+    // instance): first all four have arrived, then a moment for a duplicate.
+    const heard = (s: { events: { event: string; data: { seq?: number } }[] }, seq: number) => s.events.some((e) => e.event === 'message' && e.data.seq === seq);
+    expect(await cabOnB.waitFor(() => heard(cabOnB, m2.seq) && heard(teacherOnA, m1.seq))).toBe(true);
     await new Promise((r) => setTimeout(r, 300));
     const count = (s: { events: { event: string; data: { seq?: number } }[] }, seq: number) => s.events.filter((e) => e.event === 'message' && e.data.seq === seq).length;
     expect([count(cabOnB, m1.seq), count(cabOnB, m2.seq), count(teacherOnA, m1.seq), count(teacherOnA, m2.seq)]).toEqual([1, 1, 1, 1]);

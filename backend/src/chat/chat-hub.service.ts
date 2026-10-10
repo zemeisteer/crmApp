@@ -118,19 +118,20 @@ export class ChatHub implements OnModuleInit, OnModuleDestroy {
 
   private async deliver(tenantId: string, conversationId: string, seq: number) {
     // (dropping a client while iterating is safe for a Map)
-    for (const s of [...this.subs.values()]) {
-      if (s.actor.tenantId !== tenantId) continue;
+    // Each client is checked on its own, side by side: one slow check does
+    // not hold the announcement back from the others.
+    await Promise.all([...this.subs.values()].filter((s) => s.actor.tenantId === tenantId).map(async (s) => {
       // Asked now, not remembered: a permission that ended a moment ago must
       // not let one more announcement through.
       const valid = await this.stillValid(s.actor, s.sid, s.iat).catch(() => false);
-      if (!this.subs.has(s.id)) continue;
+      if (!this.subs.has(s.id)) return;
       if (!valid) {
         this.write(s, 'revoked', {});
         this.drop(s);
-        continue;
+        return;
       }
       if (await this.chat.canRead(s.actor, conversationId).catch(() => false)) this.write(s, 'message', { conversationId, seq });
-    }
+    }));
   }
 
   private write(s: Subscriber, event: string, data: unknown) {

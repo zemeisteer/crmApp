@@ -2,9 +2,18 @@ name: CI
 
 on:
   push:
-    branches: [main, dev]
+    # Work branches too: a branch that is pushed but has no pull request yet
+    # (the usual state of a claude/* branch) ran no check at all.
+    branches: [main, dev, 'claude/**']
   pull_request:
     branches: [main, dev]
+  # And by hand, for any branch, from the Actions tab.
+  workflow_dispatch:
+
+# A newer push to the same branch replaces the run of the older one.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   backend:

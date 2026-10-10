@@ -17,7 +17,8 @@ test('payment: a double click and a retry after a lost reply each record one pay
     await page.getByRole('button', { name: "+ Yangi to'lov" }).click();
     const dialog = page.getByRole('dialog');
     await dialog.getByPlaceholder("Ism bo'yicha qidirish...").fill('Payment');
-    await dialog.getByRole('button', { name: /Payment Student/ }).click();
+    // The student is searched for on the server (the list is a listbox of options).
+    await dialog.getByRole('option', { name: /Payment Student/ }).click();
     await dialog.getByRole('group', { name: "Summa (so'm, chegirmasiz)" }).getByRole('spinbutton').fill(amount);
     return dialog;
   };

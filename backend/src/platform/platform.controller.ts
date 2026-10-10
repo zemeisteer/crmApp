@@ -48,9 +48,10 @@ export class PlatformController {
     return this.settings.list();
   }
 
-  // The password is checked on every save: a few tries a minute, so an open
-  // session cannot be used to guess it.
-  @Throttle({ default: { limit: 6, ttl: 60_000 } })
+  // The password is checked on every save: a dozen a minute is enough to set
+  // every integration up in one go, and far too few to guess a password with
+  // an open session.
+  @Throttle({ default: { limit: 12, ttl: 60_000 } })
   @Put('integrations/:id')
   saveIntegration(@CurrentUser('sub') userId: string, @Param('id') id: string, @Body() dto: SaveIntegrationDto) {
     return this.settings.save(userId, id, dto.password, dto.values);
