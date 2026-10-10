@@ -304,7 +304,9 @@ async function rows(url) {
   expect(twice === '23505', 'installments per month are allowed; one expense still belongs to one payout');
   let removed = '';
   await query(v34, "DELETE FROM expenses WHERE id = 'exP2'").catch((e) => { removed = e.code; });
-  expect(removed === '23503', "a payout's expense cannot be deleted from under it");
+  // ON DELETE RESTRICT: foreign_key_violation up to PostgreSQL 17,
+  // restrict_violation (23001) from PostgreSQL 18.
+  expect(removed === '23503' || removed === '23001', "a payout's expense cannot be deleted from under it");
   expect(/No schema drift/.test(drift(v34)), 'upgraded schema matches schema.ts');
   expect(/up to date/.test(runner(v34)), 're-running reports nothing to do');
 
