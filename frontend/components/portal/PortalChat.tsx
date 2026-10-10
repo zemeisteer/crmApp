@@ -4,12 +4,13 @@ import { useState } from "react";
 import ChatView from "@/components/chat/ChatView";
 import { portalChatApi } from "@/lib/api";
 import { useLanguage } from "@/lib/i18n-context";
+import { useVisualViewportHeight } from "@/lib/use-visual-viewport";
 import { TabTitle } from "./PortalTabs";
 
 // The cabinet fills the screen between its header and (phones) the bottom bar.
 const CSS = `
 .ptl-chat{height:min(760px, calc(100dvh - 170px));min-height:420px;display:flex;min-width:0}
-@media (max-width:760px){.ptl-chat{height:calc(100dvh - 250px);min-height:360px}}
+@media (max-width:760px){.ptl-chat{height:calc(var(--vvh,100dvh) - 250px);min-height:min(360px, calc(var(--vvh,100dvh) - 24px))}}
 `;
 
 /**
@@ -21,6 +22,8 @@ const CSS = `
 export default function PortalChat({ onUnread }: { onUnread: (n: number) => void }) {
   const { t } = useLanguage();
   const [selected, setSelected] = useState<string | null>(null);
+  // The chat box shrinks with a phone's keyboard, so the field stays above it.
+  useVisualViewportHeight();
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>

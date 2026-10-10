@@ -213,3 +213,17 @@ user, and a final verification. Not pushed (the brief forbids it); local commits
 - `POST /api/schedule/check-conflict`: group must be the asker's center's, a teacher asks
   about own groups only, student names only for schedule.edit + students.view.
 - Tests: `test/lesson-integrity.e2e-spec.ts` 18/18; related suites 13 files / 127.
+
+**Checkpoint 2: Google Calendar (task 4).** Commit `443dbd8`. Migration 0050. Mocked
+Google only: `test/calendar-google.e2e-spec.ts` 12/12, `calendar.e2e-spec.ts` 13/13.
+
+**Checkpoint 3: chat (task 5).**
+- An open stream is now checked when an announcement is about to go out (no cache):
+  chat.use removed, sign-out, session ended, switch to another center, guardian link
+  removed all close it with "revoked"; a teacher taken off a group hears nothing more.
+- A sender always announces through NOTIFY; clients get "resync" when the listener is back.
+- Phone keyboard: the chat is sized by the visible viewport (`--vvh`), viewport meta
+  `interactive-widget=resizes-content`. Checked at 375x420 in the browser pane; not on
+  a real phone.
+- Tests: `chat-instances.e2e-spec.ts` 8/8 (two instances, a streaming reverse proxy in
+  Node, a dropped LISTEN connection), `chat.e2e-spec.ts` 11/11.
