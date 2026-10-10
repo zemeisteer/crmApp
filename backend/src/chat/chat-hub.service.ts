@@ -6,6 +6,7 @@ import type { Request, Response } from 'express';
 import { Client } from 'pg';
 import { DB, Database } from '../db/db.module';
 import { organizationMemberships, sessions, studentGuardians, studentPortalPins, students } from '../db/schema';
+import { effectiveAccess } from '../access/catalog';
 import type { ChatActor } from './chat-access';
 import { ChatService } from './chat.service';
 
@@ -19,7 +20,6 @@ interface Subscriber {
   iat?: number;
   res: Response;
   heartbeat: NodeJS.Timeout;
-  allowed: Map<string, { ok: boolean; at: number }>;
 }
 
 /**
@@ -29,11 +29,22 @@ interface Subscriber {
  * checks access again. Messages are announced through PostgreSQL
  * NOTIFY, so every API instance tells its own clients.
  *
- * Before an event goes to a client its access to that conversation is
- * checked (cached a few seconds); every heartbeat re-checks the client
- * itself (staff: the session and the active membership; cabinet: the
- * student, the PIN, a parent's guardian link) and closes the stream when it
- * no longer holds.
+ * Before an event goes to a client two things are checked against the
+ * database, with no cache: that the client may still use chat at all
+ * (staff: the session, still on this center; the active membership; chat.use
+ * in the access list - cabinet: the student, the PIN, a parent's guardian
+ * link), and that it may read that conversation. A client that fails the
+ * first is told "revoked" and its stream is closed, so nothing is announced
+ * after a sign-out, a switch to another center, a removed permission or a
+ * removed link. The heartbeat makes the same check for streams that are
+ * idle.
+ *
+ * Losing the LISTEN connection loses whatever was announced meanwhile. A
+ * sender always announces through NOTIFY (which needs no listener), and
+ * tells its own clients directly while its listener is down; when the
+ * listener is back every client is told "resync" and fetches what it missed
+ * (the history is read by sequence number, so nothing is skipped or shown
+ * twice).
  */
 @Injectable()
 export class ChatHub implements OnModuleInit, OnModuleDestroy {
@@ -85,6 +96,9 @@ export class ChatHub implements OnModuleInit, OnModuleDestroy {
       await client.connect();
       await client.query(`LISTEN ${CHANNEL}`);
       this.listener = client;
+      // Back after a gap (or for the first time, with nobody connected yet):
+      // whatever was announced meanwhile is fetched by the clients.
+      for (const s of this.subs.values()) this.write(s, 'resync', {});
     } catch (err) {
       this.logger.warn(`chat listener could not start: ${(err as Error).message}`);
       await client.end().catch(() => undefined);
@@ -94,25 +108,28 @@ export class ChatHub implements OnModuleInit, OnModuleDestroy {
 
   private async publish(tenantId: string, conversationId: string, seq: number) {
     const payload = JSON.stringify({ t: tenantId, c: conversationId, s: seq });
-    if (this.listener) {
-      await this.db.execute(sql`select pg_notify(${CHANNEL}, ${payload})`);
-    } else {
-      // No listener (it is reconnecting): at least this instance's clients hear it.
-      await this.deliver(tenantId, conversationId, seq);
-    }
+    // NOTIFY goes out through the pool whether or not this instance is
+    // listening: the other instances must hear it either way.
+    const heardHere = !!this.listener;
+    await this.db.execute(sql`select pg_notify(${CHANNEL}, ${payload})`);
+    // This instance would not hear its own announcement: tell its clients directly.
+    if (!heardHere) await this.deliver(tenantId, conversationId, seq);
   }
 
   private async deliver(tenantId: string, conversationId: string, seq: number) {
     // (dropping a client while iterating is safe for a Map)
-    for (const s of this.subs.values()) {
+    for (const s of [...this.subs.values()]) {
       if (s.actor.tenantId !== tenantId) continue;
-      const cached = s.allowed.get(conversationId);
-      let ok = cached && Date.now() - cached.at < 5000 ? cached.ok : undefined;
-      if (ok === undefined) {
-        ok = await this.chat.canRead(s.actor, conversationId).catch(() => false);
-        s.allowed.set(conversationId, { ok, at: Date.now() });
+      // Asked now, not remembered: a permission that ended a moment ago must
+      // not let one more announcement through.
+      const valid = await this.stillValid(s.actor, s.sid, s.iat).catch(() => false);
+      if (!this.subs.has(s.id)) continue;
+      if (!valid) {
+        this.write(s, 'revoked', {});
+        this.drop(s);
+        continue;
       }
-      if (ok) this.write(s, 'message', { conversationId, seq });
+      if (await this.chat.canRead(s.actor, conversationId).catch(() => false)) this.write(s, 'message', { conversationId, seq });
     }
   }
 
@@ -138,8 +155,9 @@ export class ChatHub implements OnModuleInit, OnModuleDestroy {
   async stillValid(actor: ChatActor, sid?: string, iat?: number): Promise<boolean> {
     if (actor.kind === 'staff') {
       if (sid) {
-        const [s] = await this.db.select({ id: sessions.id }).from(sessions).where(and(eq(sessions.id, sid), eq(sessions.userId, actor.userId)));
-        if (!s) return false;
+        const [s] = await this.db.select({ id: sessions.id, tenantId: sessions.tenantId }).from(sessions).where(and(eq(sessions.id, sid), eq(sessions.userId, actor.userId)));
+        // Signed out, or the session moved to another center (a workspace switch keeps the session).
+        if (!s || (s.tenantId && s.tenantId !== actor.tenantId)) return false;
       }
       const [m] = await this.db.select({ status: organizationMemberships.status, role: organizationMemberships.role, access: organizationMemberships.access }).from(organizationMemberships)
         .where(and(eq(organizationMemberships.userId, actor.userId), eq(organizationMemberships.tenantId, actor.tenantId)));
@@ -147,7 +165,8 @@ export class ChatHub implements OnModuleInit, OnModuleDestroy {
       // Role or list changed meanwhile: later checks use the current ones.
       actor.role = m.role;
       actor.access = m.access;
-      return true;
+      // The page itself needs chat.use: without it there is no stream either.
+      return effectiveAccess(m.role, m.access).includes('chat.use');
     }
     const [row] = await this.db.select({ id: students.id, pin: studentPortalPins.updatedAt }).from(students)
       .leftJoin(studentPortalPins, eq(studentPortalPins.studentId, students.id))
@@ -175,7 +194,7 @@ export class ChatHub implements OnModuleInit, OnModuleDestroy {
     });
     res.flushHeaders?.();
     const s: Subscriber = {
-      id: randomUUID(), actor, sid: auth.sid, iat: auth.iat, res, allowed: new Map(),
+      id: randomUUID(), actor, sid: auth.sid, iat: auth.iat, res,
       heartbeat: setInterval(() => {
         void this.stillValid(actor, auth.sid, auth.iat).then((ok) => {
           if (!ok) {
@@ -183,7 +202,6 @@ export class ChatHub implements OnModuleInit, OnModuleDestroy {
             this.drop(s);
             return;
           }
-          s.allowed.clear();
           try {
             res.write(': ping\n\n');
           } catch {

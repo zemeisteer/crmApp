@@ -361,6 +361,12 @@ export default function ChatThread({
                   value={text}
                   onChange={(e) => onChange(e.target.value)}
                   onKeyDown={onKeyDown}
+                  // A phone's keyboard slides over the bottom of the page: once
+                  // it is up, bring the field (and the send button) back into view.
+                  onFocus={(e) => {
+                    const field = e.currentTarget;
+                    window.setTimeout(() => field.scrollIntoView({ block: "nearest" }), 300);
+                  }}
                   rows={2}
                   disabled={status !== "ready"}
                   placeholder={t("chat.placeholder")}

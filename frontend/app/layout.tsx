@@ -1,7 +1,17 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { AuthProvider } from "@/lib/auth-context";
 import { LanguageProvider } from "@/lib/i18n-context";
+
+// Where the browser supports it (Chrome and Firefox on Android), the page
+// itself is resized by the on-screen keyboard, so a field at the bottom of
+// a full-height screen (the chat) is never under it. iOS Safari ignores
+// this; lib/use-visual-viewport.ts covers it there.
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  interactiveWidget: "resizes-content",
+};
 
 export const metadata: Metadata = {
   title: "TalimCRM",
