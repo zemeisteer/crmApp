@@ -13,6 +13,7 @@ import { RolesGuard } from '../common/roles.guard';
 import { TrialGuard } from '../common/trial.guard';
 import { Roles } from '../common/roles.decorator';
 import { CurrentUser } from '../common/current-user.decorator';
+import type { JwtPayload } from '../common/jwt.strategy';
 import { ScheduleService } from './schedule.service';
 import { CreateRoomDto, UpdateRoomDto } from './dto/room.dto';
 import { CheckConflictDto, CreateScheduleDto, UpdateScheduleDto } from './dto/schedule.dto';
@@ -60,9 +61,11 @@ export class ScheduleController {
 
   // ==================== CONFLICT CHECK ====================
 
+  // Open to everyone who sees the timetable; the service checks the group
+  // and decides what the asker may read in the answer.
   @Post('check-conflict')
-  checkConflicts(@CurrentUser('tenantId') tenantId: string, @Body() dto: CheckConflictDto) {
-    return this.service.checkConflicts(tenantId, dto);
+  checkConflicts(@CurrentUser() user: JwtPayload, @Body() dto: CheckConflictDto) {
+    return this.service.checkConflicts(user.tenantId!, dto, { role: user.role, userId: user.sub, access: user.access });
   }
 
   // ==================== SCHEDULES ====================
@@ -92,25 +95,19 @@ export class ScheduleController {
 
   @Roles('ADMIN', 'TEACHER')
   @Post()
-  create(@CurrentUser('tenantId') tenantId: string, @CurrentUser('role') role: string, @CurrentUser('sub') userId: string, @Body() dto: CreateScheduleDto) {
-    return this.service.createSchedule(tenantId, dto, { role, userId });
+  create(@CurrentUser() user: JwtPayload, @Body() dto: CreateScheduleDto) {
+    return this.service.createSchedule(user.tenantId!, dto, { role: user.role, userId: user.sub, access: user.access });
   }
 
   @Roles('ADMIN', 'TEACHER')
   @Patch(':id')
-  update(
-    @CurrentUser('tenantId') tenantId: string,
-    @CurrentUser('role') role: string,
-    @CurrentUser('sub') userId: string,
-    @Param('id') id: string,
-    @Body() dto: UpdateScheduleDto,
-  ) {
-    return this.service.updateSchedule(tenantId, id, dto, { role, userId });
+  update(@CurrentUser() user: JwtPayload, @Param('id') id: string, @Body() dto: UpdateScheduleDto) {
+    return this.service.updateSchedule(user.tenantId!, id, dto, { role: user.role, userId: user.sub, access: user.access });
   }
 
   @Roles('ADMIN')
   @Delete(':id')
-  delete(@CurrentUser('tenantId') tenantId: string, @Param('id') id: string) {
-    return this.service.deleteSchedule(tenantId, id);
+  delete(@CurrentUser() user: JwtPayload, @Param('id') id: string) {
+    return this.service.deleteSchedule(user.tenantId!, id, { role: user.role, userId: user.sub, access: user.access });
   }
 }

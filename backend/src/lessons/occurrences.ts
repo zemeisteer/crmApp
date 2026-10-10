@@ -67,6 +67,7 @@ export async function lessonOccurrences(db: Executor, tenantId: string, from: st
   const groupRows = await db.select({
     id: groups.id, teacherId: groups.teacherId, branchId: groups.branchId, scheduleDays: groups.scheduleDays,
     startTime: groups.startTime, endTime: groups.endTime, startDate: groups.startDate, status: groups.status,
+    timetableManaged: groups.timetableManaged,
   }).from(groups).where(and(eq(groups.tenantId, tenantId), isNull(groups.deletedAt), groupIds ? inArray(groups.id, groupIds) : undefined));
   const live = groupRows.filter((g) => g.status !== 'COMPLETED' && g.status !== 'ARCHIVED');
   if (live.length === 0) return [];
@@ -80,10 +81,15 @@ export async function lessonOccurrences(db: Executor, tenantId: string, from: st
   const out: LessonOccurrence[] = [];
   for (const g of live) {
     const start = localDate(g.startDate);
-    const mine = rows.filter((r) => r.groupId === g.id && r.status !== 'CANCELLED');
+    const all = rows.filter((r) => r.groupId === g.id);
+    const mine = all.filter((r) => r.status !== 'CANCELLED');
     const weekly = mine.filter((r) => !r.date && r.dayOfWeek).sort((a, b) => a.startTime.localeCompare(b.startTime));
-    // Groups from before weekly rows existed: their own days and times.
-    const fallback = weekly.length === 0 && mine.every((r) => r.date) && g.startTime
+    // Groups from before weekly rows existed: their own days and times. Not
+    // a group the timetable manages: when its weekly rows are all cancelled
+    // (still stored) or were deleted (the flag remembers), it has no weekly
+    // lessons - the days on the group form must not bring them back.
+    const everWeekly = g.timetableManaged || all.some((r) => !r.date && r.dayOfWeek);
+    const fallback = !everWeekly && g.startTime
       ? isoWeekdaysOf(g.scheduleDays).map((dow) => ({ id: null as string | null, dayOfWeek: dow, startTime: g.startTime!, endTime: g.endTime || g.startTime!, teacherId: g.teacherId, roomId: null as string | null, branchId: g.branchId }))
       : [];
     const slots = weekly.length ? weekly : fallback;

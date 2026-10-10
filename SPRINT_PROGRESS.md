@@ -194,3 +194,22 @@ resumed. Verified by me after it finished:
   - backend e2e 50 files / 332, unit 320, oxlint clean;
   - frontend unit 55, tsc 0, lint 0 errors / 67 warnings;
   - browser 39/39, Google 1/1.
+
+## Stabilization sprint (local, started 2026-10-10 from `1130062`)
+
+Brief: fix the confirmed lesson bug, make the timetable and make-ups agree, tighten the
+conflict API, then Google Calendar, chat, custom fields, a walk through the site as a
+user, and a final verification. Not pushed (the brief forbids it); local commits only.
+
+**Checkpoint 1: lessons, timetable, make-ups, conflict API (tasks 1-3).**
+- Migration 0049 `groups.timetable_managed`.
+- A group whose weekly rows are all cancelled, or were deleted on the timetable, has no
+  weekly lessons any more. Only a group that never had a row keeps the days of its form.
+- Timetable edits now also update the group's own days and hours (the group form copy).
+- Clashes are checked from both sides (lesson vs make-up session, lesson vs a student's
+  make-up); one writer per center for timetable, cancellations and make-up bookings.
+- A make-up follows its lesson to a new time or is released (credit back); the page says so.
+- In a group with two lessons a day a make-up is bound to the chosen lesson.
+- `POST /api/schedule/check-conflict`: group must be the asker's center's, a teacher asks
+  about own groups only, student names only for schedule.edit + students.view.
+- Tests: `test/lesson-integrity.e2e-spec.ts` 18/18; related suites 13 files / 127.

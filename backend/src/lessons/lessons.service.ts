@@ -3,6 +3,7 @@ import { and, eq, gte, inArray, lte, ne, sql } from 'drizzle-orm';
 import { AuditService } from '../audit/audit.service';
 import { DB, Database } from '../db/db.module';
 import { groups, lessonCancellations, makeupBookings, makeupCredits } from '../db/schema';
+import { lockTimetable } from '../common/timetable-lock';
 import { CalendarChanges } from './calendar-changes';
 import { addDays, isDate, lessonOccurrences, lessonsOfGroupOn } from './occurrences';
 
@@ -41,9 +42,12 @@ export class LessonsService {
     if (!isDate(dto.date)) throw new BadRequestException("Sana noto'g'ri (YYYY-MM-DD)");
     const [group] = await this.db.select({ id: groups.id }).from(groups).where(and(eq(groups.id, dto.groupId), eq(groups.tenantId, tenantId)));
     if (!group) throw new NotFoundException('Guruh topilmadi');
-    const lessons = await lessonsOfGroupOn(this.db, tenantId, dto.groupId, dto.date, true);
-    if (lessons.filter((l) => l.kind === 'WEEKLY').length === 0) throw new BadRequestException("Bu kuni guruhning haftalik darsi yo'q");
     const result = await this.db.transaction(async (tx) => {
+      // After the lock, so that a make-up being booked into this lesson is
+      // either already there (and released below) or sees the cancellation.
+      await lockTimetable(tx, tenantId);
+      const lessons = await lessonsOfGroupOn(tx, tenantId, dto.groupId, dto.date, true);
+      if (lessons.filter((l) => l.kind === 'WEEKLY').length === 0) throw new BadRequestException("Bu kuni guruhning haftalik darsi yo'q");
       const [row] = await tx.insert(lessonCancellations)
         .values({ tenantId, groupId: dto.groupId, date: dto.date, reason: dto.reason?.trim().slice(0, 300) || null, cancelledByUserId: userId })
         .onConflictDoNothing().returning();
@@ -66,12 +70,16 @@ export class LessonsService {
 
   /** Puts a cancelled lesson back - unless make-up credits were issued for it. */
   async restore(tenantId: string, userId: string, id: string) {
-    const [row] = await this.db.select().from(lessonCancellations).where(and(eq(lessonCancellations.id, id), eq(lessonCancellations.tenantId, tenantId)));
-    if (!row) throw new NotFoundException('Topilmadi');
-    const [{ n }] = await this.db.select({ n: sql<number>`count(*)::int` }).from(makeupCredits)
-      .where(and(eq(makeupCredits.tenantId, tenantId), eq(makeupCredits.originGroupId, row.groupId), eq(makeupCredits.originDate, row.date), eq(makeupCredits.reason, 'LESSON_CANCELLED'), ne(makeupCredits.status, 'CANCELLED')));
-    if (n > 0) throw new ConflictException({ code: 'CREDITS_ISSUED', message: "Bu dars uchun qoplash kreditlari berilgan: avval ularni bekor qiling" });
-    await this.db.delete(lessonCancellations).where(and(eq(lessonCancellations.id, id), eq(lessonCancellations.tenantId, tenantId)));
+    const row = await this.db.transaction(async (tx) => {
+      await lockTimetable(tx, tenantId);
+      const [found] = await tx.select().from(lessonCancellations).where(and(eq(lessonCancellations.id, id), eq(lessonCancellations.tenantId, tenantId)));
+      if (!found) throw new NotFoundException('Topilmadi');
+      const [{ n }] = await tx.select({ n: sql<number>`count(*)::int` }).from(makeupCredits)
+        .where(and(eq(makeupCredits.tenantId, tenantId), eq(makeupCredits.originGroupId, found.groupId), eq(makeupCredits.originDate, found.date), eq(makeupCredits.reason, 'LESSON_CANCELLED'), ne(makeupCredits.status, 'CANCELLED')));
+      if (n > 0) throw new ConflictException({ code: 'CREDITS_ISSUED', message: "Bu dars uchun qoplash kreditlari berilgan: avval ularni bekor qiling" });
+      await tx.delete(lessonCancellations).where(and(eq(lessonCancellations.id, id), eq(lessonCancellations.tenantId, tenantId)));
+      return found;
+    });
     this.audit.log({ tenantId, userId, action: 'lesson.restore', entityType: 'group', entityId: row.groupId, meta: { date: row.date } });
     await this.changes.touch(tenantId);
     return { success: true };
