@@ -91,8 +91,9 @@ export default function ChatView({
     loadList();
     const stream = client.stream({
       onEvent: (e) => {
-        if (e.event === "ready") {
-          // Connected (again): whatever came while not connected is fetched now.
+        if (e.event === "ready" || e.event === "resync") {
+          // Connected (again), or the server lost its own feed for a moment:
+          // whatever came meanwhile is fetched now.
           scheduleList();
           setLive({ conversationId: "*", seq: 0, n: ++signals.current });
           return;

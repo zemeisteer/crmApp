@@ -8,12 +8,13 @@ import { chatApi } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { claimLiveUnread, setChatUnread } from "@/lib/chat-unread";
 import { useLanguage } from "@/lib/i18n-context";
+import { useVisualViewportHeight } from "@/lib/use-visual-viewport";
 
 // The page fills the screen; the list and the conversation scroll inside it.
 // (Phones: 56 px of the shell's top bar.)
 const CSS = `
-.chat-page{height:100dvh;display:flex;flex-direction:column;min-height:0;box-sizing:border-box}
-@media (max-width:768px){.chat-page{height:calc(100dvh - 56px)}}
+.chat-page{height:var(--vvh,100dvh);display:flex;flex-direction:column;min-height:0;box-sizing:border-box}
+@media (max-width:768px){.chat-page{height:calc(var(--vvh,100dvh) - 56px)}}
 `;
 
 function MessagesContent() {
@@ -28,6 +29,8 @@ function MessagesContent() {
   const sessionKey = user && tenant ? `${user.id}:${tenant.id}` : null;
 
   useEffect(() => claimLiveUnread(), []);
+  // On a phone the page shrinks with the keyboard, so the field stays above it.
+  useVisualViewportHeight();
 
   const onUnread = useCallback((n: number) => {
     if (sessionKey) setChatUnread(sessionKey, n);
