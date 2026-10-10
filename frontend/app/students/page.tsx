@@ -37,14 +37,14 @@ function StudentsContent() {
   const [modalOpen, setModalOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  // The search and the page live in the address (?q=…&page=…), so going back
+  // The search, the filters and the page live in the address (?q=…&group=…&page=…), so going back
   // from a profile, or reloading, returns to the same page of the list.
   const searchParams = useSearchParams();
   const [searchInput, setSearchInput] = useState(() => searchParams.get("q") ?? "");
   const [search, setSearch] = useState(() => (searchParams.get("q") ?? "").trim());
-  const [filterDirection, setFilterDirection] = useState("");
-  const [filterGroupId, setFilterGroupId] = useState("");
-  const [filterGender, setFilterGender] = useState("");
+  const [filterDirection, setFilterDirection] = useState(() => searchParams.get("direction") ?? "");
+  const [filterGroupId, setFilterGroupId] = useState(() => searchParams.get("group") ?? "");
+  const [filterGender, setFilterGender] = useState(() => searchParams.get("gender") ?? "");
   const [page, setPage] = useState(() => parsePageParam(searchParams.get("page")));
   // Bumped after a change (new student, import) to load the current page again.
   const [reloadKey, setReloadKey] = useState(0);
@@ -161,10 +161,10 @@ function StudentsContent() {
 
   // Keep the address in step with the list (no new history entry per page).
   useEffect(() => {
-    const qs = pageQuery({ q: search, page: page > 1 ? page : undefined });
+    const qs = pageQuery({ q: search, direction: filterDirection, group: filterGroupId, gender: filterGender, page: page > 1 ? page : undefined });
     if (window.location.search !== qs) window.history.replaceState(null, "", `${window.location.pathname}${qs}`);
     rememberListQuery("students", qs);
-  }, [search, page]);
+  }, [search, page, filterDirection, filterGroupId, filterGender]);
 
   function reload() {
     setReloadKey((k) => k + 1);

@@ -38,10 +38,13 @@ export class StudentsController {
     @Query('groupId') groupId?: unknown,
     @Query('direction') direction?: unknown,
     @Query('gender') gender?: unknown,
+    // Only these students (comma-separated ids): the names and groups behind
+    // a page of payments or invoices, without loading every student.
+    @Query('ids') ids?: unknown,
   ) {
     return this.service.findAll(
       tenantId,
-      { status, branchId, search, groupId, direction, gender, page: page ? Number(page) || 1 : undefined, pageSize: pageSize ? Number(pageSize) : undefined },
+      { status, branchId, search, groupId, direction, gender, ids, page: page ? Number(page) || 1 : undefined, pageSize: pageSize ? Number(pageSize) : undefined },
       { role, userId },
     );
   }
