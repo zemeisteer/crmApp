@@ -2548,12 +2548,23 @@ export interface Room {
   updatedAt: string;
 }
 
+/** Make-ups booked into a lesson that changed: how many followed it, how many were released. */
+export interface MakeupReconcile {
+  moved: number;
+  released: number;
+}
+
 export interface ScheduleConflict {
-  type: "ROOM" | "TEACHER" | "GROUP" | "STUDENT";
+  /** MAKEUP: the teacher or the room is taken by a make-up session. */
+  type: "ROOM" | "TEACHER" | "GROUP" | "STUDENT" | "MAKEUP";
+  /** Named only for those who plan the timetable and may see students; otherwise the count alone. */
   studentNames?: string[];
   studentCount?: number;
+  /** STUDENT: the other lesson is the student's make-up. */
+  makeup?: boolean;
   message: string;
-  conflictingScheduleId: string;
+  /** null when a make-up booking is in the way, not a timetable row. */
+  conflictingScheduleId: string | null;
   groupName?: string;
   roomName?: string;
   teacherName?: string;
@@ -2658,8 +2669,8 @@ export const scheduleApi = {
   create: (data: CreateScheduleInput) =>
     request<ScheduleItem>("/schedule", { method: "POST", body: JSON.stringify(data) }),
   update: (id: string, data: UpdateScheduleInput) =>
-    request<ScheduleItem>(`/schedule/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
-  remove: (id: string) => request<{ success: boolean }>(`/schedule/${id}`, { method: "DELETE" }),
+    request<ScheduleItem & { makeups?: MakeupReconcile }>(`/schedule/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
+  remove: (id: string) => request<{ success: boolean; makeups?: MakeupReconcile }>(`/schedule/${id}`, { method: "DELETE" }),
 };
 
 // ---- Student & Parent Portal (Spec Section 23 & 31) ----
@@ -3600,7 +3611,7 @@ export interface MakeupRosterItem {
 }
 
 export type MakeupBookInput =
-  | { mode: "GROUP_LESSON"; targetGroupId: string; date: string; note?: string }
+  | { mode: "GROUP_LESSON"; targetGroupId: string; date: string; /** Which lesson of that day (a group may have two). */ startTime?: string; note?: string }
   | { mode: "SESSION"; date: string; startTime: string; endTime: string; teacherId: string; roomId?: string; note?: string };
 
 export const makeupsApi = {

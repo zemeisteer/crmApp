@@ -417,6 +417,11 @@ export const groups = pgTable('groups', {
   // Lesson end, "17:30". Weekly timetable rows are generated from
   // scheduleDays + startTime/endTime (see GroupsService.syncWeeklyLessons).
   endTime: text('end_time'),
+  // True once the group's weekly lessons live in the timetable (schedules
+  // rows). Only a group from before that - false, and no weekly row at all -
+  // still takes its lessons from scheduleDays; a group whose timetable rows
+  // were cancelled or deleted on purpose has no weekly lessons.
+  timetableManaged: boolean('timetable_managed').notNull().default(false),
   monthlyPrice: integer('monthly_price').notNull().default(0),
   description: text('description'),
   durationMonths: integer('duration_months'),
