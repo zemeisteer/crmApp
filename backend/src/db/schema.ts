@@ -743,6 +743,17 @@ export const platformSubscriptions = pgTable('platform_subscriptions', {
   uniq: uniqueIndex('platform_subs_tenant_month_idx').on(t.tenantId, t.forMonth),
 }));
 
+// Integration keys the platform admin enters in the panel (AI, Telegram,
+// payment providers...). The value is sealed with AES-256-GCM under
+// SETTINGS_KEY, which lives only in the server's environment: a copy of the
+// database alone gives nobody a key. A row overrides the same name in .env.
+export const platformSettings = pgTable('platform_settings', {
+  key: text('key').primaryKey(),
+  value: text('value').notNull(), // sealed: "v1.<iv>.<tag>.<ciphertext>"
+  updatedBy: text('updated_by').references(() => users.id, { onDelete: 'set null' }),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
 export const exams = pgTable('exams', {
   id: text('id').primaryKey().$defaultFn(() => createId()),
   tenantId: text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),

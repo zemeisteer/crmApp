@@ -2076,6 +2076,114 @@ export const plansApi = {
   update: (id: string, data: Partial<{ name: string; price: number; features: string; featuresRu: string; featuresEn: string; popular: boolean; active: boolean }>) =>
     request<Plan>(`/plans/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
   remove: (id: string) => request<{ success: boolean }>(`/plans/${id}`, { method: "DELETE" }),
+  /** The Uzbek feature list in Russian and English (for the form to fill in). */
+  translate: (features: string) =>
+    request<{ featuresRu: string; featuresEn: string; provider: "ai" | "google" | "google-public" }>("/plans/translate", { method: "POST", body: JSON.stringify({ features }) }),
+};
+
+// ---- Platform admin (SUPERADMIN): dashboard, subscriptions, integrations ----
+
+export type TenantStatus = "TRIAL" | "ACTIVE" | "PAST_DUE" | "SUSPENDED";
+
+export interface PlatformCenterRef {
+  id: string;
+  name: string;
+  subdomain: string;
+}
+
+export interface PlatformDashboard {
+  month: string;
+  centers: { total: number; newThisMonth: number; byStatus: Record<TenantStatus, number> };
+  students: number;
+  users: number;
+  /** What the active centers' tariffs add up to for a month. */
+  mrr: number;
+  paidThisMonth: number;
+  paymentsThisMonth: number;
+  plans: Array<{ key: string; name: string; price: number; active: boolean; centers: number; activeCenters: number }>;
+  signups: Array<{ month: string; count: number }>;
+  revenue: Array<{ month: string; amount: number }>;
+  trialsEnding: { count: number; items: Array<PlatformCenterRef & { daysLeft: number; trialEndsAt: string }> };
+  trialsExpired: { count: number; items: Array<PlatformCenterRef & { daysLeft: number; trialEndsAt: string }> };
+  unpaid: { count: number; amount: number; items: Array<PlatformCenterRef & { plan: string; price: number; lastPaidMonth: string | null }> };
+  recentPayments: Array<{ id: string; tenantId: string; name: string; plan: string; amount: number; forMonth: string; provider: "CLICK" | "PAYME" | null; paidAt: string | null }>;
+}
+
+export interface PlatformSubscription extends PlatformCenterRef {
+  plan: string;
+  planName: string;
+  price: number;
+  status: TenantStatus;
+  trialEndsAt: string | null;
+  createdAt: string;
+  lastPaidMonth: string | null;
+  totalPaid: number;
+  /** null: a free tariff, nothing to pay. */
+  paidThisMonth: boolean | null;
+  /** Days the trial or the paid month still runs; negative: overdue; null: free tariff. */
+  daysLeft: number | null;
+}
+
+export interface PlatformPayment {
+  id: string;
+  plan: string;
+  amount: number;
+  forMonth: string;
+  status: "CREATED" | "PENDING" | "PAID" | "FAILED" | "CANCELLED";
+  provider: "CLICK" | "PAYME" | null;
+  paidAt: string | null;
+  createdAt: string;
+}
+
+export interface PlatformIntegrationKey {
+  name: string;
+  /** A secret's value never leaves the server: `shown` is then only its last characters. */
+  secret: boolean;
+  set: boolean;
+  /** Entered in the panel (stored sealed), read from the server's .env, or not set. */
+  source: "panel" | "env" | null;
+  shown: string | null;
+}
+
+export interface PlatformIntegration {
+  id: string;
+  group: "ai" | "messaging" | "payments" | "other";
+  configured: boolean;
+  /** Read once at start-up: a change takes effect after the server restarts. */
+  restart: boolean;
+  detail: string | null;
+  keys: PlatformIntegrationKey[];
+}
+
+export interface PlatformIntegrations {
+  environment: string;
+  rootDomain: string | null;
+  /** false: the server has no SETTINGS_KEY, so nothing can be stored from the panel. */
+  editable: boolean;
+  items: PlatformIntegration[];
+}
+
+export const platformApi = {
+  dashboard: () => request<PlatformDashboard>("/platform/dashboard"),
+  subscriptions: (query: { search?: string; status?: string; plan?: string; page?: number; pageSize?: number } = {}) => {
+    const q = new URLSearchParams();
+    if (query.search) q.set("search", query.search);
+    if (query.status) q.set("status", query.status);
+    if (query.plan) q.set("plan", query.plan);
+    if (query.page) q.set("page", String(query.page));
+    if (query.pageSize) q.set("pageSize", String(query.pageSize));
+    const qs = q.toString();
+    return request<{ month: string; page: number; pageSize: number; total: number; items: PlatformSubscription[] }>(`/platform/subscriptions${qs ? `?${qs}` : ""}`);
+  },
+  updateSubscription: (tenantId: string, data: { plan?: string; status?: TenantStatus; trialEndsAt?: string | null }) =>
+    request<{ id: string; plan: string; status: TenantStatus; trialEndsAt: string | null }>(`/platform/subscriptions/${tenantId}`, { method: "PATCH", body: JSON.stringify(data) }),
+  payments: (tenantId: string) => request<PlatformPayment[]>(`/platform/subscriptions/${tenantId}/payments`),
+  recordPayment: (tenantId: string, data: { forMonth: string; plan?: string; amount?: number }) =>
+    request<PlatformPayment>(`/platform/subscriptions/${tenantId}/payments`, { method: "POST", body: JSON.stringify(data) }),
+  integrations: () => request<PlatformIntegrations>("/platform/integrations"),
+  /** A value of null removes the stored key (the name goes back to .env). The admin's password is asked every time. */
+  saveIntegration: (id: string, password: string, values: Record<string, string | null>) =>
+    request<PlatformIntegration & { restartNeeded: boolean }>(`/platform/integrations/${id}`, { method: "PUT", body: JSON.stringify({ password, values }) }),
 };
 
 // ---- Webhooks ----

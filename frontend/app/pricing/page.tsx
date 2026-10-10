@@ -193,6 +193,33 @@ function SuperadminPlans() {
   const [popular, setPopular] = useState(false);
   const [active, setActive] = useState(true);
   const [saving, setSaving] = useState(false);
+  // The Russian and English lists are translated from the Uzbek one: by the
+  // button, or on save when either is still empty.
+  const [translating, setTranslating] = useState(false);
+  const [translateNote, setTranslateNote] = useState<{ text: string; error?: boolean } | null>(null);
+
+  async function translateFeatures(onlyEmpty: boolean): Promise<{ ru: string; en: string }> {
+    const res = await plansApi.translate(features);
+    const ru = onlyEmpty && featuresRu.trim() ? featuresRu : res.featuresRu;
+    const en = onlyEmpty && featuresEn.trim() ? featuresEn : res.featuresEn;
+    setFeaturesRu(ru);
+    setFeaturesEn(en);
+    setTranslateNote({ text: t(res.provider === "ai" ? "pr.translatedBy.ai" : "pr.translatedBy.google") });
+    return { ru, en };
+  }
+
+  async function onTranslate() {
+    if (!features.trim()) return setTranslateNote({ text: t("pr.translateFirst"), error: true });
+    setTranslating(true);
+    setTranslateNote(null);
+    try {
+      await translateFeatures(false);
+    } catch (err) {
+      setTranslateNote({ text: err instanceof ApiError ? err.message : t("common.errorGeneric"), error: true });
+    } finally {
+      setTranslating(false);
+    }
+  }
 
   function load() {
     setLoading(true);
@@ -209,6 +236,7 @@ function SuperadminPlans() {
     setFeatures("");
     setFeaturesRu("");
     setFeaturesEn("");
+    setTranslateNote(null);
     setPopular(false);
     setActive(true);
     setEditOpen(true);
@@ -222,6 +250,7 @@ function SuperadminPlans() {
     setFeatures(p.features);
     setFeaturesRu(p.featuresRu ?? "");
     setFeaturesEn(p.featuresEn ?? "");
+    setTranslateNote(null);
     setPopular(p.popular);
     setActive(p.active);
     setEditOpen(true);
@@ -232,10 +261,21 @@ function SuperadminPlans() {
     setSaving(true);
     setError(null);
     try {
+      // A list left empty is translated now; when the translator does not
+      // answer the tariff is still saved (the site then shows the Uzbek list).
+      let ru = featuresRu;
+      let en = featuresEn;
+      if (features.trim() && (!ru.trim() || !en.trim())) {
+        try {
+          ({ ru, en } = await translateFeatures(true));
+        } catch {
+          /* saved without a translation */
+        }
+      }
       if (editing) {
-        await plansApi.update(editing.id, { name, price: Number(price), features, featuresRu, featuresEn, popular, active });
+        await plansApi.update(editing.id, { name, price: Number(price), features, featuresRu: ru, featuresEn: en, popular, active });
       } else {
-        await plansApi.create({ key, name, price: Number(price), features, featuresRu, featuresEn, popular, active });
+        await plansApi.create({ key, name, price: Number(price), features, featuresRu: ru, featuresEn: en, popular, active });
       }
       setEditOpen(false);
       load();
@@ -362,6 +402,23 @@ function SuperadminPlans() {
           <div>
             <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>{t("pricing.fieldFeatures")}</div>
             <textarea className="field-input" rows={4} value={features} onChange={(e) => setFeatures(e.target.value)} placeholder={"Cheksiz o'quvchi\nAI tahlil"} style={{ resize: "vertical" }} />
+            <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginTop: 8 }}>
+              <button
+                type="button"
+                className="btn"
+                onClick={onTranslate}
+                disabled={translating || saving}
+                style={{ background: "#EEF0FF", color: ACCENT, border: "1px solid #D9DBFA", fontSize: 12.5, fontWeight: 700, padding: "7px 12px", borderRadius: 9, cursor: translating ? "wait" : "pointer" }}
+              >
+                {translating ? t("pr.translating") : `✨ ${t("pr.autoTranslate")}`}
+              </button>
+              <span style={{ fontSize: 11.5, color: "#686B75", lineHeight: 1.5, flex: 1, minWidth: 180 }}>{t("pr.translateHint")}</span>
+            </div>
+            {translateNote && (
+              <div role={translateNote.error ? "alert" : "status"} style={{ fontSize: 12, fontWeight: 600, marginTop: 8, padding: "7px 10px", borderRadius: 8, background: translateNote.error ? "#FDEBEC" : "#E9F8EF", color: translateNote.error ? "#B23A47" : "#16794A" }}>
+                {translateNote.text}
+              </div>
+            )}
           </div>
           <div>
             <label htmlFor="plan-features-ru" style={{ display: "block", fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>{t("pricing.fieldFeaturesRu")}</label>

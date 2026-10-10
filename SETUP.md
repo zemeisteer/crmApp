@@ -189,6 +189,8 @@ Uch integratsiya **kodi tayyor, lekin real kalitlarsiz ishlamaydi** (`.env`ga qi
 - **Click/Payme** (markaz o'z o'quvchilaridan, va markaz platformadan) — merchant kabinetdagi ID/kalitlarni `.env`ga yozing. **Real pul bilan ishlaydi — production'ga chiqarishdan oldin sandbox'da sinab ko'ring.**
 - **AI xususiyatlar** (tahlil, materiallar, daraja testi) — `GEMINI_API_KEY` (bepul, aistudio.google.com) yoki `ANTHROPIC_API_KEY` (console.anthropic.com). Ikkalasi bo'lsa Claude ishlatiladi.
 
+Bu kalitlarni `.env` o'rniga platforma admini panelidan ham kiritish mumkin: **API va integratsiyalar** → **Sozlash**. Qiymatlar bazada `SETTINGS_KEY` bilan shifrlanib saqlanadi (`backend/.env`da bo'lishi shart: `node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"`), panelda kiritilgan qiymat `.env`dagidan ustun turadi, maxfiy qiymatlar qaytarib ko'rsatilmaydi. Har bir o'zgarishda admin paroli so'raladi. Email, Telegram, Google Calendar va Sentry kalitlari o'zgargach backendni qayta ishga tushirish kerak; qolganlari darhol kuchga kiradi.
+
 Domen sotib olish va DNS sozlash (`*.talimcrm.uz` wildcard, HTTPS) — bu Claude Code tomonidan bajarib bo'lmaydigan yagona bosqich, qo'lda amalga oshirilishi kerak.
 
 Dizayn-makketlar: `https://claude.ai/artifact/8KSxnc3d5eN1g71UTucyS5`.
