@@ -117,6 +117,9 @@ services:
       # Google Calendar stays off until all three GOOGLE_* are set.
       PUBLIC_API_URL: ${PUBLIC_API_URL:-}
       CALENDAR_TOKEN_KEY: ${CALENDAR_TOKEN_KEY:-}
+      # Integration keys entered in the platform admin's panel are sealed with
+      # SETTINGS_KEY (base64, 32 bytes); without it that page is read-only.
+      SETTINGS_KEY: ${SETTINGS_KEY:-}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
       GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI:-}

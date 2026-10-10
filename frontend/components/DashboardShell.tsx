@@ -5,7 +5,7 @@ import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
 import { useLanguage } from "@/lib/i18n-context";
-import Sidebar, { canOpenPath, isPlatformMode } from "./Sidebar";
+import Sidebar, { canOpenPath, isPlatformMode, PLATFORM_HOME } from "./Sidebar";
 
 const ACCENT = "#4F46E5";
 
@@ -74,7 +74,7 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
   const platformMode = isPlatformMode(user?.role, !!tenant);
   const misplaced = platformMode && !canOpenPath(pathname, user?.role, false, user?.access);
   useEffect(() => {
-    if (misplaced) router.replace("/admin");
+    if (misplaced) router.replace(PLATFORM_HOME);
   }, [misplaced, router]);
 
   if (loading) {

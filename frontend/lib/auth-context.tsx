@@ -138,7 +138,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       (res.user.role === "STUDENT" || res.user.role === "PARENT"
         ? "/portal"
         : res.user.role === "SUPERADMIN" && !res.tenant
-          ? "/admin"
+          ? "/admin/overview"
           : "/dashboard");
     // New centers finish onboarding first (their address may still change).
     if (destination.startsWith("/onboarding")) {

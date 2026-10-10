@@ -303,11 +303,35 @@ const SUPERADMIN_ITEM = {
 
 // The platform superadmin outside any center: only what runs the platform.
 // (Inside a center opened with "Ochish" the center's own menu is shown.)
-const PLATFORM_ITEMS = [
+const PLATFORM_ITEMS: Array<{ href: string; labelKey: TranslationKey; icon: React.ReactNode; exact?: boolean }> = [
   {
+    href: "/admin/overview",
+    labelKey: "nav.platformDashboard" as TranslationKey,
+    icon: (
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3" y="3" width="7" height="9" rx="1.5" />
+        <rect x="14" y="3" width="7" height="5" rx="1.5" />
+        <rect x="14" y="12" width="7" height="9" rx="1.5" />
+        <rect x="3" y="16" width="7" height="5" rx="1.5" />
+      </svg>
+    ),
+  },
+  {
+    // "/admin" itself is the centers list; the pages under it have their own items.
     href: "/admin",
+    exact: true,
     labelKey: "nav.centers" as TranslationKey,
     icon: SUPERADMIN_ITEM.icon,
+  },
+  {
+    href: "/admin/subscriptions",
+    labelKey: "nav.subscriptions" as TranslationKey,
+    icon: (
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="2" y="5" width="20" height="14" rx="2" />
+        <path d="M2 10h20M6 15h4" />
+      </svg>
+    ),
   },
   {
     href: "/pricing",
@@ -319,7 +343,19 @@ const PLATFORM_ITEMS = [
       </svg>
     ),
   },
+  {
+    href: "/admin/integrations",
+    labelKey: "nav.integrations" as TranslationKey,
+    icon: (
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M9 2v6M15 2v6M6 8h12v4a6 6 0 0 1-12 0V8ZM12 18v4" />
+      </svg>
+    ),
+  },
 ];
+
+/** The platform admin's home page (after sign-in, and from any page they cannot open). */
+export const PLATFORM_HOME = "/admin/overview";
 
 /** True for the superadmin while no center is opened. */
 export function isPlatformMode(role?: Role, hasCenter?: boolean) {
@@ -484,7 +520,7 @@ export default function Sidebar({ open, onClose }: { open?: boolean; onClose?: (
         }}
       >
         {isPlatformMode(user?.role, !!tenant) && PLATFORM_ITEMS.map((item) => {
-          const active = pathname === item.href || pathname.startsWith(item.href + "/");
+          const active = pathname === item.href || (!item.exact && pathname.startsWith(item.href + "/"));
           return (
             <Link key={item.href} href={item.href} data-active={active} className="nav-item" style={active ? { background: ACCENT, color: "#fff" } : { color: "#C7C9D1" }}>
               {item.icon}
