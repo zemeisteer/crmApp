@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import DashboardShell from "@/components/DashboardShell";
 import LoadError from "@/components/LoadError";
 import RoomsManager from "@/components/schedule/RoomsManager";
+import QuickAddLesson, { type QuickAddPrefill } from "@/components/schedule/QuickAddLesson";
 import Select from "@/components/Select";
 import TimePicker from "@/components/TimePicker";
 import { useAuth } from "@/lib/auth-context";
@@ -81,6 +82,23 @@ export default function SchedulePage() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState("");
+
+  // The "+" of a day opens a small form beside that day.
+  const [quickAdd, setQuickAdd] = useState<{ day: number; anchor: DOMRect } | null>(null);
+  // A lesson is moved to another day by dragging its card there; the move
+  // happens only when the room, the teacher, the group and its students are
+  // all free at that time.
+  const canEdit = can(user, "schedule.edit");
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [dropDay, setDropDay] = useState<number | null>(null);
+  const [movingId, setMovingId] = useState<string | null>(null);
+  const [moveBlocked, setMoveBlocked] = useState<{ item: ScheduleItem; day: number; conflicts: ScheduleConflict[] } | null>(null);
+  const [notice, setNotice] = useState<{ text: string; error?: boolean; undo?: () => void } | null>(null);
+  useEffect(() => {
+    if (!notice) return;
+    const timer = setTimeout(() => setNotice(null), 7000);
+    return () => clearTimeout(timer);
+  }, [notice]);
 
   // Room Form state
 
@@ -174,16 +192,49 @@ export default function SchedulePage() {
     };
   }, [showAddModal, groupId, teacherId, roomId, dayOfWeek, startTime, endTime, editingItem, conflictRetry, t]);
 
-  function openCreateModal(defaultDay?: number) {
+  const dayLabel = (d: number) => t(DAYS_OF_WEEK[d - 1].labelKey);
+
+  async function moveLesson(item: ScheduleItem, day: number, isUndo = false) {
+    const from = item.dayOfWeek ?? 1;
+    if (from === day) return;
+    setMovingId(item.id);
+    try {
+      const check = await scheduleApi.checkConflicts({
+        groupId: item.groupId,
+        teacherId: item.teacherId || undefined,
+        roomId: item.roomId || undefined,
+        dayOfWeek: day,
+        startTime: item.startTime,
+        endTime: item.endTime,
+        excludeScheduleId: item.id,
+      });
+      if (check.conflicts.length > 0) {
+        setMoveBlocked({ item, day, conflicts: check.conflicts });
+        return;
+      }
+      await scheduleApi.update(item.id, { dayOfWeek: day });
+      setSchedules((prev) => prev.map((s) => (s.id === item.id ? { ...s, dayOfWeek: day } : s)));
+      setNotice({
+        text: `${item.group?.name ?? t("schedule.group")} (${item.startTime}–${item.endTime}): ${dayLabel(from)} → ${dayLabel(day)}`,
+        undo: isUndo ? undefined : () => moveLesson({ ...item, dayOfWeek: day }, from, true),
+      });
+    } catch (err) {
+      setNotice({ text: err instanceof ApiError ? err.message : t("msg.saveError"), error: true });
+    } finally {
+      setMovingId(null);
+    }
+  }
+
+  function openCreateModal(defaultDay?: number, prefill?: QuickAddPrefill) {
     setEditingItem(null);
-    setGroupId(groups[0]?.id || "");
-    const firstGroup = groups[0];
-    setTeacherId(firstGroup?.teacherId || teachers[0]?.id || "");
-    setRoomId(rooms[0]?.id || "");
+    const firstGroup = groups.find((g) => g.id === prefill?.groupId) ?? groups[0];
+    setGroupId(firstGroup?.id || "");
+    setTeacherId(prefill ? prefill.teacherId : firstGroup?.teacherId || teachers[0]?.id || "");
+    setRoomId(prefill ? prefill.roomId : rooms[0]?.id || "");
     setBranchId(firstGroup?.branchId || branches[0]?.id || "");
     setDayOfWeek(defaultDay ?? 1);
-    setStartTime("09:00");
-    setEndTime("10:30");
+    setStartTime(prefill?.startTime ?? "09:00");
+    setEndTime(prefill?.endTime ?? "10:30");
     setTopic("");
     setOnlineMeetingUrl("");
     setAllowCollision(false);
@@ -274,6 +325,8 @@ export default function SchedulePage() {
       alert(t("sch.deleteError"));
     }
   }
+
+  const dragDay = dragId ? schedules.find((s) => s.id === dragId)?.dayOfWeek ?? 1 : null;
 
   // Filtered schedules
   const filteredSchedules = useMemo(() => {
@@ -426,6 +479,15 @@ export default function SchedulePage() {
         )}
       </div>
 
+      {canEdit && !loading && loadError === null && schedules.length > 0 && (
+        <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12.5, color: "#686B75", margin: "-10px 0 14px" }}>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M5 9l-3 3 3 3M9 5l3-3 3 3M15 19l-3 3-3-3M19 9l3 3-3 3M2 12h20M12 2v20" />
+          </svg>
+          {t("sch.move.hint")}
+        </div>
+      )}
+
       {/* Weekly Timetable Grid (7 Days) */}
       {loadError !== null ? (
         <LoadError message={loadError || t("adm.loadError")} onRetry={loadData} />
@@ -448,9 +510,27 @@ export default function SchedulePage() {
             return (
               <div
                 key={day}
+                data-testid={`schedule-day-${day}`}
+                onDragOver={(e) => {
+                  if (!dragId || dragDay === day) return;
+                  e.preventDefault();
+                  e.dataTransfer.dropEffect = "move";
+                  if (dropDay !== day) setDropDay(day);
+                }}
+                onDragLeave={(e) => {
+                  if (dropDay === day && !e.currentTarget.contains(e.relatedTarget as Node | null)) setDropDay(null);
+                }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  const item = schedules.find((s) => s.id === dragId);
+                  setDragId(null);
+                  setDropDay(null);
+                  if (item) void moveLesson(item, day);
+                }}
                 style={{
-                  background: isToday ? "#FAF5FF" : "#F9FAFB",
-                  border: isToday ? "2px solid #A855F7" : "1px solid #E5E7EB",
+                  transition: "background 0.12s ease",
+                  background: dropDay === day ? "#EEF0FF" : isToday ? "#FAF5FF" : "#F9FAFB",
+                  border: dropDay === day ? `2px dashed ${ACCENT}` : isToday ? "2px solid #A855F7" : "1px solid #E5E7EB",
                   borderRadius: 12,
                   display: "flex",
                   flexDirection: "column",
@@ -475,7 +555,8 @@ export default function SchedulePage() {
                     <span style={{ fontSize: 11, opacity: 0.8 }}>({t(shortKey)})</span>
                   </div>
                   <button
-                    onClick={() => openCreateModal(day)}
+                    onClick={(e) => setQuickAdd({ day, anchor: (e.currentTarget.parentElement ?? e.currentTarget).getBoundingClientRect() })}
+                    aria-label={`${t(labelKey)}: ${t("schedule.addLesson")}`}
                     style={{
                       background: isToday ? "rgba(255,255,255,0.2)" : "#F3F4F6",
                       color: isToday ? "#fff" : "#4B5563",
@@ -516,7 +597,18 @@ export default function SchedulePage() {
                       return (
                         <div
                           key={item.id}
+                          data-testid="schedule-lesson"
+                          draggable={canEdit && movingId === null}
+                          onDragStart={(e) => {
+                            e.dataTransfer.effectAllowed = "move";
+                            e.dataTransfer.setData("text/plain", item.id);
+                            setDragId(item.id);
+                          }}
+                          onDragEnd={() => { setDragId(null); setDropDay(null); }}
+                          title={canEdit ? t("sch.move.cardTitle") : undefined}
                           style={{
+                            cursor: canEdit ? (dragId === item.id ? "grabbing" : "grab") : "default",
+                            opacity: dragId === item.id || movingId === item.id ? 0.45 : 1,
                             background: "#FFFFFF",
                             border: "1px solid #E5E7EB",
                             borderRadius: 10,
@@ -642,6 +734,11 @@ export default function SchedulePage() {
                       );
                     })
                   )}
+                  {dragId && dragDay !== day && (
+                    <div style={{ border: `1.5px dashed ${dropDay === day ? ACCENT : "#C9C6F5"}`, borderRadius: 10, padding: "12px 8px", textAlign: "center", fontSize: 12, fontWeight: 700, color: ACCENT, background: dropDay === day ? "#fff" : "transparent", pointerEvents: "none" }}>
+                      {t("sch.move.dropHere")}
+                    </div>
+                  )}
                   {(makeupsByDay[day] ?? []).length > 0 && (
                     <div aria-label={t("schedule.makeupsThisWeek")} style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 4 }}>
                       <div style={{ fontSize: 11, fontWeight: 700, color: "#686B75", textTransform: "uppercase", letterSpacing: "0.04em" }}>
@@ -669,6 +766,75 @@ export default function SchedulePage() {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {quickAdd && (
+        <QuickAddLesson
+          key={quickAdd.day}
+          day={quickAdd.day}
+          dayLabel={dayLabel(quickAdd.day)}
+          anchor={quickAdd.anchor}
+          groups={groups}
+          teachers={teachers}
+          rooms={rooms}
+          dayLessons={schedules.filter((s) => (s.dayOfWeek ?? 1) === quickAdd.day)}
+          onClose={() => setQuickAdd(null)}
+          onSaved={(label) => {
+            setQuickAdd(null);
+            setNotice({ text: `${label}: ${t("sch.quick.added")}` });
+            loadData();
+          }}
+          onMore={(prefill) => {
+            const day = quickAdd.day;
+            setQuickAdd(null);
+            openCreateModal(day, prefill);
+          }}
+        />
+      )}
+
+      {/* A move that would clash: what is in the way, and the way out. */}
+      {moveBlocked && (
+        <div className="modal-backdrop" onClick={() => setMoveBlocked(null)}>
+          <div className="modal-content" role="alertdialog" aria-labelledby="move-blocked-title" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 460 }}>
+            <h2 id="move-blocked-title" style={{ fontSize: 17, fontWeight: 800, margin: "0 0 6px" }}>{t("sch.move.blockedTitle")}</h2>
+            <p style={{ fontSize: 13, color: "#686B75", margin: "0 0 14px", lineHeight: 1.55 }}>
+              <b style={{ color: "#181A1F" }}>{moveBlocked.item.group?.name}</b> · {moveBlocked.item.startTime}–{moveBlocked.item.endTime} → <b style={{ color: "#181A1F" }}>{dayLabel(moveBlocked.day)}</b>. {t("sch.move.blockedText")}
+            </p>
+            <div style={{ display: "grid", gap: 8, marginBottom: 16 }}>
+              {moveBlocked.conflicts.map((c, i) => (
+                <div key={i} style={{ display: "flex", gap: 10, alignItems: "flex-start", background: "#FEF2F2", border: "1px solid #F5B5B5", borderRadius: 10, padding: "9px 12px" }}>
+                  <span style={{ fontSize: 11, fontWeight: 800, color: "#fff", background: "#B91C1C", borderRadius: 6, padding: "2px 7px", whiteSpace: "nowrap", marginTop: 1 }}>{t(`sch.move.type.${c.type}`)}</span>
+                  <span style={{ fontSize: 12.5, color: "#7F1D1D", lineHeight: 1.5 }}>{c.message}</span>
+                </div>
+              ))}
+            </div>
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, flexWrap: "wrap" }}>
+              <button type="button" onClick={() => setMoveBlocked(null)} style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 8, padding: "9px 16px", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>{t("common.cancel")}</button>
+              <button
+                type="button"
+                onClick={() => {
+                  const { item, day } = moveBlocked;
+                  setMoveBlocked(null);
+                  openEditModal({ ...item, dayOfWeek: day });
+                }}
+                style={{ background: ACCENT, color: "#fff", border: "none", borderRadius: 8, padding: "9px 16px", fontSize: 13, fontWeight: 700, cursor: "pointer" }}
+              >
+                {t("sch.move.pickTime")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {notice && (
+        <div role="status" style={{ position: "fixed", left: "50%", bottom: 24, transform: "translateX(-50%)", zIndex: 70, background: notice.error ? "#B91C1C" : "#181A1F", color: "#fff", borderRadius: 12, padding: "11px 16px", fontSize: 13, fontWeight: 600, display: "flex", alignItems: "center", gap: 14, boxShadow: "0 12px 34px rgba(18,19,26,0.3)", maxWidth: "calc(100vw - 32px)" }}>
+          <span>{notice.error ? "" : "✓ "}{notice.text}</span>
+          {notice.undo && (
+            <button type="button" onClick={() => { const undo = notice.undo!; setNotice(null); undo(); }} style={{ background: "rgba(255,255,255,0.16)", color: "#fff", border: "none", borderRadius: 8, padding: "5px 11px", fontSize: 12.5, fontWeight: 700, cursor: "pointer" }}>
+              {t("sch.move.undo")}
+            </button>
+          )}
         </div>
       )}
 

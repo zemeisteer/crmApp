@@ -1,16 +1,20 @@
 import { ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { and, eq, ne, isNull, sql } from 'drizzle-orm';
+import { alias } from 'drizzle-orm/pg-core';
 import { DB, Database } from '../db/db.module';
-import { groups, rooms, schedules, teachers } from '../db/schema';
+import { enrollments, groups, rooms, schedules, students, teachers } from '../db/schema';
 import { TEACHER_PUBLIC_COLUMNS } from '../common/teacher-columns';
 import { assertTeacherGroups, Viewer } from '../common/teacher-scope';
 import { CreateRoomDto, UpdateRoomDto } from './dto/room.dto';
 import { CheckConflictDto, CreateScheduleDto, UpdateScheduleDto } from './dto/schedule.dto';
 
 export interface ScheduleConflict {
-  type: 'ROOM' | 'TEACHER' | 'GROUP';
+  type: 'ROOM' | 'TEACHER' | 'GROUP' | 'STUDENT';
   message: string;
   conflictingScheduleId: string;
+  /** STUDENT: who would have two lessons at once (first few names) and how many in all. */
+  studentNames?: string[];
+  studentCount?: number;
   groupName?: string;
   roomName?: string;
   teacherName?: string;
@@ -136,9 +140,11 @@ export class ScheduleService {
       startTime: string;
       endTime: string;
       excludeScheduleId?: string;
+      /** Group lessons only: also report students enrolled in two overlapping groups. */
+      checkStudents?: boolean;
     },
   ): Promise<ScheduleConflict[]> {
-    const { groupId, teacherId, roomId, dayOfWeek, date, startTime, endTime, excludeScheduleId } = params;
+    const { groupId, teacherId, roomId, dayOfWeek, date, startTime, endTime, excludeScheduleId, checkStudents } = params;
 
     // Fetch active candidates for this tenant
     const candidates = await this.db.query.schedules.findMany({
@@ -154,6 +160,9 @@ export class ScheduleService {
     });
 
     const conflicts: ScheduleConflict[] = [];
+    // Students enrolled in this group and in another one cannot sit two
+    // lessons at once (looked up only when another group overlaps).
+    let shared: Map<string, { names: string[]; count: number }> | null = null;
 
     for (const c of candidates) {
       if (excludeScheduleId && c.id === excludeScheduleId) continue;
@@ -206,13 +215,58 @@ export class ScheduleService {
           date: c.date,
         });
       }
+
+      // 4. Student collision
+      if (checkStudents && groupId && c.groupId !== groupId) {
+        shared ??= await this.sharedStudents(tenantId, groupId);
+        const both = shared.get(c.groupId);
+        if (both) {
+          const more = both.count - both.names.length;
+          conflicts.push({
+            type: 'STUDENT',
+            message: `${both.names.join(', ')}${more > 0 ? ` va yana ${more} nafar` : ''} bu vaqtda boshqa darsda: ${c.group?.name || 'Guruh'} (${c.startTime} - ${c.endTime})`,
+            conflictingScheduleId: c.id,
+            groupName: c.group?.name,
+            studentNames: both.names,
+            studentCount: both.count,
+            startTime: c.startTime,
+            endTime: c.endTime,
+            dayOfWeek: c.dayOfWeek,
+            date: c.date,
+          });
+        }
+      }
     }
 
     return conflicts;
   }
 
+  /** Other groups that share active students with this one: group id -> the students. */
+  private async sharedStudents(tenantId: string, groupId: string) {
+    const other = alias(enrollments, 'other_enrollment');
+    const rows = await this.db
+      .select({ groupId: other.groupId, fullName: students.fullName })
+      .from(enrollments)
+      .innerJoin(other, and(eq(other.studentId, enrollments.studentId), ne(other.groupId, enrollments.groupId), eq(other.status, 'ACTIVE')))
+      .innerJoin(students, eq(students.id, enrollments.studentId))
+      .where(and(
+        eq(enrollments.groupId, groupId), eq(enrollments.status, 'ACTIVE'),
+        eq(students.tenantId, tenantId), eq(students.status, 'ACTIVE'), isNull(students.deletedAt),
+      ))
+      .orderBy(students.fullName);
+    const map = new Map<string, { names: string[]; count: number }>();
+    for (const r of rows) {
+      const entry = map.get(r.groupId) ?? { names: [], count: 0 };
+      entry.count += 1;
+      if (entry.names.length < 3) entry.names.push(r.fullName);
+      map.set(r.groupId, entry);
+    }
+    return map;
+  }
+
   async checkConflicts(tenantId: string, dto: CheckConflictDto): Promise<{ hasConflict: boolean; conflicts: ScheduleConflict[] }> {
     const conflicts = await this.findConflicts(tenantId, {
+      checkStudents: true,
       groupId: dto.groupId,
       teacherId: dto.teacherId,
       roomId: dto.roomId,
@@ -308,6 +362,7 @@ export class ScheduleService {
       await lockSlot(tx, tenantId, teacherId, dto.roomId || null, dto.groupId);
       if (!dto.allowCollision) {
         const conflicts = await this.findConflicts(tenantId, {
+          checkStudents: true,
           groupId: dto.groupId,
           teacherId,
           roomId: dto.roomId || null,
@@ -388,6 +443,7 @@ export class ScheduleService {
       await lockSlot(tx, tenantId, teacherId, roomId, groupId);
       if (!dto.allowCollision) {
         const conflicts = await this.findConflicts(tenantId, {
+          checkStudents: true,
           groupId,
           teacherId,
           roomId,
