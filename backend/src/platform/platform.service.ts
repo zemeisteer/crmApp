@@ -264,6 +264,9 @@ export class PlatformService {
     if (amount <= 0) throw new BadRequestException("Bepul tarif uchun to'lov qayd etilmaydi");
 
     const row = await this.db.transaction(async (tx) => {
+      // One at a time per center: two clicks at once must not both find "no
+      // row yet" (FOR UPDATE locks nothing when there is no row to lock).
+      await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`platform-pay:${tenantId}`}))`);
       const [existing] = await tx.select().from(platformSubscriptions)
         .where(and(eq(platformSubscriptions.tenantId, tenantId), eq(platformSubscriptions.forMonth, dto.forMonth)))
         .for('update');
