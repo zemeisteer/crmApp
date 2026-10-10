@@ -262,6 +262,12 @@ tbody tr:hover {
   background: rgba(18, 19, 26, 0.45);
   backdrop-filter: blur(2px);
 }
+/* The timetable card's small icon buttons (move, edit, delete): on a touch
+   screen they get a target a thumb can hit. */
+@media (pointer: coarse), (max-width: 768px) {
+  .sched-act { padding: 8px !important; margin: -4px 0; }
+  .sched-act svg { width: 17px; height: 17px; }
+}
 .modal-content {
   width: 100%;
   max-height: calc(100dvh - 32px);

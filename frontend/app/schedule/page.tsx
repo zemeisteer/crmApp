@@ -5,6 +5,7 @@ import DashboardShell from "@/components/DashboardShell";
 import LoadError from "@/components/LoadError";
 import RoomsManager from "@/components/schedule/RoomsManager";
 import QuickAddLesson, { type QuickAddPrefill } from "@/components/schedule/QuickAddLesson";
+import MoveLessonDialog from "@/components/schedule/MoveLessonDialog";
 import Select from "@/components/Select";
 import TimePicker from "@/components/TimePicker";
 import { useAuth } from "@/lib/auth-context";
@@ -29,6 +30,7 @@ import {
 } from "@/lib/api";
 
 const ACCENT = "#4F46E5";
+const MOVE_DAYS = [1, 2, 3, 4, 5, 6, 7];
 
 const DAYS_OF_WEEK = [
   { day: 1, labelKey: "schedule.days.mon" as const, shortKey: "weekday.short.monday" as const },
@@ -93,6 +95,9 @@ export default function SchedulePage() {
   const [dropDay, setDropDay] = useState<number | null>(null);
   const [movingId, setMovingId] = useState<string | null>(null);
   const [moveBlocked, setMoveBlocked] = useState<{ item: ScheduleItem; day: number; conflicts: ScheduleConflict[] } | null>(null);
+  // The same move from a button on the card: a touch screen and a keyboard
+  // have no drag.
+  const [moveItem, setMoveItem] = useState<ScheduleItem | null>(null);
   const [notice, setNotice] = useState<{ text: string; error?: boolean; undo?: () => void } | null>(null);
   useEffect(() => {
     if (!notice) return;
@@ -636,7 +641,23 @@ export default function SchedulePage() {
                               {item.startTime} - {item.endTime}
                             </span>
                             <div style={{ display: "flex", gap: 4 }}>
+                              {canEdit && (
+                                <button
+                                  type="button"
+                                  data-testid="schedule-move"
+                                  className="sched-act"
+                                  onClick={() => setMoveItem(item)}
+                                  style={{ background: "transparent", border: "none", cursor: "pointer", color: "#686B75", padding: 2 }}
+                                  title={t("sch.move.button")}
+                                  aria-label={`${t("sch.move.button")}: ${item.group?.name ?? ""} ${item.startTime}`}
+                                >
+                                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                                    <path d="M7 4 3 8l4 4M3 8h14M17 12l4 4-4 4M21 16H7" />
+                                  </svg>
+                                </button>
+                              )}
                               <button
+                                className="sched-act"
                                 onClick={() => openEditModal(item)}
                                 style={{
                                   background: "transparent",
@@ -653,6 +674,7 @@ export default function SchedulePage() {
                               </button>
                               {can(user, "schedule.delete") && (
                                 <button
+                                  className="sched-act"
                                   onClick={() => handleDeleteSchedule(item.id)}
                                   style={{
                                     background: "transparent",
@@ -789,6 +811,19 @@ export default function SchedulePage() {
             const day = quickAdd.day;
             setQuickAdd(null);
             openCreateModal(day, prefill);
+          }}
+        />
+      )}
+
+      {moveItem && (
+        <MoveLessonDialog
+          item={moveItem}
+          days={MOVE_DAYS.map((day) => ({ day, label: dayLabel(day) }))}
+          onClose={() => setMoveItem(null)}
+          onPick={(day) => {
+            const item = moveItem;
+            setMoveItem(null);
+            void moveLesson(item, day);
           }}
         />
       )}
