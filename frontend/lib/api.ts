@@ -2345,8 +2345,9 @@ export const customFieldsApi = {
   list: (entityType: CustomFieldEntity, includeArchived = false) =>
     request<CustomFieldDef[]>(`/custom-fields?entityType=${entityType}${includeArchived ? "&includeArchived=1" : ""}`),
   create: (data: CustomFieldInput) => postJson<CustomFieldDef>("/custom-fields", data),
+  /** unlinkedLeadFields: lead fields whose mapping to this student field ended because its type changed. */
   update: (id: string, data: Partial<Omit<CustomFieldInput, "entityType" | "key">>) =>
-    request<CustomFieldDef>(`/custom-fields/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
+    request<CustomFieldDef & { unlinkedLeadFields?: Array<{ id: string; label: string }> }>(`/custom-fields/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
   archive: (id: string) => postJson<CustomFieldDef>(`/custom-fields/${id}/archive`),
   restore: (id: string) => postJson<CustomFieldDef>(`/custom-fields/${id}/restore`),
 };

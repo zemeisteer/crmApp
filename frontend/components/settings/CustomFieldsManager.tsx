@@ -327,7 +327,7 @@ function FieldEditor({
     }
 
     setSaving(true);
-    let saved: CustomFieldDef;
+    let saved: CustomFieldDef & { unlinkedLeadFields?: Array<{ id: string; label: string }> };
     try {
       if (!editing) {
         const body: CustomFieldInput = {
@@ -381,7 +381,9 @@ function FieldEditor({
       }
     }
     setSaving(false);
-    onSaved();
+    // A student field that changed type let go of the lead fields mapped to it: say which.
+    const unlinked = saved.unlinkedLeadFields ?? [];
+    onSaved(unlinked.length ? t("cf.unlinked").replace("{names}", unlinked.map((f) => f.label).join(", ")) : undefined);
   }
 
   return (
