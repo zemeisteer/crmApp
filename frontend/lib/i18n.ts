@@ -3644,6 +3644,7 @@ export const dict = {
   "cf.mappedTo": { UZ: "O'quvchiga: {label}", RU: "Ученику: {label}", EN: "To student: {label}" },
   "cf.portalBadge": { UZ: "Kabinetda", RU: "В кабинете", EN: "In portal" },
   "cf.errLabel": { UZ: "Maydon nomini kiriting.", RU: "Введите название поля.", EN: "Enter the field name." },
+  "cf.unlinked": { UZ: "Saqlandi. Maydon turi o'zgargani uchun unga bog'langan lid maydonlari uzildi: {names}. Kerak bo'lsa, ularni bir xil turdagi maydonga qayta bog'lang.", RU: "Сохранено. Тип поля изменился, поэтому связанные с ним поля лида отвязаны: {names}. При необходимости свяжите их с полем того же типа.", EN: "Saved. The field's type changed, so the lead fields mapped to it were unlinked: {names}. Map them again to a field of the same type if needed." },
   "cf.errTypeLocked": { UZ: "Bu maydonda allaqachon qiymatlar bor, shuning uchun turini o'zgartirib bo'lmaydi. Uni arxivlab, kerakli turda yangi maydon yarating.", RU: "В поле уже есть значения, поэтому тип изменить нельзя. Архивируйте его и создайте новое поле нужного типа.", EN: "This field already has values, so its type cannot change. Archive it and create a new field of the type you need." },
   "cf.errKeyTaken": { UZ: "Bu kalit band (arxivdagi maydonlarda ham bo'lishi mumkin). Boshqa kalit kiriting.", RU: "Этот ключ занят (возможно, архивным полем). Введите другой.", EN: "This key is taken (possibly by an archived field). Enter another one." },
   "cf.yes": { UZ: "Ha", RU: "Да", EN: "Yes" },

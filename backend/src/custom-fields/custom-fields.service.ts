@@ -1,6 +1,6 @@
 import { BadRequestException, ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { randomBytes } from 'crypto';
-import { and, asc, count, eq, inArray, isNull, sql } from 'drizzle-orm';
+import { and, asc, count, eq, inArray, isNull, ne, sql } from 'drizzle-orm';
 import { AuditService } from '../audit/audit.service';
 import { DB, Database } from '../db/db.module';
 import { customFieldDefinitions, customFieldValues, leads, students } from '../db/schema';
@@ -216,8 +216,18 @@ export class CustomFieldsService {
         set.optionMap = null;
       }
       const [def] = await tx.update(customFieldDefinitions).set(set).where(and(eq(customFieldDefinitions.id, id), eq(customFieldDefinitions.tenantId, tenantId))).returning();
-      this.audit.log({ tenantId, userId, action: 'custom_field.update', entityType: 'custom_field', entityId: id, meta: { changed: Object.keys(set).filter((k) => k !== 'updatedAt') } });
-      return def;
+      // A student field that changed type no longer fits the lead fields
+      // mapped to it (a mapping is same-type only): they let go of it here,
+      // in the same transaction, instead of failing every conversion later
+      // with a type mismatch. The answer names them, for the page to say so.
+      let unlinkedLeadFields: Array<{ id: string; label: string }> = [];
+      if (set.fieldType && before.entityType === 'STUDENT') {
+        unlinkedLeadFields = await tx.update(customFieldDefinitions).set({ studentFieldId: null, optionMap: null, updatedAt: new Date() })
+          .where(and(eq(customFieldDefinitions.tenantId, tenantId), eq(customFieldDefinitions.studentFieldId, id), ne(customFieldDefinitions.fieldType, fieldType)))
+          .returning({ id: customFieldDefinitions.id, label: customFieldDefinitions.label });
+      }
+      this.audit.log({ tenantId, userId, action: 'custom_field.update', entityType: 'custom_field', entityId: id, meta: { changed: Object.keys(set).filter((k) => k !== 'updatedAt'), unlinked: unlinkedLeadFields.map((f) => f.id) } });
+      return { ...def, unlinkedLeadFields };
     });
   }
 
