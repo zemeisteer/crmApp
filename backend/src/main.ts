@@ -10,12 +10,16 @@ import pinoHttp from 'pino-http';
 import { AppModule } from './app.module';
 import { configureApp } from './app.setup';
 import { redactQuery, redactUrl } from './common/log-redact';
-
-if (process.env.SENTRY_DSN) {
-  Sentry.init({ dsn: process.env.SENTRY_DSN, environment: process.env.NODE_ENV || 'development' });
-}
+import { loadStoredSettingsAtBoot } from './platform/stored-settings';
 
 async function bootstrap() {
+  // Keys entered in the platform admin's panel, over the ones from .env,
+  // before anything reads them.
+  // eslint-disable-next-line no-console
+  await loadStoredSettingsAtBoot((message) => console.log(message));
+  if (process.env.SENTRY_DSN) {
+    Sentry.init({ dsn: process.env.SENTRY_DSN, environment: process.env.NODE_ENV || 'development' });
+  }
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
   // CORS, /uploads, validation, /api prefix, trust proxy (app.setup.ts).
   configureApp(app);

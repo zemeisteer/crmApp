@@ -32,6 +32,7 @@ import { PlatformBillingModule } from './platform-billing/platform-billing.modul
 import { ExamsModule } from './exams/exams.module';
 import { HealthModule } from './health/health.module';
 import { PlansModule } from './plans/plans.module';
+import { PlatformModule } from './platform/platform.module';
 import { StaffModule } from './staff/staff.module';
 import { LeadsModule } from './leads/leads.module';
 import { ReportsModule } from './reports/reports.module';
@@ -88,6 +89,7 @@ import { InvoicesModule } from './invoices/invoices.module';
     ExamsModule,
     HealthModule,
     PlansModule,
+    PlatformModule,
     StaffModule,
     LeadsModule,
     ReportsModule,

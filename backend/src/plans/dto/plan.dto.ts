@@ -1,4 +1,4 @@
-import { IsBoolean, IsInt, IsOptional, IsString, Min, Max } from 'class-validator';
+import { IsBoolean, IsInt, IsOptional, IsString, MaxLength, Min, Max } from 'class-validator';
 import { MAX_MONEY } from '../../common/money';
 
 export class CreatePlanDto {
@@ -23,6 +23,12 @@ export class CreatePlanDto {
   @IsOptional()
   @IsBoolean()
   popular?: boolean;
+}
+
+export class TranslateFeaturesDto {
+  @IsString()
+  @MaxLength(8000)
+  features: string;
 }
 
 export class UpdatePlanDto {
