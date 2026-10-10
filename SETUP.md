@@ -16,7 +16,7 @@ npm install --legacy-peer-deps
 
 `--legacy-peer-deps` shart — NestJS 12 + Vitest shablonidagi peer-dependency grafida `npm`ning arborist bug'i bor, shusiz `npm install` xato beradi.
 
-`.env` fayli allaqachon bor. Productionga chiqarishdan oldin `JWT_SECRET`ni albatta almashtiring. Fayl oxiridagi ixtiyoriy integratsiya bo'limi (Telegram, Click, Payme, SMTP, Sentry, AI) — har biri bo'sh qoldirilsa, o'sha xususiyat avtomatik o'chirilgan holda ishlaydi, xato bermaydi.
+`.env` fayli git'da saqlanmaydi: yangi klonda uni namunadan yarating — `cp .env.example .env` (Windows: `copy .env.example .env`), so'ng `JWT_SECRET`ga uzun tasodifiy qator yozing (`node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`). Google Calendar sozlamalari ham shu faylda (izohlarga qarang). Fayl oxiridagi ixtiyoriy integratsiya bo'limi (Telegram, Click, Payme, SMTP, Sentry, AI) — har biri bo'sh qoldirilsa, o'sha xususiyat avtomatik o'chirilgan holda ishlaydi, xato bermaydi.
 
 PostgreSQL 16+ kerak. Lokal yoki Docker orqali o'rnating, so'ng `.env`dagi `DATABASE_URL`ni moslang. Keyin bazani yarating:
 
@@ -134,7 +134,7 @@ cd frontend
 npm install
 ```
 
-`.env.local` allaqachon bor: `NEXT_PUBLIC_API_URL=http://localhost:4000/api`.
+`.env.local` git'da saqlanmaydi: `cp .env.example .env.local` (Windows: `copy .env.example .env.local`). Ichida `NEXT_PUBLIC_API_URL=http://localhost:4000/api`.
 
 ```bash
 npm run dev
