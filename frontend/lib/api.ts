@@ -1447,6 +1447,12 @@ export const studentsApi = {
     request<PageOf<Student>>(
       `/students${pageQuery({ search: q.search, status: q.status, branchId: q.branchId, groupId: q.groupId, direction: q.direction, gender: q.gender, page: q.page, pageSize: q.pageSize })}`,
     ),
+  // These students only (at most 200 ids): names and groups for the rows on
+  // screen, instead of the whole list.
+  byIds: (ids: string[]) =>
+    ids.length === 0
+      ? Promise.resolve([] as Student[])
+      : request<PageOf<Student>>(`/students${pageQuery({ ids: ids.join(","), page: 1, pageSize: 200 })}`).then((r) => r.items),
   trash: () => request<Student[]>("/students/trash"),
   get: (id: string) => request<Student>(`/students/${id}`),
   // idempotencyKey: one per submission (see retryKey) - a retry of the same

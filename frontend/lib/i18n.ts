@@ -2507,6 +2507,8 @@ export const dict = {
   "payments.selectStudentError": { UZ: "Ro'yxatdan o'quvchini tanlang", RU: "Выберите учащегося из списка", EN: "Select a student from the list" },
   "payments.picker.searchPlaceholder": { UZ: "Ism bo'yicha qidirish...", RU: "Поиск по имени...", EN: "Search by name..." },
   "payments.picker.groups": { UZ: "Guruh(lar)", RU: "Группа(ы)", EN: "Group(s)" },
+  "payments.picker.shown": { UZ: "{total} tadan {n} tasi", RU: "{n} из {total}", EN: "{n} of {total}" },
+  "payments.picker.more": { UZ: "Yana ko'rsatish", RU: "Показать ещё", EN: "Show more" },
   "payments.picker.notFound": { UZ: "Topilmadi", RU: "Не найдено", EN: "Not found" },
   "payments.picker.noGroup": { UZ: "Guruhsiz", RU: "Без группы", EN: "No group" },
 

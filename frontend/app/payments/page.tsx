@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import DashboardShell from "@/components/DashboardShell";
 import Modal from "@/components/Modal";
 import LoadError from "@/components/LoadError";
@@ -33,7 +34,7 @@ import {
   retryKey,
   type PageOf,
 } from "@/lib/api";
-import { clampPage } from "@/lib/list-paging";
+import { clampPage, pageQuery, parsePageParam } from "@/lib/list-paging";
 import { useCenterClock } from "@/lib/use-center-clock";
 import CashDayPanel from "@/components/payments/CashDay";
 import DebtorRemindersDialog from "@/components/payments/DebtorReminders";
@@ -123,6 +124,8 @@ const EXPENSE_CATEGORIES: { value: ExpenseCategory; labelKey: TranslationKey; co
 ];
 
 type TabType = "history" | "debtors" | "invoices" | "expenses" | "cash";
+const TABS: TabType[] = ["history", "debtors", "invoices", "expenses", "cash"];
+const MONTH_PARAM = /^\d{4}-(0[1-9]|1[0-2])$/;
 type Period = "day" | "week" | "month" | "year";
 
 function localDayStr(d: Date) {
@@ -151,39 +154,72 @@ async function paidSince(fromDay: string, dateOf: (iso: string) => string | null
   }
 }
 
+const PICKER_PAGE = 10;
+
+/**
+ * Picks the student a payment is for. The center may have thousands, so
+ * nothing is loaded up front: typing searches on the server (name, phone,
+ * group), ten at a time, with "show more" for the next ten.
+ */
 function StudentPicker({
-  students,
-  value,
+  selected,
   onSelect,
 }: {
-  students: Student[];
-  value: string;
-  onSelect: (id: string) => void;
+  /** The student picked so far (its name and groups are shown), if any. */
+  selected: Student | null;
+  onSelect: (student: Student | null) => void;
 }) {
   const { t } = useLanguage();
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
-  const selected = students.find((s) => s.id === value);
+  const [found, setFound] = useState<{ key: string; items: Student[]; total: number; page: number } | null>(null);
+  const [failed, setFailed] = useState(false);
+  const [more, setMore] = useState(false);
+  const term = query.trim();
 
-  const matches = query.trim()
-    ? students
-        .filter((s) => s.fullName.toLowerCase().includes(query.trim().toLowerCase()))
-        .slice(0, 8)
-    : students.slice(0, 8);
+  // The first page for what is typed now; an older, slower answer is dropped.
+  useEffect(() => {
+    if (!open) return;
+    let live = true;
+    const timer = setTimeout(() => {
+      studentsApi
+        .page({ page: 1, pageSize: PICKER_PAGE, search: term || undefined })
+        .then((r) => { if (live) { setFound({ key: term, items: r.items, total: r.total, page: 1 }); setFailed(false); } })
+        .catch(() => { if (live) setFailed(true); });
+    }, 250);
+    return () => { live = false; clearTimeout(timer); };
+  }, [open, term]);
+
+  const current = found && found.key === term ? found : null;
+
+  function showMore() {
+    if (!current || more) return;
+    setMore(true);
+    studentsApi
+      .page({ page: current.page + 1, pageSize: PICKER_PAGE, search: term || undefined })
+      .then((r) => setFound((f) => (f && f.key === term ? { ...f, items: [...f.items, ...r.items.filter((x) => !f.items.some((y) => y.id === x.id))], total: r.total, page: f.page + 1 } : f)))
+      .catch(() => setFailed(true))
+      .finally(() => setMore(false));
+  }
 
   return (
     <div style={{ position: "relative" }}>
       <input
         className="field-input"
         required
+        role="combobox"
+        aria-expanded={open}
+        aria-controls="student-picker-list"
+        aria-autocomplete="list"
         value={open ? query : selected?.fullName || query}
         onChange={(e) => {
           setQuery(e.target.value);
           setOpen(true);
-          onSelect("");
+          onSelect(null);
         }}
         onFocus={() => setOpen(true)}
         onBlur={() => setTimeout(() => setOpen(false), 150)}
+        onKeyDown={(e) => { if (e.key === "Escape" && open) { e.stopPropagation(); setOpen(false); } }}
         placeholder={t("payments.picker.searchPlaceholder")}
       />
       {selected && !open && (
@@ -194,6 +230,8 @@ function StudentPicker({
       )}
       {open && (
         <div
+          id="student-picker-list"
+          role="listbox"
           style={{
             position: "absolute",
             top: "calc(100% + 4px)",
@@ -204,40 +242,63 @@ function StudentPicker({
             borderRadius: 10,
             boxShadow: "0 8px 24px rgba(18,19,26,0.12)",
             zIndex: 20,
-            maxHeight: 220,
+            maxHeight: 260,
             overflow: "auto",
           }}
         >
-          {matches.length === 0 ? (
+          {failed ? (
+            <div role="alert" style={{ padding: 12, fontSize: 12.5, color: "#B23A47" }}>{t("common.errorGeneric")}</div>
+          ) : !current ? (
+            <div role="status" style={{ padding: 12, fontSize: 12.5, color: "#686B75" }}>{t("common.loading")}</div>
+          ) : current.items.length === 0 ? (
             <div style={{ padding: 12, fontSize: 12.5, color: "#686B75" }}>
               {t("payments.picker.notFound")}
             </div>
           ) : (
-            matches.map((s) => (
-              <button
-                type="button"
-                key={s.id}
-                onMouseDown={() => {
-                  onSelect(s.id);
-                  setQuery("");
-                  setOpen(false);
-                }}
-                style={{
-                  display: "block",
-                  width: "100%",
-                  textAlign: "left",
-                  padding: "10px 12px",
-                  border: "none",
-                  background: "transparent",
-                  cursor: "pointer",
-                }}
-              >
-                <div style={{ fontSize: 13, fontWeight: 600 }}>{s.fullName}</div>
-                <div style={{ fontSize: 11.5, color: "#686B75" }}>
-                  {s.enrollments?.map((e) => e.group.name).join(", ") || t("payments.picker.noGroup")}
-                </div>
-              </button>
-            ))
+            <>
+              {current.items.map((s) => (
+                <button
+                  type="button"
+                  role="option"
+                  aria-selected={selected?.id === s.id}
+                  key={s.id}
+                  // (mousedown: before the input's blur closes the list)
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    onSelect(s);
+                    setQuery("");
+                    setOpen(false);
+                  }}
+                  onClick={() => {
+                    onSelect(s);
+                    setQuery("");
+                    setOpen(false);
+                  }}
+                  style={{
+                    display: "block",
+                    width: "100%",
+                    textAlign: "left",
+                    padding: "10px 12px",
+                    border: "none",
+                    background: "transparent",
+                    cursor: "pointer",
+                  }}
+                >
+                  <div style={{ fontSize: 13, fontWeight: 600 }}>{s.fullName}</div>
+                  <div style={{ fontSize: 11.5, color: "#686B75" }}>
+                    {s.enrollments?.map((e) => e.group.name).join(", ") || t("payments.picker.noGroup")}
+                  </div>
+                </button>
+              ))}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, padding: "8px 12px", borderTop: "1px solid #F2F1EC", fontSize: 11.5, color: "#686B75" }}>
+                <span>{t("payments.picker.shown").replace("{n}", String(current.items.length)).replace("{total}", String(current.total))}</span>
+                {current.items.length < current.total && (
+                  <button type="button" disabled={more} onMouseDown={(e) => { e.preventDefault(); showMore(); }} style={{ border: "none", background: "transparent", color: ACCENT, fontWeight: 700, fontSize: 12, cursor: more ? "wait" : "pointer", padding: 0 }}>
+                    {more ? t("common.loading") : t("payments.picker.more")}
+                  </button>
+                )}
+              </div>
+            </>
           )}
         </div>
       )}
@@ -481,14 +542,27 @@ function PaymentsContent() {
   const clock = useCenterClock();
   const { tenant, user } = useAuth();
 
-  const [activeTab, setActiveTab] = useState<TabType>("history");
+  // The tab, the month and the history filters live in the address
+  // (?tab=…&month=…&status=…), so a reload or the back button returns to the
+  // same view instead of the first tab with no filter.
+  const params = useSearchParams();
+  const [activeTab, setActiveTab] = useState<TabType>(() => {
+    const tab = params.get("tab") as TabType | null;
+    return tab && TABS.includes(tab) ? tab : "history";
+  });
   // How many payments the center has at all ("no payments yet" vs "nothing
   // matches"), and this year's paid totals from the server (the stat card
   // and the monthly chart): no longer summed from a full list in the page.
   const [allCount, setAllCount] = useState<number | null>(null);
   // undefined: loading; null: not available.
   const [revenue, setRevenue] = useState<{ monthRevenue: number; byMonth: Array<{ month: string; amount: number }> } | null | undefined>(undefined);
-  const [students, setStudents] = useState<Student[]>([]);
+  // The students whose names and groups the page shows (payment rows,
+  // invoices, the one picked in the form), fetched by id as they come into
+  // view - never the center's whole list.
+  const [known, setKnown] = useState<Map<string, Student>>(new Map());
+  const asked = useRef(new Set<string>());
+  const [studentsTotal, setStudentsTotal] = useState<number | null>(null);
+  const [groupList, setGroupList] = useState<Array<{ id: string; name: string }>>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -501,10 +575,13 @@ function PaymentsContent() {
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [period, setPeriod] = useState<Period>("month");
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useState(() => parsePageParam(params.get("page")));
 
   // Month selector for Debtors & Expenses
-  const [selectedMonth, setSelectedMonth] = useState(() => clock.month());
+  const [selectedMonth, setSelectedMonth] = useState(() => {
+    const month = params.get("month");
+    return month && MONTH_PARAM.test(month) ? month : clock.month();
+  });
 
   // Debtors data state
   const [debtorsData, setDebtorsData] = useState<DebtorsResponse | null>(null);
@@ -540,15 +617,18 @@ function PaymentsContent() {
   const [expenseNotes, setExpenseNotes] = useState("");
 
   // History filters
-  const [searchInput, setSearchInput] = useState("");
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
-  const [groupFilter, setGroupFilter] = useState("");
-  const [monthFilter, setMonthFilter] = useState("");
+  const [searchInput, setSearchInput] = useState(() => params.get("q") ?? "");
+  const [search, setSearch] = useState(() => (params.get("q") ?? "").trim());
+  const [statusFilter, setStatusFilter] = useState(() => params.get("status") ?? "");
+  const [groupFilter, setGroupFilter] = useState(() => params.get("group") ?? "");
+  const [monthFilter, setMonthFilter] = useState(() => {
+    const month = params.get("for");
+    return month && MONTH_PARAM.test(month) ? month : "";
+  });
   // Bumped after a new payment: the current page and the chart load again.
   const [reloadKey, setReloadKey] = useState(0);
   const [debtorGroupFilter, setDebtorGroupFilter] = useState("");
-  const [methodFilter, setMethodFilter] = useState("");
+  const [methodFilter, setMethodFilter] = useState(() => params.get("method") ?? "");
   const [remindersOpen, setRemindersOpen] = useState(false);
 
   // Expenses and invoices only for those who may see them: one refused
@@ -564,7 +644,8 @@ function PaymentsContent() {
     setLoading(true);
     Promise.all([
       paymentsApi.page({ page: 1, pageSize: 1 }),
-      studentsApi.list(),
+      // How many students there are (not the students), and the groups for the filters.
+      Promise.all([studentsApi.page({ page: 1, pageSize: 1 }), groupsApi.list().catch(() => [])]),
       branchesApi.list().catch(() => [] as Branch[]),
       paymentsApi.debtors({ forMonth: selectedMonth }),
       paymentsApi.financeSummary(selectedMonth),
@@ -573,7 +654,8 @@ function PaymentsContent() {
     ])
       .then(([p, s, b, d, fs, exp, invs]) => {
         setAllCount(p.total);
-        setStudents(s);
+        setStudentsTotal(s[0].total);
+        setGroupList(s[1].map((g) => ({ id: g.id, name: g.name })));
         setBranches(b);
         setDebtorsData(d);
         setFinanceSummary(fs);
@@ -603,11 +685,11 @@ function PaymentsContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedMonth]);
 
-  const studentName = useCallback((id: string) => students.find((s) => s.id === id)?.fullName || id, [students]);
+  // (Until its row has arrived a name is a dash, never a raw id.)
+  const studentName = useCallback((id: string) => known.get(id)?.fullName || "—", [known]);
 
   function groupNames(studentIdVal: string) {
-    const student = students.find((s) => s.id === studentIdVal);
-    return student?.enrollments?.map((e) => e.group.name).join(", ") || "—";
+    return known.get(studentIdVal)?.enrollments?.map((e) => e.group.name).join(", ") || "—";
   }
 
   function resetPaymentForm() {
@@ -708,11 +790,10 @@ function PaymentsContent() {
   const failedCount = debtorsData?.debtorCount ?? 0;
 
   // Groups of the center's students, for the group filters.
-  const groupOptions = useMemo(() => {
-    const map = new Map<string, string>();
-    for (const s of students) for (const e of s.enrollments ?? []) if (e.group) map.set(e.groupId, e.group.name);
-    return [...map.entries()].sort((a, b) => a[1].localeCompare(b[1])).map(([value, label]) => ({ value, label }));
-  }, [students]);
+  const groupOptions = useMemo(
+    () => [...groupList].sort((a, b) => a.name.localeCompare(b.name)).map((g) => ({ value: g.id, label: g.name })),
+    [groupList],
+  );
 
   // Typing is applied once it pauses, and starts again on page 1.
   useEffect(() => {
@@ -759,6 +840,37 @@ function PaymentsContent() {
   const pageData = list?.data ?? null;
   const pageItems = pageData?.items ?? [];
 
+  // Keep the address in step with the view (no new history entry per change).
+  useEffect(() => {
+    const qs = pageQuery({
+      tab: activeTab !== "history" ? activeTab : undefined,
+      month: selectedMonth !== clock.month() ? selectedMonth : undefined,
+      q: search, status: statusFilter, method: methodFilter, group: groupFilter, for: monthFilter,
+      page: page > 1 ? page : undefined,
+    });
+    if (window.location.search !== qs) window.history.replaceState(null, "", `${window.location.pathname}${qs}`);
+  }, [activeTab, selectedMonth, search, statusFilter, methodFilter, groupFilter, monthFilter, page, clock]);
+
+  // Names and groups for what is on screen now, a hundred ids at a time.
+  useEffect(() => {
+    const want = new Set<string>();
+    for (const p of pageItems) want.add(p.studentId);
+    for (const inv of invoices) want.add(inv.studentId);
+    if (studentId) want.add(studentId);
+    const missing = [...want].filter((id) => id && !asked.current.has(id));
+    if (missing.length === 0) return;
+    for (const id of missing) asked.current.add(id);
+    for (let i = 0; i < missing.length; i += 100) {
+      const chunk = missing.slice(i, i + 100);
+      studentsApi
+        .byIds(chunk)
+        .then((items) => setKnown((prev) => new Map([...prev, ...items.map((s) => [s.id, s] as const)])))
+        // Asked again next time they are on screen.
+        .catch(() => chunk.forEach((id) => asked.current.delete(id)));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pageData, invoices, studentId]);
+
   // Months for the month filter: from two months ahead (paid in advance)
   // back two years.
   const monthOptions = useMemo(() => {
@@ -791,7 +903,7 @@ function PaymentsContent() {
       if (invoiceStatusFilter !== "ALL" && inv.status !== invoiceStatusFilter) return false;
       if (invoiceSearch) {
         const q = invoiceSearch.toLowerCase();
-        const sName = studentName(inv.studentId).toLowerCase();
+        const sName = (inv.student?.fullName || studentName(inv.studentId)).toLowerCase();
         if (!sName.includes(q) && !(inv.forMonth || "").includes(q)) return false;
       }
       return true;
@@ -1211,7 +1323,7 @@ function PaymentsContent() {
                   resetPaymentForm();
                   setModalOpen(true);
                 }}
-                disabled={students.length === 0}
+                disabled={studentsTotal === 0}
                 style={{
                   background: ACCENT,
                   color: "#fff",
@@ -1350,7 +1462,7 @@ function PaymentsContent() {
                   textAlign: "center",
                 }}
               >
-                {students.length === 0 ? t("payments.addStudentFirst") : t("payments.noPaymentsYet")}
+                {studentsTotal === 0 ? t("payments.addStudentFirst") : t("payments.noPaymentsYet")}
               </div>
             ) : (
               <>
@@ -2042,7 +2154,7 @@ function PaymentsContent() {
                   <tbody>
                     {filteredInvoices.map((inv) => (
                       <tr key={inv.id}>
-                        <td style={{ fontWeight: 700 }}>{studentName(inv.studentId)}</td>
+                        <td style={{ fontWeight: 700 }}>{inv.student?.fullName || studentName(inv.studentId)}</td>
                         <td>{inv.enrollment?.group?.name || inv.description || "—"}</td>
                         <td>{inv.forMonth}</td>
                         <td style={{ fontWeight: 700 }}>{formatMoney(inv.amount)} {t("common.sumUnit")}</td>
@@ -2388,7 +2500,13 @@ function PaymentsContent() {
             </div>
           )}
           <Field label={t("payments.fieldStudent")}>
-            <StudentPicker students={students} value={studentId} onSelect={setStudentId} />
+            <StudentPicker
+              selected={studentId ? known.get(studentId) ?? null : null}
+              onSelect={(s) => {
+                if (s) setKnown((prev) => new Map(prev).set(s.id, s));
+                setStudentId(s?.id ?? "");
+              }}
+            />
           </Field>
           <Field label={t("payments.fieldAmount")}>
             <input
@@ -2734,7 +2852,10 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 export default function PaymentsPage() {
   return (
     <DashboardShell>
-      <PaymentsContent />
+      {/* The tab, the month and the filters are read from the address. */}
+      <Suspense fallback={null}>
+        <PaymentsContent />
+      </Suspense>
     </DashboardShell>
   );
 }
