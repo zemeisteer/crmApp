@@ -18,24 +18,11 @@ import { teachersApi, groupsApi, salaryApi, retryKey, Teacher, Group, ApiError }
 import { useCenterClock } from "@/lib/use-center-clock";
 import { NAME_PATTERN, NAME_TITLE } from "@/lib/validation";
 import { matchesSubject } from "@/lib/subject";
+import { useCenterDirections } from "@/lib/use-center-directions";
 import PhoneInput from "@/components/PhoneInput";
 
 const ACCENT = "#4F46E5";
 
-const SUGGESTED_DIRECTIONS = [
-  "Ingliz tili (IELTS)",
-  "Ingliz tili (CEFR)",
-  "General English",
-  "Matematika",
-  "Fizika",
-  "Kimyo",
-  "Biologiya",
-  "Ona tili",
-  "Rus tili",
-  "IT / Dasturlash",
-  "Arab tili",
-  "Koreys tili",
-];
 
 function formatMoney(n: number) {
   return new Intl.NumberFormat("uz-UZ").format(n);
@@ -71,6 +58,9 @@ function TeachersContent() {
   const [salaryValue, setSalaryValue] = useState("");
 
   const usedSubjects = useMemo(() => Array.from(new Set(groups.map((g) => g.subject))).sort(), [groups]);
+  // The form offers the center's own directions (saved subjects and group
+  // subjects); anything else is typed into the field below them.
+  const centerDirections = useCenterDirections(usedSubjects);
 
   const groupsForTeacherModal = useMemo(() => {
     if (selectedDirections.length === 0) return groups;
@@ -378,7 +368,7 @@ function TeachersContent() {
           </Field>
           <Field label={`${tr("teachers.fieldDirection")} (${tr("teachers.multiHint")})`}>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 8 }}>
-              {Array.from(new Set([...SUGGESTED_DIRECTIONS, ...usedSubjects])).map((s) => {
+              {Array.from(new Set([...centerDirections, ...selectedDirections])).map((s) => {
                 const active = selectedDirections.includes(s);
                 return (
                   <button

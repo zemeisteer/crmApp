@@ -6,6 +6,7 @@ import LoadError from "@/components/LoadError";
 import Modal from "@/components/Modal";
 import BarChart from "@/components/BarChart";
 import PdfImportPanel from "@/components/exams/PdfImportPanel";
+import ExamsEmptyState from "@/components/exams/ExamsEmptyState";
 import ExamAttemptsModal, { ExamAttemptReview } from "@/components/exams/ExamAttemptReview";
 import QuestionList, { GroupHeader } from "@/components/tests/QuestionView";
 import QuestionEditor, { emptyQuestion } from "@/components/tests/QuestionEditor";
@@ -484,6 +485,9 @@ function ExamsContent() {
               </div>
             )}
 
+            {exams.length === 0 ? (
+              <ExamsEmptyState onCreate={() => { resetForm(); setModalOpen(true); }} hasGroups={groups.length > 0} />
+            ) : (<>
             {/* Filter toolbar */}
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
               <div style={{ width: 220 }}>
@@ -497,7 +501,7 @@ function ExamsContent() {
 
             {/* Exam cards list */}
             {filteredExams.length === 0 ? (
-              <div style={{ color: "#686B75", fontSize: 14 }}>{t("exams.noExamsYet")}</div>
+              <div style={{ color: "#686B75", fontSize: 14 }}>{t("exams.noneForGroup")}</div>
             ) : (
               <>
                 <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
@@ -593,6 +597,7 @@ function ExamsContent() {
                 <Pagination page={page} total={filteredExams.length} onChange={setPage} />
               </>
             )}
+            </>)}
           </>
         )}
       </div>
