@@ -26,6 +26,7 @@ import {
   Teacher,
   Branch,
   makeupsApi,
+  type MakeupReconcile,
   type MakeupRosterItem,
 } from "@/lib/api";
 
@@ -198,6 +199,15 @@ export default function SchedulePage() {
   }, [showAddModal, groupId, teacherId, roomId, dayOfWeek, startTime, endTime, editingItem, conflictRetry, t]);
 
   const dayLabel = (d: number) => t(DAYS_OF_WEEK[d - 1].labelKey);
+  // What happened to make-ups booked into a lesson that was just changed.
+  const makeupNote = (m?: MakeupReconcile) => {
+    if (!m || m.moved + m.released === 0) return "";
+    const parts = [
+      m.moved ? t("sch.makeups.moved").replace("{n}", String(m.moved)) : "",
+      m.released ? t("sch.makeups.released").replace("{n}", String(m.released)) : "",
+    ].filter(Boolean);
+    return `. ${parts.join("; ")}`;
+  };
 
   async function moveLesson(item: ScheduleItem, day: number, isUndo = false) {
     const from = item.dayOfWeek ?? 1;
@@ -217,10 +227,10 @@ export default function SchedulePage() {
         setMoveBlocked({ item, day, conflicts: check.conflicts });
         return;
       }
-      await scheduleApi.update(item.id, { dayOfWeek: day });
+      const moved = await scheduleApi.update(item.id, { dayOfWeek: day });
       setSchedules((prev) => prev.map((s) => (s.id === item.id ? { ...s, dayOfWeek: day } : s)));
       setNotice({
-        text: `${item.group?.name ?? t("schedule.group")} (${item.startTime}–${item.endTime}): ${dayLabel(from)} → ${dayLabel(day)}`,
+        text: `${item.group?.name ?? t("schedule.group")} (${item.startTime}–${item.endTime}): ${dayLabel(from)} → ${dayLabel(day)}${makeupNote(moved.makeups)}`,
         undo: isUndo ? undefined : () => moveLesson({ ...item, dayOfWeek: day }, from, true),
       });
     } catch (err) {
@@ -305,7 +315,10 @@ export default function SchedulePage() {
       };
 
       if (editingItem) {
-        await scheduleApi.update(editingItem.id, payload);
+        const saved = await scheduleApi.update(editingItem.id, payload);
+        // Make-ups booked into this lesson followed it or were released: say so.
+        const note = makeupNote(saved.makeups);
+        if (note) setNotice({ text: `${saved.group?.name ?? t("schedule.group")}${note}` });
       } else {
         await scheduleApi.create(payload);
       }
@@ -323,8 +336,11 @@ export default function SchedulePage() {
   async function handleDeleteSchedule(id: string) {
     if (!confirm(t("schedule.deleteConfirm"))) return;
     try {
-      await scheduleApi.remove(id);
+      const removed = await scheduleApi.remove(id);
+      const gone = schedules.find((s) => s.id === id);
       setSchedules((prev) => prev.filter((s) => s.id !== id));
+      const note = makeupNote(removed.makeups);
+      if (note) setNotice({ text: `${gone?.group?.name ?? t("schedule.group")}${note}` });
     } catch (err) {
       console.error(err);
       alert(t("sch.deleteError"));

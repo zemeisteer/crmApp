@@ -7,6 +7,8 @@ import { DEFAULT_TIMEZONE, isValidTimeZone, zonedParts, zonedTimeToUtc } from '.
 import { seatHeldWhere } from '../common/seats';
 import { addMinutes, DEFAULT_LESSON_MINUTES, isoWeekdaysOf } from '../common/weekdays';
 import { isOverlapping } from '../schedule/schedule.service';
+import { lockTimetable } from '../common/timetable-lock';
+import { reconcileGroupMakeups } from '../lessons/makeup-reconcile';
 import { CreateGroupDto, UpdateGroupDto } from './dto/group.dto';
 import { AuditService } from '../audit/audit.service';
 
@@ -195,13 +197,13 @@ export class GroupsService {
   private async syncWeeklyLessons(tenantId: string, group: typeof groups.$inferSelect) {
     const slot = group.deletedAt ? null : this.lessonSlot(group.scheduleDays, group.startTime, group.endTime);
     await this.db.transaction(async (tx) => {
+      await lockTimetable(tx, tenantId);
       const old = await tx.select({ dayOfWeek: schedules.dayOfWeek, roomId: schedules.roomId })
         .from(schedules)
         .where(and(eq(schedules.groupId, group.id), eq(schedules.tenantId, tenantId), eq(schedules.isRecurring, true), isNull(schedules.date)));
       await tx.delete(schedules)
         .where(and(eq(schedules.groupId, group.id), eq(schedules.tenantId, tenantId), eq(schedules.isRecurring, true), isNull(schedules.date)));
-      if (!slot) return;
-      await tx.insert(schedules).values(slot.days.map((day) => ({
+      if (slot) await tx.insert(schedules).values(slot.days.map((day) => ({
         tenantId,
         groupId: group.id,
         teacherId: group.teacherId,
@@ -212,6 +214,9 @@ export class GroupsService {
         endTime: slot.end,
         isRecurring: true,
       })));
+      if (slot) await tx.update(groups).set({ timetableManaged: true }).where(eq(groups.id, group.id));
+      // Make-ups booked into the lessons that just moved or went away.
+      await reconcileGroupMakeups(tx, tenantId, [group.id], null);
     });
   }
 

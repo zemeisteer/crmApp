@@ -413,6 +413,7 @@ export class PortalService {
         name: e.group.name,
         subject: e.group.subject,
         scheduleDays: e.group.scheduleDays,
+        timetableManaged: e.group.timetableManaged,
         startTime: e.group.startTime,
         endTime: e.group.endTime ?? null,
         teacher: e.group.teacher?.fullName ?? null,

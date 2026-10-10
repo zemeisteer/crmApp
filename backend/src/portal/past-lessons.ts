@@ -9,6 +9,9 @@ export interface PastLessonGroup {
   name: string;
   subject: string | null;
   scheduleDays: string | null;
+  // The group's weekly lessons live in the timetable (groups.timetableManaged):
+  // scheduleDays is then never a source of lesson days.
+  timetableManaged?: boolean;
   startTime: string | null;
   endTime: string | null;
   teacher: string | null;
@@ -131,7 +134,11 @@ export function buildPastLessons(input: PastLessonInput): PastLesson[] {
   for (const g of input.groups) {
     const slots = slotsByGroup.get(g.id) ?? [];
     const weekly = slots.filter((s) => s.date == null && s.dayOfWeek != null && s.status !== 'CANCELLED');
-    const weekdays = weekly.length > 0 ? new Set(weekly.map((s) => s.dayOfWeek!)) : new Set(isoWeekdaysOf(g.scheduleDays));
+    // Only a group that never had a weekly row falls back to its own days:
+    // one whose rows were cancelled or deleted has no weekly lessons (the
+    // same rule as lessons/occurrences.ts).
+    const everWeekly = g.timetableManaged || slots.some((s) => s.date == null && s.dayOfWeek != null);
+    const weekdays = weekly.length > 0 ? new Set(weekly.map((s) => s.dayOfWeek!)) : everWeekly ? new Set<number>() : new Set(isoWeekdaysOf(g.scheduleDays));
     // Today's lesson is listed only once something was recorded for it.
     for (let d = input.from; d < input.today; d = nextDate(d)) {
       if (!weekdays.has(weekdayOf(d)) || !inWindow(g, d)) continue;

@@ -7,6 +7,7 @@ import {
 } from '../db/schema';
 import { countOccupiedSeats } from '../common/seats';
 import { teacherGroupIds } from '../common/teacher-scope';
+import { lockTimetable } from '../common/timetable-lock';
 import { DEFAULT_TIMEZONE, zonedParts } from '../common/timezone';
 import { isOverlapping, ScheduleService } from '../schedule/schedule.service';
 import { CalendarChanges } from '../lessons/calendar-changes';
@@ -40,11 +41,14 @@ export interface BookDto {
  * the ledger are never touched, and make-up sessions are not added to
  * teacher payroll. The original attendance row is never changed.
  *
- * Concurrency: every change runs in one transaction that first locks the
- * credit (or booking) row, then takes advisory locks for the teacher and
- * room (the same keys lead trials use, in the same order), the target
- * lesson and the student; status changes are conditional on the status
- * just read. Partial unique indexes back this up: one live credit per
+ * Concurrency: a booking, its cancellation and its attendance mark each run
+ * in one transaction that first takes the center's timetable lock (the one
+ * timetable edits and lesson cancellations take, common/timetable-lock.ts),
+ * then locks the credit (or booking) row, then the advisory locks for the
+ * teacher and room (the same keys lead trials use, in the same order), the
+ * target lesson and the student. Everything a decision rests on - the
+ * lesson, the seats, who is busy - is read after the locks; status changes
+ * are conditional on the status just read. Partial unique indexes back this up: one live credit per
  * occurrence, one live booking per credit.
  */
 @Injectable()
@@ -252,6 +256,7 @@ export class MakeupsService {
       throw new BadRequestException(`Sana ${BOOK_PAST_DAYS} kun oldindan ${BOOK_AHEAD_DAYS} kun keyingacha bo'lishi kerak`);
     }
     const booking = await this.db.transaction(async (tx) => {
+      await lockTimetable(tx, tenantId);
       const credit = await this.lockCredit(tx, tenantId, creditId);
       if (credit.status !== 'ISSUED') throw new ConflictException({ code: 'CREDIT_NOT_OPEN', message: 'Kredit band yoki ishlatilgan' });
       if (credit.expiresAt && credit.expiresAt.getTime() < Date.now()) throw new ConflictException({ code: 'CREDIT_EXPIRED', message: 'Kredit muddati tugagan' });
@@ -261,8 +266,16 @@ export class MakeupsService {
         if (!dto.targetGroupId) throw new BadRequestException('Guruhni tanlang');
         const [g] = await tx.select().from(groups).where(and(eq(groups.id, dto.targetGroupId), eq(groups.tenantId, tenantId), isNull(groups.deletedAt)));
         if (!g) throw new NotFoundException('Guruh topilmadi');
-        const lesson = (await lessonsOfGroupOn(tx, tenantId, g.id, dto.date))[0];
-        if (!lesson) throw new BadRequestException({ code: 'NO_LESSON', message: "Bu kuni guruhning darsi yo'q yoki bekor qilingan" });
+        const lessons = await lessonsOfGroupOn(tx, tenantId, g.id, dto.date);
+        if (lessons.length === 0) throw new BadRequestException({ code: 'NO_LESSON', message: "Bu kuni guruhning darsi yo'q yoki bekor qilingan" });
+        // The lesson that was chosen, by its start: a group with two lessons
+        // that day must not have the make-up land in whichever comes first.
+        const lesson = dto.startTime ? lessons.find((l) => l.startTime === dto.startTime) : lessons.length === 1 ? lessons[0] : null;
+        if (!lesson) {
+          throw new BadRequestException(dto.startTime
+            ? { code: 'NO_LESSON', message: "Bu vaqtda guruhning darsi yo'q yoki bekor qilingan" }
+            : { code: 'LESSON_AMBIGUOUS', message: 'Bu kuni guruhning bir nechta darsi bor: qaysi biri ekanini tanlang', lessons: lessons.map((l) => ({ startTime: l.startTime, endTime: l.endTime })) });
+        }
         const [already] = await tx.select({ id: enrollments.id }).from(enrollments)
           .where(and(eq(enrollments.studentId, credit.studentId), eq(enrollments.groupId, g.id), eq(enrollments.status, 'ACTIVE')));
         if (already) throw new BadRequestException({ code: 'ALREADY_IN_GROUP', message: "O'quvchi bu guruhda o'qiydi: bu dars unga baribir" });
@@ -297,14 +310,14 @@ export class MakeupsService {
       if (dto.mode === 'GROUP_LESSON') {
         const [g] = await tx.select({ maxStudents: groups.maxStudents }).from(groups).where(eq(groups.id, slot.targetGroupId!));
         const [{ n }] = await tx.select({ n: sql<number>`count(*)::int` }).from(makeupBookings)
-          .where(and(eq(makeupBookings.targetGroupId, slot.targetGroupId!), eq(makeupBookings.date, dto.date), inArray(makeupBookings.status, LIVE_BOOKING)));
+          .where(and(eq(makeupBookings.targetGroupId, slot.targetGroupId!), eq(makeupBookings.date, dto.date), eq(makeupBookings.startTime, slot.startTime), inArray(makeupBookings.status, LIVE_BOOKING)));
         const seats = await countOccupiedSeats(tx, slot.targetGroupId!);
         if (seats + n >= g.maxStudents) throw new ConflictException({ code: 'LESSON_FULL', message: "Bu darsda bo'sh o'rin yo'q" });
       } else {
         // The teacher and the room must be free: the timetable, and other make-up sessions.
         const conflicts = await this.schedule.findConflicts(tenantId, {
           groupId: '__makeup__', teacherId: slot.teacherId, roomId: slot.roomId, date: dto.date, startTime: slot.startTime, endTime: slot.endTime,
-        });
+        }, tx);
         const sessions = await tx.select().from(makeupBookings)
           .where(and(eq(makeupBookings.tenantId, tenantId), eq(makeupBookings.date, dto.date), eq(makeupBookings.mode, 'SESSION'), inArray(makeupBookings.status, LIVE_BOOKING),
             or(eq(makeupBookings.teacherId, slot.teacherId!), slot.roomId ? eq(makeupBookings.roomId, slot.roomId) : sql`false`)));
@@ -351,6 +364,7 @@ export class MakeupsService {
   /** Cancels a booked make-up; the credit is released (usable again). */
   async cancelBooking(tenantId: string, userId: string, id: string) {
     const booking = await this.db.transaction(async (tx) => {
+      await lockTimetable(tx, tenantId);
       const b = await this.lockBooking(tx, tenantId, id);
       await this.lockCredit(tx, tenantId, b.creditId);
       if (b.status !== 'BOOKED') throw new ConflictException({ code: 'BOOKING_CLOSED', message: "Faqat rejalashtirilgan qoplash darsini bekor qilish mumkin" });
@@ -373,6 +387,7 @@ export class MakeupsService {
     if (status !== 'ATTENDED' && status !== 'MISSED') throw new BadRequestException("Holat noto'g'ri");
     const teacherId = await this.teacherOf(tenantId, viewer);
     const result = await this.db.transaction(async (tx) => {
+      await lockTimetable(tx, tenantId);
       const b = await this.lockBooking(tx, tenantId, id);
       if (teacherId !== null) {
         let mine = !!teacherId && b.teacherId === teacherId;

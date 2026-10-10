@@ -75,8 +75,10 @@ export default function BookModal({ credit, onClose, onBooked }: { credit: Makeu
       .catch(() => setLessonsError(true));
   }
 
-  // One date may hold a weekly lesson and a one-off: the server books the first.
-  const lessonDates = [...new Map((lessons ?? []).map((l) => [l.date, l])).values()];
+  // Every lesson is its own choice (a date may hold two): the booking is
+  // bound to the one picked, by its date and start.
+  const lessonDates = lessons ?? [];
+  const lessonKey = (l: LessonOccurrence) => `${l.date}|${l.startTime}`;
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -91,7 +93,8 @@ export default function BookModal({ credit, onClose, onBooked }: { credit: Makeu
     setBusy(true);
     try {
       if (mode === "GROUP_LESSON") {
-        await makeupsApi.book(credit.id, { mode, targetGroupId: groupId, date: lessonDate, note: note.trim() || undefined });
+        const [pickedDate, pickedStart] = lessonDate.split("|");
+        await makeupsApi.book(credit.id, { mode, targetGroupId: groupId, date: pickedDate, startTime: pickedStart, note: note.trim() || undefined });
       } else {
         await makeupsApi.book(credit.id, { mode, date, startTime, endTime, teacherId, roomId: roomId || undefined, note: note.trim() || undefined });
       }
@@ -167,7 +170,7 @@ export default function BookModal({ credit, onClose, onBooked }: { credit: Makeu
                     sheetOnPhone
                     sheetTitle={t("mk.lessonDate")}
                     placeholder={t("mk.chooseDate")}
-                    options={lessonDates.map((l) => ({ value: l.date, label: `${dayLabel(l.date, lang, t)} · ${l.startTime}–${l.endTime}` }))}
+                    options={lessonDates.map((l) => ({ value: lessonKey(l), label: `${dayLabel(l.date, lang, t)} · ${l.startTime}–${l.endTime}` }))}
                     value={lessonDate}
                     onChange={setLessonDate}
                   />
