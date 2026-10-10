@@ -7,8 +7,9 @@ import MockAttempts from "@/components/mock-tests/MockAttempts";
 import ImportPanel from "@/components/mock-tests/ImportPanel";
 import PracticeEditor from "@/components/mock-tests/PracticeEditor";
 import PracticeAttempts from "@/components/mock-tests/PracticeAttempts";
+import NewTestPanel, { type NewTestChoice } from "@/components/mock-tests/NewTestPanel";
 import { levelKey } from "@/components/mock-tests/levels";
-import { ApiError, isPracticeTest, mockTestsApi, type MockTest, type MockTestSummary, type PracticeTemplate, type PracticeTest } from "@/lib/api";
+import { ApiError, isPracticeTest, mockTestsApi, type MockTest, type MockTestSummary, type PracticeTest } from "@/lib/api";
 import { useLanguage } from "@/lib/i18n-context";
 import { useAuth } from "@/lib/auth-context";
 import { can } from "@/lib/access";
@@ -19,7 +20,6 @@ const card: React.CSSProperties = { background: "#fff", border: "1px solid #EAE8
 // Mock and practice tests: IELTS (Listening / Reading / Writing / Speaking)
 // and practice tests for any direction (SAT, math, programming...), published
 // to the student cabinet, with the sittings to review.
-const TEMPLATES: PracticeTemplate[] = ["SAT", "ENGLISH", "MATH", "PROGRAMMING", "GENERAL"];
 function MockTestsContent() {
   const { t } = useLanguage();
   const { user } = useAuth();
@@ -37,14 +37,15 @@ function MockTestsContent() {
   }, [t]);
   useEffect(load, [load]);
 
-  async function create(sample: boolean, template?: PracticeTemplate) {
+  // The direction comes first; the starting point is one that fits it.
+  async function create({ subject, sample, template }: NewTestChoice) {
     setBusy(true);
     setError(null);
     setPicking(false);
     try {
       const created = template
-        ? await mockTestsApi.create({ kind: "PRACTICE", template, subject: { SAT: "SAT", ENGLISH: "Ingliz tili", MATH: "Matematika", PROGRAMMING: "Dasturlash", GENERAL: "" }[template] || undefined })
-        : await mockTestsApi.create({ sample });
+        ? await mockTestsApi.create({ kind: "PRACTICE", template, subject })
+        : await mockTestsApi.create({ sample, subject });
       setOpen(created);
       setTab("edit");
       load();
@@ -105,23 +106,10 @@ function MockTestsContent() {
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <button type="button" className="btn" onClick={() => setImporting(true)} style={{ background: "#181A1F", color: "#fff", border: "none", borderRadius: 10, padding: "10px 16px", fontWeight: 700, cursor: "pointer" }}>📥 {t("mimp.button")}</button>
-          <button type="button" className="btn" disabled={busy} onClick={() => create(true)} style={{ background: ACCENT, color: "#fff", border: "none", borderRadius: 10, padding: "10px 16px", fontWeight: 700, cursor: "pointer" }}>✨ {t("mock.fromSample")}</button>
-          <button type="button" className="btn" disabled={busy} onClick={() => create(false)} style={{ background: "#fff", color: "#181A1F", border: "1px solid #EAE8E2", borderRadius: 10, padding: "10px 16px", fontWeight: 700, cursor: "pointer" }}>+ {t("mock.blank")}</button>
-          <button type="button" className="btn" disabled={busy} onClick={() => setPicking((v) => !v)} aria-expanded={picking} style={{ background: "#fff", color: ACCENT, border: `1.5px solid ${ACCENT}`, borderRadius: 10, padding: "10px 16px", fontWeight: 700, cursor: "pointer" }}>🎯 {t("pre.newPractice")}</button>
+          <button type="button" className="btn" disabled={busy} onClick={() => setPicking((v) => !v)} aria-expanded={picking} style={{ background: ACCENT, color: "#fff", border: "none", borderRadius: 10, padding: "10px 16px", fontWeight: 700, cursor: "pointer" }}>+ {t("mock.newTest")}</button>
         </div>
       </div>
-      {picking && (
-        <div style={{ ...card, display: "grid", gap: 10 }}>
-          <div style={{ fontSize: 13, color: "#6B6E78" }}>{t("pre.newHint")}</div>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            {TEMPLATES.map((tpl) => (
-              <button key={tpl} type="button" className="btn" disabled={busy} onClick={() => create(false, tpl)} style={{ ...btn, padding: "10px 14px", fontSize: 13.5 }}>
-                {{ SAT: "🎓", ENGLISH: "🇬🇧", MATH: "📐", PROGRAMMING: "💻", GENERAL: "📘" }[tpl]} {t(`pre.tpl${tpl}`)}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
+      {picking && <NewTestPanel busy={busy} onCreate={create} onClose={() => setPicking(false)} />}
       {error && <div role="alert" style={{ background: "#FDEBEC", color: "#B23A47", padding: "10px 14px", borderRadius: 10, fontSize: 13, fontWeight: 600 }}>{error}</div>}
       {importing && <ImportPanel onClose={() => { setImporting(false); load(); }} onOpenTest={(id) => { setImporting(false); load(); openTest(id); }} />}
 
@@ -132,6 +120,7 @@ function MockTestsContent() {
           <div style={{ fontSize: 36 }}>🎧📖✍️🎤</div>
           <div style={{ fontWeight: 700, marginTop: 8, color: "#181A1F" }}>{t("mock.none")}</div>
           <div style={{ fontSize: 13, marginTop: 4 }}>{t("mock.noneHint")}</div>
+          {!picking && <button type="button" className="btn" onClick={() => setPicking(true)} style={{ marginTop: 14, background: ACCENT, color: "#fff", border: "none", borderRadius: 10, padding: "10px 16px", fontWeight: 700, cursor: "pointer" }}>+ {t("mock.newTest")}</button>}
         </div>
       ) : (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 12 }}>
