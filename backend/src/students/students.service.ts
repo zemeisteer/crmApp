@@ -41,10 +41,15 @@ export class StudentsService {
    */
   async findAll(
     tenantId: string,
-    filters?: { status?: string; branchId?: string; search?: unknown; groupId?: unknown; direction?: unknown; gender?: unknown; page?: number; pageSize?: number },
+    filters?: { status?: string; branchId?: string; search?: unknown; groupId?: unknown; direction?: unknown; gender?: unknown; ids?: unknown; page?: number; pageSize?: number },
     viewer?: { role?: string; userId?: string },
   ) {
     const term = queryText(filters?.search, 'search', 1000)?.slice(0, 80);
+    // A list of ids narrows the answer; it never widens it (the center and
+    // the teacher's own groups still apply below).
+    // (An empty list is "none of them", not "no filter".)
+    const idList = filters?.ids === undefined ? undefined : (queryText(filters.ids, 'ids', 200 * 65) ?? '').split(',').map((x) => x.trim()).filter(Boolean);
+    if (idList && idList.length > 200) throw new BadRequestException("Ko'pi bilan 200 ta id");
     const groupId = queryText(filters?.groupId, 'groupId', 64);
     const direction = queryText(filters?.direction, 'direction', 100);
     const gender = queryText(filters?.gender, 'gender', 10);
@@ -59,6 +64,10 @@ export class StudentsService {
       const ids = await studentIdsInGroups(this.db, scope);
       if (ids.length === 0) return filters?.page ? { items: [], total: 0, page, pageSize } : [];
       conditions.push(inArray(students.id, ids));
+    }
+    if (idList) {
+      if (idList.length === 0) return filters?.page ? { items: [], total: 0, page, pageSize } : [];
+      conditions.push(inArray(students.id, idList));
     }
     if (filters?.status) conditions.push(eq(students.status, filters.status as any));
     if (filters?.branchId) conditions.push(eq(students.branchId, filters.branchId));
