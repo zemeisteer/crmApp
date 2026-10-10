@@ -72,7 +72,10 @@ async function waitForApi() {
 
 async function main() {
   await waitForApi();
-  const db = new Client({ connectionString: process.env.DATABASE_URL });
+  // UTC like the API's own pool: on a server set to e.g. Asia/Tashkent now()
+  // would otherwise date the PINs hours ahead, and a PIN newer than a
+  // sign-in signs that cabinet out.
+  const db = new Client({ connectionString: process.env.DATABASE_URL, options: '-c TimeZone=UTC' });
   await db.connect();
 
   const exists = await db.query('SELECT id FROM tenants WHERE subdomain = $1', [SUB]);
