@@ -2441,7 +2441,9 @@ export interface Room {
 }
 
 export interface ScheduleConflict {
-  type: "ROOM" | "TEACHER" | "GROUP";
+  type: "ROOM" | "TEACHER" | "GROUP" | "STUDENT";
+  studentNames?: string[];
+  studentCount?: number;
   message: string;
   conflictingScheduleId: string;
   groupName?: string;
