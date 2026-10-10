@@ -3,6 +3,7 @@
 import { useState } from "react";
 import QuestionEditor, { emptyQuestion } from "@/components/tests/QuestionEditor";
 import Select from "@/components/Select";
+import DirectionSelect from "@/components/DirectionSelect";
 import { ApiError, MOCK_LEVELS, mockTestsApi, type MockContent, type MockLevel, type MockSection, type MockTest } from "@/lib/api";
 import { hasAnswer, type TestQuestion } from "@/lib/tests";
 import { useLanguage } from "@/lib/i18n-context";
@@ -79,7 +80,7 @@ export default function MockTestEditor({ test, onSaved }: { test: MockTest; onSa
           </div>
           <div>
             <span style={label}>{t("mock.direction")}</span>
-            <input className="field-input" value={subject} onChange={(e) => { setSubject(e.target.value); setDirty(true); }} placeholder="Ingliz tili" />
+            <DirectionSelect value={subject} onChange={(v) => { setSubject(v); setDirty(true); }} ariaLabel={t("mock.direction")} />
           </div>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12 }}>
