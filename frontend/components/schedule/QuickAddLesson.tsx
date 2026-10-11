@@ -91,6 +91,15 @@ export default function QuickAddLesson({
     setPos({ left, top });
   }, [anchor, conflicts.length, checkError, error]);
 
+  // Keyboard: focus goes into the form when it opens and back to the "+"
+  // that opened it when it closes (the form is drawn at the end of the page,
+  // far from that button in tab order).
+  useEffect(() => {
+    const opener = document.activeElement as HTMLElement | null;
+    ref.current?.querySelector<HTMLElement>("form button, form input")?.focus();
+    return () => { if (opener?.isConnected) opener.focus(); };
+  }, []);
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
     const onDown = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) onClose(); };

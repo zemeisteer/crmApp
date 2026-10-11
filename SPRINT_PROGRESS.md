@@ -227,3 +227,11 @@ Google only: `test/calendar-google.e2e-spec.ts` 12/12, `calendar.e2e-spec.ts` 13
   a real phone.
 - Tests: `chat-instances.e2e-spec.ts` 8/8 (two instances, a streaming reverse proxy in
   Node, a dropped LISTEN connection), `chat.e2e-spec.ts` 11/11.
+
+**Checkpoint 4: custom fields, payments, platform (tasks 6-7).** Commits `b5b2bf1`,
+`c6fb8ea`, `f6c74cd`.
+
+**Checkpoint 5: final verification (task 8).** Backend e2e 54 files / 382; browser suite
+39/39 on the final build; Google browser test 1/1 against the local fake. The browser
+suite caught one more bug (the room list in the separate-session make-up form), fixed
+in the last commit. Everything is in `STABILIZATION_SPRINT_REPORT.md`; nothing was pushed.
