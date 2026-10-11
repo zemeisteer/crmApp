@@ -120,7 +120,11 @@ export async function addStaff(ownerToken: string, email: string, role: 'ADMIN' 
 /** Signs in through the main site's login form. */
 export async function loginOnMainSite(page: Page, email: string) {
   await authSlot('login');
-  await page.goto('/login?main=1');
+  // Not "load": every page links a stylesheet from fonts.googleapis.com
+  // (app/layout.tsx), and when that host answers slowly the load event comes
+  // after the 30 s limit although the form has long been usable. The next
+  // line waits for the form itself.
+  await page.goto('/login?main=1', { waitUntil: 'domcontentloaded' });
   await page.getByPlaceholder('azizbek@bilimdon.uz yoki +998901234567').fill(email);
   await page.locator('input[type="password"]').fill(PASSWORD);
   await page.getByRole('button', { name: 'Kirish', exact: true }).click();

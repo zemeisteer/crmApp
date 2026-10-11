@@ -60,3 +60,10 @@ upgraded database, the report, patch and bundle.
 migrations 0051 and 0052 verified on a copy of the development database and applied to
 `talimcrm` (backup in `backend/backups/`). Everything is in `STABILIZATION_SPRINT2_REPORT.md`.
 Nothing was pushed.
+
+**Checkpoint 5: the rest of the browser coverage (task 6).** `timetable-and-access.spec.ts`
+(move by button/keyboard, undo, conflict dialog, drag, phone; group form time change; chat
+tab after the permission is removed) and `platform-admin.spec.ts` (overview, subscription
+plan + manual payment, integration key behind the password). Full browser run 44/45; the
+one failure was the login page's "load" event waiting on fonts.googleapis.com - the helper
+now waits for the form, and the failed file passed. Nothing was pushed.
