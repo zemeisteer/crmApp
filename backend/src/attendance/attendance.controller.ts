@@ -22,6 +22,13 @@ export class AttendanceController {
     return this.service.findAll(tenantId, query, { role, userId });
   }
 
+  // Marks that are not bound to a lesson (see AttendanceService.unbound): for those who run the center.
+  @Roles('ADMIN')
+  @Get('unbound')
+  unbound(@CurrentUser('tenantId') tenantId: string) {
+    return this.service.unbound(tenantId);
+  }
+
   @Get('topics')
   topics(
     @CurrentUser('tenantId') tenantId: string,

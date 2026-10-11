@@ -96,6 +96,7 @@ export class MakeupsService {
     const tz = await this.zone(this.db, tenantId);
     const marks = await this.db.select({
       studentId: attendance.studentId, groupId: attendance.groupId, date: attendance.date, createdAt: attendance.createdAt,
+      scheduleId: attendance.scheduleId, startTime: attendance.startTime,
       studentName: students.fullName, groupName: groups.name,
     }).from(attendance)
       .innerJoin(students, eq(students.id, attendance.studentId))
@@ -113,16 +114,17 @@ export class MakeupsService {
       .where(and(inArray(enrollments.groupId, groupIds), isNull(students.deletedAt), eq(groups.tenantId, tenantId)));
     const membership = new Map(enrolled.map((e) => [`${e.studentId}|${e.groupId}`, e]));
 
-    type Row = { studentId: string; groupId: string; date: string; studentName: string; groupName: string; reason: 'ABSENT' | 'LESSON_CANCELLED'; scheduleId: string | null };
+    // One row per missed lesson: an absence is per lesson now, like a cancellation.
+    type Row = { studentId: string; groupId: string; date: string; studentName: string; groupName: string; reason: 'ABSENT' | 'LESSON_CANCELLED'; scheduleId: string | null; startTime: string | null };
     const rows: Row[] = [];
     for (const m of marks) {
       if (!absenceCounts(m, membership.get(`${m.studentId}|${m.groupId}`), m.date, tz)) continue;
-      rows.push({ studentId: m.studentId, groupId: m.groupId, date: m.date, studentName: m.studentName, groupName: m.groupName, reason: 'ABSENT', scheduleId: null });
+      rows.push({ studentId: m.studentId, groupId: m.groupId, date: m.date, studentName: m.studentName, groupName: m.groupName, reason: 'ABSENT', scheduleId: m.scheduleId, startTime: m.startTime });
     }
     for (const c of cancels) {
       for (const e of enrolled.filter((x) => x.groupId === c.groupId)) {
         if (!memberOn(e, c.date, tz)) continue;
-        rows.push({ studentId: e.studentId, groupId: c.groupId, date: c.date, studentName: e.studentName, groupName: e.groupName, reason: 'LESSON_CANCELLED', scheduleId: c.scheduleId });
+        rows.push({ studentId: e.studentId, groupId: c.groupId, date: c.date, studentName: e.studentName, groupName: e.groupName, reason: 'LESSON_CANCELLED', scheduleId: c.scheduleId, startTime: null });
       }
     }
     if (rows.length === 0) return [];
@@ -210,10 +212,18 @@ export class MakeupsService {
         .where(and(eq(enrollments.studentId, dto.studentId), eq(enrollments.groupId, dto.groupId)));
       let originScheduleId: string | null = null;
       if (dto.reason === 'ABSENT') {
-        const [mark] = await tx.select({ id: attendance.id, createdAt: attendance.createdAt }).from(attendance)
+        // The absence itself: of the lesson named, or the student's only absence in the group that day.
+        const marks = await tx.select({ id: attendance.id, createdAt: attendance.createdAt, scheduleId: attendance.scheduleId }).from(attendance)
           .where(and(eq(attendance.tenantId, tenantId), eq(attendance.studentId, dto.studentId), eq(attendance.groupId, dto.groupId), eq(attendance.date, dto.date), eq(attendance.status, 'ABSENT')))
           .for('share');
-        if (!mark) throw new BadRequestException({ code: 'NOT_ELIGIBLE', message: "Bu kuni o'quvchi darsda yo'q deb belgilanmagan" });
+        if (marks.length === 0) throw new BadRequestException({ code: 'NOT_ELIGIBLE', message: "Bu kuni o'quvchi darsda yo'q deb belgilanmagan" });
+        const mark = dto.scheduleId ? marks.find((m) => m.scheduleId === dto.scheduleId) : marks.length === 1 ? marks[0] : null;
+        if (!mark) {
+          throw new BadRequestException(dto.scheduleId
+            ? { code: 'NOT_ELIGIBLE', message: "Bu darsda o'quvchi yo'q deb belgilanmagan" }
+            : { code: 'LESSON_AMBIGUOUS', message: "Bu kuni o'quvchi bir nechta darsda yo'q deb belgilangan: qaysi biri ekanini tanlang" });
+        }
+        originScheduleId = mark.scheduleId;
         if (!absenceCounts(mark, membership, dto.date, tz)) throw new BadRequestException({ code: 'NOT_ELIGIBLE', message: "O'quvchi o'sha kuni bu guruhda bo'lmagan" });
       } else {
         const cancels = await tx.select({ id: lessonCancellations.id, scheduleId: lessonCancellations.scheduleId }).from(lessonCancellations)

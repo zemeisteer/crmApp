@@ -1,7 +1,11 @@
-import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { and, count, desc, eq, gte, inArray, isNull, lte } from 'drizzle-orm';
+import { BadRequestException, ConflictException, ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { and, count, desc, eq, gte, inArray, isNull, lte, ne, sql } from 'drizzle-orm';
 import { DB, Database } from '../db/db.module';
-import { attendance, enrollments, groups, lessonTopics, payments, students, teachers } from '../db/schema';
+import { attendance, enrollments, groups, lessonTopics, makeupCredits, payments, students, teachers } from '../db/schema';
+import { centerToday } from '../common/center-today';
+import { lessonsOfGroupOn, type LessonOccurrence } from '../lessons/occurrences';
+import { DEFAULT_TIMEZONE, zonedParts } from '../common/timezone';
+import { tenants } from '../db/schema';
 import { MarkAttendanceDto, QrCheckInDto, QueryAttendanceDto } from './dto/attendance.dto';
 import { TelegramService } from '../telegram/telegram.service';
 import { WebhooksService } from '../webhooks/webhooks.service';
@@ -18,6 +22,39 @@ export class AttendanceService {
     private readonly notifications: NotificationsService,
   ) {}
 
+  /**
+   * The lesson a mark is for. Attendance is kept per lesson - the timetable
+   * row and the date (lessons/occurrences.ts):
+   *  - `scheduleId` names the lesson; it must be a lesson of this group on
+   *    this date;
+   *  - without it, the group's only timetable lesson that day is meant;
+   *    several lessons that day have to be told apart (LESSON_AMBIGUOUS);
+   *  - a group with no timetable lesson that day (or no timetable rows at
+   *    all) gets a mark for the day as a whole, as before;
+   *  - a lesson that was called off takes no new marks (the marks it
+   *    already has stay as history).
+   */
+  private async lessonFor(tenantId: string, groupId: string, date: string, scheduleId?: string): Promise<LessonOccurrence | null> {
+    const lessons = await lessonsOfGroupOn(this.db, tenantId, groupId, date, true);
+    let lesson: LessonOccurrence | null;
+    if (scheduleId) {
+      lesson = lessons.find((l) => l.scheduleId === scheduleId) ?? null;
+      if (!lesson) throw new BadRequestException({ code: 'NO_LESSON', message: "Bu kuni guruhning bunday darsi yo'q" });
+    } else {
+      const withRow = lessons.filter((l) => l.scheduleId);
+      if (withRow.length > 1) {
+        throw new BadRequestException({
+          code: 'LESSON_AMBIGUOUS', message: 'Bu kuni guruhning bir nechta darsi bor: qaysi biri ekanini tanlang',
+          lessons: withRow.map((l) => ({ scheduleId: l.scheduleId, startTime: l.startTime, endTime: l.endTime, cancelled: l.cancelled })),
+        });
+      }
+      lesson = withRow[0] ?? null;
+    }
+    const off = lesson ? lesson.cancelled : lessons.length > 0 && lessons.every((l) => l.cancelled);
+    if (off) throw new ConflictException({ code: 'LESSON_CANCELLED', message: 'Bu dars bekor qilingan: unga davomat yozilmaydi' });
+    return lesson;
+  }
+
   async mark(tenantId: string, dto: MarkAttendanceDto, role?: string, userId?: string) {
     const group = await this.db.query.groups.findFirst({
       where: and(eq(groups.id, dto.groupId), eq(groups.tenantId, tenantId), isNull(groups.deletedAt)),
@@ -25,12 +62,15 @@ export class AttendanceService {
     if (!group) {
       throw new NotFoundException('Guruh topilmadi');
     }
+    const lesson = await this.lessonFor(tenantId, dto.groupId, dto.date, dto.scheduleId);
 
     if (role === 'TEACHER' && userId) {
       const teacher = await this.db.query.teachers.findFirst({
         where: and(eq(teachers.userId, userId), eq(teachers.tenantId, tenantId), isNull(teachers.deletedAt)),
       });
-      if (!teacher || group.teacherId !== teacher.id) {
+      // Their own group's lessons, or a single lesson given to them (a substitute).
+      const theirs = !!teacher && (group.teacherId === teacher.id || (!!lesson && lesson.teacherId === teacher.id));
+      if (!theirs) {
         throw new ForbiddenException("Siz faqat o'zingizga biriktirilgan guruhlar uchun davomat kiritishingiz mumkin");
       }
     }
@@ -57,28 +97,47 @@ export class AttendanceService {
       }
     }
 
-    // All the marks or none. A mark that is no longer ABSENT settles the
+    // All the marks or none: one transaction. A repeated or simultaneous
+    // save ends in the same single row per student and lesson (the unique
+    // indexes, with an upsert). A mark that is no longer ABSENT settles the
     // make-up credit issued for that absence (makeups/eligibility.ts): an
     // unused credit is voided, a booked one refuses the correction.
+    const scheduleId = lesson?.scheduleId ?? null;
     const rows = await this.db.transaction(async (tx) => {
       const saved = [];
       for (const entry of dto.entries) {
-        saved.push(await tx
-          .insert(attendance)
-          .values({
-            tenantId,
-            groupId: dto.groupId,
-            studentId: entry.studentId,
-            date: dto.date,
-            status: entry.status as any,
-          })
-          .onConflictDoUpdate({
-            target: [attendance.studentId, attendance.groupId, attendance.date],
-            set: { status: entry.status as any, updatedAt: new Date() },
-          })
+        const values = { tenantId, groupId: dto.groupId, studentId: entry.studentId, date: dto.date, status: entry.status as any };
+        if (!scheduleId) {
+          saved.push(await tx.insert(attendance).values(values)
+            .onConflictDoUpdate({ target: [attendance.studentId, attendance.groupId, attendance.date], targetWhere: sql`schedule_id IS NULL`, set: { status: entry.status as any, updatedAt: new Date() } })
+            .returning());
+          continue;
+        }
+        const lessonValues = { ...values, scheduleId, startTime: lesson!.startTime };
+        const [has] = await tx.select({ id: attendance.id }).from(attendance)
+          .where(and(eq(attendance.studentId, entry.studentId), eq(attendance.scheduleId, scheduleId), eq(attendance.date, dto.date)));
+        if (!has) {
+          // An old mark for the day as a whole, now said to be this lesson's:
+          // the same row (its id stays), and the credit issued for it with it.
+          const adopted = await tx.update(attendance).set({ scheduleId, startTime: lesson!.startTime, status: entry.status as any, updatedAt: new Date() })
+            .where(and(eq(attendance.tenantId, tenantId), eq(attendance.studentId, entry.studentId), eq(attendance.groupId, dto.groupId), eq(attendance.date, dto.date), isNull(attendance.scheduleId)))
+            .returning();
+          if (adopted.length) {
+            const [taken] = await tx.select({ id: makeupCredits.id }).from(makeupCredits)
+              .where(and(eq(makeupCredits.studentId, entry.studentId), eq(makeupCredits.originScheduleId, scheduleId), eq(makeupCredits.originDate, dto.date), ne(makeupCredits.status, 'CANCELLED')));
+            if (!taken) {
+              await tx.update(makeupCredits).set({ originScheduleId: scheduleId, updatedAt: new Date() })
+                .where(and(eq(makeupCredits.tenantId, tenantId), eq(makeupCredits.studentId, entry.studentId), eq(makeupCredits.originGroupId, dto.groupId), eq(makeupCredits.originDate, dto.date), eq(makeupCredits.reason, 'ABSENT'), isNull(makeupCredits.originScheduleId)));
+            }
+            saved.push(adopted);
+            continue;
+          }
+        }
+        saved.push(await tx.insert(attendance).values(lessonValues)
+          .onConflictDoUpdate({ target: [attendance.studentId, attendance.scheduleId, attendance.date], targetWhere: sql`schedule_id IS NOT NULL`, set: { status: entry.status as any, startTime: lesson!.startTime, updatedAt: new Date() } })
           .returning());
       }
-      await settleAbsenceCredits(tx, tenantId, dto.groupId, dto.date, dto.entries.filter((e) => e.status !== 'ABSENT').map((e) => e.studentId), userId ?? null);
+      await settleAbsenceCredits(tx, tenantId, dto.groupId, dto.date, dto.entries.filter((e) => e.status !== 'ABSENT').map((e) => e.studentId), userId ?? null, scheduleId);
       return saved;
     });
 
@@ -99,7 +158,7 @@ export class AttendanceService {
     if (dto.topic !== undefined) await this.saveTopic(tenantId, dto.groupId, dto.date, dto.topic);
 
     const flat = rows.flat();
-    void this.webhooks.dispatch(tenantId, 'attendance.marked', { groupId: dto.groupId, date: dto.date, entries: flat });
+    void this.webhooks.dispatch(tenantId, 'attendance.marked', { groupId: dto.groupId, date: dto.date, scheduleId, entries: flat });
     return flat;
   }
 
@@ -137,6 +196,8 @@ export class AttendanceService {
     if (query.groupId) conditions.push(eq(attendance.groupId, query.groupId));
     if (query.date) conditions.push(eq(attendance.date, query.date));
     if (query.studentId) conditions.push(eq(attendance.studentId, query.studentId));
+    // One lesson of the day ("none": the day-level marks).
+    if (query.scheduleId) conditions.push(query.scheduleId === 'none' ? isNull(attendance.scheduleId) : eq(attendance.scheduleId, query.scheduleId));
     if (query.from) conditions.push(gte(attendance.date, query.from));
     if (query.to) conditions.push(lte(attendance.date, query.to));
 
@@ -155,6 +216,45 @@ export class AttendanceService {
       offset: (query.page - 1) * pageSize,
     });
     return { items, total: Number(total), page: query.page, pageSize };
+  }
+
+  /**
+   * Marks that were not bound to a lesson although their group has
+   * timetable lessons: old marks the migration could not match to exactly
+   * one lesson (none that weekday, or several), and marks made on a day
+   * with no timetable lesson. For the people who run the center, so that
+   * nothing ambiguous is hidden; nothing here is changed or guessed.
+   */
+  async unbound(tenantId: string) {
+    const res = await this.db.execute(sql`
+      SELECT a.group_id AS "groupId", g.name AS "groupName", a.date, count(*)::int AS marks,
+        (SELECT count(*)::int FROM schedules s WHERE s.group_id = a.group_id AND s.status <> 'CANCELLED'
+           AND ((s.date IS NULL AND s.day_of_week = extract(isodow FROM (CASE WHEN a.date ~ '^\\d{4}-\\d{2}-\\d{2}$' THEN a.date END)::date)::int) OR s.date = a.date)) AS lessons
+      FROM attendance a JOIN groups g ON g.id = a.group_id
+      WHERE a.tenant_id = ${tenantId} AND a.schedule_id IS NULL
+        AND EXISTS (SELECT 1 FROM schedules s WHERE s.group_id = a.group_id)
+      GROUP BY a.group_id, g.name, a.date
+      ORDER BY a.date DESC, g.name
+      LIMIT 500`);
+    const rows = (res as unknown as { rows: Array<{ groupId: string; groupName: string; date: string; marks: number; lessons: number }> }).rows;
+    return {
+      total: rows.reduce((n, r) => n + r.marks, 0),
+      // SEVERAL: more than one lesson that day, not clear which was meant. NONE: no timetable lesson that day.
+      days: rows.map((r) => ({ ...r, reason: r.lessons > 1 ? 'SEVERAL' as const : 'NONE' as const })),
+    };
+  }
+
+  /** The lesson a scan is for: the one going on or about to start; a day-level mark when the group has none. */
+  private async lessonNow(tenantId: string, groupId: string, date: string): Promise<LessonOccurrence | null> {
+    const lessons = (await lessonsOfGroupOn(this.db, tenantId, groupId, date)).filter((l) => l.scheduleId);
+    if (lessons.length <= 1) return lessons[0] ?? null;
+    const [t] = await this.db.select({ tz: tenants.timezone }).from(tenants).where(eq(tenants.id, tenantId));
+    const p = zonedParts(new Date(), t?.tz || DEFAULT_TIMEZONE);
+    const now = p.hour * 60 + p.minute;
+    const minutes = (hhmm: string) => Number(hhmm.slice(0, 2)) * 60 + Number(hhmm.slice(3, 5));
+    // Going on now (from half an hour before it starts), else the nearest by its start.
+    const running = lessons.find((l) => now >= minutes(l.startTime) - 30 && now <= minutes(l.endTime));
+    return running ?? [...lessons].sort((a, b) => Math.abs(minutes(a.startTime) - now) - Math.abs(minutes(b.startTime) - now))[0];
   }
 
   async qrCheckIn(tenantId: string, dto: QrCheckInDto, viewer?: { role?: string; userId?: string }) {
@@ -200,13 +300,17 @@ export class AttendanceService {
       }
     }
 
-    const targetDate = dto.date || new Date().toISOString().slice(0, 10);
+    // The center's own day (a scan late in the evening is still today there).
+    const targetDate = dto.date || await centerToday(this.db, tenantId);
+    const lesson = await this.lessonNow(tenantId, targetGroup.id, targetDate);
     const existing = await this.db.query.attendance.findFirst({
       where: and(
         eq(attendance.tenantId, tenantId),
         eq(attendance.studentId, student.id),
         eq(attendance.groupId, targetGroup.id),
         eq(attendance.date, targetDate),
+        // This lesson's mark (or the day's, for a group with no timetable lesson today).
+        lesson?.scheduleId ? eq(attendance.scheduleId, lesson.scheduleId) : isNull(attendance.scheduleId),
       ),
     });
 
@@ -225,11 +329,11 @@ export class AttendanceService {
           studentId: student.id,
           date: targetDate,
           status: status as any,
+          scheduleId: lesson?.scheduleId ?? null,
+          startTime: lesson?.scheduleId ? lesson.startTime : null,
         })
-        .onConflictDoUpdate({
-          target: [attendance.studentId, attendance.groupId, attendance.date],
-          set: { status: status as any, updatedAt: new Date() },
-        });
+        // Two scans at once: the second finds the first's row and changes nothing.
+        .onConflictDoNothing();
 
       void this.webhooks.dispatch(tenantId, 'attendance.marked', {
         groupId: targetGroup.id,
