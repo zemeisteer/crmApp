@@ -1,5 +1,5 @@
 import { ConflictException } from '@nestjs/common';
-import { and, eq, inArray } from 'drizzle-orm';
+import { and, eq, inArray, isNull } from 'drizzle-orm';
 import type { Database } from '../db/db.module';
 import { makeupCredits } from '../db/schema';
 import { zonedParts } from '../common/timezone';
@@ -59,7 +59,8 @@ export function absenceCounts(mark: unknown, e: Membership | null | undefined, d
 
 /**
  * An attendance mark that is no longer ABSENT takes the ground from under
- * the credit issued for that absence. Called in the transaction that
+ * the credit issued for that absence - the absence of that lesson
+ * (`scheduleId`; null: the day-level mark). Called in the transaction that
  * changes the marks, after they are written (so it waits for a credit being
  * issued on the old mark, and then sees it):
  *  - a credit not used yet is voided, with a note saying why;
@@ -67,11 +68,13 @@ export function absenceCounts(mark: unknown, e: Membership | null | undefined, d
  *    booking has to be cancelled first, on purpose, by someone who sees it;
  *  - a credit already used or forfeited is history and stays.
  */
-export async function settleAbsenceCredits(tx: Tx, tenantId: string, groupId: string, date: string, studentIds: string[], userId: string | null): Promise<{ voided: string[] }> {
+export async function settleAbsenceCredits(tx: Tx, tenantId: string, groupId: string, date: string, studentIds: string[], userId: string | null, scheduleId: string | null = null): Promise<{ voided: string[] }> {
   if (studentIds.length === 0) return { voided: [] };
   const live = await tx.select({ id: makeupCredits.id, status: makeupCredits.status, studentId: makeupCredits.studentId }).from(makeupCredits)
     .where(and(
       eq(makeupCredits.tenantId, tenantId), eq(makeupCredits.originGroupId, groupId), eq(makeupCredits.originDate, date), eq(makeupCredits.reason, 'ABSENT'),
+      // The credit of this lesson's absence - not of the group's other lesson that day.
+      scheduleId ? eq(makeupCredits.originScheduleId, scheduleId) : isNull(makeupCredits.originScheduleId),
       inArray(makeupCredits.studentId, studentIds), inArray(makeupCredits.status, ['ISSUED', 'BOOKED']),
     ))
     .for('update');
