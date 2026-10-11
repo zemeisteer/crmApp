@@ -37,3 +37,20 @@ full verification and the report (8).
   `calendar-google` 12/12, `calendar` 13/13. No live Google check was made.
 
 Next: browser tests (6), load (7), full verification and the report (8).
+
+**Checkpoint 3: load measured (task 7), browser journeys written (task 6, partly).**
+
+- `npm run test:load` (backend, e2e database): chat streams on two instances and conflict
+  checks in a large center; numbers go to `backend/load-results.txt` (not committed).
+- Chat delivery: staff streams are validated with two queries per delivery and the read
+  check is asked once per reader (still at every delivery, nothing cached between
+  messages). 400 streams: heard by all in ~537 ms before, ~65 ms after.
+- Conflict check: candidates are narrowed to the weekday/date in SQL.
+- The three Google/calendar suites sync only their own centers (`syncDue(limit, tenantIds)`):
+  they ran into each other's connections in the full parallel run.
+- `e2e-browser/tests/lesson-identity.spec.ts`: two journeys (make-up form race + one of
+  two lessons; group deleted -> cabinet and calendar). Being run.
+- Real nginx: BLOCKED (not installed; Docker daemon not running).
+
+Next: full verification (e2e, unit, builds, lint, browser suite), migrations on an
+upgraded database, the report, patch and bundle.

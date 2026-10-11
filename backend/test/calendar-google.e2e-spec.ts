@@ -144,10 +144,12 @@ describe('Google Calendar: reconnect, disconnect, races (e2e, mocked Google)', (
   const DAYS = ['', 'Dushanba', 'Seshanba', 'Chorshanba', 'Payshanba', 'Juma', 'Shanba', 'Yakshanba'];
 
   let owner: string, ownerId: string, group: string;
+  // Only this suite's centers: other suites run at the same time on the same database, with a Google of their own.
+  let ownCenters: string[] = [];
   const svc = () => app.get(CalendarSyncService);
   const row = async () => (await db.select().from(calendarConnections).where(eq(calendarConnections.userId, ownerId)))[0];
   const forceDue = () => db.update(calendarConnections).set({ nextAttemptAt: null, lockedUntil: null, syncRequestedAt: new Date() }).where(eq(calendarConnections.userId, ownerId));
-  const sync = async () => { await forceDue(); return svc().syncDue(); };
+  const sync = async () => { await forceDue(); return svc().syncDue(10, ownCenters); };
   const status = async () => (await http().get('/api/calendar/google').set(bearer(owner)).expect(200)).body.connection;
   const connect = async (account: string) => {
     const { url } = (await http().post('/api/calendar/google/connect').set(bearer(owner)).send({}).expect(201)).body;
@@ -173,6 +175,7 @@ describe('Google Calendar: reconnect, disconnect, races (e2e, mocked Google)', (
       .send({ centerName: `GC ${suffix}`, subdomain: `gc-${suffix}`, email: `gc-${suffix}@test.uz`, password: 'password123', fullName: 'GC Owner' }).expect(201)).body;
     owner = reg.accessToken;
     ownerId = reg.user.id;
+    ownCenters = [reg.tenant.id];
     // One weekly lesson that starts at midnight, Tashkent time.
     group = (await http().post('/api/groups').set(bearer(owner)).send({ name: 'GC Night', subject: 'Math', scheduleDays: DAYS[3], startTime: '00:00', endTime: '01:00' }).expect(201)).body.id;
   }, 120_000);
@@ -230,7 +233,7 @@ describe('Google Calendar: reconnect, disconnect, races (e2e, mocked Google)', (
       const g2Rows = await rowsOf(g2);
       await forceDue();
       google.calls = [];
-      await Promise.all([svc().syncDue(), app2.get(CalendarSyncService).syncDue(), svc().syncDue(), app2.get(CalendarSyncService).syncDue()]);
+      await Promise.all([svc().syncDue(10, ownCenters), app2.get(CalendarSyncService).syncDue(10, ownCenters), svc().syncDue(10, ownCenters), app2.get(CalendarSyncService).syncDue(10, ownCenters)]);
       const mine = google.ours('ali').filter((e) => g2Rows.some((r) => e.extendedProperties!.private.key.startsWith(`les-${r.id}-`)));
       const inserts = google.calls.filter((c) => c.op === 'insert').length;
       expect(mine.length).toBeGreaterThan(0);
@@ -319,11 +322,11 @@ describe('Google Calendar: reconnect, disconnect, races (e2e, mocked Google)', (
       expect(google.ours('ali')).toHaveLength(total - 2);
       // Not due yet: nothing happens, and nothing new is ever created for it.
       google.calls = [];
-      await svc().syncDue();
+      await svc().syncDue(10, ownCenters);
       expect(google.calls).toEqual([]);
       // The retry time comes: the rest goes, then the grant, then the row.
       await db.update(calendarConnections).set({ nextAttemptAt: new Date(Date.now() - 1000) }).where(eq(calendarConnections.userId, ownerId));
-      await svc().syncDue();
+      await svc().syncDue(10, ownCenters);
       expect(google.calls.every((c) => c.op === 'delete')).toBe(true);
       expect(google.ours('ali')).toHaveLength(0);
       expect(google.revoked).toHaveLength(1);
@@ -362,7 +365,7 @@ describe('Google Calendar: reconnect, disconnect, races (e2e, mocked Google)', (
     google.gate = { entered, release: new Promise<void>((r) => { release = r; }) };
     await forceDue();
     google.calls = [];
-    const running = svc().syncDue();
+    const running = svc().syncDue(10, ownCenters);
     await inInsert; // the worker is inside its first insert
     const res = (await http().delete('/api/calendar/google').set(bearer(owner)).expect(200)).body;
     // The worker holds the connection: the clean-up waits for it.
@@ -374,7 +377,7 @@ describe('Google Calendar: reconnect, disconnect, races (e2e, mocked Google)', (
     expect(google.calls.filter((c) => c.op === 'insert')).toHaveLength(1);
     expect(google.ours('sami')).toHaveLength(1);
     // The clean-up finds that one too.
-    await svc().syncDue();
+    await svc().syncDue(10, ownCenters);
     expect(google.ours('sami')).toHaveLength(0);
     expect(await status()).toBeNull();
   });
@@ -387,7 +390,7 @@ describe('Google Calendar: reconnect, disconnect, races (e2e, mocked Google)', (
     google.gate = { entered, release: new Promise<void>((r) => { release = r; }) };
     await forceDue();
     google.calls = [];
-    const running = svc().syncDue();
+    const running = svc().syncDue(10, ownCenters);
     await inInsert;
     await http().patch('/api/calendar/google').set(bearer(owner)).send({ calendarId: 'work-sami' }).expect(200);
     release();
