@@ -144,7 +144,7 @@ export default function GoogleCalendarPanel() {
         ) : c.status === "DISCONNECTING" || c.status === "CLEANUP_FAILED" ? (
           <div style={{ display: "flex", flexDirection: "column", gap: 10, alignItems: "flex-start" }}>
             <div role={c.status === "CLEANUP_FAILED" ? "alert" : "status"} style={{ background: c.status === "CLEANUP_FAILED" ? "#FDEBEC" : "#FFF7E6", color: c.status === "CLEANUP_FAILED" ? "#B23A47" : "#A15C00", fontSize: 13, fontWeight: 600, padding: "12px 14px", borderRadius: 10, lineHeight: 1.6 }}>
-              {(c.status === "CLEANUP_FAILED" ? t("cal.g.cleanupFailed") : t("cal.g.disconnecting")).replace("{n}", String(c.cleanup?.events ?? 0))}
+              {(c.status === "CLEANUP_FAILED" ? t("cal.g.cleanupFailed") : c.switching ? t("cal.g.switching") : t("cal.g.disconnecting")).replace("{n}", String(c.cleanup?.events ?? 0))}
               {c.cleanup?.from && c.cleanup.to ? <div style={{ fontWeight: 500 }}>{t("cal.g.cleanupDates").replace("{from}", formatDate(c.cleanup.from, lang, "short")).replace("{to}", formatDate(c.cleanup.to, lang, "short"))}</div> : null}
               {c.status === "DISCONNECTING" && c.lastError ? <div style={{ fontWeight: 500 }}>{t("cal.g.lastError")}: {c.lastError}{c.nextAttemptAt ? ` · ${t("cal.g.nextAttempt").replace("{date}", formatDateTime(c.nextAttemptAt, lang))}` : ""}</div> : null}
             </div>

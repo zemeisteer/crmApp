@@ -23,3 +23,17 @@ nothing is pushed, no PR, no merge, no deploy.
 
 Next: task 5 (Google callback and worker ownership), then browser tests (6), load (7),
 full verification and the report (8).
+
+**Checkpoint 2: task 5 (Google connect and worker ownership).**
+
+- Migration `0052_calendar_lease_owner`: `lock_token` and `next_*` (a grant for another
+  account waiting for the old account's clean-up). Not yet applied to `talimcrm`.
+- Callback: SAME / OTHER / UNKNOWN account. UNKNOWN changes nothing (`?google=unverified`);
+  OTHER goes through the ordinary disconnect clean-up (`?google=switching`, retried, shown
+  in the status) and then the new grant becomes the connection.
+- Every worker write is conditional on its own lease token; the lease is renewed before
+  each Google write.
+- Tests (mocked Google only): `test/calendar-google-states.e2e-spec.ts` 24/24;
+  `calendar-google` 12/12, `calendar` 13/13. No live Google check was made.
+
+Next: browser tests (6), load (7), full verification and the report (8).

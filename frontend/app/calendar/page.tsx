@@ -14,6 +14,8 @@ const RETURN_TEXT: Record<GoogleReturn, { key: TranslationKey; ok: boolean }> = 
   denied: { key: "cal.g.returnDenied", ok: false },
   expired: { key: "cal.g.returnExpired", ok: false },
   error: { key: "cal.g.returnError", ok: false },
+  unverified: { key: "cal.g.returnUnverified", ok: false },
+  switching: { key: "cal.g.returnSwitching", ok: true },
 };
 
 function CalendarContent() {
