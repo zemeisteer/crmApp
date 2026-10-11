@@ -54,3 +54,9 @@ Next: browser tests (6), load (7), full verification and the report (8).
 
 Next: full verification (e2e, unit, builds, lint, browser suite), migrations on an
 upgraded database, the report, patch and bundle.
+
+**Checkpoint 4: final verification (task 8).** Backend e2e 56 files / 422; unit 333/334
+(openssl on Windows); browser suite 41/41; Google browser test 1/1 on the second try;
+migrations 0051 and 0052 verified on a copy of the development database and applied to
+`talimcrm` (backup in `backend/backups/`). Everything is in `STABILIZATION_SPRINT2_REPORT.md`.
+Nothing was pushed.
