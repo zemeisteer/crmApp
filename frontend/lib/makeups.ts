@@ -72,8 +72,11 @@ export function googleSubscribeUrl(url: string): string {
 }
 
 /** The outcome Google's consent screen sent the browser back with (?google=...). */
-export type GoogleReturn = "connected" | "denied" | "expired" | "error";
+// unverified: Google did not say whose account it was, so the existing
+// connection was left as it is. switching: another account - the old one's
+// events are being removed first.
+export type GoogleReturn = "connected" | "denied" | "expired" | "error" | "unverified" | "switching";
 export function googleReturn(search: string): GoogleReturn | null {
   const v = new URLSearchParams(search).get("google");
-  return v === "connected" || v === "denied" || v === "expired" || v === "error" ? v : null;
+  return v === "connected" || v === "denied" || v === "expired" || v === "error" || v === "unverified" || v === "switching" ? v : null;
 }
