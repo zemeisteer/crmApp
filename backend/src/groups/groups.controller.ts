@@ -45,14 +45,14 @@ export class GroupsController {
   @Roles('ADMIN')
   @Get('schedule-conflicts')
   scheduleConflicts(
-    @CurrentUser('tenantId') tenantId: string,
+    @CurrentUser() user: JwtPayload,
     @Query('teacherId') teacherId: string,
     @Query('days') days: string,
     @Query('startTime') startTime: string,
     @Query('excludeId') excludeId?: string,
     @Query('endTime') endTime?: string,
   ) {
-    return this.service.findScheduleConflicts(tenantId, teacherId, days ?? '', startTime ?? '', excludeId, endTime);
+    return this.service.findScheduleConflicts(user.tenantId!, teacherId, days ?? '', startTime ?? '', excludeId, endTime, { role: user.role, userId: user.sub, access: user.access });
   }
 
   @Get(':id')

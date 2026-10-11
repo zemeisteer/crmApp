@@ -8,6 +8,7 @@ import { seatHeldWhere } from '../common/seats';
 import { addMinutes, DEFAULT_LESSON_MINUTES, isoWeekdaysOf } from '../common/weekdays';
 import { mirrorTimetableOnGroup, redactConflicts, ScheduleService, type ConflictViewer, type ScheduleConflict } from '../schedule/schedule.service';
 import { centerToday } from '../common/center-today';
+import { assertTeacherGroups } from '../common/teacher-scope';
 import { lockTimetable } from '../common/timetable-lock';
 import { reconcileGroupMakeups, type MakeupReconcile } from '../lessons/makeup-reconcile';
 import { CreateGroupDto, UpdateGroupDto } from './dto/group.dto';
@@ -464,9 +465,19 @@ export class GroupsService {
     return group;
   }
 
-  // Shown live in the group form before saving, from the same rule saving
-  // itself applies (ScheduleService.findConflicts). The group's own lessons
-  // are left out: the form is about to change them.
+  /**
+   * Shown live in the group form before saving, from the same rule saving
+   * itself applies (ScheduleService.findConflicts). The group's own lessons
+   * are left out: the form is about to change them.
+   *
+   * Who may learn what: the group asked about must be one of the center's
+   * (another center's or a made-up id is "not found" and tells nothing), a
+   * teacher asks about their own groups only, and the answer goes through
+   * redactConflicts before anything is put together - so a student is named
+   * only to someone who both plans the timetable and may open the students
+   * list, here as on the timetable page. Nobody else gets a name in any
+   * field: they get the count.
+   */
   async findScheduleConflicts(
     tenantId: string,
     teacherId: string,
@@ -474,7 +485,14 @@ export class GroupsService {
     startTime: string,
     excludeGroupId?: string,
     endTime?: string,
+    viewer?: ConflictViewer,
   ) {
+    if (excludeGroupId) {
+      const [own] = await this.db.select({ id: groups.id }).from(groups).where(and(eq(groups.id, excludeGroupId), eq(groups.tenantId, tenantId), isNull(groups.deletedAt)));
+      if (!own) throw new NotFoundException('Guruh topilmadi');
+    }
+    // A teacher's question is about a group of their own (a new group is not theirs to plan).
+    await assertTeacherGroups(this.db, tenantId, viewer, [excludeGroupId]);
     let slot: ReturnType<GroupsService['lessonSlot']>;
     try {
       slot = this.lessonSlot(scheduleDays, startTime, endTime);
@@ -482,13 +500,17 @@ export class GroupsService {
       return [];
     }
     if (!slot || !teacherId) return [];
+    // A teacher of another center (or none at all) has no lessons here to report.
+    const [teacher] = await this.db.select({ id: teachers.id }).from(teachers).where(and(eq(teachers.id, teacherId), eq(teachers.tenantId, tenantId), isNull(teachers.deletedAt)));
+    if (!teacher) return [];
     const seen = new Map<string, { id: string; name: string; scheduleDays: string | null; startTime: string | null }>();
     for (const day of slot.days) {
-      const conflicts = await this.schedule.findConflicts(tenantId, {
+      const found = await this.schedule.findConflicts(tenantId, {
         groupId: excludeGroupId ?? '__new__', teacherId, dayOfWeek: day, startTime: slot.start, endTime: slot.end,
         checkStudents: !!excludeGroupId, checkMakeups: true,
       });
-      for (const c of conflicts) {
+      // Redacted first; the answer is built only from what this viewer may read.
+      for (const c of redactConflicts(found, viewer)) {
         if (c.type === 'GROUP' || (excludeGroupId && c.groupId === excludeGroupId)) continue;
         const key = c.groupId ?? `${c.type}:${c.date}:${c.startTime}`;
         if (!seen.has(key)) seen.set(key, { id: key, name: c.groupName ?? c.message, scheduleDays: null, startTime: `${c.startTime}-${c.endTime}` });
