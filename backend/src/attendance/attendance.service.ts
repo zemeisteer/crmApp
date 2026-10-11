@@ -7,6 +7,7 @@ import { TelegramService } from '../telegram/telegram.service';
 import { WebhooksService } from '../webhooks/webhooks.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { teacherGroupIds } from '../common/teacher-scope';
+import { settleAbsenceCredits } from '../makeups/eligibility';
 
 @Injectable()
 export class AttendanceService {
@@ -56,9 +57,13 @@ export class AttendanceService {
       }
     }
 
-    const rows = await Promise.all(
-      dto.entries.map((entry) =>
-        this.db
+    // All the marks or none. A mark that is no longer ABSENT settles the
+    // make-up credit issued for that absence (makeups/eligibility.ts): an
+    // unused credit is voided, a booked one refuses the correction.
+    const rows = await this.db.transaction(async (tx) => {
+      const saved = [];
+      for (const entry of dto.entries) {
+        saved.push(await tx
           .insert(attendance)
           .values({
             tenantId,
@@ -71,9 +76,11 @@ export class AttendanceService {
             target: [attendance.studentId, attendance.groupId, attendance.date],
             set: { status: entry.status as any, updatedAt: new Date() },
           })
-          .returning(),
-      ),
-    );
+          .returning());
+      }
+      await settleAbsenceCredits(tx, tenantId, dto.groupId, dto.date, dto.entries.filter((e) => e.status !== 'ABSENT').map((e) => e.studentId), userId ?? null);
+      return saved;
+    });
 
     const absentOrLate = dto.entries.filter((e) => e.status === 'ABSENT' || e.status === 'LATE');
     if (absentOrLate.length > 0) {

@@ -1409,8 +1409,9 @@ export const groupsApi = {
   create: (data: Partial<Group>) =>
     request<Group>("/groups", { method: "POST", body: JSON.stringify(data) }),
   update: (id: string, data: Partial<Group>) =>
-    request<Group>(`/groups/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
-  remove: (id: string) => request<void>(`/groups/${id}`, { method: "DELETE" }),
+    request<Group & { makeups?: MakeupReconcile }>(`/groups/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
+  // `makeups`: make-ups booked into the group's coming lessons, released with it.
+  remove: (id: string) => request<{ success: boolean; makeups?: MakeupReconcile }>(`/groups/${id}`, { method: "DELETE" }),
   restore: (id: string) => request<Group>(`/groups/${id}/restore`, { method: "POST" }),
   scheduleConflicts: (params: { teacherId: string; days: string; startTime: string; endTime?: string; excludeId?: string }) => {
     const qs = new URLSearchParams({
@@ -3534,6 +3535,8 @@ export interface LessonCancellation {
   id: string;
   groupId: string;
   date: string;
+  /** The lesson called off (its timetable row); null: every weekly lesson of the group that day. */
+  scheduleId: string | null;
   reason: string | null;
   cancelledByUserId: string | null;
   createdAt: string;
@@ -3549,7 +3552,7 @@ export const lessonsApi = {
   // At most 120 days per request.
   list: (from: string, to: string, groupId?: string) => request<LessonOccurrence[]>(`/lessons?${rangeQs(from, to, { groupId })}`),
   cancellations: (from: string, to: string) => request<LessonCancellation[]>(`/lessons/cancellations?${rangeQs(from, to)}`),
-  cancel: (data: { groupId: string; date: string; reason?: string }) =>
+  cancel: (data: { groupId: string; date: string; scheduleId?: string; reason?: string }) =>
     request<{ cancellation: LessonCancellation; releasedBookings: number }>("/lessons/cancellations", { method: "POST", body: JSON.stringify(data) }),
   restore: (id: string) => request<unknown>(`/lessons/cancellations/${id}`, { method: "DELETE" }),
 };
@@ -3568,6 +3571,8 @@ export interface MakeupEligible {
   groupName: string;
   date: string;
   reason: MakeupReason;
+  /** LESSON_CANCELLED: which lesson of that day was called off (null: the whole day, or an absence). */
+  scheduleId: string | null;
   credit: { id: string; status: MakeupCreditStatus } | null;
 }
 
@@ -3618,7 +3623,7 @@ export interface MakeupRosterItem {
 }
 
 export type MakeupBookInput =
-  | { mode: "GROUP_LESSON"; targetGroupId: string; date: string; /** Which lesson of that day (a group may have two). */ startTime?: string; note?: string }
+  | { mode: "GROUP_LESSON"; targetGroupId: string; date: string; /** Which lesson of that day (a group may have two): its timetable row, or its start. */ scheduleId?: string; startTime?: string; note?: string }
   | { mode: "SESSION"; date: string; startTime: string; endTime: string; teacherId: string; roomId?: string; note?: string };
 
 export const makeupsApi = {
@@ -3630,7 +3635,7 @@ export const makeupsApi = {
     const suffix = qs.toString() ? `?${qs.toString()}` : "";
     return request<MakeupCredit[]>(`/makeups/credits${suffix}`);
   },
-  issue: (data: { studentId: string; groupId: string; date: string; reason: MakeupReason; note?: string }) =>
+  issue: (data: { studentId: string; groupId: string; date: string; reason: MakeupReason; scheduleId?: string; note?: string }) =>
     request<MakeupCredit>("/makeups/credits", { method: "POST", body: JSON.stringify(data) }),
   voidCredit: (id: string) => request<MakeupCredit>(`/makeups/credits/${id}/cancel`, { method: "POST" }),
   reinstate: (id: string) => request<MakeupCredit>(`/makeups/credits/${id}/reinstate`, { method: "POST" }),

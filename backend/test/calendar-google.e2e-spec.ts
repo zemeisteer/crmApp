@@ -154,7 +154,9 @@ describe('Google Calendar: reconnect, disconnect, races (e2e, mocked Google)', (
     const res = await http().get(`/api/calendar/google/callback?code=acct:${account}&state=${new URL(url).searchParams.get('state')}`).expect(302);
     expect(res.headers.location).toContain('google=connected');
   };
-  const key = (date: string, g = group) => `grp-${g}-${date}`;
+  // A lesson's key: its timetable row (the group has one weekly lesson) and the date.
+  const rowsOf = async (g: string) => (await http().get(`/api/schedule?groupId=${g}`).set(bearer(owner)).expect(200)).body as { id: string }[];
+  const key = async (date: string, g = group) => `les-${(await rowsOf(g))[0].id}-${date}`;
   const eventOf = (account: string, k: string) => google.ours(account).find((e) => e.extendedProperties?.private?.key === k);
 
   beforeAll(async () => {
@@ -181,12 +183,13 @@ describe('Google Calendar: reconnect, disconnect, races (e2e, mocked Google)', (
     await connect('ali');
     expect(await sync()).toBe(1);
     const wed = next(3);
-    const e = eventOf('ali', key(wed))!;
+    const wedKey = await key(wed);
+    const e = eventOf('ali', wedKey)!;
     // 00:00 on Wednesday at UTC+5 is 19:00 on Tuesday in UTC: the event keeps the instant, the link keeps the local date.
     expect(e.start.dateTime).toBe(`${prevDay(wed)}T19:00:00.000Z`);
     expect(e.end.dateTime).toBe(`${prevDay(wed)}T20:00:00.000Z`);
     const links = await svc().linksOf((await row()).id);
-    expect(links.find((l) => l.eventKey === key(wed))!.date).toBe(wed);
+    expect(links.find((l) => l.eventKey === wedKey)!.date).toBe(wed);
     const before = google.ours('ali').length;
     google.calls = [];
     await sync();
@@ -199,15 +202,15 @@ describe('Google Calendar: reconnect, disconnect, races (e2e, mocked Google)', (
     const wed = next(3, 1);
     await http().post('/api/lessons/cancellations').set(bearer(owner)).send({ groupId: group, date: wed }).expect(201);
     await sync();
-    expect(eventOf('ali', key(wed))).toBeUndefined();
-    expect(eventOf('ali', key(next(3)))).toBeDefined();
+    expect(eventOf('ali', await key(wed))).toBeUndefined();
+    expect(eventOf('ali', await key(next(3)))).toBeDefined();
 
     const total = google.ours('ali').length;
     const item = (await http().get(`/api/schedule?groupId=${group}`).set(bearer(owner)).expect(200)).body[0];
     await http().patch(`/api/schedule/${item.id}`).set(bearer(owner)).send({ dayOfWeek: 4 }).expect(200);
     await sync();
-    expect(eventOf('ali', key(next(3)))).toBeUndefined();
-    const thu = eventOf('ali', key(next(4)))!;
+    expect(eventOf('ali', await key(next(3)))).toBeUndefined();
+    const thu = eventOf('ali', await key(next(4)))!;
     expect(thu.start.dateTime).toBe(`${prevDay(next(4))}T19:00:00.000Z`);
     // Every Wednesday became a Thursday: none twice, none left behind.
     const keys = google.ours('ali').map((x) => x.extendedProperties!.private.key);
@@ -224,10 +227,11 @@ describe('Google Calendar: reconnect, disconnect, races (e2e, mocked Google)', (
     try {
       // A new lesson for everyone to write.
       const g2 = (await http().post('/api/groups').set(bearer(owner)).send({ name: 'GC Day', subject: 'Math', scheduleDays: DAYS[1], startTime: '12:00', endTime: '13:00' }).expect(201)).body.id;
+      const g2Rows = await rowsOf(g2);
       await forceDue();
       google.calls = [];
       await Promise.all([svc().syncDue(), app2.get(CalendarSyncService).syncDue(), svc().syncDue(), app2.get(CalendarSyncService).syncDue()]);
-      const mine = google.ours('ali').filter((e) => e.extendedProperties!.private.key.startsWith(`grp-${g2}-`));
+      const mine = google.ours('ali').filter((e) => g2Rows.some((r) => e.extendedProperties!.private.key.startsWith(`les-${r.id}-`)));
       const inserts = google.calls.filter((c) => c.op === 'insert').length;
       expect(mine.length).toBeGreaterThan(0);
       // One insert per event, none refused as a duplicate, none patched over.

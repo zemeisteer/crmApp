@@ -17,22 +17,40 @@ const overlaps = (aStart: string, aEnd: string, bStart: string, bEnd: string) =>
 
 /**
  * After the lessons of these groups changed (a timetable row moved, edited,
- * cancelled or deleted, or the group form rebuilt its rows): make-ups booked
- * into those lessons must not keep the old time, room or teacher.
+ * cancelled or deleted; the group form changed its rows; the group was
+ * deleted, archived or completed): make-ups booked into those lessons must
+ * not keep an old time, room or teacher - and must never end up in another
+ * lesson than the one that was chosen.
  *
- * The rule, for every booking from today on that is still only booked:
- *  - the lesson is still on that date at the same start: the booking stays,
- *    and takes the lesson's teacher and room;
- *  - the group has exactly one lesson that date, at another time: the
- *    booking follows it - unless the student is busy then;
- *  - otherwise (no lesson that date any more, the student is busy at the new
- *    time, or it is not clear which of several lessons was meant): the
- *    booking is cancelled and its credit is released, to be booked again.
+ * A booking is bound to its lesson by the timetable row (target_schedule_id,
+ * see lessons/occurrences.ts). For every booking from today on that is
+ * still only booked:
+ *  - its row still gives a lesson on that date: the booking stays with it
+ *    and takes its time, teacher and room - unless the student is busy at
+ *    the new time;
+ *  - its row gives no lesson on that date any more (deleted, cancelled,
+ *    moved to another day, the group no longer has lessons): the booking is
+ *    cancelled and the credit released. It is NOT moved to another lesson of
+ *    the group that day, however many there are;
+ *  - a booking with no row (a group without timetable rows, or an old
+ *    booking that could not be matched): it holds only while exactly one
+ *    lesson of the group is on that date at the booked start, and is then
+ *    bound to it; otherwise it is released.
  *
- * Past bookings and marked ones are history and are never touched. Runs in
- * the caller's transaction, after lockTimetable.
+ * `gone`: rows about to be deleted in this transaction (the delete itself
+ * would only blank target_schedule_id).
+ *
+ * Past bookings and marked ones are history and are never touched. A
+ * release is conditional on the status just read, so a credit comes back
+ * exactly once. Runs in the caller's transaction, after lockTimetable.
  */
-export async function reconcileGroupMakeups(tx: Tx, tenantId: string, groupIds: Array<string | null | undefined>, userId: string | null): Promise<MakeupReconcile> {
+export async function reconcileGroupMakeups(
+  tx: Tx,
+  tenantId: string,
+  groupIds: Array<string | null | undefined>,
+  userId: string | null,
+  opts: { gone?: string[]; note?: string } = {},
+): Promise<MakeupReconcile> {
   const ids = [...new Set(groupIds.filter(Boolean) as string[])];
   const result: MakeupReconcile = { moved: 0, released: 0 };
   if (ids.length === 0) return result;
@@ -45,13 +63,17 @@ export async function reconcileGroupMakeups(tx: Tx, tenantId: string, groupIds: 
     .for('update');
   if (bookings.length === 0) return result;
 
+  const gone = new Set(opts.gone ?? []);
   const dates = bookings.map((b) => b.date).sort();
-  const lessons = (await lessonOccurrences(tx, tenantId, dates[0], dates[dates.length - 1], ids)).filter((l) => !l.cancelled);
+  const lessons = (await lessonOccurrences(tx, tenantId, dates[0], dates[dates.length - 1], ids))
+    .filter((l) => !l.cancelled && !(l.scheduleId && gone.has(l.scheduleId)));
 
   const release = async (b: (typeof bookings)[number]) => {
-    await tx.update(makeupBookings)
-      .set({ status: 'CANCELLED', cancelledAt: new Date(), cancelledByUserId: userId, note: 'LESSON_CHANGED', updatedAt: new Date() })
-      .where(and(eq(makeupBookings.id, b.id), eq(makeupBookings.status, 'BOOKED')));
+    const closed = await tx.update(makeupBookings)
+      .set({ status: 'CANCELLED', cancelledAt: new Date(), cancelledByUserId: userId, note: opts.note ?? 'LESSON_CHANGED', updatedAt: new Date() })
+      .where(and(eq(makeupBookings.id, b.id), eq(makeupBookings.status, 'BOOKED')))
+      .returning({ id: makeupBookings.id });
+    if (closed.length === 0) return;
     await tx.update(makeupCredits).set({ status: 'ISSUED', updatedAt: new Date() })
       .where(and(eq(makeupCredits.id, b.creditId), eq(makeupCredits.status, 'BOOKED')));
     result.released += 1;
@@ -59,7 +81,13 @@ export async function reconcileGroupMakeups(tx: Tx, tenantId: string, groupIds: 
 
   for (const b of bookings) {
     const sameDay = lessons.filter((l) => l.groupId === b.targetGroupId && l.date === b.date);
-    const lesson = sameDay.find((l) => l.startTime === b.startTime) ?? (sameDay.length === 1 ? sameDay[0] : null);
+    let lesson: (typeof lessons)[number] | null;
+    if (b.targetScheduleId) {
+      lesson = sameDay.find((l) => l.scheduleId === b.targetScheduleId) ?? null;
+    } else {
+      const atStart = sameDay.filter((l) => l.startTime === b.startTime);
+      lesson = atStart.length === 1 ? atStart[0] : null;
+    }
     if (!lesson) {
       await release(b);
       continue;
@@ -77,9 +105,13 @@ export async function reconcileGroupMakeups(tx: Tx, tenantId: string, groupIds: 
         continue;
       }
     }
-    if (timeChanged || lesson.teacherId !== b.teacherId || lesson.roomId !== b.roomId || lesson.branchId !== b.branchId) {
+    const bind = !b.targetScheduleId && lesson.scheduleId ? lesson.scheduleId : null;
+    if (timeChanged || bind || lesson.teacherId !== b.teacherId || lesson.roomId !== b.roomId || lesson.branchId !== b.branchId) {
       await tx.update(makeupBookings)
-        .set({ startTime: lesson.startTime, endTime: lesson.endTime, teacherId: lesson.teacherId, roomId: lesson.roomId, branchId: lesson.branchId, updatedAt: new Date() })
+        .set({
+          startTime: lesson.startTime, endTime: lesson.endTime, teacherId: lesson.teacherId, roomId: lesson.roomId, branchId: lesson.branchId,
+          ...(bind ? { targetScheduleId: bind } : {}), updatedAt: new Date(),
+        })
         .where(eq(makeupBookings.id, b.id));
       if (timeChanged) result.moved += 1;
     }

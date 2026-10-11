@@ -13,6 +13,7 @@ import { RolesGuard } from '../common/roles.guard';
 import { TrialGuard } from '../common/trial.guard';
 import { Roles } from '../common/roles.decorator';
 import { CurrentUser } from '../common/current-user.decorator';
+import type { JwtPayload } from '../common/jwt.strategy';
 import { GroupsService } from './groups.service';
 import { ConfirmGroupPriceDto, CreateGroupDto, UpdateGroupDto } from './dto/group.dto';
 import { CalendarTouch } from '../lessons/calendar-touch.interceptor';
@@ -66,23 +67,14 @@ export class GroupsController {
 
   @Roles('ADMIN')
   @Post()
-  create(
-    @CurrentUser('tenantId') tenantId: string,
-    @CurrentUser('sub') userId: string,
-    @Body() dto: CreateGroupDto,
-  ) {
-    return this.service.create(tenantId, userId, dto);
+  create(@CurrentUser() user: JwtPayload, @Body() dto: CreateGroupDto) {
+    return this.service.create(user.tenantId!, user.sub, dto, { role: user.role, userId: user.sub, access: user.access });
   }
 
   @Roles('ADMIN')
   @Patch(':id')
-  update(
-    @CurrentUser('tenantId') tenantId: string,
-    @CurrentUser('sub') userId: string,
-    @Param('id') id: string,
-    @Body() dto: UpdateGroupDto,
-  ) {
-    return this.service.update(tenantId, userId, id, dto);
+  update(@CurrentUser() user: JwtPayload, @Param('id') id: string, @Body() dto: UpdateGroupDto) {
+    return this.service.update(user.tenantId!, user.sub, id, dto, { role: user.role, userId: user.sub, access: user.access });
   }
 
   // Price history: who may see money figures may read it; confirming what
@@ -116,11 +108,7 @@ export class GroupsController {
 
   @Roles('ADMIN')
   @Post(':id/restore')
-  restore(
-    @CurrentUser('tenantId') tenantId: string,
-    @CurrentUser('sub') userId: string,
-    @Param('id') id: string,
-  ) {
-    return this.service.restore(tenantId, userId, id);
+  restore(@CurrentUser() user: JwtPayload, @Param('id') id: string) {
+    return this.service.restore(user.tenantId!, user.sub, id, { role: user.role, userId: user.sub, access: user.access });
   }
 }

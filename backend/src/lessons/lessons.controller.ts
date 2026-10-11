@@ -4,11 +4,14 @@ import { JwtAuthGuard } from '../common/jwt-auth.guard';
 import { RolesGuard } from '../common/roles.guard';
 import { Roles } from '../common/roles.decorator';
 import { CurrentUser } from '../common/current-user.decorator';
+import type { JwtPayload } from '../common/jwt.strategy';
 import { LessonsService } from './lessons.service';
 
 export class CancelLessonDto {
   @IsString() groupId!: string;
   @IsString() date!: string;
+  // Which lesson of that day (its timetable row); needed when the group has several.
+  @IsOptional() @IsString() scheduleId?: string;
   @IsOptional() @IsString() @MaxLength(300) reason?: string;
 }
 
@@ -36,7 +39,7 @@ export class LessonsController {
 
   @Roles('ADMIN', 'MANAGER')
   @Delete('cancellations/:id')
-  restore(@CurrentUser('tenantId') tenantId: string, @CurrentUser('sub') userId: string, @Param('id') id: string) {
-    return this.service.restore(tenantId, userId, id);
+  restore(@CurrentUser() user: JwtPayload, @Param('id') id: string) {
+    return this.service.restore(user.tenantId!, user.sub, id, { role: user.role, userId: user.sub, access: user.access });
   }
 }

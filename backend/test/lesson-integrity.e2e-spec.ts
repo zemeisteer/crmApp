@@ -156,12 +156,16 @@ describe('Lessons, timetable and make-ups together (e2e)', () => {
 
     it('the lessons list, the calendar feed and make-up booking agree on every one of them', async () => {
       const ics = await feed();
-      const inFeed = (g: string, date: string) => ics.includes(`UID:grp-${g}-${date}@`);
-      expect(inFeed(legacy, next(2))).toBe(true);
-      expect(inFeed(mixed, next(1))).toBe(true);
-      expect(inFeed(mixed, next(5))).toBe(false);
-      expect(inFeed(cancelledAll, next(4))).toBe(false);
-      expect(inFeed(deleted, next(6))).toBe(false);
+      // A lesson's id: its timetable row and the date; a group with no rows, the group and the date.
+      const inFeed = async (g: string, date: string) => {
+        const rows = (await http().get(`/api/schedule?groupId=${g}`).set(bearer(ownerA)).expect(200)).body as { id: string }[];
+        return [`grp-${g}-${date}`, ...rows.map((r) => `les-${r.id}-${date}`)].some((uid) => ics.includes(`UID:${uid}@`));
+      };
+      expect(await inFeed(legacy, next(2))).toBe(true);
+      expect(await inFeed(mixed, next(1))).toBe(true);
+      expect(await inFeed(mixed, next(5))).toBe(false);
+      expect(await inFeed(cancelledAll, next(4))).toBe(false);
+      expect(await inFeed(deleted, next(6))).toBe(false);
 
       // A make-up can be booked exactly where a lesson is.
       const home = await group('home', tch1, 7, '20:00', '21:00');
@@ -276,7 +280,7 @@ describe('Lessons, timetable and make-ups together (e2e)', () => {
       const c = await credit(s1, gA, 1);
       const unclear = await book(recA, c, { mode: 'GROUP_LESSON', targetGroupId: g, date: sat }).expect(400);
       expect(unclear.body.code).toBe('LESSON_AMBIGUOUS');
-      expect(unclear.body.lessons).toEqual([{ startTime: '09:00', endTime: '10:00' }, { startTime: '17:00', endTime: '18:00' }]);
+      expect(unclear.body.lessons).toEqual([expect.objectContaining({ startTime: '09:00', endTime: '10:00', scheduleId: expect.any(String) }), expect.objectContaining({ startTime: '17:00', endTime: '18:00' })]);
       expect((await book(recA, c, { mode: 'GROUP_LESSON', targetGroupId: g, date: sat, startTime: '12:00' }).expect(400)).body.code).toBe('NO_LESSON');
       const evening = (await book(recA, c, { mode: 'GROUP_LESSON', targetGroupId: g, date: sat, startTime: '17:00' }).expect(201)).body;
       expect(evening).toMatchObject({ startTime: '17:00', endTime: '18:00' });
@@ -290,10 +294,10 @@ describe('Lessons, timetable and make-ups together (e2e)', () => {
       // The morning lesson moves; the evening booking is not dragged along.
       const morning = (await rows(g)).find((r) => r.startTime === '09:00')!;
       const res = (await http().patch(`/api/schedule/${morning.id}`).set(bearer(ownerA)).send({ startTime: '08:00', endTime: '09:00' }).expect(200)).body;
-      // Two lessons that day and none at 09:00 any more: it is not clear which was meant.
-      expect(res.makeups).toEqual({ moved: 0, released: 1 });
+      // The booking is bound to the morning lesson itself, so it goes with it.
+      expect(res.makeups).toEqual({ moved: 1, released: 0 });
       expect((await creditState(c)).bookings.find((x) => x.id === evening.id)).toMatchObject({ status: 'BOOKED', startTime: '17:00' });
-      expect((await creditState(c2)).status).toBe('ISSUED');
+      expect((await creditState(c2)).bookings.find((x) => x.status === 'BOOKED')).toMatchObject({ startTime: '08:00', endTime: '09:00' });
     }, 60_000);
 
     // ---- races ---------------------------------------------------------------
