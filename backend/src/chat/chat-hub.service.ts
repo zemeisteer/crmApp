@@ -1,13 +1,13 @@
 import { Inject, Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { randomUUID } from 'crypto';
-import { and, eq, isNull, sql } from 'drizzle-orm';
+import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
 import type { Request, Response } from 'express';
 import { Client } from 'pg';
 import { DB, Database } from '../db/db.module';
 import { organizationMemberships, sessions, studentGuardians, studentPortalPins, students } from '../db/schema';
 import { effectiveAccess } from '../access/catalog';
-import type { ChatActor } from './chat-access';
+import { participantKey, type ChatActor } from './chat-access';
 import { ChatService } from './chat.service';
 
 const CHANNEL = 'chat_events';
@@ -116,21 +116,71 @@ export class ChatHub implements OnModuleInit, OnModuleDestroy {
     if (!heardHere) await this.deliver(tenantId, conversationId, seq);
   }
 
+  /**
+   * Tells this instance's clients of the center about a new message.
+   *
+   * Every client is checked now, at this delivery - nothing about who may
+   * read is remembered from one message to the next, so a permission that
+   * ended a moment ago lets nothing more through. What is shared is the work
+   * inside ONE delivery: all staff streams are checked with two queries
+   * (their sessions, their memberships) instead of two each, and "may this
+   * person read this conversation" is asked once per person, however many
+   * tabs they have open. (Measured: 400 open streams took about 1060
+   * database round trips per message before this; see the sprint report.)
+   */
   private async deliver(tenantId: string, conversationId: string, seq: number) {
+    const mine = [...this.subs.values()].filter((s) => s.actor.tenantId === tenantId);
+    if (mine.length === 0) return;
+
+    type StaffSub = Subscriber & { actor: Extract<ChatActor, { kind: 'staff' }> };
+    const staff = mine.filter((s): s is StaffSub => s.actor.kind === 'staff');
+    const sids = [...new Set(staff.map((s) => s.sid).filter((x): x is string => !!x))];
+    const userIds = [...new Set(staff.map((s) => s.actor.userId))];
+    // A failed look-up is "not valid", as a failed single check always was.
+    const facts = staff.length === 0 ? { sessions: new Map(), members: new Map() } : await Promise.all([
+      sids.length ? this.db.select({ id: sessions.id, userId: sessions.userId, tenantId: sessions.tenantId }).from(sessions).where(inArray(sessions.id, sids)) : [],
+      this.db.select({ userId: organizationMemberships.userId, status: organizationMemberships.status, role: organizationMemberships.role, access: organizationMemberships.access })
+        .from(organizationMemberships).where(and(inArray(organizationMemberships.userId, userIds), eq(organizationMemberships.tenantId, tenantId))),
+    ]).then(([ss, ms]) => ({ sessions: new Map(ss.map((x) => [x.id, x])), members: new Map(ms.map((x) => [x.userId, x])) }), () => null);
+
+    const staffValid = (s: StaffSub): boolean => {
+      if (!facts) return false;
+      if (s.sid) {
+        const session = facts.sessions.get(s.sid);
+        // Signed out, or the session moved to another center (a workspace switch keeps the session).
+        if (!session || session.userId !== s.actor.userId || (session.tenantId && session.tenantId !== tenantId)) return false;
+      }
+      const m = facts.members.get(s.actor.userId);
+      if (!m || m.status !== 'ACTIVE') return false;
+      // Role or list changed meanwhile: the read check below uses the current ones.
+      s.actor.role = m.role;
+      s.actor.access = m.access;
+      return effectiveAccess(m.role, m.access).includes('chat.use');
+    };
+    // Within this delivery only: one answer per cabinet token, one per reader.
+    const cabinetValid = new Map<string, Promise<boolean>>();
+    const mayRead = new Map<string, Promise<boolean>>();
+
     // (dropping a client while iterating is safe for a Map)
-    // Each client is checked on its own, side by side: one slow check does
-    // not hold the announcement back from the others.
-    await Promise.all([...this.subs.values()].filter((s) => s.actor.tenantId === tenantId).map(async (s) => {
-      // Asked now, not remembered: a permission that ended a moment ago must
-      // not let one more announcement through.
-      const valid = await this.stillValid(s.actor, s.sid, s.iat).catch(() => false);
+    // Side by side: one slow check does not hold the announcement back from the others.
+    await Promise.all(mine.map(async (s) => {
+      let valid: boolean;
+      if (s.actor.kind === 'staff') {
+        valid = staffValid(s as StaffSub);
+      } else {
+        const key = `${s.actor.studentId}|${s.actor.parentUserId ?? ''}|${s.iat ?? ''}`;
+        if (!cabinetValid.has(key)) cabinetValid.set(key, this.stillValid(s.actor, s.sid, s.iat).catch(() => false));
+        valid = await cabinetValid.get(key)!;
+      }
       if (!this.subs.has(s.id)) return;
       if (!valid) {
         this.write(s, 'revoked', {});
         this.drop(s);
         return;
       }
-      if (await this.chat.canRead(s.actor, conversationId).catch(() => false)) this.write(s, 'message', { conversationId, seq });
+      const reader = s.actor.kind === 'staff' ? participantKey(s.actor) : `${participantKey(s.actor)}|${s.actor.parentUserId ?? ''}`;
+      if (!mayRead.has(reader)) mayRead.set(reader, this.chat.canRead(s.actor, conversationId).catch(() => false));
+      if ((await mayRead.get(reader)!) && this.subs.has(s.id)) this.write(s, 'message', { conversationId, seq });
     }));
   }
 

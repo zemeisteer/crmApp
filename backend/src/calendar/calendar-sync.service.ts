@@ -566,14 +566,20 @@ export class CalendarSyncService implements OnModuleInit, OnModuleDestroy {
 
   // ---- sync ---------------------------------------------------------------
 
-  /** Syncs connections that are due (a change, a retry time reached, or 6 hours since the last sync). */
-  async syncDue(limit = 10) {
+  /**
+   * Syncs connections that are due (a change, a retry time reached, or 6
+   * hours since the last sync). `tenantIds`: only these centers' (the
+   * poller passes nothing: everyone's).
+   */
+  async syncDue(limit = 10, tenantIds?: string[]) {
     if (this.running) return 0;
     this.running = true;
     try {
       const now = new Date();
       // Disconnects whose clean-up is still owed come first.
+      const only = tenantIds ? inArray(calendarConnections.tenantId, tenantIds) : undefined;
       const leaving = await this.db.select({ id: calendarConnections.id }).from(calendarConnections).where(and(
+        only,
         eq(calendarConnections.status, 'DISCONNECTING'),
         or(isNull(calendarConnections.nextAttemptAt), lte(calendarConnections.nextAttemptAt, now)),
         or(isNull(calendarConnections.lockedUntil), lt(calendarConnections.lockedUntil, now)),
@@ -583,6 +589,7 @@ export class CalendarSyncService implements OnModuleInit, OnModuleDestroy {
         if (c) await this.cleanup(c).catch((err) => this.logger.warn(`calendar clean-up: ${(err as Error).message}`));
       }
       const due = await this.db.select({ id: calendarConnections.id }).from(calendarConnections).where(and(
+        only,
         eq(calendarConnections.status, 'ACTIVE'),
         or(isNull(calendarConnections.nextAttemptAt), lte(calendarConnections.nextAttemptAt, now)),
         or(isNull(calendarConnections.lockedUntil), lt(calendarConnections.lockedUntil, now)),

@@ -1,5 +1,5 @@
 import { ConflictException, Inject, Injectable, NotFoundException, Optional } from '@nestjs/common';
-import { and, eq, gte, ne, isNull, sql } from 'drizzle-orm';
+import { and, eq, gte, ne, isNotNull, isNull, or, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { DB, Database } from '../db/db.module';
 import { enrollments, groups, lessonCancellations, makeupBookings, rooms, schedules, students, teachers } from '../db/schema';
@@ -245,11 +245,19 @@ export class ScheduleService {
   ): Promise<ScheduleConflict[]> {
     const { groupId, teacherId, roomId, dayOfWeek, date, startTime, endTime, excludeScheduleId, checkStudents, checkMakeups } = params;
 
-    // Fetch active candidates for this tenant
+    // The center's live lessons that can fall on the same day: the weekly
+    // ones of that weekday, and the dated ones (that date; or all of them
+    // for a weekly lesson - they are few, and their weekday is worked out
+    // below). Not the whole timetable: in a large center that was most of
+    // the cost of a check (measured, see the sprint report).
+    const dow = date ? isoWeekday(date) : dayOfWeek;
     const candidates = await db.query.schedules.findMany({
       where: and(
         eq(schedules.tenantId, tenantId),
         ne(schedules.status, 'CANCELLED'),
+        dow
+          ? or(and(isNull(schedules.date), eq(schedules.dayOfWeek, dow)), date ? eq(schedules.date, date) : isNotNull(schedules.date))
+          : undefined,
       ),
       with: {
         group: true,

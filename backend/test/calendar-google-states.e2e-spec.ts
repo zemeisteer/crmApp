@@ -160,11 +160,13 @@ describe('Google Calendar: account identity and worker ownership (e2e, mocked Go
   const DAYS = ['', 'Dushanba', 'Seshanba', 'Chorshanba', 'Payshanba', 'Juma', 'Shanba', 'Yakshanba'];
 
   let owner: string, ownerId: string;
+  // Only this suite's centers: other suites run at the same time on the same database, with a Google of their own.
+  let ownCenters: string[] = [];
   const svc = () => app.get(CalendarSyncService);
   const row = async () => (await db.select().from(calendarConnections).where(eq(calendarConnections.userId, ownerId)))[0];
   const links = async () => { const r = await row(); return r ? db.select().from(calendarEventLinks).where(eq(calendarEventLinks.connectionId, r.id)) : []; };
   const forceDue = () => db.update(calendarConnections).set({ nextAttemptAt: null, lockedUntil: null, lockToken: null, syncRequestedAt: new Date() }).where(eq(calendarConnections.userId, ownerId));
-  const sync = async () => { await forceDue(); return svc().syncDue(); };
+  const sync = async () => { await forceDue(); return svc().syncDue(10, ownCenters); };
   const status = async () => (await http().get('/api/calendar/google').set(bearer(owner)).expect(200)).body.connection;
   const callback = async (account: string) => {
     const { url } = (await http().post('/api/calendar/google/connect').set(bearer(owner)).send({}).expect(201)).body;
@@ -204,6 +206,7 @@ describe('Google Calendar: account identity and worker ownership (e2e, mocked Go
       .send({ centerName: `GS ${suffix}`, subdomain: `gs-${suffix}`, email: `gs-${suffix}@test.uz`, password: 'password123', fullName: 'GS Owner' }).expect(201)).body;
     owner = reg.accessToken;
     ownerId = reg.user.id;
+    ownCenters = [reg.tenant.id];
     await http().post('/api/groups').set(bearer(owner)).send({ name: 'GS Daily', subject: 'Math', scheduleDays: `${DAYS[2]},${DAYS[4]}`, startTime: '10:00', endTime: '11:00' }).expect(201);
   }, 120_000);
 
@@ -336,7 +339,7 @@ describe('Google Calendar: account identity and worker ownership (e2e, mocked Go
       // No sync while it waits; the poller retries the clean-up.
       await http().post('/api/calendar/google/sync').set(bearer(owner)).expect(409);
       await db.update(calendarConnections).set({ nextAttemptAt: null }).where(eq(calendarConnections.userId, ownerId));
-      await svc().syncDue();
+      await svc().syncDue(10, ownCenters);
       const after = await row();
       expect(after).toMatchObject({ status: 'ACTIVE', calendarId: 'primary', nextRefreshTokenEnc: null, leftoverEvents: 0, lockToken: null });
       expect(after.accountKey).not.toBe(aliKey);
@@ -368,7 +371,7 @@ describe('Google Calendar: account identity and worker ownership (e2e, mocked Go
       const res = (await http().delete('/api/calendar/google').set(bearer(owner)).expect(200)).body;
       expect(res.pending + res.removedEvents).toBeGreaterThan(0);
       await db.update(calendarConnections).set({ nextAttemptAt: null, lockedUntil: null, lockToken: null }).where(eq(calendarConnections.userId, ownerId));
-      await svc().syncDue();
+      await svc().syncDue(10, ownCenters);
       expect(await row()).toBeUndefined();
       expect(google.ours('ali')).toEqual([]);
       expect(google.ours('bob')).toEqual([]);
@@ -405,7 +408,7 @@ describe('Google Calendar: account identity and worker ownership (e2e, mocked Go
       expect(await callback('ali')).toBe('connected');
       const gate = google.hold('insert');
       await forceDue();
-      const syncing = svc().syncDue();
+      const syncing = svc().syncDue(10, ownCenters);
       await gate.reached;
       // The sync holds the lease: the switch waits for the poller.
       expect(await callback('bob')).toBe('switching');
@@ -415,7 +418,7 @@ describe('Google Calendar: account identity and worker ownership (e2e, mocked Go
       expect(google.ours('ali').length).toBe((await links()).length);
       expect(google.ours('ali').length).toBeLessThanOrEqual(1);
       expect((await row()).status).toBe('DISCONNECTING');
-      await svc().syncDue();
+      await svc().syncDue(10, ownCenters);
       expect(await row()).toMatchObject({ status: 'ACTIVE', calendarId: 'primary' });
       expect(google.ours('ali')).toEqual([]);
       await sync();
@@ -431,7 +434,7 @@ describe('Google Calendar: account identity and worker ownership (e2e, mocked Go
       const settle = async () => {
         for (let i = 0; i < 4; i++) {
           await db.update(calendarConnections).set({ nextAttemptAt: null }).where(eq(calendarConnections.userId, ownerId));
-          await svc().syncDue();
+          await svc().syncDue(10, ownCenters);
         }
         await sync();
       };
@@ -467,7 +470,7 @@ describe('Google Calendar: account identity and worker ownership (e2e, mocked Go
       const first = google.hold('insert');
       const second = google.hold('insert');
       await forceDue();
-      const syncing = svc().syncDue();
+      const syncing = svc().syncDue(10, ownCenters);
       await first.reached;
       // The lease is about to run out while the first write is still in flight.
       await db.update(calendarConnections).set({ lockedUntil: new Date(Date.now() + 1500) }).where(eq(calendarConnections.userId, ownerId));
@@ -486,7 +489,7 @@ describe('Google Calendar: account identity and worker ownership (e2e, mocked Go
       expect(await callback('ali')).toBe('connected');
       const gate = google.hold('insert');
       await forceDue();
-      const stalled = svc().syncDue();
+      const stalled = svc().syncDue(10, ownCenters);
       await gate.reached;
       // The lease ran out; another worker claims the connection and syncs it all.
       const [claimed] = await db.update(calendarConnections).set({ lockedUntil: new Date(Date.now() + 300_000), lockToken: 'worker-two' })

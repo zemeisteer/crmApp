@@ -1,12 +1,12 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { NestExpressApplication } from '@nestjs/platform-express';
-import { eq } from 'drizzle-orm';
+import { eq, like } from 'drizzle-orm';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from '../src/app.module.js';
 import { configureApp } from '../src/app.setup.js';
 import { DB, Database } from '../src/db/db.module.js';
-import { calendarConnections } from '../src/db/schema.js';
+import { calendarConnections, tenants } from '../src/db/schema.js';
 import { CalendarSyncService } from '../src/calendar/calendar-sync.service.js';
 import { GOOGLE_CALENDAR_API, GoogleApiError, type GoogleCalendarApi, type GoogleEventBody } from '../src/calendar/google-calendar.api.js';
 
@@ -244,7 +244,12 @@ describe('Calendar: subscriptions and Google sync (e2e)', () => {
   // ---------------------------------------------------------------- Google
 
   let connectionId: string;
-  const sync = () => app.get(CalendarSyncService).syncDue();
+  // Only this suite's centers: other suites run at the same time on the same database, with a Google of their own.
+  let ownCenters: string[] = [];
+  const sync = async () => {
+    if (ownCenters.length === 0) ownCenters = (await app.get<Database>(DB).select({ id: tenants.id }).from(tenants).where(like(tenants.subdomain, `cal-%-${suffix}`))).map((t) => t.id);
+    return app.get(CalendarSyncService).syncDue(10, ownCenters);
+  };
   const conn = async () => (await app.get<Database>(DB).select().from(calendarConnections).where(eq(calendarConnections.id, connectionId)))[0];
   const forceDue = () => app.get<Database>(DB).update(calendarConnections).set({ nextAttemptAt: null, syncRequestedAt: new Date() }).where(eq(calendarConnections.id, connectionId));
 
@@ -335,7 +340,7 @@ describe('Calendar: subscriptions and Google sync (e2e)', () => {
     configureApp(app2);
     await app2.init();
     try {
-      await app2.get(CalendarSyncService).syncDue();
+      await app2.get(CalendarSyncService).syncDue(10, ownCenters);
     } finally {
       await app2.close();
     }
