@@ -21,7 +21,8 @@ hisobotda CI natijasi mening kuzatuvim sifatida keltirilmaydi.
 | `af62be9` | 1-4-bandlar: darsning identifikatori, guruh/jadval uchun yagona yozish qoidasi, guruhni o'chirish/tiklash, kredit asosi |
 | `e3e1f26` | 5-band: Google ulash holatlari va worker egaligi |
 | `f4c2d76` | 7-band: yuklama o'lchovi, chat va konflikt tekshiruvini yengillatish; 6-band brauzer testlari |
-| oxirgi commit (`git log -1`) | Shu hisobot va checkpoint fayli |
+| `ebd9598` | Hisobotning birinchi nusxasi |
+| oxirgi commit (`git log -1`) | 6-bandning qolgan brauzer testlari (jadval, guruh formasi, chat tab, platforma admin) va shu hisobot |
 
 Aniq oxirgi SHA va hajm: `git log --oneline 40b8721..HEAD`, `git diff --shortstat 40b8721..HEAD`.
 
@@ -110,7 +111,8 @@ Aniq oxirgi SHA va hajm: `git log --oneline 40b8721..HEAD`, `git diff --shortsta
 
 - Make-up formasi: A guruhdan B ga tez o'tilganda A ning kechikkan javobi B ro'yxatini almashtirmaydi
   (tuzatildi; test 3 soniya kechiktirilgan javob bilan).
-- Yangi fayl `e2e-browser/tests/lesson-identity.spec.ts` (2 ta sayohat), 3-bo'limda amallar ro'yxati.
+- Yangi fayllar: `lesson-identity.spec.ts` (2), `timetable-and-access.spec.ts` (3), `platform-admin.spec.ts` (1):
+  jami 6 ta yangi sayohat. 3-bo'limda amallar ro'yxati.
 
 **7-band. Yuklama.** 4-bo'limda raqamlar. O'lchovdan keyin ikkita o'zgarish: chat yetkazishda xodimlar
 oqimi har yetkazishda 2 ta so'rov bilan tekshiriladi (oldin har oqim uchun alohida), "o'qiy oladimi"
@@ -128,19 +130,24 @@ Faqat haqiqatan bajarilgan amallar. "Sahifa ochildi" tekshiruv hisoblanmagan.
 | Guruh sahifasi → "Darsni bekor qilish" | Ikki dars alohida taklif qilinadi; bittasini bekor qilish; "1 ta qoplash yozuvi bekor bo'ldi" xabari; ikkinchi dars joyida | yangi |
 | Guruh sahifasi → "Guruhni o'chirish" | Tasdiqlash; bekor bo'lgan bron haqida xabar; guruhlar ro'yxatiga qaytish | yangi |
 | Kabinet (ota-ona telefoni + PIN) → Jadval | O'chirishdan oldin make-up ko'rinadi; ICS havolasi yaratish; o'chirishdan keyin make-up yo'q, ICS'da faol tadbir yo'q, o'z guruhi darslari joyida | yangi |
+| Dars jadvali | Darsni tugma orqali (klaviatura: fokus + Enter) ko'chirish oynasi: joriy kun o'chirilgan, bo'sh kun "Bo'sh", band kun "Band"; bo'sh kunga ko'chirish; "Qaytarish" (undo); band kunga urinish → "Darsni ko'chirib bo'lmadi" oynasi va sababi (o'qituvchi + guruh nomi), dars joyida qoladi; kartochkani boshqa kunga sudrash; 390 px ekranda tugma orqali ko'chirish. Har qadamdan keyin API'da dars kuni va o'sha qator IDsi | `timetable-and-access.spec.ts` (yangi) |
+| Guruhlar → "Tahrirlash" | Vaqtni o'qituvchi band vaqtga o'zgartirish: formada ogohlantirish, saqlash rad etiladi, darslar o'zgarmaydi; bo'sh vaqtga o'zgartirish: saqlanadi, ikkala dars o'sha qatorlar bilan yangi vaqtda | yangi |
+| Xabarlar (xodim) | Tab ochiq turganda egasi `chat.use` ruxsatini oladi; keyingi xabar yetkazilmaydi, "Yangi xabarlar endi kelmaydi" chiqadi, oqim yopiladi; qayta yuklagach menyuda "Xabarlar" yo'q; API 403 | yangi |
+| Platforma: Platforma holati | Sahifa raqamlar bilan ochiladi (markazlar kartasi, tariflar) | `platform-admin.spec.ts` (yangi) |
+| Platforma: Obunalar | Boshqa markazni qidirish (o'z markazi ro'yxatda qolmaydi); "Boshqarish" → tarifni pullik tarifga o'zgartirish va saqlash; qo'lda to'lovni qayd etish (API'da 1 ta to'lov); bo'sh summa rad etiladi; boshqariladigan markaz egasi platforma API'siga kira olmaydi (403) | yangi |
+| Platforma: API va integratsiyalar | Kalit formasi: noto'g'ri parol rad etiladi; to'g'ri parol bilan sintetik qiymat saqlanadi; qiymat sahifada ham, API javobida ham qayta ko'rinmaydi | yangi |
 | Lid → o'quvchi konvertatsiyasi custom maydon bilan | Mavjud `custom-fields.spec.ts` | mavjud |
 | Qolgan 39 ta mavjud sayohat | O'zgarishsiz | mavjud |
 
-**Brauzerda yozilmadi** (vaqt yetmadi; API darajasidagi qamrov ko'rsatilgan):
+Ikki markaz: platforma sayohatida (boshqaruvchi va boshqariladigan markaz) va mavjud `role-boundaries.spec.ts` da.
+Mobil: jadvalda ko'chirish 390 px da. Klaviatura: ko'chirish oynasini tugmadan Enter bilan ochish, Escape bilan yopish.
 
-- Platforma admin sahifalari (sozlamalar, obuna, qo'lda to'lov, kalitlar): API testi `platform-admin.e2e-spec.ts` bor.
-- Jadval: sudrab ko'chirish, tugma orqali ko'chirish, undo, konflikt oynasi: API testlari bor, brauzer testi yo'q.
-- Guruh formasi orqali vaqt o'zgartirish: API testi bor (`lesson-identity.e2e-spec.ts`), brauzer testi yo'q.
-- Chat ruxsati olib tashlangandan keyingi ochiq tab: API testi bor (`chat-instances.e2e-spec.ts`), brauzer testi yo'q.
-- Ikki markazli brauzer tekshiruvi: yangi sayohatlar bitta markazda; ikki markaz izolyatsiyasi mavjud
-  `role-boundaries.spec.ts` va API testlarida.
-- Klaviatura bilan asosiy amallar: yangi sayohatlarda alohida tekshirilmadi (mavjud `a11y.spec.ts` va
-  `mobile.spec.ts` o'zgarishsiz).
+**Brauzerda hali ham yo'q:**
+
+- Platforma: sozlamalar sahifasidagi boshqa bo'limlar (tariflarni tahrirlash va avtomatik tarjima) va bir oy uchun
+  ikki marta to'lov (API testida bor).
+- Guruhni savatdan tiklash sahifasi (API testida bor).
+- Yangi sayohatlarda klaviatura bilan to'liq o'tish (faqat ko'chirish oynasi tekshirildi).
 
 ## 4. Haqiqiy test natijalari (shu sessiyada)
 
@@ -157,8 +164,8 @@ Faqat haqiqatan bajarilgan amallar. "Sahifa ochildi" tekshiruv hisoblanmagan.
 | Frontend lint | `npm run lint` | 0 xato, 73 ogohlantirish |
 | Frontend unit | `npm test` | 55 / 55 |
 | Frontend production build | `npm run build:frontend` (e2e-browser) | o'tdi |
-| Brauzer testlari | `PW_CHANNEL=chrome npx playwright test` | 41 / 41 o'tdi (8.4 daqiqa): 39 ta mavjud + 2 ta yangi |
-| Google brauzer testi (soxta Google) | `PW_CHANNEL=chrome npm run test:google` | 1 / 1 o'tdi (ikkinchi urinishda, pastga qarang) |
+| Brauzer testlari | `PW_CHANNEL=chrome npx playwright test` | 45 tadan 44 o'tdi (8.6 daqiqa): 39 mavjud + 6 yangi; yiqilgan bittasi sababi topilib, qayta yuritilganda o'tdi (pastga qarang) |
+| Google brauzer testi (soxta Google) | `PW_CHANNEL=chrome npm run test:google` | 1 / 1 o'tdi (ikkinchi urinishda; birinchisi quyidagi "load" kechikishi) |
 
 Yashirmasdan:
 
@@ -169,9 +176,17 @@ Yashirmasdan:
   alohida va keyingi to'liq yurgizishda o'tdi. Yakuniy to'liq yurgizish: 422 / 422.
 - Yangi brauzer testlari birinchi marta eski backend build bilan yurgizildi va ikkalasi yiqildi; backend
   qayta build qilingach o'tdi.
-- Google brauzer testi to'liq brauzer to'plamidan keyin darhol yuritilganda yiqildi: login sahifasi 30
-  soniyada "load" holatiga yetmadi (testning o'z qadamlarigacha bormadi). Alohida qayta yuritilganda o'tdi.
-  Xuddi shunday yuklanish kechikishi oldingi sprintda ham bir marta kuzatilgan; sababi aniqlanmadi.
+- Keyingi to'rtta yangi sayohatdan ikkitasi (jadval, chat) birinchi urinishda o'tdi. Guruh formasi va
+  platforma testlari bir necha marta test tomonidagi sabablar bilan yiqildi (fixture guruhda formaning
+  majburiy maydonlari yo'q edi; soat va daqiqa tugmasi bir xil nomli edi; Next.js'ning o'z `role="alert"`
+  elementi; "load" hodisasini kutish). Ilovaning o'zida xato topilmadi; testlar tuzatilgach o'tdi.
+- Login sahifasining 30 soniyada "load" holatiga yetmasligi to'rt marta kuzatildi (oldingi sprintda chat
+  testi, bu sprintda Google testi, platforma testi va oxirgi to'liq yurgizishda `capacity.spec.ts`). Sabab:
+  har bir sahifa `fonts.googleapis.com` dan shrift uslubini yuklaydi (`app/layout.tsx`); o'sha host sekin
+  javob bersa "load" hodisasi kechikadi, forma esa allaqachon ishlaydi. Test yordamchisi endi "load" ni
+  emas, formaning o'zini kutadi. Shundan keyin yiqilgan fayl va `session.spec.ts` qayta yuritildi: 5 / 5.
+  To'liq to'plam bu tuzatishdan keyin qayta yuritilmadi. Mahsulot tomoni: shriftni tashqi hostdan olish
+  sekin tarmoqda sahifa bezagini kechiktiradi (ishlashini emas); shriftni o'z serverdan berish tavsiya etiladi.
 - Yuklama o'lchovining birinchi urinishi kompyuter uyquga ketgani uchun buzildi (bitta test "1398 s").
   Qayta yuritildi; sessiya davomida uyquni to'xtatib turish so'raldi.
 
@@ -231,7 +246,7 @@ sahifasida "Hozir sinxronlash" bosilsa yoki 7 kun o'tsa, tadbirlar bir marta qay
   API jarayonida bevosita va (oldingi sprint testida) Node'dagi oqimli proksi orqali o'lchandi.
 - **BLOCKED: Telegram, SMS, email, Click, Payme, AI.** Test kalitlari yo'q.
 - **GitHub CI yangi commit'lar uchun.** Push qilinmagan, shuning uchun ishga tushmagan.
-- **6-banddagi brauzer qamrovining bir qismi** (3-bo'limdagi ro'yxat).
+- **6-banddagi brauzer qamrovining kichik qismi** (3-bo'lim oxiridagi ro'yxat).
 - **Haqiqiy telefon, haqiqiy klaviatura.** Tekshirilmadi.
 - **Docker image build, tiklash mashqi.** Bajarilmadi.
 
@@ -260,7 +275,6 @@ Repozitoriy ildizidagi `handoff/` papkasida (git'ga kirmaydi):
 ## 9. Keyingi qadamlar
 
 1. Commit'larni ko'rib chiqib push qilish (CI shunda ishga tushadi).
-2. Qolgan brauzer testlari: platforma sahifalari, jadvalda ko'chirish/undo/konflikt oynasi, guruh formasi,
-   ruxsat olib tashlangandan keyingi chat tab.
+2. Qolgan brauzer testlari: tariflarni tahrirlash, guruhni savatdan tiklash.
 3. Haqiqiy Google hisobi bilan nazoratli sinov; haqiqiy nginx ortida chat.
 4. Davomatni dars darajasiga o'tkazish; a'zolik tarixini saqlash.
