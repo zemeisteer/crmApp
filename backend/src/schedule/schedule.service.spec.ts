@@ -21,6 +21,8 @@ describe('ScheduleService', () => {
 
   describe('findConflicts', () => {
     const mockDb = {
+      // The dated facts the check also reads (lessons called off, the group, the center): none here.
+      select: () => ({ from: () => ({ where: async () => [] }) }),
       query: {
         schedules: {
           findMany: vi.fn(),
@@ -159,7 +161,7 @@ describe('ScheduleService', () => {
     });
 
     it('ignores a one-off lesson on a different weekday than the new weekly slot', async () => {
-      const db = { query: { schedules: { findMany: vi.fn().mockResolvedValue([lesson({ dayOfWeek: null, date: '2026-10-06' })]) } } };
+      const db = { select: () => ({ from: () => ({ where: async () => [] }) }), query: { schedules: { findMany: vi.fn().mockResolvedValue([lesson({ dayOfWeek: null, date: '2026-10-06' })]) } } };
       const service = new ScheduleService(db as any);
       const conflicts = await service.findConflicts('tenant-1', {
         groupId: 'group-1', teacherId: 'teacher-1', dayOfWeek: 1, startTime: '09:30', endTime: '10:00',
@@ -168,7 +170,7 @@ describe('ScheduleService', () => {
     });
 
     it('flags a new one-off lesson that falls on a weekly lesson of the same teacher', async () => {
-      const db = { query: { schedules: { findMany: vi.fn().mockResolvedValue([lesson({ dayOfWeek: 1, date: null })]) } } };
+      const db = { select: () => ({ from: () => ({ where: async () => [] }) }), query: { schedules: { findMany: vi.fn().mockResolvedValue([lesson({ dayOfWeek: 1, date: null })]) } } };
       const service = new ScheduleService(db as any);
       const conflicts = await service.findConflicts('tenant-1', {
         groupId: 'group-1', teacherId: 'teacher-1', date: '2026-10-05', startTime: '09:30', endTime: '10:00',

@@ -1926,7 +1926,19 @@ export const calendarConnections = pgTable('calendar_connections', {
   syncRequestedAt: timestamp('sync_requested_at'),
   nextAttemptAt: timestamp('next_attempt_at'),
   attempts: integer('attempts').notNull().default(0),
+  // The lease: until when, and whose. Every write a worker makes for the
+  // connection is conditional on its own lock_token, so a worker that lost
+  // the lease (it stalled, another one took over) can neither release the
+  // new holder's lease nor overwrite or delete the row.
   lockedUntil: timestamp('locked_until'),
+  lockToken: text('lock_token'),
+  // A grant for ANOTHER Google account, waiting: the old account's events
+  // are removed first with the old grant (the connection is DISCONNECTING,
+  // retried like any disconnect), then these become the connection.
+  nextAccessTokenEnc: text('next_access_token_enc'),
+  nextRefreshTokenEnc: text('next_refresh_token_enc'),
+  nextTokenExpiresAt: timestamp('next_token_expires_at'),
+  nextAccountKey: text('next_account_key'),
   lastSyncAt: timestamp('last_sync_at'),
   lastError: text('last_error'),
   createdAt: timestamp('created_at').notNull().defaultNow(),

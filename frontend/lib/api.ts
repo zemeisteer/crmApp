@@ -3690,6 +3690,8 @@ export interface GoogleCalendarStatus {
     nextAttemptAt: string | null;
     /** While disconnecting or after a failed clean-up: the events still in Google, and their dates. */
     cleanup?: { events: number; from: string | null; to: string | null } | null;
+    /** Another Google account is waiting until the old one's events are removed. */
+    switching?: boolean;
     /** Events left in a Google account this connection was moved away from. */
     leftoverEvents?: number;
   };
