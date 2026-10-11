@@ -14,12 +14,15 @@ export class IssueCreditDto {
   @IsString() groupId!: string;
   @IsString() date!: string;
   @IsIn(['ABSENT', 'LESSON_CANCELLED']) reason!: 'ABSENT' | 'LESSON_CANCELLED';
+  // LESSON_CANCELLED: which lesson of that day, when several were called off.
+  @IsOptional() @IsString() scheduleId?: string;
   @IsOptional() @IsString() @MaxLength(500) note?: string;
 }
 
 export class BookMakeupDto {
   @IsIn(['GROUP_LESSON', 'SESSION']) mode!: 'GROUP_LESSON' | 'SESSION';
   @IsOptional() @IsString() targetGroupId?: string;
+  @IsOptional() @IsString() scheduleId?: string;
   @IsString() date!: string;
   @IsOptional() @IsString() startTime?: string;
   @IsOptional() @IsString() endTime?: string;

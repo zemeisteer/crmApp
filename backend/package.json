@@ -27,6 +27,7 @@
     "db:check-migrations": "node scripts/migrate.cjs --check",
     "db:verify-migrations": "node scripts/verify-migrations.cjs",
     "db:check-drift": "tsx scripts/check-schema-drift.ts",
+    "db:report-makeup-links": "node scripts/report-makeup-links.cjs",
     "db:backup": "bash scripts/backup.sh",
     "demo:seed": "node scripts/demo-seed.cjs"
   },

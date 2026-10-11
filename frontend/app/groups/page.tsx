@@ -247,7 +247,7 @@ function GroupsContent() {
       };
       if (editingId) {
         // Empty values clear the field on edit (e.g. removing lesson days).
-        await groupsApi.update(editingId, {
+        const saved = await groupsApi.update(editingId, {
           ...payload,
           level: level || null,
           teacherId: teacherId || null,
@@ -258,6 +258,12 @@ function GroupsContent() {
           schedule: payload.schedule ?? null,
           description: description || null,
         });
+        // Make-ups booked into the lessons that changed: followed, or released.
+        const notes = [
+          saved.makeups?.moved ? t("sch.makeups.moved").replace("{n}", String(saved.makeups.moved)) : "",
+          saved.makeups?.released ? t("sch.makeups.released").replace("{n}", String(saved.makeups.released)) : "",
+        ].filter(Boolean);
+        if (notes.length) window.alert(notes.join("\n"));
       } else {
         await groupsApi.create(payload);
       }

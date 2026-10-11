@@ -8,7 +8,8 @@ import {
 import { countOccupiedSeats } from '../common/seats';
 import { teacherGroupIds } from '../common/teacher-scope';
 import { lockTimetable } from '../common/timetable-lock';
-import { DEFAULT_TIMEZONE, zonedParts } from '../common/timezone';
+import { DEFAULT_TIMEZONE, isValidTimeZone, zonedParts } from '../common/timezone';
+import { absenceCounts, memberOn } from './eligibility';
 import { isOverlapping, ScheduleService } from '../schedule/schedule.service';
 import { CalendarChanges } from '../lessons/calendar-changes';
 import { addDays, isDate, lessonOccurrences, lessonsOfGroupOn } from '../lessons/occurrences';
@@ -26,6 +27,8 @@ const LIVE_BOOKING = ['BOOKED', 'ATTENDED'];
 export interface BookDto {
   mode: 'GROUP_LESSON' | 'SESSION';
   targetGroupId?: string;
+  /** GROUP_LESSON: the lesson itself (its timetable row), as GET /lessons gives it. */
+  scheduleId?: string;
   date: string;
   startTime?: string;
   endTime?: string;
@@ -60,6 +63,11 @@ export class MakeupsService {
     private readonly changes: CalendarChanges,
   ) {}
 
+  private async zone(db: Pick<Database, 'select'>, tenantId: string) {
+    const [t] = await db.select({ tz: tenants.timezone }).from(tenants).where(eq(tenants.id, tenantId));
+    return isValidTimeZone(t?.tz) ? t.tz : DEFAULT_TIMEZONE;
+  }
+
   private async today(tenantId: string) {
     const [t] = await this.db.select({ tz: tenants.timezone }).from(tenants).where(eq(tenants.id, tenantId));
     const p = zonedParts(new Date(), t?.tz || DEFAULT_TIMEZONE);
@@ -85,8 +93,9 @@ export class MakeupsService {
     if (!isDate(from) || !isDate(to) || to < from || to > addDays(from, 120)) throw new BadRequestException("Sana oralig'i noto'g'ri");
     const scope = await teacherGroupIds(this.db, tenantId, viewer?.role, viewer?.userId);
     if (scope && scope.length === 0) return [];
-    const absences = await this.db.select({
-      studentId: attendance.studentId, groupId: attendance.groupId, date: attendance.date,
+    const tz = await this.zone(this.db, tenantId);
+    const marks = await this.db.select({
+      studentId: attendance.studentId, groupId: attendance.groupId, date: attendance.date, createdAt: attendance.createdAt,
       studentName: students.fullName, groupName: groups.name,
     }).from(attendance)
       .innerJoin(students, eq(students.id, attendance.studentId))
@@ -94,35 +103,35 @@ export class MakeupsService {
       .where(and(eq(attendance.tenantId, tenantId), eq(attendance.status, 'ABSENT'), gte(attendance.date, from), lte(attendance.date, to), isNull(students.deletedAt), scope ? inArray(attendance.groupId, scope) : undefined));
     const cancels = await this.db.select().from(lessonCancellations)
       .where(and(eq(lessonCancellations.tenantId, tenantId), gte(lessonCancellations.date, from), lte(lessonCancellations.date, to), scope ? inArray(lessonCancellations.groupId, scope) : undefined));
-    const fromCancels: typeof absences = [];
-    if (cancels.length) {
-      const enrolled = await this.db.select({
-        studentId: enrollments.studentId, groupId: enrollments.groupId, status: enrollments.status, joinedAt: enrollments.joinedAt, leftAt: enrollments.leftAt,
-        studentName: students.fullName, groupName: groups.name,
-      }).from(enrollments)
-        .innerJoin(students, eq(students.id, enrollments.studentId))
-        .innerJoin(groups, eq(groups.id, enrollments.groupId))
-        .where(and(inArray(enrollments.groupId, [...new Set(cancels.map((c) => c.groupId))]), isNull(students.deletedAt), eq(groups.tenantId, tenantId)));
-      for (const c of cancels) {
-        for (const e of enrolled.filter((x) => x.groupId === c.groupId)) {
-          const joined = e.joinedAt.toISOString().slice(0, 10);
-          const left = e.leftAt ? e.leftAt.toISOString().slice(0, 10) : null;
-          const was = joined <= c.date && (e.status === 'ACTIVE' || (left !== null && c.date < left));
-          if (was) fromCancels.push({ studentId: e.studentId, groupId: c.groupId, date: c.date, studentName: e.studentName, groupName: e.groupName });
-        }
+    const groupIds = [...new Set([...marks.map((m) => m.groupId), ...cancels.map((c) => c.groupId)])];
+    const enrolled = groupIds.length === 0 ? [] : await this.db.select({
+      studentId: enrollments.studentId, groupId: enrollments.groupId, status: enrollments.status, joinedAt: enrollments.joinedAt, leftAt: enrollments.leftAt,
+      studentName: students.fullName, groupName: groups.name,
+    }).from(enrollments)
+      .innerJoin(students, eq(students.id, enrollments.studentId))
+      .innerJoin(groups, eq(groups.id, enrollments.groupId))
+      .where(and(inArray(enrollments.groupId, groupIds), isNull(students.deletedAt), eq(groups.tenantId, tenantId)));
+    const membership = new Map(enrolled.map((e) => [`${e.studentId}|${e.groupId}`, e]));
+
+    type Row = { studentId: string; groupId: string; date: string; studentName: string; groupName: string; reason: 'ABSENT' | 'LESSON_CANCELLED'; scheduleId: string | null };
+    const rows: Row[] = [];
+    for (const m of marks) {
+      if (!absenceCounts(m, membership.get(`${m.studentId}|${m.groupId}`), m.date, tz)) continue;
+      rows.push({ studentId: m.studentId, groupId: m.groupId, date: m.date, studentName: m.studentName, groupName: m.groupName, reason: 'ABSENT', scheduleId: null });
+    }
+    for (const c of cancels) {
+      for (const e of enrolled.filter((x) => x.groupId === c.groupId)) {
+        if (!memberOn(e, c.date, tz)) continue;
+        rows.push({ studentId: e.studentId, groupId: c.groupId, date: c.date, studentName: e.studentName, groupName: e.groupName, reason: 'LESSON_CANCELLED', scheduleId: c.scheduleId });
       }
     }
-    const rows = [
-      ...absences.map((a) => ({ ...a, reason: 'ABSENT' as const })),
-      ...fromCancels.map((a) => ({ ...a, reason: 'LESSON_CANCELLED' as const })),
-    ];
     if (rows.length === 0) return [];
-    const credits = await this.db.select({ id: makeupCredits.id, status: makeupCredits.status, studentId: makeupCredits.studentId, groupId: makeupCredits.originGroupId, date: makeupCredits.originDate })
+    const credits = await this.db.select({ id: makeupCredits.id, status: makeupCredits.status, studentId: makeupCredits.studentId, groupId: makeupCredits.originGroupId, date: makeupCredits.originDate, scheduleId: makeupCredits.originScheduleId })
       .from(makeupCredits)
       .where(and(eq(makeupCredits.tenantId, tenantId), ne(makeupCredits.status, 'CANCELLED'), inArray(makeupCredits.studentId, [...new Set(rows.map((r) => r.studentId))])));
-    const byKey = new Map(credits.map((c) => [`${c.studentId}|${c.groupId}|${c.date}`, { id: c.id, status: c.status }]));
+    const byKey = new Map(credits.map((c) => [`${c.studentId}|${c.groupId}|${c.date}|${c.scheduleId ?? ''}`, { id: c.id, status: c.status }]));
     return rows
-      .map((r) => ({ ...r, credit: byKey.get(`${r.studentId}|${r.groupId}|${r.date}`) ?? null }))
+      .map((r) => ({ ...r, credit: byKey.get(`${r.studentId}|${r.groupId}|${r.date}|${r.scheduleId ?? ''}`) ?? null }))
       .sort((a, b) => b.date.localeCompare(a.date) || a.studentName.localeCompare(b.studentName));
   }
 
@@ -178,40 +187,61 @@ export class MakeupsService {
 
   // ---- credits ------------------------------------------------------------
 
-  async issue(tenantId: string, userId: string, dto: { studentId: string; groupId: string; date: string; reason: 'ABSENT' | 'LESSON_CANCELLED'; note?: string }) {
+  /**
+   * A credit for one missed lesson. What it rests on is read in the same
+   * transaction that writes it, under the timetable lock - the lock a
+   * cancelled lesson's restore takes - so the two cannot pass each other:
+   * either the credit is there and the restore is refused, or the lesson is
+   * back and there is nothing to give a credit for. The absence mark is
+   * read FOR SHARE: a correction of that mark waits, and then settles the
+   * credit (eligibility.ts settleAbsenceCredits). Who counts as having
+   * missed the lesson: eligibility.ts, the same functions the list uses.
+   */
+  async issue(tenantId: string, userId: string, dto: { studentId: string; groupId: string; date: string; reason: 'ABSENT' | 'LESSON_CANCELLED'; scheduleId?: string; note?: string }) {
     if (!isDate(dto.date)) throw new BadRequestException("Sana noto'g'ri (YYYY-MM-DD)");
-    const [student] = await this.db.select({ id: students.id }).from(students).where(and(eq(students.id, dto.studentId), eq(students.tenantId, tenantId), isNull(students.deletedAt)));
-    if (!student) throw new NotFoundException("O'quvchi topilmadi");
-    const [group] = await this.db.select({ id: groups.id }).from(groups).where(and(eq(groups.id, dto.groupId), eq(groups.tenantId, tenantId)));
-    if (!group) throw new NotFoundException('Guruh topilmadi');
-    // Eligibility: the student really missed that lesson.
-    if (dto.reason === 'ABSENT') {
-      const [mark] = await this.db.select({ id: attendance.id }).from(attendance)
-        .where(and(eq(attendance.tenantId, tenantId), eq(attendance.studentId, dto.studentId), eq(attendance.groupId, dto.groupId), eq(attendance.date, dto.date), eq(attendance.status, 'ABSENT')));
-      if (!mark) throw new BadRequestException({ code: 'NOT_ELIGIBLE', message: "Bu kuni o'quvchi darsda yo'q deb belgilanmagan" });
-    } else {
-      const [c] = await this.db.select({ id: lessonCancellations.id }).from(lessonCancellations)
-        .where(and(eq(lessonCancellations.tenantId, tenantId), eq(lessonCancellations.groupId, dto.groupId), eq(lessonCancellations.date, dto.date)));
-      if (!c) throw new BadRequestException({ code: 'NOT_ELIGIBLE', message: 'Bu kungi dars bekor qilinmagan' });
-      const [e] = await this.db.select({ id: enrollments.id }).from(enrollments)
-        .where(and(eq(enrollments.studentId, dto.studentId), eq(enrollments.groupId, dto.groupId), lte(sql`(${enrollments.joinedAt})::date`, sql`${dto.date}::date`)));
-      if (!e) throw new BadRequestException({ code: 'NOT_ELIGIBLE', message: "O'quvchi o'sha kuni bu guruhda bo'lmagan" });
-    }
-    const [t] = await this.db.select({ days: tenants.makeupCreditDays }).from(tenants).where(eq(tenants.id, tenantId));
-    const expiresAt = t?.days ? new Date(Date.now() + t.days * 86_400_000) : null;
-    let credit: typeof makeupCredits.$inferSelect;
-    try {
-      [credit] = await this.db.insert(makeupCredits).values({
-        tenantId, studentId: dto.studentId, originGroupId: dto.groupId, originDate: dto.date, reason: dto.reason,
+    const credit = await this.db.transaction(async (tx) => {
+      await lockTimetable(tx, tenantId);
+      const [student] = await tx.select({ id: students.id }).from(students).where(and(eq(students.id, dto.studentId), eq(students.tenantId, tenantId), isNull(students.deletedAt)));
+      if (!student) throw new NotFoundException("O'quvchi topilmadi");
+      const [group] = await tx.select({ id: groups.id }).from(groups).where(and(eq(groups.id, dto.groupId), eq(groups.tenantId, tenantId)));
+      if (!group) throw new NotFoundException('Guruh topilmadi');
+      const tz = await this.zone(tx, tenantId);
+      const [membership] = await tx.select({ status: enrollments.status, joinedAt: enrollments.joinedAt, leftAt: enrollments.leftAt }).from(enrollments)
+        .where(and(eq(enrollments.studentId, dto.studentId), eq(enrollments.groupId, dto.groupId)));
+      let originScheduleId: string | null = null;
+      if (dto.reason === 'ABSENT') {
+        const [mark] = await tx.select({ id: attendance.id, createdAt: attendance.createdAt }).from(attendance)
+          .where(and(eq(attendance.tenantId, tenantId), eq(attendance.studentId, dto.studentId), eq(attendance.groupId, dto.groupId), eq(attendance.date, dto.date), eq(attendance.status, 'ABSENT')))
+          .for('share');
+        if (!mark) throw new BadRequestException({ code: 'NOT_ELIGIBLE', message: "Bu kuni o'quvchi darsda yo'q deb belgilanmagan" });
+        if (!absenceCounts(mark, membership, dto.date, tz)) throw new BadRequestException({ code: 'NOT_ELIGIBLE', message: "O'quvchi o'sha kuni bu guruhda bo'lmagan" });
+      } else {
+        const cancels = await tx.select({ id: lessonCancellations.id, scheduleId: lessonCancellations.scheduleId }).from(lessonCancellations)
+          .where(and(eq(lessonCancellations.tenantId, tenantId), eq(lessonCancellations.groupId, dto.groupId), eq(lessonCancellations.date, dto.date)));
+        if (cancels.length === 0) throw new BadRequestException({ code: 'NOT_ELIGIBLE', message: 'Bu kungi dars bekor qilinmagan' });
+        const cancellation = dto.scheduleId ? cancels.find((c) => c.scheduleId === dto.scheduleId) : cancels.length === 1 ? cancels[0] : null;
+        if (!cancellation) {
+          throw new BadRequestException(dto.scheduleId
+            ? { code: 'NOT_ELIGIBLE', message: 'Bu dars bekor qilinmagan' }
+            : { code: 'LESSON_AMBIGUOUS', message: 'Bu kuni guruhning bir nechta darsi bekor qilingan: qaysi biri ekanini tanlang' });
+        }
+        if (!memberOn(membership, dto.date, tz)) throw new BadRequestException({ code: 'NOT_ELIGIBLE', message: "O'quvchi o'sha kuni bu guruhda bo'lmagan" });
+        originScheduleId = cancellation.scheduleId;
+      }
+      const [t] = await tx.select({ days: tenants.makeupCreditDays }).from(tenants).where(eq(tenants.id, tenantId));
+      const expiresAt = t?.days ? new Date(Date.now() + t.days * 86_400_000) : null;
+      const [row] = await tx.insert(makeupCredits).values({
+        tenantId, studentId: dto.studentId, originGroupId: dto.groupId, originDate: dto.date, originScheduleId, reason: dto.reason,
         note: dto.note?.trim().slice(0, 500) || null, issuedByUserId: userId, expiresAt,
       }).returning();
-    } catch (err) {
-      if (isUnique(err, 'makeup_credits_once_per_occurrence')) {
+      return row;
+    }).catch((err) => {
+      if (isUnique(err, 'makeup_credits_once_per_occurrence') || isUnique(err, 'makeup_credits_once_per_lesson')) {
         throw new ConflictException({ code: 'DUPLICATE_CREDIT', message: 'Bu dars uchun kredit allaqachon berilgan' });
       }
       throw err;
-    }
-    this.audit.log({ tenantId, userId, action: 'makeup.issue', entityType: 'makeup_credit', entityId: credit.id, meta: { studentId: dto.studentId, groupId: dto.groupId, date: dto.date, reason: dto.reason } });
+    });
+    this.audit.log({ tenantId, userId, action: 'makeup.issue', entityType: 'makeup_credit', entityId: credit.id, meta: { studentId: dto.studentId, groupId: dto.groupId, date: dto.date, reason: dto.reason, scheduleId: credit.originScheduleId } });
     return credit;
   }
 
@@ -261,25 +291,29 @@ export class MakeupsService {
       if (credit.status !== 'ISSUED') throw new ConflictException({ code: 'CREDIT_NOT_OPEN', message: 'Kredit band yoki ishlatilgan' });
       if (credit.expiresAt && credit.expiresAt.getTime() < Date.now()) throw new ConflictException({ code: 'CREDIT_EXPIRED', message: 'Kredit muddati tugagan' });
 
-      let slot: { targetGroupId: string | null; startTime: string; endTime: string; teacherId: string | null; roomId: string | null; branchId: string | null };
+      let slot: { targetGroupId: string | null; targetScheduleId: string | null; startTime: string; endTime: string; teacherId: string | null; roomId: string | null; branchId: string | null };
       if (dto.mode === 'GROUP_LESSON') {
         if (!dto.targetGroupId) throw new BadRequestException('Guruhni tanlang');
         const [g] = await tx.select().from(groups).where(and(eq(groups.id, dto.targetGroupId), eq(groups.tenantId, tenantId), isNull(groups.deletedAt)));
         if (!g) throw new NotFoundException('Guruh topilmadi');
         const lessons = await lessonsOfGroupOn(tx, tenantId, g.id, dto.date);
         if (lessons.length === 0) throw new BadRequestException({ code: 'NO_LESSON', message: "Bu kuni guruhning darsi yo'q yoki bekor qilingan" });
-        // The lesson that was chosen, by its start: a group with two lessons
-        // that day must not have the make-up land in whichever comes first.
-        const lesson = dto.startTime ? lessons.find((l) => l.startTime === dto.startTime) : lessons.length === 1 ? lessons[0] : null;
+        // The lesson that was chosen - by its timetable row, or by its start
+        // when that names exactly one: a group with two lessons that day must
+        // not have the make-up land in whichever comes first.
+        const atStart = dto.startTime ? lessons.filter((l) => l.startTime === dto.startTime) : [];
+        const lesson = dto.scheduleId ? lessons.find((l) => l.scheduleId === dto.scheduleId)
+          : dto.startTime ? (atStart.length === 1 ? atStart[0] : null)
+          : lessons.length === 1 ? lessons[0] : null;
         if (!lesson) {
-          throw new BadRequestException(dto.startTime
+          throw new BadRequestException(dto.scheduleId || (dto.startTime && atStart.length === 0)
             ? { code: 'NO_LESSON', message: "Bu vaqtda guruhning darsi yo'q yoki bekor qilingan" }
-            : { code: 'LESSON_AMBIGUOUS', message: 'Bu kuni guruhning bir nechta darsi bor: qaysi biri ekanini tanlang', lessons: lessons.map((l) => ({ startTime: l.startTime, endTime: l.endTime })) });
+            : { code: 'LESSON_AMBIGUOUS', message: 'Bu kuni guruhning bir nechta darsi bor: qaysi biri ekanini tanlang', lessons: lessons.map((l) => ({ scheduleId: l.scheduleId, startTime: l.startTime, endTime: l.endTime })) });
         }
         const [already] = await tx.select({ id: enrollments.id }).from(enrollments)
           .where(and(eq(enrollments.studentId, credit.studentId), eq(enrollments.groupId, g.id), eq(enrollments.status, 'ACTIVE')));
         if (already) throw new BadRequestException({ code: 'ALREADY_IN_GROUP', message: "O'quvchi bu guruhda o'qiydi: bu dars unga baribir" });
-        slot = { targetGroupId: g.id, startTime: lesson.startTime, endTime: lesson.endTime, teacherId: lesson.teacherId, roomId: lesson.roomId, branchId: lesson.branchId };
+        slot = { targetGroupId: g.id, targetScheduleId: lesson.scheduleId, startTime: lesson.startTime, endTime: lesson.endTime, teacherId: lesson.teacherId, roomId: lesson.roomId, branchId: lesson.branchId };
       } else if (dto.mode === 'SESSION') {
         if (!dto.startTime || !dto.endTime || !TIME_RE.test(dto.startTime) || !TIME_RE.test(dto.endTime) || dto.endTime <= dto.startTime) {
           throw new BadRequestException("Vaqt noto'g'ri: HH:MM, tugashi boshlanishidan keyin");
@@ -293,7 +327,7 @@ export class MakeupsService {
           if (!r) throw new NotFoundException('Xona topilmadi');
           branchId = r.branchId;
         }
-        slot = { targetGroupId: null, startTime: dto.startTime, endTime: dto.endTime, teacherId: t.id, roomId: dto.roomId ?? null, branchId };
+        slot = { targetGroupId: null, targetScheduleId: null, startTime: dto.startTime, endTime: dto.endTime, teacherId: t.id, roomId: dto.roomId ?? null, branchId };
       } else {
         throw new BadRequestException("Turi noto'g'ri");
       }
@@ -310,7 +344,13 @@ export class MakeupsService {
       if (dto.mode === 'GROUP_LESSON') {
         const [g] = await tx.select({ maxStudents: groups.maxStudents }).from(groups).where(eq(groups.id, slot.targetGroupId!));
         const [{ n }] = await tx.select({ n: sql<number>`count(*)::int` }).from(makeupBookings)
-          .where(and(eq(makeupBookings.targetGroupId, slot.targetGroupId!), eq(makeupBookings.date, dto.date), eq(makeupBookings.startTime, slot.startTime), inArray(makeupBookings.status, LIVE_BOOKING)));
+          .where(and(
+            eq(makeupBookings.targetGroupId, slot.targetGroupId!), eq(makeupBookings.date, dto.date), inArray(makeupBookings.status, LIVE_BOOKING),
+            // The seats of this lesson, not of the group's other lesson that day.
+            slot.targetScheduleId
+              ? or(eq(makeupBookings.targetScheduleId, slot.targetScheduleId), and(isNull(makeupBookings.targetScheduleId), eq(makeupBookings.startTime, slot.startTime)))
+              : eq(makeupBookings.startTime, slot.startTime),
+          ));
         const seats = await countOccupiedSeats(tx, slot.targetGroupId!);
         if (seats + n >= g.maxStudents) throw new ConflictException({ code: 'LESSON_FULL', message: "Bu darsda bo'sh o'rin yo'q" });
       } else {
@@ -338,7 +378,7 @@ export class MakeupsService {
       }
 
       const [row] = await tx.insert(makeupBookings).values({
-        tenantId, creditId, studentId: credit.studentId, mode: dto.mode, targetGroupId: slot.targetGroupId, date: dto.date,
+        tenantId, creditId, studentId: credit.studentId, mode: dto.mode, targetGroupId: slot.targetGroupId, targetScheduleId: slot.targetScheduleId, date: dto.date,
         startTime: slot.startTime, endTime: slot.endTime, teacherId: slot.teacherId, roomId: slot.roomId, branchId: slot.branchId,
         note: dto.note?.trim().slice(0, 500) || null, createdByUserId: userId,
       }).returning();

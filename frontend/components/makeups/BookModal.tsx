@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Modal from "@/components/Modal";
 import Select from "@/components/Select";
 import DatePicker from "@/components/DatePicker";
@@ -68,7 +68,12 @@ export default function BookModal({ credit, onClose, onBooked }: { credit: Makeu
     };
   }, [mode, teachers]);
 
+  // The group whose lessons were asked for last: an answer for a group
+  // picked before it (slower network) must not fill the list of this one.
+  const lessonsFor = useRef("");
+
   function pickGroup(id: string) {
+    lessonsFor.current = id;
     setGroupId(id);
     setLessonDate("");
     setLessons(null);
@@ -76,14 +81,14 @@ export default function BookModal({ credit, onClose, onBooked }: { credit: Makeu
     if (!id) return;
     lessonsApi
       .list(today, addDays(today, LOOKAHEAD_DAYS), id)
-      .then((l) => setLessons(l.filter((x) => !x.cancelled)))
-      .catch(() => setLessonsError(true));
+      .then((l) => lessonsFor.current === id && setLessons(l.filter((x) => !x.cancelled)))
+      .catch(() => lessonsFor.current === id && setLessonsError(true));
   }
 
   // Every lesson is its own choice (a date may hold two): the booking is
   // bound to the one picked, by its date and start.
   const lessonDates = lessons ?? [];
-  const lessonKey = (l: LessonOccurrence) => `${l.date}|${l.startTime}`;
+  const lessonKey = (l: LessonOccurrence) => `${l.date}|${l.startTime}|${l.scheduleId ?? ""}`;
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -98,8 +103,8 @@ export default function BookModal({ credit, onClose, onBooked }: { credit: Makeu
     setBusy(true);
     try {
       if (mode === "GROUP_LESSON") {
-        const [pickedDate, pickedStart] = lessonDate.split("|");
-        await makeupsApi.book(credit.id, { mode, targetGroupId: groupId, date: pickedDate, startTime: pickedStart, note: note.trim() || undefined });
+        const [pickedDate, pickedStart, pickedLesson] = lessonDate.split("|");
+        await makeupsApi.book(credit.id, { mode, targetGroupId: groupId, date: pickedDate, startTime: pickedStart, scheduleId: pickedLesson || undefined, note: note.trim() || undefined });
       } else {
         await makeupsApi.book(credit.id, { mode, date, startTime, endTime, teacherId, roomId: roomId || undefined, note: note.trim() || undefined });
       }
