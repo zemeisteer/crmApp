@@ -56,8 +56,13 @@ export default function BookModal({ credit, onClose, onBooked }: { credit: Makeu
   useEffect(() => {
     if (mode !== "SESSION" || teachers) return;
     let alive = true;
-    teachersApi.list().then((l) => alive && setTeachers(l)).catch(() => alive && setTeachers([]));
-    scheduleApi.listRooms().then((l) => alive && setRooms(l)).catch(() => alive && setRooms([]));
+    // Both lists land together: setting the teachers runs this effect again,
+    // and a room list still on its way then would be dropped.
+    Promise.all([teachersApi.list().catch(() => [] as Teacher[]), scheduleApi.listRooms().catch(() => [] as Room[])]).then(([teacherList, roomList]) => {
+      if (!alive) return;
+      setRooms(roomList);
+      setTeachers(teacherList);
+    });
     return () => {
       alive = false;
     };
