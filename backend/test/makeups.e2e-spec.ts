@@ -225,7 +225,7 @@ describe('Make-up lessons (e2e)', () => {
     const cancel = (await http().post('/api/lessons/cancellations').set(bearer(managerA)).send({ groupId: g1, date: mon, reason: 'Holiday' }).expect(201)).body;
     await http().post('/api/lessons/cancellations').set(bearer(managerA)).send({ groupId: g1, date: mon }).expect(409);
     const lessons = (await http().get(`/api/lessons?from=${mon}&to=${mon}&groupId=${g1}`).set(bearer(t1)).expect(200)).body;
-    expect(lessons).toEqual([expect.objectContaining({ uid: `grp-${g1}-${mon}`, cancelled: true })]);
+    expect(lessons).toEqual([expect.objectContaining({ uid: `les-${lessons[0].scheduleId}-${mon}`, groupId: g1, cancelled: true })]);
     const eligible = (await http().get(`/api/makeups/eligible?from=${mon}&to=${mon}`).set(bearer(recA)).expect(200)).body;
     expect(eligible.map((e: { studentId: string; reason: string }) => `${e.studentId}:${e.reason}`).sort()).toEqual([`${s1}:LESSON_CANCELLED`, `${s2}:LESSON_CANCELLED`].sort());
     const cc = (await issue(recA, { studentId: s2, groupId: g1, date: mon, reason: 'LESSON_CANCELLED' }).expect(201)).body.id;

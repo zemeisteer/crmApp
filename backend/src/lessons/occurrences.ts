@@ -7,14 +7,24 @@ type Executor = Pick<Database, 'select'>;
 
 /**
  * One dated lesson of a group. CRMApp keeps a weekly timetable (schedules
- * rows with a weekday, rebuilt whenever the group changes) plus one-off
- * dated rows, and attendance, topics and teacher marks key a lesson by
- * (group, date). This turns that into dated occurrences:
- *  - `uid` is stable for the occurrence: weekly lessons by group and date
- *    (not by schedules.id, which changes on every group edit), a one-off by
- *    its row;
- *  - a day called off in lesson_cancellations stays in the list with
- *    `cancelled: true` (calendars must show it as cancelled, not drop it).
+ * rows with a weekday) plus one-off dated rows. This turns that into dated
+ * occurrences.
+ *
+ * Identity. A lesson is its timetable row: `scheduleId`, and with the date
+ * the one occurrence. The row keeps its id through every edit - a new time,
+ * day, room or teacher on the timetable, and the group form too (it changes
+ * rows in place, groups.service.ts) - so two lessons of one group on one
+ * day are told apart, and stay themselves when their order changes.
+ * Everything that points at a lesson uses that same id: `uid` (ICS and
+ * Google), a make-up booking (target_schedule_id), a cancellation
+ * (schedule_id). Only a group from before timetable rows has lessons with
+ * no row (`scheduleId` null): at most one a day, keyed by group and date.
+ *
+ * A lesson called off in lesson_cancellations stays in the list with
+ * `cancelled: true` (calendars must show it as cancelled, not drop it): a
+ * cancellation of that row, or of the group's whole day (schedule_id null).
+ *
+ * Attendance, topics and teacher marks are still kept per (group, date).
  */
 export interface LessonOccurrence {
   uid: string;
@@ -76,7 +86,8 @@ export async function lessonOccurrences(db: Executor, tenantId: string, from: st
     db.select().from(schedules).where(and(eq(schedules.tenantId, tenantId), inArray(schedules.groupId, ids))),
     db.select().from(lessonCancellations).where(and(eq(lessonCancellations.tenantId, tenantId), inArray(lessonCancellations.groupId, ids), gte(lessonCancellations.date, from), lte(lessonCancellations.date, to))),
   ]);
-  const cancelled = new Map(cancels.map((c) => [`${c.groupId}|${c.date}`, c.id]));
+  // A cancellation of one lesson (by its row), or of the group's whole day.
+  const cancelled = new Map(cancels.map((c) => [c.scheduleId ? `s|${c.scheduleId}|${c.date}` : `g|${c.groupId}|${c.date}`, c.id]));
   const dates = datesBetween(from, to);
   const out: LessonOccurrence[] = [];
   for (const g of live) {
@@ -97,15 +108,15 @@ export async function lessonOccurrences(db: Executor, tenantId: string, from: st
       if (start && date < start) continue;
       const dow = isoWeekday(date);
       const today = slots.filter((s) => s.dayOfWeek === dow);
-      today.forEach((s, i) => {
-        const key = `${g.id}|${date}`;
+      for (const s of today) {
+        const cancellationId = (s.id ? cancelled.get(`s|${s.id}|${date}`) : undefined) ?? cancelled.get(`g|${g.id}|${date}`) ?? null;
         out.push({
-          uid: i === 0 ? `grp-${g.id}-${date}` : `grp-${g.id}-${date}-${i + 1}`,
+          uid: s.id ? `les-${s.id}-${date}` : `grp-${g.id}-${date}`,
           groupId: g.id, date, startTime: s.startTime, endTime: s.endTime,
           teacherId: s.teacherId ?? g.teacherId ?? null, roomId: s.roomId ?? null, branchId: s.branchId ?? g.branchId ?? null,
-          kind: 'WEEKLY', scheduleId: s.id, cancelled: cancelled.has(key), cancellationId: cancelled.get(key) ?? null,
+          kind: 'WEEKLY', scheduleId: s.id, cancelled: cancellationId !== null, cancellationId,
         });
-      });
+      }
     }
     for (const r of mine.filter((x) => x.date && x.date >= from && x.date <= to)) {
       out.push({

@@ -2,7 +2,7 @@ import { ConflictException, Inject, Injectable, NotFoundException, Optional } fr
 import { and, eq, gte, ne, isNull, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { DB, Database } from '../db/db.module';
-import { enrollments, groups, makeupBookings, rooms, schedules, students, teachers } from '../db/schema';
+import { enrollments, groups, lessonCancellations, makeupBookings, rooms, schedules, students, teachers } from '../db/schema';
 import { effectiveAccess } from '../access/catalog';
 import { AuditService } from '../audit/audit.service';
 import { centerToday } from '../common/center-today';
@@ -24,6 +24,8 @@ export interface ScheduleConflict {
   studentCount?: number;
   /** STUDENT: the other lesson is the student's make-up, not a group lesson. */
   makeup?: boolean;
+  /** The group whose lesson is in the way (not set for a make-up session). */
+  groupId?: string;
   groupName?: string;
   roomName?: string;
   teacherName?: string;
@@ -108,6 +110,11 @@ export function redactConflicts(conflicts: ScheduleConflict[], viewer: ConflictV
 type Tx = Parameters<Parameters<Database['transaction']>[0]>[0];
 type Executor = Database | Tx;
 
+// A group's first day of lessons, as lessons/occurrences.ts reads it.
+const startDay = (v: Date | string | null | undefined) => (v ? new Date(v).toISOString().slice(0, 10) : null);
+// Groups that hold no lessons any more (lessons/occurrences.ts gives them none).
+const HOLDS_NO_LESSONS = ['COMPLETED', 'ARCHIVED'];
+
 /** Advisory locks for a lesson slot: teacher, room, group - always in this order. */
 async function lockSlot(tx: Tx, tenantId: string, teacherId: string | null, roomId: string | null, groupId: string) {
   for (const key of [teacherId && `trial:t:${tenantId}:${teacherId}`, roomId && `trial:r:${tenantId}:${roomId}`, `sched:g:${groupId}`]) {
@@ -128,7 +135,7 @@ const DAY_NAMES = ['Dushanba', 'Seshanba', 'Chorshanba', 'Payshanba', 'Juma', 'S
  * Days: the weekdays that still have a live weekly row. Hours: only when
  * every row has the same ones (the form holds one pair for the group).
  */
-async function mirrorTimetableOnGroup(tx: Tx, tenantId: string, groupId: string) {
+export async function mirrorTimetableOnGroup(tx: Tx, tenantId: string, groupId: string) {
   const live = await tx.select({ dayOfWeek: schedules.dayOfWeek, startTime: schedules.startTime, endTime: schedules.endTime }).from(schedules)
     .where(and(eq(schedules.groupId, groupId), eq(schedules.tenantId, tenantId), isNull(schedules.date), ne(schedules.status, 'CANCELLED')));
   const days = [...new Set(live.map((r) => r.dayOfWeek).filter((d): d is number => !!d))].sort((a, b) => a - b);
@@ -207,6 +214,16 @@ export class ScheduleService {
    * What is in the way of a lesson at this time. `db` is the caller's
    * transaction when the answer decides a write (so it reads what the
    * holder of the timetable lock left), the pool for a plain question.
+   *
+   * This is the one rule for every writer - the timetable page, the group
+   * form, a group being restored, a cancelled lesson being put back, a
+   * make-up session - and it follows what lessons/occurrences.ts says is a
+   * lesson:
+   *  - a deleted, completed or archived group holds nothing up;
+   *  - a weekly lesson is not in the way of something dated on a day it is
+   *    called off, or before its group starts;
+   *  - a weekly lesson being planned is not held up by dated lessons of the
+   *    past, nor by ones before its own group starts.
    */
   async findConflicts(
     tenantId: string,
@@ -246,12 +263,35 @@ export class ScheduleService {
     // lessons at once (looked up only when another group overlaps).
     let shared: Map<string, { names: string[]; count: number }> | null = null;
 
+    // Dated: the lessons called off that day. Weekly: today, and the day the
+    // group's own lessons begin.
+    const calledOff = new Set<string>();
+    let notBefore: string | null = null;
+    if (date) {
+      const rows = await db.select({ groupId: lessonCancellations.groupId, scheduleId: lessonCancellations.scheduleId }).from(lessonCancellations)
+        .where(and(eq(lessonCancellations.tenantId, tenantId), eq(lessonCancellations.date, date)));
+      for (const r of rows) calledOff.add(r.scheduleId ? `s|${r.scheduleId}` : `g|${r.groupId}`);
+    } else {
+      const [own] = await db.select({ startDate: groups.startDate }).from(groups).where(and(eq(groups.id, groupId), eq(groups.tenantId, tenantId)));
+      const today = await centerToday(db, tenantId);
+      const begins = startDay(own?.startDate);
+      notBefore = begins && begins > today ? begins : today;
+    }
+
     for (const c of candidates) {
       if (excludeScheduleId && c.id === excludeScheduleId) continue;
       // A deleted group's rows are kept for a restore; they hold nothing up.
       if (c.group?.deletedAt) continue;
+      if (c.group && HOLDS_NO_LESSONS.includes(c.group.status)) continue;
 
       if (!occursOnSameDay({ dayOfWeek, date }, c)) continue;
+      if (date && !c.date) {
+        // That weekly lesson is not held on this date.
+        if (calledOff.has(`s|${c.id}`) || calledOff.has(`g|${c.groupId}`)) continue;
+        const begins = startDay(c.group?.startDate);
+        if (begins && date < begins) continue;
+      }
+      if (!date && c.date && notBefore && c.date < notBefore) continue;
 
       // Check time overlap
       if (!isOverlapping(startTime, endTime, c.startTime, c.endTime)) continue;
@@ -262,6 +302,7 @@ export class ScheduleService {
           type: 'ROOM',
           message: `"${c.room?.name || 'Xona'}" bu vaqtda band: ${c.group?.name || 'Boshqa guruh'} (${c.startTime} - ${c.endTime})`,
           conflictingScheduleId: c.id,
+          groupId: c.groupId,
           roomName: c.room?.name,
           groupName: c.group?.name,
           startTime: c.startTime,
@@ -277,6 +318,7 @@ export class ScheduleService {
           type: 'TEACHER',
           message: `"${c.teacher?.fullName || "O'qituvchi"}" bu vaqtda boshqa darsda: ${c.group?.name || 'Guruh'} (${c.startTime} - ${c.endTime})`,
           conflictingScheduleId: c.id,
+          groupId: c.groupId,
           teacherName: c.teacher?.fullName,
           groupName: c.group?.name,
           startTime: c.startTime,
@@ -292,6 +334,7 @@ export class ScheduleService {
           type: 'GROUP',
           message: `"${c.group?.name || 'Guruh'}" uchun bu vaqtda boshqa dars belgilangan (${c.startTime} - ${c.endTime})`,
           conflictingScheduleId: c.id,
+          groupId: c.groupId,
           groupName: c.group?.name,
           startTime: c.startTime,
           endTime: c.endTime,
@@ -309,6 +352,7 @@ export class ScheduleService {
             type: 'STUDENT',
             message: '',
             conflictingScheduleId: c.id,
+            groupId: c.groupId,
             groupName: c.group?.name,
             studentNames: both.names,
             studentCount: both.count,
@@ -353,7 +397,13 @@ export class ScheduleService {
         eq(makeupBookings.tenantId, tenantId), eq(makeupBookings.status, 'BOOKED'),
         p.date ? eq(makeupBookings.date, p.date) : gte(makeupBookings.date, await centerToday(db, tenantId)),
       ));
-    const overlapping = rows.filter((b) => isoWeekday(b.date) === dow && isOverlapping(p.startTime, p.endTime, b.startTime, b.endTime));
+    let overlapping = rows.filter((b) => isoWeekday(b.date) === dow && isOverlapping(p.startTime, p.endTime, b.startTime, b.endTime));
+    if (overlapping.length && !p.date) {
+      // A weekly lesson of a group that has not started is not held before it does.
+      const [own] = await db.select({ startDate: groups.startDate }).from(groups).where(and(eq(groups.id, p.groupId), eq(groups.tenantId, tenantId)));
+      const begins = startDay(own?.startDate);
+      if (begins) overlapping = overlapping.filter((b) => b.date >= begins);
+    }
     if (overlapping.length === 0) return [];
 
     const mine = p.checkStudents && p.groupId
@@ -661,10 +711,14 @@ export class ScheduleService {
     await this.findOneSchedule(tenantId, id);
     const makeups = await this.db.transaction(async (tx) => {
       await lockTimetable(tx, tenantId);
-      const [row] = await tx.delete(schedules).where(and(eq(schedules.id, id), eq(schedules.tenantId, tenantId))).returning({ groupId: schedules.groupId, date: schedules.date });
+      const [row] = await tx.select({ groupId: schedules.groupId, date: schedules.date }).from(schedules).where(and(eq(schedules.id, id), eq(schedules.tenantId, tenantId)));
       if (!row) throw new NotFoundException('Dars jadvali topilmadi');
+      // Before the row goes: the bookings into this lesson are released while
+      // they still say which lesson they were for (the delete blanks that).
+      const released = await reconcileGroupMakeups(tx, tenantId, [row.groupId], viewer?.userId ?? null, { gone: [id], note: 'LESSON_REMOVED' });
+      await tx.delete(schedules).where(and(eq(schedules.id, id), eq(schedules.tenantId, tenantId)));
       if (!row.date) await mirrorTimetableOnGroup(tx, tenantId, row.groupId);
-      return reconcileGroupMakeups(tx, tenantId, [row.groupId], viewer?.userId ?? null);
+      return released;
     });
     this.auditMakeups(tenantId, viewer, id, makeups);
     return { success: true, makeups };

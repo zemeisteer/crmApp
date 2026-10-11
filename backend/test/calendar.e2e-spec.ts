@@ -79,6 +79,9 @@ describe('Calendar: subscriptions and Google sync (e2e)', () => {
   const suffix = Date.now();
   const http = () => request(app.getHttpServer() as App);
   const bearer = (t: string) => ({ Authorization: `Bearer ${t}` });
+  // A lesson's id in calendars: its timetable row and the date (lessons/occurrences.ts).
+  const key = async (groupId: string, date: string): Promise<string> =>
+    ((await http().get(`/api/lessons?from=${date}&to=${date}&groupId=${groupId}`).set(bearer(ownerA)).expect(200)).body as { uid: string }[])[0]?.uid ?? `no-lesson-${groupId}-${date}`;
   const tashkent = (offsetDays: number) => new Date(Date.now() + 5 * 3_600_000 + offsetDays * 86_400_000);
   const dateOf = (d: Date) => d.toISOString().slice(0, 10);
   const dow = (d: Date) => (d.getUTCDay() === 0 ? 7 : d.getUTCDay());
@@ -152,7 +155,7 @@ describe('Calendar: subscriptions and Google sync (e2e)', () => {
     expect(JSON.stringify(current)).not.toContain(t1Url.split('/').pop()!.slice(5)); // the key is not shown again
     const body = await ics(t1Url);
     const mon = next(1);
-    expect(body).toContain(`UID:grp-${g1}-${mon}@crm.example.uz`);
+    expect(body).toContain(`UID:${await key(g1, mon)}@crm.example.uz`);
     expect(body).toContain(`DTSTART:${mon.replace(/-/g, '')}T050000Z`); // 10:00 in Tashkent
     expect(body).toContain(`DTEND:${mon.replace(/-/g, '')}T063000Z`);
     expect(body).toContain('SUMMARY:Cal G1');
@@ -167,12 +170,13 @@ describe('Calendar: subscriptions and Google sync (e2e)', () => {
     const mon = next(1, 1);
     await http().post('/api/lessons/cancellations').set(bearer(ownerA)).send({ groupId: g1, date: mon }).expect(201);
     const body = await ics(t1Url);
-    const block = body.split('BEGIN:VEVENT').find((b) => b.includes(`UID:grp-${g1}-${mon}@`))!;
+    const monUid = await key(g1, mon);
+    const block = body.split('BEGIN:VEVENT').find((b) => b.includes(`UID:${monUid}@`))!;
     expect(block).toContain('STATUS:CANCELLED');
     // Moving the group's time keeps the ids; the times follow.
     await http().patch(`/api/groups/${g1}`).set(bearer(ownerA)).send({ startTime: '09:00', endTime: '10:30' }).expect(200);
     const moved = await ics(t1Url);
-    expect(moved).toContain(`UID:grp-${g1}-${next(1)}@`);
+    expect(moved).toContain(`UID:${await key(g1, next(1))}@`);
     expect(moved).toContain(`DTSTART:${next(1).replace(/-/g, '')}T040000Z`);
   });
 
@@ -204,7 +208,7 @@ describe('Calendar: subscriptions and Google sync (e2e)', () => {
     const sUrl = (await http().post('/api/portal/calendar/feed').set(bearer(cab)).expect(201)).body.url;
     const sBody = await ics(sUrl);
     expect(sBody.split(`UID:mk-${b.id}@`).length - 1).toBe(1);
-    expect(sBody).toContain(`UID:grp-${g1}-${next(1)}@`);
+    expect(sBody).toContain(`UID:${await key(g1, next(1))}@`);
     expect(sBody).not.toContain('Cal G2');
     // Cancelling the make-up: still listed once, cancelled.
     await http().post(`/api/makeups/bookings/${b.id}/cancel`).set(bearer(ownerA)).expect(201);
@@ -272,11 +276,13 @@ describe('Calendar: subscriptions and Google sync (e2e)', () => {
     expect(await sync()).toBe(1);
     const events = google.ours();
     const mon = next(1);
-    const lesson = events.find((e) => e.extendedProperties?.private?.key === `grp-${g1}-${mon}`)!;
+    const monKey = await key(g1, mon);
+    const laterKey = await key(g1, next(1, 1));
+    const lesson = events.find((e) => e.extendedProperties?.private?.key === monKey)!;
     expect(lesson.summary).toBe('Cal G1 (Math)'); // the subject, when the name does not say it
     expect(lesson.start.dateTime).toBe(`${mon}T04:00:00.000Z`);
     // The cancelled Monday is not in Google.
-    expect(events.find((e) => e.extendedProperties?.private?.key === `grp-${g1}-${next(1, 1)}`)).toBeUndefined();
+    expect(events.find((e) => e.extendedProperties?.private?.key === laterKey)).toBeUndefined();
     const count = events.length;
     google.calls = [];
     await forceDue();
@@ -316,7 +322,8 @@ describe('Calendar: subscriptions and Google sync (e2e)', () => {
     expect(c.nextAttemptAt!.getTime() - Date.now()).toBeGreaterThan(100_000); // 2 minutes
     await forceDue();
     await sync();
-    expect(google.ours().find((e) => e.extendedProperties!.private.key === `grp-${g1}-${next(1)}`)!.start.dateTime).toBe(`${next(1)}T04:30:00.000Z`);
+    const movedKey = await key(g1, next(1));
+    expect(google.ours().find((e) => e.extendedProperties!.private.key === movedKey)!.start.dateTime).toBe(`${next(1)}T04:30:00.000Z`);
   });
 
   it('changes are recorded durably: a fresh server instance picks up what is pending', async () => {
@@ -332,7 +339,8 @@ describe('Calendar: subscriptions and Google sync (e2e)', () => {
     } finally {
       await app2.close();
     }
-    expect(google.ours().find((e) => e.extendedProperties!.private.key === `grp-${g1}-${next(1, 2)}`)).toBeUndefined();
+    const farKey = await key(g1, next(1, 2));
+    expect(google.ours().find((e) => e.extendedProperties!.private.key === farKey)).toBeUndefined();
     expect((await conn()).syncRequestedAt).toBeNull();
   });
 

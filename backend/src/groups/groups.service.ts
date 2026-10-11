@@ -6,17 +6,27 @@ import { TEACHER_PUBLIC_COLUMNS } from '../common/teacher-columns';
 import { DEFAULT_TIMEZONE, isValidTimeZone, zonedParts, zonedTimeToUtc } from '../common/timezone';
 import { seatHeldWhere } from '../common/seats';
 import { addMinutes, DEFAULT_LESSON_MINUTES, isoWeekdaysOf } from '../common/weekdays';
-import { isOverlapping } from '../schedule/schedule.service';
+import { mirrorTimetableOnGroup, redactConflicts, ScheduleService, type ConflictViewer, type ScheduleConflict } from '../schedule/schedule.service';
+import { centerToday } from '../common/center-today';
 import { lockTimetable } from '../common/timetable-lock';
-import { reconcileGroupMakeups } from '../lessons/makeup-reconcile';
+import { reconcileGroupMakeups, type MakeupReconcile } from '../lessons/makeup-reconcile';
 import { CreateGroupDto, UpdateGroupDto } from './dto/group.dto';
 import { AuditService } from '../audit/audit.service';
+
+type Tx = Parameters<Parameters<Database['transaction']>[0]>[0];
+type GroupRow = typeof groups.$inferSelect;
+type LessonRow = typeof schedules.$inferSelect;
+
+/** Whether the group has lessons at all (lessons/occurrences.ts gives the others none). */
+const holdsLessons = (g: Pick<GroupRow, 'deletedAt' | 'status'>) => !g.deletedAt && g.status !== 'COMPLETED' && g.status !== 'ARCHIVED';
+const sameDays = (a: number[], b: number[]) => a.length === b.length && a.every((d) => b.includes(d));
 
 @Injectable()
 export class GroupsService {
   constructor(
     @Inject(DB) private readonly db: Database,
     private readonly audit: AuditService,
+    private readonly schedule: ScheduleService,
   ) {}
 
   // A TEACHER only ever sees the groups they're assigned to teach — every
@@ -93,7 +103,13 @@ export class GroupsService {
     return group;
   }
 
-  async create(tenantId: string, userId: string, dto: CreateGroupDto) {
+  /**
+   * A group and its weekly lessons are written together, or not at all: the
+   * center's timetable lock first, then the group row, its lessons, and the
+   * same conflict check the timetable page makes (ScheduleService.findConflicts)
+   * on what was just written. A clash rolls everything back.
+   */
+  async create(tenantId: string, userId: string, dto: CreateGroupDto, viewer?: ConflictViewer) {
     if (dto.courseId) {
       const course = await this.db.query.courses.findFirst({
         where: and(eq(courses.id, dto.courseId), eq(courses.tenantId, tenantId)),
@@ -116,33 +132,40 @@ export class GroupsService {
     }
 
     const slot = this.lessonSlot(dto.scheduleDays, dto.startTime, dto.endTime);
-    if (slot) await this.assertTeacherFree(tenantId, null, dto.teacherId ?? null, slot);
 
-    const [group] = await this.db
-      .insert(groups)
-      .values({
-        tenantId,
-        branchId: dto.branchId || null,
-        courseId: dto.courseId || null,
-        name: dto.name,
-        subject: dto.subject,
-        level: dto.level,
-        teacherId: dto.teacherId || null,
-        startDate: dto.startDate ? new Date(dto.startDate) : undefined,
-        maxStudents: dto.maxStudents ?? 20,
-        schedule: dto.schedule,
-        scheduleDays: dto.scheduleDays,
-        startTime: dto.startTime,
-        endTime: slot?.end ?? dto.endTime,
-        monthlyPrice: dto.monthlyPrice ?? 0,
-        description: dto.description,
-        durationMonths: dto.durationMonths,
-        status: dto.status || 'ACTIVE',
-      })
-      .returning();
-    await this.db.insert(groupPriceHistory).values({ tenantId, groupId: group.id, monthlyPrice: group.monthlyPrice, effectiveFrom: group.createdAt });
-    await this.ensureSubject(tenantId, dto.subject);
-    await this.syncWeeklyLessons(tenantId, group);
+    const group = await this.db.transaction(async (tx) => {
+      await lockTimetable(tx, tenantId);
+      const [row] = await tx
+        .insert(groups)
+        .values({
+          tenantId,
+          branchId: dto.branchId || null,
+          courseId: dto.courseId || null,
+          name: dto.name,
+          subject: dto.subject,
+          level: dto.level,
+          teacherId: dto.teacherId || null,
+          startDate: dto.startDate ? new Date(dto.startDate) : undefined,
+          maxStudents: dto.maxStudents ?? 20,
+          schedule: dto.schedule,
+          scheduleDays: dto.scheduleDays,
+          startTime: dto.startTime,
+          endTime: slot?.end ?? dto.endTime,
+          monthlyPrice: dto.monthlyPrice ?? 0,
+          description: dto.description,
+          durationMonths: dto.durationMonths,
+          status: dto.status || 'ACTIVE',
+          timetableManaged: !!slot,
+        })
+        .returning();
+      await tx.insert(groupPriceHistory).values({ tenantId, groupId: row.id, monthlyPrice: row.monthlyPrice, effectiveFrom: row.createdAt });
+      await this.ensureSubject(tx, tenantId, dto.subject);
+      if (slot) {
+        const made = await tx.insert(schedules).values(slot.days.map((day) => this.weeklyRow(tenantId, row, day, slot))).returning();
+        if (holdsLessons(row)) await this.assertRowsFit(tx, tenantId, made, viewer);
+      }
+      return row;
+    });
     this.audit.log({ tenantId, userId, action: 'create', entityType: 'group', entityId: group.id, meta: { name: group.name } });
     return group;
   }
@@ -160,91 +183,118 @@ export class GroupsService {
     return { days, start: startTime, end };
   }
 
-  // Weekly lessons of this teacher in other groups that overlap the slot.
-  private async teacherClashes(tenantId: string, groupId: string | null, teacherId: string, slot: { days: number[]; start: string; end: string }) {
-    const rows = await this.db
-      .select({ id: schedules.id, dayOfWeek: schedules.dayOfWeek, startTime: schedules.startTime, endTime: schedules.endTime, groupId: groups.id, groupName: groups.name })
-      .from(schedules)
-      .innerJoin(groups, eq(groups.id, schedules.groupId))
-      .where(and(
-        eq(schedules.tenantId, tenantId),
-        eq(schedules.teacherId, teacherId),
-        eq(schedules.isRecurring, true),
-        isNull(schedules.date),
-        ne(schedules.status, 'CANCELLED'),
-        isNull(groups.deletedAt),
-        inArray(schedules.dayOfWeek, slot.days),
-        ...(groupId ? [ne(schedules.groupId, groupId)] : []),
-      ));
-    return rows.filter((r) => isOverlapping(slot.start, slot.end, r.startTime, r.endTime));
+  private weeklyRow(tenantId: string, group: GroupRow, day: number, slot: { start: string; end: string }) {
+    return { tenantId, groupId: group.id, teacherId: group.teacherId, branchId: group.branchId, roomId: null, dayOfWeek: day, startTime: slot.start, endTime: slot.end, isRecurring: true };
   }
 
-  private async assertTeacherFree(tenantId: string, groupId: string | null, teacherId: string | null, slot: { days: number[]; start: string; end: string }) {
-    if (!teacherId) return;
-    const clashes = await this.teacherClashes(tenantId, groupId, teacherId, slot);
-    if (clashes.length === 0) return;
-    const c = clashes[0];
-    throw new ConflictException({
-      code: 'TEACHER_SCHEDULE_CONFLICT',
-      message: `O'qituvchi bu vaqtda "${c.groupName}" guruhida dars beradi (${c.startTime}-${c.endTime})`,
-      conflicts: clashes.map((x) => ({ groupId: x.groupId, groupName: x.groupName, dayOfWeek: x.dayOfWeek, startTime: x.startTime, endTime: x.endTime })),
+  private clash(conflicts: ScheduleConflict[], viewer: ConflictViewer | undefined, restore = false) {
+    const shown = redactConflicts(conflicts, viewer);
+    return new ConflictException({
+      code: restore ? 'RESTORE_CONFLICT' : shown[0].type === 'TEACHER' ? 'TEACHER_SCHEDULE_CONFLICT' : 'SCHEDULE_CONFLICT',
+      message: restore ? `Guruhni tiklab bo'lmaydi: ${shown[0].message}` : shown[0].message,
+      conflicts: shown,
     });
   }
 
-  // The timetable's weekly rows mirror the group form: one row per lesson
-  // day. Rebuilt on every change; a room set on the timetable is kept for
-  // the same weekday.
-  private async syncWeeklyLessons(tenantId: string, group: typeof groups.$inferSelect) {
-    const slot = group.deletedAt ? null : this.lessonSlot(group.scheduleDays, group.startTime, group.endTime);
-    await this.db.transaction(async (tx) => {
-      await lockTimetable(tx, tenantId);
-      const old = await tx.select({ dayOfWeek: schedules.dayOfWeek, roomId: schedules.roomId })
-        .from(schedules)
-        .where(and(eq(schedules.groupId, group.id), eq(schedules.tenantId, tenantId), eq(schedules.isRecurring, true), isNull(schedules.date)));
-      await tx.delete(schedules)
-        .where(and(eq(schedules.groupId, group.id), eq(schedules.tenantId, tenantId), eq(schedules.isRecurring, true), isNull(schedules.date)));
-      if (slot) await tx.insert(schedules).values(slot.days.map((day) => ({
-        tenantId,
-        groupId: group.id,
-        teacherId: group.teacherId,
-        branchId: group.branchId,
-        roomId: old.find((o) => o.dayOfWeek === day)?.roomId ?? null,
-        dayOfWeek: day,
-        startTime: slot.start,
-        endTime: slot.end,
-        isRecurring: true,
-      })));
-      if (slot) await tx.update(groups).set({ timetableManaged: true }).where(eq(groups.id, group.id));
-      // Make-ups booked into the lessons that just moved or went away.
-      await reconcileGroupMakeups(tx, tenantId, [group.id], null);
+  /** The timetable page's own check, on rows this service wrote (inside the same transaction). */
+  private async assertRowsFit(tx: Tx, tenantId: string, rows: LessonRow[], viewer: ConflictViewer | undefined, restore = false) {
+    for (const r of rows) {
+      const conflicts = await this.schedule.findConflicts(tenantId, {
+        checkStudents: true, checkMakeups: true, groupId: r.groupId, teacherId: r.teacherId, roomId: r.roomId,
+        dayOfWeek: r.dayOfWeek, date: r.date, startTime: r.startTime, endTime: r.endTime, excludeScheduleId: r.id,
+      }, tx);
+      if (conflicts.length) throw this.clash(conflicts, viewer, restore);
+    }
+  }
+
+  /** Everything of the group that is a lesson from today on: weekly rows and coming one-offs. */
+  private async lessonRows(tx: Tx, tenantId: string, groupId: string) {
+    const today = await centerToday(tx, tenantId);
+    const rows = await tx.select().from(schedules).where(and(eq(schedules.groupId, groupId), eq(schedules.tenantId, tenantId), ne(schedules.status, 'CANCELLED')));
+    return rows.filter((r) => !r.date || r.date >= today);
+  }
+
+  /**
+   * The group form changed something the timetable shows. The weekly rows
+   * are changed in place - a row keeps its id, which is the lesson's
+   * identity (lessons/occurrences.ts) - and only as far as the form
+   * actually changed:
+   *  - a day taken off the form: that weekday's rows go (their make-ups are
+   *    released); a day added: one new row at the form's time;
+   *  - a new time on the form: the rows that had the old form time move.
+   *    A row given its own time on the timetable keeps it - the form holds
+   *    one pair of hours and must not flatten the others by accident;
+   *  - a new teacher or branch: the rows that had the group's old one.
+   * A group from before timetable rows gets its rows now. Then the same
+   * conflict check as the timetable page on every row written - and on
+   * every lesson of the group when it comes back to life (status, start).
+   */
+  private async applyTimetable(tx: Tx, tenantId: string, before: GroupRow, after: GroupRow, userId: string, viewer?: ConflictViewer): Promise<MakeupReconcile> {
+    const id = after.id;
+    const slot = this.lessonSlot(after.scheduleDays, after.startTime, after.endTime);
+    let oldSlot: ReturnType<GroupsService['lessonSlot']> = null;
+    try {
+      oldSlot = this.lessonSlot(before.scheduleDays, before.startTime, before.endTime);
+    } catch {
+      oldSlot = null;
+    }
+    const weekly = await tx.select().from(schedules).where(and(eq(schedules.groupId, id), eq(schedules.tenantId, tenantId), isNull(schedules.date)));
+    const live = weekly.filter((r) => r.status !== 'CANCELLED');
+    const written = new Map<string, LessonRow>();
+    const gone: string[] = [];
+
+    if (!before.timetableManaged && weekly.length === 0) {
+      if (slot) for (const r of await tx.insert(schedules).values(slot.days.map((day) => this.weeklyRow(tenantId, after, day, slot))).returning()) written.set(r.id, r);
+    } else if (!slot) {
+      // No days or no start time on the form any more: the group has no weekly lessons.
+      if (oldSlot) gone.push(...weekly.map((r) => r.id));
+    } else {
+      const beforeDays = isoWeekdaysOf(before.scheduleDays);
+      if (!sameDays(beforeDays, slot.days)) {
+        gone.push(...weekly.filter((r) => r.dayOfWeek && beforeDays.includes(r.dayOfWeek) && !slot.days.includes(r.dayOfWeek)).map((r) => r.id));
+        const added = slot.days.filter((d) => !beforeDays.includes(d) && !live.some((r) => r.dayOfWeek === d));
+        if (added.length) for (const r of await tx.insert(schedules).values(added.map((day) => this.weeklyRow(tenantId, after, day, slot))).returning()) written.set(r.id, r);
+      }
+      for (const r of live.filter((x) => !gone.includes(x.id))) {
+        const set: Partial<LessonRow> = {};
+        if (oldSlot && (slot.start !== oldSlot.start || slot.end !== oldSlot.end) && r.startTime === oldSlot.start && r.endTime === oldSlot.end) {
+          set.startTime = slot.start;
+          set.endTime = slot.end;
+        }
+        if (before.teacherId !== after.teacherId && (r.teacherId === before.teacherId || !r.teacherId)) set.teacherId = after.teacherId;
+        if (before.branchId !== after.branchId && (r.branchId === before.branchId || !r.branchId)) set.branchId = after.branchId;
+        if (Object.keys(set).length === 0) continue;
+        const [row] = await tx.update(schedules).set({ ...set, updatedAt: new Date() }).where(eq(schedules.id, r.id)).returning();
+        // A branch alone moves nobody: nothing to check.
+        if (set.startTime || 'teacherId' in set) written.set(row.id, row);
+      }
+    }
+
+    // Make-ups follow their lesson or are released - before the removed rows
+    // go, while a booking still says which lesson it was for.
+    const makeups = await reconcileGroupMakeups(tx, tenantId, [id], userId, {
+      gone, note: !holdsLessons(after) ? 'GROUP_CLOSED' : gone.length ? 'LESSON_REMOVED' : 'LESSON_CHANGED',
     });
+    if (gone.length) await tx.delete(schedules).where(and(inArray(schedules.id, gone), eq(schedules.tenantId, tenantId)));
+
+    if (holdsLessons(after)) {
+      const back = !holdsLessons(before) || String(before.startDate ?? '') !== String(after.startDate ?? '');
+      await this.assertRowsFit(tx, tenantId, back ? await this.lessonRows(tx, tenantId, id) : [...written.values()], viewer);
+    }
+    if (slot && (written.size || gone.length)) await mirrorTimetableOnGroup(tx, tenantId, id);
+    return makeups;
   }
 
   // Group subjects are free text; keep a matching row in the subjects
   // (directions) list so lead and placement forms can offer it.
-  private async ensureSubject(tenantId: string, name?: string | null) {
+  private async ensureSubject(db: Database | Tx, tenantId: string, name?: string | null) {
     const clean = name?.trim();
     if (!clean) return;
-    await this.db.insert(subjects).values({ tenantId, name: clean }).onConflictDoNothing();
+    await db.insert(subjects).values({ tenantId, name: clean }).onConflictDoNothing();
   }
 
-  async update(tenantId: string, userId: string, id: string, dto: UpdateGroupDto) {
-    const current = await this.findOne(tenantId, id);
-    await this.ensureSubject(tenantId, dto.subject);
-
-    // The lesson slot after this update; checked for teacher clashes only
-    // when days, times or the teacher actually change.
-    const next = {
-      scheduleDays: dto.scheduleDays !== undefined ? dto.scheduleDays : current.scheduleDays,
-      startTime: dto.startTime !== undefined ? dto.startTime : current.startTime,
-      endTime: dto.endTime !== undefined ? dto.endTime : dto.startTime !== undefined ? null : current.endTime,
-      teacherId: dto.teacherId !== undefined ? dto.teacherId || null : current.teacherId,
-    };
-    const slot = this.lessonSlot(next.scheduleDays, next.startTime, next.endTime);
-    const slotChanged =
-      next.scheduleDays !== current.scheduleDays || next.startTime !== current.startTime ||
-      (slot?.end ?? null) !== (current.endTime ?? null) || next.teacherId !== current.teacherId;
-    if (slot && slotChanged) await this.assertTeacherFree(tenantId, id, next.teacherId, slot);
+  async update(tenantId: string, userId: string, id: string, dto: UpdateGroupDto, viewer?: ConflictViewer) {
+    await this.findOne(tenantId, id);
 
     if (dto.courseId) {
       const course = await this.db.query.courses.findFirst({
@@ -267,42 +317,72 @@ export class GroupsService {
       if (!teacher) throw new NotFoundException("O'qituvchi topilmadi");
     }
 
-    const [group] = await this.db
-      .update(groups)
-      .set({
-        ...(dto.name ? { name: dto.name } : {}),
-        ...(dto.subject ? { subject: dto.subject } : {}),
-        ...(dto.level !== undefined ? { level: dto.level } : {}),
-        ...(dto.courseId !== undefined ? { courseId: dto.courseId || null } : {}),
-        ...(dto.teacherId !== undefined ? { teacherId: dto.teacherId || null } : {}),
-        ...(dto.branchId !== undefined ? { branchId: dto.branchId || null } : {}),
-        ...(dto.startDate !== undefined ? { startDate: dto.startDate ? new Date(dto.startDate) : undefined } : {}),
-        ...(dto.maxStudents !== undefined ? { maxStudents: dto.maxStudents } : {}),
-        ...(dto.schedule !== undefined ? { schedule: dto.schedule } : {}),
-        ...(dto.scheduleDays !== undefined ? { scheduleDays: dto.scheduleDays } : {}),
-        ...(dto.startTime !== undefined ? { startTime: dto.startTime } : {}),
-        ...(dto.startTime !== undefined || dto.endTime !== undefined ? { endTime: slot?.end ?? next.endTime } : {}),
-        ...(dto.monthlyPrice !== undefined ? { monthlyPrice: dto.monthlyPrice } : {}),
-        ...(dto.description !== undefined ? { description: dto.description } : {}),
-        ...(dto.durationMonths !== undefined ? { durationMonths: dto.durationMonths } : {}),
-        ...(dto.status !== undefined ? { status: dto.status } : {}),
-        updatedAt: new Date(),
-      })
-      .where(and(eq(groups.id, id), eq(groups.tenantId, tenantId)))
-      .returning();
-    if (slotChanged || dto.branchId !== undefined) await this.syncWeeklyLessons(tenantId, group);
-    // A new price applies from this month on; earlier months keep the old
-    // one in debt and revenue figures.
-    if (group.monthlyPrice !== current.monthlyPrice) {
-      const [known] = await this.db.select({ id: groupPriceHistory.id }).from(groupPriceHistory).where(eq(groupPriceHistory.groupId, id)).limit(1);
-      if (!known) {
-        // The old price is known to be the price until now; since when, nobody recorded.
-        await this.db.insert(groupPriceHistory).values({ tenantId, groupId: id, monthlyPrice: current.monthlyPrice, effectiveFrom: current.createdAt, source: 'ASSUMED' });
+    // Only what the timetable shows needs the timetable lock: a new name or
+    // description writes the group row and nothing else.
+    const touchesLessons = [dto.scheduleDays, dto.startTime, dto.endTime, dto.teacherId, dto.branchId, dto.status, dto.startDate].some((v) => v !== undefined);
+
+    const { group, current, makeups } = await this.db.transaction(async (tx) => {
+      if (touchesLessons) await lockTimetable(tx, tenantId);
+      // The group as it is now - under the lock when lessons are at stake.
+      const [current] = await tx.select().from(groups).where(and(eq(groups.id, id), eq(groups.tenantId, tenantId), isNull(groups.deletedAt)));
+      if (!current) throw new NotFoundException('Guruh topilmadi');
+      await this.ensureSubject(tx, tenantId, dto.subject);
+
+      const next = {
+        scheduleDays: dto.scheduleDays !== undefined ? dto.scheduleDays : current.scheduleDays,
+        startTime: dto.startTime !== undefined ? dto.startTime : current.startTime,
+        endTime: dto.endTime !== undefined ? dto.endTime : dto.startTime !== undefined && dto.startTime !== current.startTime ? null : current.endTime,
+      };
+      const slot = this.lessonSlot(next.scheduleDays, next.startTime, next.endTime);
+
+      const [group] = await tx
+        .update(groups)
+        .set({
+          ...(dto.name ? { name: dto.name } : {}),
+          ...(dto.subject ? { subject: dto.subject } : {}),
+          ...(dto.level !== undefined ? { level: dto.level } : {}),
+          ...(dto.courseId !== undefined ? { courseId: dto.courseId || null } : {}),
+          ...(dto.teacherId !== undefined ? { teacherId: dto.teacherId || null } : {}),
+          ...(dto.branchId !== undefined ? { branchId: dto.branchId || null } : {}),
+          ...(dto.startDate !== undefined ? { startDate: dto.startDate ? new Date(dto.startDate) : undefined } : {}),
+          ...(dto.maxStudents !== undefined ? { maxStudents: dto.maxStudents } : {}),
+          ...(dto.schedule !== undefined ? { schedule: dto.schedule } : {}),
+          ...(dto.scheduleDays !== undefined ? { scheduleDays: dto.scheduleDays } : {}),
+          ...(dto.startTime !== undefined ? { startTime: dto.startTime } : {}),
+          ...(dto.startTime !== undefined || dto.endTime !== undefined ? { endTime: slot?.end ?? next.endTime } : {}),
+          ...(dto.monthlyPrice !== undefined ? { monthlyPrice: dto.monthlyPrice } : {}),
+          ...(dto.description !== undefined ? { description: dto.description } : {}),
+          ...(dto.durationMonths !== undefined ? { durationMonths: dto.durationMonths } : {}),
+          ...(dto.status !== undefined ? { status: dto.status } : {}),
+          updatedAt: new Date(),
+        })
+        .where(and(eq(groups.id, id), eq(groups.tenantId, tenantId)))
+        .returning();
+
+      // Lessons are touched only when something they depend on really
+      // changed: sending the same days and hours again rebuilds nothing.
+      const lessonsChanged =
+        !sameDays(isoWeekdaysOf(current.scheduleDays), isoWeekdaysOf(group.scheduleDays)) || current.startTime !== group.startTime ||
+        (current.endTime ?? null) !== (group.endTime ?? null) || current.teacherId !== group.teacherId || current.branchId !== group.branchId ||
+        current.status !== group.status || String(current.startDate ?? '') !== String(group.startDate ?? '');
+      const makeups = touchesLessons && lessonsChanged ? await this.applyTimetable(tx, tenantId, current, group, userId, viewer) : { moved: 0, released: 0 };
+
+      // A new price applies from this month on; earlier months keep the old
+      // one in debt and revenue figures.
+      if (group.monthlyPrice !== current.monthlyPrice) {
+        const [known] = await tx.select({ id: groupPriceHistory.id }).from(groupPriceHistory).where(eq(groupPriceHistory.groupId, id)).limit(1);
+        if (!known) {
+          // The old price is known to be the price until now; since when, nobody recorded.
+          await tx.insert(groupPriceHistory).values({ tenantId, groupId: id, monthlyPrice: current.monthlyPrice, effectiveFrom: current.createdAt, source: 'ASSUMED' });
+        }
+        await tx.insert(groupPriceHistory).values({ tenantId, groupId: id, monthlyPrice: group.monthlyPrice });
       }
-      await this.db.insert(groupPriceHistory).values({ tenantId, groupId: id, monthlyPrice: group.monthlyPrice });
-    }
-    this.audit.log({ tenantId, userId, action: 'update', entityType: 'group', entityId: id, meta: dto });
-    return group;
+      const [saved] = await tx.select().from(groups).where(eq(groups.id, id));
+      return { group: saved, current, makeups };
+    });
+    this.audit.log({ tenantId, userId, action: 'update', entityType: 'group', entityId: id, meta: { ...dto, ...(makeups.moved + makeups.released ? { makeups } : {}) } });
+    void current;
+    return { ...group, makeups };
   }
 
   // What the group has cost over time, newest first, with where each entry
@@ -347,29 +427,46 @@ export class GroupsService {
     return this.priceHistory(tenantId, id);
   }
 
+  /**
+   * To the trash. The group has no lessons from now on, so the make-ups
+   * booked into its coming lessons cannot happen: they are cancelled and
+   * each credit comes back, once. What already happened - past and marked
+   * make-ups, attendance - stays as history. `makeups` says how many.
+   */
   async remove(tenantId: string, userId: string, id: string) {
-    await this.findOne(tenantId, id);
-    await this.db
-      .update(groups)
-      .set({ deletedAt: new Date() })
-      .where(and(eq(groups.id, id), eq(groups.tenantId, tenantId)));
-    this.audit.log({ tenantId, userId, action: 'delete', entityType: 'group', entityId: id });
-    return { success: true };
+    const makeups = await this.db.transaction(async (tx) => {
+      await lockTimetable(tx, tenantId);
+      const [row] = await tx.update(groups).set({ deletedAt: new Date() })
+        .where(and(eq(groups.id, id), eq(groups.tenantId, tenantId), isNull(groups.deletedAt))).returning({ id: groups.id });
+      if (!row) throw new NotFoundException('Guruh topilmadi');
+      return reconcileGroupMakeups(tx, tenantId, [id], userId, { note: 'GROUP_REMOVED' });
+    });
+    this.audit.log({ tenantId, userId, action: 'delete', entityType: 'group', entityId: id, meta: { releasedMakeups: makeups.released } });
+    return { success: true, makeups };
   }
 
-  async restore(tenantId: string, userId: string, id: string) {
-    const [group] = await this.db
-      .update(groups)
-      .set({ deletedAt: null })
-      .where(and(eq(groups.id, id), eq(groups.tenantId, tenantId)))
-      .returning();
-    if (!group) throw new NotFoundException('Guruh topilmadi');
+  /**
+   * Back from the trash - if its lessons still fit: teacher, room, students
+   * and make-ups are checked again with the timetable's own rule, and a
+   * clash leaves the group in the trash. Make-ups released when it was
+   * deleted stay cancelled; they are booked again by hand.
+   */
+  async restore(tenantId: string, userId: string, id: string, viewer?: ConflictViewer) {
+    const group = await this.db.transaction(async (tx) => {
+      await lockTimetable(tx, tenantId);
+      const [row] = await tx.update(groups).set({ deletedAt: null })
+        .where(and(eq(groups.id, id), eq(groups.tenantId, tenantId))).returning();
+      if (!row) throw new NotFoundException('Guruh topilmadi');
+      if (holdsLessons(row)) await this.assertRowsFit(tx, tenantId, await this.lessonRows(tx, tenantId, id), viewer, true);
+      return row;
+    });
     this.audit.log({ tenantId, userId, action: 'restore', entityType: 'group', entityId: id });
     return group;
   }
 
-  // Shown live in the group form before saving; saving itself refuses a
-  // clash (see assertTeacherFree).
+  // Shown live in the group form before saving, from the same rule saving
+  // itself applies (ScheduleService.findConflicts). The group's own lessons
+  // are left out: the form is about to change them.
   async findScheduleConflicts(
     tenantId: string,
     teacherId: string,
@@ -385,10 +482,17 @@ export class GroupsService {
       return [];
     }
     if (!slot || !teacherId) return [];
-    const clashes = await this.teacherClashes(tenantId, excludeGroupId ?? null, teacherId, slot);
     const seen = new Map<string, { id: string; name: string; scheduleDays: string | null; startTime: string | null }>();
-    for (const c of clashes) {
-      if (!seen.has(c.groupId)) seen.set(c.groupId, { id: c.groupId, name: c.groupName, scheduleDays: null, startTime: `${c.startTime}-${c.endTime}` });
+    for (const day of slot.days) {
+      const conflicts = await this.schedule.findConflicts(tenantId, {
+        groupId: excludeGroupId ?? '__new__', teacherId, dayOfWeek: day, startTime: slot.start, endTime: slot.end,
+        checkStudents: !!excludeGroupId, checkMakeups: true,
+      });
+      for (const c of conflicts) {
+        if (c.type === 'GROUP' || (excludeGroupId && c.groupId === excludeGroupId)) continue;
+        const key = c.groupId ?? `${c.type}:${c.date}:${c.startTime}`;
+        if (!seen.has(key)) seen.set(key, { id: key, name: c.groupName ?? c.message, scheduleDays: null, startTime: `${c.startTime}-${c.endTime}` });
+      }
     }
     return [...seen.values()];
   }

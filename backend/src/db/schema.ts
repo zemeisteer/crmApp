@@ -1773,11 +1773,16 @@ export const lessonCancellations = pgTable('lesson_cancellations', {
   tenantId: text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
   groupId: text('group_id').notNull().references(() => groups.id, { onDelete: 'cascade' }),
   date: text('date').notNull(), // YYYY-MM-DD, center-local
+  // The weekly lesson (timetable row) that is called off on that date. Null:
+  // every weekly lesson of the group that day - cancellations from before
+  // lessons had their own identity, and groups with no timetable rows.
+  scheduleId: text('schedule_id').references(() => schedules.id, { onDelete: 'cascade' }),
   reason: text('reason'),
   cancelledByUserId: text('cancelled_by_user_id').references(() => users.id, { onDelete: 'set null' }),
   createdAt: timestamp('created_at').notNull().defaultNow(),
 }, (t) => ({
-  occurrence: uniqueIndex('lesson_cancellations_group_date_uniq').on(t.groupId, t.date),
+  wholeDay: uniqueIndex('lesson_cancellations_group_date_uniq').on(t.groupId, t.date).where(sql`schedule_id IS NULL`),
+  oneLesson: uniqueIndex('lesson_cancellations_lesson_date_uniq').on(t.scheduleId, t.date).where(sql`schedule_id IS NOT NULL`),
   tenantIdx: index('lesson_cancellations_tenant_idx').on(t.tenantId, t.date),
 }));
 
@@ -1792,6 +1797,11 @@ export const makeupCredits = pgTable('makeup_credits', {
   studentId: text('student_id').notNull().references(() => students.id, { onDelete: 'cascade' }),
   originGroupId: text('origin_group_id').notNull().references(() => groups.id, { onDelete: 'cascade' }),
   originDate: text('origin_date').notNull(), // YYYY-MM-DD
+  // LESSON_CANCELLED only: which lesson of that day was called off (the
+  // cancellation's schedule_id). A plain key, not a reference: the credit
+  // outlives the timetable row. Null for an absence (attendance is kept per
+  // group and day) and for a whole-day cancellation.
+  originScheduleId: text('origin_schedule_id'),
   reason: text('reason').notNull(), // ABSENT | LESSON_CANCELLED
   status: text('status').notNull().default('ISSUED'),
   note: text('note'),
@@ -1802,8 +1812,10 @@ export const makeupCredits = pgTable('makeup_credits', {
   closedByUserId: text('closed_by_user_id').references(() => users.id, { onDelete: 'set null' }),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 }, (t) => ({
-  // One live credit per missed occurrence (a voided one frees it again).
-  oncePerOccurrence: uniqueIndex('makeup_credits_once_per_occurrence').on(t.studentId, t.originGroupId, t.originDate).where(sql`status <> 'CANCELLED'`),
+  // One live credit per missed occurrence (a voided one frees it again):
+  // per group and day, and per lesson for a lesson called off on its own.
+  oncePerOccurrence: uniqueIndex('makeup_credits_once_per_occurrence').on(t.studentId, t.originGroupId, t.originDate).where(sql`status <> 'CANCELLED' AND origin_schedule_id IS NULL`),
+  oncePerLesson: uniqueIndex('makeup_credits_once_per_lesson').on(t.studentId, t.originScheduleId, t.originDate).where(sql`status <> 'CANCELLED' AND origin_schedule_id IS NOT NULL`),
   tenantIdx: index('makeup_credits_tenant_idx').on(t.tenantId, t.status),
   studentIdx: index('makeup_credits_student_idx').on(t.studentId),
 }));
@@ -1817,6 +1829,13 @@ export const makeupBookings = pgTable('makeup_bookings', {
   studentId: text('student_id').notNull().references(() => students.id, { onDelete: 'cascade' }),
   mode: text('mode').notNull(), // GROUP_LESSON | SESSION
   targetGroupId: text('target_group_id').references(() => groups.id, { onDelete: 'cascade' }),
+  // GROUP_LESSON: the lesson itself - the timetable row (weekly or one-off)
+  // whose occurrence on `date` the student joins. The booking follows this
+  // row and no other; when the row goes, the booking is released, never
+  // moved to another lesson (lessons/makeup-reconcile.ts). Null for a group
+  // with no timetable rows, and for old bookings that could not be matched
+  // to exactly one lesson.
+  targetScheduleId: text('target_schedule_id').references(() => schedules.id, { onDelete: 'set null' }),
   date: text('date').notNull(), // YYYY-MM-DD, center-local
   startTime: text('start_time').notNull(), // HH:MM
   endTime: text('end_time').notNull(),
@@ -1837,6 +1856,7 @@ export const makeupBookings = pgTable('makeup_bookings', {
   oneLiveBooking: uniqueIndex('makeup_bookings_one_live_per_credit').on(t.creditId).where(sql`status IN ('BOOKED', 'ATTENDED')`),
   tenantDateIdx: index('makeup_bookings_tenant_date_idx').on(t.tenantId, t.date),
   groupDateIdx: index('makeup_bookings_group_date_idx').on(t.targetGroupId, t.date),
+  lessonIdx: index('makeup_bookings_lesson_idx').on(t.targetScheduleId, t.date),
   teacherIdx: index('makeup_bookings_teacher_idx').on(t.teacherId, t.date),
   studentIdx: index('makeup_bookings_student_idx').on(t.studentId, t.date),
 }));

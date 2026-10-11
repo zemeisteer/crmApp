@@ -10,7 +10,7 @@ import { useCenterClock } from "@/lib/use-center-clock";
 import { addDays, rangeProblem } from "@/lib/makeups";
 import { ACCENT, Badge, CREDIT_STATUS, DateRange, Empty, Loading, Notice, REASON_KEYS, card, dayLabel, lbl, muted, primaryBtn, errorText } from "./shared";
 
-const keyOf = (r: MakeupEligible) => `${r.studentId}|${r.groupId}|${r.date}|${r.reason}`;
+const keyOf = (r: MakeupEligible) => `${r.studentId}|${r.groupId}|${r.date}|${r.reason}|${r.scheduleId ?? ""}`;
 
 /**
  * Missed lessons: absences and lessons the center called off in a date
@@ -54,7 +54,7 @@ export default function MissedTab({ canManage, onIssued }: { canManage: boolean;
     setBusy(true);
     setFormError(null);
     try {
-      await makeupsApi.issue({ studentId: issuing.studentId, groupId: issuing.groupId, date: issuing.date, reason: issuing.reason, note: note.trim() || undefined });
+      await makeupsApi.issue({ studentId: issuing.studentId, groupId: issuing.groupId, date: issuing.date, reason: issuing.reason, scheduleId: issuing.scheduleId ?? undefined, note: note.trim() || undefined });
       setDone(t("mk.issued").replace("{name}", issuing.studentName));
       setIssuing(null);
       setNote("");

@@ -247,7 +247,9 @@ function GroupDetailContent() {
 
   async function onDeleteGroup() {
     if (!confirm(t("groupDetail.confirmDeleteGroup"))) return;
-    await groupsApi.remove(id);
+    const res = await groupsApi.remove(id);
+    // Make-ups booked into this group's coming lessons went with it: say so.
+    if (res?.makeups?.released) window.alert(t("sch.makeups.released").replace("{n}", String(res.makeups.released)));
     router.push("/groups");
   }
 

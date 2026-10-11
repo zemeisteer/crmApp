@@ -15,6 +15,7 @@ function TrashContent() {
   const [groups, setGroups] = useState<Group[]>([]);
   const [loading, setLoading] = useState(true);
   const [restoringId, setRestoringId] = useState<string | null>(null);
+  const [restoreError, setRestoreError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const pageItems = usePagedSlice(groups, page);
 
@@ -30,9 +31,13 @@ function TrashContent() {
 
   async function onRestore(id: string) {
     setRestoringId(id);
+    setRestoreError(null);
     try {
       await groupsApi.restore(id);
       load();
+    } catch (err) {
+      // Its lessons no longer fit (teacher, room or students are taken): the server says by what.
+      setRestoreError(err instanceof Error ? err.message : t("common.errorGeneric"));
     } finally {
       setRestoringId(null);
     }
@@ -51,6 +56,11 @@ function TrashContent() {
       </div>
 
       <div style={{ flex: 1, minHeight: 0, padding: "26px 32px", overflow: "auto", boxSizing: "border-box" }}>
+        {restoreError && (
+          <div role="alert" style={{ marginBottom: 14, padding: "10px 14px", borderRadius: 10, background: "#FDECEC", border: "1px solid #F5C2C2", color: "#B42318", fontSize: 13.5 }}>
+            {restoreError}
+          </div>
+        )}
         {loading ? (
           <div style={{ color: "#686B75", fontSize: 14 }}>{t("common.loading")}</div>
         ) : groups.length === 0 ? (

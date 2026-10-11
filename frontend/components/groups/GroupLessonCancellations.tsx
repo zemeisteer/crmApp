@@ -29,7 +29,7 @@ export default function GroupLessonCancellations({ groupId }: { groupId: string 
   const [loadError, setLoadError] = useState(false);
   const [nonce, setNonce] = useState(0);
   const [open, setOpen] = useState(false);
-  const [date, setDate] = useState("");
+  const [picked, setPicked] = useState("");
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
@@ -55,25 +55,28 @@ export default function GroupLessonCancellations({ groupId }: { groupId: string 
   }, [groupId, today, nonce]);
   const reload = () => setNonce((n) => n + 1);
 
-  const upcoming = [...new Map((lessons ?? []).filter((l) => !l.cancelled && l.kind === "WEEKLY").map((l) => [l.date, l])).values()];
+  // Every lesson is its own choice: a group with two lessons a day calls off one of them.
+  const upcoming = (lessons ?? []).filter((l) => !l.cancelled && l.kind === "WEEKLY");
+  const lessonKey = (l: { date: string; scheduleId: string | null }) => `${l.date}|${l.scheduleId ?? ""}`;
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (!date) {
+    if (!picked) {
       setFormError(t("mk.lc.pickLesson"));
       return;
     }
+    const [date, scheduleId] = picked.split("|");
     if (!window.confirm(t("mk.lc.confirmCancelLesson").replace("{date}", dayLabel(date, lang, t)))) return;
     setBusy(true);
     setFormError(null);
     try {
-      const res = await lessonsApi.cancel({ groupId, date, reason: reason.trim() || undefined });
+      const res = await lessonsApi.cancel({ groupId, date, scheduleId: scheduleId || undefined, reason: reason.trim() || undefined });
       setOpen(false);
       setMessage({
         tone: "ok",
         text: `${t("mk.lc.lessonCancelled").replace("{date}", dayLabel(date, lang, t))}${res.releasedBookings > 0 ? ` ${t("mk.lc.releasedBookings").replace("{n}", String(res.releasedBookings))}` : ""}`,
       });
-      setDate("");
+      setPicked("");
       setReason("");
       reload();
     } catch (err) {
@@ -153,9 +156,9 @@ export default function GroupLessonCancellations({ groupId }: { groupId: string 
                 sheetOnPhone
                 sheetTitle={t("mk.lc.lessonToCancel")}
                 placeholder={t("mk.chooseDate")}
-                options={upcoming.map((l) => ({ value: l.date, label: `${dayLabel(l.date, lang, t)} · ${l.startTime}–${l.endTime}` }))}
-                value={date}
-                onChange={setDate}
+                options={upcoming.map((l) => ({ value: lessonKey(l), label: `${dayLabel(l.date, lang, t)} · ${l.startTime}–${l.endTime}` }))}
+                value={picked}
+                onChange={setPicked}
               />
             </div>
           )}

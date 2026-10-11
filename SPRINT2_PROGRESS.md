@@ -1,0 +1,25 @@
+# Second stabilization sprint: checkpoints
+
+Branch `claude/admiring-goldberg-jkri02`. Start: `40b8721aec656c9d56113ec7ed1c0a2f79300fc9`
+(pushed; CI green for it). Work is done on the local machine, in local commits only:
+nothing is pushed, no PR, no merge, no deploy.
+
+**Checkpoint 1: tasks 1-4 (lesson identity, one write rule, group removal, credit basis).**
+
+- Migration `0051_lesson_identity`: `makeup_bookings.target_schedule_id`,
+  `lesson_cancellations.schedule_id`, `makeup_credits.origin_schedule_id`. Open bookings
+  are bound only when exactly one lesson matches; `npm run db:report-makeup-links` lists
+  the rest. NOT yet applied to the dev database `talimcrm`.
+- A lesson is its timetable row (`les-<scheduleId>-<date>` in ICS/Google; a group with
+  no rows keeps `grp-<groupId>-<date>`). Google events of existing connections are
+  replaced once on the next sync (old keys removed, new ones created).
+- `GroupsService` create/update/remove/restore write the group and its lessons in one
+  transaction under the timetable lock, with `ScheduleService.findConflicts`; rows are
+  changed in place (ids kept).
+- `MakeupsService.issue` runs under the timetable lock with the shared rules in
+  `makeups/eligibility.ts`; attendance corrections settle the credit.
+- Tests: `test/lesson-identity.e2e-spec.ts` (16). With `lesson-integrity`, `makeups`,
+  `calendar`, `calendar-google`: 70/70.
+
+Next: task 5 (Google callback and worker ownership), then browser tests (6), load (7),
+full verification and the report (8).
