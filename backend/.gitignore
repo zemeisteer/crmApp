@@ -1,3 +1,4 @@
 
 # Local database dumps (scripts/backup.sh, manual pg_dump)
 backups/
+load-results.txt
