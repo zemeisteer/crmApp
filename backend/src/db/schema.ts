@@ -588,13 +588,24 @@ export const attendance = pgTable('attendance', {
   groupId: text('group_id').notNull().references(() => groups.id, { onDelete: 'cascade' }),
   studentId: text('student_id').notNull().references(() => students.id, { onDelete: 'cascade' }),
   date: text('date').notNull(), // "2026-09-19"
+  // The lesson the mark is for: its timetable row (lessons/occurrences.ts),
+  // so two lessons of one group on one day are marked apart. A plain key,
+  // not a reference: the mark is history and outlives the row. NULL is a
+  // mark for the group's day as a whole - a group with no timetable rows, a
+  // date with no timetable lesson, or an old mark that could not be matched
+  // to exactly one lesson (shown to admins as "not bound").
+  scheduleId: text('schedule_id'),
+  // The lesson's start when it was marked (shown when the row is gone).
+  startTime: text('start_time'),
   status: attendanceStatusEnum('status').notNull().default('PRESENT'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 }, (t) => ({
   tenantIdx: index('attendance_tenant_idx').on(t.tenantId),
   groupDateIdx: index('attendance_group_date_idx').on(t.groupId, t.date),
-  uniq: uniqueIndex('attendance_student_group_date_idx').on(t.studentId, t.groupId, t.date),
+  // One mark per student and lesson; one day-level mark per student, group and day.
+  uniq: uniqueIndex('attendance_student_group_date_idx').on(t.studentId, t.groupId, t.date).where(sql`schedule_id IS NULL`),
+  perLesson: uniqueIndex('attendance_student_lesson_date_idx').on(t.studentId, t.scheduleId, t.date).where(sql`schedule_id IS NOT NULL`),
 }));
 
 // What was covered in a lesson: one row per group and local date, entered

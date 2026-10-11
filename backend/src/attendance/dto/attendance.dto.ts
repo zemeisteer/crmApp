@@ -18,6 +18,12 @@ export class MarkAttendanceDto {
   @IsString()
   date: string; // "2026-09-19"
 
+  // Which lesson of that day (its timetable row, as GET /api/lessons gives
+  // it); needed when the group has several that day.
+  @IsOptional()
+  @IsString()
+  scheduleId?: string;
+
   @IsArray()
   @ArrayMinSize(1)
   @ValidateNested({ each: true })
@@ -48,6 +54,10 @@ export class QueryAttendanceDto {
   @IsOptional()
   @IsString()
   studentId?: string;
+  // One lesson's marks (its timetable row); "none": the day-level ones.
+  @IsOptional()
+  @IsString()
+  scheduleId?: string;
 
   // A date range (YYYY-MM-DD, inclusive) instead of one date.
   @IsOptional()
