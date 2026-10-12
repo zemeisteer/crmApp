@@ -61,3 +61,23 @@ lesson. Tests: `test/attendance-per-lesson.e2e-spec.ts` 9/9; full e2e before the
 Still to do for task 2: frontend (lesson picker on the attendance page, per-lesson results
 in the student/parent portal, the unbound notice for admins); portal/report readers of
 attendance reviewed for "one row per student, group and day" assumptions.
+
+**Checkpoint 3: task 4 (membership stays), backend, and their use (part of task 5).**
+Migration `0054_enrollment_periods` (not yet applied to `talimcrm`).
+`backend/src/enrollments/membership.ts` is the one place that answers "was the student in
+the group at this lesson" (instant rule [start, end); day rule: the stay touches the day;
+strict / lenient). Stays are opened/closed in: student create, enroll, unenroll, student
+status change (PAUSED/LEFT/GRADUATED close, ACTIVE reopens), remove/restore, lead
+conversion. Readers switched: make-up eligible + issue, attendance.mark validation
+(NOT_A_MEMBER), student/parent calendar, cabinet past lessons. New:
+`GET /api/students/:id/memberships`, `npm run db:report-membership`.
+Also fixed: two simultaneous enrolments of one student into one group answered 500.
+Tests: `test/membership-history.e2e-spec.ts` 5/5, `src/enrollments/membership.spec.ts` 4/4.
+Full e2e: 58 of 59 files pass; `staff-access.e2e-spec.ts` times out at 30 s in the full
+parallel run on a cold cache and passes alone (9/9) - an existing test near its limit,
+left as it is.
+
+Still to do: frontend (attendance lesson picker, cabinet per-lesson results, unbound
+notice, membership history on the student page), cabinet per-lesson attendance in
+`past-lessons.ts`, reports/readers review, browser tests, migrations on the dev DB,
+final verification, report, patch.

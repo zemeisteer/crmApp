@@ -19,6 +19,10 @@ export interface PastLessonGroup {
   joinedOn: string;
   // Left on this local date (null while still in the group).
   leftOn: string | null;
+  // Every stay in the group, as local dates (enrollments/membership.ts).
+  // When given, these decide which lessons were the student's - a break
+  // between two stays is not; joinedOn/leftOn are then not consulted.
+  stays?: Array<{ from: string; until: string | null }>;
 }
 
 export interface PastLessonSlot {
@@ -99,7 +103,9 @@ export function buildPastLessons(input: PastLessonInput): PastLesson[] {
   const byKey = new Map<string, PastLesson>();
   const groupById = new Map(input.groups.map((g) => [g.id, g]));
   const inWindow = (g: PastLessonGroup, date: string) =>
-    date >= input.from && date <= input.today && date >= g.joinedOn && (!g.leftOn || date <= g.leftOn);
+    date >= input.from && date <= input.today && (g.stays
+      ? g.stays.some((s) => date >= s.from && (!s.until || date <= s.until))
+      : date >= g.joinedOn && (!g.leftOn || date <= g.leftOn));
 
   const add = (g: PastLessonGroup, date: string, extra: Partial<PastLesson> = {}) => {
     const key = `${g.id}|${date}`;

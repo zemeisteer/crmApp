@@ -3,13 +3,14 @@ import { and, desc, eq, gte, inArray, isNull, lte, ne, or, sql } from 'drizzle-o
 import { AuditService } from '../audit/audit.service';
 import { DB, Database } from '../db/db.module';
 import {
-  attendance, branches, enrollments, groups, lessonCancellations, makeupBookings, makeupCredits, rooms, students, teachers, tenants,
+  attendance, branches, enrollments, groups, lessonCancellations, makeupBookings, makeupCredits, rooms, schedules, students, teachers, tenants,
 } from '../db/schema';
 import { countOccupiedSeats } from '../common/seats';
 import { teacherGroupIds } from '../common/teacher-scope';
 import { lockTimetable } from '../common/timetable-lock';
 import { DEFAULT_TIMEZONE, isValidTimeZone, zonedParts } from '../common/timezone';
-import { absenceCounts, memberOn } from './eligibility';
+import { absenceCounts, cancelledLessonCounts } from './eligibility';
+import { staysByMember, staysOf } from '../enrollments/membership';
 import { isOverlapping, ScheduleService } from '../schedule/schedule.service';
 import { CalendarChanges } from '../lessons/calendar-changes';
 import { addDays, isDate, lessonOccurrences, lessonsOfGroupOn } from '../lessons/occurrences';
@@ -112,19 +113,26 @@ export class MakeupsService {
       .innerJoin(students, eq(students.id, enrollments.studentId))
       .innerJoin(groups, eq(groups.id, enrollments.groupId))
       .where(and(inArray(enrollments.groupId, groupIds), isNull(students.deletedAt), eq(groups.tenantId, tenantId)));
-    const membership = new Map(enrolled.map((e) => [`${e.studentId}|${e.groupId}`, e]));
+    // Who was in which group when: the membership history, the same the issue API asks.
+    const stays = staysByMember(await staysOf(this.db, tenantId, { groupIds }));
+    const staysOfMember = (studentId: string, groupId: string) => stays.get(`${studentId}|${groupId}`) ?? [];
+    const lessonRows = cancels.some((c) => c.scheduleId)
+      ? await this.db.select({ id: schedules.id, startTime: schedules.startTime }).from(schedules).where(inArray(schedules.id, cancels.map((c) => c.scheduleId).filter((x): x is string => !!x)))
+      : [];
+    const lessonStart = new Map(lessonRows.map((r) => [r.id, r.startTime]));
 
     // One row per missed lesson: an absence is per lesson now, like a cancellation.
     type Row = { studentId: string; groupId: string; date: string; studentName: string; groupName: string; reason: 'ABSENT' | 'LESSON_CANCELLED'; scheduleId: string | null; startTime: string | null };
     const rows: Row[] = [];
     for (const m of marks) {
-      if (!absenceCounts(m, membership.get(`${m.studentId}|${m.groupId}`), m.date, tz)) continue;
+      if (!absenceCounts(m, staysOfMember(m.studentId, m.groupId), { date: m.date, startTime: m.startTime }, tz)) continue;
       rows.push({ studentId: m.studentId, groupId: m.groupId, date: m.date, studentName: m.studentName, groupName: m.groupName, reason: 'ABSENT', scheduleId: m.scheduleId, startTime: m.startTime });
     }
     for (const c of cancels) {
       for (const e of enrolled.filter((x) => x.groupId === c.groupId)) {
-        if (!memberOn(e, c.date, tz)) continue;
-        rows.push({ studentId: e.studentId, groupId: c.groupId, date: c.date, studentName: e.studentName, groupName: e.groupName, reason: 'LESSON_CANCELLED', scheduleId: c.scheduleId, startTime: null });
+        const startTime = c.scheduleId ? lessonStart.get(c.scheduleId) ?? null : null;
+        if (!cancelledLessonCounts(staysOfMember(e.studentId, c.groupId), { date: c.date, startTime }, tz)) continue;
+        rows.push({ studentId: e.studentId, groupId: c.groupId, date: c.date, studentName: e.studentName, groupName: e.groupName, reason: 'LESSON_CANCELLED', scheduleId: c.scheduleId, startTime });
       }
     }
     if (rows.length === 0) return [];
@@ -208,12 +216,11 @@ export class MakeupsService {
       const [group] = await tx.select({ id: groups.id }).from(groups).where(and(eq(groups.id, dto.groupId), eq(groups.tenantId, tenantId)));
       if (!group) throw new NotFoundException('Guruh topilmadi');
       const tz = await this.zone(tx, tenantId);
-      const [membership] = await tx.select({ status: enrollments.status, joinedAt: enrollments.joinedAt, leftAt: enrollments.leftAt }).from(enrollments)
-        .where(and(eq(enrollments.studentId, dto.studentId), eq(enrollments.groupId, dto.groupId)));
+      const stays = await staysOf(tx, tenantId, { studentIds: [dto.studentId], groupIds: [dto.groupId] });
       let originScheduleId: string | null = null;
       if (dto.reason === 'ABSENT') {
         // The absence itself: of the lesson named, or the student's only absence in the group that day.
-        const marks = await tx.select({ id: attendance.id, createdAt: attendance.createdAt, scheduleId: attendance.scheduleId }).from(attendance)
+        const marks = await tx.select({ id: attendance.id, createdAt: attendance.createdAt, scheduleId: attendance.scheduleId, startTime: attendance.startTime }).from(attendance)
           .where(and(eq(attendance.tenantId, tenantId), eq(attendance.studentId, dto.studentId), eq(attendance.groupId, dto.groupId), eq(attendance.date, dto.date), eq(attendance.status, 'ABSENT')))
           .for('share');
         if (marks.length === 0) throw new BadRequestException({ code: 'NOT_ELIGIBLE', message: "Bu kuni o'quvchi darsda yo'q deb belgilanmagan" });
@@ -224,7 +231,7 @@ export class MakeupsService {
             : { code: 'LESSON_AMBIGUOUS', message: "Bu kuni o'quvchi bir nechta darsda yo'q deb belgilangan: qaysi biri ekanini tanlang" });
         }
         originScheduleId = mark.scheduleId;
-        if (!absenceCounts(mark, membership, dto.date, tz)) throw new BadRequestException({ code: 'NOT_ELIGIBLE', message: "O'quvchi o'sha kuni bu guruhda bo'lmagan" });
+        if (!absenceCounts(mark, stays, { date: dto.date, startTime: mark.startTime }, tz)) throw new BadRequestException({ code: 'NOT_ELIGIBLE', message: "O'quvchi o'sha darsda bu guruhda bo'lmagan" });
       } else {
         const cancels = await tx.select({ id: lessonCancellations.id, scheduleId: lessonCancellations.scheduleId }).from(lessonCancellations)
           .where(and(eq(lessonCancellations.tenantId, tenantId), eq(lessonCancellations.groupId, dto.groupId), eq(lessonCancellations.date, dto.date)));
@@ -235,7 +242,8 @@ export class MakeupsService {
             ? { code: 'NOT_ELIGIBLE', message: 'Bu dars bekor qilinmagan' }
             : { code: 'LESSON_AMBIGUOUS', message: 'Bu kuni guruhning bir nechta darsi bekor qilingan: qaysi biri ekanini tanlang' });
         }
-        if (!memberOn(membership, dto.date, tz)) throw new BadRequestException({ code: 'NOT_ELIGIBLE', message: "O'quvchi o'sha kuni bu guruhda bo'lmagan" });
+        const [row] = cancellation.scheduleId ? await tx.select({ startTime: schedules.startTime }).from(schedules).where(eq(schedules.id, cancellation.scheduleId)) : [];
+        if (!cancelledLessonCounts(stays, { date: dto.date, startTime: row?.startTime }, tz)) throw new BadRequestException({ code: 'NOT_ELIGIBLE', message: "O'quvchi o'sha darsda bu guruhda bo'lmagan" });
         originScheduleId = cancellation.scheduleId;
       }
       const [t] = await tx.select({ days: tenants.makeupCreditDays }).from(tenants).where(eq(tenants.id, tenantId));

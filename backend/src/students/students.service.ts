@@ -1,7 +1,7 @@
 import { BadRequestException, ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { and, count, eq, ilike, isNotNull, isNull, inArray, or } from 'drizzle-orm';
 import { DB, Database } from '../db/db.module';
-import { branches, enrollments, genderEnum, groups, leads, organizationMemberships, studentGuardians, studentPortalPins, students, users } from '../db/schema';
+import { branches, enrollmentPeriods, enrollments, genderEnum, groups, leads, organizationMemberships, studentGuardians, studentPortalPins, students, users } from '../db/schema';
 import { randomInt } from 'crypto';
 import * as bcrypt from 'bcryptjs';
 import { CreateStudentDto, LinkGuardianDto, UpdateStudentDto } from './dto/student.dto';
@@ -14,6 +14,7 @@ import { studentIdsInGroups, teacherGroupIds } from '../common/teacher-scope';
 import { containsPattern, enrolledInDirection, enrolledInGroup, enrolledInGroupNamed, queryText } from '../common/list-filters';
 import { WebhooksService } from '../webhooks/webhooks.service';
 import { CustomFieldsService } from '../custom-fields/custom-fields.service';
+import { closeStays, openStay, reopenStays } from '../enrollments/membership';
 
 @Injectable()
 export class StudentsService {
@@ -200,7 +201,7 @@ export class StudentsService {
           for (const groupId of validGroupIds) await this.lockGroupWithCapacity(tx, tenantId, groupId);
           await assertNoStudentTimeClash(tx, tenantId, null, validGroupIds);
           if (validGroupIds.length > 0) {
-            await tx
+            const joined = await tx
               .insert(enrollments)
               .values(
                 validGroupIds.map((groupId) => ({
@@ -211,7 +212,12 @@ export class StudentsService {
                   joinedAt: new Date(),
                 })),
               )
-              .onConflictDoNothing();
+              .onConflictDoNothing()
+              .returning();
+            // The stay in each group begins now (enrollments/membership.ts).
+            if ((student.status ?? 'ACTIVE') === 'ACTIVE') {
+              for (const e of joined) await openStay(tx, { tenantId, studentId: student.id, groupId: e.groupId, enrollmentId: e.id, at: e.joinedAt });
+            }
           }
         }
         return { student, replayed: false };
@@ -261,7 +267,8 @@ export class StudentsService {
       if (!branch) throw new NotFoundException('Filial topilmadi');
     }
 
-    const [student] = await this.db
+    const [student] = await this.db.transaction(async (tx) => {
+      const rows = await tx
       .update(students)
       .set({
         ...(dto.fullName ? { fullName: dto.fullName } : {}),
@@ -282,6 +289,15 @@ export class StudentsService {
       })
       .where(and(eq(students.id, id), eq(students.tenantId, tenantId)))
       .returning();
+      // Attending or not is part of the membership history: a pause, leaving
+      // and graduating end the stays in every group; coming back begins new
+      // ones (the enrollments themselves, and the seats, are untouched).
+      if (dto.status !== undefined && dto.status !== before.status) {
+        if (dto.status === 'ACTIVE') await reopenStays(tx, { tenantId, studentId: id });
+        else if (before.status === 'ACTIVE') await closeStays(tx, { tenantId, studentId: id, reason: dto.status });
+      }
+      return rows;
+    });
     await this.customFields.write(this.db, tenantId, 'STUDENT', id, customValues, userId);
     // Custom values are logged by field, not by content.
     this.audit.log({ tenantId, userId, action: 'update', entityType: 'student', entityId: id, meta: { ...coreDto, ...(customInput ? { customFields: Object.keys(customValues) } : {}) } });
@@ -290,20 +306,29 @@ export class StudentsService {
 
   async remove(tenantId: string, userId: string, id: string) {
     await this.findOne(tenantId, id);
-    await this.db
-      .update(students)
-      .set({ deletedAt: new Date() })
-      .where(and(eq(students.id, id), eq(students.tenantId, tenantId)));
+    await this.db.transaction(async (tx) => {
+      const at = new Date();
+      await tx
+        .update(students)
+        .set({ deletedAt: at })
+        .where(and(eq(students.id, id), eq(students.tenantId, tenantId)));
+      await closeStays(tx, { tenantId, studentId: id, reason: 'REMOVED', at });
+    });
     this.audit.log({ tenantId, userId, action: 'delete', entityType: 'student', entityId: id });
     return { success: true };
   }
 
   async restore(tenantId: string, userId: string, id: string) {
-    const [student] = await this.db
-      .update(students)
-      .set({ deletedAt: null })
-      .where(and(eq(students.id, id), eq(students.tenantId, tenantId)))
-      .returning();
+    const student = await this.db.transaction(async (tx) => {
+      const [row] = await tx
+        .update(students)
+        .set({ deletedAt: null })
+        .where(and(eq(students.id, id), eq(students.tenantId, tenantId)))
+        .returning();
+      // Back from the trash: attending again from now (the time in the trash is not a stay).
+      if (row && row.status === 'ACTIVE') await reopenStays(tx, { tenantId, studentId: id });
+      return row;
+    });
     if (!student) throw new NotFoundException("O'quvchi topilmadi");
     this.audit.log({ tenantId, userId, action: 'restore', entityType: 'student', entityId: id });
     return student;
@@ -328,22 +353,30 @@ export class StudentsService {
   }
 
   async enroll(tenantId: string, studentId: string, groupId: string) {
-    await this.findOne(tenantId, studentId);
+    const student = await this.findOne(tenantId, studentId);
+    // A paused student keeps a place in the group but is not attending: no stay begins until they are back.
+    const attending = student.status === 'ACTIVE';
     return this.db.transaction(async (tx) => {
-      const existing = await tx.query.enrollments.findFirst({
+      const before = await tx.query.enrollments.findFirst({
         where: and(
           eq(enrollments.studentId, studentId),
           eq(enrollments.groupId, groupId),
         ),
       });
 
-      if (existing && existing.status === 'ACTIVE') {
+      if (before && before.status === 'ACTIVE') {
         // Checked before the capacity lock so a full group still reports
         // "already enrolled" for a student who is in it.
         await this.lockGroupWithCapacity(tx, tenantId, groupId, { skipCapacity: true });
         throw new BadRequestException("O'quvchi allaqachon ushbu guruhda faol ro'yxatdan o'tgan");
       }
       await this.lockGroupWithCapacity(tx, tenantId, groupId);
+      // Under the group lock, look again: a second request for the same
+      // student may have enrolled them while this one waited (it used to
+      // run into the unique index and answer 500).
+      const now = await tx.query.enrollments.findFirst({ where: and(eq(enrollments.studentId, studentId), eq(enrollments.groupId, groupId)) });
+      if (now && now.status === 'ACTIVE') throw new BadRequestException("O'quvchi allaqachon ushbu guruhda faol ro'yxatdan o'tgan");
+      const existing = now;
       await assertNoStudentTimeClash(tx, tenantId, studentId, [groupId]);
 
       if (existing) {
@@ -357,6 +390,8 @@ export class StudentsService {
           })
           .where(eq(enrollments.id, existing.id))
           .returning();
+        // Back in the group: a NEW stay. The earlier one keeps its own start and end.
+        if (attending) await openStay(tx, { tenantId, studentId, groupId, enrollmentId: reactivated.id, at: reactivated.joinedAt });
         return { success: true, enrollment: reactivated };
       }
 
@@ -370,6 +405,7 @@ export class StudentsService {
           joinedAt: new Date(),
         })
         .returning();
+      if (attending) await openStay(tx, { tenantId, studentId, groupId, enrollmentId: created.id, at: created.joinedAt });
 
       return { success: true, enrollment: created };
     });
@@ -414,14 +450,19 @@ export class StudentsService {
       throw new NotFoundException("Guruhda a'zolik topilmadi");
     }
 
-    const [updated] = await this.db
-      .update(enrollments)
-      .set({
-        status: 'CANCELLED',
-        leftAt: new Date(),
-      })
-      .where(eq(enrollments.id, existing.id))
-      .returning();
+    const updated = await this.db.transaction(async (tx) => {
+      const left = new Date();
+      const [row] = await tx
+        .update(enrollments)
+        .set({
+          status: 'CANCELLED',
+          leftAt: left,
+        })
+        .where(eq(enrollments.id, existing.id))
+        .returning();
+      await closeStays(tx, { tenantId, studentId, groupId, reason: 'LEFT_GROUP', at: left });
+      return row;
+    });
 
     return { success: true, enrollment: updated };
   }
@@ -436,6 +477,22 @@ export class StudentsService {
       ),
       with: { user: { columns: { id: true, fullName: true, email: true, phone: true } } },
     });
+  }
+
+  /**
+   * The student's stays in groups, newest first: when each began and ended,
+   * why it ended, and whether it was written when it happened (RECORDED) or
+   * taken over from the old single enrollment row (LEGACY: its start is the
+   * last joining that row knew - earlier stays may have existed).
+   */
+  async memberships(tenantId: string, studentId: string, viewer?: { role?: string; userId?: string }) {
+    await this.findOne(tenantId, studentId, viewer);
+    const rows = await this.db.select({
+      id: enrollmentPeriods.id, groupId: enrollmentPeriods.groupId, groupName: groups.name, startedAt: enrollmentPeriods.startedAt,
+      endedAt: enrollmentPeriods.endedAt, endReason: enrollmentPeriods.endReason, source: enrollmentPeriods.source,
+    }).from(enrollmentPeriods).innerJoin(groups, eq(groups.id, enrollmentPeriods.groupId))
+      .where(and(eq(enrollmentPeriods.tenantId, tenantId), eq(enrollmentPeriods.studentId, studentId)));
+    return rows.sort((a, b) => b.startedAt.getTime() - a.startedAt.getTime());
   }
 
   async linkGuardian(tenantId: string, studentId: string, dto: LinkGuardianDto) {

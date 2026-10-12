@@ -35,6 +35,7 @@ import {
 } from '../db/schema';
 import { DEFAULT_TIMEZONE, isValidTimeZone, zonedParts } from '../common/timezone';
 import { buildPastLessons } from './past-lessons';
+import { staysByMember, staysOf } from '../enrollments/membership';
 import { BillingService } from '../billing/billing.service';
 import { ExamsService } from '../exams/exams.service';
 import { TelegramService } from '../telegram/telegram.service';
@@ -405,6 +406,7 @@ export class PortalService {
       return done.length ? Math.max(...done.map((a) => a.score)) : null;
     };
 
+    const stays = staysByMember(await staysOf(this.db, tenantId, { studentIds: [studentId], groupIds }));
     const lessons = buildPastLessons({
       from,
       today,
@@ -419,6 +421,7 @@ export class PortalService {
         teacher: e.group.teacher?.fullName ?? null,
         joinedOn: localDate(e.joinedAt),
         leftOn: e.leftAt ? localDate(e.leftAt) : null,
+        stays: (stays.get(`${studentId}|${e.groupId}`) ?? []).map((s) => ({ from: localDate(s.startedAt), until: s.endedAt ? localDate(s.endedAt) : null })),
       })),
       slots,
       attendance: marks,

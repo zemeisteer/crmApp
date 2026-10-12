@@ -2,11 +2,12 @@ import { Inject, Injectable } from '@nestjs/common';
 import { and, eq, gte, inArray, isNull, lte } from 'drizzle-orm';
 import { DB, Database } from '../db/db.module';
 import {
-  branches, enrollments, groups, makeupBookings, organizationMemberships, rooms, studentGuardians, studentPortalPins, students, teachers, tenants,
+  branches, groups, makeupBookings, organizationMemberships, rooms, studentGuardians, studentPortalPins, students, teachers, tenants,
 } from '../db/schema';
 import { DEFAULT_TIMEZONE, zonedParts, zonedTimeToUtc } from '../common/timezone';
 import { addDays, lessonOccurrences } from '../lessons/occurrences';
 import type { CalEvent } from './ics';
+import { staysOf } from '../enrollments/membership';
 
 export type CalendarScope = 'TEACHER' | 'PARENT' | 'CENTER' | 'STUDENT';
 export interface CalendarOwner {
@@ -102,17 +103,15 @@ export class CalendarEventsService {
         .where(and(eq(studentGuardians.tenantId, owner.tenantId), eq(studentGuardians.userId, owner.userId ?? ''), isNull(students.deletedAt)))));
     }
 
-    // Enrollment windows of each student: the lessons while they were in the group.
-    const windows = new Map<string, { studentId: string; from: string; until: string | null }[]>();
+    // Each student's stays in each group (enrollments/membership.ts): the
+    // lessons that started while they were in it - not those of a break
+    // between two stays, of a pause, or after they left.
+    const windows = new Map<string, { studentId: string; from: Date; until: Date | null }[]>();
     if (kids.length) {
-      const rows = await this.db.select().from(enrollments).where(inArray(enrollments.studentId, kids.map((k) => k.id)));
-      for (const e of rows) {
-        const joined = e.joinedAt.toISOString().slice(0, 10);
-        const left = e.leftAt ? e.leftAt.toISOString().slice(0, 10) : null;
-        if (e.status !== 'ACTIVE' && !left) continue; // paused: not attending
-        const list = windows.get(e.groupId) ?? [];
-        list.push({ studentId: e.studentId, from: joined, until: e.status === 'ACTIVE' ? null : left });
-        windows.set(e.groupId, list);
+      for (const s of await staysOf(this.db, owner.tenantId, { studentIds: kids.map((k) => k.id) })) {
+        const list = windows.get(s.groupId) ?? [];
+        list.push({ studentId: s.studentId, from: s.startedAt, until: s.endedAt });
+        windows.set(s.groupId, list);
       }
       groupFilter = [...windows.keys()];
     }
@@ -156,7 +155,7 @@ export class CalendarEventsService {
       const base = { start: at(o.date, o.startTime), end: at(o.date, o.endTime), location: place(o.roomId, o.branchId), description: o.teacherId ? tName.get(o.teacherId) ?? null : null, cancelled: o.cancelled, date: o.date };
       if (owner.scope === 'STUDENT' || owner.scope === 'PARENT') {
         for (const w of windows.get(o.groupId) ?? []) {
-          if (o.date < w.from || (w.until && o.date >= w.until)) continue;
+          if (base.start < w.from || (w.until && base.start >= w.until)) continue;
           out.push({ ...base, uid: owner.scope === 'PARENT' ? `${o.uid}-${w.studentId}` : o.uid, title: `${prefix(w.studentId)}${gName.get(o.groupId) ?? ''}` });
         }
       } else {

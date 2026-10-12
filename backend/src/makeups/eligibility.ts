@@ -2,59 +2,33 @@ import { ConflictException } from '@nestjs/common';
 import { and, eq, inArray, isNull } from 'drizzle-orm';
 import type { Database } from '../db/db.module';
 import { makeupCredits } from '../db/schema';
-import { zonedParts } from '../common/timezone';
+import { lessonInstant, wasMember, type Stay } from '../enrollments/membership';
 
 type Tx = Parameters<Parameters<Database['transaction']>[0]>[0];
-
-/** The calendar day of an instant on the center's own clock (YYYY-MM-DD). */
-export function dayIn(at: Date, tz: string): string {
-  const p = zonedParts(at, tz);
-  return `${p.year}-${String(p.month).padStart(2, '0')}-${String(p.day).padStart(2, '0')}`;
-}
-
-export interface Membership {
-  status: string;
-  joinedAt: Date;
-  leftAt: Date | null;
-}
 
 /**
  * What a make-up credit rests on. One rule for the list of who may get a
  * credit (MakeupsService.eligible) and for issuing one (MakeupsService.issue):
  * the list is a convenience, the API call is checked by the same functions.
  *
- * The enrollment row is all that is known about when a student was in a
- * group: one row per student and group, with the day they (last) joined and
- * the day they left. Days are the center's calendar days, not UTC.
- *
- *  - Gone by a date: not active, and left on or before it. Someone who is
- *    not active and has no leaving day recorded counts as gone (nothing
- *    says they were still there).
- *  - A lesson the center called off earns a credit for the students who
- *    were in the group that day: joined on or before it, and not gone.
- *  - An absence earns a credit when the mark is there and the student was
- *    not gone by that day. The joining day is not asked: attendance is only
- *    taken for students enrolled in the group, and a center that entered a
- *    student after they started still records the lessons they missed. The
- *    mark is the evidence.
- *  - A student who left and joined again has the joining day of the last
- *    time only - the earlier stay is not kept. A lesson cancelled during the
- *    earlier stay therefore earns no credit; an absence marked then does.
+ * Whether the student was in the group is asked of the membership history
+ * (enrollments/membership.ts) - at the lesson's start when it is known,
+ * else for the day:
+ *  - a lesson the center called off earns a credit for those in the group
+ *    then (strict: inside a stay);
+ *  - an absence earns a credit when the mark is there and the lesson was
+ *    the student's (lenient: inside a stay, or before the first stay that
+ *    is known - a center that entered a student after they started still
+ *    records the lessons they missed). A lesson in a break between two
+ *    stays, or after the student left, is not theirs: no credit.
  */
-export function goneBy(e: Membership, date: string, tz: string): boolean {
-  if (e.status === 'ACTIVE') return false;
-  return e.leftAt === null || dayIn(e.leftAt, tz) <= date;
-}
-
-/** In the group on that day, as far as the enrollment row tells. */
-export function memberOn(e: Membership | null | undefined, date: string, tz: string): boolean {
-  if (!e) return false;
-  return dayIn(e.joinedAt, tz) <= date && !goneBy(e, date, tz);
+export function cancelledLessonCounts(stays: Stay[], lesson: { date: string; startTime?: string | null }, tz: string): boolean {
+  return wasMember(stays, { date: lesson.date, at: lessonInstant(lesson.date, lesson.startTime, tz) }, tz, 'strict');
 }
 
 /** An ABSENT mark as the basis of a credit. */
-export function absenceCounts(mark: unknown, e: Membership | null | undefined, date: string, tz: string): boolean {
-  return !!mark && !!e && !goneBy(e, date, tz);
+export function absenceCounts(mark: unknown, stays: Stay[], lesson: { date: string; startTime?: string | null }, tz: string): boolean {
+  return !!mark && wasMember(stays, { date: lesson.date, at: lessonInstant(lesson.date, lesson.startTime, tz) }, tz, 'lenient');
 }
 
 /**
