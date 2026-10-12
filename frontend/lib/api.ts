@@ -1681,7 +1681,7 @@ export const attendanceApi = {
   mark: (data: { groupId: string; date: string; scheduleId?: string; entries: { studentId: string; status: AttendanceStatus }[]; topic?: string }) =>
     request<AttendanceRecord[]>("/attendance", { method: "POST", body: JSON.stringify(data) }),
   unbound: () => request<UnboundAttendance>("/attendance/unbound"),
-  topics: (groupId: string) => request<Array<{ date: string; topic: string }>>(`/attendance/topics?groupId=${encodeURIComponent(groupId)}`),
+  topics: (groupId: string) => request<Array<{ date: string; topic: string; scheduleId: string | null }>>(`/attendance/topics?groupId=${encodeURIComponent(groupId)}`),
   qrCheckIn: (data: { code: string; date?: string; groupId?: string }) =>
     request<QrCheckInResponse>("/attendance/qr-checkin", { method: "POST", body: JSON.stringify(data) }),
 };

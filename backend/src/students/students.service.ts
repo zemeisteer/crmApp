@@ -15,6 +15,7 @@ import { containsPattern, enrolledInDirection, enrolledInGroup, enrolledInGroupN
 import { WebhooksService } from '../webhooks/webhooks.service';
 import { CustomFieldsService } from '../custom-fields/custom-fields.service';
 import { closeStays, openStay, reopenStays } from '../enrollments/membership';
+import { lockStudents } from '../common/student-lock';
 
 @Injectable()
 export class StudentsService {
@@ -239,26 +240,9 @@ export class StudentsService {
   }
 
   async update(tenantId: string, userId: string, id: string, dto: UpdateStudentDto) {
-    const before = await this.findOne(tenantId, id);
+    await this.findOne(tenantId, id);
     const { customFields: customInput, ...coreDto } = dto;
     const customValues = await this.customFields.validate(tenantId, 'STUDENT', customInput, 'update', id);
-
-    // Churn: remember when (and why) a student stops studying; coming back
-    // clears it.
-    const leaving = dto.status === 'LEFT' || dto.status === 'GRADUATED';
-    const leftFields =
-      dto.status !== undefined && dto.status !== before.status
-        ? leaving
-          ? { leftAt: new Date(), leftReason: dto.status === 'LEFT' ? dto.leftReason ?? null : null }
-          : { leftAt: null, leftReason: null }
-        : dto.leftReason !== undefined && before.status === 'LEFT'
-          ? { leftReason: dto.leftReason }
-          : {};
-    // Months before a pause are still owed; the pause itself is not.
-    const pauseFields =
-      dto.status !== undefined && dto.status !== before.status
-        ? { pausedAt: dto.status === 'PAUSED' ? new Date() : null }
-        : {};
 
     if (dto.branchId) {
       const branch = await this.db.query.branches.findFirst({
@@ -268,6 +252,29 @@ export class StudentsService {
     }
 
     const [student] = await this.db.transaction(async (tx) => {
+      // The status is read again under the student's lock: two changes at
+      // once must not each decide from the one the other is replacing, and
+      // attendance is not checked against a stay that is about to end.
+      await lockStudents(tx, tenantId, [id]);
+      const [prev] = await tx.select({ status: students.status }).from(students)
+        .where(and(eq(students.id, id), eq(students.tenantId, tenantId)));
+      if (!prev) throw new NotFoundException("O'quvchi topilmadi");
+      // Churn: remember when (and why) a student stops studying; coming back
+      // clears it.
+      const leaving = dto.status === 'LEFT' || dto.status === 'GRADUATED';
+      const leftFields =
+        dto.status !== undefined && dto.status !== prev.status
+          ? leaving
+            ? { leftAt: new Date(), leftReason: dto.status === 'LEFT' ? dto.leftReason ?? null : null }
+            : { leftAt: null, leftReason: null }
+          : dto.leftReason !== undefined && prev.status === 'LEFT'
+            ? { leftReason: dto.leftReason }
+            : {};
+      // Months before a pause are still owed; the pause itself is not.
+      const pauseFields =
+        dto.status !== undefined && dto.status !== prev.status
+          ? { pausedAt: dto.status === 'PAUSED' ? new Date() : null }
+          : {};
       const rows = await tx
       .update(students)
       .set({
@@ -292,9 +299,9 @@ export class StudentsService {
       // Attending or not is part of the membership history: a pause, leaving
       // and graduating end the stays in every group; coming back begins new
       // ones (the enrollments themselves, and the seats, are untouched).
-      if (dto.status !== undefined && dto.status !== before.status) {
+      if (dto.status !== undefined && dto.status !== prev.status) {
         if (dto.status === 'ACTIVE') await reopenStays(tx, { tenantId, studentId: id });
-        else if (before.status === 'ACTIVE') await closeStays(tx, { tenantId, studentId: id, reason: dto.status });
+        else if (prev.status === 'ACTIVE') await closeStays(tx, { tenantId, studentId: id, reason: dto.status });
       }
       return rows;
     });
@@ -307,6 +314,7 @@ export class StudentsService {
   async remove(tenantId: string, userId: string, id: string) {
     await this.findOne(tenantId, id);
     await this.db.transaction(async (tx) => {
+      await lockStudents(tx, tenantId, [id]);
       const at = new Date();
       await tx
         .update(students)
@@ -320,6 +328,7 @@ export class StudentsService {
 
   async restore(tenantId: string, userId: string, id: string) {
     const student = await this.db.transaction(async (tx) => {
+      await lockStudents(tx, tenantId, [id]);
       const [row] = await tx
         .update(students)
         .set({ deletedAt: null })
@@ -353,10 +362,13 @@ export class StudentsService {
   }
 
   async enroll(tenantId: string, studentId: string, groupId: string) {
-    const student = await this.findOne(tenantId, studentId);
-    // A paused student keeps a place in the group but is not attending: no stay begins until they are back.
-    const attending = student.status === 'ACTIVE';
+    await this.findOne(tenantId, studentId);
     return this.db.transaction(async (tx) => {
+      await lockStudents(tx, tenantId, [studentId]);
+      // A paused student keeps a place in the group but is not attending: no stay begins until they are back.
+      const [student] = await tx.select({ status: students.status }).from(students)
+        .where(and(eq(students.id, studentId), eq(students.tenantId, tenantId)));
+      const attending = student?.status === 'ACTIVE';
       const before = await tx.query.enrollments.findFirst({
         where: and(
           eq(enrollments.studentId, studentId),
@@ -451,6 +463,7 @@ export class StudentsService {
     }
 
     const updated = await this.db.transaction(async (tx) => {
+      await lockStudents(tx, tenantId, [studentId]);
       const left = new Date();
       const [row] = await tx
         .update(enrollments)

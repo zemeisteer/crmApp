@@ -66,26 +66,33 @@ describe('Attendance from the Telegram bot (e2e)', () => {
 
     await hook({ message: { text: '📅 Bugungi darslarim', chat: { id: Number(teacherChat) } } });
     const lessons = sent.at(-1)!;
-    expect(lessons.kb?.inline_keyboard?.flat().map((b) => b.callback_data)).toEqual([`ag:${g}`]);
+    // The button names the lesson: ag:<group>:<lesson>.
+    const [open] = lessons.kb?.inline_keyboard?.flat().map((b) => b.callback_data) ?? [];
+    expect(open).toMatch(new RegExp(`^ag:${g}:[^:]+$`));
+    const lesson = open!.split(':')[2];
 
-    await tap(`ag:${g}`);
+    await tap(open!);
     const sheet = sent.at(-1)!;
     expect(sheet.text).toContain('✅ 2');
     expect(sheet.kb?.inline_keyboard?.map((r) => r[0].text).slice(0, 2)).toEqual(['✅ Ali Botiy', '✅ Vali Botiy']);
 
-    await tap(`am:${g}:1`); // Vali -> absent
+    await tap(`am:${g}:${lesson}:1`); // Vali -> absent
     expect(edits.at(-1)!.kb?.inline_keyboard?.[1][0].text).toBe('❌ Vali Botiy');
     const count = async () => (await db.select().from(attendance).where(eq(attendance.groupId, g))).length;
     expect(await count()).toBe(0); // nothing stored before Save
 
-    await tap(`as:${g}`);
+    await tap(`as:${g}:${lesson}`);
     expect(edits.at(-1)!.text).toContain('saqlandi');
     const rows = await db.select({ status: attendance.status }).from(attendance).where(and(eq(attendance.groupId, g)));
     expect(rows.map((r) => r.status).sort()).toEqual(['ABSENT', 'PRESENT']);
 
     // The sheet is closed; another group is refused; strangers get nothing.
-    await tap(`am:${g}:0`);
+    await tap(`am:${g}:${lesson}:0`);
     expect(answers.at(-1)).toContain('eskirdi');
+    // A button sent before lessons were told apart (no lesson in it) still
+    // opens the group's only lesson of the day.
+    await tap(`ag:${g}`);
+    expect(sent.at(-1)!.text).toContain('Bot Lesson');
     await tap(`ag:${other}`);
     expect(answers.at(-1)).toContain('biriktirilmagan');
     await tap(`ag:${g}`, otherChat);

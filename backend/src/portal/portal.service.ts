@@ -388,7 +388,7 @@ export class PortalService {
       this.db.query.exams.findMany({
         where: and(eq(examsTable.tenantId, tenantId), inArray(examsTable.groupId, groupIds), gt(examsTable.examDate, since)),
       }),
-      this.db.select({ groupId: lessonTopics.groupId, date: lessonTopics.date, topic: lessonTopics.topic }).from(lessonTopics)
+      this.db.select({ groupId: lessonTopics.groupId, date: lessonTopics.date, scheduleId: lessonTopics.scheduleId, topic: lessonTopics.topic }).from(lessonTopics)
         .where(and(eq(lessonTopics.tenantId, tenantId), inArray(lessonTopics.groupId, groupIds), sql`${lessonTopics.date} >= ${from}`)),
     ]);
     const examIds = examRows.map((e) => e.id);

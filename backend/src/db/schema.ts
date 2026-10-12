@@ -646,11 +646,16 @@ export const lessonTopics = pgTable('lesson_topics', {
   tenantId: text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
   groupId: text('group_id').notNull().references(() => groups.id, { onDelete: 'cascade' }),
   date: text('date').notNull(), // "2026-09-19"
+  // The lesson the topic is of: its timetable row, like an attendance mark
+  // (a plain key; NULL: the group's day as a whole - no timetable lesson
+  // that day, or an old topic that could not be matched to one lesson).
+  scheduleId: text('schedule_id'),
   topic: text('topic').notNull(),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 }, (t) => ({
-  groupDateIdx: uniqueIndex('lesson_topics_group_date_idx').on(t.groupId, t.date),
+  groupDateIdx: uniqueIndex('lesson_topics_group_date_idx').on(t.groupId, t.date).where(sql`schedule_id IS NULL`),
+  lessonIdx: uniqueIndex('lesson_topics_lesson_date_idx').on(t.scheduleId, t.date).where(sql`schedule_id IS NOT NULL`),
   tenantIdx: index('lesson_topics_tenant_idx').on(t.tenantId),
 }));
 
