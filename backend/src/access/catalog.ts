@@ -45,7 +45,7 @@ export const ACCESS_CATALOG: AccessKey[] = [
   },
   { key: 'students.delete', area: 'students', template: [], routes: ['DELETE /api/students/:id', 'GET /api/students/trash', 'POST /api/students/:id/restore'] },
   { key: 'students.portalPin', area: 'students', template: [M, R], routes: ['GET /api/students/:id/portal-pin', 'POST /api/students/:id/portal-pin'] },
-  { key: 'groups.view', area: 'students', template: ALL, routes: ['GET /api/groups', 'GET /api/groups/:id'] },
+  { key: 'groups.view', area: 'students', template: ALL, routes: ['GET /api/groups', 'GET /api/groups/:id', 'GET /api/groups/:id/roster'] },
   { key: 'groups.edit', area: 'students', template: [], routes: ['POST /api/groups', 'PATCH /api/groups/:id', 'GET /api/groups/schedule-conflicts'] },
   { key: 'groups.delete', area: 'students', template: [], routes: ['DELETE /api/groups/:id', 'GET /api/groups/trash', 'POST /api/groups/:id/restore'] },
   { key: 'groups.priceHistory', area: 'students', template: [M, A], routes: ['GET /api/groups/:id/price-history'] },

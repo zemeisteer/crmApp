@@ -131,10 +131,23 @@ function GroupsContent() {
   // A failed load is shown with a retry, not as an empty page ("" = no
   // message from the server; null = no error).
   const [loadError, setLoadError] = useState<string | null>(null);
+  // The teachers list is not this account's to open: the form leaves the teacher as it is.
+  const [teachersHidden, setTeachersHidden] = useState(false);
 
   function load() {
     setLoading(true);
-    Promise.all([groupsApi.list(), branchesApi.list(), teachersApi.list()])
+    // The groups are the page. Branches and teachers only fill the form's
+    // lists: an account that may edit groups but not open those lists still
+    // gets its groups (the group keeps its teacher and branch).
+    const optional = <T,>(p: Promise<T[]>, denied: () => void) => p.catch((err) => {
+      if (err instanceof ApiError && err.status === 403) {
+        denied();
+        return [] as T[];
+      }
+      throw err;
+    });
+    setTeachersHidden(false);
+    Promise.all([groupsApi.list(), optional(branchesApi.list(), () => undefined), optional(teachersApi.list(), () => setTeachersHidden(true))])
       .then(([g, b, t]) => {
         setGroups(g);
         setBranches(b);
@@ -199,7 +212,9 @@ function GroupsContent() {
     if (!name.trim()) errs.name = req;
     const subj = subject === OTHER_SUBJECT ? customSubject : subject;
     if (!subj.trim()) errs.subject = req;
-    if (teachers.length === 0) errs.teacher = t("groups.errNoTeachers");
+    if (teachersHidden) {
+      // Nothing to choose from: the group keeps the teacher it has.
+    } else if (teachers.length === 0) errs.teacher = t("groups.errNoTeachers");
     else if (!teacherId) errs.teacher = t("groups.errTeacher");
     if (branches.length > 0 && !branchId) errs.branch = req;
     if (days.length === 0) errs.days = t("groups.errDays");
@@ -493,7 +508,11 @@ function GroupsContent() {
           <Field label={t("groups.fieldLevel")}>
             <input className="field-input" value={level} onChange={(e) => setLevel(e.target.value)} placeholder="B2, Beginner..." />
           </Field>
-          {(
+          {teachersHidden ? (
+            <Field label={t("groups.fieldTeacher")}>
+              <div role="note" style={{ fontSize: 12.5, color: "#686B75", background: "#F2F1EC", borderRadius: 10, padding: "9px 12px", lineHeight: 1.5 }}>{t("groups.teachersHidden")}</div>
+            </Field>
+          ) : (
             <Field label={t("groups.fieldTeacher")} required error={fieldErrors.teacher}>
               <Select
                 options={[{ value: "", label: t("groups.notSelected") }, ...teachers.map((tc) => ({ value: tc.id, label: tc.fullName }))]}

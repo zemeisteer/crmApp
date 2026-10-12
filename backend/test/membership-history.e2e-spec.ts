@@ -214,4 +214,37 @@ describe('Membership history: stays in a group (e2e)', () => {
     expect(await of(paused)).toEqual([{ source: 'LEGACY', from: joined.getTime(), until: left.getTime(), why: 'PAUSED' }]);
     expect((await of(kept)).map((p) => p.source)).toEqual(['RECORDED']); // had its history already
   });
+
+  it('the list for a past lesson is who was in the group then: someone who left since is on it, a break is not', async () => {
+    const g = await group('roster', 2, '10:00', '11:00');
+    const row = (await db.select().from(schedules).where(eq(schedules.groupId, g)))[0];
+    const stayed = await student('roster stayed', [g]);
+    const left = await student('roster left', [g]);
+    const returned = await student('roster returned', [g]);
+    await http().delete(`/api/students/${left}/enroll/${g}`).set(bearer(owner)).expect(200);
+    await http().delete(`/api/students/${returned}/enroll/${g}`).set(bearer(owner)).expect(200);
+    await http().post(`/api/students/${returned}/enroll/${g}`).set(bearer(owner)).expect(201);
+    const [t3, t2, t1] = [last(2, 2), last(2, 1), last(2, 0)];
+    const set = async (studentId: string, index: number, v: { startedAt?: Date; endedAt?: Date }) => {
+      const list = await stays(studentId, g);
+      await db.update(enrollmentPeriods).set(v).where(eq(enrollmentPeriods.id, list[index].id));
+    };
+    // Everyone joined before the oldest Tuesday; "left" went after the middle one; "returned" was away for the middle one.
+    await set(stayed, 0, { startedAt: local(t3, '00:00', -2) });
+    await set(left, 0, { startedAt: local(t3, '00:00', -2), endedAt: local(t2, '00:00', 2) });
+    await set(returned, 0, { startedAt: local(t3, '00:00', -2), endedAt: local(t3, '00:00', 2) });
+    await set(returned, 1, { startedAt: local(t1, '00:00', -2) });
+    const roster = async (date: string, token = owner) => (await http().get(`/api/groups/${g}/roster?date=${date}&scheduleId=${row.id}`).set(bearer(token)).expect(200)).body as Array<{ studentId: string; current: boolean }>;
+    const names = (list: Array<{ studentId: string; current: boolean }>) => list.map((r) => [r.studentId === stayed ? 'stayed' : r.studentId === left ? 'left' : 'returned', r.current]).sort();
+    expect(names(await roster(t3))).toEqual([['left', false], ['returned', true], ['stayed', true]]);
+    expect(names(await roster(t2))).toEqual([['left', false], ['stayed', true]]); // "returned" was on a break
+    expect(names(await roster(t1))).toEqual([['returned', true], ['stayed', true]]); // "left" had gone
+    expect(names(await roster(next(2)))).toEqual([['returned', true], ['stayed', true]]);
+    // The list and the save agree: who is on it can be marked, who is not cannot.
+    await mark(g, left, t2, 'ABSENT', row.id).expect(201);
+    expect((await mark(g, returned, t2, 'PRESENT', row.id).expect(400)).body.code).toBe('NOT_A_MEMBER');
+    expect((await mark(g, left, t1, 'PRESENT', row.id).expect(400)).body.code).toBe('NOT_A_MEMBER');
+    await http().get(`/api/groups/${g}/roster?date=not-a-date`).set(bearer(owner)).expect(400);
+    await http().get(`/api/groups/no-such-group/roster?date=${t1}`).set(bearer(owner)).expect(404);
+  });
 });

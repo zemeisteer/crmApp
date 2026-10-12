@@ -1426,6 +1426,9 @@ export const groupsApi = {
     return request<Group[]>(`/groups${suffix}`);
   },
   trash: () => request<Group[]>("/groups/trash"),
+  // Who can be marked for a lesson of the group on a date: those in the group then (current: still in it).
+  roster: (id: string, date: string, scheduleId?: string) =>
+    request<Array<{ studentId: string; fullName: string; current: boolean }>>(`/groups/${id}/roster?date=${encodeURIComponent(date)}${scheduleId ? `&scheduleId=${encodeURIComponent(scheduleId)}` : ""}`),
   get: (id: string) => request<Group>(`/groups/${id}`),
   create: (data: Partial<Group>) =>
     request<Group>("/groups", { method: "POST", body: JSON.stringify(data) }),

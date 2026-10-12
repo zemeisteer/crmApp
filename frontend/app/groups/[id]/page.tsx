@@ -110,6 +110,26 @@ function GroupDetailContent() {
   const [unbound, setUnbound] = useState<UnboundAttendance["days"]>([]);
   const lessonReq = useRef(0);
   const [lessonNonce, setLessonNonce] = useState(0);
+  // Whose lesson it was: for a past lesson, the students in the group THEN
+  // (someone who has left since is listed, someone on a break is not) - the
+  // server's own rule, so what is listed is what can be saved.
+  const [roster, setRoster] = useState<Array<{ studentId: string; fullName: string; current: boolean }> | null>(null);
+  const [rosterFailed, setRosterFailed] = useState(false);
+  const rosterReq = useRef(0);
+  const lessonsReady = dayLessons !== null;
+  useEffect(() => {
+    if (!lessonsReady) return;
+    const n = ++rosterReq.current;
+    setRoster(null);
+    setRosterFailed(false);
+    groupsApi.roster(id, attendanceDate, lessonPick || undefined)
+      .then((list) => rosterReq.current === n && setRoster(list))
+      .catch(() => rosterReq.current === n && setRosterFailed(true));
+  }, [id, attendanceDate, lessonPick, lessonsReady, group]);
+  // If the list cannot be loaded, the students in the group now are offered (the save still checks each).
+  const markList = roster ?? (rosterFailed
+    ? (group?.enrollments || []).filter((e) => !e.status || e.status === "ACTIVE").map((e) => ({ studentId: e.student.id, fullName: e.student.fullName, current: true }))
+    : null);
   const isAdmin = user?.role === "OWNER" || user?.role === "ADMIN" || user?.role === "SUPERADMIN";
 
   useEffect(() => {
@@ -158,9 +178,9 @@ function GroupDetailContent() {
   useEffect(load, [id, seesPay, thisMonth]);
 
   useEffect(() => {
-    const enrolled = group?.enrollments || [];
     const next: Record<string, AttendanceStatus> = {};
-    for (const e of enrolled) {
+    for (const m of markList ?? []) {
+      const e = { student: { id: m.studentId } };
       const onDay = attendance.filter((a) => a.studentId === e.student.id && a.date === attendanceDate);
       // This lesson's mark; failing that, an old mark for the day as a whole (saving makes it this lesson's).
       const existing = lessonPick ? onDay.find((a) => a.scheduleId === lessonPick) ?? onDay.find((a) => !a.scheduleId) : onDay.find((a) => !a.scheduleId);
@@ -168,7 +188,8 @@ function GroupDetailContent() {
     }
     setDraft(next);
     setTopic(topics.find((x) => x.date === attendanceDate)?.topic ?? "");
-  }, [group, attendance, attendanceDate, topics, lessonPick]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- markList is derived from roster/rosterFailed/group
+  }, [group, attendance, attendanceDate, topics, lessonPick, roster, rosterFailed]);
 
   if (loading) {
     return <div style={{ padding: 32, color: "#686B75", fontSize: 14 }}>{t("common.loading")}</div>;
@@ -214,7 +235,7 @@ function GroupDetailContent() {
   })();
 
   async function onSaveAttendance() {
-    const enrolled = group?.enrollments || [];
+    const enrolled = (markList ?? []).map((m) => ({ student: { id: m.studentId } }));
     if (enrolled.length === 0) return;
     setMarkSaving(true);
     setMarkError(null);
@@ -435,19 +456,26 @@ function GroupDetailContent() {
             </div>
           )}
           {markError && <div role="alert" style={{ marginBottom: 12, padding: "9px 12px", borderRadius: 10, background: "#FDEBEC", color: "#B23A47", fontSize: 13, fontWeight: 600 }}>{markError}</div>}
-          {enrollments.length === 0 ? (
+          {markList === null ? (
+            <div style={{ color: "#686B75", fontSize: 13.5 }}>{t("common.loading")}</div>
+          ) : markList.length === 0 ? (
             <div style={{ color: "#686B75", fontSize: 13.5 }}>{t("groupDetail.noStudentsForAttendance")}</div>
           ) : (
             <>
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                {enrollments.map((e) => {
+                {markList.map((m) => {
+                  const e = { student: { id: m.studentId, fullName: m.fullName } };
                   const status = draft[e.student.id] || "PRESENT";
                   return (
                     <div
-                      key={e.id}
+                      key={m.studentId}
                       style={{ display: "flex", alignItems: "center", justifyContent: "space-between", border: "1px solid #EAE8E2", borderRadius: 10, padding: "8px 12px" }}
                     >
-                      <span style={{ fontSize: 13.5, fontWeight: 600 }}>{e.student.fullName}</span>
+                      <span style={{ minWidth: 0 }}>
+                        <span style={{ fontSize: 13.5, fontWeight: 600 }}>{e.student.fullName}</span>
+                        {/* Was in the group at this lesson, and is not any more. */}
+                        {!m.current && <span style={{ display: "block", fontSize: 11.5, color: "#8A5A00" }}>{t("groupDetail.attLeftSince")}</span>}
+                      </span>
                       <div style={{ display: "flex", gap: 6 }}>
                         {(["PRESENT", "LATE", "ABSENT"] as AttendanceStatus[]).map((s) => (
                           <button
@@ -488,7 +516,7 @@ function GroupDetailContent() {
               <button
                 className="btn"
                 onClick={onSaveAttendance}
-                disabled={markSaving || dayLessons === null || !!dayLessons.find((l) => l.scheduleId === lessonPick)?.cancelled}
+                disabled={markSaving || dayLessons === null || markList === null || !!dayLessons.find((l) => l.scheduleId === lessonPick)?.cancelled}
                 style={{ background: ACCENT, color: "#fff", border: "none", fontSize: 13, fontWeight: 700, padding: "10px 16px", borderRadius: 9, marginTop: 14 }}
               >
                 {markSaving ? t("groupDetail.savingAttendance") : t("groupDetail.saveAttendance")}

@@ -22,7 +22,8 @@ faqat shu sessiyada olingan.
 | `b7fd3c2` | 4-band: a'zolik davrlari va ulardan foydalanadigan modullar |
 | `f1e167d` | Frontend: dars tanlagich, kabinetda dars bo'yicha natija, a'zolik tarixi |
 | `3976cb4` | 6-band: brauzer sayohatlari |
-| oxirgi commit (`git log -1`) | Shu hisobot va checkpoint |
+| `e3aa799` | Hisobotning birinchi nusxasi |
+| oxirgi commit (`git log -1`) | Hisobotdan keyingi ikki ish: guruhlar sahifasi cheklangan akkaunt uchun, o'tgan dars ro'yxati; shu hisobot |
 
 Aniq oxirgi SHA va hajm: `git log --oneline 224e5ad..HEAD`, `git diff --shortstat 224e5ad..HEAD`.
 
@@ -40,6 +41,12 @@ Aniq oxirgi SHA va hajm: `git log --oneline 224e5ad..HEAD`, `git diff --shortsta
 5. **Bitta o'quvchini bitta guruhga bir vaqtda ikki marta qo'shish 500 berardi** (yangi test topdi): mavjud
    yozuv guruh qulfidan oldin o'qilar edi. Endi qulf ostida qayta o'qiladi; ikkinchi so'rov 400 oladi.
 6. **QR skaner sanani UTC bo'yicha olardi.** Endi markazning o'z kuni.
+7. **Guruhlar sahifasi faqat guruh ruxsati bor akkauntga "Forbidden resource" ko'rsatardi** (sahifa
+   o'qituvchilar ro'yxatini ham talab qilardi). Endi o'qituvchilar va filiallar ro'yxati ixtiyoriy: ruxsat
+   bo'lmasa sahifa baribir ochiladi, formada "guruhning o'qituvchisi o'zgarmaydi" deb aytiladi.
+8. **Davomat ro'yxati faqat hozirgi a'zolarni ko'rsatardi.** Endi tanlangan dars uchun o'sha paytda guruhda
+   bo'lganlar ko'rsatiladi (`GET /api/groups/:id/roster`, saqlashdagi qoidaning o'zi): keyin chiqib ketgan
+   o'quvchi ro'yxatda bor va "o'sha paytda guruhda edi, hozir yo'q" deb belgilanadi, tanaffusdagi o'quvchi yo'q.
 
 ## 3. Davomat va a'zolik tarixining yakuniy qoidalari
 
@@ -145,19 +152,19 @@ tushirilgandan keyin ma'lumot bir xil. Nusxa o'chirildi.
 | Backend typecheck | `npx tsc --noEmit` | xatosiz |
 | Backend lint | `npx oxlint src/ test/` | exit 0 |
 | Backend unit | `npx vitest run` | 343 tadan 342; 1 tasi yiqildi (`outbound-url.spec.ts`: Windows'da `openssl` yo'q) |
-| Backend API/e2e (haqiqiy PostgreSQL) | `npx vitest run --config ./vitest.config.e2e.ts` | 59 fayl / 439 test, hammasi o'tdi |
+| Backend API/e2e (haqiqiy PostgreSQL) | `npx vitest run --config ./vitest.config.e2e.ts` | 59 fayl / 440 test, hammasi o'tdi |
 | Backend build | `npm run build` | o'tdi |
 | Migratsiya jurnali | `npm run db:check-migrations` | 55 migratsiya, mos |
 | Bo'sh baza va yangilash zanjiri | `npm run db:verify-migrations` | "Migration chain verified" |
 | Sxema farqi (dev baza, yangilangan nusxa) | `npm run db:check-drift` | farq yo'q |
 | Frontend typecheck | `npx tsc --noEmit` | xatosiz |
-| Frontend lint | `npm run lint` | 0 xato, 75 ogohlantirish (sprint boshida 73) |
+| Frontend lint | `npm run lint` | 0 xato, 76 ogohlantirish (sprint boshida 73) |
 | Frontend unit | `npm test` | 55 / 55 |
 | Frontend production build | `npm run build:frontend` (e2e-browser) | o'tdi |
-| Brauzer testlari | `PW_CHANNEL=chrome npx playwright test` | 47 / 47 o'tdi (10.8 daqiqa): 45 mavjud + 2 yangi |
+| Brauzer testlari | `PW_CHANNEL=chrome npx playwright test` | 47 / 47 o'tdi (oxirgi holatda qayta yuritildi) |
 | Google brauzer testi (soxta Google) | `PW_CHANNEL=chrome npm run test:google` | 1 / 1 o'tdi |
 
-Yangi testlar: `group-conflicts-access` (3), `attendance-per-lesson` (9), `membership-history` (5),
+Yangi testlar: `group-conflicts-access` (3), `attendance-per-lesson` (9), `membership-history` (6),
 `membership.spec` (4, unit), `past-lessons-per-lesson.spec` (5, unit), brauzer `attendance-membership.spec` (2).
 
 Yashirmasdan:
@@ -200,12 +207,8 @@ tarixiy raqamlar o'zgarmaydi.
 
 ## 7. Bilib qo'yish kerak bo'lganlar
 
-- **Guruhlar sahifasi faqat `groups.view` + `groups.edit` bor akkauntga "Forbidden resource" ko'rsatadi:**
-  sahifa o'qituvchilar ro'yxatini ham yuklaydi va unga `teachers.view` kerak. Ma'lumot ochilmaydi, lekin
-  bunday cheklangan akkaunt sahifadan foydalana olmaydi. Brauzer testida akkauntga `teachers.view` va
-  `schedule.view` ham berildi. Tuzatilmadi.
-- Guruh sahifasidagi davomat ro'yxati hozirgi a'zolarni ko'rsatadi: guruhdan chiqib ketgan o'quvchini
-  o'tgan dars uchun API orqali belgilash mumkin, sahifa orqali emas.
+- Davomat ro'yxati yuklanmasa (tarmoq xatosi), sahifa hozirgi a'zolarni taklif qiladi; saqlashda server
+  baribir har bir o'quvchini tekshiradi.
 - Kun bo'yicha belgi ikki darsli kunda kabinetda har ikki dars yonida "kun uchun umumiy belgi" deb
   ko'rinadi va hech birining o'z belgisi hisoblanmaydi.
 - Aniq darsni tanlab belgi qo'yish eski kun belgisini shu darsga o'tkazadi. Bu inson qarori; agar eski
@@ -225,8 +228,7 @@ Repozitoriy ildizidagi `handoff/` papkasida (git'ga kirmaydi):
 ## 9. Keyingi eng muhim vazifalar
 
 1. Commit'larni ko'rib chiqib push qilish (CI shunda ishga tushadi).
-2. Guruhlar sahifasini cheklangan akkaunt uchun ishlaydigan qilish (o'qituvchilar ro'yxatisiz ham ochilsin).
-3. Davomat ro'yxatida o'tgan dars uchun o'sha paytdagi a'zolarni ko'rsatish.
-4. Dars mavzusini ham dars darajasiga o'tkazish.
-5. Excel eksport va Telegram ko'rinishida dars vaqtini ko'rsatish; ularga test.
-6. Production'da migratsiyadan oldin `db:report-*` bilan noaniq yozuvlar sonini ko'rish.
+2. Dars mavzusini ham dars darajasiga o'tkazish.
+3. Excel eksport va Telegram ko'rinishida dars vaqtini ko'rsatish; ularga test.
+4. Production'da migratsiyadan oldin `db:report-*` bilan noaniq yozuvlar sonini ko'rish.
+5. O'tgan sanadagi dars ro'yxati uchun brauzer testi (hozir API testi bor).

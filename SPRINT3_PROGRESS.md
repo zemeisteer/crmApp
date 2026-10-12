@@ -99,3 +99,10 @@ test 1/1; migrations 0053 and 0054 verified on a copy of the development databas
 unchanged, the built app started and restarted on it) and applied to `talimcrm` (backup
 `backend/backups/talimcrm_before_0053_2026-10-12.dump`). Everything is in
 `STABILIZATION_SPRINT3_REPORT.md`. Nothing was pushed.
+
+**Checkpoint 6: two follow-ups after the report.** The groups page opens for an account
+with only `groups.view` + `groups.edit` (teachers and branches lists are optional; the
+form says the teacher stays). The attendance list is the roster of the chosen lesson
+(`GET /api/groups/:id/roster`, the rule the save applies): someone who left since is
+listed and labelled, someone on a break is not. Final state: backend e2e 59 files / 440,
+unit 342/343, browser suite 47/47. Nothing was pushed.
