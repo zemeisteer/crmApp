@@ -55,6 +55,19 @@ export class GroupsController {
     return this.service.findScheduleConflicts(user.tenantId!, teacherId, days ?? '', startTime ?? '', excludeId, endTime, { role: user.role, userId: user.sub, access: user.access });
   }
 
+  // Who can be marked for a lesson of this group on a date (those in the group then).
+  @Get(':id/roster')
+  roster(
+    @CurrentUser('tenantId') tenantId: string,
+    @CurrentUser('role') role: string,
+    @CurrentUser('sub') userId: string,
+    @Param('id') id: string,
+    @Query('date') date: string,
+    @Query('scheduleId') scheduleId?: string,
+  ) {
+    return this.service.roster(tenantId, id, date, scheduleId, role, userId);
+  }
+
   @Get(':id')
   findOne(
     @CurrentUser('tenantId') tenantId: string,

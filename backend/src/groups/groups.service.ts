@@ -11,6 +11,8 @@ import { centerToday } from '../common/center-today';
 import { assertTeacherGroups } from '../common/teacher-scope';
 import { lockTimetable } from '../common/timetable-lock';
 import { reconcileGroupMakeups, type MakeupReconcile } from '../lessons/makeup-reconcile';
+import { lessonInstant, staysByMember, staysOf, wasMember } from '../enrollments/membership';
+import { isDate } from '../lessons/occurrences';
 import { CreateGroupDto, UpdateGroupDto } from './dto/group.dto';
 import { AuditService } from '../audit/audit.service';
 
@@ -102,6 +104,33 @@ export class GroupsService {
     }
 
     return group;
+  }
+
+  /**
+   * Whose lesson it was: the students who can be marked for a lesson of this
+   * group on a date - the same rule attendance itself applies
+   * (enrollments/membership.ts, lenient). So a past lesson lists those who
+   * were in the group then, including someone who has left since
+   * (`current: false`), and not someone who was on a break at the time.
+   */
+  async roster(tenantId: string, id: string, date: string, scheduleId: string | undefined, role?: string, userId?: string) {
+    await this.findOne(tenantId, id, role, userId);
+    if (!isDate(date)) throw new BadRequestException("Sana noto'g'ri (YYYY-MM-DD)");
+    const [center] = await this.db.select({ tz: tenants.timezone }).from(tenants).where(eq(tenants.id, tenantId));
+    const tz = isValidTimeZone(center?.tz) ? center.tz : DEFAULT_TIMEZONE;
+    // The lesson's start, when the lesson is named and is this group's.
+    const [lesson] = scheduleId
+      ? await this.db.select({ startTime: schedules.startTime }).from(schedules).where(and(eq(schedules.id, scheduleId), eq(schedules.groupId, id), eq(schedules.tenantId, tenantId)))
+      : [];
+    const when = { date, at: lessonInstant(date, lesson?.startTime, tz) };
+    const stays = staysByMember(await staysOf(this.db, tenantId, { groupIds: [id] }));
+    const known = await this.db.select({ studentId: students.id, fullName: students.fullName, status: enrollments.status })
+      .from(enrollments).innerJoin(students, eq(students.id, enrollments.studentId))
+      .where(and(eq(enrollments.groupId, id), eq(students.tenantId, tenantId), isNull(students.deletedAt)));
+    return known
+      .filter((s) => wasMember(stays.get(`${s.studentId}|${id}`) ?? [], when, tz, 'lenient'))
+      .map((s) => ({ studentId: s.studentId, fullName: s.fullName, current: (stays.get(`${s.studentId}|${id}`) ?? []).some((p) => p.endedAt === null) }))
+      .sort((a, b) => a.fullName.localeCompare(b.fullName));
   }
 
   /**

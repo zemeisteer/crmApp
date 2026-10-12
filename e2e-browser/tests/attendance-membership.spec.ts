@@ -210,8 +210,8 @@ test('a student leaves a group and comes back: both stays are listed; a group re
   await api('POST', `/makeups/credits/${credit.id}/book`, { token: a.token, body: { mode: 'SESSION', date: sessionDay, startTime: '14:00', endTime: '15:00', teacherId: t2.id } });
   const email = `zzbr-member-mgr-${run}@example.test`;
   const staffId = await addStaff(a.token, email, 'ACCOUNTANT');
-  // What a group editor needs to open the groups page - and neither students.view nor schedule.edit.
-  await api('PATCH', `/staff/${staffId}`, { token: a.token, body: { access: ['groups.view', 'groups.edit', 'teachers.view', 'schedule.view'] } });
+  // Groups only: not students, not the timetable, not even the teachers list.
+  await api('PATCH', `/staff/${staffId}`, { token: a.token, body: { access: ['groups.view', 'groups.edit'] } });
   const limited = await apiLogin(email);
   const q = `teacherId=${t1.id}&days=${encodeURIComponent(dayName(sessionDay))}&startTime=14:00&endTime=15:00&excludeId=${g.id}`;
   const asOwner = JSON.stringify(await api('GET', `/groups/schedule-conflicts?${q}`, { token: a.token }));
@@ -231,6 +231,8 @@ test('a student leaves a group and comes back: both stays are listed; a group re
   await mgr.goto(centerUrl(a.sub, '/groups'));
   await mgr.getByRole('row').filter({ hasText: 'Stay Group' }).getByRole('button', { name: 'Tahrirlash' }).click();
   const form = mgr.getByRole('dialog', { name: 'Guruhni tahrirlash' });
+  // The page works without the teachers list, and says the teacher stays as it is.
+  await expect(form.getByRole('note')).toContainText("O'qituvchilar ro'yxatini ko'rish ruxsatingiz yo'q");
   const short: Record<string, string> = { Dushanba: 'Du', Seshanba: 'Se', Chorshanba: 'Cho', Payshanba: 'Pa', Juma: 'Ju', Shanba: 'Sha', Yakshanba: 'Yak' };
   await form.getByRole('button', { name: short[dayName(sessionDay)], exact: true }).click();
   await pickTime(form.getByRole('group', { name: 'Boshlanish vaqti' }), '09:00', '14', '00');

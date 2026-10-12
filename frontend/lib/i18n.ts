@@ -2314,6 +2314,8 @@ export const dict = {
   "groupDetail.notFound": { UZ: "Guruh topilmadi.", RU: "Группа не найдена.", EN: "Group not found." },
   "groupDetail.deleteGroup": { UZ: "Guruhni o'chirish", RU: "Удалить группу", EN: "Delete group" },
   "groupDetail.confirmUnenroll": { UZ: "O'quvchini guruhdan chiqarishni tasdiqlaysizmi?", RU: "Подтвердите исключение учащегося из группы?", EN: "Confirm removing this student from the group?" },
+  "groupDetail.attLeftSince": { UZ: "o'sha paytda guruhda edi, hozir yo'q", RU: "тогда был в группе, сейчас нет", EN: "was in the group then, not any more" },
+  "groups.teachersHidden": { UZ: "O'qituvchilar ro'yxatini ko'rish ruxsatingiz yo'q: guruhning o'qituvchisi o'zgarmaydi.", RU: "У вас нет доступа к списку учителей: учитель группы не изменится.", EN: "You may not open the teachers list: the group keeps its teacher." },
   "groupDetail.attLesson": { UZ: "Qaysi dars uchun", RU: "Для какого урока", EN: "Which lesson" },
   "groupDetail.attCancelledShort": { UZ: "bekor qilingan", RU: "отменён", EN: "cancelled" },
   "groupDetail.attLessonsError": { UZ: "Shu kungi darslarni yuklab bo'lmadi.", RU: "Не удалось загрузить уроки этого дня.", EN: "Could not load this day's lessons." },
