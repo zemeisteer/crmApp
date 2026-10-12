@@ -40,6 +40,14 @@ describe('cabinet past lessons, per lesson', () => {
     expect(day.map((l) => [l.scheduleId, l.startTime, l.attendance])).toEqual([['am', '09:00', null], ['gone', '18:00', 'ABSENT']]);
   });
 
+  it('each lesson shows its own topic; a topic for the whole day shows with the lessons that have none', () => {
+    const day = build({ topics: [
+      { groupId: 'g', date: '2026-03-07', topic: 'Whole day', scheduleId: null },
+      { groupId: 'g', date: '2026-03-07', topic: 'Afternoon only', scheduleId: 'pm' },
+    ] }).filter((l) => l.date === '2026-03-07');
+    expect(day.map((l) => [l.scheduleId, l.topic])).toEqual([['am', 'Whole day'], ['pm', 'Afternoon only']]);
+  });
+
   it('with stays given, the lessons of a break between two stays are not listed', () => {
     const lessons = build({
       slots: [slot('am', '09:00', '10:00')],

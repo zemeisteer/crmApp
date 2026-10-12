@@ -98,7 +98,7 @@ function GroupDetailContent() {
   const [attendanceDate, setAttendanceDate] = useState(() => clock.today());
   const [draft, setDraft] = useState<Record<string, AttendanceStatus>>({});
   const [markSaving, setMarkSaving] = useState(false);
-  const [topics, setTopics] = useState<Array<{ date: string; topic: string }>>([]);
+  const [topics, setTopics] = useState<Array<{ date: string; topic: string; scheduleId: string | null }>>([]);
   const [topic, setTopic] = useState("");
   // Attendance is per lesson: the timetable lessons of the chosen day, and
   // the one being marked. One lesson: no extra step. None: a mark for the
@@ -187,7 +187,9 @@ function GroupDetailContent() {
       next[e.student.id] = existing?.status || "PRESENT";
     }
     setDraft(next);
-    setTopic(topics.find((x) => x.date === attendanceDate)?.topic ?? "");
+    // The picked lesson's own topic, else the one for the day as a whole.
+    const onDayTopics = topics.filter((x) => x.date === attendanceDate);
+    setTopic((lessonPick ? onDayTopics.find((x) => x.scheduleId === lessonPick) : undefined)?.topic ?? onDayTopics.find((x) => !x.scheduleId)?.topic ?? "");
     // eslint-disable-next-line react-hooks/exhaustive-deps -- markList is derived from roster/rosterFailed/group
   }, [group, attendance, attendanceDate, topics, lessonPick, roster, rosterFailed]);
 

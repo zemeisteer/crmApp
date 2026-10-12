@@ -150,6 +150,7 @@ describe('StudentsService', () => {
       const updated = { id: 'st-1', fullName: 'Yangi Ism', tenantId: 'tenant-1' };
       mockDb.query.students.findFirst.mockResolvedValue(existing);
       mockDb.update().set().where().returning.mockResolvedValue([updated]);
+      selectResults.push([{ status: 'ACTIVE' }]); // the status, read again under the student's lock
 
       const result = await service.update('tenant-1', 'user-1', 'st-1', { fullName: 'Yangi Ism' });
       expect(result).toEqual({ ...updated, customFields: {} });
@@ -200,7 +201,7 @@ describe('StudentsService', () => {
     it('enrolls student into group', async () => {
       mockDb.query.students.findFirst.mockResolvedValue({ id: 'st-1' });
       mockDb.query.groups.findFirst.mockResolvedValue({ id: 'grp-1' });
-      selectResults.push([{ id: 'grp-1', name: 'G1', maxStudents: 20 }], [{ n: 3 }]);
+      selectResults.push([{ status: 'ACTIVE' }], [{ id: 'grp-1', name: 'G1', maxStudents: 20 }], [{ n: 3 }]);
       mockDb.query.enrollments.findFirst.mockResolvedValue(null);
       mockDb.insert().values().returning.mockResolvedValue([{ id: 'enr-1', status: 'ACTIVE' }]);
 
@@ -219,7 +220,7 @@ describe('StudentsService', () => {
     it('rejects enrollment into a full group with 409 and writes nothing', async () => {
       mockDb.query.students.findFirst.mockResolvedValue({ id: 'st-1' });
       mockDb.query.enrollments.findFirst.mockResolvedValue(null);
-      selectResults.push([{ id: 'grp-1', name: 'G1', maxStudents: 2 }], [{ n: 2 }]);
+      selectResults.push([{ status: 'ACTIVE' }], [{ id: 'grp-1', name: 'G1', maxStudents: 2 }], [{ n: 2 }]);
 
       await expect(service.enroll('tenant-1', 'st-1', 'grp-1')).rejects.toThrow(ConflictException);
       expect(mockDb.insert).not.toHaveBeenCalled();

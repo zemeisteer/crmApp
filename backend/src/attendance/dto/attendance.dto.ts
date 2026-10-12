@@ -94,5 +94,10 @@ export class QrCheckInDto {
   @IsOptional()
   @IsString()
   groupId?: string;
+
+  // Which lesson of that day, when the group has several and none is going on now.
+  @IsOptional()
+  @IsString()
+  scheduleId?: string;
 }
 

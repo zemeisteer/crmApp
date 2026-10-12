@@ -70,8 +70,9 @@ export interface PastLessonInput {
   slots: PastLessonSlot[];
   // scheduleId: the lesson the mark is for (null/absent: the day as a whole); startTime: the lesson's start when marked.
   attendance: Array<{ groupId: string; date: string; status: string; scheduleId?: string | null; startTime?: string | null }>;
-  // What the teacher recorded as covered on that day (wins over a slot topic).
-  topics?: Array<{ groupId: string; date: string; topic: string }>;
+  // What the teacher recorded as covered (wins over a slot topic). scheduleId:
+  // the lesson it is of; null/absent: the day as a whole.
+  topics?: Array<{ groupId: string; date: string; topic: string; scheduleId?: string | null }>;
   homework: PastLessonHomework[];
   exams: PastLessonExam[];
 }
@@ -195,10 +196,18 @@ export function buildPastLessons(input: PastLessonInput): PastLesson[] {
     if (same.length <= 1) (same[0] ?? add(g, a.date)).attendance = a.status;
     else for (const l of same) l.dayAttendance = a.status;
   }
-  for (const tp of input.topics ?? []) {
+  // A topic for the day as a whole is shown with every lesson of that day;
+  // a lesson's own topic (applied after) wins on that lesson only.
+  const topics = [...(input.topics ?? [])].sort((a, b) => Number(!!a.scheduleId) - Number(!!b.scheduleId));
+  for (const tp of topics) {
     const g = groupById.get(tp.groupId);
     if (!g || tp.date < input.from || tp.date > input.today) continue;
-    // The topic is kept per group and day: every lesson of that day shows it.
+    if (tp.scheduleId) {
+      const key = `${g.id}|${tp.date}|${tp.scheduleId}`;
+      if (byKey.has(key)) byKey.get(key)!.topic = tp.topic;
+      else if (inWindow(g, tp.date)) add(g, tp.date, {}, tp.scheduleId).topic = tp.topic;
+      continue;
+    }
     const existing = lessonsOn(g.id, tp.date);
     if (existing.length) for (const l of existing) l.topic = tp.topic;
     else if (inWindow(g, tp.date)) add(g, tp.date).topic = tp.topic;
