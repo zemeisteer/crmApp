@@ -502,6 +502,37 @@ export const enrollments = pgTable('enrollments', {
   uniq: uniqueIndex('enrollments_student_group_idx').on(t.studentId, t.groupId),
 }));
 
+// Every stay of a student in a group, one row each: when it began and when
+// it ended. The enrollment row above is only the current state (one per
+// student and group, rewritten on a return); this is the history.
+//  - A stay is open (ended_at NULL) while the student attends the group. It
+//    is closed when they leave the group, and also when the student as a
+//    whole is paused, leaves, graduates or is removed (end_reason says
+//    which); coming back opens a NEW stay - an old one is never rewritten.
+//  - At most one open stay per student and group (partial unique index).
+//  - source RECORDED: written when it happened. LEGACY: made by migration
+//    0054 from the enrollment row as it was - its start is the LAST joining
+//    that row knew; whether there were earlier stays is not known.
+// Who was in a group at a lesson is answered only through
+// enrollments/membership.ts.
+export const enrollmentPeriods = pgTable('enrollment_periods', {
+  id: text('id').primaryKey().$defaultFn(() => createId()),
+  tenantId: text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  studentId: text('student_id').notNull().references(() => students.id, { onDelete: 'cascade' }),
+  groupId: text('group_id').notNull().references(() => groups.id, { onDelete: 'cascade' }),
+  enrollmentId: text('enrollment_id').references(() => enrollments.id, { onDelete: 'cascade' }),
+  startedAt: timestamp('started_at').notNull(),
+  endedAt: timestamp('ended_at'),
+  endReason: text('end_reason'), // LEFT_GROUP | PAUSED | LEFT | GRADUATED | REMOVED
+  source: text('source').notNull().default('RECORDED'), // RECORDED | LEGACY
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+}, (t) => ({
+  tenantIdx: index('enrollment_periods_tenant_idx').on(t.tenantId),
+  studentGroupIdx: index('enrollment_periods_student_group_idx').on(t.studentId, t.groupId, t.startedAt),
+  groupIdx: index('enrollment_periods_group_idx').on(t.groupId, t.startedAt),
+  oneOpen: uniqueIndex('enrollment_periods_one_open').on(t.studentId, t.groupId).where(sql`ended_at IS NULL`),
+}));
+
 export const studentGuardians = pgTable('student_guardians', {
   id: text('id').primaryKey().$defaultFn(() => createId()),
   tenantId: text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),

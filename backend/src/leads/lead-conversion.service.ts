@@ -4,6 +4,7 @@ import { DB, Database } from '../db/db.module';
 import { branches, enrollments, groups, leadTrials, students } from '../db/schema';
 import { AuditService } from '../audit/audit.service';
 import { countOccupiedSeats } from '../common/seats';
+import { openStay } from '../enrollments/membership';
 import { assertNoStudentTimeClash } from '../common/student-schedule';
 import { InvoicesService } from '../invoices/invoices.service';
 import { WebhooksService } from '../webhooks/webhooks.service';
@@ -176,6 +177,7 @@ export class LeadConversionService {
               .where(eq(enrollments.id, existing.id)).returning()
           : await tx.insert(enrollments)
               .values({ tenantId, studentId: student.id, groupId, status: 'ACTIVE', joinedAt: new Date() }).returning();
+        await openStay(tx, { tenantId, studentId: student.id, groupId, enrollmentId: enrollment.id, at: enrollment.joinedAt });
         createdEnrollments.push(enrollment);
         lockedGroups.push(group);
       }

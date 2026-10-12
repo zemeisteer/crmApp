@@ -141,6 +141,17 @@ export class StudentsController {
     return this.service.unenroll(tenantId, id, groupId);
   }
 
+  // Membership history: every stay in a group (enrollments/membership.ts).
+  @Get(':id/memberships')
+  memberships(
+    @CurrentUser('tenantId') tenantId: string,
+    @CurrentUser('role') role: string,
+    @CurrentUser('sub') userId: string,
+    @Param('id') id: string,
+  ) {
+    return this.service.memberships(tenantId, id, { role, userId });
+  }
+
   @Get(':id/guardians')
   getGuardians(
     @CurrentUser('tenantId') tenantId: string,

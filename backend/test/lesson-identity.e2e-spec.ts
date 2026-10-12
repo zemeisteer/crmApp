@@ -8,7 +8,7 @@ import { App } from 'supertest/types';
 import { AppModule } from '../src/app.module.js';
 import { configureApp } from '../src/app.setup.js';
 import { DB, Database } from '../src/db/db.module.js';
-import { attendance, auditLogs, enrollments, lessonCancellations, makeupBookings, makeupCredits, schedules } from '../src/db/schema.js';
+import { attendance, auditLogs, enrollmentPeriods, enrollments, lessonCancellations, makeupBookings, makeupCredits, schedules } from '../src/db/schema.js';
 
 // A lesson is its timetable row: a make-up stays with the lesson that was
 // chosen (never slides into another one), the group form and the timetable
@@ -480,7 +480,12 @@ describe('Lesson identity, one write rule, group removal, credit basis (e2e)', (
       const leftBefore = await student('left-before', [k]);
       const leftAfterMidnight = await student('left-after', [k]);
       const joinedNextDay = await student('joined-late', [k]);
-      const set = (studentId: string, v: Partial<typeof enrollments.$inferInsert>) => db.update(enrollments).set(v).where(and(eq(enrollments.studentId, studentId), eq(enrollments.groupId, k)));
+      // The enrollment row and the stay it stands for (enrollment_periods is what the rules read).
+      const set = async (studentId: string, v: { joinedAt: Date; status?: string; leftAt?: Date }) => {
+        await db.update(enrollments).set(v).where(and(eq(enrollments.studentId, studentId), eq(enrollments.groupId, k)));
+        await db.update(enrollmentPeriods).set({ startedAt: v.joinedAt, ...(v.leftAt ? { endedAt: v.leftAt, endReason: 'LEFT_GROUP' } : {}) })
+          .where(and(eq(enrollmentPeriods.studentId, studentId), eq(enrollmentPeriods.groupId, k)));
+      };
       for (const s of [stayed, leftBefore, leftAfterMidnight, joinedNextDay]) await mark(k, s, date).expect(201);
       await set(stayed, { joinedAt: utc(-30, 6) });
       // Left the evening before the lesson (18:30 UTC two days earlier is still an earlier day in Tashkent).

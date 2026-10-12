@@ -12,6 +12,7 @@ import { WebhooksService } from '../webhooks/webhooks.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { teacherGroupIds } from '../common/teacher-scope';
 import { settleAbsenceCredits } from '../makeups/eligibility';
+import { lessonInstant, staysByMember, staysOf, wasMember } from '../enrollments/membership';
 
 @Injectable()
 export class AttendanceService {
@@ -76,24 +77,22 @@ export class AttendanceService {
     }
 
     const studentIds = dto.entries.map((e) => e.studentId);
-    const activeEnrollments = await this.db.query.enrollments.findMany({
-      where: and(
-        eq(enrollments.groupId, dto.groupId),
-        inArray(enrollments.studentId, studentIds),
-        eq(enrollments.status, 'ACTIVE'),
-      ),
-      with: { student: true },
-    });
-
-    const validStudentIds = new Set(
-      activeEnrollments
-        .filter((e) => e.student && e.student.tenantId === tenantId && !e.student.deletedAt)
-        .map((e) => e.studentId),
-    );
+    // The lesson has to be the student's (enrollments/membership.ts): in the
+    // group then, or - for a student the center entered late - before their
+    // first known stay. Not during a break between two stays, and not after
+    // they left; someone who has left since can still be marked for the
+    // lessons they had.
+    const [center] = await this.db.select({ tz: tenants.timezone }).from(tenants).where(eq(tenants.id, tenantId));
+    const tz = center?.tz || DEFAULT_TIMEZONE;
+    const known = await this.db.select({ id: students.id }).from(students)
+      .where(and(inArray(students.id, studentIds), eq(students.tenantId, tenantId), isNull(students.deletedAt)));
+    const stays = staysByMember(await staysOf(this.db, tenantId, { studentIds, groupIds: [dto.groupId] }));
+    const when = { date: dto.date, at: lessonInstant(dto.date, lesson?.startTime, tz) };
+    const validStudentIds = new Set(known.map((s) => s.id).filter((id) => wasMember(stays.get(`${id}|${dto.groupId}`) ?? [], when, tz, 'lenient')));
 
     for (const entry of dto.entries) {
       if (!validStudentIds.has(entry.studentId)) {
-        throw new BadRequestException(`O'quvchi ${entry.studentId} ushbu guruhda faol emas yoki boshqa tenantga tegishli`);
+        throw new BadRequestException({ code: 'NOT_A_MEMBER', message: `O'quvchi ${entry.studentId} bu darsda ushbu guruh a'zosi bo'lmagan` });
       }
     }
 
