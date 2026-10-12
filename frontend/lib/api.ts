@@ -960,9 +960,30 @@ export interface AttendanceRecord {
   groupId: string;
   studentId: string;
   date: string;
+  /** The lesson the mark is for (its timetable row); null: a mark for the group's day as a whole. */
+  scheduleId: string | null;
+  /** The lesson's start when it was marked. */
+  startTime: string | null;
   status: AttendanceStatus;
   createdAt: string;
   updatedAt: string;
+}
+
+/** Days with marks that are not bound to a lesson although the group has a timetable (admins). */
+export interface UnboundAttendance {
+  total: number;
+  days: Array<{ groupId: string; groupName: string; date: string; marks: number; lessons: number; reason: "SEVERAL" | "NONE" }>;
+}
+
+/** One stay of a student in a group. LEGACY: taken over from the old enrollment row - earlier stays may have existed. */
+export interface MembershipStay {
+  id: string;
+  groupId: string;
+  groupName: string;
+  startedAt: string;
+  endedAt: string | null;
+  endReason: "LEFT_GROUP" | "PAUSED" | "LEFT" | "GRADUATED" | "REMOVED" | null;
+  source: "RECORDED" | "LEGACY";
 }
 
 // One payout (installment) of a teacher's month. expenseId is null only on
@@ -1463,6 +1484,7 @@ export const studentsApi = {
   update: (id: string, data: Omit<Partial<Student>, "customFields"> & { customFields?: CustomFieldPayload }) =>
     request<Student>(`/students/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
   remove: (id: string) => request<void>(`/students/${id}`, { method: "DELETE" }),
+  memberships: (id: string) => request<MembershipStay[]>(`/students/${id}/memberships`),
   restore: (id: string) => request<Student>(`/students/${id}/restore`, { method: "POST" }),
   enroll: (id: string, groupId: string) =>
     request<{ success: boolean; enrollment?: unknown }>(`/students/${id}/enroll/${groupId}`, { method: "POST" }),
@@ -1652,8 +1674,10 @@ export const attendanceApi = {
     const suffix = qs.toString() ? `?${qs.toString()}` : "";
     return request<AttendanceRecord[]>(`/attendance${suffix}`);
   },
-  mark: (data: { groupId: string; date: string; entries: { studentId: string; status: AttendanceStatus }[]; topic?: string }) =>
+  // scheduleId: which lesson of that day (needed when the group has several).
+  mark: (data: { groupId: string; date: string; scheduleId?: string; entries: { studentId: string; status: AttendanceStatus }[]; topic?: string }) =>
     request<AttendanceRecord[]>("/attendance", { method: "POST", body: JSON.stringify(data) }),
+  unbound: () => request<UnboundAttendance>("/attendance/unbound"),
   topics: (groupId: string) => request<Array<{ date: string; topic: string }>>(`/attendance/topics?groupId=${encodeURIComponent(groupId)}`),
   qrCheckIn: (data: { code: string; date?: string; groupId?: string }) =>
     request<QrCheckInResponse>("/attendance/qr-checkin", { method: "POST", body: JSON.stringify(data) }),
@@ -2749,6 +2773,9 @@ export interface PortalAttendance {
     date: string;
     status: AttendanceStatus;
     groupId?: string;
+    /** The lesson's start, when the mark is for one lesson of the day. */
+    startTime?: string | null;
+    scheduleId?: string | null;
     groupName?: string | null;
     subject?: string | null;
   }>;
@@ -2765,6 +2792,10 @@ export interface PortalPastLesson {
   topic: string | null;
   cancelled: boolean;
   attendance: "PRESENT" | "ABSENT" | "LATE" | "EXCUSED" | string | null;
+  /** A mark for the day as a whole on a day with several lessons: not known which lesson it was for. */
+  dayAttendance?: string | null;
+  /** The lesson's timetable row (null: a day that is a lesson without one). */
+  scheduleId?: string | null;
   homework: Array<{
     id: string;
     title: string;

@@ -81,3 +81,13 @@ Still to do: frontend (attendance lesson picker, cabinet per-lesson results, unb
 notice, membership history on the student page), cabinet per-lesson attendance in
 `past-lessons.ts`, reports/readers review, browser tests, migrations on the dev DB,
 final verification, report, patch.
+
+**Checkpoint 4: frontend and the cabinet, per lesson.** Group page: lesson picker for the
+day's attendance (only when there are several lessons; loading / error+retry / cancelled /
+no-lesson states), server error shown, admin notice for unbound old marks. Student page:
+`MembershipHistory` section. Cabinet: past lessons are one entry per lesson
+(`past-lessons.ts`, `dayAttendance` for an unbound day mark), attendance list shows the
+lesson time. Backend unit 342/343 (openssl on Windows), frontend tsc clean, unit 55/55.
+
+Still to do: browser tests (task 6), migrations on the dev DB + upgrade check, final
+verification (full e2e, builds, browser suite), report, patch/bundle.

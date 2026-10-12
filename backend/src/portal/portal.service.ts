@@ -376,10 +376,10 @@ export class PortalService {
 
     const [slots, marks, hw, examRows, topicRows] = await Promise.all([
       this.db.select({
-        groupId: schedules.groupId, dayOfWeek: schedules.dayOfWeek, date: schedules.date,
+        id: schedules.id, groupId: schedules.groupId, dayOfWeek: schedules.dayOfWeek, date: schedules.date,
         startTime: schedules.startTime, endTime: schedules.endTime, topic: schedules.topic, status: schedules.status,
       }).from(schedules).where(and(eq(schedules.tenantId, tenantId), inArray(schedules.groupId, groupIds))),
-      this.db.select({ groupId: attendance.groupId, date: attendance.date, status: attendance.status }).from(attendance)
+      this.db.select({ groupId: attendance.groupId, date: attendance.date, status: attendance.status, scheduleId: attendance.scheduleId, startTime: attendance.startTime }).from(attendance)
         .where(and(eq(attendance.tenantId, tenantId), eq(attendance.studentId, studentId), inArray(attendance.groupId, groupIds), sql`${attendance.date} >= ${from}`)),
       this.db.query.homework.findMany({
         where: and(eq(homework.tenantId, tenantId), inArray(homework.groupId, groupIds), gt(homework.createdAt, since)),
