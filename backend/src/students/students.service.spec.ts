@@ -38,7 +38,8 @@ describe('StudentsService', () => {
       insert: vi.fn().mockReturnValue({
         values: vi.fn().mockReturnValue({
           returning: vi.fn(),
-          onConflictDoNothing: vi.fn().mockResolvedValue({}),
+          // Awaited as it is (a stay opened) or asked for its rows (enrollments made with the student).
+          onConflictDoNothing: vi.fn(() => Object.assign(Promise.resolve({}), { returning: vi.fn().mockResolvedValue([]) })),
         }),
       }),
       update: vi.fn().mockReturnValue({

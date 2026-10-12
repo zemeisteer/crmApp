@@ -7,6 +7,7 @@ import DashboardShell from "@/components/DashboardShell";
 import StudentPortalPin from "@/components/students/StudentPortalPin";
 import StudentStatusModal, { STATUS_STYLE } from "@/components/students/StudentStatusModal";
 import ParentBotLink from "@/components/students/ParentBotLink";
+import MembershipHistory from "@/components/students/MembershipHistory";
 import Modal from "@/components/Modal";
 import Select from "@/components/Select";
 import GroupPicker from "@/components/students/GroupPicker";
@@ -550,6 +551,7 @@ function StudentDetailContent() {
           </div>
         </div>
 
+        <MembershipHistory studentId={student.id} refreshKey={`${student.status}|${allEnrollments.map((e) => `${e.groupId}:${e.status}`).join(",")}`} />
         <StudentPortalPin studentId={student.id} hasPhone={Boolean(student.phone || student.parentPhone)} />
 
         <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, overflow: "hidden" }}>

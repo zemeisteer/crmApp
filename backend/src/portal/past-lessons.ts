@@ -26,6 +26,9 @@ export interface PastLessonGroup {
 }
 
 export interface PastLessonSlot {
+  // The timetable row: the lesson's identity (lessons/occurrences.ts). Two
+  // rows of one group on one day are two lessons.
+  id?: string;
   groupId: string;
   dayOfWeek: number | null;
   date: string | null; // one-time lesson
@@ -65,7 +68,8 @@ export interface PastLessonInput {
   today: string; // local today, YYYY-MM-DD (inclusive when something was recorded)
   groups: PastLessonGroup[];
   slots: PastLessonSlot[];
-  attendance: Array<{ groupId: string; date: string; status: string }>;
+  // scheduleId: the lesson the mark is for (null/absent: the day as a whole); startTime: the lesson's start when marked.
+  attendance: Array<{ groupId: string; date: string; status: string; scheduleId?: string | null; startTime?: string | null }>;
   // What the teacher recorded as covered on that day (wins over a slot topic).
   topics?: Array<{ groupId: string; date: string; topic: string }>;
   homework: PastLessonHomework[];
@@ -82,7 +86,13 @@ export interface PastLesson {
   endTime: string | null;
   topic: string | null;
   cancelled: boolean;
+  // This lesson's own mark.
   attendance: string | null;
+  // A mark for the day as a whole, on a day with several lessons: it is not
+  // known which lesson it was for, so it is shown beside each and is none's.
+  dayAttendance: string | null;
+  // The lesson's timetable row (null: a day that is a lesson without one).
+  scheduleId: string | null;
   homework: Array<Omit<PastLessonHomework, 'groupId' | 'givenOn'>>;
   exams: Array<Omit<PastLessonExam, 'groupId' | 'heldOn'>>;
 }
@@ -107,8 +117,11 @@ export function buildPastLessons(input: PastLessonInput): PastLesson[] {
       ? g.stays.some((s) => date >= s.from && (!s.until || date <= s.until))
       : date >= g.joinedOn && (!g.leftOn || date <= g.leftOn));
 
-  const add = (g: PastLessonGroup, date: string, extra: Partial<PastLesson> = {}) => {
-    const key = `${g.id}|${date}`;
+  // One entry per lesson: the group, the date and the timetable row ("" for
+  // a day that is a lesson without one - a group with no timetable rows, or
+  // a record made on a day off the timetable).
+  const add = (g: PastLessonGroup, date: string, extra: Partial<PastLesson> = {}, slotId = '') => {
+    const key = `${g.id}|${date}|${slotId}`;
     const existing = byKey.get(key);
     if (existing) {
       Object.assign(existing, Object.fromEntries(Object.entries(extra).filter(([, v]) => v != null)));
@@ -125,6 +138,8 @@ export function buildPastLessons(input: PastLessonInput): PastLesson[] {
       topic: null,
       cancelled: false,
       attendance: null,
+      dayAttendance: null,
+      scheduleId: slotId || null,
       homework: [],
       exams: [],
       ...extra,
@@ -148,28 +163,44 @@ export function buildPastLessons(input: PastLessonInput): PastLesson[] {
     // Today's lesson is listed only once something was recorded for it.
     for (let d = input.from; d < input.today; d = nextDate(d)) {
       if (!weekdays.has(weekdayOf(d)) || !inWindow(g, d)) continue;
-      const slot = weekly.find((s) => s.dayOfWeek === weekdayOf(d));
-      add(g, d, slot ? { startTime: slot.startTime, endTime: slot.endTime, topic: slot.topic } : {});
+      // Every weekly lesson of that weekday is its own entry (a group may have two a day).
+      const today = weekly.filter((s) => s.dayOfWeek === weekdayOf(d));
+      if (today.length === 0) add(g, d);
+      for (const slot of today) add(g, d, { startTime: slot.startTime, endTime: slot.endTime, topic: slot.topic }, slot.id ?? '');
     }
     for (const s of slots) {
       if (!s.date || s.date >= input.today || !inWindow(g, s.date)) continue;
-      add(g, s.date, { startTime: s.startTime, endTime: s.endTime, topic: s.topic, cancelled: s.status === 'CANCELLED' });
+      add(g, s.date, { startTime: s.startTime, endTime: s.endTime, topic: s.topic, cancelled: s.status === 'CANCELLED' }, s.id ?? '');
     }
   }
 
   // 2. What happened on each day. A record on a day off the timetable (a
   //    make-up lesson) still makes that day a lesson, and a mark proves the
   //    student was in the group even before the recorded join date.
+  const lessonsOn = (groupId: string, date: string) => [...byKey.values()].filter((l) => l.groupId === groupId && l.date === date);
+  /** The day's entry for something recorded per day: its first lesson, or the day itself. */
+  const dayEntry = (g: PastLessonGroup, date: string) => lessonsOn(g.id, date).sort((x, y) => (x.startTime ?? '').localeCompare(y.startTime ?? ''))[0] ?? add(g, date);
   for (const a of input.attendance) {
     const g = groupById.get(a.groupId);
     if (!g || a.date < input.from || a.date > input.today) continue;
-    add(g, a.date).attendance = a.status;
+    if (a.scheduleId) {
+      // A mark of one lesson. The lesson may be gone from the timetable since: the mark still shows, with the time it had.
+      add(g, a.date, byKey.has(`${g.id}|${a.date}|${a.scheduleId}`) ? {} : { startTime: a.startTime ?? null, endTime: null }, a.scheduleId).attendance = a.status;
+      continue;
+    }
+    // A mark for the day as a whole. With one lesson that day it is that
+    // lesson's; with several it is shown as the day's mark on each, and is
+    // nobody's in particular (it is never copied into a lesson's own mark).
+    const same = lessonsOn(g.id, a.date);
+    if (same.length <= 1) (same[0] ?? add(g, a.date)).attendance = a.status;
+    else for (const l of same) l.dayAttendance = a.status;
   }
   for (const tp of input.topics ?? []) {
     const g = groupById.get(tp.groupId);
     if (!g || tp.date < input.from || tp.date > input.today) continue;
-    const existing = byKey.get(`${g.id}|${tp.date}`);
-    if (existing) existing.topic = tp.topic;
+    // The topic is kept per group and day: every lesson of that day shows it.
+    const existing = lessonsOn(g.id, tp.date);
+    if (existing.length) for (const l of existing) l.topic = tp.topic;
     else if (inWindow(g, tp.date)) add(g, tp.date).topic = tp.topic;
   }
   // Homework is often posted after the lesson (that evening or the next
@@ -180,14 +211,14 @@ export function buildPastLessons(input: PastLessonInput): PastLesson[] {
     const { groupId: _g, givenOn: _d, ...rest } = h;
     const lesson = [...byKey.values()]
       .filter((l) => l.groupId === g.id && l.date <= h.givenOn)
-      .sort((a, b) => b.date.localeCompare(a.date))[0];
+      .sort((a, b) => b.date.localeCompare(a.date) || (b.startTime ?? '').localeCompare(a.startTime ?? ''))[0];
     (lesson ?? add(g, h.givenOn)).homework.push(rest);
   }
   for (const e of input.exams) {
     const g = groupById.get(e.groupId);
     if (!g || !inWindow(g, e.heldOn)) continue;
     const { groupId: _g, heldOn: _d, ...rest } = e;
-    add(g, e.heldOn).exams.push(rest);
+    dayEntry(g, e.heldOn).exams.push(rest);
   }
 
   // A day that became a lesson through a record (e.g. a mark from before

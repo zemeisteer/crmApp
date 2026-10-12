@@ -12,7 +12,7 @@ import GroupInfoCard from "@/components/groups/GroupInfoCard";
 import GroupAttendanceHistory from "@/components/groups/GroupAttendanceHistory";
 import GroupTutorReport from "@/components/groups/GroupTutorReport";
 import GroupLessonCancellations from "@/components/groups/GroupLessonCancellations";
-import { groupsApi, studentsApi, paymentsApi, attendanceApi, Group, Student, Gender, AttendanceRecord, AttendanceStatus, ApiError, retryKey, type DebtorItem } from "@/lib/api";
+import { groupsApi, studentsApi, paymentsApi, attendanceApi, lessonsApi, Group, Student, Gender, AttendanceRecord, AttendanceStatus, ApiError, retryKey, type DebtorItem, type LessonOccurrence, type UnboundAttendance } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { can } from "@/lib/access";
 import { PHONE_PATTERN, PHONE_TITLE, NAME_PATTERN, NAME_TITLE, phoneOrEmpty } from "@/lib/validation";
@@ -100,6 +100,44 @@ function GroupDetailContent() {
   const [markSaving, setMarkSaving] = useState(false);
   const [topics, setTopics] = useState<Array<{ date: string; topic: string }>>([]);
   const [topic, setTopic] = useState("");
+  // Attendance is per lesson: the timetable lessons of the chosen day, and
+  // the one being marked. One lesson: no extra step. None: a mark for the
+  // day as a whole.
+  const [dayLessons, setDayLessons] = useState<LessonOccurrence[] | null>(null);
+  const [dayLessonsError, setDayLessonsError] = useState(false);
+  const [lessonPick, setLessonPick] = useState("");
+  const [markError, setMarkError] = useState<string | null>(null);
+  const [unbound, setUnbound] = useState<UnboundAttendance["days"]>([]);
+  const lessonReq = useRef(0);
+  const [lessonNonce, setLessonNonce] = useState(0);
+  const isAdmin = user?.role === "OWNER" || user?.role === "ADMIN" || user?.role === "SUPERADMIN";
+
+  useEffect(() => {
+    // An answer for a date picked earlier must not replace this date's lessons.
+    const n = ++lessonReq.current;
+    setDayLessons(null);
+    setDayLessonsError(false);
+    setMarkError(null);
+    lessonsApi.list(attendanceDate, attendanceDate, id)
+      .then((list) => {
+        if (lessonReq.current !== n) return;
+        const withRow = list.filter((l) => l.scheduleId);
+        setDayLessons(withRow);
+        setLessonPick((withRow.find((l) => !l.cancelled) ?? withRow[0])?.scheduleId ?? "");
+      })
+      .catch(() => {
+        if (lessonReq.current === n) setDayLessonsError(true);
+      });
+  }, [id, attendanceDate, lessonNonce]);
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    let alive = true;
+    attendanceApi.unbound().then((u) => alive && setUnbound(u.days.filter((d) => d.groupId === id))).catch(() => undefined);
+    return () => {
+      alive = false;
+    };
+  }, [id, isAdmin, attendance]);
 
   function load() {
     setLoading(true);
@@ -123,12 +161,14 @@ function GroupDetailContent() {
     const enrolled = group?.enrollments || [];
     const next: Record<string, AttendanceStatus> = {};
     for (const e of enrolled) {
-      const existing = attendance.find((a) => a.studentId === e.student.id && a.date === attendanceDate);
+      const onDay = attendance.filter((a) => a.studentId === e.student.id && a.date === attendanceDate);
+      // This lesson's mark; failing that, an old mark for the day as a whole (saving makes it this lesson's).
+      const existing = lessonPick ? onDay.find((a) => a.scheduleId === lessonPick) ?? onDay.find((a) => !a.scheduleId) : onDay.find((a) => !a.scheduleId);
       next[e.student.id] = existing?.status || "PRESENT";
     }
     setDraft(next);
     setTopic(topics.find((x) => x.date === attendanceDate)?.topic ?? "");
-  }, [group, attendance, attendanceDate, topics]);
+  }, [group, attendance, attendanceDate, topics, lessonPick]);
 
   if (loading) {
     return <div style={{ padding: 32, color: "#686B75", fontSize: 14 }}>{t("common.loading")}</div>;
@@ -177,14 +217,19 @@ function GroupDetailContent() {
     const enrolled = group?.enrollments || [];
     if (enrolled.length === 0) return;
     setMarkSaving(true);
+    setMarkError(null);
     try {
       await attendanceApi.mark({
         groupId: id,
         date: attendanceDate,
+        scheduleId: lessonPick || undefined,
         entries: enrolled.map((e) => ({ studentId: e.student.id, status: draft[e.student.id] || "PRESENT" })),
         topic,
       });
       load();
+    } catch (err) {
+      // Nothing was saved (all marks or none): say why.
+      setMarkError(err instanceof ApiError ? err.message : t("common.errorGeneric"));
     } finally {
       setMarkSaving(false);
     }
@@ -344,13 +389,52 @@ function GroupDetailContent() {
           )}
         </div>
 
-        <GroupInfoCard group={group} students={enrollments.length} lessonsHeld={new Set(attendance.map((a) => a.date)).size} />
+        <GroupInfoCard group={group} students={enrollments.length} lessonsHeld={new Set(attendance.map((a) => `${a.date}|${a.scheduleId ?? ""}`)).size} />
 
         <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 20 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
             <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 700, fontSize: 15 }}>{t("groupDetail.markAttendance")}</div>
             <DatePicker value={attendanceDate} onChange={setAttendanceDate} style={{ width: 170 }} />
           </div>
+          {/* Which lesson of that day: asked only when there are several. */}
+          {dayLessonsError ? (
+            <div role="alert" style={{ marginBottom: 12, padding: "9px 12px", borderRadius: 10, background: "#FDEBEC", color: "#B23A47", fontSize: 13, fontWeight: 600, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+              {t("groupDetail.attLessonsError")}
+              <button type="button" className="btn" onClick={() => setLessonNonce((n) => n + 1)} style={{ background: "#fff", border: "1px solid #F5C2C2", borderRadius: 8, padding: "5px 10px", fontSize: 12.5, fontWeight: 700 }}>{t("err.retry")}</button>
+            </div>
+          ) : dayLessons === null ? (
+            <div style={{ marginBottom: 12, fontSize: 12.5, color: "#686B75" }}>{t("common.loading")}</div>
+          ) : dayLessons.length > 1 ? (
+            <div role="group" aria-label={t("groupDetail.attLesson")} style={{ marginBottom: 12 }}>
+              <span style={{ display: "block", fontSize: 12.5, fontWeight: 700, color: "#4A4E58", marginBottom: 6 }}>{t("groupDetail.attLesson")}</span>
+              <Select
+                ariaLabel={t("groupDetail.attLesson")}
+                sheetOnPhone
+                sheetTitle={t("groupDetail.attLesson")}
+                options={dayLessons.map((l) => ({ value: l.scheduleId!, label: `${l.startTime}–${l.endTime}${l.cancelled ? ` · ${t("groupDetail.attCancelledShort")}` : ""}` }))}
+                value={lessonPick}
+                onChange={setLessonPick}
+              />
+            </div>
+          ) : dayLessons.length === 0 ? (
+            <div style={{ marginBottom: 12, fontSize: 12.5, color: "#686B75" }}>{t("groupDetail.attNoLesson")}</div>
+          ) : null}
+          {dayLessons?.find((l) => l.scheduleId === lessonPick)?.cancelled && (
+            <div role="status" style={{ marginBottom: 12, padding: "9px 12px", borderRadius: 10, background: "#FFF7E6", border: "1px solid #F5DDA8", color: "#8A5A00", fontSize: 13, fontWeight: 600 }}>{t("groupDetail.attLessonCancelled")}</div>
+          )}
+          {unbound.length > 0 && (
+            <div role="note" aria-label={t("groupDetail.attUnboundTitle")} style={{ marginBottom: 12, padding: "9px 12px", borderRadius: 10, background: "#F2F1EC", color: "#4A4E58", fontSize: 12.5, lineHeight: 1.5 }}>
+              <b>{t("groupDetail.attUnboundTitle")}</b> {t("groupDetail.attUnboundText")}
+              <div style={{ marginTop: 4 }}>
+                {unbound.slice(0, 8).map((d) => (
+                  <button key={d.date} type="button" className="btn" onClick={() => setAttendanceDate(d.date)} style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 8, padding: "3px 8px", fontSize: 12, fontWeight: 700, margin: "2px 6px 2px 0" }}>
+                    {d.date} · {d.reason === "SEVERAL" ? t("groupDetail.attUnboundSeveral") : t("groupDetail.attUnboundNone")}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          {markError && <div role="alert" style={{ marginBottom: 12, padding: "9px 12px", borderRadius: 10, background: "#FDEBEC", color: "#B23A47", fontSize: 13, fontWeight: 600 }}>{markError}</div>}
           {enrollments.length === 0 ? (
             <div style={{ color: "#686B75", fontSize: 13.5 }}>{t("groupDetail.noStudentsForAttendance")}</div>
           ) : (
@@ -404,7 +488,7 @@ function GroupDetailContent() {
               <button
                 className="btn"
                 onClick={onSaveAttendance}
-                disabled={markSaving}
+                disabled={markSaving || dayLessons === null || !!dayLessons.find((l) => l.scheduleId === lessonPick)?.cancelled}
                 style={{ background: ACCENT, color: "#fff", border: "none", fontSize: 13, fontWeight: 700, padding: "10px 16px", borderRadius: 9, marginTop: 14 }}
               >
                 {markSaving ? t("groupDetail.savingAttendance") : t("groupDetail.saveAttendance")}

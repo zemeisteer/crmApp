@@ -31,8 +31,11 @@ describe('AttendanceService - QR Check-in', () => {
           findMany: vi.fn(),
         },
       },
+      // The group's lessons of the day and the center's clock: nothing on record here, so the scan is a day-level mark.
+      select: vi.fn(() => ({ from: () => ({ where: async () => [] }) })),
       insert: vi.fn().mockReturnValue({
         values: vi.fn().mockReturnValue({
+          onConflictDoNothing: vi.fn().mockResolvedValue(undefined),
           onConflictDoUpdate: vi.fn().mockReturnValue({
             returning: vi.fn().mockResolvedValue([{ id: 'att-1', status: 'PRESENT' }]),
           }),
