@@ -91,3 +91,11 @@ lesson time. Backend unit 342/343 (openssl on Windows), frontend tsc clean, unit
 
 Still to do: browser tests (task 6), migrations on the dev DB + upgrade check, final
 verification (full e2e, builds, browser suite), report, patch/bundle.
+
+**Checkpoint 5: browser journeys and final verification.**
+`e2e-browser/tests/attendance-membership.spec.ts` (2 journeys). Final state: backend e2e
+59 files / 439; unit 342/343 (openssl on Windows); browser suite 47/47; Google browser
+test 1/1; migrations 0053 and 0054 verified on a copy of the development database (data
+unchanged, the built app started and restarted on it) and applied to `talimcrm` (backup
+`backend/backups/talimcrm_before_0053_2026-10-12.dump`). Everything is in
+`STABILIZATION_SPRINT3_REPORT.md`. Nothing was pushed.
