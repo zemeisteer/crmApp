@@ -38,7 +38,7 @@ const ALL: ConfigurableRole[] = [M, R, A, T];
 
 export const ACCESS_CATALOG: AccessKey[] = [
   // ---- Students and groups ----
-  { key: 'students.view', area: 'students', template: ALL, routes: ['GET /api/students', 'GET /api/students/:id', 'GET /api/students/:id/guardians'] },
+  { key: 'students.view', area: 'students', template: ALL, routes: ['GET /api/students', 'GET /api/students/:id', 'GET /api/students/:id/guardians', 'GET /api/students/:id/memberships'] },
   {
     key: 'students.edit', area: 'students', template: [],
     routes: ['POST /api/students', 'PATCH /api/students/:id', 'POST /api/students/:id/enroll/:groupId', 'DELETE /api/students/:id/enroll/:groupId', 'POST /api/students/:id/guardians', 'DELETE /api/students/:id/guardians/:guardianId'],
