@@ -196,7 +196,7 @@ function PastLessons() {
           const hwCount = l.homework.length;
           const scored = l.exams.filter((e) => e.score != null);
           return (
-            <button key={`${l.groupId}-${l.date}`} type="button" className="pls-card" onClick={() => setOpen(l)} style={{ ...card, padding: 14, opacity: l.cancelled ? 0.7 : 1 }}>
+            <button key={`${l.groupId}-${l.date}-${l.scheduleId ?? l.startTime ?? ""}`} type="button" className="pls-card" onClick={() => setOpen(l)} style={{ ...card, padding: 14, opacity: l.cancelled ? 0.7 : 1 }}>
               <div style={{ width: 52, flexShrink: 0, borderRadius: 12, background: tone.bg, color: tone.fg, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "8px 0" }}>
                 <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 800, fontSize: 20, lineHeight: 1 }}>{l.date.slice(8, 10)}</div>
                 <div style={{ fontSize: 11, fontWeight: 700, marginTop: 3 }}>{t(MONTH_SHORT_KEYS[Number(l.date.slice(5, 7)) - 1])}</div>
@@ -281,6 +281,10 @@ function LessonDetails({ lesson: l, onClose }: { lesson: PortalPastLesson; onClo
             {t(mark.key)}
           </div>
           {l.attendance === "ABSENT" && <div style={{ fontSize: 12.5, color: "#B45309" }}>💡 {t("pls.missedHint")}</div>}
+          {/* An old mark for the whole day, on a day with several lessons: shown, and not counted as this lesson's. */}
+          {!l.attendance && l.dayAttendance && ATT_PILL[l.dayAttendance] && (
+            <div style={{ fontSize: 12.5, color: "#686B75" }}>{t("pls.dayMark")}: {t(ATT_PILL[l.dayAttendance].key)}</div>
+          )}
         </Section>
 
         <Section icon="📖" title={t("pls.topic")}>
@@ -464,7 +468,8 @@ export function AttendanceTab({ attendance, tz = DEFAULT_CENTER_TIMEZONE }: { at
                       <span style={{ width: 8, height: 8, borderRadius: "50%", background: c.dot, flexShrink: 0 }} />
                       <span style={{ minWidth: 0 }}>
                         <span style={{ display: "block", fontSize: 13.5, fontWeight: 600 }}>{formatDate(`${r.date}T00:00:00`, lang, "short")}</span>
-                        {r.groupName && <span style={{ display: "block", fontSize: 12, color: "#686B75", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.groupName}</span>}
+                        {/* The lesson's own time: a group may have two lessons on one day, each with its mark. */}
+                        {(r.groupName || r.startTime) && <span style={{ display: "block", fontSize: 12, color: "#686B75", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{[r.groupName, r.startTime].filter(Boolean).join(" · ")}</span>}
                       </span>
                     </span>
                     <Pill tone={r.status === "PRESENT" ? "green" : r.status === "LATE" ? "amber" : "red"}>{STATUS_LABEL[r.status] ?? r.status}</Pill>
