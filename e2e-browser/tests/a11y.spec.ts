@@ -28,8 +28,10 @@ async function scan(page: Page, label: string) {
   return found.map((f) => `${label}: ${f}`);
 }
 
-async function settle(page: Page) {
-  if (await page.locator('[data-chat-live]').count()) {
+async function settle(page: Page, path: string) {
+  // Decided by the address, not by looking for the marker: right after
+  // goto the page may not have drawn it yet.
+  if (path.startsWith('/messages')) {
     // The Messages page holds its live stream open: the network is never quiet.
     await expect(page.locator('[data-chat-live="open"]')).toHaveCount(1);
   } else {
@@ -69,7 +71,7 @@ test('main, new and cabinet pages have no critical or serious accessibility find
   ];
   for (const path of paths) {
     await page.goto(centerUrl(a.sub, path));
-    await settle(page);
+    await settle(page, path);
     findings.push(...(await scan(page, path)));
   }
 
