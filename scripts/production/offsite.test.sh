@@ -110,6 +110,9 @@ dest_ack_dir() { printf '%s/.state/offsite/%s' "$BK" "$(printf '%s|%s' "$(sed -n
 says() { grep -q -- "$1" <<<"$OUT"; }
 usable() { [ -f "$REMOTE/$1/COMPLETE" ] && grep -qx 'format=2' "$REMOTE/$1/COMPLETE"; }
 local_intact() { ( cd "$BK/$1" && sha256sum -c --quiet SHA256SUMS >/dev/null 2>&1 ) && [ -f "$BK/$1/manifest.json" ]; }
+# Changes one byte in place, keeping the size. The files are random, so a
+# fixed byte could already be there (1 run in 256): write one that is not.
+corrupt() { local was; was="$(od -An -tx1 -j "$2" -N1 "$1" | tr -d ' ')"; printf '%s' "$([ "$was" = 58 ] && echo Y || echo X)" | dd of="$1" bs=1 seek="$2" conv=notrunc 2>/dev/null; }
 same_as_local() { local f; for f in db.sql.gz uploads.tar.gz manifest.json SHA256SUMS; do [ ! -e "$BK/$1/$f" ] || cmp -s "$BK/$1/$f" "$REMOTE/$1/$f" || return 1; done; }
 acked() { [ -f "$(dest_ack_dir)/$1.ok" ]; }
 restore_check() { mkdir -p "$BK/.state"; echo "2026-10-04T00:00:00Z  test, loaded and consistent" > "$BK/.state/last-restore-check"; }
@@ -154,12 +157,12 @@ run -- push
 check "push repairs it" eval '[ $RC = 0 ] && cmp -s "$BK/$OLD/db.sql.gz" "$REMOTE/$OLD/db.sql.gz" && acked "$OLD"'
 
 echo "3. same-size corruption of a completed archive"
-printf 'X' | dd of="$REMOTE/$NEW/db.sql.gz" bs=1 seek=100 conv=notrunc 2>/dev/null
+corrupt "$REMOTE/$NEW/db.sql.gz" 100
 run -- status --check
 check "the content check of the newest set catches it" eval '[ $RC = 1 ] && says "$NEW  DAMAGED: db.sql.gz does not match SHA256SUMS"'
 run -- push
 check "push repairs it" eval '[ $RC = 0 ] && cmp -s "$BK/$NEW/db.sql.gz" "$REMOTE/$NEW/db.sql.gz"'
-printf 'X' | dd of="$REMOTE/$OLD/uploads.tar.gz" bs=1 seek=50 conv=notrunc 2>/dev/null
+corrupt "$REMOTE/$OLD/uploads.tar.gz" 50
 run -- status --check
 check "on an OLDER set the metadata check cannot see it - and is labelled so" eval 'says "$OLD  PRESENT (metadata check only; content not read)"'
 run -- verify all
