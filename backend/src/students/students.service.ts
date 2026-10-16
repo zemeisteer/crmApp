@@ -303,9 +303,10 @@ export class StudentsService {
         if (dto.status === 'ACTIVE') await reopenStays(tx, { tenantId, studentId: id });
         else if (prev.status === 'ACTIVE') await closeStays(tx, { tenantId, studentId: id, reason: dto.status });
       }
+      // The center's own fields go with the rest of the change: all of it is saved, or none.
+      await this.customFields.write(tx, tenantId, 'STUDENT', id, customValues, userId);
       return rows;
     });
-    await this.customFields.write(this.db, tenantId, 'STUDENT', id, customValues, userId);
     // Custom values are logged by field, not by content.
     this.audit.log({ tenantId, userId, action: 'update', entityType: 'student', entityId: id, meta: { ...coreDto, ...(customInput ? { customFields: Object.keys(customValues) } : {}) } });
     return { ...student, customFields: await this.customFields.read(tenantId, 'STUDENT', id) };

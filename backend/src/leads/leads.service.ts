@@ -742,11 +742,15 @@ export class LeadsService {
     }
 
     try {
-      const [updated] = await this.db.update(leads).set(set)
-        .where(and(eq(leads.id, id), eq(leads.tenantId, tenantId), isNull(leads.archivedAt)))
-        .returning();
-      if (!updated) throw new ConflictException({ code: 'LEAD_ARCHIVED', message: 'Lid arxivlangan' });
-      await this.customFields.write(this.db, tenantId, 'LEAD', id, customValues, actor.userId);
+      // The lead and the center's own fields: all of it is saved, or none.
+      const updated = await this.db.transaction(async (tx) => {
+        const [row] = await tx.update(leads).set(set)
+          .where(and(eq(leads.id, id), eq(leads.tenantId, tenantId), isNull(leads.archivedAt)))
+          .returning();
+        if (!row) throw new ConflictException({ code: 'LEAD_ARCHIVED', message: 'Lid arxivlangan' });
+        await this.customFields.write(tx, tenantId, 'LEAD', id, customValues, actor.userId);
+        return row;
+      });
       return { ...updated, customFields: await this.customFields.read(tenantId, 'LEAD', id) };
     } catch (err) {
       if (isUniqueViolation(err)) {

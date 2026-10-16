@@ -35,8 +35,16 @@ Working copy: `/home/user/crmApp-sprint4`, local branch `sprint4-local`. Nothing
 - Tests: `test/teacher-attendance-per-lesson.e2e-spec.ts` (5); upgrade from a 0057 database with old marks checked by
   hand (bound/left/report/no drift). Unit 340/340 (schedule spec mock now answers the event query of item 1).
 
+### 3. Custom values saved with the record
+- `students.service.ts update()` and `leads.service.ts update()` wrote custom values with `this.db` after the commit;
+  both now write them with the transaction's executor (`CustomFieldsService.write(tx, ...)`). Student create, lead
+  create and lead -> student conversion already did. The audit entry is written only after the commit.
+- Test: `test/custom-fields-atomic.e2e-spec.ts` - the real write runs inside the transaction and then throws:
+  profile, status, stays (enrollment_periods), values and audit unchanged; the same for lead update, lead create and
+  conversion. Fails without the fix (checked), passes with it.
+
 ## Next
- 3 custom fields in the transaction, 4 pricing race, 5 event dates + page states,
+ 4 pricing race, 5 event dates + page states,
 6 calendar feed, 7 make-up booking time, 8 feature checks, 9 final validation and report.
 
 ## Resume
