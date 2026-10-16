@@ -92,8 +92,8 @@ describe('Center events and a lead\'s several directions (e2e)', () => {
     // A list may cover at most 120 days.
     await http().get('/api/center-events?from=2026-01-01&to=2026-12-31').set(bearer(owner)).expect(400);
 
-    // Switching it to a room: the link goes.
-    const moved = (await http().patch(`/api/center-events/${online.id}`).set(bearer(owner)).send({ format: 'OFFLINE', roomId: roomA }).expect(200)).body;
+    // Switching it to a room (at an hour the room is free): the link goes.
+    const moved = (await http().patch(`/api/center-events/${online.id}`).set(bearer(owner)).send({ format: 'OFFLINE', roomId: roomA, startTime: '15:00', endTime: '16:00' }).expect(200)).body;
     expect(moved).toMatchObject({ format: 'OFFLINE', roomId: roomA, meetingUrl: null });
   });
 

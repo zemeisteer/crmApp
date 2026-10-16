@@ -86,6 +86,13 @@ export function EventCard({ ev, onOpen }: { ev: CenterEvent; onOpen?: () => void
 const label: React.CSSProperties = { display: "block", fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 };
 
 /** Adds or edits an event; deleting is offered when editing. */
+/** The server's answer, with what is in the way when the room is taken. */
+function describeSaveError(err: ApiError): string {
+  const conflicts = (err.body?.conflicts as Array<{ message?: string }> | undefined) ?? [];
+  const lines = conflicts.map((c) => c.message).filter((m): m is string => !!m);
+  return lines.length ? `${err.message}: ${lines.slice(0, 3).join("; ")}` : err.message;
+}
+
 export function EventFormModal({
   event,
   rooms,
@@ -125,6 +132,8 @@ export function EventFormModal({
     if (!date) return setError(t("ev.errDate"));
     if (!startTime) return setError(t("ev.errTime"));
     if (endTime && endTime <= startTime) return setError(t("ev.errEnd"));
+    // A room is taken until the event ends: the server wants that end too.
+    if (format === "OFFLINE" && roomId && !endTime) return setError(t("ev.errEndForRoom"));
     if (format === "ONLINE" && meetingUrl.trim() && !/^https?:\/\//i.test(meetingUrl.trim())) return setError(t("ev.errUrl"));
     const data = {
       title: title.trim(),
@@ -145,7 +154,7 @@ export function EventFormModal({
       else await centerEventsApi.create(data);
       onSaved(t(event ? "ev.updated" : "ev.added").replace("{title}", data.title));
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : t("common.errorGeneric"));
+      setError(err instanceof ApiError ? describeSaveError(err) : t("common.errorGeneric"));
     } finally {
       setBusy(false);
     }

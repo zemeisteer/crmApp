@@ -3751,6 +3751,7 @@ export const dict = {
   "ev.errDate": { UZ: "Sanani tanlang", RU: "Выберите дату", EN: "Pick a date" },
   "ev.errTime": { UZ: "Boshlanish vaqtini tanlang", RU: "Выберите время начала", EN: "Pick a start time" },
   "ev.errEnd": { UZ: "Tugash vaqti boshlanishdan keyin bo'lsin", RU: "Окончание должно быть позже начала", EN: "The end must be after the start" },
+  "ev.errEndForRoom": { UZ: "Xona tanlangan tadbir uchun tugash vaqtini kiriting", RU: "Для мероприятия в аудитории укажите время окончания", EN: "Give the end time for an event in a room" },
   "ev.errUrl": { UZ: "Havola https:// bilan boshlansin", RU: "Ссылка должна начинаться с https://", EN: "The link must start with https://" },
   "ev.upcoming": { UZ: "Yaqin tadbirlar", RU: "Ближайшие мероприятия", EN: "Coming events" },
   "ev.upcomingHint": { UZ: "Keyingi 8 hafta: uchrashuvlar, musobaqalar va boshqa tadbirlar", RU: "Следующие 8 недель: встречи, соревнования и другое", EN: "Next 8 weeks: meetings, competitions and more" },

@@ -141,7 +141,7 @@ export class LeadTrialsService {
     }
     const conflicts: TrialConflict[] = lessonConflicts
       .filter((c) => !c.conflictingScheduleId || !ownGroupLessonIds.has(c.conflictingScheduleId))
-      .map((c) => ({ type: c.type === 'ROOM' ? 'ROOM' : 'TEACHER', message: c.message, conflictingScheduleId: c.conflictingScheduleId ?? undefined }));
+      .map((c) => ({ type: c.type === 'ROOM' || c.type === 'EVENT' ? 'ROOM' : 'TEACHER', message: c.message, conflictingScheduleId: c.conflictingScheduleId ?? undefined }));
 
     const end = new Date(slot.start.getTime() + slot.durationMinutes * 60_000);
     const resource = [];

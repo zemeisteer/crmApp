@@ -2,7 +2,7 @@ import { ConflictException, Inject, Injectable, NotFoundException, Optional } fr
 import { and, eq, gte, ne, isNotNull, isNull, or, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { DB, Database } from '../db/db.module';
-import { enrollments, groups, lessonCancellations, makeupBookings, rooms, schedules, students, teachers } from '../db/schema';
+import { centerEvents, enrollments, groups, lessonCancellations, makeupBookings, rooms, schedules, students, teachers } from '../db/schema';
 import { effectiveAccess } from '../access/catalog';
 import { AuditService } from '../audit/audit.service';
 import { centerToday } from '../common/center-today';
@@ -14,8 +14,8 @@ import { CreateRoomDto, UpdateRoomDto } from './dto/room.dto';
 import { CheckConflictDto, CreateScheduleDto, UpdateScheduleDto } from './dto/schedule.dto';
 
 export interface ScheduleConflict {
-  /** MAKEUP: the teacher or the room is taken by a make-up session. */
-  type: 'ROOM' | 'TEACHER' | 'GROUP' | 'STUDENT' | 'MAKEUP';
+  /** MAKEUP: the teacher or the room is taken by a make-up session. EVENT: the room, by a center event. */
+  type: 'ROOM' | 'TEACHER' | 'GROUP' | 'STUDENT' | 'MAKEUP' | 'EVENT';
   message: string;
   /** The timetable row in the way; null when it is a make-up booking. */
   conflictingScheduleId: string | null;
@@ -24,6 +24,9 @@ export interface ScheduleConflict {
   studentCount?: number;
   /** STUDENT: the other lesson is the student's make-up, not a group lesson. */
   makeup?: boolean;
+  /** EVENT: the center event in the way. */
+  eventId?: string;
+  eventTitle?: string;
   /** The group whose lesson is in the way (not set for a make-up session). */
   groupId?: string;
   groupName?: string;
@@ -51,6 +54,18 @@ export function isOverlapping(startA: string, endA: string, startB: string, endB
   const bStart = timeToMinutes(startB);
   const bEnd = timeToMinutes(endB);
   return Math.max(aStart, bStart) < Math.min(aEnd, bEnd);
+}
+
+/**
+ * Whether an event holds a room during [start, end). An event with an end
+ * time holds it for that span. An older event without one (new ones in a
+ * room must give it) is known to hold the room only at its start: it clashes
+ * with what is going on at that minute, and nothing is guessed after it.
+ */
+export function eventOverlaps(e: { startTime: string; endTime: string | null }, start: string, end: string): boolean {
+  if (e.endTime) return isOverlapping(start, end, e.startTime, e.endTime);
+  const at = timeToMinutes(e.startTime);
+  return timeToMinutes(start) <= at && at < timeToMinutes(end);
 }
 
 // ISO weekday (1 = Monday … 7 = Sunday) of a "YYYY-MM-DD" calendar date.
@@ -240,6 +255,8 @@ export class ScheduleService {
       checkStudents?: boolean;
       /** Group lessons only: also report make-ups (a session's teacher or room, a student's own make-up). */
       checkMakeups?: boolean;
+      /** The event being edited, when it is the one asking. */
+      excludeEventId?: string;
     },
     db: Executor = this.db,
   ): Promise<ScheduleConflict[]> {
@@ -376,7 +393,45 @@ export class ScheduleService {
     }
 
     if (checkMakeups) conflicts.push(...(await this.makeupConflicts(db, tenantId, params)));
+    if (roomId) conflicts.push(...(await this.eventConflicts(db, tenantId, { roomId, dayOfWeek: dow ?? null, date: date ?? null, notBefore, startTime, endTime, excludeEventId: params.excludeEventId })));
     return conflicts;
+  }
+
+  /**
+   * Center events held in the room at this time: offline ones in that room
+   * (an online event, or one at an outside place, holds no room). A dated
+   * lesson is checked against that date; a weekly one against the events from
+   * the day it is first held on that fall on its weekday.
+   */
+  private async eventConflicts(
+    db: Executor,
+    tenantId: string,
+    p: { roomId: string; dayOfWeek: number | null; date: string | null; notBefore: string | null; startTime: string; endTime: string; excludeEventId?: string },
+  ): Promise<ScheduleConflict[]> {
+    if (!p.date && !p.dayOfWeek) return [];
+    const rows = await db.select({
+      id: centerEvents.id, title: centerEvents.title, date: centerEvents.date, startTime: centerEvents.startTime, endTime: centerEvents.endTime, roomName: rooms.name,
+    }).from(centerEvents)
+      .leftJoin(rooms, eq(rooms.id, centerEvents.roomId))
+      .where(and(
+        eq(centerEvents.tenantId, tenantId), eq(centerEvents.roomId, p.roomId), eq(centerEvents.format, 'OFFLINE'), isNull(centerEvents.deletedAt),
+        p.date ? eq(centerEvents.date, p.date) : p.notBefore ? gte(centerEvents.date, p.notBefore) : undefined,
+        p.excludeEventId ? ne(centerEvents.id, p.excludeEventId) : undefined,
+      ));
+    return rows
+      .filter((e) => (p.date || isoWeekday(e.date) === p.dayOfWeek) && eventOverlaps(e, p.startTime, p.endTime))
+      .map((e) => ({
+        type: 'EVENT' as const,
+        message: `"${e.roomName || 'Xona'}" bu vaqtda tadbir bilan band: ${e.title} (${e.date}, ${e.startTime}${e.endTime ? ` - ${e.endTime}` : ''})`,
+        conflictingScheduleId: null,
+        eventId: e.id,
+        eventTitle: e.title,
+        roomName: e.roomName ?? undefined,
+        startTime: e.startTime,
+        endTime: e.endTime ?? e.startTime,
+        date: e.date,
+        dayOfWeek: null,
+      }));
   }
 
   /**

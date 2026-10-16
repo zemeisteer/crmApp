@@ -4,6 +4,7 @@ import { RolesGuard } from '../common/roles.guard';
 import { TrialGuard } from '../common/trial.guard';
 import { Roles } from '../common/roles.decorator';
 import { CurrentUser } from '../common/current-user.decorator';
+import type { JwtPayload } from '../common/jwt.strategy';
 import { CenterEventsService } from './center-events.service';
 import { CreateCenterEventDto, ListCenterEventsDto, UpdateCenterEventDto } from './center-events.dto';
 
@@ -20,19 +21,14 @@ export class CenterEventsController {
 
   @Roles('ADMIN', 'MANAGER')
   @Post()
-  create(@CurrentUser('tenantId') tenantId: string, @CurrentUser('sub') userId: string, @Body() dto: CreateCenterEventDto) {
-    return this.service.create(tenantId, userId, dto);
+  create(@CurrentUser() user: JwtPayload, @Body() dto: CreateCenterEventDto) {
+    return this.service.create(user.tenantId!, user.sub, dto, { role: user.role, userId: user.sub, access: user.access });
   }
 
   @Roles('ADMIN', 'MANAGER')
   @Patch(':id')
-  update(
-    @CurrentUser('tenantId') tenantId: string,
-    @CurrentUser('sub') userId: string,
-    @Param('id') id: string,
-    @Body() dto: UpdateCenterEventDto,
-  ) {
-    return this.service.update(tenantId, userId, id, dto);
+  update(@CurrentUser() user: JwtPayload, @Param('id') id: string, @Body() dto: UpdateCenterEventDto) {
+    return this.service.update(user.tenantId!, user.sub, id, dto, { role: user.role, userId: user.sub, access: user.access });
   }
 
   @Roles('ADMIN', 'MANAGER')
