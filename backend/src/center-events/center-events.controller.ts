@@ -1,4 +1,5 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards, UseInterceptors } from '@nestjs/common';
+import { CalendarTouch } from '../lessons/calendar-touch.interceptor';
 import { JwtAuthGuard } from '../common/jwt-auth.guard';
 import { RolesGuard } from '../common/roles.guard';
 import { TrialGuard } from '../common/trial.guard';
@@ -10,6 +11,8 @@ import { CreateCenterEventDto, ListCenterEventsDto, UpdateCenterEventDto } from 
 
 @Controller('center-events')
 @UseGuards(JwtAuthGuard, RolesGuard, TrialGuard)
+// A saved, moved or deleted event reaches the calendars (ICS and Google) at the next sync.
+@UseInterceptors(CalendarTouch)
 export class CenterEventsController {
   constructor(private readonly service: CenterEventsService) {}
 

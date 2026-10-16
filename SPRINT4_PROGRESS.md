@@ -61,9 +61,19 @@ Working copy: `/home/user/crmApp-sprint4`, local branch `sprint4-local`. Nothing
   refresh keeps the earlier list and says it may be out of date. Browser test
   `e2e-browser/tests/schedule-events-states.spec.ts` (load fails -> retry -> save + failed refresh -> retry -> empty).
 
-## Next
+### 6. Center events in the calendars
+- `calendar-events.service.ts` adds center events to the one list ICS and Google use: UID `cev-<id>` (stable through
+  edits), start/end from the center's zone, location = room + place, or the link when online; description + link.
+  Audience on the server: STAFF -> office + teachers; STUDENTS -> students + parents (+ office); ALL -> everyone.
+  No end time: end = start (zero-length; RFC 5545 meaning of a missing DTEND; Google accepts it).
+- Deleted events leave the list, so the sync deletes them from Google; the sync's deterministic Google ids keep a
+  retry from making a copy. `CalendarTouch` on the events controller marks calendars due after each write.
+- Test: `test/calendar-center-events.e2e-spec.ts` (audience per scope; ICS times/UID/location/zero-length; Google:
+  lost answer + retry = one event, edit patches in place, delete removes). Calendar suites 52/52.
+- BLOCKED: a check against the real Google (no credentials / consent in this environment).
 
-6 calendar feed, 7 make-up booking time, 8 feature checks, 9 final validation and report.
+## Next
+ 7 make-up booking time, 8 feature checks, 9 final validation and report.
 
 ## Resume
 `cd /home/user/crmApp-sprint4 && git log --oneline origin/claude/dev-feedback..HEAD` shows the local commits;

@@ -2,7 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { and, eq, gte, inArray, isNull, lte } from 'drizzle-orm';
 import { DB, Database } from '../db/db.module';
 import {
-  branches, groups, makeupBookings, organizationMemberships, rooms, studentGuardians, studentPortalPins, students, teachers, tenants,
+  branches, centerEvents, groups, makeupBookings, organizationMemberships, rooms, studentGuardians, studentPortalPins, students, teachers, tenants,
 } from '../db/schema';
 import { DEFAULT_TIMEZONE, zonedParts, zonedTimeToUtc } from '../common/timezone';
 import { addDays, lessonOccurrences } from '../lessons/occurrences';
@@ -37,6 +37,14 @@ export function scopeForRole(role: string | undefined): CalendarScope | null {
  *  - PARENT: the same for each linked child (child's name in front);
  *  - CENTER: every lesson and make-up session of the center.
  * Cancelled lessons and make-ups stay in, marked cancelled.
+ *
+ * Center events (meetings, competitions...) by their audience, decided
+ * here on the server: STAFF - the office's and teachers' calendars; STUDENTS
+ * - students' and parents' (and the office's); ALL - everyone's. A staff
+ * meeting never reaches a cabinet's feed. A deleted event leaves every feed
+ * (and so Google). An event without an end time is given its start as its
+ * end: a zero-length event, what RFC 5545 makes of a DTSTART without DTEND,
+ * and what Google takes - its length is never guessed.
  */
 @Injectable()
 export class CalendarEventsService {
@@ -135,6 +143,18 @@ export class CalendarEventsService {
       if (b.roomId) roomIds.push(b.roomId);
     }
 
+    // Center events this calendar may show (see above).
+    const audiences = owner.scope === 'CENTER' ? ['STAFF', 'STUDENTS', 'ALL']
+      : owner.scope === 'TEACHER' ? ['STAFF', 'ALL']
+        : kids.length ? ['STUDENTS', 'ALL'] : [];
+    const centerEventRows = audiences.length
+      ? await this.db.select().from(centerEvents).where(and(
+          eq(centerEvents.tenantId, owner.tenantId), isNull(centerEvents.deletedAt),
+          gte(centerEvents.date, from), lte(centerEvents.date, to), inArray(centerEvents.audience, audiences),
+        ))
+      : [];
+    for (const e of centerEventRows) if (e.roomId) roomIds.push(e.roomId);
+
     const [groupRows, roomRows, teacherRows, branchRows] = await Promise.all([
       groupIds.length ? this.db.select({ id: groups.id, name: groups.name, subject: groups.subject }).from(groups).where(inArray(groups.id, [...new Set(groupIds)])) : [],
       roomIds.length ? this.db.select({ id: rooms.id, name: rooms.name }).from(rooms).where(inArray(rooms.id, [...new Set(roomIds)])) : [],
@@ -170,6 +190,18 @@ export class CalendarEventsService {
         uid: `mk-${b.id}`, date: b.date, start: at(b.date, b.startTime), end: at(b.date, b.endTime),
         title: `${prefix(b.studentId)}${what}${who}`, location: place(b.roomId, b.branchId),
         description: b.teacherId ? tName.get(b.teacherId) ?? null : null, cancelled: b.status === 'CANCELLED',
+      });
+    }
+    for (const e of centerEventRows) {
+      const start = at(e.date, e.startTime);
+      const online = e.format === 'ONLINE';
+      out.push({
+        // One per event: the same in every feed, through every edit.
+        uid: `cev-${e.id}`, date: e.date, start, end: e.endTime ? at(e.date, e.endTime) : start,
+        title: e.title,
+        location: online ? e.meetingUrl : [e.roomId && rName.get(e.roomId), e.location].filter(Boolean).join(', ') || null,
+        description: [e.description, online && e.meetingUrl].filter(Boolean).join('\n') || null,
+        cancelled: false,
       });
     }
     return out.sort((a, b) => a.start.getTime() - b.start.getTime() || a.uid.localeCompare(b.uid));
