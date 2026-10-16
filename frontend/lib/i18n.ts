@@ -1178,6 +1178,8 @@ export const dict = {
   "tatt.allPresent": { UZ: "Hammasi keldi", RU: "Все пришли", EN: "All present" },
   "tatt.noLessons": { UZ: "Bu kuni dars jadvalida dars yo'q", RU: "В этот день по расписанию нет уроков", EN: "No lessons on this day in the timetable" },
   "tatt.noTeacher": { UZ: "O'qituvchi biriktirilmagan", RU: "Учитель не назначен", EN: "No teacher assigned" },
+  "tatt.cancelled": { UZ: "Dars bekor qilingan: belgilanmaydi", RU: "Урок отменён: не отмечается", EN: "Lesson called off: not marked" },
+  "tatt.dayMark": { UZ: "Eski belgi butun kun uchun: {status} (qaysi darsga ekani noma'lum)", RU: "Старая отметка на весь день: {status} (неясно, к какому уроку)", EN: "Older mark for the whole day: {status} (which lesson is not known)" },
   "tatt.noSubstitute": { UZ: "O'rinbosar yo'q (dars o'tmadi)", RU: "Без замены (урок не проведён)", EN: "No substitute (lesson not held)" },
   "tatt.notePh": { UZ: "Izoh (masalan: kasal)", RU: "Комментарий (например: болеет)", EN: "Note (e.g. sick)" },
   "tatt.missed": { UZ: "qoldirilgan dars", RU: "пропущено уроков", EN: "missed lessons" },

@@ -11,6 +11,11 @@ class TeacherMarkEntryDto {
   @IsString()
   groupId!: string;
 
+  // Which lesson of that day (its timetable row); needed when the group has several.
+  @IsOptional()
+  @IsString()
+  scheduleId?: string | null;
+
   @IsIn(['PRESENT', 'LATE', 'ABSENT'])
   status!: 'PRESENT' | 'LATE' | 'ABSENT';
 

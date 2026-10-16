@@ -1723,20 +1723,25 @@ export interface TeacherPayrollItem {
 export type TeacherMark = "PRESENT" | "LATE" | "ABSENT";
 
 export interface TeacherLesson {
+  // The lesson's timetable row (null: a group without one, one lesson a day).
+  scheduleId: string | null;
   groupId: string;
   groupName: string;
   startTime: string;
   endTime: string;
+  cancelled: boolean;
   teacherId: string | null;
   teacherName: string | null;
   status: TeacherMark | null;
+  // An old mark for the group's whole day, on a day with several lessons: none's own.
+  dayStatus: TeacherMark | null;
   substituteTeacherId: string | null;
   note: string | null;
 }
 
 export const teacherAttendanceApi = {
   day: (date: string) => request<TeacherLesson[]>(`/teacher-attendance?date=${date}`),
-  mark: (date: string, entries: Array<{ groupId: string; status: TeacherMark; substituteTeacherId?: string | null; note?: string | null }>) =>
+  mark: (date: string, entries: Array<{ groupId: string; scheduleId?: string | null; status: TeacherMark; substituteTeacherId?: string | null; note?: string | null }>) =>
     request<TeacherLesson[]>("/teacher-attendance", { method: "POST", body: JSON.stringify({ date, entries }) }),
 };
 

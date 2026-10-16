@@ -914,6 +914,12 @@ export const teacherAttendance = pgTable('teacher_attendance', {
   groupId: text('group_id').notNull().references(() => groups.id, { onDelete: 'cascade' }),
   teacherId: text('teacher_id').notNull().references(() => teachers.id, { onDelete: 'cascade' }),
   date: text('date').notNull(), // YYYY-MM-DD
+  // The lesson the mark is for: its timetable row, like a student's mark (a
+  // plain key - the mark outlives the row) and the lesson's start then.
+  // NULL: the group's day as a whole (a group without timetable rows, or an
+  // old mark that could not be matched to one lesson).
+  scheduleId: text('schedule_id'),
+  startTime: text('start_time'),
   status: text('status').notNull(), // 'PRESENT' | 'LATE' | 'ABSENT'
   substituteTeacherId: text('substitute_teacher_id').references(() => teachers.id, { onDelete: 'set null' }),
   note: text('note'),
@@ -921,7 +927,8 @@ export const teacherAttendance = pgTable('teacher_attendance', {
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 }, (t) => ({
-  groupDateIdx: uniqueIndex('teacher_attendance_group_date_idx').on(t.groupId, t.date),
+  groupDateIdx: uniqueIndex('teacher_attendance_group_date_idx').on(t.groupId, t.date).where(sql`schedule_id IS NULL`),
+  lessonDateIdx: uniqueIndex('teacher_attendance_lesson_date_idx').on(t.scheduleId, t.date).where(sql`schedule_id IS NOT NULL`),
   tenantDateIdx: index('teacher_attendance_tenant_date_idx').on(t.tenantId, t.date),
 }));
 

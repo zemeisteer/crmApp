@@ -43,6 +43,8 @@ export interface TeacherPayrollItem {
     absentLessons: number;
     lateLessons: number;
     substitutedLessons: number;
+    // Marks that match no lesson held (called off or moved since): not counted.
+    unmatchedMarks: number;
     // Taken off for missed lessons (non per-lesson pay).
     deduction: number;
   };
@@ -152,7 +154,7 @@ export class SalaryService {
       const rate = teacher.salaryValue || 0;
       const teacherGroups = tenantGroups.filter((g) => g.teacherId === teacher.id);
       const teacherGroupIds = new Set(teacherGroups.map((g) => g.id));
-      const att = attendanceStats.get(teacher.id) ?? { planned: 0, absent: 0, late: 0, substituted: 0 };
+      const att = attendanceStats.get(teacher.id) ?? { planned: 0, absent: 0, late: 0, substituted: 0, unmatched: 0 };
       let calculatedSalary = 0;
       let lessonCount = 0;
       let groupRevenue = 0;
@@ -215,6 +217,7 @@ export class SalaryService {
           absentLessons: att.absent,
           lateLessons: att.late,
           substitutedLessons: att.substituted,
+          unmatchedMarks: att.unmatched,
           deduction,
         },
       });

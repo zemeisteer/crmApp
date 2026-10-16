@@ -30,6 +30,7 @@
     "db:check-drift": "tsx scripts/check-schema-drift.ts",
     "db:report-makeup-links": "node scripts/report-makeup-links.cjs",
     "db:report-attendance-links": "node scripts/report-attendance-links.cjs",
+    "db:report-teacher-attendance-links": "node scripts/report-teacher-attendance-links.cjs",
     "db:report-membership": "node scripts/report-membership.cjs",
     "db:backup": "bash scripts/backup.sh",
     "demo:seed": "node scripts/demo-seed.cjs"

@@ -22,8 +22,21 @@ Working copy: `/home/user/crmApp-sprint4`, local branch `sprint4-local`. Nothing
 - Tests: `test/center-events-rooms.e2e-spec.ts` (8 tests, incl. 4 parallel bookings -> 1x201 + 3x409, and an event
   and a lesson at once -> exactly one saved). Neighbouring suites: 63/63.
 
+### 2. Teacher attendance per lesson, and the payroll
+- `teacher_attendance` gets `schedule_id` + `start_time` (migration 0058): partial unique indexes like 0053/0055.
+  Backfill binds an old mark only when exactly one live timetable row gives a lesson that day; the rest stay
+  day-level and are listed by `npm run db:report-teacher-attendance-links` (read-only).
+- `day()` / `mark()` / `monthStats()` use `lessons/occurrences.ts`: one entry per lesson, the row's teacher (else the
+  group's), cancelled lessons listed but not markable, a batch is one transaction under `lockTimetable`,
+  `LESSON_AMBIGUOUS` when a two-lesson day is marked without naming the lesson.
+- Payroll: planned/absent/late/substituted all count lessons; marks of lessons called off or moved are `unmatchedMarks`
+  (not counted); an old day-level mark counts once. Salary payments are never rewritten (the payroll is computed live).
+- Frontend modal: one row per lesson, sends `scheduleId`, shows cancelled and old day marks.
+- Tests: `test/teacher-attendance-per-lesson.e2e-spec.ts` (5); upgrade from a 0057 database with old marks checked by
+  hand (bound/left/report/no drift). Unit 340/340 (schedule spec mock now answers the event query of item 1).
+
 ## Next
-2 teacher attendance per lesson, 3 custom fields in the transaction, 4 pricing race, 5 event dates + page states,
+ 3 custom fields in the transaction, 4 pricing race, 5 event dates + page states,
 6 calendar feed, 7 make-up booking time, 8 feature checks, 9 final validation and report.
 
 ## Resume
