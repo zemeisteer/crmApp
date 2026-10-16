@@ -381,7 +381,11 @@ export default function SchedulePage() {
   // Meetings, competitions and other events: this week's in the day
   // columns, the next eight weeks' in the list under the timetable.
   const canManageEvents = can(user, "events.manage");
-  const [events, setEvents] = useState<CenterEvent[]>([]);
+  // null: not loaded yet. A failed load is said so (with a retry), never
+  // shown as "no events"; a failed refresh keeps the list loaded before.
+  const [events, setEvents] = useState<CenterEvent[] | null>(null);
+  const [eventsLoading, setEventsLoading] = useState(true);
+  const [eventsError, setEventsError] = useState<string | null>(null);
   const [eventsVersion, setEventsVersion] = useState(0);
   const [eventForm, setEventForm] = useState<{ event: CenterEvent | null; date: string } | null>(null);
   const weekMonday = addDays(clock.today(), 1 - clock.weekday());
@@ -389,16 +393,22 @@ export default function SchedulePage() {
     let current = true;
     centerEventsApi
       .list(weekMonday, addDays(clock.today(), 56))
-      .then((list) => current && setEvents(list))
-      .catch(() => current && setEvents([]));
+      .then((list) => {
+        if (!current) return;
+        setEvents(list);
+        setEventsError(null);
+      })
+      .catch((err) => current && setEventsError(err instanceof ApiError ? err.message : t("common.errorGeneric")))
+      .finally(() => current && setEventsLoading(false));
     return () => {
       current = false;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [weekMonday, clock, eventsVersion]);
   const eventsByDay = useMemo(() => {
     const map: Record<number, CenterEvent[]> = {};
     const sunday = addDays(weekMonday, 6);
-    for (const ev of events) {
+    for (const ev of events ?? []) {
       if (ev.date < weekMonday || ev.date > sunday) continue;
       if (filterRoom && ev.roomId !== filterRoom) continue;
       const d = new Date(`${ev.date}T00:00:00Z`).getUTCDay() || 7;
@@ -406,7 +416,7 @@ export default function SchedulePage() {
     }
     return map;
   }, [events, weekMonday, filterRoom]);
-  const upcomingEvents = events.filter((ev) => ev.date >= clock.today());
+  const upcomingEvents = (events ?? []).filter((ev) => ev.date >= clock.today());
 
   const makeupsByDay = useMemo(() => {
     const map: Record<number, MakeupRosterItem[]> = {};
@@ -871,7 +881,19 @@ export default function SchedulePage() {
           <h2 id="upcoming-events" style={{ fontSize: 16, fontWeight: 800, margin: 0 }}>{t("ev.upcoming")}</h2>
           <span style={{ fontSize: 12.5, color: "#686B75" }}>{t("ev.upcomingHint")}</span>
         </div>
-        {upcomingEvents.length === 0 ? (
+        {eventsError && (
+          <div role="alert" style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", background: "#FDEBEC", color: "#B23A47", fontSize: 13, fontWeight: 600, padding: "10px 12px", borderRadius: 10, marginBottom: 10 }}>
+            <span style={{ flex: 1, minWidth: 180 }}>
+              {events === null ? t("ev.loadFailed") : t("ev.refreshFailed")} {eventsError}
+            </span>
+            <button type="button" onClick={() => { setEventsLoading(true); setEventsVersion((v) => v + 1); }} disabled={eventsLoading} style={{ background: "#fff", color: "#B23A47", border: "1px solid #F3C4C9", fontSize: 12.5, fontWeight: 700, padding: "6px 12px", borderRadius: 8, cursor: eventsLoading ? "wait" : "pointer" }}>
+              {eventsLoading ? t("common.loading") : t("ev.retry")}
+            </button>
+          </div>
+        )}
+        {events === null ? (
+          !eventsError && <div role="status" style={{ fontSize: 13, color: "#686B75" }}>{t("common.loading")}</div>
+        ) : upcomingEvents.length === 0 ? (
           <div style={{ fontSize: 13, color: "#686B75" }}>{canManageEvents ? t("ev.noneManage") : t("ev.none")}</div>
         ) : (
           <div style={{ display: "grid", gap: 8 }}>

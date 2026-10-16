@@ -161,6 +161,21 @@ describe('Center events and room bookings (e2e)', () => {
     expect((await http().patch(`/api/center-events/${ev.id}`).set(bearer(owner)).send({ startTime: '15:30', endTime: '16:30' }).expect(409)).body.conflicts[0].type).toBe('MAKEUP');
   });
 
+  it('a date that does not exist is refused when creating, editing and listing; 29 February only in a leap year', async () => {
+    for (const bad of ['2026-02-30', '2026-13-01', '2026-00-10', '2026-04-31', '2027-02-29', '2026-1-05']) {
+      await post(event({ date: bad, location: 'Park' })).expect(400);
+      await http().get(`/api/center-events?from=${bad}&to=2026-12-31`).set(bearer(owner)).expect(400);
+      await http().get(`/api/center-events?from=2026-01-01&to=${bad}`).set(bearer(owner)).expect(400);
+    }
+    const leap = (await post(event({ date: '2028-02-29', location: 'Park' })).expect(201)).body;
+    expect(leap.date).toBe('2028-02-29');
+    expect((await http().get('/api/center-events?from=2028-02-29&to=2028-02-29').set(bearer(owner)).expect(200)).body.map((e: { id: string }) => e.id)).toContain(leap.id);
+    for (const bad of ['2026-02-30', '2026-13-01', '2026-00-10']) {
+      await http().patch(`/api/center-events/${leap.id}`).set(bearer(owner)).send({ date: bad }).expect(400);
+    }
+    expect((await http().get('/api/center-events?from=2028-02-29&to=2028-02-29').set(bearer(owner)).expect(200)).body.find((e: { id: string }) => e.id === leap.id).date).toBe('2028-02-29');
+  });
+
   it('two bookings of one room at one time sent together: one is saved, the other told why', async () => {
     const day = next(1, 4);
     const same = event({ roomId: studio, date: day, startTime: '12:00', endTime: '13:00' });

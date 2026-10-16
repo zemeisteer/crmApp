@@ -53,8 +53,16 @@ Working copy: `/home/user/crmApp-sprint4`, local branch `sprint4-local`. Nothing
   late and in reverse order; typing meanwhile, cleared text, closed window, save at once. Passes twice; with the old
   page it fails at "typed meanwhile" (checked).
 
+### 5. Event dates and the timetable's event states
+- Server: create, update and list check dates with the strict `isDate` (lessons/occurrences.ts, round trip, no
+  Date.UTC normalisation). 2026-02-30, 2026-13-01, 2026-00-10, 2026-04-31, 2027-02-29 and 2026-1-05 refused;
+  2028-02-29 accepted (test added to `center-events-rooms.e2e-spec.ts`).
+- Page: `events` is null until loaded; a failed load shows an error with "Qayta urinish" (never "no events"); a failed
+  refresh keeps the earlier list and says it may be out of date. Browser test
+  `e2e-browser/tests/schedule-events-states.spec.ts` (load fails -> retry -> save + failed refresh -> retry -> empty).
+
 ## Next
- 5 event dates + page states,
+
 6 calendar feed, 7 make-up booking time, 8 feature checks, 9 final validation and report.
 
 ## Resume
