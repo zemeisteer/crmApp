@@ -351,7 +351,10 @@ describe('Lesson identity, one write rule, group removal, credit basis (e2e)', (
       const sOpen = await student('del-open', [home]);
       const cPast = await credit(sPast);
       const cOpen = await credit(sOpen);
-      const past = (await book(cPast, { mode: 'GROUP_LESSON', targetGroupId: d, date: last(3) }).expect(201)).body;
+      // Entered afterwards: a correction of the record (the owner may; reception may not).
+      await book(cPast, { mode: 'GROUP_LESSON', targetGroupId: d, date: last(3), historical: true, reason: 'Kech kiritildi' }).expect(403);
+      const past = (await http().post(`/api/makeups/credits/${cPast}/book`).set(bearer(owner))
+        .send({ mode: 'GROUP_LESSON', targetGroupId: d, date: last(3), historical: true, reason: 'Kech kiritildi' }).expect(201)).body;
       await http().post(`/api/makeups/bookings/${past.id}/attendance`).set(bearer(owner)).send({ status: 'ATTENDED' }).expect(201);
       await book(cOpen, { mode: 'GROUP_LESSON', targetGroupId: d, date: next(3) }).expect(201);
       expect(eventOf(await feed(), `les-${row.id}-${next(3)}`)).toBeDefined();

@@ -1,5 +1,5 @@
 import { Body, Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
-import { IsIn, IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsIn, IsOptional, IsString, MaxLength, IsBoolean } from 'class-validator';
 import { JwtAuthGuard } from '../common/jwt-auth.guard';
 import { RolesGuard } from '../common/roles.guard';
 import { Roles } from '../common/roles.decorator';
@@ -29,6 +29,9 @@ export class BookMakeupDto {
   @IsOptional() @IsString() teacherId?: string;
   @IsOptional() @IsString() roomId?: string;
   @IsOptional() @IsString() @MaxLength(500) note?: string;
+  // A correction of the record: a lesson that has already begun (makeups.correct, with a reason).
+  @IsOptional() @IsBoolean() historical?: boolean;
+  @IsOptional() @IsString() @MaxLength(500) reason?: string;
 }
 
 export class MarkMakeupDto {
@@ -77,8 +80,8 @@ export class MakeupsController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN', 'MANAGER', 'RECEPTIONIST')
   @Post('makeups/credits/:id/book')
-  book(@CurrentUser('tenantId') tenantId: string, @CurrentUser('sub') userId: string, @Param('id') id: string, @Body() dto: BookMakeupDto) {
-    return this.service.book(tenantId, userId, id, dto);
+  book(@CurrentUser() user: JwtPayload, @Param('id') id: string, @Body() dto: BookMakeupDto) {
+    return this.service.book(user.tenantId!, user.sub, id, dto, { role: user.role, access: user.access });
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)

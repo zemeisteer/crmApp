@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { and, desc, eq, gte, inArray, isNull, lte, ne, or, sql } from 'drizzle-orm';
 import { AuditService } from '../audit/audit.service';
 import { DB, Database } from '../db/db.module';
@@ -8,7 +8,8 @@ import {
 import { countOccupiedSeats } from '../common/seats';
 import { teacherGroupIds } from '../common/teacher-scope';
 import { lockTimetable } from '../common/timetable-lock';
-import { DEFAULT_TIMEZONE, isValidTimeZone, zonedParts } from '../common/timezone';
+import { DEFAULT_TIMEZONE, isValidTimeZone, zonedParts, zonedTimeToUtc } from '../common/timezone';
+import { effectiveAccess } from '../access/catalog';
 import { absenceCounts, cancelledLessonCounts } from './eligibility';
 import { staysByMember, staysOf } from '../enrollments/membership';
 import { isOverlapping, ScheduleService } from '../schedule/schedule.service';
@@ -36,6 +37,15 @@ export interface BookDto {
   teacherId?: string;
   roomId?: string;
   note?: string;
+  /**
+   * A correction of the record: the make-up was held in a lesson that has
+   * already begun (or is over) and is entered afterwards. Needs the
+   * makeups.correct access and a reason; audited as such. Without it a
+   * booking is for a lesson that has not begun yet - checked at the moment
+   * of saving, in the center's time zone, for both modes.
+   */
+  historical?: boolean;
+  reason?: string;
 }
 
 /**
@@ -297,8 +307,16 @@ export class MakeupsService {
 
   // ---- bookings -----------------------------------------------------------
 
-  async book(tenantId: string, userId: string, creditId: string, dto: BookDto) {
+  async book(tenantId: string, userId: string, creditId: string, dto: BookDto, viewer?: { role?: string; access?: string[] | null }) {
     if (!isDate(dto.date)) throw new BadRequestException("Sana noto'g'ri (YYYY-MM-DD)");
+    const historical = dto.historical === true;
+    const reason = dto.reason?.trim() ?? '';
+    if (historical) {
+      if (!viewer?.role || !effectiveAccess(viewer.role, viewer.access).includes('makeups.correct')) {
+        throw new ForbiddenException({ code: 'CORRECTION_NOT_ALLOWED', message: "O'tgan darsga qoplashni yozish uchun ruxsat yo'q" });
+      }
+      if (reason.length < 5) throw new BadRequestException({ code: 'REASON_REQUIRED', message: "O'tgan darsga yozish sababini kiriting" });
+    }
     const today = await this.today(tenantId);
     if (dto.date < addDays(today, -BOOK_PAST_DAYS) || dto.date > addDays(today, BOOK_AHEAD_DAYS)) {
       throw new BadRequestException(`Sana ${BOOK_PAST_DAYS} kun oldindan ${BOOK_AHEAD_DAYS} kun keyingacha bo'lishi kerak`);
@@ -348,6 +366,17 @@ export class MakeupsService {
         slot = { targetGroupId: null, targetScheduleId: null, startTime: dto.startTime, endTime: dto.endTime, teacherId: t.id, roomId: dto.roomId ?? null, branchId };
       } else {
         throw new BadRequestException("Turi noto'g'ri");
+      }
+
+      // Has the lesson begun? Now, in the center's zone - not when the form was opened.
+      const [y, mo, d] = dto.date.split('-').map(Number);
+      const [h, mi] = slot.startTime.split(':').map(Number);
+      const begun = zonedTimeToUtc(y, mo, d, h, mi, await this.zone(tx, tenantId)).getTime() <= Date.now();
+      if (begun && !historical) {
+        throw new ConflictException({ code: 'LESSON_STARTED', message: "Dars boshlanib bo'lgan: unga qoplash yozib bo'lmaydi. Boshqa darsni tanlang" });
+      }
+      if (!begun && historical) {
+        throw new BadRequestException({ code: 'NOT_HISTORICAL', message: "Dars hali boshlanmagan: oddiy yozuv qiling" });
       }
 
       // Same lock order as lead trials (teacher, room), then the lesson and the student.
@@ -408,7 +437,10 @@ export class MakeupsService {
       if (isUnique(err, 'makeup_bookings_one_live_per_credit')) throw new ConflictException({ code: 'CREDIT_NOT_OPEN', message: 'Kredit band yoki ishlatilgan' });
       throw err;
     });
-    this.audit.log({ tenantId, userId, action: 'makeup.book', entityType: 'makeup_booking', entityId: booking.id, meta: { creditId, mode: dto.mode, date: dto.date } });
+    this.audit.log({
+      tenantId, userId, action: historical ? 'makeup.book_historical' : 'makeup.book', entityType: 'makeup_booking', entityId: booking.id,
+      meta: { creditId, mode: dto.mode, date: dto.date, ...(historical ? { reason } : {}) },
+    });
     await this.changes.touch(tenantId);
     return booking;
   }

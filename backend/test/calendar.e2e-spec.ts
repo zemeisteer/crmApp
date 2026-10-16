@@ -161,7 +161,7 @@ describe('Calendar: subscriptions and Google sync (e2e)', () => {
     expect(body).toContain('SUMMARY:Cal G1');
     expect(body).not.toContain('Cal G2'); // another teacher's group
     expect(body).not.toContain('Cal Student');
-    expect(body).not.toContain('777');
+    expect(body).not.toMatch(/777[\s,.]?000/); // the group's price (a bare "777" can occur inside a random id)
     // Stable: the same events on a second fetch.
     expect((await ics(t1Url)).replace(/DTSTAMP:\d+T\d+Z/g, '')).toBe(body.replace(/DTSTAMP:\d+T\d+Z/g, ''));
   });

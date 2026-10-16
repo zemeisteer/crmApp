@@ -228,7 +228,7 @@ describe('Attendance per lesson, and the credits that rest on it (e2e)', () => {
 
     // Used: the make-up happened; a later correction leaves the credit and the booking as history.
     await http().post(`/api/makeups/bookings/${booking.id}/cancel`).set(bearer(owner)).expect(201);
-    const past = (await http().post(`/api/makeups/credits/${ce.id}/book`).set(bearer(owner)).send({ mode: 'GROUP_LESSON', targetGroupId: target, date: last(1) }).expect(201)).body;
+    const past = (await http().post(`/api/makeups/credits/${ce.id}/book`).set(bearer(owner)).send({ mode: 'GROUP_LESSON', targetGroupId: target, date: last(1), historical: true, reason: "O'tgan darsda qatnashgan, kech yozildi" }).expect(201)).body;
     await http().post(`/api/makeups/bookings/${past.id}/attendance`).set(bearer(owner)).send({ status: 'ATTENDED' }).expect(201);
     await mark(owner, { groupId: g, date, scheduleId: evening, entries: [{ studentId: s2, status: 'PRESENT' }] }).expect(201);
     expect(await state(ce.id)).toMatchObject({ status: 'USED' });

@@ -72,8 +72,21 @@ Working copy: `/home/user/crmApp-sprint4`, local branch `sprint4-local`. Nothing
   lost answer + retry = one event, edit patches in place, delete removes). Calendar suites 52/52.
 - BLOCKED: a check against the real Google (no credentials / consent in this environment).
 
+### 7. Make-up booking time
+- Server (`makeups.service.ts book()`): an ordinary booking is for a lesson that has not begun - checked inside the
+  transaction at the moment of saving, in the center's zone, for GROUP_LESSON and SESSION alike (409 `LESSON_STARTED`).
+- A correction afterwards: `historical: true` + `reason` (>= 5 chars), access key `makeups.correct` (template: manager;
+  owner/admin always), 30 days back at most, never for a lesson still to come (`NOT_HISTORICAL`); audited as
+  `makeup.book_historical` with the reason. Expiry, seats, teacher/room/student clashes and the locks are unchanged.
+- Form: re-checks the picked lesson's start on Save.
+- Tests: `test/makeups-booking-time.e2e-spec.ts` (begun refused in both modes; lesson begins while the form is open -
+  server clock moved; correction: 403 / 400 / 400 / 201 + audit). Two existing tests booked past lessons: now explicit
+  corrections (`attendance-per-lesson`, `lesson-identity` - reception 403, owner 201). Browser `calendar.spec.ts`
+  booked today's 15:00 lesson (fails after 15:00): now tomorrow's. `calendar.e2e-spec.ts` "no money" check now looks for
+  the price (777 000), not any "777" (could appear in a random id).
+
 ## Next
- 7 make-up booking time, 8 feature checks, 9 final validation and report.
+ 8 feature checks, 9 final validation and report.
 
 ## Resume
 `cd /home/user/crmApp-sprint4 && git log --oneline origin/claude/dev-feedback..HEAD` shows the local commits;

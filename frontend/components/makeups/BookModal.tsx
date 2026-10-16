@@ -137,6 +137,12 @@ export default function BookModal({ credit, onClose, onBooked }: { credit: Makeu
       if (!validTimeRange(startTime, endTime)) return setError(t("mk.badTime"));
       if (!teacherId) return setError(t("mk.pickTeacher"));
     }
+    // The lesson may have begun while the form was open: the server refuses
+    // it then too, this only says so before asking.
+    const w = centerWallClock(new Date(), clock.tz);
+    const now = w ? `${clock.today()}|${String(w.getHours()).padStart(2, "0")}:${String(w.getMinutes()).padStart(2, "0")}` : "";
+    const [pickDate, pickStart] = mode === "GROUP_LESSON" ? lessonDate.split("|") : [date, startTime];
+    if (now && `${pickDate}|${pickStart}` <= now) return setError(t("mk.lessonStarted"));
     setBusy(true);
     try {
       if (mode === "GROUP_LESSON") {

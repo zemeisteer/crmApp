@@ -89,11 +89,12 @@ test("the cabinet shows the child's make-ups and makes the child's own calendar 
     d.setUTCDate(d.getUTCDate() + n);
     return d.toISOString().slice(0, 10);
   };
-  // Two missed lessons: one credit booked into today's lesson of another group, one still open.
+  // Two missed lessons: one credit booked into tomorrow's lesson of another group (a lesson
+  // that has begun cannot be booked), one still open.
   for (const n of [-2, -3]) await api('POST', '/attendance', { token: a.token, body: { groupId: own.id, date: day(n), entries: [{ studentId: kid.id, status: 'ABSENT' }] } });
   const booked = await api('POST', '/makeups/credits', { token: a.token, body: { studentId: kid.id, groupId: own.id, date: day(-2), reason: 'ABSENT' } });
   await api('POST', '/makeups/credits', { token: a.token, body: { studentId: kid.id, groupId: own.id, date: day(-3), reason: 'ABSENT' } });
-  await api('POST', `/makeups/credits/${booked.id}/book`, { token: a.token, body: { mode: 'GROUP_LESSON', targetGroupId: host.id, date: day(0) } });
+  await api('POST', `/makeups/credits/${booked.id}/book`, { token: a.token, body: { mode: 'GROUP_LESSON', targetGroupId: host.id, date: day(1) } });
 
   await page.goto(centerUrl(a.sub, '/portal'));
   await page.getByRole('textbox').first().pressSequentially('941112244');

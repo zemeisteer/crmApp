@@ -70,6 +70,10 @@ export const ACCESS_CATALOG: AccessKey[] = [
     key: 'makeups.manage', area: 'teaching', template: [M, R],
     routes: ['POST /api/makeups/credits', 'POST /api/makeups/credits/:id/cancel', 'POST /api/makeups/credits/:id/reinstate', 'POST /api/makeups/credits/:id/book', 'POST /api/makeups/bookings/:id/cancel'],
   },
+  // Booking a make-up into a lesson that has already begun (a correction of
+  // the record, with a reason; audited). Not a route of its own: a flag on
+  // POST /api/makeups/credits/:id/book, checked by the service.
+  { key: 'makeups.correct', area: 'teaching', template: [M], routes: [] },
   { key: 'makeups.attend', area: 'teaching', template: [M, R, T], routes: ['GET /api/makeups/roster', 'POST /api/makeups/bookings/:id/attendance'] },
   { key: 'schedule.edit', area: 'teaching', template: [T], routes: ['POST /api/schedule', 'PATCH /api/schedule/:id'] },
   { key: 'schedule.delete', area: 'teaching', template: [], routes: ['DELETE /api/schedule/:id'] },

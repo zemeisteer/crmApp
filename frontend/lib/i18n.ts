@@ -3856,6 +3856,7 @@ export const dict = {
   "mk.pickGroupAndDate": { UZ: "Guruh va dars kunini tanlang.", RU: "Выберите группу и дату урока.", EN: "Choose a group and a lesson date." },
   "mk.pickDate": { UZ: "Sanani tanlang.", RU: "Выберите дату.", EN: "Choose a date." },
   "mk.badTime": { UZ: "Vaqtni tanlang: tugashi boshlanishidan keyin bo'lsin.", RU: "Укажите время: конец должен быть позже начала.", EN: "Set the time: the end must be after the start." },
+  "mk.lessonStarted": { UZ: "Bu dars boshlanib bo'lgan: boshqa darsni tanlang", RU: "Этот урок уже начался: выберите другой", EN: "This lesson has already begun: pick another one" },
   "mk.pickTeacher": { UZ: "O'qituvchini tanlang.", RU: "Выберите преподавателя.", EN: "Choose a teacher." },
   "mk.bookConfirm": { UZ: "Yozish", RU: "Записать", EN: "Book" },
   "mk.booked": { UZ: "{name} qoplash darsiga yozildi.", RU: "{name} записан(а) на отработку.", EN: "{name} is booked for a make-up." },
