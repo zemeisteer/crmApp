@@ -30,9 +30,13 @@ test('a missed lesson becomes a credit, is booked into another group, attended a
   const t2 = await api('POST', '/teachers', { token: a.token, body: { fullName: 'Host Teacher', subject: 'English' } });
   // Lessons every day, so the test does not depend on the weekday it runs on.
   const origin = await api('POST', '/groups', { token: a.token, body: { name: 'Origin Morning', subject: 'English', teacherId: t1.id, scheduleDays: EVERY_DAY, startTime: '09:00', endTime: '10:00', maxStudents: 10 } });
-  const host = await api('POST', '/groups', { token: a.token, body: { name: 'Host Evening', subject: 'English', teacherId: t2.id, scheduleDays: EVERY_DAY, startTime: '15:00', endTime: '16:00', maxStudents: 10 } });
+  const host = await api('POST', '/groups', { token: a.token, body: { name: 'Host Evening', subject: 'English', teacherId: t2.id, scheduleDays: EVERY_DAY, startTime: '23:00', endTime: '23:50', maxStudents: 10 } });
   const kid = await api('POST', '/students', { token: a.token, body: { fullName: 'Makeup Student', groupIds: [origin.id] } });
   const today = centerDay();
+  // The host group meets late (23:00), so its lesson today has not begun - a lesson that
+  // has begun cannot be booked. In the last hour of the day the first one is tomorrow's.
+  const tashkentNow = new Date(Date.now() + 5 * 3_600_000).toISOString().slice(11, 16);
+  const lessonDay = tashkentNow < '23:00' ? today : addDays(today, 1);
   const missed = addDays(today, -2);
   await api('POST', '/attendance', { token: a.token, body: { groupId: origin.id, date: missed, entries: [{ studentId: kid.id, status: 'ABSENT' }] } });
 
@@ -85,17 +89,17 @@ test('a missed lesson becomes a credit, is booked into another group, attended a
   // The student's own group is not offered.
   await expect(page.getByRole('option', { name: /Origin Morning/ })).toHaveCount(0);
   await page.getByRole('option', { name: /Host Evening/ }).click();
-  // Only dates on which the group has a lesson; the first is today.
+  // Only dates on which the group has a lesson not yet begun; the first is lessonDay.
   await book.getByRole('button', { name: 'Dars kuni', exact: true }).click();
   await page.getByRole('option').first().click();
-  await expect(book.getByRole('button', { name: 'Dars kuni', exact: true })).toContainText('15:00–16:00');
+  await expect(book.getByRole('button', { name: 'Dars kuni', exact: true })).toContainText('23:00–23:50');
   await book.getByRole('button', { name: 'Yozish', exact: true }).click();
   await expect(book).toHaveCount(0);
   await expect(creditRow).toContainText('Yozilgan');
   await expect(creditRow).toContainText('Host Evening');
   credits = await api<Credit[]>('GET', '/makeups/credits', { token: a.token });
   expect(credits[0].status).toBe('BOOKED');
-  expect(credits[0].bookings[0]).toMatchObject({ status: 'BOOKED', targetGroupId: host.id, date: today, startTime: '15:00' });
+  expect(credits[0].bookings[0]).toMatchObject({ status: 'BOOKED', targetGroupId: host.id, date: lessonDay, startTime: '23:00' });
 
   // --- Roster: mark attended -----------------------------------------------
   await page.getByRole('tab', { name: 'Qoplash jadvali' }).click();
@@ -111,9 +115,9 @@ test('a missed lesson becomes a credit, is booked into another group, attended a
   await page.goto(centerUrl(a.sub, '/schedule'));
   const onTimetable = page.getByTestId('schedule-makeup').filter({ hasText: 'Makeup Student' });
   await expect(onTimetable).toHaveCount(1);
-  await expect(onTimetable).toContainText('15:00–16:00');
+  await expect(onTimetable).toContainText('23:00–23:50');
   await expect(onTimetable).toContainText('Host Evening');
-  await expect(onTimetable).toContainText(today);
+  await expect(onTimetable).toContainText(lessonDay);
 
   // --- After a fresh load the credit is used -----------------------------
   await page.goto(centerUrl(a.sub, '/makeups'));

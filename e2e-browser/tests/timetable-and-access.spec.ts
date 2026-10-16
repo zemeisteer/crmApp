@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { addStaff, api, centerUrl, cleanUpStagingCenters, expectCenterDashboard, loginOnMainSite, newCenter, PASSWORD, pickTime, run } from './support';
+import { addStaff, api, authSlot, centerUrl, cleanUpStagingCenters, expectCenterDashboard, loginOnMainSite, newCenter, PASSWORD, pickTime, run } from './support';
 
 // The timetable page moves a lesson by its button, by dragging and back
 // again with Undo, and says what is in the way when the day is taken; the
@@ -139,6 +139,8 @@ test('chat: a tab left open stops when the right to chat is taken away, and the 
   await page.reload();
   await expect(page.locator('.sidebar').getByRole('link', { name: 'Xabarlar' })).toHaveCount(0);
   // And the server refuses the account's own requests (the password is the run's synthetic one).
+  // Through the sign-in pacer like every other sign-in of the run (the server allows 8 a minute).
+  await authSlot('login');
   const token = (await api('POST', '/auth/login', { body: { email, password: PASSWORD } }).catch(() => null))?.accessToken as string | undefined;
   if (token) {
     const res = await fetch(`http://127.0.0.1:${process.env.BROWSER_API_PORT || 4300}/api/chat/conversations`, { headers: { Authorization: `Bearer ${token}` } });
