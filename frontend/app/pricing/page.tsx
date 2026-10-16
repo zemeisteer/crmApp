@@ -193,66 +193,106 @@ function SuperadminPlans() {
   const [popular, setPopular] = useState(false);
   const [active, setActive] = useState(true);
   const [saving, setSaving] = useState(false);
-  // The Russian and English lists are translated from the Uzbek one: by the
-  // button, or on save when either is still empty.
+  // The Russian and English lists are translated from the Uzbek one: a
+  // moment after it is typed, by the button, or on save when either is
+  // still empty or was translated from an older Uzbek text.
   const [translating, setTranslating] = useState(false);
   const [translateNote, setTranslateNote] = useState<{ text: string; error?: boolean } | null>(null);
-  // A list the admin wrote by hand is theirs: the automatic translation
-  // fills only the ones not typed into (the button still redoes both).
-  const [ruByHand, setRuByHand] = useState(false);
-  const [enByHand, setEnByHand] = useState(false);
-  const autoFor = useRef("");
+  // What an answer is checked against when it comes back - read then, not
+  // when the request left: the edit window it was asked from (a new number
+  // each time the window opens or closes), the Uzbek text it was for, and
+  // whether the admin has typed into a list since (theirs: never replaced,
+  // except by the button). `ruFor`/`enFor`: the Uzbek text each list was
+  // translated from ("" once typed by hand).
+  const session = useRef(0);
+  const uzText = useRef("");
+  const byHand = useRef({ ru: false, en: false });
+  const translatedFor = useRef({ ru: "", en: "" });
+  const pending = useRef(0);
+
+  const setUz = (v: string) => {
+    uzText.current = v;
+    setFeatures(v);
+  };
+  const typeRu = (v: string) => {
+    byHand.current.ru = true;
+    translatedFor.current.ru = "";
+    setFeaturesRu(v);
+  };
+  const typeEn = (v: string) => {
+    byHand.current.en = true;
+    translatedFor.current.en = "";
+    setFeaturesEn(v);
+  };
+
+  /**
+   * Asks for the translation of `text` and puts it into the lists that are
+   * still the translator's - if the window is the same one and the Uzbek text
+   * is still `text` when the answer comes. Answers that come back late or out
+   * of order change nothing. Returns what was applied (null: dropped).
+   */
+  async function requestTranslation(text: string): Promise<{ ru: string; en: string } | null> {
+    const asked = session.current;
+    const ticket = ++pending.current;
+    setTranslating(true);
+    try {
+      const res = await plansApi.translate(text);
+      if (session.current !== asked || uzText.current !== text) return null;
+      if (!byHand.current.ru) {
+        setFeaturesRu(res.featuresRu);
+        translatedFor.current.ru = text;
+      }
+      if (!byHand.current.en) {
+        setFeaturesEn(res.featuresEn);
+        translatedFor.current.en = text;
+      }
+      setTranslateNote({ text: t(res.provider === "ai" ? "pr.translatedBy.ai" : "pr.translatedBy.google") });
+      return { ru: res.featuresRu, en: res.featuresEn };
+    } catch (err) {
+      if (session.current === asked && uzText.current === text) setTranslateNote({ text: err instanceof ApiError ? err.message : t("common.errorGeneric"), error: true });
+      throw err;
+    } finally {
+      if (ticket === pending.current) setTranslating(false);
+    }
+  }
 
   // A moment after the Uzbek list stops changing, the other two follow it.
   useEffect(() => {
-    if (!editOpen || !features.trim() || (ruByHand && enByHand)) return;
+    if (!editOpen || !features.trim() || (byHand.current.ru && byHand.current.en)) return;
     const text = features;
     const timer = setTimeout(() => {
-      autoFor.current = text;
-      setTranslating(true);
-      plansApi
-        .translate(text)
-        .then((res) => {
-          if (autoFor.current !== text) return;
-          if (!ruByHand) setFeaturesRu(res.featuresRu);
-          if (!enByHand) setFeaturesEn(res.featuresEn);
-          setTranslateNote({ text: t(res.provider === "ai" ? "pr.translatedBy.ai" : "pr.translatedBy.google") });
-        })
-        .catch((err) => {
-          if (autoFor.current === text) setTranslateNote({ text: err instanceof ApiError ? err.message : t("common.errorGeneric"), error: true });
-        })
-        .finally(() => {
-          if (autoFor.current === text) setTranslating(false);
-        });
+      requestTranslation(text).catch(() => undefined);
     }, 1200);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [features, editOpen]);
 
-  async function translateFeatures(onlyEmpty: boolean): Promise<{ ru: string; en: string }> {
-    const res = await plansApi.translate(features);
-    const ru = onlyEmpty && featuresRu.trim() ? featuresRu : res.featuresRu;
-    const en = onlyEmpty && featuresEn.trim() ? featuresEn : res.featuresEn;
-    setFeaturesRu(ru);
-    setFeaturesEn(en);
-    setTranslateNote({ text: t(res.provider === "ai" ? "pr.translatedBy.ai" : "pr.translatedBy.google") });
-    return { ru, en };
-  }
-
   async function onTranslate() {
     if (!features.trim()) return setTranslateNote({ text: t("pr.translateFirst"), error: true });
-    autoFor.current = "";
-    setRuByHand(false);
-    setEnByHand(false);
-    setTranslating(true);
+    // The button redoes both lists, typed or not.
+    byHand.current = { ru: false, en: false };
     setTranslateNote(null);
-    try {
-      await translateFeatures(false);
-    } catch (err) {
-      setTranslateNote({ text: err instanceof ApiError ? err.message : t("common.errorGeneric"), error: true });
-    } finally {
-      setTranslating(false);
-    }
+    await requestTranslation(features).catch(() => undefined);
+  }
+
+  /** A new edit window: answers asked from the previous one are dropped. */
+  function begin(uz: string, ru: string, en: string, ruTyped: boolean, enTyped: boolean) {
+    session.current += 1;
+    uzText.current = uz;
+    byHand.current = { ru: ruTyped, en: enTyped };
+    // Saved translations belong to the saved Uzbek text.
+    translatedFor.current = { ru: ru.trim() ? uz : "", en: en.trim() ? uz : "" };
+    setFeatures(uz);
+    setFeaturesRu(ru);
+    setFeaturesEn(en);
+    setTranslating(false);
+    setTranslateNote(null);
+  }
+
+  function closeEdit() {
+    session.current += 1;
+    setTranslating(false);
+    setEditOpen(false);
   }
 
   function load() {
@@ -267,12 +307,7 @@ function SuperadminPlans() {
     setKey("");
     setName("");
     setPrice("");
-    setFeatures("");
-    setFeaturesRu("");
-    setFeaturesEn("");
-    setTranslateNote(null);
-    setRuByHand(false);
-    setEnByHand(false);
+    begin("", "", "", false, false);
     setPopular(false);
     setActive(true);
     setEditOpen(true);
@@ -283,13 +318,8 @@ function SuperadminPlans() {
     setKey(p.key);
     setName(p.name);
     setPrice(String(p.price));
-    setFeatures(p.features);
-    setFeaturesRu(p.featuresRu ?? "");
-    setFeaturesEn(p.featuresEn ?? "");
-    setTranslateNote(null);
     // Saved translations stay unless the button is pressed.
-    setRuByHand(!!p.featuresRu?.trim());
-    setEnByHand(!!p.featuresEn?.trim());
+    begin(p.features, p.featuresRu ?? "", p.featuresEn ?? "", !!p.featuresRu?.trim(), !!p.featuresEn?.trim());
     setPopular(p.popular);
     setActive(p.active);
     setEditOpen(true);
@@ -300,23 +330,32 @@ function SuperadminPlans() {
     setSaving(true);
     setError(null);
     try {
-      // A list left empty is translated now; when the translator does not
-      // answer the tariff is still saved (the site then shows the Uzbek list).
-      let ru = featuresRu;
-      let en = featuresEn;
-      if (features.trim() && (!ru.trim() || !en.trim())) {
+      // What is saved is the form as it is now. A list that is empty, or was
+      // translated from another Uzbek text than this one, is translated for
+      // this text first; a list typed by hand is saved as typed. When the
+      // translator does not answer the tariff is still saved (the site then
+      // shows the Uzbek list where none fits).
+      const uz = features;
+      const fits = (lang: "ru" | "en", value: string) => !!value.trim() && (byHand.current[lang] || translatedFor.current[lang] === uz);
+      let ru = fits("ru", featuresRu) ? featuresRu : "";
+      let en = fits("en", featuresEn) ? featuresEn : "";
+      if (uz.trim() && (!ru || !en)) {
         try {
-          ({ ru, en } = await translateFeatures(true));
+          const fresh = await requestTranslation(uz);
+          if (fresh) {
+            if (!ru) ru = fresh.ru;
+            if (!en) en = fresh.en;
+          }
         } catch {
           /* saved without a translation */
         }
       }
       if (editing) {
-        await plansApi.update(editing.id, { name, price: Number(price), features, featuresRu: ru, featuresEn: en, popular, active });
+        await plansApi.update(editing.id, { name, price: Number(price), features: uz, featuresRu: ru, featuresEn: en, popular, active });
       } else {
-        await plansApi.create({ key, name, price: Number(price), features, featuresRu: ru, featuresEn: en, popular, active });
+        await plansApi.create({ key, name, price: Number(price), features: uz, featuresRu: ru, featuresEn: en, popular, active });
       }
-      setEditOpen(false);
+      closeEdit();
       load();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Xatolik yuz berdi");
@@ -422,7 +461,7 @@ function SuperadminPlans() {
         )}
       </div>
 
-      <Modal open={editOpen} onClose={() => setEditOpen(false)} title={editing ? t("pricing.editPlanTitle") : t("pricing.newPlanTitle")}>
+      <Modal open={editOpen} onClose={closeEdit} title={editing ? t("pricing.editPlanTitle") : t("pricing.newPlanTitle")}>
         <form onSubmit={onSave} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           {!editing && (
             <div>
@@ -439,8 +478,8 @@ function SuperadminPlans() {
             <input className="field-input" type="number" min={0} required value={price} onChange={(e) => setPrice(e.target.value)} placeholder="900000" />
           </div>
           <div>
-            <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>{t("pricing.fieldFeatures")}</div>
-            <textarea className="field-input" rows={4} value={features} onChange={(e) => setFeatures(e.target.value)} placeholder={"Cheksiz o'quvchi\nAI tahlil"} style={{ resize: "vertical" }} />
+            <label htmlFor="plan-features" style={{ display: "block", fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>{t("pricing.fieldFeatures")}</label>
+            <textarea id="plan-features" className="field-input" rows={4} value={features} onChange={(e) => setUz(e.target.value)} placeholder={"Cheksiz o'quvchi\nAI tahlil"} style={{ resize: "vertical" }} />
             <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginTop: 8 }}>
               <button
                 type="button"
@@ -461,11 +500,11 @@ function SuperadminPlans() {
           </div>
           <div>
             <label htmlFor="plan-features-ru" style={{ display: "block", fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>{t("pricing.fieldFeaturesRu")}</label>
-            <textarea id="plan-features-ru" className="field-input" rows={4} value={featuresRu} onChange={(e) => { setFeaturesRu(e.target.value); setRuByHand(true); }} placeholder={"Без ограничения учеников\nИИ-аналитика"} style={{ resize: "vertical" }} />
+            <textarea id="plan-features-ru" className="field-input" rows={4} value={featuresRu} onChange={(e) => typeRu(e.target.value)} placeholder={"Без ограничения учеников\nИИ-аналитика"} style={{ resize: "vertical" }} />
           </div>
           <div>
             <label htmlFor="plan-features-en" style={{ display: "block", fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>{t("pricing.fieldFeaturesEn")}</label>
-            <textarea id="plan-features-en" className="field-input" rows={4} value={featuresEn} onChange={(e) => { setFeaturesEn(e.target.value); setEnByHand(true); }} placeholder={"Unlimited students\nAI analysis"} style={{ resize: "vertical" }} />
+            <textarea id="plan-features-en" className="field-input" rows={4} value={featuresEn} onChange={(e) => typeEn(e.target.value)} placeholder={"Unlimited students\nAI analysis"} style={{ resize: "vertical" }} />
           </div>
           <div style={{ display: "flex", gap: 16 }}>
             <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 600 }}>

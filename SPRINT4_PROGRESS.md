@@ -43,8 +43,18 @@ Working copy: `/home/user/crmApp-sprint4`, local branch `sprint4-local`. Nothing
   profile, status, stays (enrollment_periods), values and audit unchanged; the same for lead update, lead create and
   conversion. Fails without the fix (checked), passes with it.
 
+### 4. Tariff translation answers
+- `frontend/app/pricing/page.tsx`: an answer is applied only if the edit window (a number bumped on open/close) and
+  the Uzbek text are still the ones it was asked for, and only to lists not typed into since (refs read when the
+  answer arrives, not the request's stale state). Clearing the Uzbek text, closing the window or opening another
+  tariff drops answers on their way. Save sends one version: a list translated from an older Uzbek text is
+  translated again for this one; a hand-typed list is saved as typed. The Uzbek list now has a real label.
+- Test: `e2e-browser/tests/pricing-translation.spec.ts` - every translation request is held and answered by the test,
+  late and in reverse order; typing meanwhile, cleared text, closed window, save at once. Passes twice; with the old
+  page it fails at "typed meanwhile" (checked).
+
 ## Next
- 4 pricing race, 5 event dates + page states,
+ 5 event dates + page states,
 6 calendar feed, 7 make-up booking time, 8 feature checks, 9 final validation and report.
 
 ## Resume
