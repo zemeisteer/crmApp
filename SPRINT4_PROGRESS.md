@@ -100,8 +100,18 @@ Working copy: `/home/user/crmApp-sprint4`, local branch `sprint4-local`. Nothing
 - Chat regression: the existing `chat.spec.ts` / `timetable-and-access.spec.ts` (two accounts, live delivery,
   reconnect, unread badge, permission withdrawn) run in the final browser pass.
 
-## Next
- 9 final validation and report.
+### 9. Final validation (all on this branch's last commit)
+- Backend: tsc clean, oxlint clean, unit 340/340, e2e 482/482 (61+5 suites), build OK.
+- Frontend: tsc clean, eslint 0 errors / 76 warnings (the same 76 as the base commit), unit 55/55, production build OK.
+- Browser (Playwright, production builds, disposable DB): 53/53; Google (local fake Google): 1/1.
+- Migrations: 59 in journal and files; verify-migrations chain OK; fresh install -> no drift; re-run -> nothing to do;
+  upgrade from a 0057 database with old teacher marks -> bound/left as described, report lists the rest, no drift.
+- Fixed on the way: the new access key had no name on the staff screen (catalog unit test); a sign-in in
+  timetable-and-access bypassed the pacer (tuition suites hit the 8/min limit); the make-up journey booked today's
+  15:00 lesson (now a 23:00 lesson).
+- BLOCKED: real Google Calendar (no credentials). NOT TESTED in a browser: the teacher attendance modal, the event
+  form's conflict lines, the make-up form's own submit-time check (all covered by API tests).
+- No cloud preview: this container has no public address.
 
 ## Resume
 `cd /home/user/crmApp-sprint4 && git log --oneline origin/claude/dev-feedback..HEAD` shows the local commits;
