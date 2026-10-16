@@ -150,4 +150,35 @@ describe('Center events and a lead\'s several directions (e2e)', () => {
     const after = (await http().get(`/api/leads/${lead.id}`).set(bearer(owner)).expect(200)).body;
     expect(after.extraSubjectIds).toEqual([chess]);
   });
+  it('a lead is found by any of its directions; clearing the main one keeps the others; an archived one stays; the export lists them', async () => {
+    const lead = (await http().post('/api/leads').set(bearer(owner))
+      .send({ fullName: 'Ikki Yonalish', phone: `+99897${String(suffix).slice(-7)}`, desiredSubjectId: math, extraSubjectIds: [chess] })
+      .expect(201)).body;
+    const found = async (subject: string) => (await http().get(`/api/leads?desiredSubjectId=${subject}&pageSize=100`).set(bearer(owner)).expect(200)).body.items.map((l: { id: string }) => l.id);
+    expect(await found(math)).toContain(lead.id);
+    expect(await found(chess)).toContain(lead.id);
+    expect(await found(english)).not.toContain(lead.id);
+
+    // No main direction any more: the other stays (sent as it is, as the form does).
+    const cleared = (await http().patch(`/api/leads/${lead.id}`).set(bearer(owner)).send({ desiredSubjectId: null, extraSubjectIds: [chess] }).expect(200)).body;
+    expect(cleared).toMatchObject({ desiredSubjectId: null, extraSubjectIds: [chess] });
+    // An edit that does not mention directions keeps them too.
+    expect((await http().patch(`/api/leads/${lead.id}`).set(bearer(owner)).send({ notes: 'qayta' }).expect(200)).body.extraSubjectIds).toEqual([chess]);
+
+    // The direction is archived later: the lead keeps it (and can still be edited with it), but it cannot be newly added.
+    await http().put(`/api/subjects/${chess}`).set(bearer(owner)).send({ status: 'ARCHIVED' }).expect(200);
+    const kept = (await http().patch(`/api/leads/${lead.id}`).set(bearer(owner)).send({ desiredSubjectId: math, extraSubjectIds: [chess] }).expect(200)).body;
+    expect(kept.extraSubjectIds).toEqual([chess]);
+    expect((await http().get(`/api/leads/${lead.id}`).set(bearer(owner)).expect(200)).body.extraSubjects).toEqual([{ id: chess, name: `Shaxmat ${suffix}` }]);
+    const other = (await http().post('/api/leads').set(bearer(owner)).send({ fullName: 'Yangi Lid', phone: `+99898${String(suffix).slice(-7)}`, desiredSubjectId: math, extraSubjectIds: [chess] }).expect(400));
+    expect(other.status).toBe(400);
+    await http().put(`/api/subjects/${chess}`).set(bearer(owner)).send({ status: 'ACTIVE' }).expect(200);
+
+    const csv = (await http().get(`/api/leads/export?desiredSubjectId=${chess}`).set(bearer(owner)).expect(200)).text;
+    const [header, ...rows] = csv.replace(/^\uFEFF/, '').split('\r\n');
+    expect(header.split(',')).toContain('otherSubjects');
+    const row = rows.find((r) => r.includes('Ikki Yonalish'))!;
+    expect(row).toContain(`"Matematika ${suffix}"`);
+    expect(row).toContain(`"Shaxmat ${suffix}"`);
+  });
 });

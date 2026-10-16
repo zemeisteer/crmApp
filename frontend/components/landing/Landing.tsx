@@ -67,6 +67,10 @@ const CSS = `
     .lp-phone{width:100%!important;max-width:360px;}
     .lp-footer{flex-direction:column;gap:14px;align-items:flex-start!important;}
   }
+  /* A phone: the logo, the language and the menu button fit; "Start" is in the menu and the hero. */
+  @media (max-width:440px){
+    .lp-start{display:none!important;}
+  }
 `;
 
 const card: CSSProperties = { background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12 };
@@ -300,6 +304,7 @@ export default function Landing() {
               <a key={href} href={href} onClick={() => setMenuOpen(false)}>{label}</a>
             ))}
             <Link href="/login" onClick={() => setMenuOpen(false)}>{L.login}</Link>
+            <Link href="/register" onClick={() => setMenuOpen(false)}>{L.start}</Link>
           </nav>
         )}
       </div>

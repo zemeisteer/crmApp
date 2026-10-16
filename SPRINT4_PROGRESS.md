@@ -85,8 +85,23 @@ Working copy: `/home/user/crmApp-sprint4`, local branch `sprint4-local`. Nothing
   booked today's 15:00 lesson (fails after 15:00): now tomorrow's. `calendar.e2e-spec.ts` "no money" check now looks for
   the price (777 000), not any "777" (could appear in a random id).
 
+### 8. The new features as used
+- Leads' other directions: the list filter (`desiredSubjectId`) now matches the main one or any other
+  (`= ANY(extra_subject_ids)`), and the CSV export has an `otherSubjects` column. The form no longer wipes the
+  others when the main one is cleared (it sent `[]`), keeps the section shown while any are chosen, and shows an
+  archived one (marked) so it can be seen and taken off. The direction picker has an accessible name.
+- Group form: the teacher list already keeps the chosen teacher of another direction (checked, no change).
+- Debtor -> payment: student and remaining debt were right; the month is now the debtor list's own month (not the
+  month picker's, which may be loading another).
+- Landing on a phone (390px): the header was 429px wide - the menu button was half off-screen and the page scrolled
+  sideways. Below 440px "Bepul boshlash" leaves the header (it is in the hero and now in the menu).
+- Tests: lead directions e2e added to `center-events-and-lead-subjects.e2e-spec.ts`; browser
+  `e2e-browser/tests/new-features.spec.ts` (debtor payment, lead directions, group form + keyboard, landing menu).
+- Chat regression: the existing `chat.spec.ts` / `timetable-and-access.spec.ts` (two accounts, live delivery,
+  reconnect, unread badge, permission withdrawn) run in the final browser pass.
+
 ## Next
- 8 feature checks, 9 final validation and report.
+ 9 final validation and report.
 
 ## Resume
 `cd /home/user/crmApp-sprint4 && git log --oneline origin/claude/dev-feedback..HEAD` shows the local commits;

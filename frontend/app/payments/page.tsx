@@ -733,7 +733,8 @@ function PaymentsContent() {
     setAmount(String(debtor.debtAmount || debtor.expectedAmount));
     setDiscount("");
     setMethod("CASH");
-    setForMonth(selectedMonth);
+    // The month the row is a debt for (the list on screen), even while another month is loading.
+    setForMonth(debtorsData?.forMonth || selectedMonth);
     setPaidDate(clock.today());
     setModalOpen(true);
   }

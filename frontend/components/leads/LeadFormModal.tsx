@@ -150,7 +150,8 @@ export default function LeadFormModal({ open, onClose, onSaved, lead, managers =
           email: email.trim() || null,
           source,
           desiredSubjectId: subjectId || null,
-          extraSubjectIds: subjectId ? extraIds.filter((id) => id !== subjectId) : [],
+          // Kept as chosen: clearing the main direction does not wipe the others.
+          extraSubjectIds: extraIds.filter((id) => id !== subjectId),
           desiredCourseId: courseId || null,
           preferredBranchId: branchId || null,
           notes: notes.trim() || null,
@@ -164,7 +165,7 @@ export default function LeadFormModal({ open, onClose, onSaved, lead, managers =
           email: email.trim() || undefined,
           source,
           desiredSubjectId: subjectId || undefined,
-          extraSubjectIds: subjectId ? extraIds.filter((id) => id !== subjectId) : undefined,
+          extraSubjectIds: extraIds.length ? extraIds.filter((id) => id !== subjectId) : undefined,
           desiredCourseId: courseId || undefined,
           preferredBranchId: branchId || undefined,
           assignedManagerUserId: managerId || undefined,
@@ -234,6 +235,7 @@ export default function LeadFormModal({ open, onClose, onSaved, lead, managers =
           <div>
             <label style={label}>{t("adm.fieldSubject")}</label>
             <Select
+              ariaLabel={t("adm.fieldSubject")}
               value={subjectId}
               onChange={(v) => { setSubjectId(v); setCourseId(""); setExtraIds((prev) => prev.filter((id) => id !== v)); }}
               placeholder={t("common.notSelected")}
@@ -241,11 +243,16 @@ export default function LeadFormModal({ open, onClose, onSaved, lead, managers =
             />
             {subjects.length === 0 && <div style={{ marginTop: 5, fontSize: 12, color: "#686B75" }}>{t("leadForm.noSubjectsHint")}</div>}
           </div>
-          {subjectId && subjects.length > 1 && (
+          {((subjectId && subjects.length > 1) || extraIds.length > 0) && (
             <div style={{ gridColumn: "1 / -1" }}>
               <label style={label}>{t("leadForm.extraSubjects")}</label>
               <div role="group" aria-label={t("leadForm.extraSubjects")} style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                {subjects.filter((s) => s.id !== subjectId).map((s) => {
+                {[
+                  ...subjects.filter((s) => s.id !== subjectId),
+                  // One chosen earlier and archived since: shown, so it can be seen and taken off.
+                  ...extraIds.filter((id) => id !== subjectId && !subjects.some((s) => s.id === id))
+                    .map((id) => ({ id, name: `${lead?.extraSubjects?.find((x) => x.id === id)?.name ?? id} (${t("leadForm.subjectArchived")})` })),
+                ].map((s) => {
                   const on = extraIds.includes(s.id);
                   const full = !on && extraIds.length >= 5;
                   return (

@@ -2114,6 +2114,7 @@ export const dict = {
   "groups.fieldTeacher": { UZ: "O'qituvchi", RU: "Учитель", EN: "Teacher" },
   "leadForm.extraSubjects": { UZ: "Yana qaysi yo'nalishlarga qiziqadi", RU: "Какие ещё направления интересуют", EN: "Other directions of interest" },
   "leadForm.extraSubjectsHint": { UZ: "Bir nechtasini tanlash mumkin (5 tagacha). Sinov darsi va hisobotlar asosiy yo'nalish bo'yicha.", RU: "Можно выбрать несколько (до 5). Пробный урок и отчёты — по основному направлению.", EN: "Pick several (up to 5). Trials and reports use the main direction." },
+  "leadForm.subjectArchived": { UZ: "arxivlangan", RU: "в архиве", EN: "archived" },
   "groups.notSelected": { UZ: "— Tanlanmagan —", RU: "— Не выбрано —", EN: "— Not selected —" },
   "groups.teachersForSubject": { UZ: "Shu yo'nalish o'qituvchilari ko'rsatilgan.", RU: "Показаны учителя этого направления.", EN: "Teachers of this direction are shown." },
   "groups.teachersNoneForSubject": { UZ: "Bu yo'nalishga o'qituvchi biriktirilmagan: barcha o'qituvchilar ko'rsatilgan (o'qituvchi kartasida fanini yozing).", RU: "Для этого направления нет учителей: показаны все (укажите предмет в карточке учителя).", EN: "No teacher is set for this direction: everyone is shown (set the subject on the teacher's card)." },

@@ -169,7 +169,8 @@ export class LeadsService {
     if (q.status) c.push(inArray(leads.status, q.status.split(',') as LeadStatus[]));
     if (q.source) c.push(eq(leads.source, q.source));
     if (q.preferredBranchId) c.push(eq(leads.preferredBranchId, q.preferredBranchId));
-    if (q.desiredSubjectId) c.push(eq(leads.desiredSubjectId, q.desiredSubjectId));
+    // A direction: the lead's main one or any of its others.
+    if (q.desiredSubjectId) c.push(or(eq(leads.desiredSubjectId, q.desiredSubjectId), sql`${q.desiredSubjectId} = ANY(${leads.extraSubjectIds})`)!);
     if (q.desiredCourseId) c.push(eq(leads.desiredCourseId, q.desiredCourseId));
     if (q.lostReason) c.push(eq(leads.lostReason, q.lostReason));
     if (q.converted === 'true') c.push(isNotNull(leads.convertedStudentId));
@@ -1144,9 +1145,11 @@ export class LeadsService {
       if (/^[=+\-@\t\r]/.test(s)) s = `'${s}`;
       return `"${s.replace(/"/g, '""')}"`;
     };
-    const header = ['fullName', 'phone', 'email', 'status', 'source', 'subject', 'course', 'branch', 'manager', 'followUpAt', 'lostReason', 'converted', 'createdAt'];
+    const extraNames = await this.subjectNames(tenantId, rows.flatMap((l) => l.extraSubjectIds ?? []));
+    const header = ['fullName', 'phone', 'email', 'status', 'source', 'subject', 'otherSubjects', 'course', 'branch', 'manager', 'followUpAt', 'lostReason', 'converted', 'createdAt'];
     const lines = rows.map((l) => [
-      l.fullName, l.phone, l.email, l.status, l.source, l.desiredSubject?.name ?? l.legacySubject, l.desiredCourse?.name,
+      l.fullName, l.phone, l.email, l.status, l.source, l.desiredSubject?.name ?? l.legacySubject,
+      (l.extraSubjectIds ?? []).map((id) => extraNames.get(id)).filter(Boolean).join('; '), l.desiredCourse?.name,
       l.preferredBranch?.name, l.assignedManager?.fullName, l.followUpAt, l.lostReason, l.convertedStudentId ? 'yes' : 'no', l.createdAt,
     ].map(cell).join(','));
     this.audit.log({ tenantId, userId: actor.userId, action: 'export', entityType: 'lead', entityId: 'csv', meta: { rows: rows.length } });
