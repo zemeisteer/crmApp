@@ -2644,6 +2644,7 @@ export const dict = {
   "perm.schedule.view": { UZ: "Dars jadvali va xonalarni ko'rish", RU: "Просмотр расписания и кабинетов", EN: "View timetable and rooms" },
   "perm.schedule.edit": { UZ: "Dars jadvalini tuzish", RU: "Составление расписания", EN: "Edit the timetable" },
   "perm.events.manage": { UZ: "Tadbirlar va uchrashuvlarni qo'shish", RU: "Мероприятия и встречи", EN: "Add events and meetings" },
+  "perm.makeups.correct": { UZ: "O'tgan darsga qoplashni sabab bilan yozish (tuzatish)", RU: "Записать отработку в прошедший урок (исправление, с причиной)", EN: "Enter a make-up into a past lesson (a correction, with a reason)" },
   "perm.schedule.delete": { UZ: "Jadvaldan darsni o'chirish", RU: "Удаление занятий из расписания", EN: "Delete lessons from the timetable" },
   "perm.rooms.manage": { UZ: "Xonalarni boshqarish", RU: "Управление кабинетами", EN: "Manage rooms" },
   "perm.attendance.view": { UZ: "Davomatni ko'rish", RU: "Просмотр посещаемости", EN: "View attendance" },
