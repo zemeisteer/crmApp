@@ -45,7 +45,11 @@ const CSS = `
     .lp-grid3{grid-template-columns:minmax(0,1fr);}
     .lp-hero,.lp-split{flex-direction:column;align-items:stretch;gap:40px;}
     .lp-nav{display:none!important;}
+    .lp-menu-btn{display:inline-flex!important;}
   }
+  .lp-root [id]{scroll-margin-top:84px;}
+  .lp-mobile-menu a{display:block;padding:12px 14px;border-radius:10px;font-size:15px;font-weight:600;color:var(--text);}
+  .lp-mobile-menu a:hover{background:var(--chip);}
   @media (max-width:640px){
     .lp-grid4{grid-template-columns:minmax(0,1fr);}
     .lp-hero{padding:48px 16px 40px;}
@@ -112,6 +116,8 @@ export default function Landing() {
   const [hero, setHero] = useRotate(4000);
   const [portal, setPortal] = useRotate(4500);
   const [langOpen, setLangOpen] = useState(false);
+  // The menu on phones and tablets, where the header has no room for it.
+  const [menuOpen, setMenuOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const langRef = useRef<HTMLDivElement>(null);
 
@@ -226,6 +232,15 @@ export default function Landing() {
       }))
     : L.plans.map(([sub, ...items], i) => ({ name: planNames[i], price: planPrices[i], monthly: i < 2, sub, items, highlight: i === 1, cta: i === 2 ? L.contact : L.choose }));
 
+  const navLinks: [string, string][] = [
+    ["#features", L.navFeatures],
+    ["#ai", L.navAi],
+    ["#how", L.navHow],
+    ["#portal", L.navPortal],
+    ["#pricing", L.navPricing],
+    ["#faq", L.navFaq],
+  ];
+
   return (
     <div className="lp-root" ref={rootRef}>
       <style>{CSS}</style>
@@ -239,10 +254,10 @@ export default function Landing() {
             </div>
             <span style={{ fontFamily: "'Manrope',sans-serif", fontWeight: 800, fontSize: 19, letterSpacing: "-0.02em" }}>TalimCRM</span>
           </Link>
-          <nav className="lp-nav" style={{ display: "flex", alignItems: "center", gap: 36, fontSize: 14.5, fontWeight: 500, color: "var(--text-2)" }}>
-            <a href="#features">{L.navFeatures}</a>
-            <a href="#how">{L.navHow}</a>
-            <a href="#pricing">{L.navPricing}</a>
+          <nav className="lp-nav" aria-label={L.menu} style={{ display: "flex", alignItems: "center", gap: 28, fontSize: 14.5, fontWeight: 500, color: "var(--text-2)" }}>
+            {navLinks.map(([href, label]) => (
+              <a key={href} href={href}>{label}</a>
+            ))}
           </nav>
           <div className="lp-header-right" style={{ display: "flex", alignItems: "center", gap: 16 }}>
             <div ref={langRef} style={{ position: "relative" }}>
@@ -264,8 +279,29 @@ export default function Landing() {
             </div>
             <Link href="/login" className="lp-header-login" style={{ fontSize: 14.5, fontWeight: 600 }}>{L.login}</Link>
             <Link href="/register" className="lp-btn lp-start" style={{ background: ACCENT, color: "#fff", fontSize: 14.5, fontWeight: 600, padding: "10px 18px", borderRadius: 9, whiteSpace: "nowrap" }}>{L.start}</Link>
+            <button
+              type="button"
+              className="lp-btn lp-menu-btn"
+              aria-label={L.menu}
+              aria-expanded={menuOpen}
+              aria-controls="lp-mobile-menu"
+              onClick={() => setMenuOpen((o) => !o)}
+              style={{ display: "none", alignItems: "center", justifyContent: "center", width: 40, height: 40, borderRadius: 9, background: "var(--chip)", border: "1px solid var(--border)", color: "var(--text)" }}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+                {menuOpen ? <path d="M6 6l12 12M18 6 6 18" /> : <path d="M4 7h16M4 12h16M4 17h16" />}
+              </svg>
+            </button>
           </div>
         </div>
+        {menuOpen && (
+          <nav id="lp-mobile-menu" className="lp-mobile-menu" aria-label={L.menu} style={{ borderTop: "1px solid var(--border)", padding: "8px 16px 14px", display: "grid", gap: 2 }}>
+            {navLinks.map(([href, label]) => (
+              <a key={href} href={href} onClick={() => setMenuOpen(false)}>{label}</a>
+            ))}
+            <Link href="/login" onClick={() => setMenuOpen(false)}>{L.login}</Link>
+          </nav>
+        )}
       </div>
 
       {/* HERO */}
@@ -401,7 +437,7 @@ export default function Landing() {
       </div>
 
       {/* AI FEATURES */}
-      <div className="lp-section" style={{ background: "linear-gradient(135deg,#0F0B29,#1B1440)" }}>
+      <div id="ai" className="lp-section" style={{ background: "linear-gradient(135deg,#0F0B29,#1B1440)" }}>
         <div className="lp-wrap" style={{ display: "flex", flexDirection: "column", gap: 48 }}>
           <div style={{ display: "flex", flexDirection: "column", gap: 12, maxWidth: 640 }}>
             <span style={{ display: "inline-flex", alignSelf: "flex-start", background: "linear-gradient(135deg,#8B7CF6,#4F46E5)", color: "#fff", fontSize: 12, fontWeight: 800, padding: "6px 13px", borderRadius: 100, letterSpacing: "0.02em" }}>{L.aiNew}</span>
@@ -442,7 +478,7 @@ export default function Landing() {
       </div>
 
       {/* STUDENT PORTAL PREVIEW */}
-      <div className="lp-wrap lp-split lp-group">
+      <div id="portal" className="lp-wrap lp-split lp-group">
         <div className="lp-reveal" style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center" }}>
           <div className="lp-phone" style={{ width: 400, borderRadius: 36, border: "9px solid #12131A", background: "#12131A", boxShadow: "0 24px 48px -20px rgba(18,19,26,0.3)", overflow: "hidden", boxSizing: "border-box" }}>
             <div style={{ background: "var(--bg)", borderRadius: 27, overflow: "hidden" }}>
@@ -545,7 +581,7 @@ export default function Landing() {
       </div>
 
       {/* FAQ */}
-      <div className="lp-section" style={{ background: "var(--surface)" }}>
+      <div id="faq" className="lp-section" style={{ background: "var(--surface)" }}>
         <div style={{ maxWidth: 800, margin: "0 auto", display: "flex", flexDirection: "column", gap: 40 }}>
           <div style={{ display: "flex", flexDirection: "column", gap: 12, textAlign: "center", alignItems: "center" }}>
             <span style={label}>{L.faqLabel}</span>

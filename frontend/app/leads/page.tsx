@@ -29,6 +29,7 @@ import {
   LEAD_SOURCES,
   LEAD_STATUSES,
   OPEN_STATUSES,
+  BOARD_STATUSES,
   SIMPLE_MOVES,
   STATUS_STYLE,
   StatusBadge,
@@ -92,8 +93,8 @@ function LeadsContent() {
       includeArchived: archived ? "true" : undefined,
     };
     if (view === "pipeline") {
-      // The board shows open stages only; closed leads live in the list.
-      return { ...base, status: status || OPEN_STATUSES.join(","), sort: "next_follow_up", pageSize: 100 };
+      // The board shows every stage, closed ones last (no follow-up, so they sort after the open leads).
+      return { ...base, status: status || BOARD_STATUSES.join(","), sort: "next_follow_up", pageSize: 100 };
     }
     return { ...base, status: status || undefined, sort, page, pageSize: PAGE_SIZE };
   }, [search, status, source, manager, followUp, sort, archived, page, view]);
@@ -329,7 +330,12 @@ function LeadsContent() {
                       <td><a href={telHref(l.phone)} style={{ color: ACCENT }}>{l.phone}</a></td>
                       <td><StatusBadge status={l.status} label={t(statusKey(l.status))} /></td>
                       <td>{t(sourceKey(l.source))}</td>
-                      <td>{l.desiredCourse?.name ?? l.desiredSubject?.name ?? l.legacySubject ?? "—"}</td>
+                      <td>
+                        {l.desiredCourse?.name ?? l.desiredSubject?.name ?? l.legacySubject ?? "—"}
+                        {l.extraSubjects && l.extraSubjects.length > 0 && (
+                          <span style={{ color: "#686B75", fontSize: 12 }}> +{l.extraSubjects.map((s) => s.name).join(", ")}</span>
+                        )}
+                      </td>
                       <td>{l.assignedManager?.fullName ?? <span style={{ color: "#686B75" }}>{t("adm.unassigned")}</span>}</td>
                       <td style={{ color: isOverdue(l.followUpAt) && OPEN_STATUSES.includes(l.status) ? "#B91C1C" : undefined, fontWeight: isOverdue(l.followUpAt) ? 700 : 400 }}>
                         {formatDateTime(l.followUpAt, lang, tz)}
@@ -374,7 +380,7 @@ function LeadsContent() {
           <div style={{ display: "grid", gap: 8 }}>
             <p style={{ fontSize: 12.5, color: "#686B75" }}>{t("adm.pipelineHint")}</p>
             <div className="adm-pipeline">
-              {OPEN_STATUSES.map((s) => {
+              {BOARD_STATUSES.map((s) => {
                 const items = data.items.filter((l) => l.status === s);
                 const totalInStage = analytics?.snapshot.byStatus[s];
                 return (

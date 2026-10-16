@@ -65,6 +65,12 @@ export class CreateLeadDto {
   desiredSubjectId?: string;
 
   @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(5)
+  @IsString({ each: true })
+  extraSubjectIds?: string[];
+
+  @IsOptional()
   @IsString()
   desiredCourseId?: string;
 
@@ -137,6 +143,12 @@ export class UpdateLeadDto {
   @IsOptional()
   @IsString()
   desiredSubjectId?: string | null;
+
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(5)
+  @IsString({ each: true })
+  extraSubjectIds?: string[];
 
   @IsOptional()
   @IsString()

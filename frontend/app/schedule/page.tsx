@@ -29,6 +29,9 @@ import {
   type MakeupReconcile,
   type MakeupRosterItem,
 } from "@/lib/api";
+import { centerEventsApi, type CenterEvent } from "@/lib/api";
+import { EventCard, EventFormModal, eventPlace, KIND_STYLE, kindKey } from "@/components/schedule/CenterEvents";
+import { formatDate } from "@/lib/format-date";
 
 const ACCENT = "#4F46E5";
 const MOVE_DAYS = [1, 2, 3, 4, 5, 6, 7];
@@ -45,7 +48,7 @@ const DAYS_OF_WEEK = [
 
 export default function SchedulePage() {
   const { user } = useAuth();
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const clock = useCenterClock();
 
   const [schedules, setSchedules] = useState<ScheduleItem[]>([]);
@@ -375,6 +378,36 @@ export default function SchedulePage() {
     return map;
   }, [filteredSchedules]);
 
+  // Meetings, competitions and other events: this week's in the day
+  // columns, the next eight weeks' in the list under the timetable.
+  const canManageEvents = can(user, "events.manage");
+  const [events, setEvents] = useState<CenterEvent[]>([]);
+  const [eventsVersion, setEventsVersion] = useState(0);
+  const [eventForm, setEventForm] = useState<{ event: CenterEvent | null; date: string } | null>(null);
+  const weekMonday = addDays(clock.today(), 1 - clock.weekday());
+  useEffect(() => {
+    let current = true;
+    centerEventsApi
+      .list(weekMonday, addDays(clock.today(), 56))
+      .then((list) => current && setEvents(list))
+      .catch(() => current && setEvents([]));
+    return () => {
+      current = false;
+    };
+  }, [weekMonday, clock, eventsVersion]);
+  const eventsByDay = useMemo(() => {
+    const map: Record<number, CenterEvent[]> = {};
+    const sunday = addDays(weekMonday, 6);
+    for (const ev of events) {
+      if (ev.date < weekMonday || ev.date > sunday) continue;
+      if (filterRoom && ev.roomId !== filterRoom) continue;
+      const d = new Date(`${ev.date}T00:00:00Z`).getUTCDay() || 7;
+      (map[d] ??= []).push(ev);
+    }
+    return map;
+  }, [events, weekMonday, filterRoom]);
+  const upcomingEvents = events.filter((ev) => ev.date >= clock.today());
+
   const makeupsByDay = useMemo(() => {
     const map: Record<number, MakeupRosterItem[]> = {};
     for (const m of weekMakeups) {
@@ -430,6 +463,28 @@ export default function SchedulePage() {
                 <path d="M3 9h18M9 21V9" />
               </svg>
               {t("schedule.manageRooms")} ({rooms.length})
+            </button>
+          )}
+
+          {canManageEvents && (
+            <button
+              onClick={() => setEventForm({ event: null, date: clock.today() })}
+              className="btn"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 8,
+                padding: "9px 15px",
+                background: "#FEF3C7",
+                color: "#92400E",
+                border: "1px solid #FCD34D",
+                borderRadius: 8,
+                fontSize: 13.5,
+                fontWeight: 600,
+                cursor: "pointer",
+              }}
+            >
+              🏆 {t("ev.addButton")}
             </button>
           )}
 
@@ -600,7 +655,10 @@ export default function SchedulePage() {
 
                 {/* Day Lessons List */}
                 <div style={{ padding: 10, display: "flex", flexDirection: "column", gap: 10, flex: 1 }}>
-                  {dayLessons.length === 0 && !makeupsByDay[day]?.length ? (
+                  {(eventsByDay[day] ?? []).map((ev) => (
+                    <EventCard key={ev.id} ev={ev} onOpen={() => setEventForm({ event: ev, date: ev.date })} />
+                  ))}
+                  {dayLessons.length === 0 && !makeupsByDay[day]?.length && !eventsByDay[day]?.length ? (
                     <div
                       style={{
                         margin: "auto",
@@ -805,6 +863,56 @@ export default function SchedulePage() {
             );
           })}
         </div>
+      )}
+
+      {/* Coming events */}
+      <section aria-labelledby="upcoming-events" style={{ marginTop: 24, background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, padding: "16px 18px" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 10 }}>
+          <h2 id="upcoming-events" style={{ fontSize: 16, fontWeight: 800, margin: 0 }}>{t("ev.upcoming")}</h2>
+          <span style={{ fontSize: 12.5, color: "#686B75" }}>{t("ev.upcomingHint")}</span>
+        </div>
+        {upcomingEvents.length === 0 ? (
+          <div style={{ fontSize: 13, color: "#686B75" }}>{canManageEvents ? t("ev.noneManage") : t("ev.none")}</div>
+        ) : (
+          <div style={{ display: "grid", gap: 8 }}>
+            {upcomingEvents.map((ev) => {
+              const s = KIND_STYLE[ev.kind] ?? KIND_STYLE.OTHER;
+              return (
+                <button
+                  key={ev.id}
+                  type="button"
+                  onClick={() => setEventForm({ event: ev, date: ev.date })}
+                  style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", textAlign: "left", background: "#FAFAF8", border: "1px solid #EEECE6", borderLeft: `4px solid ${s.color}`, borderRadius: 10, padding: "10px 12px", cursor: "pointer", font: "inherit" }}
+                >
+                  <span style={{ fontWeight: 700, fontSize: 13, minWidth: 150 }}>
+                    {formatDate(`${ev.date}T12:00:00`, lang, "dayMonth")} · {ev.startTime}
+                    {ev.endTime ? `–${ev.endTime}` : ""}
+                  </span>
+                  <span style={{ fontSize: 11.5, fontWeight: 700, color: s.color, background: s.bg, borderRadius: 999, padding: "3px 9px" }}>
+                    {s.icon} {t(kindKey(ev.kind))}
+                  </span>
+                  <span style={{ fontWeight: 700, fontSize: 13.5, color: "#111827", flex: 1, minWidth: 160 }}>{ev.title}</span>
+                  <span style={{ fontSize: 12.5, color: "#4B5563" }}>{eventPlace(ev, t)}</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </section>
+
+      {eventForm && (
+        <EventFormModal
+          event={eventForm.event}
+          rooms={rooms}
+          defaultDate={eventForm.date}
+          canManage={canManageEvents}
+          onClose={() => setEventForm(null)}
+          onSaved={(message) => {
+            setEventForm(null);
+            setNotice({ text: message });
+            setEventsVersion((v) => v + 1);
+          }}
+        />
       )}
 
       {quickAdd && (

@@ -39,6 +39,18 @@ function MakeupsContent() {
       <div style={{ padding: "22px 32px", borderBottom: "1px solid #EAE8E2" }}>
         <h1 style={{ fontSize: 22, fontWeight: 800 }}>{t("mk.title")}</h1>
         <div style={{ fontSize: 13, color: "#686B75", marginTop: 2, lineHeight: 1.5 }}>{t(seesCredits ? "mk.subtitle" : "mk.subtitleTeacher")}</div>
+        {seesCredits && (
+          // How the three tabs fit together, for someone who opens this page the first time.
+          <details style={{ marginTop: 10, fontSize: 13, color: "#3A3D45" }}>
+            <summary style={{ cursor: "pointer", fontWeight: 700, color: "#4F46E5" }}>{t("mk.howTitle")}</summary>
+            <ol style={{ margin: "8px 0 0", paddingLeft: 20, lineHeight: 1.7, maxWidth: 760 }}>
+              <li>{t("mk.howStep1")}</li>
+              <li>{t("mk.howStep2")}</li>
+              <li>{t("mk.howStep3")}</li>
+              <li>{t("mk.howStep4")}</li>
+            </ol>
+          </details>
+        )}
       </div>
       <div style={{ flex: 1, minHeight: 0, padding: "20px 32px", display: "flex", flexDirection: "column", gap: 16, overflow: "auto", boxSizing: "border-box" }}>
         {tabs.length === 0 ? (

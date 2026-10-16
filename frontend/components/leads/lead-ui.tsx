@@ -11,6 +11,8 @@ export const ACCENT = "#4F46E5";
 
 export const LEAD_STATUSES: LeadStatus[] = ["NEW", "CONTACTED", "TRIAL_BOOKED", "TRIAL_ATTENDED", "QUALIFIED", "ENROLLED", "LOST"];
 export const OPEN_STATUSES: LeadStatus[] = ["NEW", "CONTACTED", "TRIAL_BOOKED", "TRIAL_ATTENDED", "QUALIFIED"];
+// The board: the open stages, then where leads end up (a student, or lost).
+export const BOARD_STATUSES: LeadStatus[] = [...OPEN_STATUSES, "ENROLLED", "LOST"];
 export const LEAD_SOURCES: LeadSource[] = ["INSTAGRAM", "TELEGRAM", "WEBSITE", "REFERRAL", "WALK_IN", "PHONE", "ADVERTISEMENT", "OTHER"];
 export const LOST_REASONS: LeadLostReason[] = ["TOO_EXPENSIVE", "NO_RESPONSE", "CHOSE_COMPETITOR", "SCHEDULE_MISMATCH", "LOCATION", "NOT_INTERESTED", "OTHER"];
 

@@ -9,11 +9,16 @@ import { groupsApi, lessonsApi, makeupsApi, scheduleApi, teachersApi, type Group
 import { useLanguage } from "@/lib/i18n-context";
 import { useCenterClock } from "@/lib/use-center-clock";
 import { addDays, validTimeRange } from "@/lib/makeups";
+import { matchesSubject } from "@/lib/subject";
+import { centerWallClock } from "@/lib/center-time";
 import { ACCENT, Notice, dayLabel, errorText, lbl, primaryBtn } from "./shared";
 
 // How far ahead the booking form offers a group's lessons (the server
 // accepts up to 180 days; one request covers at most 120).
 const LOOKAHEAD_DAYS = 90;
+// Lessons are offered four weeks at a time ("show more" adds the next four).
+const PAGE_DAYS = 28;
+const WEEKDAY_KEYS = ["weekday.short.monday", "weekday.short.tuesday", "weekday.short.wednesday", "weekday.short.thursday", "weekday.short.friday", "weekday.short.saturday", "weekday.short.sunday"] as const;
 
 /**
  * Books a credit: a seat in another group's lesson (only dates on which that
@@ -28,6 +33,10 @@ export default function BookModal({ credit, onClose, onBooked }: { credit: Makeu
   const [groups, setGroups] = useState<Group[] | null>(null);
   const [groupsError, setGroupsError] = useState(false);
   const [groupId, setGroupId] = useState("");
+  // The direction of the missed lesson: groups of it are offered first.
+  const [originSubject, setOriginSubject] = useState<string | null>(null);
+  const [otherSubjects, setOtherSubjects] = useState(false);
+  const [shownDays, setShownDays] = useState(PAGE_DAYS);
   const [lessons, setLessons] = useState<LessonOccurrence[] | null>(null);
   const [lessonsError, setLessonsError] = useState(false);
   const [lessonDate, setLessonDate] = useState("");
@@ -46,7 +55,11 @@ export default function BookModal({ credit, onClose, onBooked }: { credit: Makeu
     let alive = true;
     groupsApi
       .list()
-      .then((list) => alive && setGroups(list.filter((g) => g.id !== credit.originGroupId && g.status !== "COMPLETED" && g.status !== "ARCHIVED")))
+      .then((list) => {
+        if (!alive) return;
+        setOriginSubject(list.find((g) => g.id === credit.originGroupId)?.subject ?? null);
+        setGroups(list.filter((g) => g.id !== credit.originGroupId && g.status !== "COMPLETED" && g.status !== "ARCHIVED"));
+      })
       .catch(() => alive && setGroupsError(true));
     return () => {
       alive = false;
@@ -78,6 +91,7 @@ export default function BookModal({ credit, onClose, onBooked }: { credit: Makeu
     setLessonDate("");
     setLessons(null);
     setLessonsError(false);
+    setShownDays(PAGE_DAYS);
     if (!id) return;
     lessonsApi
       .list(today, addDays(today, LOOKAHEAD_DAYS), id)
@@ -87,7 +101,30 @@ export default function BookModal({ credit, onClose, onBooked }: { credit: Makeu
 
   // Every lesson is its own choice (a date may hold two): the booking is
   // bound to the one picked, by its date and start.
-  const lessonDates = lessons ?? [];
+  // A lesson already begun today cannot be booked any more.
+  const nowHm = (() => {
+    const w = centerWallClock(new Date(), clock.tz);
+    return w ? `${String(w.getHours()).padStart(2, "0")}:${String(w.getMinutes()).padStart(2, "0")}` : "00:00";
+  })();
+  const upcoming = (lessons ?? []).filter((l) => l.date > today || (l.date === today && l.startTime > nowHm));
+  const until = addDays(today, shownDays);
+  const lessonDates = upcoming.filter((l) => l.date < until);
+  const moreLessons = upcoming.length > lessonDates.length;
+  // The chosen group's week at a glance ("Du, Cho, Ju · 10:00–11:30").
+  const pattern = (() => {
+    const seen = new Map<string, Set<number>>();
+    for (const l of upcoming) {
+      const key = `${l.startTime}–${l.endTime}`;
+      const wd = (new Date(`${l.date}T00:00:00Z`).getUTCDay() + 6) % 7;
+      if (!seen.has(key)) seen.set(key, new Set());
+      seen.get(key)!.add(wd);
+    }
+    return [...seen].map(([time, days]) => `${[...days].sort().map((d) => t(WEEKDAY_KEYS[d])).join(", ")} · ${time}`).join("; ");
+  })();
+
+  // Groups of the missed lesson's direction first; the rest on request.
+  const sameSubject = (groups ?? []).filter((g) => originSubject && matchesSubject(g.subject, originSubject));
+  const groupChoices = otherSubjects || sameSubject.length === 0 ? groups ?? [] : sameSubject;
   const lessonKey = (l: LessonOccurrence) => `${l.date}|${l.startTime}|${l.scheduleId ?? ""}`;
 
   async function submit(e: React.FormEvent) {
@@ -159,10 +196,28 @@ export default function BookModal({ credit, onClose, onBooked }: { credit: Makeu
                   sheetTitle={t("mk.targetGroup")}
                   placeholder={groups === null ? t("common.loading") : t("mk.chooseGroup")}
                   disabled={groups === null}
-                  options={(groups ?? []).map((g) => ({ value: g.id, label: g.teacher?.fullName ? `${g.name} · ${g.teacher.fullName}` : g.name }))}
+                  options={groupChoices.map((g) => ({ value: g.id, label: [g.name, g.subject, g.teacher?.fullName].filter(Boolean).join(" · ") }))}
                   value={groupId}
                   onChange={pickGroup}
                 />
+              )}
+              {groups !== null && originSubject && (
+                <div style={{ fontSize: 12, color: "#686B75", marginTop: 6, lineHeight: 1.5 }}>
+                  {sameSubject.length === 0
+                    ? t("mk.noSameSubject").replace("{subject}", originSubject)
+                    : otherSubjects
+                      ? t("mk.allSubjectsShown")
+                      : t("mk.sameSubjectShown").replace("{subject}", originSubject)}
+                  {sameSubject.length > 0 && sameSubject.length < (groups ?? []).length && (
+                    <button
+                      type="button"
+                      onClick={() => setOtherSubjects((v) => !v)}
+                      style={{ marginLeft: 8, background: "none", border: "none", padding: 0, color: ACCENT, fontWeight: 600, cursor: "pointer", fontSize: 12 }}
+                    >
+                      {otherSubjects ? t("mk.onlySameSubject") : t("mk.showOtherSubjects")}
+                    </button>
+                  )}
+                </div>
               )}
             </div>
             {groupId && (
@@ -172,18 +227,32 @@ export default function BookModal({ credit, onClose, onBooked }: { credit: Makeu
                   <Notice tone="error">{t("mk.loadError")}</Notice>
                 ) : lessons === null ? (
                   <div role="status" style={{ fontSize: 13, color: "#686B75" }}>{t("common.loading")}</div>
-                ) : lessonDates.length === 0 ? (
+                ) : upcoming.length === 0 ? (
                   <Notice tone="warn">{t("mk.noLessonsAhead").replace("{n}", String(LOOKAHEAD_DAYS))}</Notice>
                 ) : (
-                  <Select
-                    ariaLabel={t("mk.lessonDate")}
-                    sheetOnPhone
-                    sheetTitle={t("mk.lessonDate")}
-                    placeholder={t("mk.chooseDate")}
-                    options={lessonDates.map((l) => ({ value: lessonKey(l), label: `${dayLabel(l.date, lang, t)} · ${l.startTime}–${l.endTime}` }))}
-                    value={lessonDate}
-                    onChange={setLessonDate}
-                  />
+                  <>
+                    <div style={{ fontSize: 12, color: "#686B75", marginBottom: 6 }}>
+                      {t("mk.groupWeek")}: <b style={{ color: "#3A3D45" }}>{pattern}</b>
+                    </div>
+                    <Select
+                      ariaLabel={t("mk.lessonDate")}
+                      sheetOnPhone
+                      sheetTitle={t("mk.lessonDate")}
+                      placeholder={t("mk.chooseDate")}
+                      options={lessonDates.map((l) => ({ value: lessonKey(l), label: `${dayLabel(l.date, lang, t)} · ${l.startTime}–${l.endTime}` }))}
+                      value={lessonDate}
+                      onChange={setLessonDate}
+                    />
+                    {moreLessons && (
+                      <button
+                        type="button"
+                        onClick={() => setShownDays((d) => d + PAGE_DAYS)}
+                        style={{ marginTop: 6, background: "none", border: "none", padding: 0, color: ACCENT, fontWeight: 600, cursor: "pointer", fontSize: 12 }}
+                      >
+                        {t("mk.moreWeeks")}
+                      </button>
+                    )}
+                  </>
                 )}
               </div>
             )}

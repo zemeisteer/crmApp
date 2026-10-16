@@ -49,6 +49,23 @@ function shortScheduleOf(g: Group, t: (k: TranslationKey) => string) {
   return `${days.join("/")}, ${g.startTime}${g.endTime ? `–${g.endTime}` : ""}`;
 }
 
+/**
+ * Teachers offered for a group of `direction`: those who teach it, plus the
+ * one already chosen. When nobody teaches it (or the user asked), everyone.
+ */
+function pickTeachers(
+  teachers: Teacher[],
+  direction: string,
+  chosenId: string,
+  showAll: boolean,
+  t: (k: TranslationKey) => string,
+): { list: Teacher[]; note: string | null; filtered: boolean } {
+  if (!direction.trim() || showAll) return { list: teachers, note: null, filtered: false };
+  const fit = teachers.filter((tc) => tc.id === chosenId || matchesSubject(tc.subject, direction));
+  if (!fit.some((tc) => tc.id !== chosenId)) return { list: teachers, note: t("groups.teachersNoneForSubject"), filtered: false };
+  return { list: fit, note: t("groups.teachersForSubject"), filtered: fit.length < teachers.length };
+}
+
 function GroupsContent() {
   const { tenant, user } = useAuth();
   // Creating, editing and the trash are for those who run the center (the
@@ -90,6 +107,10 @@ function GroupsContent() {
   // A failed check is said, not shown as "no clash".
   const [conflictCheckError, setConflictCheckError] = useState<string | null>(null);
   const [conflictRetry, setConflictRetry] = useState(0);
+  // The teacher list follows the chosen direction: teachers whose subject
+  // names it come first (and alone), unless the user asks for everyone.
+  const [allTeachers, setAllTeachers] = useState(false);
+  const teacherChoice = pickTeachers(teachers, subject === OTHER_SUBJECT ? customSubject : subject, teacherId, allTeachers, t);
 
   useEffect(() => {
     if (!teacherId || days.length === 0 || !startTime) {
@@ -492,7 +513,7 @@ function GroupsContent() {
                 { value: OTHER_SUBJECT, label: t("groups.otherSubject") },
               ]}
               value={subject}
-              onChange={setSubject}
+              onChange={(v) => { setSubject(v); setAllTeachers(false); }}
             />
             {subject === OTHER_SUBJECT && (
               <input
@@ -515,10 +536,20 @@ function GroupsContent() {
           ) : (
             <Field label={t("groups.fieldTeacher")} required error={fieldErrors.teacher}>
               <Select
-                options={[{ value: "", label: t("groups.notSelected") }, ...teachers.map((tc) => ({ value: tc.id, label: tc.fullName }))]}
+                options={[{ value: "", label: t("groups.notSelected") }, ...teacherChoice.list.map((tc) => ({ value: tc.id, label: tc.subject ? `${tc.fullName} · ${tc.subject}` : tc.fullName }))]}
                 value={teacherId}
                 onChange={setTeacherId}
               />
+              {teacherChoice.note && (
+                <div style={{ fontSize: 12, color: "#686B75", marginTop: 6, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                  <span>{teacherChoice.note}</span>
+                  {teacherChoice.filtered && (
+                    <button type="button" onClick={() => setAllTeachers(true)} style={{ background: "none", border: "none", padding: 0, color: "#4F46E5", fontWeight: 600, cursor: "pointer", fontSize: 12 }}>
+                      {t("groups.teachersShowAll")}
+                    </button>
+                  )}
+                </div>
+              )}
             </Field>
           )}
           {branches.length > 0 && (

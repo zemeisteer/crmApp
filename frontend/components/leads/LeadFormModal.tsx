@@ -74,6 +74,8 @@ export default function LeadFormModal({ open, onClose, onSaved, lead, managers =
   const [email, setEmail] = useState(lead?.email ?? "");
   const [source, setSource] = useState<LeadSource>(lead?.source ?? "INSTAGRAM");
   const [subjectId, setSubjectId] = useState(lead?.desiredSubjectId ?? "");
+  // Other directions the lead also asks about (up to five).
+  const [extraIds, setExtraIds] = useState<string[]>(lead?.extraSubjectIds ?? []);
   const [courseId, setCourseId] = useState(lead?.desiredCourseId ?? "");
   const [branchId, setBranchId] = useState(lead?.preferredBranchId ?? "");
   const [managerId, setManagerId] = useState("");
@@ -148,6 +150,7 @@ export default function LeadFormModal({ open, onClose, onSaved, lead, managers =
           email: email.trim() || null,
           source,
           desiredSubjectId: subjectId || null,
+          extraSubjectIds: subjectId ? extraIds.filter((id) => id !== subjectId) : [],
           desiredCourseId: courseId || null,
           preferredBranchId: branchId || null,
           notes: notes.trim() || null,
@@ -161,6 +164,7 @@ export default function LeadFormModal({ open, onClose, onSaved, lead, managers =
           email: email.trim() || undefined,
           source,
           desiredSubjectId: subjectId || undefined,
+          extraSubjectIds: subjectId ? extraIds.filter((id) => id !== subjectId) : undefined,
           desiredCourseId: courseId || undefined,
           preferredBranchId: branchId || undefined,
           assignedManagerUserId: managerId || undefined,
@@ -231,12 +235,45 @@ export default function LeadFormModal({ open, onClose, onSaved, lead, managers =
             <label style={label}>{t("adm.fieldSubject")}</label>
             <Select
               value={subjectId}
-              onChange={(v) => { setSubjectId(v); setCourseId(""); }}
+              onChange={(v) => { setSubjectId(v); setCourseId(""); setExtraIds((prev) => prev.filter((id) => id !== v)); }}
               placeholder={t("common.notSelected")}
               options={[{ value: "", label: t("common.notSelected") }, ...subjects.map((s) => ({ value: s.id, label: s.name }))]}
             />
             {subjects.length === 0 && <div style={{ marginTop: 5, fontSize: 12, color: "#686B75" }}>{t("leadForm.noSubjectsHint")}</div>}
           </div>
+          {subjectId && subjects.length > 1 && (
+            <div style={{ gridColumn: "1 / -1" }}>
+              <label style={label}>{t("leadForm.extraSubjects")}</label>
+              <div role="group" aria-label={t("leadForm.extraSubjects")} style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                {subjects.filter((s) => s.id !== subjectId).map((s) => {
+                  const on = extraIds.includes(s.id);
+                  const full = !on && extraIds.length >= 5;
+                  return (
+                    <button
+                      key={s.id}
+                      type="button"
+                      aria-pressed={on}
+                      disabled={full}
+                      onClick={() => setExtraIds((prev) => (on ? prev.filter((id) => id !== s.id) : [...prev, s.id]))}
+                      style={{
+                        padding: "6px 12px",
+                        borderRadius: 999,
+                        fontSize: 12.5,
+                        fontWeight: 600,
+                        cursor: full ? "not-allowed" : "pointer",
+                        border: `1px solid ${on ? "#4F46E5" : "#E2E0DA"}`,
+                        background: on ? "#EEF0FF" : "#fff",
+                        color: on ? "#4F46E5" : full ? "#A3A6AE" : "#3A3D45",
+                      }}
+                    >
+                      {on ? "✓ " : "+ "}{s.name}
+                    </button>
+                  );
+                })}
+              </div>
+              <div style={{ marginTop: 5, fontSize: 12, color: "#686B75" }}>{t("leadForm.extraSubjectsHint")}</div>
+            </div>
+          )}
           {courses.length > 0 && (
             <div>
               <label style={label}>{t("adm.fieldCourse")}</label>

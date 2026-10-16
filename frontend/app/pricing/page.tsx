@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import DashboardShell from "@/components/DashboardShell";
 import Modal from "@/components/Modal";
 import Select from "@/components/Select";
@@ -197,6 +197,37 @@ function SuperadminPlans() {
   // button, or on save when either is still empty.
   const [translating, setTranslating] = useState(false);
   const [translateNote, setTranslateNote] = useState<{ text: string; error?: boolean } | null>(null);
+  // A list the admin wrote by hand is theirs: the automatic translation
+  // fills only the ones not typed into (the button still redoes both).
+  const [ruByHand, setRuByHand] = useState(false);
+  const [enByHand, setEnByHand] = useState(false);
+  const autoFor = useRef("");
+
+  // A moment after the Uzbek list stops changing, the other two follow it.
+  useEffect(() => {
+    if (!editOpen || !features.trim() || (ruByHand && enByHand)) return;
+    const text = features;
+    const timer = setTimeout(() => {
+      autoFor.current = text;
+      setTranslating(true);
+      plansApi
+        .translate(text)
+        .then((res) => {
+          if (autoFor.current !== text) return;
+          if (!ruByHand) setFeaturesRu(res.featuresRu);
+          if (!enByHand) setFeaturesEn(res.featuresEn);
+          setTranslateNote({ text: t(res.provider === "ai" ? "pr.translatedBy.ai" : "pr.translatedBy.google") });
+        })
+        .catch((err) => {
+          if (autoFor.current === text) setTranslateNote({ text: err instanceof ApiError ? err.message : t("common.errorGeneric"), error: true });
+        })
+        .finally(() => {
+          if (autoFor.current === text) setTranslating(false);
+        });
+    }, 1200);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [features, editOpen]);
 
   async function translateFeatures(onlyEmpty: boolean): Promise<{ ru: string; en: string }> {
     const res = await plansApi.translate(features);
@@ -210,6 +241,9 @@ function SuperadminPlans() {
 
   async function onTranslate() {
     if (!features.trim()) return setTranslateNote({ text: t("pr.translateFirst"), error: true });
+    autoFor.current = "";
+    setRuByHand(false);
+    setEnByHand(false);
     setTranslating(true);
     setTranslateNote(null);
     try {
@@ -237,6 +271,8 @@ function SuperadminPlans() {
     setFeaturesRu("");
     setFeaturesEn("");
     setTranslateNote(null);
+    setRuByHand(false);
+    setEnByHand(false);
     setPopular(false);
     setActive(true);
     setEditOpen(true);
@@ -251,6 +287,9 @@ function SuperadminPlans() {
     setFeaturesRu(p.featuresRu ?? "");
     setFeaturesEn(p.featuresEn ?? "");
     setTranslateNote(null);
+    // Saved translations stay unless the button is pressed.
+    setRuByHand(!!p.featuresRu?.trim());
+    setEnByHand(!!p.featuresEn?.trim());
     setPopular(p.popular);
     setActive(p.active);
     setEditOpen(true);
@@ -422,11 +461,11 @@ function SuperadminPlans() {
           </div>
           <div>
             <label htmlFor="plan-features-ru" style={{ display: "block", fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>{t("pricing.fieldFeaturesRu")}</label>
-            <textarea id="plan-features-ru" className="field-input" rows={4} value={featuresRu} onChange={(e) => setFeaturesRu(e.target.value)} placeholder={"Без ограничения учеников\nИИ-аналитика"} style={{ resize: "vertical" }} />
+            <textarea id="plan-features-ru" className="field-input" rows={4} value={featuresRu} onChange={(e) => { setFeaturesRu(e.target.value); setRuByHand(true); }} placeholder={"Без ограничения учеников\nИИ-аналитика"} style={{ resize: "vertical" }} />
           </div>
           <div>
             <label htmlFor="plan-features-en" style={{ display: "block", fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>{t("pricing.fieldFeaturesEn")}</label>
-            <textarea id="plan-features-en" className="field-input" rows={4} value={featuresEn} onChange={(e) => setFeaturesEn(e.target.value)} placeholder={"Unlimited students\nAI analysis"} style={{ resize: "vertical" }} />
+            <textarea id="plan-features-en" className="field-input" rows={4} value={featuresEn} onChange={(e) => { setFeaturesEn(e.target.value); setEnByHand(true); }} placeholder={"Unlimited students\nAI analysis"} style={{ resize: "vertical" }} />
           </div>
           <div style={{ display: "flex", gap: 16 }}>
             <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 600 }}>

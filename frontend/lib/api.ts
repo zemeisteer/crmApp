@@ -518,6 +518,9 @@ export interface Lead {
   status: LeadStatus;
   source: LeadSource;
   desiredSubjectId?: string | null;
+  /** Other directions of interest besides the main one. */
+  extraSubjectIds?: string[];
+  extraSubjects?: { id: string; name: string }[];
   desiredCourseId?: string | null;
   preferredBranchId?: string | null;
   assignedManagerUserId?: string | null;
@@ -2331,6 +2334,7 @@ export const leadsApi = {
     email?: string;
     source?: LeadSource;
     desiredSubjectId?: string;
+    extraSubjectIds?: string[];
     desiredCourseId?: string;
     preferredBranchId?: string;
     assignedManagerUserId?: string;
@@ -2347,6 +2351,7 @@ export const leadsApi = {
     email?: string | null;
     source?: LeadSource;
     desiredSubjectId?: string | null;
+    extraSubjectIds?: string[];
     desiredCourseId?: string | null;
     preferredBranchId?: string | null;
     notes?: string | null;
@@ -2674,6 +2679,49 @@ export interface CheckConflictInput {
   endTime: string;
   excludeScheduleId?: string;
 }
+
+export type CenterEventKind = "MEETING" | "COMPETITION" | "EVENT" | "OTHER";
+export type CenterEventFormat = "OFFLINE" | "ONLINE";
+export type CenterEventAudience = "STAFF" | "STUDENTS" | "ALL";
+
+/** A one-off meeting, competition or other event beside the timetable. */
+export interface CenterEvent {
+  id: string;
+  title: string;
+  kind: CenterEventKind;
+  format: CenterEventFormat;
+  date: string; // YYYY-MM-DD, center-local
+  startTime: string;
+  endTime: string | null;
+  roomId: string | null;
+  room?: { id: string; name: string } | null;
+  location: string | null;
+  meetingUrl: string | null;
+  audience: CenterEventAudience;
+  description: string | null;
+}
+
+export type CenterEventInput = {
+  title: string;
+  kind: CenterEventKind;
+  format: CenterEventFormat;
+  date: string;
+  startTime: string;
+  endTime?: string | null;
+  roomId?: string | null;
+  location?: string | null;
+  meetingUrl?: string | null;
+  audience?: CenterEventAudience;
+  description?: string | null;
+};
+
+export const centerEventsApi = {
+  list: (from: string, to: string) => request<CenterEvent[]>(`/center-events?from=${from}&to=${to}`),
+  create: (data: CenterEventInput) => request<CenterEvent>("/center-events", { method: "POST", body: JSON.stringify(data) }),
+  update: (id: string, data: Partial<CenterEventInput>) =>
+    request<CenterEvent>(`/center-events/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
+  remove: (id: string) => request<{ ok: boolean }>(`/center-events/${id}`, { method: "DELETE" }),
+};
 
 export const scheduleApi = {
   listRooms: () => request<Room[]>("/schedule/rooms"),

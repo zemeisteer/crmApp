@@ -217,7 +217,10 @@ function StudentPicker({
           setOpen(true);
           onSelect(null);
         }}
-        onFocus={() => setOpen(true)}
+        // A student already chosen (e.g. from a debtor's row) stays chosen when
+        // the form focuses this field; a click or typing opens the list.
+        onFocus={() => { if (!selected) setOpen(true); }}
+        onClick={() => setOpen(true)}
         onBlur={() => setTimeout(() => setOpen(false), 150)}
         onKeyDown={(e) => { if (e.key === "Escape" && open) { e.stopPropagation(); setOpen(false); } }}
         placeholder={t("payments.picker.searchPlaceholder")}
@@ -225,7 +228,7 @@ function StudentPicker({
       {selected && !open && (
         <div style={{ fontSize: 12, color: "#686B75", marginTop: 6 }}>
           {t("payments.picker.groups")}:{" "}
-          {selected.enrollments?.map((e) => `${e.group.name} (${e.group.subject})`).join(", ") || "—"}
+          {selected.enrollments?.map((e) => (e.group.subject ? `${e.group.name} (${e.group.subject})` : e.group.name)).join(", ") || "—"}
         </div>
       )}
       {open && (
@@ -713,11 +716,19 @@ function PaymentsContent() {
     setError(null);
   }
 
-  function handleOpenPayForDebtor(debtor: {
-    studentId: string;
-    debtAmount: number;
-    expectedAmount: number;
-  }) {
+  function handleOpenPayForDebtor(debtor: DebtorItem) {
+    // The row's student is shown in the form at once (the full record
+    // replaces this when it arrives), so the form opens on that student.
+    setKnown((prev) =>
+      prev.has(debtor.studentId)
+        ? prev
+        : new Map(prev).set(debtor.studentId, {
+            id: debtor.studentId,
+            fullName: debtor.studentName,
+            phone: debtor.phone,
+            enrollments: debtor.groups.map((g) => ({ group: { id: g.id, name: g.name, subject: "" } })),
+          } as unknown as Student),
+    );
     setStudentId(debtor.studentId);
     setAmount(String(debtor.debtAmount || debtor.expectedAmount));
     setDiscount("");

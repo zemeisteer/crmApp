@@ -1085,6 +1085,9 @@ export const leads = pgTable('leads', {
   status: leadStatusEnum('status').notNull().default('NEW'),
   source: leadSourceEnum('source').notNull().default('OTHER'),
   desiredSubjectId: text('desired_subject_id').references(() => subjects.id, { onDelete: 'set null' }),
+  // Other directions the lead is interested in besides desiredSubjectId (the
+  // main one, used for trials and reports). Ids of this center's subjects.
+  extraSubjectIds: text('extra_subject_ids').array().notNull().default(sql`'{}'::text[]`),
   desiredCourseId: text('desired_course_id').references(() => courses.id, { onDelete: 'set null' }),
   preferredBranchId: text('preferred_branch_id').references(() => branches.id, { onDelete: 'set null' }),
   assignedManagerUserId: text('assigned_manager_user_id').references(() => users.id, { onDelete: 'set null' }),
@@ -1347,6 +1350,30 @@ export const rooms = pgTable('rooms', {
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 }, (t) => ({
   tenantIdx: index('rooms_tenant_idx').on(t.tenantId),
+}));
+
+// One-off happenings beside the lessons: meetings (in a room or online),
+// competitions and other events, on a date of the center's calendar.
+export const centerEvents = pgTable('center_events', {
+  id: text('id').primaryKey().$defaultFn(() => createId()),
+  tenantId: text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  title: text('title').notNull(),
+  kind: text('kind').notNull().default('MEETING'), // MEETING | COMPETITION | EVENT | OTHER
+  format: text('format').notNull().default('OFFLINE'), // OFFLINE | ONLINE
+  date: text('date').notNull(), // YYYY-MM-DD, center-local
+  startTime: text('start_time').notNull(), // HH:MM
+  endTime: text('end_time'),
+  roomId: text('room_id').references(() => rooms.id, { onDelete: 'set null' }),
+  location: text('location'),
+  meetingUrl: text('meeting_url'),
+  audience: text('audience').notNull().default('STAFF'), // STAFF | STUDENTS | ALL
+  description: text('description'),
+  createdByUserId: text('created_by_user_id').references(() => users.id, { onDelete: 'set null' }),
+  deletedAt: timestamp('deleted_at'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+}, (t) => ({
+  tenantDateIdx: index('center_events_tenant_date_idx').on(t.tenantId, t.date),
 }));
 
 // Schedules / Lessons (CRMAPP Master Spec Section 17)
@@ -1713,6 +1740,11 @@ export const roomsRelations = relations(rooms, ({ one, many }) => ({
   tenant: one(tenants, { fields: [rooms.tenantId], references: [tenants.id] }),
   branch: one(branches, { fields: [rooms.branchId], references: [branches.id] }),
   schedules: many(schedules),
+}));
+
+export const centerEventsRelations = relations(centerEvents, ({ one }) => ({
+  tenant: one(tenants, { fields: [centerEvents.tenantId], references: [tenants.id] }),
+  room: one(rooms, { fields: [centerEvents.roomId], references: [rooms.id] }),
 }));
 
 export const schedulesRelations = relations(schedules, ({ one }) => ({

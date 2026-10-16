@@ -441,7 +441,7 @@ function LeadProfile() {
               {detail(t("leads.fieldPhone"), <a href={telHref(lead.phone)} style={{ color: ACCENT }}>{lead.phone}</a>)}
               {lead.secondaryPhone && detail(t("adm.parentPhone"), <a href={telHref(lead.secondaryPhone)} style={{ color: ACCENT }}>{lead.secondaryPhone}</a>)}
               {lead.email && detail(t("adm.fieldEmail"), <a href={`mailto:${lead.email}`} style={{ color: ACCENT }}>{lead.email}</a>)}
-              {detail(t("adm.fieldSubject"), lead.desiredSubject?.name ?? "—")}
+              {detail(t("adm.fieldSubject"), [lead.desiredSubject?.name, ...(lead.extraSubjects ?? []).map((s) => s.name)].filter(Boolean).join(", ") || "—")}
               {detail(t("adm.fieldCourse"), lead.desiredCourse?.name ?? "—")}
               {lead.legacySubject && detail(t("adm.legacySubject"), lead.legacySubject)}
               {detail(t("leads.fieldBranch"), lead.preferredBranch?.name ?? "—")}

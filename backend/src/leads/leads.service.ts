@@ -96,6 +96,16 @@ function rate(numerator: number, denominator: number) {
   };
 }
 
+/** The extra directions with their names (a deleted subject drops out). */
+function withNames(ids: string[] | null | undefined, names: Map<string, string>) {
+  return (ids ?? []).filter((id) => names.has(id)).map((id) => ({ id, name: names.get(id)! }));
+}
+
+/** Extra directions as stored: distinct, without the main one, at most five. */
+function extraSubjects(ids: string[] | null | undefined, main: string | null | undefined): string[] {
+  return [...new Set((ids ?? []).filter((id) => id && id !== main))].slice(0, 5);
+}
+
 @Injectable()
 export class LeadsService {
   private readonly logger = new Logger('Admissions');
@@ -134,8 +144,23 @@ export class LeadsService {
     });
     // The center's own fields of each lead on the page (for list columns).
     const values = await this.customFields.valuesOfMany(tenantId, 'LEAD', items.map((l) => l.id));
+    const names = await this.subjectNames(tenantId, items.flatMap((l) => l.extraSubjectIds ?? []));
 
-    return { items: items.map((l) => ({ ...l, customFields: values.get(l.id) ?? {} })), total, page, pageSize };
+    return {
+      items: items.map((l) => ({ ...l, extraSubjects: withNames(l.extraSubjectIds, names), customFields: values.get(l.id) ?? {} })),
+      total,
+      page,
+      pageSize,
+    };
+  }
+
+  /** Names of this center's subjects, by id (for the extra directions). */
+  private async subjectNames(tenantId: string, ids: string[]): Promise<Map<string, string>> {
+    const unique = [...new Set(ids)];
+    if (unique.length === 0) return new Map();
+    const rows = await this.db.select({ id: subjects.id, name: subjects.name }).from(subjects)
+      .where(and(eq(subjects.tenantId, tenantId), inArray(subjects.id, unique)));
+    return new Map(rows.map((r) => [r.id, r.name]));
   }
 
   private buildFilters(tenantId: string, userId: string | null, q: QueryLeadDto, tz: string): SQL[] {
@@ -262,7 +287,8 @@ export class LeadsService {
       utm: meta.utm ?? null,
     };
     const customFields = await this.customFields.read(tenantId, 'LEAD', id);
-    return { ...lead, assignedManagerActive, allowedTransitions: allowedTransitions(lead.status, { tookPlacementTest: attempts.length > 0 }), origin, placementAttempts: attempts, customFields };
+    const extraSubjects = withNames(lead.extraSubjectIds, await this.subjectNames(tenantId, lead.extraSubjectIds ?? []));
+    return { ...lead, extraSubjects, assignedManagerActive, allowedTransitions: allowedTransitions(lead.status, { tookPlacementTest: attempts.length > 0 }), origin, placementAttempts: attempts, customFields };
   }
 
   async timeline(tenantId: string, id: string) {
@@ -350,9 +376,18 @@ export class LeadsService {
   private async validateRefs(
     exec: Executor,
     tenantId: string,
-    refs: { desiredSubjectId?: string | null; desiredCourseId?: string | null; preferredBranchId?: string | null },
-    current?: Pick<LeadRow, 'desiredSubjectId' | 'desiredCourseId'>,
+    refs: { desiredSubjectId?: string | null; extraSubjectIds?: string[]; desiredCourseId?: string | null; preferredBranchId?: string | null },
+    current?: Pick<LeadRow, 'desiredSubjectId' | 'desiredCourseId'> & { extraSubjectIds?: string[] | null },
   ) {
+    // Extra directions: this center's live subjects; one already on the lead
+    // may stay even if it was archived since.
+    const extra = (refs.extraSubjectIds ?? []).filter((id) => !(current?.extraSubjectIds ?? []).includes(id));
+    if (extra.length) {
+      const found = await exec.select({ id: subjects.id, status: subjects.status }).from(subjects)
+        .where(and(inArray(subjects.id, extra), eq(subjects.tenantId, tenantId)));
+      if (found.length !== new Set(extra).size) throw new BadRequestException('Fan topilmadi');
+      if (found.some((s) => s.status === 'ARCHIVED')) throw new BadRequestException('Arxivlangan fanni tanlab bo\'lmaydi');
+    }
     if (refs.preferredBranchId) {
       const [b] = await exec.select({ id: branches.id }).from(branches)
         .where(and(eq(branches.id, refs.preferredBranchId), eq(branches.tenantId, tenantId)));
@@ -502,6 +537,7 @@ export class LeadsService {
             emailNormalized,
             source: dto.source ?? 'OTHER',
             desiredSubjectId: dto.desiredSubjectId || null,
+            extraSubjectIds: extraSubjects(dto.extraSubjectIds, dto.desiredSubjectId),
             desiredCourseId: dto.desiredCourseId || null,
             preferredBranchId: dto.preferredBranchId || null,
             assignedManagerUserId: dto.assignedManagerUserId || null,
@@ -682,6 +718,12 @@ export class LeadsService {
     }
     if (dto.source !== undefined) set.source = dto.source;
     if (dto.desiredSubjectId !== undefined) set.desiredSubjectId = dto.desiredSubjectId || null;
+    if (dto.extraSubjectIds !== undefined || dto.desiredSubjectId !== undefined) {
+      set.extraSubjectIds = extraSubjects(
+        dto.extraSubjectIds ?? lead.extraSubjectIds,
+        dto.desiredSubjectId !== undefined ? dto.desiredSubjectId : lead.desiredSubjectId,
+      );
+    }
     if (dto.desiredCourseId !== undefined) set.desiredCourseId = dto.desiredCourseId || null;
     if (dto.preferredBranchId !== undefined) set.preferredBranchId = dto.preferredBranchId || null;
     if (dto.notes !== undefined) set.notes = dto.notes?.trim() || null;

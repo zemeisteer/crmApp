@@ -63,7 +63,7 @@ export const ACCESS_CATALOG: AccessKey[] = [
   { key: 'teachers.edit', area: 'teaching', template: [], routes: ['POST /api/teachers', 'PATCH /api/teachers/:id', 'POST /api/teachers/:id/account', 'DELETE /api/teachers/:id/account'] },
   { key: 'teachers.delete', area: 'teaching', template: [], routes: ['DELETE /api/teachers/:id', 'GET /api/teachers/trash', 'POST /api/teachers/:id/restore'] },
   { key: 'teacherAttendance.mark', area: 'teaching', template: [M, R], routes: ['GET /api/teacher-attendance', 'POST /api/teacher-attendance'] },
-  { key: 'schedule.view', area: 'teaching', template: ALL, routes: ['GET /api/schedule', 'GET /api/schedule/:id', 'POST /api/schedule/check-conflict', 'GET /api/schedule/rooms', 'GET /api/schedule/rooms/:id', 'GET /api/lessons', 'GET /api/lessons/cancellations'] },
+  { key: 'schedule.view', area: 'teaching', template: ALL, routes: ['GET /api/schedule', 'GET /api/schedule/:id', 'POST /api/schedule/check-conflict', 'GET /api/schedule/rooms', 'GET /api/schedule/rooms/:id', 'GET /api/lessons', 'GET /api/lessons/cancellations', 'GET /api/center-events'] },
   { key: 'lessons.cancel', area: 'teaching', template: [M], routes: ['POST /api/lessons/cancellations', 'DELETE /api/lessons/cancellations/:id'] },
   { key: 'makeups.view', area: 'teaching', template: [M, R], routes: ['GET /api/makeups/eligible', 'GET /api/makeups/credits'] },
   {
@@ -73,6 +73,7 @@ export const ACCESS_CATALOG: AccessKey[] = [
   { key: 'makeups.attend', area: 'teaching', template: [M, R, T], routes: ['GET /api/makeups/roster', 'POST /api/makeups/bookings/:id/attendance'] },
   { key: 'schedule.edit', area: 'teaching', template: [T], routes: ['POST /api/schedule', 'PATCH /api/schedule/:id'] },
   { key: 'schedule.delete', area: 'teaching', template: [], routes: ['DELETE /api/schedule/:id'] },
+  { key: 'events.manage', area: 'teaching', template: [M], routes: ['POST /api/center-events', 'PATCH /api/center-events/:id', 'DELETE /api/center-events/:id'] },
   { key: 'rooms.manage', area: 'teaching', template: [], routes: ['POST /api/schedule/rooms', 'PATCH /api/schedule/rooms/:id', 'DELETE /api/schedule/rooms/:id'] },
   { key: 'attendance.view', area: 'teaching', template: ALL, routes: ['GET /api/attendance', 'GET /api/attendance/topics'] },
   { key: 'attendance.mark', area: 'teaching', template: [M, R, T], routes: ['POST /api/attendance', 'POST /api/attendance/qr-checkin'] },

@@ -57,8 +57,9 @@ describe('LeadsService', () => {
       mockDb.query.leads.findMany.mockResolvedValue(mockLeads);
 
       const result = await service.findAll('tenant-1', 'user-1', { status: 'NEW', search: 'Shaxzod' });
-      // Each lead carries its custom field values (for the list's columns).
-      expect(result).toEqual({ items: [{ ...mockLeads[0], customFields: { 'field-1': 'Kechki' } }], total: 1, page: 1, pageSize: 25 });
+      // Each lead carries its custom field values (for the list's columns)
+      // and its other directions of interest (none here).
+      expect(result).toEqual({ items: [{ ...mockLeads[0], extraSubjects: [], customFields: { 'field-1': 'Kechki' } }], total: 1, page: 1, pageSize: 25 });
       expect(mockDb.query.leads.findMany).toHaveBeenCalledWith(expect.objectContaining({ limit: 25, offset: 0 }));
     });
   });
