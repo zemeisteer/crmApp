@@ -1,9 +1,9 @@
 # De-vibecode polish: done
 
-Branch `polish-local`, based on `sprint4-local` @ `0aec8f8` (= PR #3 head). Nothing is pushed.
+Branch `polish-local`, based on `sprint4-local` @ `0aec8f8` (= PR #3 head). Pushed to `claude/polish-wip` (no PR).
 The user decided: keep the brand color and font.
 
-## Done (not yet validated by a full run)
+## Done
 - Landing text: no em dashes (UZ/RU/EN), no emoji in chat strings, `aiNew` without the sparkle.
 - Dashboard: removed the fake "Barcha tizimlar ishlayapti" pill (and its i18n key); header uses "·".
 - Schedule: event button is neutral (like "Xonalar"), without the trophy.
