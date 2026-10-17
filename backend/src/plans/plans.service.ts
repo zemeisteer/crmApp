@@ -60,7 +60,7 @@ export class PlansService {
     await this.db.insert(plans).values([
       {
         key: 'STARTER', name: 'Starter', price: 0, popular: false,
-        features: "1 filial\n50 tagacha o'quvchi\nAsosiy CRUD",
+        features: "1 filial\n50 tagacha o'quvchi\nAsosiy imkoniyatlar",
         featuresRu: '1 филиал\nДо 50 учеников\nОсновные функции',
         featuresEn: '1 branch\nUp to 50 students\nCore features',
       },

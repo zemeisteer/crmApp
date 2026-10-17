@@ -226,7 +226,7 @@ function ExamModal({ material, onClose, onDone }: { material: MaterialLike; onCl
         )}
         {error && <div role="alert" style={{ fontSize: 12.5, fontWeight: 600, color: "#B23A47", background: "#FDEBEC", borderRadius: 8, padding: "8px 12px" }}>{error}</div>}
         <button type="button" className="btn" disabled={reading || !examId} onClick={read} style={{ background: "linear-gradient(135deg, #7C3AED, #4F46E5)", color: "#fff", border: "none", fontSize: 14, fontWeight: 700, padding: 12, borderRadius: 10, opacity: examId ? 1 : 0.6 }}>
-          {reading ? t("aim.reading") : `✨ ${t("aim.readQuestions")}`}
+          {reading ? t("aim.reading") : t("aim.readQuestions")}
         </button>
       </div>
     </Modal>

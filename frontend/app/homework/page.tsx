@@ -266,7 +266,7 @@ function LeaderboardModal({
   const tint = (place: number) => (place === 1 ? "#FEF9C3" : place === 2 ? "#F1F5F9" : place === 3 ? "#FFEDD5" : "#fff");
 
   return (
-    <Modal open onClose={onClose} title={`🏆 ${t("leader.title")}`} width={720}>
+    <Modal open onClose={onClose} title={t("leader.title")} width={720}>
       <div style={{ display: "grid", gridTemplateColumns: "1.3fr 1fr 1fr 0.8fr", gap: 8, marginBottom: 14 }}>
         <input className="field-input" placeholder={t("leader.search")} value={q} onChange={(e) => setQ(e.target.value)} />
         <Select
@@ -610,7 +610,6 @@ function HomeworkContent() {
               cursor: "pointer",
             }}
           >
-            <span>🏆</span>
             <span>{t("hw.leaderboard")}</span>
           </button>
           <button
@@ -808,7 +807,7 @@ function HomeworkContent() {
                   <span style={{ fontSize: 22 }}>📄</span>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 13, fontWeight: 700, color: "#181A1F", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{(title.trim() || aiFile.title)}.pdf</div>
-                    <div style={{ fontSize: 11.5, color: "#7C3AED", fontWeight: 600 }}>✨ {t("hwAi.fileNote")}</div>
+                    <div style={{ fontSize: 11.5, color: "#7C3AED", fontWeight: 600 }}>{t("hwAi.fileNote")}</div>
                   </div>
                   <button type="button" onClick={() => setAiFileEditing((v) => !v)} style={smallBtn}>{aiFileEditing ? t("hwAi.fileDone") : t("hwAi.fileEdit")}</button>
                   <button type="button" onClick={() => { setAiFile(null); setAiFileEditing(false); }} style={{ ...smallBtn, color: "#B23A47" }} aria-label={t("common.delete")}>✕</button>
@@ -837,7 +836,7 @@ function HomeworkContent() {
           {aiPromptOpen && (
             <div style={{ border: "1px solid #DDD6FE", background: "#F5F3FF", borderRadius: 12, padding: 14, display: "flex", flexDirection: "column", gap: 10 }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <div style={{ fontSize: 13.5, fontWeight: 700, color: "#5B21B6" }}>✨ {t("hwAi.title")}</div>
+                <div style={{ fontSize: 13.5, fontWeight: 700, color: "#5B21B6" }}>{t("hwAi.title")}</div>
                 <button type="button" onClick={() => setAiPromptOpen(false)} style={{ background: "none", border: "none", cursor: "pointer", color: "#7C3AED", fontSize: 14, fontWeight: 800 }} aria-label={t("common.cancel")}>✕</button>
               </div>
               <textarea
@@ -950,7 +949,6 @@ function HomeworkContent() {
                 whiteSpace: "nowrap",
               }}
             >
-              <span>✨</span>
               <span>{t("hwAi.button")}</span>
             </button>
             <button

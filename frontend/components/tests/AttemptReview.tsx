@@ -75,7 +75,7 @@ export default function AttemptReview({
           </div>
           {hasEssay && (
             <button type="button" className="btn" disabled={busy !== null} onClick={() => run("ai")} style={{ ...btn, background: "linear-gradient(135deg, #7C3AED, #4F46E5)", color: "#fff", border: "none" }}>
-              {busy === "ai" ? t("review.aiBusy") : `✨ ${t("review.aiSuggest")}`}
+              {busy === "ai" ? t("review.aiBusy") : t("review.aiSuggest")}
             </button>
           )}
           {Object.keys(aiReview).length > 0 && (
@@ -120,7 +120,7 @@ export default function AttemptReview({
                 {q.type === "ESSAY" && q.rubric && <Row label={t("qe.rubric")}><span style={{ color: "#475569" }}>{q.rubric}</span></Row>}
                 {ai && (
                   <div style={{ fontSize: 12.5, background: "#F5F3FF", border: "1px solid #DDD6FE", borderRadius: 8, padding: "6px 10px", color: "#4C1D95" }}>
-                    ✨ <b>{t("review.aiScore")}: {ai.score}/{it.max}</b> — {ai.comment}
+                    <b>{t("review.aiScore")}: {ai.score}/{it.max}</b> — {ai.comment}
                   </div>
                 )}
                 {(q.type === "ESSAY" || it.pending) && (

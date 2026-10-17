@@ -200,7 +200,7 @@ function AiPracticeCard({ subject, left, busy, onMake }: { subject: string; left
       <div style={{ fontSize: 12.5, color: "#6B6E78", lineHeight: 1.5 }}>{t("prx.aiHint")}</div>
       <input className="field-input" value={topic} onChange={(e) => setTopic(e.target.value)} maxLength={200} placeholder={t("prx.topicPh")} aria-label={`${subject}: ${t("prx.topicPh")}`} />
       <button type="submit" disabled={busy || left <= 0} style={{ background: ACCENT, color: "#fff", border: "none", borderRadius: 11, padding: "10px 14px", fontWeight: 700, cursor: busy || left <= 0 ? "default" : "pointer", opacity: left <= 0 ? 0.5 : 1 }}>
-        {busy ? `⏳ ${t("prx.making")}` : `✨ ${t("prx.make")}`}
+        {busy ? t("prx.making") : t("prx.make")}
       </button>
     </form>
   );

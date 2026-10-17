@@ -30,7 +30,7 @@ test('teacher attendance: two lessons of one group on one day are marked apart; 
   await loginOnMainSite(page, a.email);
   await expectCenterDashboard(page, a.sub);
   await page.goto(centerUrl(a.sub, '/teachers'));
-  await page.getByRole('button', { name: "📋 O'qituvchilar davomati" }).click();
+  await page.getByRole('button', { name: "O'qituvchilar davomati" }).click();
   const dialog = page.getByRole('dialog', { name: /O'qituvchilar davomati/ });
   const morning = dialog.getByRole('group', { name: 'TA Ikki Dars 09:00–10:00' });
   const evening = dialog.getByRole('group', { name: 'TA Ikki Dars 18:00–19:00' });

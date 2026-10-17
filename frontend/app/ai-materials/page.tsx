@@ -359,7 +359,7 @@ function AiMaterialsContent() {
                   cursor: "pointer",
                 }}
               >
-                {loading ? t("aim.generating") : `✨ ${t("aiMaterials.generate")}`}
+                {loading ? t("aim.generating") : t("aiMaterials.generate")}
               </button>
             </form>
 

@@ -797,7 +797,7 @@ function ExamsContent() {
                   onClick={() => { setShowAiForm(!showAiForm); setNewQ(null); }}
                   className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer shadow-sm"
                 >
-                  ✨ {t("ex.aiGenerate")}
+                  {t("ex.aiGenerate")}
                 </button>
                 <button
                   onClick={() => { setNewQ(newQ ? null : emptyQuestion("MCQ")); setShowAiForm(false); }}
@@ -811,7 +811,7 @@ function ExamsContent() {
             {/* AI generation options */}
             {showAiForm && (
               <div className="p-4 rounded-xl border border-violet-200 bg-violet-50/50 space-y-3">
-                <div className="text-xs font-bold text-violet-950">✨ {t("ex.aiTitle")}</div>
+                <div className="text-xs font-bold text-violet-950">{t("ex.aiTitle")}</div>
                 <div className="grid grid-cols-1 sm:grid-cols-[120px_1fr] gap-3">
                   <div>
                     <label className="block text-xs font-medium text-slate-700 mb-1">{t("ex.aiCount")}</label>
@@ -840,7 +840,7 @@ function ExamsContent() {
                     disabled={aiGeneratingQuestions}
                     className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-xs font-bold cursor-pointer"
                   >
-                    {aiGeneratingQuestions ? t("ex.aiGenerating") : `✨ ${t("ex.aiCreate")} (${aiCount})`}
+                    {aiGeneratingQuestions ? t("ex.aiGenerating") : `${t("ex.aiCreate")} (${aiCount})`}
                   </button>
                 </div>
               </div>

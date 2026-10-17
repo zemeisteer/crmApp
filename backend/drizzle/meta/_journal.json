@@ -414,6 +414,13 @@
       "when": 1795900000000,
       "tag": "0058_teacher_attendance_per_lesson",
       "breakpoints": true
+    },
+    {
+      "idx": 59,
+      "version": "7",
+      "when": 1796000000000,
+      "tag": "0059_starter_plan_wording",
+      "breakpoints": true
     }
   ]
 }

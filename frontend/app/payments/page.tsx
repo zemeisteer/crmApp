@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import DashboardShell from "@/components/DashboardShell";
 import Modal from "@/components/Modal";
 import LoadError from "@/components/LoadError";
+import { ListSkeleton } from "@/components/Skeleton";
 import ListPager from "@/components/ListPager";
 import Select from "@/components/Select";
 import BarChart from "@/components/BarChart";
@@ -1461,7 +1462,7 @@ function PaymentsContent() {
             </div>
 
             {loading || allCount === null ? (
-              <div style={{ color: "#686B75", fontSize: 14 }}>{t("common.loading")}</div>
+              <ListSkeleton />
             ) : allCount === 0 ? (
               <div
                 style={{
@@ -1598,7 +1599,7 @@ function PaymentsContent() {
                 {list?.error != null && !listLoading ? (
                   <LoadError message={list.error || t("adm.loadError")} onRetry={() => setReloadKey((k) => k + 1)} />
                 ) : !pageData ? (
-                  <div style={{ color: "#686B75", fontSize: 14 }}>{t("common.loading")}</div>
+                  <ListSkeleton />
                 ) : pageData.total === 0 ? (
                   <div
                     style={{
@@ -1906,7 +1907,7 @@ function PaymentsContent() {
 
             {/* Debtors List Table */}
             {loading ? (
-              <div style={{ color: "#686B75", fontSize: 14 }}>{t("common.loading")}</div>
+              <ListSkeleton />
             ) : filteredDebtors.length === 0 ? (
               <div
                 style={{
@@ -2387,7 +2388,7 @@ function PaymentsContent() {
 
             {/* Expenses Table */}
             {loading ? (
-              <div style={{ color: "#686B75", fontSize: 14 }}>{t("common.loading")}</div>
+              <ListSkeleton />
             ) : filteredExpenses.length === 0 ? (
               <div
                 style={{

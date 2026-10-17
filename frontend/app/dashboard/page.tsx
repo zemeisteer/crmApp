@@ -7,6 +7,7 @@ import BarChart, { DonutChart } from "@/components/BarChart";
 import { useAuth } from "@/lib/auth-context";
 import { can } from "@/lib/access";
 import { useLanguage } from "@/lib/i18n-context";
+import { DashboardSkeleton } from "@/components/Skeleton";
 import { reportsApi, type DashboardData, type ReportsOverview } from "@/lib/api";
 import { buildInsights } from "@/lib/insights";
 import TeacherHome from "@/components/dashboard/TeacherHome";
@@ -154,17 +155,14 @@ function DashboardContent() {
         <div>
           <h1 style={{ fontSize: 22, fontWeight: 800 }}>{t("dashboard.welcome")}, {user?.fullName?.split(" ")[0] ?? "boss"}</h1>
           <div style={{ fontSize: 13, color: "#686B75", marginTop: 2 }}>
-            {today} — {tenant?.name}
+            {today} · {tenant?.name}
           </div>
         </div>
-        <span style={{ fontSize: 12.5, fontWeight: 700, color: "#167A48", background: "#E9F8EF", padding: "6px 14px", borderRadius: 100 }}>
-          ● {t("dashboard.allSystemsOk")}
-        </span>
       </div>
 
       <div style={{ padding: "26px 32px", display: "flex", flexDirection: "column", gap: 22, overflow: "auto" }}>
         {loading ? (
-          <div style={{ color: "#686B75", fontSize: 14 }}>{t("dashboard.loading")}</div>
+          <DashboardSkeleton />
         ) : (
           <>
             <AnnouncementBanners />

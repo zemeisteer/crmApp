@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import DashboardShell from "@/components/DashboardShell";
 import LoadError from "@/components/LoadError";
+import { ListSkeleton } from "@/components/Skeleton";
 import ImportDialog from "@/components/ImportDialog";
 import { useAuth } from "@/lib/auth-context";
 import { can } from "@/lib/access";
@@ -303,7 +304,7 @@ function StudentsContent() {
         ) : list?.error != null && !listLoading ? (
           <LoadError message={list.error || t("adm.loadError")} onRetry={reload} />
         ) : allCount === null || !pageData ? (
-          <div style={{ color: "#686B75", fontSize: 14 }}>{t("common.loading")}</div>
+          <ListSkeleton />
         ) : allCount === 0 ? (
           <div style={{ color: "#686B75", fontSize: 14, background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 32, textAlign: "center" }}>
             {t("students.noStudentsYet")}

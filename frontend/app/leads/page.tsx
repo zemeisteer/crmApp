@@ -5,6 +5,7 @@ import Link from "next/link";
 import DashboardShell from "@/components/DashboardShell";
 import Select from "@/components/Select";
 import Pagination from "@/components/Pagination";
+import { ListSkeleton } from "@/components/Skeleton";
 import LeadFormModal from "@/components/leads/LeadFormModal";
 import TelegramConnectCard from "@/components/telegram/TelegramConnectCard";
 import { useCustomFieldDefs } from "@/components/custom-fields/CustomFieldInputs";
@@ -292,7 +293,7 @@ function LeadsContent() {
             <button type="button" className="btn" style={ghostBtn} onClick={load}>{t("adm.retry")}</button>
           </div>
         ) : loading && data.items.length === 0 ? (
-          <div style={{ ...card, color: "#686B75" }}>{t("common.loading")}</div>
+          <ListSkeleton />
         ) : data.items.length === 0 ? (
           <div style={{ ...card, color: "#686B75", textAlign: "center", padding: 32 }}>
             {search || status || source || manager || followUp ? t("leads.noSearchResults") : t("leads.noLeadsYet")}

@@ -106,7 +106,7 @@ export default function GroupTutorReport({ groupId }: { groupId: string }) {
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
                     <div style={{ fontSize: 13.5, color: "#3730A3", flex: 1, minWidth: 200 }}>{t("tutorRep.topicsHint")}</div>
                     <button type="button" onClick={findTopics} disabled={topicsBusy} className="btn" style={{ background: ACCENT, color: "#fff", border: "none", borderRadius: 10, padding: "9px 14px", fontSize: 13, fontWeight: 700, cursor: "pointer", opacity: topicsBusy ? 0.7 : 1 }}>
-                      {topicsBusy ? t("tutorRep.topicsBusy") : `✨ ${t("tutorRep.topicsBtn")}`}
+                      {topicsBusy ? t("tutorRep.topicsBusy") : t("tutorRep.topicsBtn")}
                     </button>
                   </div>
                 )}

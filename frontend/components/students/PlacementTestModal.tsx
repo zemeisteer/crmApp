@@ -294,10 +294,10 @@ export default function PlacementTestModal({ groups, onClose }: { groups: Group[
                 ? t("pdfq.reading")
                 : t("placement.generating")
               : source === "ai"
-                ? `✨ ${t("placement.generate")}`
+                ? t("placement.generate")
                 : source === "pdf"
-                  ? `📄 ${t("placement.pickPdf")}`
-                  : `✍️ ${t("placement.startManual")}`}
+                  ? t("placement.pickPdf")
+                  : t("placement.startManual")}
           </button>
         </div>
       )}

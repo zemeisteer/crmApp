@@ -485,16 +485,16 @@ export default function SchedulePage() {
                 alignItems: "center",
                 gap: 8,
                 padding: "9px 15px",
-                background: "#FEF3C7",
-                color: "#92400E",
-                border: "1px solid #FCD34D",
+                background: "#F3F4F6",
+                color: "#374151",
+                border: "1px solid #E5E7EB",
                 borderRadius: 8,
                 fontSize: 13.5,
                 fontWeight: 600,
                 cursor: "pointer",
               }}
             >
-              🏆 {t("ev.addButton")}
+              {t("ev.addButton")}
             </button>
           )}
 

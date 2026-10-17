@@ -209,10 +209,10 @@ function AiQuestions({ subject, onAdd }: { subject: string; onAdd: (qs: import("
   }
   return (
     <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", background: "#FAFAFF", border: "1px dashed #C7D2FE", borderRadius: 12, padding: 10 }}>
-      <span style={{ fontSize: 13, fontWeight: 700, color: ACCENT }}>🤖 {t("pre.aiQuestions")}</span>
+      <span style={{ fontSize: 13, fontWeight: 700, color: ACCENT }}>{t("pre.aiQuestions")}</span>
       <input className="field-input" value={topic} onChange={(e) => setTopic(e.target.value)} placeholder={t("pre.aiTopicPh")} style={{ flex: "1 1 200px" }} />
       <input type="number" min={1} max={30} className="field-input" value={count} onChange={(e) => setCount(Math.max(1, Math.min(30, Number(e.target.value) || 1)))} style={{ width: 70 }} aria-label="count" />
-      <button type="button" className="btn" disabled={busy} onClick={run} style={{ ...ghost, background: ACCENT, color: "#fff", border: "none" }}>{busy ? "⏳" : "✨"} {t("pre.aiAdd")}</button>
+      <button type="button" className="btn" disabled={busy} onClick={run} style={{ ...ghost, background: ACCENT, color: "#fff", border: "none" }}>{t("pre.aiAdd")}{busy ? "…" : ""}</button>
       {note && <span style={{ fontSize: 12.5, fontWeight: 600, color: note.ok ? "#16794A" : "#B23A47", width: "100%" }}>{note.text}</span>}
     </div>
   );

@@ -488,7 +488,7 @@ function SuperadminPlans() {
                 disabled={translating || saving}
                 style={{ background: "#EEF0FF", color: ACCENT, border: "1px solid #D9DBFA", fontSize: 12.5, fontWeight: 700, padding: "7px 12px", borderRadius: 9, cursor: translating ? "wait" : "pointer" }}
               >
-                {translating ? t("pr.translating") : `✨ ${t("pr.autoTranslate")}`}
+                {translating ? t("pr.translating") : t("pr.autoTranslate")}
               </button>
               <span style={{ fontSize: 11.5, color: "#686B75", lineHeight: 1.5, flex: 1, minWidth: 180 }}>{t("pr.translateHint")}</span>
             </div>
