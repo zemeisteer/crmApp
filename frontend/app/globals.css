@@ -489,9 +489,51 @@ select:focus-visible {
   }
 }
 
+/* Links to a part of the page (menus, "back to top", section tabs) glide there. */
+html {
+  scroll-behavior: smooth;
+}
+
+/* A page of the staff app fades in when it opens, instead of popping in. */
+@keyframes page-enter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.page-enter {
+  animation: page-enter 0.22s ease-out both;
+}
+
+/* Buttons, links and inputs change colour softly rather than at once. */
+a,
+button,
+.btn,
+.field-input {
+  transition-property: color, background-color, border-color, box-shadow, opacity;
+  transition-duration: 0.15s;
+  transition-timing-function: ease;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .skeleton {
     animation: none;
+  }
+  html {
+    scroll-behavior: auto;
+  }
+  .page-enter {
+    animation: none;
+  }
+  a,
+  button,
+  .btn,
+  .field-input {
+    transition: none;
   }
 }
 

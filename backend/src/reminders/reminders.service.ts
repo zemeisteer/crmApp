@@ -155,7 +155,7 @@ export class RemindersService {
           .where(and(eq(students.tenantId, t.id), inArray(students.id, due.map((d) => d.studentId))))
       ).map((r) => [r.id, r.chat]),
     );
-    const sms = this.smsConfigured(t);
+    const sms = await this.smsConfigured(t);
 
     let sent = 0;
     for (const d of due) {
@@ -239,11 +239,12 @@ export class RemindersService {
     return lines.join('\n');
   }
 
-  // SMS only with a real provider token: without one the provider "sends" a
-  // mock and would log it as delivered.
-  private smsConfigured(t: Tenant) {
-    if (t.smsApiToken) return true;
-    return t.smsProvider === 'playmobile' ? Boolean(this.config.get('PLAYMOBILE_API_TOKEN')) : Boolean(this.config.get('ESKIZ_API_TOKEN'));
+  // SMS only when the plan includes it, the center has it on, and a real
+  // provider token is there: without one the provider "sends" a mock and
+  // would log it as delivered.
+  private async smsConfigured(t: Tenant) {
+    const route = await this.notifications.smsRoute(t.id);
+    return route.ok && route.configured;
   }
 }
 

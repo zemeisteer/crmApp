@@ -1175,6 +1175,8 @@ export interface Plan {
   featuresEn: string;
   popular: boolean;
   active: boolean;
+  /** SMS messages are part of this plan. */
+  smsIncluded?: boolean;
   tenantCount?: number;
   createdAt: string;
   updatedAt: string;
@@ -2113,9 +2115,9 @@ export const examsApi = {
 export const plansApi = {
   listPublic: () => request<Plan[]>("/plans/public"),
   listAll: () => request<Plan[]>("/plans"),
-  create: (data: { key: string; name: string; price: number; features?: string; featuresRu?: string; featuresEn?: string; popular?: boolean; active?: boolean }) =>
+  create: (data: { key: string; name: string; price: number; features?: string; featuresRu?: string; featuresEn?: string; popular?: boolean; active?: boolean; smsIncluded?: boolean }) =>
     request<Plan>("/plans", { method: "POST", body: JSON.stringify(data) }),
-  update: (id: string, data: Partial<{ name: string; price: number; features: string; featuresRu: string; featuresEn: string; popular: boolean; active: boolean }>) =>
+  update: (id: string, data: Partial<{ name: string; price: number; features: string; featuresRu: string; featuresEn: string; popular: boolean; active: boolean; smsIncluded: boolean }>) =>
     request<Plan>(`/plans/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
   remove: (id: string) => request<{ success: boolean }>(`/plans/${id}`, { method: "DELETE" }),
   /** The Uzbek feature list in Russian and English (for the form to fill in). */
@@ -3054,10 +3056,15 @@ export interface NotificationStats {
 
 export interface NotificationSettings {
   id: string;
-  smsProvider: "eskiz" | "playmobile";
-  smsSender: string;
-  smsApiToken: string | null;
-  hasSmsApiToken: boolean;
+  /** The center's own switch; SMS goes through the platform's provider account. */
+  smsEnabled: boolean;
+  sms?: {
+    /** SMS is part of the center's plan. */
+    includedInPlan: boolean;
+    enabled: boolean;
+    /** The platform has a provider account set up (null when SMS is not available). */
+    providerReady: boolean | null;
+  };
   notifyOnAttendance: boolean;
   notifyOnPayment: boolean;
   notifyOnHomework: boolean;

@@ -218,6 +218,10 @@ export const tenants = pgTable('tenants', {
   smsProvider: text('sms_provider').notNull().default('eskiz'),
   smsApiToken: text('sms_api_token'),
   smsSender: text('sms_sender').notNull().default('4546'),
+  // The center's own switch for SMS (only when its plan includes SMS). The
+  // provider account itself is the platform's; smsApiToken above is kept for
+  // centers that once entered their own and is no longer editable by them.
+  smsEnabled: boolean('sms_enabled').notNull().default(true),
   notifyOnAttendance: boolean('notify_on_attendance').notNull().default(true),
   notifyOnPayment: boolean('notify_on_payment').notNull().default(true),
   notifyOnHomework: boolean('notify_on_homework').notNull().default(true),
@@ -773,6 +777,8 @@ export const plans = pgTable('plans', {
   featuresEn: text('features_en').notNull().default(''),
   popular: boolean('popular').notNull().default(false),
   active: boolean('active').notNull().default(true),
+  // Whether SMS messages (sent through the platform's provider) are part of the plan.
+  smsIncluded: boolean('sms_included').notNull().default(true),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 }, (t) => ({

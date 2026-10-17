@@ -5,6 +5,7 @@ import { DB, Database } from '../db/db.module';
 import { LedgerService } from '../ledger/ledger.service';
 import {
   notifications,
+  plans,
   students,
   tenants,
   debtorReminders,
@@ -30,14 +31,49 @@ export class NotificationsService {
     private readonly ledger: LedgerService,
   ) {}
 
+  /**
+   * How an SMS of this center goes out, or why it does not: the plan must
+   * include SMS and the center must have it on. The provider account is the
+   * platform's (Eskiz, else PlayMobile); a center that once entered its own
+   * token keeps using it. `configured`: a real token is there (without one
+   * the provider only logs the message outside production).
+   */
+  async smsRoute(tenantId: string): Promise<
+    | { ok: true; provider: 'eskiz' | 'playmobile'; token: string | undefined; sender: string; configured: boolean }
+    | { ok: false; reason: 'NOT_IN_PLAN' | 'OFF'; message: string }
+  > {
+    const [row] = await this.db
+      .select({
+        plan: tenants.plan,
+        smsEnabled: tenants.smsEnabled,
+        smsApiToken: tenants.smsApiToken,
+        smsProvider: tenants.smsProvider,
+        smsSender: tenants.smsSender,
+        smsIncluded: plans.smsIncluded,
+      })
+      .from(tenants)
+      .leftJoin(plans, eq(plans.key, tenants.plan))
+      .where(eq(tenants.id, tenantId));
+    // A plan the platform no longer lists restricts nothing.
+    if (row && row.smsIncluded === false) return { ok: false, reason: 'NOT_IN_PLAN', message: "SMS tarifingizga kiritilmagan" };
+    if (row && !row.smsEnabled) return { ok: false, reason: 'OFF', message: "SMS markaz sozlamalarida o'chirilgan" };
+    if (row?.smsApiToken) {
+      return { ok: true, provider: row.smsProvider === 'playmobile' ? 'playmobile' : 'eskiz', token: row.smsApiToken, sender: row.smsSender || '4546', configured: true };
+    }
+    const eskiz = process.env.ESKIZ_API_TOKEN?.trim();
+    const playmobile = process.env.PLAYMOBILE_API_TOKEN?.trim();
+    if (!eskiz && playmobile) {
+      return { ok: true, provider: 'playmobile', token: playmobile, sender: process.env.PLAYMOBILE_ORIGINATOR?.trim() || row?.smsSender || '4546', configured: true };
+    }
+    return { ok: true, provider: 'eskiz', token: eskiz || undefined, sender: process.env.ESKIZ_SENDER?.trim() || row?.smsSender || '4546', configured: Boolean(eskiz) };
+  }
+
   async getSettings(tenantId: string) {
     const tenant = await this.db.query.tenants.findFirst({
       where: eq(tenants.id, tenantId),
       columns: {
         id: true,
-        smsProvider: true,
-        smsSender: true,
-        smsApiToken: true,
+        smsEnabled: true,
         notifyOnAttendance: true,
         notifyOnPayment: true,
         notifyOnHomework: true,
@@ -47,21 +83,28 @@ export class NotificationsService {
       },
     });
     if (!tenant) throw new NotFoundException('Markaz topilmadi');
+    const route = await this.smsRoute(tenantId);
+    // Field by field: what the settings screen shows, never a provider or token.
     return {
-      ...tenant,
-      hasSmsApiToken: Boolean(tenant.smsApiToken),
-      // Mask token for security
-      smsApiToken: tenant.smsApiToken
-        ? `${tenant.smsApiToken.slice(0, 4)}...${tenant.smsApiToken.slice(-4)}`
-        : null,
+      id: tenant.id,
+      smsEnabled: tenant.smsEnabled,
+      notifyOnAttendance: tenant.notifyOnAttendance,
+      notifyOnPayment: tenant.notifyOnPayment,
+      notifyOnHomework: tenant.notifyOnHomework,
+      remindPaymentDay: tenant.remindPaymentDay,
+      remindLessons: tenant.remindLessons,
+      dailyDigest: tenant.dailyDigest,
+      sms: {
+        includedInPlan: route.ok || route.reason !== 'NOT_IN_PLAN',
+        enabled: tenant.smsEnabled,
+        providerReady: route.ok ? route.configured : null,
+      },
     };
   }
 
   async updateSettings(tenantId: string, dto: UpdateNotificationSettingsDto) {
     const patch: Partial<typeof tenants.$inferInsert> = { updatedAt: new Date() };
-    if (dto.smsProvider !== undefined) patch.smsProvider = dto.smsProvider;
-    if (dto.smsSender !== undefined) patch.smsSender = dto.smsSender;
-    if (dto.smsApiToken !== undefined) patch.smsApiToken = dto.smsApiToken;
+    if (dto.smsEnabled !== undefined) patch.smsEnabled = dto.smsEnabled;
     if (dto.notifyOnAttendance !== undefined) patch.notifyOnAttendance = dto.notifyOnAttendance;
     if (dto.notifyOnPayment !== undefined) patch.notifyOnPayment = dto.notifyOnPayment;
     if (dto.notifyOnHomework !== undefined) patch.notifyOnHomework = dto.notifyOnHomework;
@@ -99,20 +142,20 @@ export class NotificationsService {
         errorMessage = err instanceof Error ? err.message : String(err);
       }
     } else if (dto.channel === 'SMS') {
-      const provider =
-        tenant?.smsProvider === 'playmobile' ? this.playmobile : this.eskiz;
-      providerName = provider.name;
-
-      const result = await provider.sendSms(dto.recipient, dto.content, {
-        sender: tenant?.smsSender || '4546',
-        apiToken: tenant?.smsApiToken || undefined,
-      });
-
-      if (!result.success) {
+      const route = await this.smsRoute(tenantId);
+      if (!route.ok) {
         status = 'FAILED';
-        errorMessage = result.error || 'SMS delivery failed';
+        errorMessage = route.message;
       } else {
-        providerMessageId = result.messageId || null;
+        const provider = route.provider === 'playmobile' ? this.playmobile : this.eskiz;
+        providerName = provider.name;
+        const result = await provider.sendSms(dto.recipient, dto.content, { sender: route.sender, apiToken: route.token });
+        if (!result.success) {
+          status = 'FAILED';
+          errorMessage = result.error || 'SMS delivery failed';
+        } else {
+          providerMessageId = result.messageId || null;
+        }
       }
     }
 
@@ -311,13 +354,14 @@ export class NotificationsService {
 
   // Which channels can carry a message for this center right now.
   private async channelsReady(tenantId: string) {
-    const tenant = await this.db.query.tenants.findFirst({ where: eq(tenants.id, tenantId), columns: { smsApiToken: true, smsProvider: true, name: true } });
-    const envToken = tenant?.smsProvider === 'playmobile' ? process.env.PLAYMOBILE_API_TOKEN : process.env.ESKIZ_API_TOKEN;
+    const tenant = await this.db.query.tenants.findFirst({ where: eq(tenants.id, tenantId), columns: { name: true } });
+    const route = await this.smsRoute(tenantId);
     return {
       centerName: tenant?.name ?? 'TalimCRM',
-      // Outside production an SMS without a token is only logged (sandbox),
-      // which is what local runs and tests want; in production it needs one.
-      sms: Boolean(tenant?.smsApiToken || envToken) || process.env.NODE_ENV !== 'production',
+      // Only when the plan includes SMS and the center has it on. Outside
+      // production an SMS without a token is only logged (sandbox), which is
+      // what local runs and tests want; in production it needs one.
+      sms: route.ok && (route.configured || process.env.NODE_ENV !== 'production'),
       telegram: this.telegram.isConfigured,
     };
   }

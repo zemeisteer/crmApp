@@ -118,7 +118,10 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
         </button>
         <TrialBanner />
         {misplaced ? null : canOpenPath(pathname, user.role, !!tenant, user.access) ? (
-          children
+          // Keyed by the address: each page opened fades in.
+          <div key={pathname} className="page-enter" style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
+            {children}
+          </div>
         ) : (
           <div role="alert" style={{ flex: 1, display: "grid", placeContent: "center", justifyItems: "center", gap: 10, padding: 24, textAlign: "center" }}>
             <div style={{ fontFamily: "'Manrope', sans-serif", fontSize: 17, fontWeight: 800 }}>{t("shell.noAccessTitle")}</div>

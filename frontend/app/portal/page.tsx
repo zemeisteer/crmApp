@@ -565,8 +565,9 @@ export default function StudentPortalPage() {
         })}
       </nav>
 
-      {/* Main Container */}
+      {/* Main Container: keyed by the section, so each one opened fades in. */}
       <main
+        key={activeTab}
         style={{
           flex: 1,
           maxWidth: 1000,
@@ -575,7 +576,7 @@ export default function StudentPortalPage() {
           padding: "20px 16px 40px 16px",
           boxSizing: "border-box",
         }}
-        className="ptl-main"
+        className="ptl-main page-enter"
       >
         {/* ========================================================================= */}
         {/* TAB: HOME                                                                 */}
