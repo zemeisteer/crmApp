@@ -104,7 +104,7 @@ export default function TeacherAttendanceModal({ teachers, onClose }: { teachers
             const d = drafts[k] ?? { status: null, substituteTeacherId: "", note: "" };
             const markable = !!l.teacherId && !l.cancelled;
             return (
-              <div key={k} style={{ border: "1px solid #EAE8E2", borderRadius: 12, padding: 12, opacity: l.cancelled ? 0.6 : 1 }}>
+              <div key={k} role="group" aria-label={`${l.groupName} ${l.startTime}–${l.endTime}`} style={{ border: "1px solid #EAE8E2", borderRadius: 12, padding: 12, opacity: l.cancelled ? 0.6 : 1 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
                   <span style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 800, color: ACCENT, minWidth: 92 }}>{l.startTime}–{l.endTime}</span>
                   <div style={{ flex: 1, minWidth: 160 }}>

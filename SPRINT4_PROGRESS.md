@@ -109,9 +109,14 @@ Working copy: `/home/user/crmApp-sprint4`, local branch `sprint4-local`. Nothing
 - Fixed on the way: the new access key had no name on the staff screen (catalog unit test); a sign-in in
   timetable-and-access bypassed the pacer (tuition suites hit the 8/min limit); the make-up journey booked today's
   15:00 lesson (now a 23:00 lesson).
-- BLOCKED: real Google Calendar (no credentials). NOT TESTED in a browser: the teacher attendance modal, the event
-  form's conflict lines, the make-up form's own submit-time check (all covered by API tests).
-- No cloud preview: this container has no public address.
+- Follow-up: browser tests `e2e-browser/tests/sprint4-forms.spec.ts` now cover the teacher attendance window (two
+  lessons marked apart + substitute, a called-off lesson locked), the event form's conflict lines (nothing saved) and
+  the make-up form when the lesson begins while it is open (browser clock moved; nothing booked). Lesson rows of the
+  attendance window and the event form's time fields got accessible names. Full browser suite: 56/56.
+- Real Google: `test/calendar-google-live.e2e-spec.ts` (`npm run test:google-live`) runs against the real API with a
+  test account's GOOGLE_LIVE_CLIENT_ID / GOOGLE_LIVE_CLIENT_SECRET / GOOGLE_LIVE_REFRESH_TOKEN (optional
+  GOOGLE_LIVE_CALENDAR_ID); skipped while they are not set. Google's API is reachable from here. Still BLOCKED.
+- No cloud preview: this environment takes no incoming connections (no public address).
 
 ## Resume
 `cd /home/user/crmApp-sprint4 && git log --oneline origin/claude/dev-feedback..HEAD` shows the local commits;

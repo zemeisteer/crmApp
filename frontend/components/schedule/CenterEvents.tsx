@@ -234,11 +234,11 @@ export function EventFormModal({
               <span style={label}>{t("ev.fieldDate")} *</span>
               <DatePicker value={date} onChange={setDate} />
             </div>
-            <div>
+            <div role="group" aria-label={t("ev.fieldStart")}>
               <span style={label}>{t("ev.fieldStart")} *</span>
               <TimePicker value={startTime} onChange={setStartTime} />
             </div>
-            <div>
+            <div role="group" aria-label={t("ev.fieldEnd")}>
               <span style={label}>{t("ev.fieldEnd")}</span>
               <TimePicker value={endTime} onChange={setEndTime} />
             </div>

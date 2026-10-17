@@ -19,6 +19,7 @@
     "test:debug": "vitest --inspect-brk --no-file-parallelism",
     "test:e2e": "vitest run --config ./vitest.config.e2e.ts",
     "test:load": "vitest run --config ./vitest.config.load.ts",
+    "test:google-live": "vitest run --config ./vitest.config.e2e.ts test/calendar-google-live.e2e-spec.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "node scripts/migrate.cjs",
     "db:migrate:status": "node scripts/migrate.cjs --status",
