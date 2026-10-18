@@ -22,6 +22,8 @@ export default function Select({
   sheetOnPhone = false,
   sheetTitle,
   ariaLabel,
+  searchable,
+  searchPlaceholder,
 }: {
   options: SelectOption[];
   value: string;
@@ -36,6 +38,9 @@ export default function Select({
   sheetOnPhone?: boolean;
   sheetTitle?: string;
   ariaLabel?: string;
+  // A search box at the top of the list; on by itself for more than 8 options.
+  searchable?: boolean;
+  searchPlaceholder?: string;
 }) {
   const { t } = useLanguage();
   const effectivePlaceholder = placeholder ?? t("picker.select");
@@ -64,12 +69,20 @@ export default function Select({
   useEscapeToClose(open, () => setOpen(false));
 
   const selectedLabel = options.find((o) => o.value === value)?.label;
+  const withSearch = searchable ?? options.length > 8;
+  const [query, setQuery] = useState("");
+  const term = query.trim().toLocaleLowerCase();
+  const shown = term ? options.filter((o) => o.label.toLocaleLowerCase().includes(term)) : options;
 
   return (
     <div ref={ref} className="ui-select" style={{ position: "relative", flexShrink: 0, maxWidth: "100%", ...style }}>
       <button
         type="button"
-        onClick={() => !disabled && setOpen((v) => !v)}
+        onClick={() => {
+          if (disabled) return;
+          setQuery("");
+          setOpen((v) => !v);
+        }}
         disabled={disabled}
         aria-label={ariaLabel}
         aria-haspopup="listbox"
@@ -104,12 +117,34 @@ export default function Select({
       </button>
 
       {open && (() => {
-        const list = options.length === 0 ? (
+        const search = withSearch ? (
+          <input
+            autoFocus
+            type="search"
+            className="field-input"
+            aria-label={searchPlaceholder ?? t("common.search")}
+            placeholder={searchPlaceholder ?? t("common.search")}
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => {
+              // Enter picks the only match.
+              if (e.key === "Enter") {
+                e.preventDefault();
+                if (shown.length === 1) {
+                  onChange(shown[0].value);
+                  setOpen(false);
+                }
+              }
+            }}
+            style={{ width: "100%", boxSizing: "border-box", marginBottom: 5, fontSize: 13, padding: "8px 10px", position: "sticky", top: 0, zIndex: 1, background: "#fff" }}
+          />
+        ) : null;
+        const list = shown.length === 0 ? (
           <div style={{ padding: "10px 12px", fontSize: 12.5, color: "#686B75", textAlign: "center" }}>
-            {t("common.noOptions")}
+            {options.length === 0 ? t("common.noOptions") : t("picker.noOptions")}
           </div>
         ) : (
-          options.map((o) => {
+          shown.map((o) => {
             const isSelected = o.value === value;
             return (
               <button
@@ -160,6 +195,7 @@ export default function Select({
               >
                 <div style={{ width: 40, height: 4, borderRadius: 4, background: "#D9D6CE", margin: "4px auto 10px" }} />
                 {sheetTitle && <div style={{ fontSize: 13, fontWeight: 800, color: "#4A4E58", padding: "0 10px 8px" }}>{sheetTitle}</div>}
+                {search}
                 {list}
               </div>
             </div>
@@ -184,6 +220,7 @@ export default function Select({
               ...place,
             }}
           >
+            {search}
             {list}
           </div>
         );

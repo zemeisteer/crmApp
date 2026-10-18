@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { api, centerUrl, cleanUpStagingCenters, expectCenterDashboard, loginOnMainSite, newCenter } from './support';
+import { pickDate, api, centerUrl, cleanUpStagingCenters, expectCenterDashboard, loginOnMainSite, newCenter } from './support';
 
 // Custom fields: the owner defines the center's own fields in Settings, a
 // new student must answer the required one, the value is shown and edited
@@ -186,6 +186,13 @@ test("a lead's field is edited on the lead and carried into the student when con
   const next = dialog.getByRole('button', { name: 'Keyingi' });
   await next.click();
   await next.click();
+  // A new student needs a birth date and a guardian's phone before going on.
+  await next.click();
+  await expect(dialog.getByRole('alert')).toContainText("tug'ilgan sanasini");
+  await pickDate(dialog, 2012, 5, 14);
+  await next.click();
+  await expect(dialog.getByRole('alert')).toContainText('Ota-ona telefon');
+  await dialog.getByPlaceholder('+998 90 123 45 67').fill('+998 90 111 22 33');
   const levelGroup = dialog.getByRole('group', { name: /^Daraja/ });
   await expect(levelGroup).toContainText('Liddan');
   await expect(levelGroup.getByRole('button', { name: 'Daraja: Yuqori' })).toBeVisible();
