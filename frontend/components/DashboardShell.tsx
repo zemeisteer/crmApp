@@ -6,12 +6,14 @@ import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
 import { useLanguage } from "@/lib/i18n-context";
 import Sidebar, { canOpenPath, isPlatformMode, PLATFORM_HOME } from "./Sidebar";
+import TwoFactorGate from "./TwoFactorGate";
+import { formatDate } from "@/lib/format-date";
 
 const ACCENT = "#4F46E5";
 
 function TrialBanner() {
   const { tenant, user } = useAuth();
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   if (!tenant || user?.role === "SUPERADMIN") return null;
 
   if (tenant.status === "SUSPENDED") {
@@ -22,6 +24,21 @@ function TrialBanner() {
           {t("shell.activatePlan")}
         </Link>
         .
+      </div>
+    );
+  }
+
+  // Locked: the page itself says so (TrialLocked), no banner on top.
+  if (tenant.trial?.stage === "LOCKED") return null;
+
+  // The trial ended: everything can be looked at, nothing changed, until the lock date.
+  if (tenant.trial?.stage === "READ_ONLY") {
+    return (
+      <div role="status" style={{ background: "#FDEBEC", color: "#B23A47", padding: "10px 24px", fontSize: 13, fontWeight: 600, textAlign: "center" }}>
+        {t("trial.readOnly").replace("{date}", tenant.trial.lockAt ? formatDate(tenant.trial.lockAt, lang) : "")}{" "}
+        <Link href="/pricing" style={{ textDecoration: "underline" }}>
+          {t("shell.choosePlan")}
+        </Link>
       </div>
     );
   }
@@ -50,6 +67,27 @@ function TrialBanner() {
     }
   }
   return null;
+}
+
+/** The trial ended and its read-only days too: only the plans and payment remain. */
+function TrialLocked({ purgeAt }: { purgeAt: string | null }) {
+  const { t, lang } = useLanguage();
+  return (
+    <div style={{ flex: 1, display: "grid", placeItems: "center", padding: 24 }}>
+      <div role="alert" style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 28, maxWidth: 480, width: "100%", display: "flex", flexDirection: "column", gap: 12, textAlign: "center" }}>
+        <h1 style={{ fontSize: 19, fontWeight: 800, margin: 0 }}>{t("trial.lockedTitle")}</h1>
+        <p style={{ fontSize: 13.5, color: "#4A4E58", lineHeight: 1.6, margin: 0 }}>{t("trial.lockedText")}</p>
+        {purgeAt && (
+          <p style={{ fontSize: 13, color: "#B23A47", fontWeight: 600, lineHeight: 1.6, margin: 0 }}>
+            {t("trial.purgeOn").replace("{date}", formatDate(purgeAt, lang))}
+          </p>
+        )}
+        <Link href="/pricing" style={{ background: ACCENT, color: "#fff", fontWeight: 700, fontSize: 14, padding: "12px 18px", borderRadius: 10, textDecoration: "none", marginTop: 6 }}>
+          {t("shell.choosePlan")}
+        </Link>
+      </div>
+    </div>
+  );
 }
 
 export default function DashboardShell({ children }: { children: ReactNode }) {
@@ -117,7 +155,12 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
           </svg>
         </button>
         <TrialBanner />
-        {misplaced ? null : canOpenPath(pathname, user.role, !!tenant, user.access) ? (
+        {user.role === "SUPERADMIN" && user.twoFactorRequired && !user.twoFactorEnabled ? (
+          // The platform pages open once two-step sign-in is on.
+          <TwoFactorGate />
+        ) : tenant?.trial?.stage === "LOCKED" && user.role !== "SUPERADMIN" && pathname !== "/pricing" ? (
+          <TrialLocked purgeAt={tenant.trial.purgeAt} />
+        ) : misplaced ? null : canOpenPath(pathname, user.role, !!tenant, user.access) ? (
           // Keyed by the address: each page opened fades in.
           <div key={pathname} className="page-enter" style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
             {children}

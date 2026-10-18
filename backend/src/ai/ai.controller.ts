@@ -6,6 +6,7 @@ import { AiService } from './ai.service';
 import { StudentTutorService } from './student-tutor.service';
 import { GenerateMaterialDto, GroupInsightsDto, RenderPdfDto, SuggestHomeworkDto, TutorReportDto } from './dto/ai.dto';
 import { pdfFileName, renderTextPdf } from '../common/text-pdf';
+import { UsesAi } from '../trial/trial.interceptor';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('ai')
@@ -26,6 +27,7 @@ export class AiController {
     return this.tutor.groupReport(tenantId, q.groupId, q.days ?? 14, role, userId);
   }
 
+  @UsesAi()
   @Post('tutor-report/topics')
   tutorTopics(
     @CurrentUser('tenantId') tenantId: string,
@@ -36,22 +38,26 @@ export class AiController {
     return this.tutor.groupTopics(tenantId, dto.groupId, dto.days ?? 14, role, userId);
   }
 
+  @UsesAi()
   @Post('insights')
   insights(@CurrentUser('tenantId') tenantId: string, @Body() dto: GroupInsightsDto) {
     return this.service.groupInsights(tenantId, dto.groupId);
   }
 
+  @UsesAi()
   @Post('materials')
   materials(@Body() dto: GenerateMaterialDto) {
     return this.service.generateMaterial(dto);
   }
 
+  @UsesAi()
   @Post('suggest-homework')
   suggestHomework(@Body() dto: SuggestHomeworkDto) {
     return this.service.suggestHomework(dto);
   }
 
   // A material as a PDF file to download or print.
+  @UsesAi()
   @Post('pdf')
   @Header('Content-Type', 'application/pdf')
   async pdf(@Body() dto: RenderPdfDto) {

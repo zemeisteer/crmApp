@@ -53,6 +53,11 @@ const backendEnv = {
   // development: the CORS rules for http://localhost and *.localhost (the
   // production rules allow https only). Everything else is the production build.
   NODE_ENV: 'development',
+  // The free trial's guards are covered by the backend suite; here every
+  // journey signs up its own center by the API, without a phone code.
+  SIGNUP_PHONE_CHECK: 'off',
+  TRIAL_LIMITS: 'off',
+  SUPERADMIN_2FA: 'off',
   ROOT_DOMAIN: 'localhost',
   FRONTEND_URL: `http://localhost:${WEB_PORT}`,
   // The API is on its own port here (in production it is the site's /api):

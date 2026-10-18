@@ -2,7 +2,8 @@ import { Body, Controller, Delete, Get, Headers, Param, Post, Query, Req, UseGua
 import { Throttle } from '@nestjs/throttler';
 import type { Request } from 'express';
 import { AuthService } from './auth.service';
-import { RegisterDto } from './dto/register.dto';
+import { RegisterDto, SignupPhoneStartDto } from './dto/register.dto';
+import { SignupPhoneService } from './signup-phone.service';
 import { LoginDto } from './dto/login.dto';
 import { ForgotPasswordDto, RefreshTokenDto, ResetPasswordDto } from './dto/forgot-password.dto';
 import { ConfirmTwoFactorDto, VerifyTwoFactorDto } from './dto/two-factor.dto';
@@ -16,7 +17,17 @@ function meta(req: Request, userAgent?: string) {
 
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly signupPhone: SignupPhoneService,
+  ) {}
+
+  // A code to the phone a new center signs up with (one trial per number).
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @Post('register/phone')
+  startSignupPhone(@Body() dto: SignupPhoneStartDto, @Req() req: Request) {
+    return this.signupPhone.start(dto.phone, dto.email, req.ip);
+  }
 
   @Throttle({ default: { limit: 8, ttl: 60_000 } })
   @Post('register')

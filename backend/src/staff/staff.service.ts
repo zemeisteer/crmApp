@@ -12,6 +12,7 @@ import { authHandoffCodes, organizationMemberships, sessions, users } from '../d
 import { AuditService } from '../audit/audit.service';
 import { CreateStaffDto, UpdateStaffDto } from './dto/staff.dto';
 import { ACCESS_KEYS, effectiveAccess, isConfigurableRole } from '../access/catalog';
+import { assertTrialRoom } from '../trial/trial-limits';
 
 type MembershipRow = typeof organizationMemberships.$inferSelect;
 const view = (userId: string, email: string, fullName: string, m: MembershipRow) => ({
@@ -62,6 +63,7 @@ export class StaffService {
 
   async create(tenantId: string, dto: CreateStaffDto) {
     const access = checkedAccess(dto.role, dto.access) ?? null;
+    await assertTrialRoom(this.db, tenantId, 'staff');
     const email = dto.email.trim().toLowerCase();
     let user = await this.db.query.users.findFirst({
       where: eq(users.email, email),

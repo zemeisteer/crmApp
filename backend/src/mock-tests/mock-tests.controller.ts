@@ -12,6 +12,7 @@ import { MockTestsService } from './mock-tests.service';
 import { CreateMockTestDto, GenerateMockQuestionsDto, RegradeMockAttemptDto, ReviewMockAttemptDto, ReviewPracticeDto, UpdateMockTestDto } from './dto/mock-tests.dto';
 import { AiService } from '../ai/ai.service';
 import { FilesService } from '../files/files.service';
+import { UsesAi } from '../trial/trial.interceptor';
 
 // Recordings for Listening and pictures (charts) for Writing Task 1.
 const ASSET_TYPES = /^(audio\/(mpeg|mp3|mp4|x-m4a|aac|wav|x-wav|ogg|webm)|image\/(jpeg|png|webp|gif))$/;
@@ -29,6 +30,7 @@ export class MockTestsController {
 
   // Questions for a practice test part, written by the AI (the editor adds
   // them; the teacher checks them before publishing).
+  @UsesAi()
   @Post('generate-questions')
   generateQuestions(@Body() dto: GenerateMockQuestionsDto) {
     return this.ai.generateExamQuestions({ subject: dto.subject, topic: dto.topic?.trim() || dto.subject, count: dto.count ?? 8, request: dto.request ?? null });
@@ -36,6 +38,7 @@ export class MockTestsController {
 
   // Materials -> tests: PDF books/booklets (answer keys, audioscripts) and
   // recordings. The tests are found and extracted in the background.
+  @UsesAi()
   @Post('import')
   @UseInterceptors(FilesInterceptor('files', 40, {
     storage: attachmentStorage,
@@ -81,11 +84,13 @@ export class MockTestsController {
     return this.service.review(tenantId, attemptId, dto).then(() => this.service.attemptDetail(tenantId, attemptId));
   }
 
+  @UsesAi()
   @Post('attempts/:attemptId/review-practice')
   reviewPractice(@CurrentUser('tenantId') tenantId: string, @Param('attemptId') attemptId: string, @Body() dto: ReviewPracticeDto) {
     return this.service.reviewPractice(tenantId, attemptId, dto);
   }
 
+  @UsesAi()
   @Post('attempts/:attemptId/regrade')
   regrade(@CurrentUser('tenantId') tenantId: string, @Param('attemptId') attemptId: string, @Body() dto: RegradeMockAttemptDto) {
     return this.service.regrade(tenantId, attemptId, dto.section);

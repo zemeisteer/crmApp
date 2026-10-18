@@ -41,6 +41,13 @@ export default defineConfig({
       // Imports: no background polling - the suites drive the worker.
       IMPORT_QUEUE: `e2e-${process.pid}`,
       IMPORT_POLL_MS: '0',
+      // The free trial's guards (trial/trial-rules.ts) are off for the suites
+      // in general - nearly every suite signs up a center and fills it - and
+      // test/trial-protection.e2e-spec.ts switches each one on for itself.
+      SIGNUP_PHONE_CHECK: 'off',
+      TRIAL_LIMITS: 'off',
+      SUPERADMIN_2FA: 'off',
+      TRIAL_PURGE: 'off',
     },
   },
 });

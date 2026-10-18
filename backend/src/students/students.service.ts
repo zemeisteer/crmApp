@@ -16,6 +16,7 @@ import { WebhooksService } from '../webhooks/webhooks.service';
 import { CustomFieldsService } from '../custom-fields/custom-fields.service';
 import { closeStays, openStay, reopenStays } from '../enrollments/membership';
 import { lockStudents } from '../common/student-lock';
+import { assertTrialRoom } from '../trial/trial-limits';
 
 @Injectable()
 export class StudentsService {
@@ -170,6 +171,7 @@ export class StudentsService {
           const prior = await replay(tx);
           if (prior) return { student: prior, replayed: true };
         }
+        await assertTrialRoom(tx, tenantId, 'students', 1, true);
         const [student] = await tx
           .insert(students)
           .values({
@@ -330,6 +332,10 @@ export class StudentsService {
   async restore(tenantId: string, userId: string, id: string) {
     const student = await this.db.transaction(async (tx) => {
       await lockStudents(tx, tenantId, [id]);
+      // Back from the trash counts as one more on a free trial.
+      const [inTrash] = await tx.select({ id: students.id }).from(students)
+        .where(and(eq(students.id, id), eq(students.tenantId, tenantId), isNotNull(students.deletedAt)));
+      if (inTrash) await assertTrialRoom(tx, tenantId, 'students', 1, true);
       const [row] = await tx
         .update(students)
         .set({ deletedAt: null })

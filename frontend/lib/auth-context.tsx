@@ -33,6 +33,8 @@ interface AuthContextValue {
     password: string;
     fullName: string;
     category?: TenantCategory;
+    phone?: string;
+    phoneCode?: string;
   }) => Promise<void>;
   logout: () => void;
   refreshMe: () => Promise<void>;
@@ -195,6 +197,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     password: string;
     fullName: string;
     category?: TenantCategory;
+    phone?: string;
+    phoneCode?: string;
   }) {
     const res = await authApi.register(data);
     setToken(res.accessToken);

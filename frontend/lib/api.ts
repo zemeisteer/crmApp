@@ -271,6 +271,8 @@ export interface Tenant {
   plan: string;
   status: string;
   trialEndsAt: string | null;
+  /** Where a center on its free trial stands (from /auth/me). */
+  trial?: { stage: "ACTIVE" | "TRIAL" | "READ_ONLY" | "LOCKED"; endsAt: string | null; lockAt: string | null; purgeAt: string | null };
   onboardingStep?: string;
   teachingCategories?: string[];
   country?: string;
@@ -408,6 +410,8 @@ export interface User {
   access?: string[];
   emailVerified?: boolean;
   twoFactorEnabled?: boolean;
+  /** The platform admin's pages wait for two-step sign-in. */
+  twoFactorRequired?: boolean;
 }
 
 export interface AuthResponse {
@@ -1359,7 +1363,12 @@ export const authApi = {
     password: string;
     fullName: string;
     category?: TenantCategory;
+    phone?: string;
+    phoneCode?: string;
   }) => request<AuthResponse>("/auth/register", { method: "POST", body: JSON.stringify(data) }),
+  /** A code to the phone a new center signs up with; DEV: shown here (never in production). */
+  signupPhoneCode: (phone: string, email?: string) =>
+    request<{ channel: "SMS" | "EMAIL" | "DEV"; devCode?: string }>("/auth/register/phone", { method: "POST", body: JSON.stringify({ phone, email: email || undefined }) }),
 
   login: (data: { email?: string; login?: string; password: string }) =>
     request<LoginResponse>("/auth/login", { method: "POST", body: JSON.stringify(data) }),

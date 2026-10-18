@@ -19,6 +19,7 @@ import {
 import { CreateInvitationDto } from './dto/create-invitation.dto';
 import { AcceptInvitationDto } from './dto/accept-invitation.dto';
 import { AuthService } from '../auth/auth.service';
+import { assertTrialRoom } from '../trial/trial-limits';
 
 @Injectable()
 export class InvitationsService {
@@ -35,6 +36,7 @@ export class InvitationsService {
     if (!dto.email && !dto.phone) {
       throw new BadRequestException('Email yoki telefon raqami kiritilishi shart');
     }
+    await assertTrialRoom(this.db, tenantId, 'staff');
 
     const rawToken = crypto.randomBytes(32).toString('hex');
     const tokenHash = this.hashToken(rawToken);

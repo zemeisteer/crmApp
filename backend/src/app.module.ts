@@ -46,6 +46,7 @@ import { CalendarModule } from './calendar/calendar.module';
 import { ChatModule } from './chat/chat.module';
 import { ScheduleModule } from './schedule/schedule.module';
 import { CenterEventsModule } from './center-events/center-events.module';
+import { TrialModule } from './trial/trial.module';
 import { ExpensesModule } from './expenses/expenses.module';
 import { PortalModule } from './portal/portal.module';
 import { MockTestsModule } from './mock-tests/mock-tests.module';
@@ -104,6 +105,7 @@ import { InvoicesModule } from './invoices/invoices.module';
     ChatModule,
     ScheduleModule,
     CenterEventsModule,
+    TrialModule,
     ExpensesModule,
     PortalModule,
     MockTestsModule,

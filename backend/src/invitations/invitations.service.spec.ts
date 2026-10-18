@@ -3,6 +3,10 @@ import { BadRequestException, NotFoundException, UnauthorizedException, Forbidde
 import { InvitationsService } from './invitations.service';
 import bcrypt from 'bcryptjs';
 
+// The free trial's limits read the database; they are covered by
+// test/trial-protection.e2e-spec.ts. Here the service logic alone.
+vi.mock('../trial/trial-limits', () => ({ assertTrialRoom: vi.fn(async () => undefined), assertNotTrialImport: vi.fn(async () => undefined) }));
+
 describe('InvitationsService', () => {
   let service: InvitationsService;
   let mockDb: any;

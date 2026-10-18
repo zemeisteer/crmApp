@@ -30,6 +30,7 @@ import {
   GradeAttemptDto,
   ParseTextDto,
 } from './dto/exam.dto';
+import { UsesAi } from '../trial/trial.interceptor';
 
 @UseGuards(JwtAuthGuard, RolesGuard, TrialGuard, ExamTeacherScopeGuard)
 @Controller('exams')
@@ -123,6 +124,7 @@ export class ExamsController {
   // Reads questions from an uploaded PDF test. Nothing is saved: the page
   // shows them for review and saves the chosen ones via questions/batch.
   @Roles('ADMIN', 'TEACHER')
+  @UsesAi()
   @Post(':id/questions/parse-pdf')
   @UseInterceptors(FileInterceptor('file', {
     storage: memoryStorage(),
@@ -138,6 +140,7 @@ export class ExamsController {
   }
 
   @Roles('ADMIN', 'TEACHER')
+  @UsesAi()
   @Post(':id/generate-questions')
   generateQuestions(@CurrentUser('tenantId') tenantId: string, @Param('id') id: string, @Body() dto: GenerateQuestionsDto) {
     return this.service.generateQuestionsWithAi(tenantId, id, dto ?? {});
@@ -188,6 +191,7 @@ export class ExamsController {
   }
 
   @Roles('ADMIN', 'TEACHER')
+  @UsesAi()
   @Post(':id/attempts/:attemptId/ai-review')
   aiReviewAttempt(@CurrentUser('tenantId') tenantId: string, @Param('id') id: string, @Param('attemptId') attemptId: string) {
     return this.service.aiReviewAttempt(tenantId, id, attemptId);

@@ -2,6 +2,10 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { BadRequestException } from '@nestjs/common';
 import { StaffService } from './staff.service';
 
+// The free trial's limits read the database; they are covered by
+// test/trial-protection.e2e-spec.ts. Here the service logic alone.
+vi.mock('../trial/trial-limits', () => ({ assertTrialRoom: vi.fn(async () => undefined), assertNotTrialImport: vi.fn(async () => undefined) }));
+
 describe('StaffService', () => {
   let service: StaffService;
   let mockDb: any;
