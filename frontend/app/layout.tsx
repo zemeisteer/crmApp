@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { AuthProvider } from "@/lib/auth-context";
 import { LanguageProvider } from "@/lib/i18n-context";
+import SmoothAnchors from "@/components/SmoothAnchors";
 
 // Where the browser supports it (Chrome and Firefox on Android), the page
 // itself is resized by the on-screen keyboard, so a field at the bottom of
@@ -24,7 +25,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="uz" data-scroll-behavior="smooth">
+    <html lang="uz">
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
@@ -34,6 +35,7 @@ export default function RootLayout({
         />
       </head>
       <body>
+        <SmoothAnchors />
         <AuthProvider>
           <LanguageProvider>{children}</LanguageProvider>
         </AuthProvider>

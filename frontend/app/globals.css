@@ -489,11 +489,6 @@ select:focus-visible {
   }
 }
 
-/* Links to a part of the page (menus, "back to top", section tabs) glide there. */
-html {
-  scroll-behavior: smooth;
-}
-
 /* A page of the staff app fades in when it opens, instead of popping in. */
 @keyframes page-enter {
   from {
@@ -522,9 +517,6 @@ button,
 @media (prefers-reduced-motion: reduce) {
   .skeleton {
     animation: none;
-  }
-  html {
-    scroll-behavior: auto;
   }
   .page-enter {
     animation: none;
