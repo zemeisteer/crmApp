@@ -3758,6 +3758,25 @@ export interface PortalMakeups {
   }>;
 }
 
+/** A center event as the cabinet shows it (students' and everyone's only). */
+export interface PortalEvent {
+  id: string;
+  title: string;
+  kind: CenterEventKind;
+  format: CenterEventFormat;
+  date: string;
+  startTime: string;
+  endTime: string | null;
+  roomName: string | null;
+  location: string | null;
+  meetingUrl: string | null;
+  description: string | null;
+}
+
+export const portalEventsApi = {
+  list: () => request<PortalEvent[]>("/portal/events"),
+};
+
 export const portalMakeupsApi = {
   get: () => request<PortalMakeups>("/portal/makeups"),
 };

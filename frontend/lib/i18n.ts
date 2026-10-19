@@ -3760,6 +3760,8 @@ export const dict = {
   "cf.portalTitle": { UZ: "Qo'shimcha ma'lumotlar", RU: "Дополнительные сведения", EN: "Additional details" },
   // ---- Make-up lessons (credits, bookings, lesson cancellations) ----
   "mk.nav": { UZ: "Qoplash darslari", RU: "Отработки", EN: "Make-up lessons" },
+  "ev.portalTitle": { UZ: "Markaz tadbirlari", RU: "Мероприятия центра", EN: "Center events" },
+  "ev.portalLoadError": { UZ: "Tadbirlarni yuklab bo'lmadi.", RU: "Не удалось загрузить мероприятия.", EN: "Could not load the events." },
   "ev.addButton": { UZ: "Tadbir qo'shish", RU: "Мероприятие", EN: "Add event" },
   "ev.addTitle": { UZ: "Yangi tadbir", RU: "Новое мероприятие", EN: "New event" },
   "ev.editTitle": { UZ: "Tadbirni tahrirlash", RU: "Редактировать мероприятие", EN: "Edit event" },

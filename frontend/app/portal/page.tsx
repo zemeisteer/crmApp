@@ -13,6 +13,7 @@ import PortalMessages from "@/components/portal/PortalMessages";
 import PortalPractice from "@/components/portal/PortalPractice";
 import PortalCustomFields from "@/components/portal/PortalCustomFields";
 import PortalMakeups from "@/components/portal/PortalMakeups";
+import PortalEvents from "@/components/portal/PortalEvents";
 import PortalCalendar from "@/components/portal/PortalCalendar";
 import { openedFromParentAccount } from "@/lib/portal-token";
 import PortalChat from "@/components/portal/PortalChat";
@@ -636,6 +637,7 @@ export default function StudentPortalPage() {
         {activeTab === "home" && <PortalCustomFields key={token ?? ""} token={token} />}
 
         {activeTab === "schedule" && <ScheduleTab key={token ?? ""} schedule={schedule} tz={centerTimeZone(me?.tenant?.timezone)} />}
+        {activeTab === "schedule" && <PortalEvents key={`ev-${token ?? ""}`} />}
         {/* Make-up lessons and the calendar link belong to the child shown: remounted per session. */}
         {activeTab === "schedule" && <PortalMakeups key={`mk-${token ?? ""}`} tz={centerTimeZone(me?.tenant?.timezone)} />}
         {activeTab === "schedule" && <PortalCalendar key={`cal-${token ?? ""}`} parentAccount={openedFromParentAccount(token)} />}
