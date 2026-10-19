@@ -70,6 +70,10 @@ services:
       PAYME_MERCHANT_ID: ""
       PAYME_KEY: ""
       SENTRY_DSN: ""
+      # A throwaway stack with no SMS or e-mail: sign-up without a phone code,
+      # and no trial limits on the seeded center (trial rules: backend e2e).
+      SIGNUP_PHONE_CHECK: "off"
+      TRIAL_LIMITS: "off"
       REMINDER_SCAN_MS: "0"
       IMPORT_POLL_MS: "0"
     ports:
