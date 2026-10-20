@@ -20,7 +20,7 @@ export class RolesGuard implements CanActivate {
     // The platform admin's pages open only with two-step sign-in on
     // (SUPERADMIN_2FA, on in production); the 2FA setup itself is under
     // /auth, which this guard does not cover.
-    if (user?.role === 'SUPERADMIN' && !user.twoFactorEnabled && trialRules().superadmin2fa) {
+    if (user?.role === 'SUPERADMIN' && !user.mfa && trialRules().superadmin2fa) {
       throw new ForbiddenException({ code: 'TWO_FACTOR_REQUIRED', message: "Platforma paneli uchun ikki bosqichli kirishni (2FA) yoqing." });
     }
     // A member with their own access list: the list decides its routes.

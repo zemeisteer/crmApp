@@ -6,7 +6,7 @@ import { RegisterDto, SignupPhoneStartDto } from './dto/register.dto';
 import { SignupPhoneService } from './signup-phone.service';
 import { LoginDto } from './dto/login.dto';
 import { ForgotPasswordDto, RefreshTokenDto, ResetPasswordDto } from './dto/forgot-password.dto';
-import { ConfirmTwoFactorDto, VerifyTwoFactorDto } from './dto/two-factor.dto';
+import { ConfirmTwoFactorDto, TwoFactorReauthDto, VerifyTwoFactorDto } from './dto/two-factor.dto';
 import { JwtAuthGuard } from '../common/jwt-auth.guard';
 import { RolesGuard } from '../common/roles.guard';
 import { CurrentUser } from '../common/current-user.decorator';
@@ -49,20 +49,20 @@ export class AuthController {
 
   @UseGuards(JwtAuthGuard)
   @Post('2fa/setup')
-  setupTwoFactor(@CurrentUser('sub') userId: string) {
-    return this.authService.setupTwoFactor(userId);
+  setupTwoFactor(@CurrentUser('sub') userId: string, @Body() dto: TwoFactorReauthDto) {
+    return this.authService.setupTwoFactor(userId, dto);
   }
 
   @UseGuards(JwtAuthGuard)
   @Post('2fa/confirm')
-  confirmTwoFactor(@CurrentUser('sub') userId: string, @Body() dto: ConfirmTwoFactorDto) {
-    return this.authService.confirmTwoFactor(userId, dto.code);
+  confirmTwoFactor(@CurrentUser('sub') userId: string, @CurrentUser('sid') sid: string, @Body() dto: ConfirmTwoFactorDto) {
+    return this.authService.confirmTwoFactor(userId, dto.code, sid);
   }
 
   @UseGuards(JwtAuthGuard)
   @Post('2fa/disable')
-  disableTwoFactor(@CurrentUser('sub') userId: string, @Body() dto: ConfirmTwoFactorDto) {
-    return this.authService.disableTwoFactor(userId, dto.code);
+  disableTwoFactor(@CurrentUser('sub') userId: string, @CurrentUser('sid') sid: string, @Body() dto: TwoFactorReauthDto) {
+    return this.authService.disableTwoFactor(userId, dto, sid);
   }
 
   @Post('refresh')
@@ -114,8 +114,8 @@ export class AuthController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Throttle({ default: { limit: 20, ttl: 60_000 } })
   @Post('handoff')
-  handoff(@CurrentUser('sub') userId: string, @CurrentUser('tenantId') tenantId: string | null) {
-    return this.authService.createHandoff(userId, tenantId);
+  handoff(@CurrentUser('sub') userId: string, @CurrentUser('tenantId') tenantId: string | null, @CurrentUser('sid') sid: string) {
+    return this.authService.createHandoff(userId, tenantId, sid);
   }
 
   @Throttle({ default: { limit: 20, ttl: 60_000 } })
@@ -126,19 +126,21 @@ export class AuthController {
 
   @UseGuards(JwtAuthGuard)
   @Post('select-workspace')
-  selectWorkspace(
+  async selectWorkspace(
     @CurrentUser('sub') userId: string,
+    @CurrentUser('sid') sid: string,
     @Body('tenantId') tenantId: string,
     @Body('refreshToken') refreshToken: string | undefined,
     @Req() req: Request,
     @Headers('user-agent') ua?: string,
   ) {
-    return this.authService.selectWorkspace(userId, tenantId, meta(req, ua), refreshToken);
+    // A new session starts with the caller's own 2FA state, never more.
+    return this.authService.selectWorkspace(userId, tenantId, meta(req, ua), refreshToken, await this.authService.sessionMfaAt(userId, sid));
   }
 
   @UseGuards(JwtAuthGuard)
   @Get('me')
-  me(@CurrentUser('sub') userId: string, @CurrentUser('tenantId') tenantId: string | null) {
-    return this.authService.me(userId, tenantId ?? null);
+  me(@CurrentUser('sub') userId: string, @CurrentUser('tenantId') tenantId: string | null, @CurrentUser('sid') sid: string) {
+    return this.authService.me(userId, tenantId ?? null, sid);
   }
 }

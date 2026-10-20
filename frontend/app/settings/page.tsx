@@ -10,6 +10,7 @@ import BranchesManager from "@/components/settings/BranchesManager";
 import CustomFieldsManager from "@/components/settings/CustomFieldsManager";
 import MakeupPolicyCard from "@/components/settings/MakeupPolicyCard";
 import Select from "@/components/Select";
+import RecoveryCodes from "@/components/RecoveryCodes";
 import TagListInput from "@/components/TagListInput";
 import { useAuth } from "@/lib/auth-context";
 import { useLanguage } from "@/lib/i18n-context";
@@ -160,6 +161,9 @@ function SettingsContent() {
   const [twoFaError, setTwoFaError] = useState<string | null>(null);
   const [twoFaMsg, setTwoFaMsg] = useState<string | null>(null);
   const [twoFaBusy, setTwoFaBusy] = useState(false);
+  const [twoFaPassword, setTwoFaPassword] = useState("");
+  const [twoFaCurrent, setTwoFaCurrent] = useState("");
+  const [twoFaRecovery, setTwoFaRecovery] = useState<string[] | null>(null);
 
   const [webhooks, setWebhooks] = useState<Webhook[]>([]);
   const [webhookUrl, setWebhookUrl] = useState("");
@@ -208,8 +212,15 @@ function SettingsContent() {
   async function onStart2FA() {
     setTwoFaError(null);
     setTwoFaMsg(null);
-    const res = await authApi.setupTwoFactor();
-    setTwoFaQr(res.qrDataUrl);
+    try {
+      // Replacing an active key: the password and the current code.
+      const res = await authApi.setupTwoFactor(user?.twoFactorEnabled ? { password: twoFaPassword, code: twoFaCurrent.trim() } : undefined);
+      setTwoFaQr(res.qrDataUrl);
+      setTwoFaPassword("");
+      setTwoFaCurrent("");
+    } catch (err) {
+      setTwoFaError(err instanceof ApiError ? err.message : t("common.errorGeneric"));
+    }
   }
 
   async function onConfirm2FA(e: React.FormEvent) {
@@ -217,10 +228,11 @@ function SettingsContent() {
     setTwoFaError(null);
     setTwoFaBusy(true);
     try {
-      await authApi.confirmTwoFactor(twoFaCode);
+      const res = await authApi.confirmTwoFactor(twoFaCode);
       setTwoFaMsg(t("settings.enabled") + ".");
       setTwoFaQr(null);
       setTwoFaCode("");
+      setTwoFaRecovery(res.recoveryCodes);
       await refreshMe();
     } catch (err) {
       setTwoFaError(err instanceof ApiError ? err.message : t("common.errorGeneric"));
@@ -234,9 +246,10 @@ function SettingsContent() {
     setTwoFaError(null);
     setTwoFaBusy(true);
     try {
-      await authApi.disableTwoFactor(twoFaCode);
+      await authApi.disableTwoFactor({ password: twoFaPassword, code: twoFaCurrent.trim() });
       setTwoFaMsg(t("settings.disabled") + ".");
-      setTwoFaCode("");
+      setTwoFaPassword("");
+      setTwoFaCurrent("");
       await refreshMe();
     } catch (err) {
       setTwoFaError(err instanceof ApiError ? err.message : t("common.errorGeneric"));
@@ -669,12 +682,22 @@ function SettingsContent() {
                 {twoFaMsg && !twoFaQr && (
                   <div style={{ background: "#E9F8EF", color: "#167A48", fontSize: 12.5, fontWeight: 600, padding: "8px 12px", borderRadius: 8, marginBottom: 8 }}>{twoFaMsg}</div>
                 )}
-                {user?.twoFactorEnabled ? (
-                  <form onSubmit={onDisable2FA} style={{ display: "flex", gap: 8 }}>
-                    <input className="field-input" placeholder={t("settings.currentTwoFaCode")} value={twoFaCode} onChange={(e) => setTwoFaCode(e.target.value)} style={{ flex: 1 }} />
-                    <button className="btn" type="submit" disabled={twoFaBusy} style={{ background: "#FDEBEC", color: "#B23A47", border: "none", fontSize: 12.5, fontWeight: 700, padding: "0 14px", borderRadius: 8, whiteSpace: "nowrap" }}>
-                      {t("common.delete")}
-                    </button>
+                {twoFaRecovery ? (
+                  <RecoveryCodes codes={twoFaRecovery} onDone={() => setTwoFaRecovery(null)} />
+                ) : user?.twoFactorEnabled && !twoFaQr ? (
+                  // Replacing the key or turning 2FA off: the password and the current code (or a recovery code).
+                  <form onSubmit={onDisable2FA} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    <div style={{ fontSize: 12, color: "#686B75" }}>{t("twofa.reauthHint")}</div>
+                    <input className="field-input" type="password" autoComplete="current-password" placeholder={t("twofa.password")} value={twoFaPassword} onChange={(e) => setTwoFaPassword(e.target.value)} />
+                    <input className="field-input" autoComplete="one-time-code" placeholder={t("twofa.currentOrRecovery")} value={twoFaCurrent} onChange={(e) => setTwoFaCurrent(e.target.value)} />
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                      <button className="btn" type="button" disabled={twoFaBusy || !twoFaPassword || !twoFaCurrent.trim()} onClick={onStart2FA} style={{ background: "#F2F1EC", color: "#181A1F", border: "none", fontSize: 12.5, fontWeight: 700, padding: "8px 14px", borderRadius: 8 }}>
+                        {t("twofa.replaceKey")}
+                      </button>
+                      <button className="btn" type="submit" disabled={twoFaBusy || !twoFaPassword || !twoFaCurrent.trim()} style={{ background: "#FDEBEC", color: "#B23A47", border: "none", fontSize: 12.5, fontWeight: 700, padding: "8px 14px", borderRadius: 8 }}>
+                        {t("twofa.turnOff")}
+                      </button>
+                    </div>
                   </form>
                 ) : twoFaQr ? (
                   <form onSubmit={onConfirm2FA} style={{ display: "flex", flexDirection: "column", gap: 10 }}>

@@ -141,13 +141,15 @@ export default function LoginPage() {
             className="field-input"
             required
             autoFocus
-            inputMode="numeric"
-            maxLength={6}
+            maxLength={11}
+            autoComplete="one-time-code"
             value={code}
             onChange={(e) => setCode(e.target.value)}
             placeholder="000000"
+            aria-describedby="twofa-recovery-hint"
             style={{ textAlign: "center", fontSize: 22, letterSpacing: 8, height: 48 }}
           />
+          <div id="twofa-recovery-hint" style={{ fontSize: 12, color: "#686B75", textAlign: "center" }}>{t("twofa.recoveryLoginHint")}</div>
           <button
             className="btn"
             type="submit"

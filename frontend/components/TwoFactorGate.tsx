@@ -4,6 +4,7 @@ import { useState } from "react";
 import { authApi, ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { useLanguage } from "@/lib/i18n-context";
+import RecoveryCodes from "./RecoveryCodes";
 
 const ACCENT = "#4F46E5";
 
@@ -14,11 +15,12 @@ const ACCENT = "#4F46E5";
  */
 export default function TwoFactorGate() {
   const { t } = useLanguage();
-  const { refreshMe, logout } = useAuth();
+  const { user, refreshMe, logout } = useAuth();
   const [qr, setQr] = useState<string | null>(null);
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [recovery, setRecovery] = useState<string[] | null>(null);
 
   async function start() {
     setError(null);
@@ -37,8 +39,9 @@ export default function TwoFactorGate() {
     setError(null);
     setBusy(true);
     try {
-      await authApi.confirmTwoFactor(code.trim());
-      await refreshMe();
+      // The recovery codes are shown first; the pages open when they are kept.
+      setRecovery((await authApi.confirmTwoFactor(code.trim())).recoveryCodes);
+      setBusy(false);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : t("common.errorGeneric"));
       setBusy(false);
@@ -49,13 +52,19 @@ export default function TwoFactorGate() {
     <div style={{ flex: 1, display: "grid", placeItems: "center", padding: 24 }}>
       <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 28, maxWidth: 440, width: "100%", display: "flex", flexDirection: "column", gap: 14 }}>
         <h1 style={{ fontSize: 19, fontWeight: 800, margin: 0 }}>{t("sa2fa.title")}</h1>
-        <p style={{ fontSize: 13.5, color: "#4A4E58", lineHeight: 1.6, margin: 0 }}>{t("sa2fa.text")}</p>
+        <p style={{ fontSize: 13.5, color: "#4A4E58", lineHeight: 1.6, margin: 0 }}>{user?.twoFactorEnabled && !recovery ? t("sa2fa.reloginText") : t("sa2fa.text")}</p>
+        {recovery && <RecoveryCodes codes={recovery} onDone={() => void refreshMe()} />}
         {error && (
           <div role="alert" style={{ background: "#FDEBEC", color: "#B23A47", fontSize: 13, fontWeight: 600, padding: "9px 12px", borderRadius: 9 }}>
             {error}
           </div>
         )}
-        {qr ? (
+        {recovery ? null : user?.twoFactorEnabled ? (
+          // 2FA is on, but this session did not pass it: sign in again with the code.
+          <button type="button" className="btn" onClick={logout} style={{ background: ACCENT, color: "#fff", border: "none", fontWeight: 700, fontSize: 14, padding: 12, borderRadius: 10 }}>
+            {t("sa2fa.relogin")}
+          </button>
+        ) : qr ? (
           <form onSubmit={confirm} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             <div style={{ fontSize: 12.5, color: "#686B75" }}>{t("settings.scanQr")}</div>
             {/* eslint-disable-next-line @next/next/no-img-element */}

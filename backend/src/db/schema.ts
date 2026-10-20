@@ -293,6 +293,15 @@ export const users = pgTable('users', {
   verifyTokenHash: text('verify_token_hash'),
   twoFactorSecret: text('two_factor_secret'),
   twoFactorEnabled: boolean('two_factor_enabled').notNull().default(false),
+  // A new key waits here until it is confirmed (it never replaces the active
+  // one before that), for a short while and for one confirmation.
+  twoFactorPendingSecret: text('two_factor_pending_secret'),
+  twoFactorPendingExpiresAt: timestamp('two_factor_pending_expires_at'),
+  // When the factor was last turned on, replaced or off: a session that
+  // passed 2FA before this no longer counts as verified.
+  twoFactorChangedAt: timestamp('two_factor_changed_at'),
+  // One-time recovery codes, SHA-256 hashed; each is removed when used.
+  twoFactorRecoveryHashes: text('two_factor_recovery_hashes').array(),
   // Staff Telegram chat for CRM reminders, linked through a one-time bot
   // deep link (see TelegramService.generateStaffLinkToken).
   telegramChatId: text('telegram_chat_id'),
@@ -315,6 +324,9 @@ export const sessions = pgTable('sessions', {
   tenantId: text('tenant_id').references(() => tenants.id, { onDelete: 'cascade' }),
   userAgent: text('user_agent'),
   ip: text('ip'),
+  // When this session itself passed two-step sign-in (null: it did not).
+  // The account having 2FA on says nothing about an older session.
+  mfaAt: timestamp('mfa_at'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   lastUsedAt: timestamp('last_used_at').notNull().defaultNow(),
 }, (t) => ({
@@ -1089,6 +1101,8 @@ export const authHandoffCodes = pgTable('auth_handoff_codes', {
   codeHash: text('code_hash').notNull(),
   userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   tenantId: text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  // The 2FA state of the session that asked: the new session gets the same.
+  mfaAt: timestamp('mfa_at'),
   expiresAt: timestamp('expires_at').notNull(),
   usedAt: timestamp('used_at'),
   createdAt: timestamp('created_at').notNull().defaultNow(),

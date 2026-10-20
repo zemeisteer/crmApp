@@ -155,7 +155,7 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
           </svg>
         </button>
         <TrialBanner />
-        {user.role === "SUPERADMIN" && user.twoFactorRequired && !user.twoFactorEnabled ? (
+        {user.role === "SUPERADMIN" && user.twoFactorRequired && !user.sessionTwoFactor ? (
           // The platform pages open once two-step sign-in is on.
           <TwoFactorGate />
         ) : tenant?.trial?.stage === "LOCKED" && user.role !== "SUPERADMIN" && pathname !== "/pricing" ? (

@@ -412,6 +412,8 @@ export interface User {
   twoFactorEnabled?: boolean;
   /** The platform admin's pages wait for two-step sign-in. */
   twoFactorRequired?: boolean;
+  /** This session itself passed 2FA (the account having it on is not enough). */
+  sessionTwoFactor?: boolean;
 }
 
 export interface AuthResponse {
@@ -1391,9 +1393,13 @@ export const authApi = {
   verifyTwoFactorLogin: (pendingToken: string, code: string) =>
     request<LoginResponse>("/auth/2fa/verify-login", { method: "POST", body: JSON.stringify({ pendingToken, code }) }),
 
-  setupTwoFactor: () => request<{ secret: string; qrDataUrl: string }>("/auth/2fa/setup", { method: "POST" }),
-  confirmTwoFactor: (code: string) => request<{ message: string }>("/auth/2fa/confirm", { method: "POST", body: JSON.stringify({ code }) }),
-  disableTwoFactor: (code: string) => request<{ message: string }>("/auth/2fa/disable", { method: "POST", body: JSON.stringify({ code }) }),
+  // With 2FA already on, a new key needs the password and the current code
+  // (or a recovery code); the key stays pending until confirmed.
+  setupTwoFactor: (reauth?: { password: string; code: string }) =>
+    request<{ secret: string; qrDataUrl: string; expiresAt: string }>("/auth/2fa/setup", { method: "POST", body: JSON.stringify(reauth ?? {}) }),
+  /** The recovery codes come back once, here. */
+  confirmTwoFactor: (code: string) => request<{ message: string; recoveryCodes: string[] }>("/auth/2fa/confirm", { method: "POST", body: JSON.stringify({ code }) }),
+  disableTwoFactor: (reauth: { password: string; code: string }) => request<{ message: string }>("/auth/2fa/disable", { method: "POST", body: JSON.stringify(reauth) }),
 
   logout: () => {
     const refreshToken = getRefreshToken();
