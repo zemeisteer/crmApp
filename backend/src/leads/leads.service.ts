@@ -70,8 +70,7 @@ export interface Actor {
 // Admissions rows always carry app-written timestamps instead of relying on
 // the column's defaultNow(): with a non-UTC database session timezone, now()
 // is stored as local wall-clock time while drizzle reads and compares these
-// columns as UTC, which would shift cohort windows by the zone offset. See
-// "Security/Integrity findings" in ADMISSIONS_SALES_CRM_REPORT.md.
+// columns as UTC, which would shift cohort windows by the zone offset.
 export function appTimestamps() {
   const now = new Date();
   return { createdAt: now, updatedAt: now };
@@ -1023,7 +1022,7 @@ export class LeadsService {
     return { total, counts, conversionRate: total > 0 ? Math.round((counts.ENROLLED / total) * 100) : 0, bySource };
   }
 
-  // Two deliberately separate views (see ADMISSIONS_SALES_CRM_REPORT.md):
+  // Two deliberately separate views:
   //  - snapshot: where non-archived leads are *now*, regardless of age;
   //  - cohort: leads *created* in [from, to), and which stages each of them
   //    has *ever* reached (from the activity history), so rates for one
