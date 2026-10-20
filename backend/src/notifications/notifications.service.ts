@@ -1,6 +1,7 @@
 import { BadRequestException, Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { formatZoned } from '../common/timezone';
-import { and, desc, eq, sql } from 'drizzle-orm';
+import { and, desc, eq, inArray, sql } from 'drizzle-orm';
+import { createId } from '@paralleldrive/cuid2';
 import { DB, Database } from '../db/db.module';
 import { LedgerService } from '../ledger/ledger.service';
 import {
@@ -9,7 +10,9 @@ import {
   students,
   tenants,
   debtorReminders,
+  smsSends,
 } from '../db/schema';
+import { centerWorkRefusal } from '../trial/trial-access';
 import { TelegramService } from '../telegram/telegram.service';
 import { EskizProvider } from './sms/eskiz.provider';
 import { PlayMobileProvider } from './sms/playmobile.provider';
@@ -32,18 +35,24 @@ export class NotificationsService {
   ) {}
 
   /**
-   * How an SMS of this center goes out, or why it does not: the plan must
-   * include SMS and the center must have it on. The provider account is the
-   * platform's (Eskiz, else PlayMobile); a center that once entered its own
-   * token keeps using it. `configured`: a real token is there (without one
-   * the provider only logs the message outside production).
+   * How an SMS of this center goes out, or why it does not: the center must
+   * exist and run (ACTIVE, or a trial that has not ended - trial-access.ts),
+   * its plan must be one the platform lists and include SMS, and the center
+   * must have it on. The provider account is the platform's (Eskiz, else
+   * PlayMobile; `platformAccount`, counted against the monthly budget); a
+   * center that once entered its own token keeps using it. `configured`: a
+   * real token is there (without one the provider only logs the message
+   * outside production).
    */
   async smsRoute(tenantId: string): Promise<
-    | { ok: true; provider: 'eskiz' | 'playmobile'; token: string | undefined; sender: string; configured: boolean }
-    | { ok: false; reason: 'NOT_IN_PLAN' | 'OFF'; message: string }
+    | { ok: true; provider: 'eskiz' | 'playmobile'; token: string | undefined; sender: string; configured: boolean; platformAccount: boolean }
+    | { ok: false; reason: 'NO_CENTER' | 'CENTER_INACTIVE' | 'NOT_IN_PLAN' | 'OFF'; message: string }
   > {
     const [row] = await this.db
       .select({
+        status: tenants.status,
+        trialEndsAt: tenants.trialEndsAt,
+        planKey: plans.key,
         plan: tenants.plan,
         smsEnabled: tenants.smsEnabled,
         smsApiToken: tenants.smsApiToken,
@@ -54,18 +63,65 @@ export class NotificationsService {
       .from(tenants)
       .leftJoin(plans, eq(plans.key, tenants.plan))
       .where(eq(tenants.id, tenantId));
-    // A plan the platform no longer lists restricts nothing.
-    if (row && row.smsIncluded === false) return { ok: false, reason: 'NOT_IN_PLAN', message: "SMS tarifingizga kiritilmagan" };
-    if (row && !row.smsEnabled) return { ok: false, reason: 'OFF', message: "SMS markaz sozlamalarida o'chirilgan" };
-    if (row?.smsApiToken) {
-      return { ok: true, provider: row.smsProvider === 'playmobile' ? 'playmobile' : 'eskiz', token: row.smsApiToken, sender: row.smsSender || '4546', configured: true };
+    if (!row) return { ok: false, reason: 'NO_CENTER', message: 'Markaz topilmadi' };
+    if (centerWorkRefusal(row)) return { ok: false, reason: 'CENTER_INACTIVE', message: "Markaz faol emas (sinov muddati tugagan yoki to'xtatilgan)" };
+    if (row.smsIncluded === false) return { ok: false, reason: 'NOT_IN_PLAN', message: 'SMS tarifingizga kiritilmagan' };
+    if (!row.smsEnabled) return { ok: false, reason: 'OFF', message: "SMS markaz sozlamalarida o'chirilgan" };
+    if (row.smsApiToken) {
+      return { ok: true, provider: row.smsProvider === 'playmobile' ? 'playmobile' : 'eskiz', token: row.smsApiToken, sender: row.smsSender || '4546', configured: true, platformAccount: false };
     }
+    // The platform's account: only for a plan it lists that includes SMS.
+    if (!row.planKey) return { ok: false, reason: 'NOT_IN_PLAN', message: 'SMS tarifingizga kiritilmagan' };
     const eskiz = process.env.ESKIZ_API_TOKEN?.trim();
     const playmobile = process.env.PLAYMOBILE_API_TOKEN?.trim();
     if (!eskiz && playmobile) {
-      return { ok: true, provider: 'playmobile', token: playmobile, sender: process.env.PLAYMOBILE_ORIGINATOR?.trim() || row?.smsSender || '4546', configured: true };
+      return { ok: true, provider: 'playmobile', token: playmobile, sender: process.env.PLAYMOBILE_ORIGINATOR?.trim() || row.smsSender || '4546', configured: true, platformAccount: true };
     }
-    return { ok: true, provider: 'eskiz', token: eskiz || undefined, sender: process.env.ESKIZ_SENDER?.trim() || row?.smsSender || '4546', configured: Boolean(eskiz) };
+    return { ok: true, provider: 'eskiz', token: eskiz || undefined, sender: process.env.ESKIZ_SENDER?.trim() || row.smsSender || '4546', configured: Boolean(eskiz), platformAccount: true };
+  }
+
+  /**
+   * Takes the right to send the SMS with this key, or says why not:
+   * DUPLICATE - sent already, being sent, or timed out (may have gone);
+   * QUOTA - the platform account's monthly budget (PLATFORM_SMS_PER_CENTER_MONTH
+   * per center, PLATFORM_SMS_PER_MONTH in all; 0 = no total cap) is used up.
+   * A message the provider clearly refused may try again (3 attempts in all)
+   * and gives its place in the budget back. One lock per month: two sends at
+   * once cannot both take the last place.
+   */
+  private async reserveSms(tenantId: string, key: string, platformAccount: boolean): Promise<'GO' | 'DUPLICATE' | 'QUOTA'> {
+    const month = new Date().toISOString().slice(0, 7);
+    // Empty (as docker-compose passes an unset one) means the default.
+    const env = (k: string, d: number) => {
+      const v = Number(process.env[k]?.trim() || d);
+      return Number.isFinite(v) && v >= 0 ? v : d;
+    };
+    const perCenter = env('PLATFORM_SMS_PER_CENTER_MONTH', 1000);
+    const total = env('PLATFORM_SMS_PER_MONTH', 0);
+    return this.db.transaction(async (tx) => {
+      await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`sms-send:${month}`}))`);
+      const [existing] = await tx.select().from(smsSends).where(and(eq(smsSends.tenantId, tenantId), eq(smsSends.idempotencyKey, key)));
+      if (existing && (existing.status !== 'FAILED' || existing.attempts >= 3)) return 'DUPLICATE';
+      if (platformAccount) {
+        const counted = and(eq(smsSends.month, month), eq(smsSends.platformAccount, true), inArray(smsSends.status, ['RESERVED', 'SENT', 'UNKNOWN']));
+        const [{ mine }] = await tx.select({ mine: sql<number>`count(*)::int` }).from(smsSends).where(and(counted, eq(smsSends.tenantId, tenantId)));
+        if (mine >= perCenter) return 'QUOTA';
+        if (total > 0) {
+          const [{ all }] = await tx.select({ all: sql<number>`count(*)::int` }).from(smsSends).where(counted);
+          if (all >= total) return 'QUOTA';
+        }
+      }
+      if (existing) {
+        await tx.update(smsSends).set({ status: 'RESERVED', attempts: existing.attempts + 1, month, platformAccount, updatedAt: new Date() }).where(eq(smsSends.id, existing.id));
+      } else {
+        await tx.insert(smsSends).values({ tenantId, idempotencyKey: key, month, platformAccount });
+      }
+      return 'GO';
+    });
+  }
+
+  private async settleSms(tenantId: string, key: string, status: 'SENT' | 'FAILED' | 'UNKNOWN') {
+    await this.db.update(smsSends).set({ status, updatedAt: new Date() }).where(and(eq(smsSends.tenantId, tenantId), eq(smsSends.idempotencyKey, key)));
   }
 
   async getSettings(tenantId: string) {
@@ -143,9 +199,17 @@ export class NotificationsService {
       }
     } else if (dto.channel === 'SMS') {
       const route = await this.smsRoute(tenantId);
+      const key = dto.idempotencyKey || createId();
+      const reserved = route.ok ? await this.reserveSms(tenantId, key, route.platformAccount) : null;
       if (!route.ok) {
         status = 'FAILED';
         errorMessage = route.message;
+      } else if (reserved === 'QUOTA') {
+        status = 'FAILED';
+        errorMessage = "SMS_QUOTA: oylik SMS limiti tugagan";
+      } else if (reserved === 'DUPLICATE') {
+        status = 'FAILED';
+        errorMessage = "SMS_DUPLICATE: bu xabar allaqachon yuborilgan yoki yuborilmoqda";
       } else {
         const provider = route.provider === 'playmobile' ? this.playmobile : this.eskiz;
         providerName = provider.name;
@@ -153,8 +217,10 @@ export class NotificationsService {
         if (!result.success) {
           status = 'FAILED';
           errorMessage = result.error || 'SMS delivery failed';
+          await this.settleSms(tenantId, key, result.uncertain ? 'UNKNOWN' : 'FAILED');
         } else {
           providerMessageId = result.messageId || null;
+          await this.settleSms(tenantId, key, 'SENT');
         }
       }
     }
@@ -440,7 +506,7 @@ export class NotificationsService {
         void this.send(tenantId, { channel: 'TELEGRAM', event: 'PAYMENT_DUE', recipient: st.telegramChatId!, studentId: st.id, content: text });
       }
       if (channels.includes('SMS')) {
-        void this.send(tenantId, { channel: 'SMS', event: 'PAYMENT_DUE', recipient: (st.parentPhone || st.phone)!, studentId: st.id, content: text });
+        void this.send(tenantId, { channel: 'SMS', event: 'PAYMENT_DUE', recipient: (st.parentPhone || st.phone)!, studentId: st.id, content: text, idempotencyKey: `DEBT:${claimed.id}` });
       }
       sent++;
     }

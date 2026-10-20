@@ -2,6 +2,9 @@ export interface SendSmsResult {
   success: boolean;
   messageId?: string;
   error?: string;
+  // Not a clear "no": the request timed out or the provider failed on its
+  // side, so the message may have gone. Never sent again automatically.
+  uncertain?: boolean;
   raw?: any;
 }
 

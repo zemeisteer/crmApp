@@ -20,6 +20,7 @@ import { CreateInvitationDto } from './dto/create-invitation.dto';
 import { AcceptInvitationDto } from './dto/accept-invitation.dto';
 import { AuthService } from '../auth/auth.service';
 import { assertTrialRoom } from '../trial/trial-limits';
+import { centerWorkRefusal } from '../trial/trial-access';
 
 @Injectable()
 export class InvitationsService {
@@ -126,6 +127,17 @@ export class InvitationsService {
     };
   }
 
+  // Marks it accepted in the transaction that adds the member: only once,
+  // so two accepts at the same moment add one.
+  private async markAccepted(tx: Pick<Database, 'update'>, id: string) {
+    const [row] = await tx
+      .update(invitations)
+      .set({ status: 'ACCEPTED', acceptedAt: new Date(), updatedAt: new Date() })
+      .where(and(eq(invitations.id, id), eq(invitations.status, 'PENDING')))
+      .returning({ id: invitations.id });
+    if (!row) throw new BadRequestException('Ushbu taklifnoma allaqachon qabul qilingan');
+  }
+
   async accept(rawToken: string, dto: AcceptInvitationDto, authenticatedUserId?: string) {
     const tokenHash = this.hashToken(rawToken);
     const invitation = await this.db.query.invitations.findFirst({
@@ -147,6 +159,15 @@ export class InvitationsService {
     if (invitation.expiresAt < new Date() || invitation.status === 'EXPIRED') {
       throw new BadRequestException('Taklifnoma muddati tugagan');
     }
+
+    // A center whose trial is over, or that is suspended, takes no one in.
+    const [center] = await this.db
+      .select({ status: tenants.status, trialEndsAt: tenants.trialEndsAt })
+      .from(tenants)
+      .where(eq(tenants.id, invitation.tenantId));
+    const closed = center && centerWorkRefusal(center);
+    if (closed) throw new ForbiddenException(closed);
+    const joinsStaff = invitation.role !== 'STUDENT' && invitation.role !== 'PARENT';
 
     // Check if user exists by email or phone
     const conditions = [];
@@ -190,26 +211,31 @@ export class InvitationsService {
           eq(organizationMemberships.tenantId, invitation.tenantId),
         ),
       });
+      const member = user;
 
-      if (existingMembership) {
-        await this.db
-          .update(organizationMemberships)
-          .set({
+      await this.db.transaction(async (tx) => {
+        if (joinsStaff) await assertTrialRoom(tx, invitation.tenantId, 'staff', existingMembership?.status === 'ACTIVE' ? 0 : 1, true, { countPending: false });
+        await this.markAccepted(tx, invitation.id);
+        if (existingMembership) {
+          await tx
+            .update(organizationMemberships)
+            .set({
+              role: invitation.role as any,
+              status: 'ACTIVE',
+              removedAt: null,
+              removedByUserId: null,
+              updatedAt: new Date(),
+            })
+            .where(eq(organizationMemberships.id, existingMembership.id));
+        } else {
+          await tx.insert(organizationMemberships).values({
+            userId: member.id,
+            tenantId: invitation.tenantId,
             role: invitation.role as any,
             status: 'ACTIVE',
-            removedAt: null,
-            removedByUserId: null,
-            updatedAt: new Date(),
-          })
-          .where(eq(organizationMemberships.id, existingMembership.id));
-      } else {
-        await this.db.insert(organizationMemberships).values({
-          userId: user.id,
-          tenantId: invitation.tenantId,
-          role: invitation.role as any,
-          status: 'ACTIVE',
-        });
-      }
+          });
+        }
+      });
     } else {
       // New user registering via invitation
       if (!dto.fullName?.trim() || !dto.password || dto.password.length < 6) {
@@ -219,39 +245,34 @@ export class InvitationsService {
       }
 
       const passwordHash = await bcrypt.hash(dto.password, 10);
-      const [newUser] = await this.db
-        .insert(users)
-        .values({
+      const fullName = dto.fullName.trim();
+      user = await this.db.transaction(async (tx) => {
+        if (joinsStaff) await assertTrialRoom(tx, invitation.tenantId, 'staff', 1, true, { countPending: false });
+        await this.markAccepted(tx, invitation.id);
+        const [newUser] = await tx
+          .insert(users)
+          .values({
+            tenantId: invitation.tenantId,
+            fullName,
+            email: invitation.email || `${invitation.phone || Date.now()}@user.crmapp`,
+            phone: invitation.phone || null,
+            passwordHash,
+            role: invitation.role as any,
+            emailVerified: true,
+          })
+          .returning();
+
+        // Create membership
+        await tx.insert(organizationMemberships).values({
+          userId: newUser.id,
           tenantId: invitation.tenantId,
-          fullName: dto.fullName.trim(),
-          email: invitation.email || `${invitation.phone || Date.now()}@user.crmapp`,
-          phone: invitation.phone || null,
-          passwordHash,
           role: invitation.role as any,
-          emailVerified: true,
-        })
-        .returning();
-
-      user = newUser;
-
-      // Create membership
-      await this.db.insert(organizationMemberships).values({
-        userId: user.id,
-        tenantId: invitation.tenantId,
-        role: invitation.role as any,
-        status: 'ACTIVE',
+          status: 'ACTIVE',
+        });
+        return newUser;
       });
     }
-
-    // Mark invitation accepted
-    await this.db
-      .update(invitations)
-      .set({
-        status: 'ACCEPTED',
-        acceptedAt: new Date(),
-        updatedAt: new Date(),
-      })
-      .where(eq(invitations.id, invitation.id));
+    if (!user) throw new NotFoundException('Foydalanuvchi topilmadi');
 
     // Sign JWT with the invited tenant context and role
     const tokens = await this.authService.issueFullSession({

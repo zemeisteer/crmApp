@@ -1,3 +1,4 @@
+import { centerWorkRefusal } from '../trial/trial-access';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { and, count, eq, gte, inArray, isNull, lt, ne, sum } from 'drizzle-orm';
@@ -42,6 +43,8 @@ export class RemindersService {
     const list = await this.db.select().from(tenants).where(ne(tenants.status, 'SUSPENDED'));
     const out = { lessons: 0, payments: 0, digests: 0 };
     for (const t of list) {
+      // A center whose trial is over sends nothing (trial-access.ts).
+      if (centerWorkRefusal(t, now)) continue;
       try {
         out.lessons += await this.lessonReminders(t, now);
         out.payments += await this.paymentReminders(t, now);
@@ -168,7 +171,7 @@ export class RemindersService {
       }
       const phone = d.parentPhone || d.phone;
       if (sms && phone) {
-        await this.notifications.send(t.id, { channel: 'SMS', event: 'PAYMENT_DUE', recipient: phone, studentId: d.studentId, content: text });
+        await this.notifications.send(t.id, { channel: 'SMS', event: 'PAYMENT_DUE', recipient: phone, studentId: d.studentId, content: text, idempotencyKey: `PAYMENT_DUE:${d.studentId}:${c.month}` });
       }
       sent++;
     }

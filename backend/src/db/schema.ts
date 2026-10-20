@@ -285,6 +285,28 @@ export const trialNotices = pgTable('trial_notices', {
   uniq: uniqueIndex('trial_notices_tenant_kind_recipient_idx').on(t.tenantId, t.kind, t.recipient),
 }));
 
+// Every SMS a center sends, by its idempotency key: the same message is
+// sent once (a retry, a double click, a provider timeout), and messages on
+// the platform's provider account count against its monthly budget
+// (notifications.service.ts).
+export const smsSends = pgTable('sms_sends', {
+  id: text('id').primaryKey().$defaultFn(() => createId()),
+  tenantId: text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  idempotencyKey: text('idempotency_key').notNull(),
+  month: text('month').notNull(), // "2026-10" (UTC)
+  // Sent on the platform's provider account (not the center's own token).
+  platformAccount: boolean('platform_account').notNull(),
+  // RESERVED (being sent) -> SENT | FAILED (the provider refused: may be
+  // tried again) | UNKNOWN (timed out: may have gone, never sent again).
+  status: text('status').notNull().default('RESERVED'),
+  attempts: integer('attempts').notNull().default(1),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+}, (t) => ({
+  keyIdx: uniqueIndex('sms_sends_tenant_key_idx').on(t.tenantId, t.idempotencyKey),
+  monthIdx: index('sms_sends_month_idx').on(t.month, t.platformAccount),
+}));
+
 // A code sent to a phone at sign-up (only its hash is kept).
 export const signupPhoneCodes = pgTable('signup_phone_codes', {
   id: text('id').primaryKey().$defaultFn(() => createId()),

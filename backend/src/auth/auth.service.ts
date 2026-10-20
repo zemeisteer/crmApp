@@ -32,6 +32,9 @@ function hashToken(token: string) {
 
 /** A new key waits this long for its confirmation. */
 const PENDING_2FA_MS = 10 * 60_000;
+// A code from the step before still counts (30 s): typing it and the
+// sign-in itself can cross into the next step. Codes ahead do not.
+const TOTP_TOLERANCE: [number, number] = [30, 0];
 const RECOVERY_CODE = /^[0-9a-f]{5}-[0-9a-f]{5}$/;
 
 /** Ten one-time recovery codes ("a1b2c-3d4e5") and their hashes. */
@@ -608,7 +611,7 @@ export class AuthService {
       return !!used;
     }
     if (!user.twoFactorSecret || !/^\d{6}$/.test(code)) return false;
-    return (await verifyTotp({ secret: user.twoFactorSecret, token: code })).valid;
+    return (await verifyTotp({ secret: user.twoFactorSecret, token: code, epochTolerance: TOTP_TOLERANCE })).valid;
   }
 
   /** Password and the current factor: what replacing or removing a factor asks for. */
@@ -646,7 +649,7 @@ export class AuthService {
     if (!user || !pending || !user.twoFactorPendingExpiresAt || user.twoFactorPendingExpiresAt < new Date()) {
       throw new BadRequestException("Tasdiqlanadigan yangi kalit yo'q yoki muddati tugagan. Qaytadan boshlang.");
     }
-    if (!/^\d{6}$/.test(String(code ?? '').trim()) || !(await verifyTotp({ secret: pending, token: String(code).trim() })).valid) {
+    if (!/^\d{6}$/.test(String(code ?? '').trim()) || !(await verifyTotp({ secret: pending, token: String(code).trim(), epochTolerance: TOTP_TOLERANCE })).valid) {
       throw new BadRequestException("Kod noto'g'ri");
     }
     const now = new Date();

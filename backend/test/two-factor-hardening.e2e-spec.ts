@@ -134,6 +134,16 @@ describe('Two-factor hardening (e2e)', () => {
     await loginWith2fa(email, recoveryCodes[2]).then((r) => expect(r.status).toBe(401));
   });
 
+  it("a code from the step before still signs in (it was typed as the step turned); older ones and future ones do not", async () => {
+    const email = `tf-step-${suffix}@test.uz`;
+    await http().post('/api/auth/register').send({ centerName: `TF step ${suffix}`, subdomain: `tf-step-${suffix}`, email, password: PASSWORD, fullName: 'TF Step' }).expect(201);
+    const { secret } = await enable((await login(email)).accessToken);
+    const at = (secondsAgo: number) => totp({ secret, epoch: Math.floor(Date.now() / 1000) - secondsAgo });
+    expect((await loginWith2fa(email, await at(30))).status).toBe(201);
+    expect((await loginWith2fa(email, await at(90))).status).toBe(401);
+    expect((await loginWith2fa(email, await at(-60))).status).toBe(401);
+  });
+
   it('turning 2FA off needs the password and the factor, and ends the other sessions', async () => {
     const email = `tf-off-${suffix}@test.uz`;
     await http().post('/api/auth/register').send({ centerName: `TF off ${suffix}`, subdomain: `tf-off-${suffix}`, email, password: PASSWORD, fullName: 'TF Off' }).expect(201);

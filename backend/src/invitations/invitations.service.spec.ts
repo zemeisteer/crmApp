@@ -45,7 +45,13 @@ describe('InvitationsService', () => {
           }),
         }),
       }),
+      // The center's state (trial-access.ts): a paying center here.
+      select: vi.fn().mockReturnValue({
+        from: vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue([{ status: 'ACTIVE', trialEndsAt: null }]) }),
+      }),
     };
+    // The member is added in a transaction: the same mock stands for it.
+    mockDb.transaction = vi.fn(async (fn: (tx: unknown) => unknown) => fn(mockDb));
 
     mockAuthService = {
       issueFullSession: vi.fn().mockResolvedValue({

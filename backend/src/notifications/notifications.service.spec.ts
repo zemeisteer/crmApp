@@ -11,7 +11,7 @@ describe('NotificationsService', () => {
   let routeRow: Record<string, unknown>;
 
   beforeEach(() => {
-    routeRow = { plan: 'STARTER', smsEnabled: true, smsApiToken: 'token123', smsProvider: 'eskiz', smsSender: '4546', smsIncluded: true };
+    routeRow = { status: 'ACTIVE', trialEndsAt: null, planKey: 'STARTER', plan: 'STARTER', smsEnabled: true, smsApiToken: 'token123', smsProvider: 'eskiz', smsSender: '4546', smsIncluded: true };
     mockDb = {
       query: {
         tenants: {
@@ -93,6 +93,9 @@ describe('NotificationsService', () => {
       mockPlaymobile,
       { currentMonth: vi.fn(), load: vi.fn() } as any,
     );
+    // The send ledger (budget and idempotency) is real SQL: covered by
+    // test/trial-access.e2e-spec.ts. Here every send may go.
+    vi.spyOn(service as any, 'reserveSms').mockResolvedValue('GO');
   });
 
   it('settings say whether SMS is in the plan and on, and show no provider or token', async () => {
