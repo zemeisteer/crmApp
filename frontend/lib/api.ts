@@ -1367,10 +1367,12 @@ export const authApi = {
     category?: TenantCategory;
     phone?: string;
     phoneCode?: string;
+    signupAttemptId?: string;
   }) => request<AuthResponse>("/auth/register", { method: "POST", body: JSON.stringify(data) }),
   /** A code to the phone a new center signs up with; DEV: shown here (never in production). */
-  signupPhoneCode: (phone: string, email?: string) =>
-    request<{ channel: "SMS" | "EMAIL" | "DEV"; devCode?: string }>("/auth/register/phone", { method: "POST", body: JSON.stringify({ phone, email: email || undefined }) }),
+  // The attempt id comes back with the code and goes with the sign-up.
+  signupPhoneCode: (phone: string) =>
+    request<{ channel: "SMS" | "DEV"; attemptId: string; expiresAt: string; devCode?: string }>("/auth/register/phone", { method: "POST", body: JSON.stringify({ phone }) }),
 
   login: (data: { email?: string; login?: string; password: string }) =>
     request<LoginResponse>("/auth/login", { method: "POST", body: JSON.stringify(data) }),

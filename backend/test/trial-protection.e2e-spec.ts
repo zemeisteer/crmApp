@@ -72,13 +72,13 @@ describe('Free trial protection (e2e)', () => {
 
     it('the code is sent once a minute; a wrong code is refused; the right one signs up', async () => {
       const sent = (await http().post('/api/auth/register/phone').send({ phone }).expect(201)).body;
-      // No SMS provider and no e-mail here, and not production: the code comes back.
-      expect(sent).toEqual({ channel: 'DEV', devCode: expect.stringMatching(/^\d{6}$/) });
+      // No SMS provider here, and a test machine: the code comes back (DEV).
+      expect(sent).toEqual({ channel: 'DEV', devCode: expect.stringMatching(/^\d{6}$/), attemptId: expect.any(String), expiresAt: expect.any(String) });
       expect((await http().post('/api/auth/register/phone').send({ phone }).expect(429)).body.code).toBe('CODE_TOO_SOON');
 
       const wrong = sent.devCode === '123456' ? '654321' : '123456';
-      expect((await signUp('phone', { phone, phoneCode: wrong }).expect(400)).body.code).toBe('CODE_WRONG');
-      const ok = (await signUp('phone', { phone, phoneCode: sent.devCode }).expect(201)).body;
+      expect((await signUp('phone', { phone, phoneCode: wrong, signupAttemptId: sent.attemptId }).expect(400)).body.code).toBe('CODE_WRONG');
+      const ok = (await signUp('phone', { phone, phoneCode: sent.devCode, signupAttemptId: sent.attemptId }).expect(201)).body;
       const [row] = await db.select({ signupPhone: tenants.signupPhone }).from(tenants).where(eq(tenants.id, ok.tenant.id));
       expect(row.signupPhone).toBe(phone);
       // The phone stays on the server: /auth/me does not show it.
@@ -97,8 +97,8 @@ describe('Free trial protection (e2e)', () => {
       const p = `+99891${tail}2`;
       const sent = (await http().post('/api/auth/register/phone').send({ phone: p }).expect(201)).body;
       const wrong = sent.devCode === '111111' ? '222222' : '111111';
-      for (let i = 0; i < 5; i++) await signUp('attempts', { phone: p, phoneCode: wrong }).expect(400);
-      expect((await signUp('attempts', { phone: p, phoneCode: sent.devCode }).expect(400)).body.code).toBe('CODE_ATTEMPTS');
+      for (let i = 0; i < 5; i++) await signUp('attempts', { phone: p, phoneCode: wrong, signupAttemptId: sent.attemptId }).expect(400);
+      expect((await signUp('attempts', { phone: p, phoneCode: sent.devCode, signupAttemptId: sent.attemptId }).expect(400)).body.code).toBe('CODE_ATTEMPTS');
     });
 
     it('two sign-ups at once with the same number: one trial', async () => {

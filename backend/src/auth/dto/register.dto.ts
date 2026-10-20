@@ -39,15 +39,17 @@ export class RegisterDto {
   @IsString()
   @MaxLength(10)
   phoneCode?: string;
+
+  // The attempt id given with the code (also what makes a retry safe).
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  signupAttemptId?: string;
 }
 
 export class SignupPhoneStartDto {
   @IsString()
   @MaxLength(30)
   phone: string;
-
-  // Where the code goes when no SMS provider is set up.
-  @IsOptional()
-  @IsEmail()
-  email?: string;
+
 }

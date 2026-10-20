@@ -6,7 +6,8 @@ import { Roles } from '../common/roles.decorator';
 import { CurrentUser } from '../common/current-user.decorator';
 import { PlatformService } from './platform.service';
 import { PlatformSettingsService } from './platform-settings.service';
-import { ListSubscriptionsDto, RecordPaymentDto, SaveIntegrationDto, UpdateSubscriptionDto } from './dto/platform.dto';
+import { ListSubscriptionsDto, RecordPaymentDto, ReleaseTrialClaimDto, SaveIntegrationDto, UpdateSubscriptionDto } from './dto/platform.dto';
+import { TrialClaimsService } from '../trial/trial-claims.service';
 
 // The platform admin's own pages: every route is SUPERADMIN only.
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -16,7 +17,14 @@ export class PlatformController {
   constructor(
     private readonly service: PlatformService,
     private readonly settings: PlatformSettingsService,
+    private readonly trialClaims: TrialClaimsService,
   ) {}
+
+  // An exception to "one phone, one free trial": audited, with a reason.
+  @Post('trial-claims/release')
+  releaseTrialClaim(@CurrentUser('sub') userId: string, @Body() dto: ReleaseTrialClaimDto) {
+    return this.trialClaims.release(dto.phone, dto.reason, userId);
+  }
 
   @Get('dashboard')
   dashboard() {

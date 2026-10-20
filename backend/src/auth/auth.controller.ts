@@ -26,7 +26,7 @@ export class AuthController {
   @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @Post('register/phone')
   startSignupPhone(@Body() dto: SignupPhoneStartDto, @Req() req: Request) {
-    return this.signupPhone.start(dto.phone, dto.email, req.ip);
+    return this.signupPhone.start(dto.phone, req.ip);
   }
 
   @Throttle({ default: { limit: 8, ttl: 60_000 } })

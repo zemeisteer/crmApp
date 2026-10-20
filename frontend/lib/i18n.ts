@@ -2148,7 +2148,6 @@ export const dict = {
   "reg.resend": { UZ: "Qayta yuborish", RU: "Отправить снова", EN: "Send again" },
   "reg.sending": { UZ: "Yuborilmoqda...", RU: "Отправка...", EN: "Sending..." },
   "reg.codeSms": { UZ: "Kod SMS orqali yuborildi.", RU: "Код отправлен по SMS.", EN: "The code was sent by SMS." },
-  "reg.codeEmail": { UZ: "Kod emailingizga yuborildi.", RU: "Код отправлен на вашу почту.", EN: "The code was sent to your e-mail." },
   "reg.codeDev": { UZ: "Sinov muhiti (SMS ulanmagan), kod:", RU: "Тестовая среда (SMS не подключены), код:", EN: "Test environment (no SMS), code:" },
   "reg.codePlaceholder": { UZ: "6 xonali kod", RU: "6-значный код", EN: "6-digit code" },
   "reg.codeNeeded": { UZ: "Telefon raqamingizni kod bilan tasdiqlang.", RU: "Подтвердите номер телефона кодом.", EN: "Confirm your phone number with the code." },

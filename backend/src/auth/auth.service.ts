@@ -21,6 +21,9 @@ import { LoginDto } from './dto/login.dto';
 import { EmailService } from '../email/email.service';
 import { AuditService } from '../audit/audit.service';
 import { SignupPhoneService } from './signup-phone.service';
+import { TrialClaimsService } from '../trial/trial-claims.service';
+
+type Tx = Parameters<Parameters<Database['transaction']>[0]>[0];
 import { trialRules, trialStage } from '../trial/trial-rules';
 
 function hashToken(token: string) {
@@ -60,6 +63,7 @@ export class AuthService {
     private readonly email: EmailService,
     private readonly audit: AuditService,
     private readonly signupPhone: SignupPhoneService,
+    private readonly trialClaims: TrialClaimsService,
   ) {}
 
   verifyAccessToken(token: string) {
@@ -124,120 +128,156 @@ export class AuthService {
   async register(dto: RegisterDto) {
     const passwordIssue = isPasswordStrongEnough(dto.password);
     if (passwordIssue) throw new BadRequestException(passwordIssue);
-
     const email = dto.email.trim().toLowerCase();
-    const existingEmail = await this.db.query.users.findFirst({
-      where: eq(users.email, email),
-    });
-    if (existingEmail) {
-      throw new ConflictException("Bu email allaqachon ro'yxatdan o'tgan");
+    const attemptId = dto.signupAttemptId?.trim() || null;
+
+    // A retry of an attempt that already made its center (the answer was
+    // lost on the way): that center back, to the same e-mail and password.
+    if (attemptId) {
+      const replay = await this.replaySignup(attemptId, email, dto.password);
+      if (replay) return replay;
     }
 
+    // Quick answers before anything is written (the transaction below checks again).
+    if (await this.db.query.users.findFirst({ where: eq(users.email, email), columns: { id: true } })) {
+      throw new ConflictException({ code: 'EMAIL_USED', message: "Bu email allaqachon ro'yxatdan o'tgan" });
+    }
     let subdomain = dto.subdomain?.trim().toLowerCase();
     if (subdomain) {
-      const existingSubdomain = await this.db.query.tenants.findFirst({
-        where: eq(tenants.subdomain, subdomain),
-      });
-      if (existingSubdomain) {
-        throw new ConflictException('Bu sub-domen band, boshqasini tanlang');
+      if (await this.db.query.tenants.findFirst({ where: eq(tenants.subdomain, subdomain), columns: { id: true } })) {
+        throw new ConflictException({ code: 'SUBDOMAIN_USED', message: 'Bu sub-domen band, boshqasini tanlang' });
       }
     } else {
-      const baseSlug = dto.centerName
-        .toLowerCase()
-        .replace(/[^a-z0-9]/g, '-')
-        .replace(/-+/g, '-')
-        .replace(/^-|-$/g, '')
-        .slice(0, 20) || 'center';
-      subdomain = baseSlug;
-      const exists = await this.db.query.tenants.findFirst({
-        where: eq(tenants.subdomain, subdomain),
-      });
-      if (exists) {
-        subdomain = `${baseSlug}-${randomBytes(3).toString('hex')}`;
-      }
+      const baseSlug = dto.centerName.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '').slice(0, 20) || 'center';
+      subdomain = (await this.db.query.tenants.findFirst({ where: eq(tenants.subdomain, baseSlug), columns: { id: true } }))
+        ? `${baseSlug}-${randomBytes(3).toString('hex')}`
+        : baseSlug;
     }
 
-    // One free trial per phone: the number is confirmed with a code
-    // (checked last, so a form error elsewhere does not use the code up).
-    let signupPhone: string | null = null;
-    if (trialRules().phoneCheck) {
-      if (!dto.phone || !dto.phoneCode) {
+    // The phone, confirmed with its code (a wrong guess is counted here, in
+    // its own write); then what this phone may get: a free trial, a sign-up
+    // without one (a center of it paid before), or nothing.
+    let codeId: string | null = null;
+    const phoneCheck = trialRules().phoneCheck;
+    if (phoneCheck && !dto.phone) {
+      throw new BadRequestException({ code: 'PHONE_REQUIRED', message: 'Telefon raqamingizni SMS kod bilan tasdiqlang' });
+    }
+    const signupPhone = dto.phone ? this.signupPhone.normalize(dto.phone) : null;
+    // A phone whose trial was had says so first, before any code is looked at.
+    const right = signupPhone ? await this.trialClaims.rightOf(signupPhone) : 'FREE_TRIAL';
+    if (phoneCheck) {
+      if (!dto.phoneCode || !attemptId) {
         throw new BadRequestException({ code: 'PHONE_REQUIRED', message: 'Telefon raqamingizni SMS kod bilan tasdiqlang' });
       }
-      signupPhone = await this.signupPhone.consume(dto.phone, dto.phoneCode);
-    } else if (dto.phone) {
-      signupPhone = await this.signupPhone.freePhone(dto.phone);
-    }
-
-    const trialEndsAt = new Date();
-    trialEndsAt.setDate(trialEndsAt.getDate() + 7);
-
-    let tenant: typeof tenants.$inferSelect;
-    try {
-      [tenant] = await this.db
-        .insert(tenants)
-        .values({
-          name: dto.centerName.trim(),
-          subdomain,
-          category: (dto.category as any) ?? 'BOSHQA',
-          status: 'TRIAL',
-          plan: 'STARTER',
-          trialEndsAt,
-          onboardingStep: 'PROFILE',
-          signupPhone,
-        })
-        .returning();
-    } catch (err) {
-      // Two sign-ups at once with the same number or address: the second loses.
-      const constraint = (err as { constraint?: string; cause?: { constraint?: string } }).constraint ?? (err as { cause?: { constraint?: string } }).cause?.constraint;
-      if (constraint === 'tenants_signup_phone_idx') {
-        throw new ConflictException({ code: 'PHONE_USED', message: "Bu raqam bilan bepul sinov allaqachon olingan. Tizimga kiring yoki tarif tanlang." });
-      }
-      if (constraint === 'tenants_subdomain_idx') throw new ConflictException('Bu sub-domen band, boshqasini tanlang');
-      throw err;
+      codeId = await this.signupPhone.verify(signupPhone!, dto.phoneCode, attemptId);
     }
 
     const passwordHash = await bcrypt.hash(dto.password, 10);
     const verifyToken = randomBytes(32).toString('hex');
-    const [user] = await this.db
-      .insert(users)
-      .values({
-        tenantId: tenant.id,
-        email,
-        passwordHash,
-        fullName: dto.fullName.trim(),
-        phone: signupPhone,
-        role: 'OWNER',
-        verifyTokenHash: hashToken(verifyToken),
-      })
-      .returning();
+    const trialEndsAt = new Date();
+    if (right === 'FREE_TRIAL') trialEndsAt.setDate(trialEndsAt.getDate() + 7);
 
-    // Create organization membership
-    await this.db.insert(organizationMemberships).values({
-      userId: user.id,
-      tenantId: tenant.id,
-      role: 'OWNER',
-      status: 'ACTIVE',
-    });
+    // Everything the sign-up writes, or nothing: the code used, the center,
+    // its owner, the membership and the phone's trial.
+    let created: { tenant: typeof tenants.$inferSelect; user: typeof users.$inferSelect };
+    try {
+      created = await this.db.transaction(async (tx) => {
+        if (codeId && !(await this.signupPhone.use(tx, codeId))) {
+          throw new ConflictException({ code: 'CODE_USED', message: "Bu kod bilan ro'yxatdan o'tilgan. Tizimga kiring." });
+        }
+        const tenant = await this.createTenant(tx, {
+          name: dto.centerName.trim(), subdomain: subdomain!, category: (dto.category as never) ?? 'BOSHQA', status: 'TRIAL', plan: 'STARTER',
+          trialEndsAt, onboardingStep: 'PROFILE', signupPhone: right === 'FREE_TRIAL' ? signupPhone : null, signupAttemptId: attemptId,
+        });
+        const user = await this.createOwner(tx, {
+          tenantId: tenant.id, email, passwordHash, fullName: dto.fullName.trim(), phone: signupPhone, role: 'OWNER', verifyTokenHash: hashToken(verifyToken),
+        });
+        await this.createMembership(tx, { userId: user.id, tenantId: tenant.id, role: 'OWNER', status: 'ACTIVE' });
+        if (signupPhone) await this.claimTrial(tx, signupPhone, tenant.id, right);
+        return { tenant, user };
+      });
+    } catch (err) {
+      throw this.signupConflict(err) ?? err;
+    }
+    const { tenant, user } = created;
 
-    void this.email.send(
-      user.email,
-      "TalimCRM — emailingizni tasdiqlang",
-      `Assalomu alaykum, ${user.fullName}!\n\nEmailingizni tasdiqlash uchun havolani oching:\n${this.frontendUrl()}/verify-email?token=${verifyToken}\n\nAgar ro'yxatdan o'tmagan bo'lsangiz, bu xabarni e'tiborsiz qoldiring.`,
-    );
-
+    // After the commit: a mail that fails does not undo the sign-up, and a
+    // session that fails to open leaves an account that can sign in.
+    this.email
+      .send(
+        user.email,
+        "TalimCRM — emailingizni tasdiqlang",
+        `Assalomu alaykum, ${user.fullName}!\n\nEmailingizni tasdiqlash uchun havolani oching:\n${this.frontendUrl()}/verify-email?token=${verifyToken}\n\nAgar ro'yxatdan o'tmagan bo'lsangiz, bu xabarni e'tiborsiz qoldiring.`,
+      )
+      .catch(() => undefined);
     const { accessToken, refreshToken } = await this.issueFullSession(
       { id: user.id, email: user.email, role: 'OWNER', tenantId: tenant.id, permissions: user.permissions || [] },
       {},
     );
-
     return {
       accessToken,
       refreshToken,
       user: { id: user.id, email: user.email, fullName: user.fullName, role: 'OWNER', permissions: user.permissions || [], access: effectiveAccess('OWNER', null) },
-      tenant,
+      tenant: { ...tenant, signupPhone: undefined },
       onboardingStep: 'PROFILE',
     };
+  }
+
+  // The sign-up's writes, each its own step (tests make one of them fail).
+  async createTenant(tx: Tx, values: typeof tenants.$inferInsert) {
+    const [tenant] = await tx.insert(tenants).values(values).returning();
+    return tenant;
+  }
+
+  async createOwner(tx: Tx, values: typeof users.$inferInsert) {
+    const [user] = await tx.insert(users).values(values).returning();
+    return user;
+  }
+
+  async createMembership(tx: Tx, values: typeof organizationMemberships.$inferInsert) {
+    await tx.insert(organizationMemberships).values(values);
+  }
+
+  async claimTrial(tx: Tx, phone: string, tenantId: string, right: 'FREE_TRIAL' | 'NO_TRIAL') {
+    await this.trialClaims.claim(tx, phone, tenantId, right);
+  }
+
+  /** Two sign-ups at once with the same e-mail, phone, address or attempt: the second gets a clear 409. */
+  private signupConflict(err: unknown): ConflictException | null {
+    const e = err as { code?: string; constraint?: string; cause?: { code?: string; constraint?: string } };
+    const code = e.code ?? e.cause?.code;
+    const constraint = e.constraint ?? e.cause?.constraint;
+    if (code !== '23505') return null;
+    if (constraint === 'users_email_idx') return new ConflictException({ code: 'EMAIL_USED', message: "Bu email allaqachon ro'yxatdan o'tgan" });
+    if (constraint === 'tenants_subdomain_idx') return new ConflictException({ code: 'SUBDOMAIN_USED', message: 'Bu sub-domen band, boshqasini tanlang' });
+    if (constraint === 'tenants_signup_phone_idx' || constraint === 'trial_claims_fingerprint_idx') {
+      return new ConflictException({ code: 'PHONE_USED', message: "Bu raqam bilan bepul sinov allaqachon olingan. Tizimga kiring yoki tarif tanlang." });
+    }
+    if (constraint === 'tenants_signup_attempt_idx') return new ConflictException({ code: 'SIGNUP_ATTEMPT_USED', message: "Bu urinish bilan markaz allaqachon yaratilgan. Tizimga kiring." });
+    return new ConflictException("Ma'lumotlar allaqachon band. Qaytadan urinib ko'ring.");
+  }
+
+  /** A retry of a finished sign-up attempt: its center, to the right e-mail and password only. */
+  private async replaySignup(attemptId: string, email: string, password: string) {
+    const tenant = await this.db.query.tenants.findFirst({ where: eq(tenants.signupAttemptId, attemptId) });
+    if (!tenant) return null;
+    const user = await this.db.query.users.findFirst({ where: and(eq(users.email, email), eq(users.tenantId, tenant.id)) });
+    if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
+      throw new ConflictException({ code: 'SIGNUP_ATTEMPT_USED', message: "Bu urinish bilan markaz allaqachon yaratilgan. Tizimga kiring." });
+    }
+    const { accessToken, refreshToken } = await this.issueFullSession({ id: user.id, email: user.email, role: 'OWNER', tenantId: tenant.id, permissions: user.permissions || [] }, {});
+    return {
+      accessToken,
+      refreshToken,
+      user: { id: user.id, email: user.email, fullName: user.fullName, role: 'OWNER', permissions: user.permissions || [], access: effectiveAccess('OWNER', null) },
+      tenant: { ...tenant, signupPhone: undefined },
+      onboardingStep: tenant.onboardingStep,
+    };
+  }
+
+  /** Phones of centers made before trial claims existed (see TrialClaimsService). */
+  backfillTrialClaims() {
+    return this.trialClaims.backfill();
   }
 
   async login(dto: LoginDto, meta: { userAgent?: string; ip?: string }) {

@@ -248,11 +248,15 @@ export const tenants = pgTable('tenants', {
   // the owners are told twice before, and these say when.
   trialWarnedAt: timestamp('trial_warned_at'),
   trialFinalWarnedAt: timestamp('trial_final_warned_at'),
+  // The sign-up attempt that made this center: a retry of the same attempt
+  // (the answer was lost on the way) gets this center back, not a second one.
+  signupAttemptId: text('signup_attempt_id'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 }, (t) => ({
   subdomainIdx: uniqueIndex('tenants_subdomain_idx').on(t.subdomain),
   signupPhoneIdx: uniqueIndex('tenants_signup_phone_idx').on(t.signupPhone).where(sql`signup_phone IS NOT NULL`),
+  signupAttemptIdx: uniqueIndex('tenants_signup_attempt_idx').on(t.signupAttemptId).where(sql`signup_attempt_id IS NOT NULL`),
 }));
 
 // A code sent to a phone at sign-up (only its hash is kept).
@@ -264,9 +268,40 @@ export const signupPhoneCodes = pgTable('signup_phone_codes', {
   expiresAt: timestamp('expires_at').notNull(),
   usedAt: timestamp('used_at'),
   ip: text('ip'),
+  // The sign-up attempt the code was asked for (it is given back with the code).
+  attemptId: text('attempt_id'),
+  purpose: text('purpose').notNull().default('SIGNUP'),
+  // SMS, or DEV (shown in the answer; development and tests only).
+  channel: text('channel').notNull().default('SMS'),
+  // SENDING -> SENT, or FAILED (the provider did not take it: the code opens nothing).
+  status: text('status').notNull().default('SENT'),
+  // A newer code for the same phone makes this one invalid.
+  supersededAt: timestamp('superseded_at'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
 }, (t) => ({
   phoneIdx: index('signup_phone_codes_phone_idx').on(t.phone, t.createdAt),
+  ipIdx: index('signup_phone_codes_ip_idx').on(t.ip, t.createdAt),
+}));
+
+// Which phones have had their free trial - kept apart from the centers, so
+// deleting a center (by its owner, the platform, or the clean-up of unpaid
+// trials) does not give the phone a new one. Only a keyed fingerprint of the
+// number is kept, never the number.
+export const trialClaims = pgTable('trial_claims', {
+  id: text('id').primaryKey().$defaultFn(() => createId()),
+  phoneFingerprint: text('phone_fingerprint').notNull(),
+  // Ids only (no foreign key): the center may be gone.
+  firstTenantId: text('first_tenant_id'),
+  lastTenantId: text('last_tenant_id'),
+  claimedAt: timestamp('claimed_at').notNull().defaultNow(),
+  // A center of this phone paid the platform: signing up again is allowed, without a new free trial.
+  paidAt: timestamp('paid_at'),
+  // The platform admin gave the trial back (audited): the next sign-up gets one.
+  releasedAt: timestamp('released_at'),
+  releasedBy: text('released_by'),
+  releaseReason: text('release_reason'),
+}, (t) => ({
+  fingerprintIdx: uniqueIndex('trial_claims_fingerprint_idx').on(t.phoneFingerprint),
 }));
 
 // AI requests of a center still on its free trial, per day of the center.

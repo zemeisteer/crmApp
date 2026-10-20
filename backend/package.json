@@ -33,6 +33,7 @@
     "db:report-attendance-links": "node scripts/report-attendance-links.cjs",
     "db:report-teacher-attendance-links": "node scripts/report-teacher-attendance-links.cjs",
     "db:report-membership": "node scripts/report-membership.cjs",
+    "db:report-signups": "node scripts/report-signups.cjs",
     "db:backup": "bash scripts/backup.sh",
     "demo:seed": "node scripts/demo-seed.cjs"
   },
