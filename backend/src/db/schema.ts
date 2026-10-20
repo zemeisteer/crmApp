@@ -245,9 +245,14 @@ export const tenants = pgTable('tenants', {
   // trial per number (null for centers made before, or by the platform).
   signupPhone: text('signup_phone'),
   // An unpaid trial that ended long ago is deleted (trial/trial-rules.ts);
-  // the owners are told twice before, and these say when.
+  // the owners are told twice before. These say when the provider took each
+  // notice (accepted - not that anyone read it).
   trialWarnedAt: timestamp('trial_warned_at'),
   trialFinalWarnedAt: timestamp('trial_final_warned_at'),
+  // The deletion date the notices name, and the trial end it was counted
+  // from: a trial extended since (or a payment) cancels the deletion.
+  trialPurgeOn: timestamp('trial_purge_on'),
+  trialPurgeBasis: timestamp('trial_purge_basis'),
   // The sign-up attempt that made this center: a retry of the same attempt
   // (the answer was lost on the way) gets this center back, not a second one.
   signupAttemptId: text('signup_attempt_id'),
@@ -257,6 +262,27 @@ export const tenants = pgTable('tenants', {
   subdomainIdx: uniqueIndex('tenants_subdomain_idx').on(t.subdomain),
   signupPhoneIdx: uniqueIndex('tenants_signup_phone_idx').on(t.signupPhone).where(sql`signup_phone IS NOT NULL`),
   signupAttemptIdx: uniqueIndex('tenants_signup_attempt_idx').on(t.signupAttemptId).where(sql`signup_attempt_id IS NOT NULL`),
+}));
+
+// The e-mails that announce an unpaid trial's deletion (an outbox: each is
+// tried until the provider takes it or gives up for good).
+export const trialNotices = pgTable('trial_notices', {
+  id: text('id').primaryKey().$defaultFn(() => createId()),
+  tenantId: text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  kind: text('kind').notNull(), // FIRST (14 days before) | FINAL (7 days before)
+  recipient: text('recipient').notNull(),
+  // PENDING -> SENDING (one worker holds it until lockedUntil) -> ACCEPTED,
+  // or FAILED after the last attempt.
+  status: text('status').notNull().default('PENDING'),
+  attempts: integer('attempts').notNull().default(0),
+  lastError: text('last_error'),
+  providerMessageId: text('provider_message_id'),
+  lockedUntil: timestamp('locked_until'),
+  nextAttemptAt: timestamp('next_attempt_at').notNull().defaultNow(),
+  acceptedAt: timestamp('accepted_at'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+}, (t) => ({
+  uniq: uniqueIndex('trial_notices_tenant_kind_recipient_idx').on(t.tenantId, t.kind, t.recipient),
 }));
 
 // A code sent to a phone at sign-up (only its hash is kept).

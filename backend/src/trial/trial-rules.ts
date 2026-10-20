@@ -69,7 +69,7 @@ export type TrialStage = 'ACTIVE' | 'TRIAL' | 'READ_ONLY' | 'LOCKED';
 const DAY = 86_400_000;
 
 export function trialStage(
-  tenant: { status: string; trialEndsAt: Date | string | null },
+  tenant: { status: string; trialEndsAt: Date | string | null; trialPurgeOn?: Date | string | null },
   now: Date = new Date(),
   rules: TrialRules = trialRules(),
 ): { stage: TrialStage; endsAt: Date | null; lockAt: Date | null; purgeAt: Date | null } {
@@ -77,7 +77,11 @@ export function trialStage(
   if (!tenant.trialEndsAt) return { stage: 'TRIAL', endsAt: null, lockAt: null, purgeAt: null };
   const endsAt = new Date(tenant.trialEndsAt);
   const lockAt = new Date(endsAt.getTime() + rules.readOnlyDays * DAY);
-  const purgeAt = rules.purge ? new Date(endsAt.getTime() + rules.purgeDays * DAY) : null;
+  // The date the notices named once they began (trial-lifecycle.service.ts);
+  // before that, the earliest it can be (two weeks' notice comes first).
+  const purgeAt = !rules.purge ? null
+    : tenant.trialPurgeOn ? new Date(tenant.trialPurgeOn)
+    : new Date(Math.max(endsAt.getTime() + rules.purgeDays * DAY, now.getTime() + 14 * DAY));
   const stage: TrialStage = now < endsAt ? 'TRIAL' : now < lockAt ? 'READ_ONLY' : 'LOCKED';
   return { stage, endsAt, lockAt, purgeAt };
 }

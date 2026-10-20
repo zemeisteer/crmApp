@@ -10,6 +10,8 @@ import { configureApp } from '../src/app.setup.js';
 import { DB, Database } from '../src/db/db.module.js';
 import { auditLogs, leads, organizationMemberships, platformSubscriptions, students, tenants, users } from '../src/db/schema.js';
 import { TrialLifecycleService } from '../src/trial/trial-lifecycle.service.js';
+import { EmailService } from '../src/email/email.service.js';
+import { vi } from 'vitest';
 
 // The free trial's guards (src/trial/trial-rules.ts), each switched on here
 // (the other suites run with them off): a phone confirmed with a code at
@@ -222,19 +224,26 @@ describe('Free trial protection (e2e)', () => {
       // Ended 47 days ago: the deletion date is 13 days ahead.
       for (const c of [doomed, paid]) await db.update(tenants).set({ trialEndsAt: new Date(now - 47 * DAY) }).where(eq(tenants.id, c.tenantId));
       const ids = [doomed.tenantId, paid.tenantId];
+      // The mail provider takes every notice (nothing leaves the machine);
+      // the outbox's failures have their own suite (trial-purge-outbox).
+      const deliver = vi.spyOn(app.get(EmailService), 'deliver').mockResolvedValue({ accepted: true, providerMessageId: 'test' });
 
+      // The first notice names a date two weeks ahead.
       let r = await lifecycle.run(new Date(now), ids);
       expect(r).toMatchObject({ warned: 1, deleted: 0 });
       expect((await lifecycle.run(new Date(now), ids)).warned).toBe(0); // told once
-      // The pass did not run for two weeks (the deletion date has passed):
-      // the last notice goes out first, and nothing is deleted with it ...
+      // The pass did not run for two weeks (the deletion date has come):
+      // the last notice goes out first, nothing is deleted with it, and the
+      // date it names is a week after it ...
       r = await lifecycle.run(new Date(now + 14 * DAY), ids);
       expect(r).toMatchObject({ warned: 1, deleted: 0 });
-      // ... nor while that notice is under 6 days old ...
-      expect((await lifecycle.run(new Date(now + 19 * DAY), ids)).deleted).toBe(0);
+      expect(deliver.mock.calls[1][1]).toContain(new Date(now + 21 * DAY).toISOString().slice(0, 10));
+      // ... nothing before that date ...
+      expect((await lifecycle.run(new Date(now + 20 * DAY), ids)).deleted).toBe(0);
       // ... then the center goes; the one that paid stays.
-      r = await lifecycle.run(new Date(now + 20 * DAY), ids);
+      r = await lifecycle.run(new Date(now + 21 * DAY), ids);
       expect(r.deletedIds).toEqual([doomed.tenantId]);
+      deliver.mockRestore();
 
       expect(await db.select({ id: tenants.id }).from(tenants).where(eq(tenants.id, doomed.tenantId))).toEqual([]);
       expect(await db.select({ id: students.id }).from(students).where(eq(students.tenantId, doomed.tenantId))).toEqual([]);

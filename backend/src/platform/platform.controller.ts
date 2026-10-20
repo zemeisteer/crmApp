@@ -8,6 +8,8 @@ import { PlatformService } from './platform.service';
 import { PlatformSettingsService } from './platform-settings.service';
 import { ListSubscriptionsDto, RecordPaymentDto, ReleaseTrialClaimDto, SaveIntegrationDto, UpdateSubscriptionDto } from './dto/platform.dto';
 import { TrialClaimsService } from '../trial/trial-claims.service';
+import { TrialLifecycleService } from '../trial/trial-lifecycle.service';
+import { trialRules } from '../trial/trial-rules';
 
 // The platform admin's own pages: every route is SUPERADMIN only.
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -18,7 +20,16 @@ export class PlatformController {
     private readonly service: PlatformService,
     private readonly settings: PlatformSettingsService,
     private readonly trialClaims: TrialClaimsService,
+    private readonly trialLifecycle: TrialLifecycleService,
   ) {}
+
+  // What the trial deletion pass would do now, center by center, and why.
+  // Writes and sends nothing (works with TRIAL_PURGE off too).
+  @Get('trial-purge/preview')
+  async trialPurgePreview() {
+    const { report } = await this.trialLifecycle.run(new Date(), undefined, { dryRun: true });
+    return { purgeEnabled: trialRules().purge, report };
+  }
 
   // An exception to "one phone, one free trial": audited, with a reason.
   @Post('trial-claims/release')

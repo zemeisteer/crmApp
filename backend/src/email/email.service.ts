@@ -64,6 +64,42 @@ export class EmailService {
     }
   }
 
+  /**
+   * Like send(), but says what happened, for mail whose delivery decides
+   * something (the trial deletion notices): accepted by the provider (which
+   * is not "read"), or why not. Never throws. `idempotencyKey` lets a retry
+   * after a lost answer not send a second copy (Resend honours it).
+   */
+  async deliver(to: string, subject: string, text: string, idempotencyKey?: string): Promise<{ accepted: boolean; providerMessageId?: string; error?: string }> {
+    if (this.resendKey) {
+      try {
+        const res = await fetch(RESEND_URL, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${this.resendKey}`,
+            'Content-Type': 'application/json',
+            ...(idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : {}),
+          },
+          body: JSON.stringify({ from: this.from, to: [to], subject, text }),
+        });
+        if (!res.ok) return { accepted: false, error: `resend ${res.status}` };
+        const body = (await res.json().catch(() => ({}))) as { id?: string };
+        return { accepted: true, providerMessageId: body.id };
+      } catch (err) {
+        return { accepted: false, error: `resend: ${(err as Error).message}` };
+      }
+    }
+    if (this.transporter) {
+      try {
+        const info = await this.transporter.sendMail({ from: this.from, to, subject, text });
+        return { accepted: true, providerMessageId: info.messageId };
+      } catch (err) {
+        return { accepted: false, error: `smtp: ${(err as Error).message}` };
+      }
+    }
+    return { accepted: false, error: 'NOT_CONFIGURED' };
+  }
+
   // Never throws: a mail outage must not break the request that sent it.
   private async sendViaResend(to: string, subject: string, text: string) {
     try {
