@@ -15,6 +15,7 @@ import {
   COLUMNS, MAX_ROWS, cellText, mapHeader, nameKey, parseGroup, parseStudent, parseTeacher, slotsOverlap,
   type GroupRow, type ImportKind, type StudentRow,
 } from './import-sheet';
+import { assertNotTrialImport } from '../trial/trial-limits';
 
 export interface ImportRow {
   row: number; // the sheet's row number
@@ -253,6 +254,7 @@ export class ImportService {
   }
 
   async run(tenantId: string, userId: string, kind: ImportKind, buffer: Buffer) {
+    await assertNotTrialImport(this.db, tenantId);
     const { report, plans } = await this.plan(tenantId, kind, buffer);
     if (report.counts.error > 0) {
       throw new BadRequestException({ message: `${report.counts.error} ta qatorda xato: hech narsa saqlanmadi. Tuzatib, qayta yuklang.`, report });

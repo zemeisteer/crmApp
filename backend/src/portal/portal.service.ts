@@ -8,7 +8,8 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
-import { and, desc, eq, gt, inArray, isNull, or, sql, type AnyColumn } from 'drizzle-orm';
+import { and, asc, desc, eq, gt, gte, inArray, isNull, lte, or, sql, type AnyColumn } from 'drizzle-orm';
+import { centerToday } from '../common/center-today';
 import { DB, Database } from '../db/db.module';
 import { LedgerService } from '../ledger/ledger.service';
 import {
@@ -32,6 +33,8 @@ import {
   telegramLinkTokens,
   tenants,
   lessonTopics,
+  centerEvents,
+  rooms,
 } from '../db/schema';
 import { DEFAULT_TIMEZONE, isValidTimeZone, zonedParts } from '../common/timezone';
 import { buildPastLessons } from './past-lessons';
@@ -302,6 +305,43 @@ export class PortalService {
     }
 
     return student;
+  }
+
+  /**
+   * The center's coming events meant for students (or everyone): meetings,
+   * competitions and the like, today and the next 60 days. Only what a
+   * student or parent needs: no staff-only events, no who-made-it.
+   */
+  async getEvents(tenantId: string) {
+    const today = await centerToday(this.db, tenantId);
+    const until = new Date(`${today}T00:00:00Z`);
+    until.setUTCDate(until.getUTCDate() + 60);
+    return this.db
+      .select({
+        id: centerEvents.id,
+        title: centerEvents.title,
+        kind: centerEvents.kind,
+        format: centerEvents.format,
+        date: centerEvents.date,
+        startTime: centerEvents.startTime,
+        endTime: centerEvents.endTime,
+        roomName: rooms.name,
+        location: centerEvents.location,
+        meetingUrl: centerEvents.meetingUrl,
+        description: centerEvents.description,
+      })
+      .from(centerEvents)
+      .leftJoin(rooms, eq(rooms.id, centerEvents.roomId))
+      .where(
+        and(
+          eq(centerEvents.tenantId, tenantId),
+          isNull(centerEvents.deletedAt),
+          inArray(centerEvents.audience, ['STUDENTS', 'ALL']),
+          gte(centerEvents.date, today),
+          lte(centerEvents.date, until.toISOString().slice(0, 10)),
+        ),
+      )
+      .orderBy(asc(centerEvents.date), asc(centerEvents.startTime));
   }
 
   async getSchedule(studentId: string, tenantId: string) {

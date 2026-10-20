@@ -181,4 +181,31 @@ describe('Center events and a lead\'s several directions (e2e)', () => {
     expect(row).toContain(`"Matematika ${suffix}"`);
     expect(row).toContain(`"Shaxmat ${suffix}"`);
   });
+
+  it('the cabinet shows the center\'s coming events for students and everyone: not staff-only, past, deleted or another center\'s', async () => {
+    const day = (offset: number) => new Date(Date.now() + 5 * 3_600_000 + offset * 86_400_000).toISOString().slice(0, 10);
+    const add = async (token: string, title: string, audience: string, date: string, startTime: string) =>
+      (await http().post('/api/center-events').set(bearer(token)).send({ title, kind: 'COMPETITION', format: 'OFFLINE', date, startTime, audience, location: 'Sport zali' }).expect(201)).body.id as string;
+    await add(owner, `Staff only ${suffix}`, 'STAFF', day(2), '08:00');
+    await add(owner, `For students ${suffix}`, 'STUDENTS', day(2), '09:00');
+    await add(owner, `For everyone ${suffix}`, 'ALL', day(3), '10:00');
+    await add(owner, `Long past ${suffix}`, 'ALL', day(-3), '11:00');
+    const gone = await add(owner, `Called off ${suffix}`, 'STUDENTS', day(4), '12:00');
+    await http().delete(`/api/center-events/${gone}`).set(bearer(owner)).expect(200);
+    await add(ownerB, `Other center ${suffix}`, 'ALL', day(2), '13:00');
+
+    const phone = `+99897${String(suffix).slice(-7)}`;
+    const kid = (await http().post('/api/students').set(bearer(owner)).send({ fullName: 'CEV Student', phone }).expect(201)).body.id;
+    const { pin } = (await http().post(`/api/students/${kid}/portal-pin`).set(bearer(owner)).expect(201)).body;
+    const cabinet = (await http().post('/api/portal/auth/phone/verify').send({ phone, pin, subdomain: `cev-a-${suffix}` }).expect(201)).body.accessToken as string;
+
+    const events = (await http().get('/api/portal/events').set(bearer(cabinet)).expect(200)).body as Array<Record<string, unknown>>;
+    const mine = events.filter((e) => String(e.title).endsWith(String(suffix)));
+    expect(mine.map((e) => e.title)).toEqual([`For students ${suffix}`, `For everyone ${suffix}`]);
+    expect(mine[0]).toMatchObject({ kind: 'COMPETITION', format: 'OFFLINE', location: 'Sport zali', date: day(2), startTime: '09:00' });
+    // Only what a family needs to know.
+    for (const field of ['audience', 'createdByUserId', 'tenantId', 'deletedAt']) expect(mine[0]).not.toHaveProperty(field);
+    // A staff token is not a cabinet token.
+    await http().get('/api/portal/events').set(bearer(owner)).expect(401);
+  });
 });

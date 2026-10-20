@@ -271,6 +271,8 @@ export interface Tenant {
   plan: string;
   status: string;
   trialEndsAt: string | null;
+  /** Where a center on its free trial stands (from /auth/me). */
+  trial?: { stage: "ACTIVE" | "TRIAL" | "READ_ONLY" | "LOCKED"; endsAt: string | null; lockAt: string | null; purgeAt: string | null };
   onboardingStep?: string;
   teachingCategories?: string[];
   country?: string;
@@ -408,6 +410,8 @@ export interface User {
   access?: string[];
   emailVerified?: boolean;
   twoFactorEnabled?: boolean;
+  /** The platform admin's pages wait for two-step sign-in. */
+  twoFactorRequired?: boolean;
 }
 
 export interface AuthResponse {
@@ -1175,6 +1179,8 @@ export interface Plan {
   featuresEn: string;
   popular: boolean;
   active: boolean;
+  /** SMS messages are part of this plan. */
+  smsIncluded?: boolean;
   tenantCount?: number;
   createdAt: string;
   updatedAt: string;
@@ -1357,7 +1363,12 @@ export const authApi = {
     password: string;
     fullName: string;
     category?: TenantCategory;
+    phone?: string;
+    phoneCode?: string;
   }) => request<AuthResponse>("/auth/register", { method: "POST", body: JSON.stringify(data) }),
+  /** A code to the phone a new center signs up with; DEV: shown here (never in production). */
+  signupPhoneCode: (phone: string, email?: string) =>
+    request<{ channel: "SMS" | "EMAIL" | "DEV"; devCode?: string }>("/auth/register/phone", { method: "POST", body: JSON.stringify({ phone, email: email || undefined }) }),
 
   login: (data: { email?: string; login?: string; password: string }) =>
     request<LoginResponse>("/auth/login", { method: "POST", body: JSON.stringify(data) }),
@@ -2113,9 +2124,9 @@ export const examsApi = {
 export const plansApi = {
   listPublic: () => request<Plan[]>("/plans/public"),
   listAll: () => request<Plan[]>("/plans"),
-  create: (data: { key: string; name: string; price: number; features?: string; featuresRu?: string; featuresEn?: string; popular?: boolean; active?: boolean }) =>
+  create: (data: { key: string; name: string; price: number; features?: string; featuresRu?: string; featuresEn?: string; popular?: boolean; active?: boolean; smsIncluded?: boolean }) =>
     request<Plan>("/plans", { method: "POST", body: JSON.stringify(data) }),
-  update: (id: string, data: Partial<{ name: string; price: number; features: string; featuresRu: string; featuresEn: string; popular: boolean; active: boolean }>) =>
+  update: (id: string, data: Partial<{ name: string; price: number; features: string; featuresRu: string; featuresEn: string; popular: boolean; active: boolean; smsIncluded: boolean }>) =>
     request<Plan>(`/plans/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
   remove: (id: string) => request<{ success: boolean }>(`/plans/${id}`, { method: "DELETE" }),
   /** The Uzbek feature list in Russian and English (for the form to fill in). */
@@ -3054,10 +3065,15 @@ export interface NotificationStats {
 
 export interface NotificationSettings {
   id: string;
-  smsProvider: "eskiz" | "playmobile";
-  smsSender: string;
-  smsApiToken: string | null;
-  hasSmsApiToken: boolean;
+  /** The center's own switch; SMS goes through the platform's provider account. */
+  smsEnabled: boolean;
+  sms?: {
+    /** SMS is part of the center's plan. */
+    includedInPlan: boolean;
+    enabled: boolean;
+    /** The platform has a provider account set up (null when SMS is not available). */
+    providerReady: boolean | null;
+  };
   notifyOnAttendance: boolean;
   notifyOnPayment: boolean;
   notifyOnHomework: boolean;
@@ -3741,6 +3757,25 @@ export interface PortalMakeups {
     groupName: string | null; teacherName: string | null; roomName: string | null; branchName: string | null;
   }>;
 }
+
+/** A center event as the cabinet shows it (students' and everyone's only). */
+export interface PortalEvent {
+  id: string;
+  title: string;
+  kind: CenterEventKind;
+  format: CenterEventFormat;
+  date: string;
+  startTime: string;
+  endTime: string | null;
+  roomName: string | null;
+  location: string | null;
+  meetingUrl: string | null;
+  description: string | null;
+}
+
+export const portalEventsApi = {
+  list: () => request<PortalEvent[]>("/portal/events"),
+};
 
 export const portalMakeupsApi = {
   get: () => request<PortalMakeups>("/portal/makeups"),

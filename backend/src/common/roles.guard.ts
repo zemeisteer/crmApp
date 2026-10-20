@@ -1,4 +1,5 @@
-import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
+import { CanActivate, ExecutionContext, ForbiddenException, Injectable } from '@nestjs/common';
+import { trialRules } from '../trial/trial-rules';
 import { Reflector } from '@nestjs/core';
 import { ROLES_KEY } from './roles.decorator';
 import { routeIdOf } from './route-id';
@@ -16,6 +17,12 @@ export class RolesGuard implements CanActivate {
       context.getClass(),
     ]);
     const { user } = context.switchToHttp().getRequest();
+    // The platform admin's pages open only with two-step sign-in on
+    // (SUPERADMIN_2FA, on in production); the 2FA setup itself is under
+    // /auth, which this guard does not cover.
+    if (user?.role === 'SUPERADMIN' && !user.twoFactorEnabled && trialRules().superadmin2fa) {
+      throw new ForbiddenException({ code: 'TWO_FACTOR_REQUIRED', message: "Platforma paneli uchun ikki bosqichli kirishni (2FA) yoqing." });
+    }
     // A member with their own access list: the list decides its routes.
     const own = user ? accessDecides(routeIdOf(context) ?? '', user.role, user.access) : null;
     if (own !== null) return own;

@@ -13,6 +13,7 @@ import { Actor, LeadsService, Tx } from './leads.service';
 import { normalizePhone } from './phone';
 import { ConvertLeadDto } from './dto/lead.dto';
 import { CustomFieldsService } from '../custom-fields/custom-fields.service';
+import { assertTrialRoom } from '../trial/trial-limits';
 
 type StudentRow = typeof students.$inferSelect;
 
@@ -134,6 +135,7 @@ export class LeadConversionService {
           const [b] = await tx.select({ id: branches.id }).from(branches).where(and(eq(branches.id, branchId), eq(branches.tenantId, tenantId)));
           if (!b) throw new NotFoundException('Filial topilmadi');
         }
+        await assertTrialRoom(tx, tenantId, 'students', 1, true);
         [student] = await tx.insert(students).values({
           tenantId,
           branchId,

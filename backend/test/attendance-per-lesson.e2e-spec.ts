@@ -266,4 +266,22 @@ describe('Attendance per lesson, and the credits that rest on it (e2e)', () => {
     const got = await marks(`groupId=${q}&date=${today}`);
     expect(got).toEqual([expect.objectContaining({ studentId: sq, scheduleId: expected, status: 'PRESENT' })]);
   });
+
+  it('back to back: a scan while one lesson is on and the next one opens marks the one on', async () => {
+    const now = tashkent(0);
+    const nowMin = now.getUTCHours() * 60 + now.getUTCMinutes();
+    // Needs 10 minutes before and 40 after within today.
+    if (nowMin < 10 || nowMin > 23 * 60 + 10) return;
+    const hm = (m: number) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+    const today = dateOf(now);
+    const d = dow(now);
+    // On since 10 minutes, ends in 5; the next starts in 15 (its early window is open).
+    const g = (await http().post('/api/groups').set(bearer(owner)).send({ name: 'APL Back to back', subject: 'English', scheduleDays: DAYS[d], startTime: hm(nowMin - 10), endTime: hm(nowMin + 5), maxStudents: 30 }).expect(201)).body.id as string;
+    await http().post('/api/schedule').set(bearer(owner)).send({ groupId: g, dayOfWeek: d, startTime: hm(nowMin + 15), endTime: hm(nowMin + 40) }).expect(201);
+    const rows = (await http().get(`/api/schedule?groupId=${g}`).set(bearer(owner)).expect(200)).body as Array<{ id: string; startTime: string }>;
+    const on = rows.find((r) => r.startTime === hm(nowMin - 10))!.id;
+    const sb = await student('back2back', [g]);
+    await http().post('/api/attendance/qr-checkin').set(bearer(owner)).send({ code: `TALIMCRM:STUDENT:${sb}`, groupId: g }).expect(201);
+    expect(await marks(`groupId=${g}&date=${today}`)).toEqual([expect.objectContaining({ studentId: sb, scheduleId: on, status: 'PRESENT' })]);
+  });
 });

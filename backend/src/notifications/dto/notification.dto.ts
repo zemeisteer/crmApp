@@ -63,17 +63,11 @@ export class SendNotificationDto {
 }
 
 export class UpdateNotificationSettingsDto {
+  // The provider, its token and the sender name belong to the platform
+  // (platform admin, "API and integrations"); a center only turns SMS on or off.
   @IsOptional()
-  @IsIn(['eskiz', 'playmobile'])
-  smsProvider?: 'eskiz' | 'playmobile';
-
-  @IsOptional()
-  @IsString()
-  smsApiToken?: string;
-
-  @IsOptional()
-  @IsString()
-  smsSender?: string;
+  @IsBoolean()
+  smsEnabled?: boolean;
 
   @IsOptional()
   @IsBoolean()

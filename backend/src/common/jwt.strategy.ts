@@ -16,6 +16,8 @@ export interface JwtPayload {
   access?: string[] | null;
   /** The session this token belongs to (see AuthService.signAccessToken). */
   sid?: string;
+  /** Set for the platform admin from the account as it is now (RolesGuard). */
+  twoFactorEnabled?: boolean;
 }
 
 @Injectable()
@@ -45,7 +47,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 
     const user = await this.db.query.users.findFirst({
       where: eq(users.id, payload.sub),
-      columns: { id: true, role: true },
+      columns: { id: true, role: true, twoFactorEnabled: true },
     });
     if (!user) throw new UnauthorizedException();
     // The token lives only as long as its session: after logout, a revoked
@@ -58,7 +60,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       .from(sessions)
       .where(and(eq(sessions.id, payload.sid), eq(sessions.userId, user.id)));
     if (!session) throw new UnauthorizedException();
-    if (user.role === 'SUPERADMIN') return { ...payload, role: 'SUPERADMIN' as const };
+    if (user.role === 'SUPERADMIN') return { ...payload, role: 'SUPERADMIN' as const, twoFactorEnabled: user.twoFactorEnabled };
     if (payload.role === 'SUPERADMIN') throw new UnauthorizedException();
     if (!payload.tenantId) return payload; // no workspace: nothing tenant-scoped can be read with it
 

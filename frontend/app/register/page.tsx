@@ -4,7 +4,8 @@ import { useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
 import { useLanguage } from "@/lib/i18n-context";
-import { ApiError } from "@/lib/api";
+import { ApiError, authApi } from "@/lib/api";
+import PhoneInput from "@/components/PhoneInput";
 
 const ACCENT = "#4F46E5";
 
@@ -16,6 +17,32 @@ export default function RegisterPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [agreed, setAgreed] = useState(true);
+  // One free trial per phone: the number is confirmed with a code.
+  const [phone, setPhone] = useState("");
+  const [phoneCode, setPhoneCode] = useState("");
+  const [codeSent, setCodeSent] = useState<null | { channel: "SMS" | "EMAIL" | "DEV"; devCode?: string }>(null);
+  const [sendingCode, setSendingCode] = useState(false);
+  // The server takes one code a minute: the button waits as long.
+  const [waitResend, setWaitResend] = useState(false);
+
+  async function sendCode() {
+    setError(null);
+    if (phone.replace(/\D/g, "").length < 9) {
+      setError(t("reg.phoneInvalid"));
+      return;
+    }
+    setSendingCode(true);
+    try {
+      const res = await authApi.signupPhoneCode(phone, email.trim().toLowerCase() || undefined);
+      setCodeSent(res);
+      setWaitResend(true);
+      setTimeout(() => setWaitResend(false), 60_000);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : t("common.errorGeneric"));
+    } finally {
+      setSendingCode(false);
+    }
+  }
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -31,6 +58,10 @@ export default function RegisterPage() {
       );
       return;
     }
+    if (!codeSent || !phoneCode.trim()) {
+      setError(t("reg.codeNeeded"));
+      return;
+    }
     setError(null);
     setLoading(true);
     try {
@@ -39,6 +70,8 @@ export default function RegisterPage() {
         fullName: fullName.trim(),
         email: email.trim().toLowerCase(),
         password,
+        phone,
+        phoneCode: phoneCode.trim(),
       });
     } catch (err) {
       setError(err instanceof ApiError ? err.message : (lang === "UZ" ? "Xatolik yuz berdi" : lang === "RU" ? "Произошла ошибка" : "An error occurred"));
@@ -402,6 +435,79 @@ export default function RegisterPage() {
                   boxSizing: "border-box",
                 }}
               />
+            </div>
+
+            {/* Field: Phone, confirmed with a code */}
+            <div>
+              <label
+                htmlFor="phone-input"
+                style={{
+                  display: "block",
+                  fontSize: 13,
+                  fontWeight: 600,
+                  color: "#374151",
+                  marginBottom: 6,
+                }}
+              >
+                {t("reg.phone")}
+              </label>
+              <div style={{ display: "flex", gap: 8 }}>
+                <PhoneInput
+                  id="phone-input"
+                  className="field-input"
+                  value={phone}
+                  onChange={(v) => { setPhone(v); setCodeSent(null); setPhoneCode(""); }}
+                  style={{
+                  flex: 1, minWidth: 0,
+                  height: 46,
+                  padding: "0 14px",
+                  fontSize: 14.5,
+                  borderRadius: 10,
+                  border: "1.5px solid #E5E7EB",
+                  outline: "none",
+                  boxSizing: "border-box",
+                }}
+                />
+                <button
+                  type="button"
+                  onClick={sendCode}
+                  disabled={sendingCode || waitResend}
+                  style={{ height: 46, padding: "0 14px", borderRadius: 10, border: "1.5px solid #C7D2FE", background: "#EEF0FF", color: ACCENT, fontWeight: 700, fontSize: 13, cursor: "pointer", whiteSpace: "nowrap" }}
+                >
+                  {sendingCode ? t("reg.sending") : codeSent ? t("reg.resend") : t("reg.getCode")}
+                </button>
+              </div>
+              <div style={{ fontSize: 12, color: "#6B7280", marginTop: 6, lineHeight: 1.5 }}>
+                {codeSent
+                  ? codeSent.channel === "SMS"
+                    ? t("reg.codeSms")
+                    : codeSent.channel === "EMAIL"
+                      ? t("reg.codeEmail")
+                      : `${t("reg.codeDev")} ${codeSent.devCode}`
+                  : t("reg.phoneHint")}
+              </div>
+              {codeSent && (
+                <input
+                  id="phone-code-input"
+                  className="field-input"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  maxLength={6}
+                  placeholder={t("reg.codePlaceholder")}
+                  value={phoneCode}
+                  onChange={(e) => setPhoneCode(e.target.value.replace(/\D/g, ""))}
+                  style={{
+                  width: "100%",
+                  height: 46, marginTop: 8, letterSpacing: "0.3em",
+                  padding: "0 14px",
+                  fontSize: 14.5,
+                  borderRadius: 10,
+                  border: "1.5px solid #E5E7EB",
+                  outline: "none",
+                  boxSizing: "border-box",
+                }}
+                />
+              )}
             </div>
 
             {/* Field: Password */}

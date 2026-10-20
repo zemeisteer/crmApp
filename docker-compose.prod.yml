@@ -94,6 +94,17 @@ services:
       RESEND_API_KEY: ${RESEND_API_KEY:-}
       # Automatic reminders scan interval (ms); 0 turns them off.
       REMINDER_SCAN_MS: ${REMINDER_SCAN_MS:-300000}
+      # The free trial (backend/src/trial/trial-rules.ts); empty = the default.
+      SIGNUP_PHONE_CHECK: ${SIGNUP_PHONE_CHECK:-}
+      TRIAL_LIMITS: ${TRIAL_LIMITS:-}
+      TRIAL_MAX_STUDENTS: ${TRIAL_MAX_STUDENTS:-}
+      TRIAL_MAX_STAFF: ${TRIAL_MAX_STAFF:-}
+      TRIAL_AI_PER_DAY: ${TRIAL_AI_PER_DAY:-}
+      TRIAL_READONLY_DAYS: ${TRIAL_READONLY_DAYS:-}
+      TRIAL_PURGE: ${TRIAL_PURGE:-}
+      TRIAL_PURGE_DAYS: ${TRIAL_PURGE_DAYS:-}
+      TRIAL_SCAN_MS: ${TRIAL_SCAN_MS:-}
+      SUPERADMIN_2FA: ${SUPERADMIN_2FA:-}
       EMAIL_FROM: ${EMAIL_FROM:-}
       CLICK_MERCHANT_ID: ${CLICK_MERCHANT_ID:-}
       CLICK_SERVICE_ID: ${CLICK_SERVICE_ID:-}

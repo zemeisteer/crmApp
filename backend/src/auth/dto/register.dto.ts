@@ -1,4 +1,4 @@
-import { IsEmail, IsOptional, IsString, MinLength, Matches } from 'class-validator';
+import { IsEmail, IsOptional, IsString, MaxLength, MinLength, Matches } from 'class-validator';
 
 export class RegisterDto {
   @IsString()
@@ -27,4 +27,27 @@ export class RegisterDto {
   @IsString()
   @MinLength(2)
   fullName: string;
+
+  // The phone confirmed with the code from POST /auth/register/phone (one
+  // free trial per number). Required unless SIGNUP_PHONE_CHECK is off.
+  @IsOptional()
+  @IsString()
+  @MaxLength(30)
+  phone?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(10)
+  phoneCode?: string;
+}
+
+export class SignupPhoneStartDto {
+  @IsString()
+  @MaxLength(30)
+  phone: string;
+
+  // Where the code goes when no SMS provider is set up.
+  @IsOptional()
+  @IsEmail()
+  email?: string;
 }

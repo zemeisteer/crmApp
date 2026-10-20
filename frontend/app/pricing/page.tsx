@@ -191,6 +191,8 @@ function SuperadminPlans() {
   const [featuresRu, setFeaturesRu] = useState("");
   const [featuresEn, setFeaturesEn] = useState("");
   const [popular, setPopular] = useState(false);
+  // SMS (through the platform's provider) is part of the plan.
+  const [smsIncluded, setSmsIncluded] = useState(true);
   const [active, setActive] = useState(true);
   const [saving, setSaving] = useState(false);
   // The Russian and English lists are translated from the Uzbek one: a
@@ -309,6 +311,7 @@ function SuperadminPlans() {
     setPrice("");
     begin("", "", "", false, false);
     setPopular(false);
+    setSmsIncluded(true);
     setActive(true);
     setEditOpen(true);
   }
@@ -321,6 +324,7 @@ function SuperadminPlans() {
     // Saved translations stay unless the button is pressed.
     begin(p.features, p.featuresRu ?? "", p.featuresEn ?? "", !!p.featuresRu?.trim(), !!p.featuresEn?.trim());
     setPopular(p.popular);
+    setSmsIncluded(p.smsIncluded ?? true);
     setActive(p.active);
     setEditOpen(true);
   }
@@ -351,9 +355,9 @@ function SuperadminPlans() {
         }
       }
       if (editing) {
-        await plansApi.update(editing.id, { name, price: Number(price), features: uz, featuresRu: ru, featuresEn: en, popular, active });
+        await plansApi.update(editing.id, { name, price: Number(price), features: uz, featuresRu: ru, featuresEn: en, popular, active, smsIncluded });
       } else {
-        await plansApi.create({ key, name, price: Number(price), features: uz, featuresRu: ru, featuresEn: en, popular, active });
+        await plansApi.create({ key, name, price: Number(price), features: uz, featuresRu: ru, featuresEn: en, popular, active, smsIncluded });
       }
       closeEdit();
       load();
@@ -418,6 +422,7 @@ function SuperadminPlans() {
                   <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
                     <div style={{ fontSize: 17, fontWeight: 800, fontFamily: "'Manrope', sans-serif" }}>{p.name}</div>
                     <span className={`badge ${p.active ? "badge-success" : "badge-neutral"}`}>{p.active ? t("pricing.active") : t("pricing.hidden")}</span>
+                    <span className={`badge ${p.smsIncluded === false ? "badge-neutral" : "badge-success"}`}>{p.smsIncluded === false ? t("pricing.noSms") : "SMS"}</span>
                   </div>
                   <div style={{ fontSize: 26, fontWeight: 800, fontFamily: "'Manrope', sans-serif" }}>
                     {p.price === 0 ? t("pricing.free") : formatMoney(p.price)}
@@ -513,7 +518,11 @@ function SuperadminPlans() {
             <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 600 }}>
               <input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} /> {t("pricing.activeVisible")}
             </label>
+            <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 600 }}>
+              <input type="checkbox" checked={smsIncluded} onChange={(e) => setSmsIncluded(e.target.checked)} /> {t("pricing.smsIncluded")}
+            </label>
           </div>
+          <div style={{ fontSize: 12, color: "#686B75", marginTop: -4, lineHeight: 1.5 }}>{t("pricing.smsIncludedHint")}</div>
           <button
             className="btn"
             type="submit"

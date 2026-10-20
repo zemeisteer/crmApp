@@ -13,6 +13,9 @@ cleanUpStagingCenters();
 const AXE = readFileSync(createRequire(__filename).resolve('axe-core/axe.min.js'), 'utf8');
 
 async function scan(page: Page, label: string) {
+  // Colours are measured as drawn: a page still fading in (or a section of
+  // the cabinet just opened) would read lighter than it is.
+  await page.waitForFunction(() => document.getAnimations().every((a) => a.playState !== 'running'));
   await page.addScriptTag({ content: AXE });
   const found = await page.evaluate(async () => {
     const w = window as unknown as { axe: { run: (ctx: Document, opts: unknown) => Promise<{ violations: Array<{ id: string; impact: string; nodes: Array<{ target: string[]; any: Array<{ data?: { fgColor?: string; bgColor?: string; contrastRatio?: number } }> }> }> }> } };

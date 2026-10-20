@@ -33,6 +33,10 @@ export default function TermsPage() {
             <h2 style={{ fontSize: 17, fontWeight: 700, marginBottom: 8 }}>{t("terms.s4Title")}</h2>
             <p>{t("terms.s4Body")}</p>
           </section>
+          <section>
+            <h2 style={{ fontSize: 17, fontWeight: 700, marginBottom: 8 }}>{t("terms.s5Title")}</h2>
+            <p>{t("terms.s5Body")}</p>
+          </section>
         </div>
       </div>
     </div>

@@ -80,6 +80,13 @@ export class PortalController {
     return { ...(await this.service.getMe(user.studentId, user.tenantId)), viewer: user.viewer };
   }
 
+  // The center's coming events for students (meetings, competitions).
+  @UseGuards(PortalAuthGuard)
+  @Get('events')
+  getEvents(@PortalUser() user: PortalUserPayload) {
+    return this.service.getEvents(user.tenantId);
+  }
+
   @UseGuards(PortalAuthGuard)
   @Get('schedule')
   getSchedule(@PortalUser() user: PortalUserPayload) {

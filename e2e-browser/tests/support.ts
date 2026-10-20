@@ -125,8 +125,17 @@ export async function loginOnMainSite(page: Page, email: string) {
   // after the 30 s limit although the form has long been usable. The next
   // line waits for the form itself.
   await page.goto('/login?main=1', { waitUntil: 'domcontentloaded' });
-  await page.getByPlaceholder('azizbek@bilimdon.uz yoki +998901234567').fill(email);
-  await page.locator('input[type="password"]').fill(PASSWORD);
+  // On a busy machine the form can be typed into before React has taken
+  // over the page, which then empties it: type until the values stay.
+  const login = page.getByPlaceholder('azizbek@bilimdon.uz yoki +998901234567');
+  const password = page.locator('input[type="password"]');
+  await expect(async () => {
+    await login.fill(email);
+    await password.fill(PASSWORD);
+    await page.waitForTimeout(300);
+    expect(await login.inputValue()).toBe(email);
+    expect(await password.inputValue()).toBe(PASSWORD);
+  }).toPass({ timeout: 20_000 });
   await page.getByRole('button', { name: 'Kirish', exact: true }).click();
 }
 

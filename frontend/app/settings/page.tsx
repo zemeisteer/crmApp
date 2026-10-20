@@ -899,7 +899,6 @@ function NotificationsSettingsTab() {
   const [testChannel, setTestChannel] = useState<"SMS" | "TELEGRAM">("SMS");
   const [testContent, setTestContent] = useState("");
   const [sendingTest, setSendingTest] = useState(false);
-  const [tokenInput, setTokenInput] = useState("");
 
   function load() {
     setLoading(true);
@@ -927,8 +926,7 @@ function NotificationsSettingsTab() {
     setMsg(null);
     try {
       const payload: Partial<NotificationSettings> = {
-        smsProvider: settings.smsProvider,
-        smsSender: settings.smsSender,
+        smsEnabled: settings.smsEnabled,
         notifyOnAttendance: settings.notifyOnAttendance,
         notifyOnPayment: settings.notifyOnPayment,
         notifyOnHomework: settings.notifyOnHomework,
@@ -936,12 +934,8 @@ function NotificationsSettingsTab() {
         remindLessons: settings.remindLessons,
         dailyDigest: settings.dailyDigest,
       };
-      if (tokenInput.trim()) {
-        payload.smsApiToken = tokenInput.trim();
-      }
       const updated = await notificationsApi.updateSettings(payload);
       setSettings(updated);
-      setTokenInput("");
       setMsg(t("msg.notifSettingsSaved"));
       setTimeout(() => setMsg(null), 4000);
     } catch (err) {
@@ -1018,41 +1012,28 @@ function NotificationsSettingsTab() {
 
         {settings && (
           <form onSubmit={handleSaveSettings} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-              <div>
-                <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>{t("ntf.provider")}</div>
-                <Select
-                  options={[
-                    { value: "eskiz", label: "Eskiz.uz (SMS Gateway)" },
-                    { value: "playmobile", label: "PlayMobile.uz (SMS Broker)" },
-                  ]}
-                  value={settings.smsProvider}
-                  onChange={(v) => setSettings({ ...settings, smsProvider: v as any })}
-                />
+            {/* SMS goes through the platform's account: the center sees whether
+                its plan includes SMS and switches it on or off, nothing more. */}
+            {settings.sms && !settings.sms.includedInPlan ? (
+              <div role="note" style={{ background: "#F7F6F2", border: "1px solid #EAE8E2", borderRadius: 12, padding: "12px 14px", fontSize: 13, color: "#3A3D45", lineHeight: 1.55 }}>
+                <b>{t("ntf.smsNotInPlan")}</b> {t("ntf.smsNotInPlanHint")}
               </div>
-              <div>
-                <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>{t("ntf.sender")}</div>
-                <input
-                  className="field-input"
-                  placeholder="4546"
-                  value={settings.smsSender}
-                  onChange={(e) => setSettings({ ...settings, smsSender: e.target.value })}
-                />
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <label style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13.5, fontWeight: 600, cursor: "pointer" }}>
+                  <input
+                    type="checkbox"
+                    checked={settings.smsEnabled}
+                    onChange={(e) => setSettings({ ...settings, smsEnabled: e.target.checked })}
+                    style={{ accentColor: ACCENT, width: 16, height: 16 }}
+                  />
+                  {t("ntf.smsOn")}
+                </label>
+                <div style={{ fontSize: 12.5, color: settings.sms?.providerReady === false ? "#B45309" : "#686B75", lineHeight: 1.5 }}>
+                  {settings.sms?.providerReady === false ? t("ntf.smsProviderPending") : t("ntf.smsViaPlatform")}
+                </div>
               </div>
-            </div>
-
-            <div>
-              <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>
-                API Token / Kalit {settings.hasSmsApiToken && <span style={{ color: "#10B981" }}>(Ulangan: {settings.smsApiToken})</span>}
-              </div>
-              <input
-                className="field-input"
-                type="password"
-                placeholder={settings.hasSmsApiToken ? t("ntf.tokenNew") : t("ntf.tokenEnter")}
-                value={tokenInput}
-                onChange={(e) => setTokenInput(e.target.value)}
-              />
-            </div>
+            )}
 
             <div style={{ borderTop: "1px solid #F1F5F9", paddingTop: 14, marginTop: 4 }}>
               <div style={{ fontSize: 13.5, fontWeight: 700, marginBottom: 10 }}>{t("ntf.triggers")}</div>

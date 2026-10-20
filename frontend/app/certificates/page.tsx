@@ -6,7 +6,7 @@ import DashboardShell from "@/components/DashboardShell";
 import Modal from "@/components/Modal";
 import Pagination, { usePagedSlice } from "@/components/Pagination";
 import Select from "@/components/Select";
-import { certificatesApi, studentsApi, groupsApi, Certificate, Student, Group, ApiError } from "@/lib/api";
+import { certificatesApi, studentsApi, groupsApi, Certificate, Student, Group, ApiError, type MembershipStay } from "@/lib/api";
 import { useLanguage } from "@/lib/i18n-context";
 import { formatDate } from "@/lib/format-date";
 
@@ -25,6 +25,9 @@ function CertificatesContent() {
   // Form state
   const [studentId, setStudentId] = useState("");
   const [groupId, setGroupId] = useState("");
+  // The chosen student's own groups (every stay, past and present).
+  const [stays, setStays] = useState<MembershipStay[] | null>(null);
+  const [staysError, setStaysError] = useState(false);
   const [title, setTitle] = useState("");
   const [grade, setGrade] = useState("");
   const [issueDate, setIssueDate] = useState(new Date().toISOString().split("T")[0]);
@@ -75,9 +78,49 @@ function CertificatesContent() {
 
   const paged = usePagedSlice(filtered, page, 10);
 
+  // A certificate is for a group the student studied in: graduated first,
+  // then the ones still going on, then the ones left; one row per group.
+  const studentGroups = useMemo(() => {
+    if (!stays) return [];
+    const rank = (s: MembershipStay) => (s.endReason === "GRADUATED" ? 0 : s.endedAt === null ? 1 : 2);
+    const best = new Map<string, MembershipStay>();
+    for (const s of stays) {
+      const prev = best.get(s.groupId);
+      if (!prev || rank(s) < rank(prev) || (rank(s) === rank(prev) && (s.endedAt ?? "9") > (prev.endedAt ?? "9"))) best.set(s.groupId, s);
+    }
+    return [...best.values()].sort((a, b) => rank(a) - rank(b) || a.groupName.localeCompare(b.groupName));
+  }, [stays]);
+
+  function pickStudent(id: string) {
+    setStudentId(id);
+    setGroupId("");
+    setStays(null);
+    setStaysError(false);
+    if (!id) return;
+    studentsApi
+      .memberships(id)
+      .then((list) => {
+        setStays(list);
+        // The group the student finished, if there is one, is the likely one.
+        const graduated = list.filter((s) => s.endReason === "GRADUATED").sort((a, b) => (b.endedAt ?? "").localeCompare(a.endedAt ?? ""));
+        const groupIdsSeen = new Set(list.map((s) => s.groupId));
+        if (graduated[0]) setGroupId(graduated[0].groupId);
+        else if (groupIdsSeen.size === 1) setGroupId(list[0].groupId);
+      })
+      .catch(() => setStaysError(true));
+  }
+
+  function stayLabel(s: MembershipStay) {
+    const status = s.endReason === "GRADUATED" ? t("cert.groupGraduated") : s.endedAt === null ? t("cert.groupCurrent") : t("cert.groupLeft");
+    const group = groups.find((g) => g.id === s.groupId);
+    return `${s.groupName}${group?.subject ? ` (${group.subject})` : ""} · ${status}`;
+  }
+
   function openCreateModal() {
     setStudentId("");
     setGroupId("");
+    setStays(null);
+    setStaysError(false);
     setTitle("");
     setGrade("");
     setIssueDate(new Date().toISOString().split("T")[0]);
@@ -331,9 +374,11 @@ function CertificatesContent() {
             </label>
             <Select
               value={studentId}
-              onChange={setStudentId}
+              onChange={pickStudent}
               placeholder={t("cert.pickStudent")}
-              options={students.map((s) => ({ value: s.id, label: s.fullName }))}
+              searchable
+              searchPlaceholder={t("cert.searchStudent")}
+              options={students.map((s) => ({ value: s.id, label: s.phone ? `${s.fullName} · ${s.phone}` : s.fullName }))}
             />
           </div>
 
@@ -344,9 +389,14 @@ function CertificatesContent() {
             <Select
               value={groupId}
               onChange={setGroupId}
-              placeholder={t("cert.pickGroup")}
-              options={groups.map((g) => ({ value: g.id, label: `${g.name} (${g.subject})` }))}
+              disabled={!studentId || stays === null}
+              placeholder={!studentId ? t("cert.pickStudentFirst") : stays === null && !staysError ? t("common.loading") : t("cert.pickGroup")}
+              options={[{ value: "", label: t("cert.noGroup") }, ...studentGroups.map((s) => ({ value: s.groupId, label: stayLabel(s) }))]}
             />
+            {studentId && stays !== null && studentGroups.length === 0 && (
+              <div style={{ fontSize: 12, color: "#686B75", marginTop: 5 }}>{t("cert.studentNoGroups")}</div>
+            )}
+            {staysError && <div role="alert" style={{ fontSize: 12, color: "#B23A47", marginTop: 5 }}>{t("common.errorGeneric")}</div>}
           </div>
 
           <div>

@@ -56,7 +56,7 @@ const CSS = `
   .ps-chips{display:flex;gap:8px;flex-wrap:wrap;}
   .ps-chip{border:1.5px solid var(--border);background:#fff;color:var(--text-2);font-size:13.5px;font-weight:600;padding:9px 14px;border-radius:100px;cursor:pointer;font-family:inherit;text-align:left;line-height:1.3;}
   .ps-chip:hover{border-color:var(--accent);}
-  .ps-chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff;}
+  .ps-chip[aria-pressed="true"],.ps-chip[aria-checked="true"]{background:var(--accent);border-color:var(--accent);color:#fff;}
   .ps-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:none;cursor:pointer;font-weight:700;font-family:inherit;border-radius:12px;min-height:44px;white-space:nowrap;transition:transform .15s, box-shadow .15s, background .15s, opacity .15s;}
   .ps-btn:hover{transform:translateY(-1px);}
   .ps-btn:active{transform:translateY(0);}

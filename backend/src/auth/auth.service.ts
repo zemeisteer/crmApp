@@ -20,6 +20,8 @@ import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { EmailService } from '../email/email.service';
 import { AuditService } from '../audit/audit.service';
+import { SignupPhoneService } from './signup-phone.service';
+import { trialRules, trialStage } from '../trial/trial-rules';
 
 function hashToken(token: string) {
   return createHash('sha256').update(token).digest('hex');
@@ -44,6 +46,7 @@ export class AuthService {
     private readonly config: ConfigService,
     private readonly email: EmailService,
     private readonly audit: AuditService,
+    private readonly signupPhone: SignupPhoneService,
   ) {}
 
   verifyAccessToken(token: string) {
@@ -139,21 +142,45 @@ export class AuthService {
       }
     }
 
+    // One free trial per phone: the number is confirmed with a code
+    // (checked last, so a form error elsewhere does not use the code up).
+    let signupPhone: string | null = null;
+    if (trialRules().phoneCheck) {
+      if (!dto.phone || !dto.phoneCode) {
+        throw new BadRequestException({ code: 'PHONE_REQUIRED', message: 'Telefon raqamingizni SMS kod bilan tasdiqlang' });
+      }
+      signupPhone = await this.signupPhone.consume(dto.phone, dto.phoneCode);
+    } else if (dto.phone) {
+      signupPhone = await this.signupPhone.freePhone(dto.phone);
+    }
+
     const trialEndsAt = new Date();
     trialEndsAt.setDate(trialEndsAt.getDate() + 7);
 
-    const [tenant] = await this.db
-      .insert(tenants)
-      .values({
-        name: dto.centerName.trim(),
-        subdomain,
-        category: (dto.category as any) ?? 'BOSHQA',
-        status: 'TRIAL',
-        plan: 'STARTER',
-        trialEndsAt,
-        onboardingStep: 'PROFILE',
-      })
-      .returning();
+    let tenant: typeof tenants.$inferSelect;
+    try {
+      [tenant] = await this.db
+        .insert(tenants)
+        .values({
+          name: dto.centerName.trim(),
+          subdomain,
+          category: (dto.category as any) ?? 'BOSHQA',
+          status: 'TRIAL',
+          plan: 'STARTER',
+          trialEndsAt,
+          onboardingStep: 'PROFILE',
+          signupPhone,
+        })
+        .returning();
+    } catch (err) {
+      // Two sign-ups at once with the same number or address: the second loses.
+      const constraint = (err as { constraint?: string; cause?: { constraint?: string } }).constraint ?? (err as { cause?: { constraint?: string } }).cause?.constraint;
+      if (constraint === 'tenants_signup_phone_idx') {
+        throw new ConflictException({ code: 'PHONE_USED', message: "Bu raqam bilan bepul sinov allaqachon olingan. Tizimga kiring yoki tarif tanlang." });
+      }
+      if (constraint === 'tenants_subdomain_idx') throw new ConflictException('Bu sub-domen band, boshqasini tanlang');
+      throw err;
+    }
 
     const passwordHash = await bcrypt.hash(dto.password, 10);
     const verifyToken = randomBytes(32).toString('hex');
@@ -164,6 +191,7 @@ export class AuthService {
         email,
         passwordHash,
         fullName: dto.fullName.trim(),
+        phone: signupPhone,
         role: 'OWNER',
         verifyTokenHash: hashToken(verifyToken),
       })
@@ -252,6 +280,17 @@ export class AuthService {
   // After the password (and the 2FA code): one session, bound to a
   // workspace; several centers -> the caller picks one.
   private async completeLogin(user: typeof users.$inferSelect, meta: { userAgent?: string; ip?: string }) {
+    // Every sign-in to the platform admin account is told to its owner by
+    // e-mail and kept in the audit log: a stolen password shows at once.
+    if (user.role === 'SUPERADMIN') {
+      const when = new Date().toISOString().replace('T', ' ').slice(0, 16);
+      this.audit.log({ tenantId: null, userId: user.id, action: 'superadmin_login', entityType: 'user', entityId: user.id, meta: { ip: meta.ip ?? null, userAgent: meta.userAgent ?? null } });
+      void this.email.send(
+        user.email,
+        'TalimCRM: platforma admini hisobiga kirildi',
+        [`Platforma admini hisobiga kirildi: ${when} (UTC).`, `IP: ${meta.ip ?? '-'}`, `Qurilma: ${meta.userAgent ?? '-'}`, '', "Agar bu siz bo'lmasangiz, darhol parolni almashtiring va barcha seanslarni yoping."].join('\n'),
+      );
+    }
     const memberships = await this.db.query.organizationMemberships.findMany({
       where: and(
         eq(organizationMemberships.userId, user.id),
@@ -281,7 +320,7 @@ export class AuthService {
         requiresWorkspaceSelection: false as const,
         accessToken,
         refreshToken,
-        user: { id: user.id, email: user.email, fullName: user.fullName, role: 'SUPERADMIN', permissions: ['*'], access: effectiveAccess('SUPERADMIN', null) },
+        user: { id: user.id, email: user.email, fullName: user.fullName, role: 'SUPERADMIN', permissions: ['*'], access: effectiveAccess('SUPERADMIN', null), twoFactorEnabled: user.twoFactorEnabled, twoFactorRequired: trialRules().superadmin2fa },
         tenant: null,
         workspaces: [],
       };
@@ -642,8 +681,12 @@ export class AuthService {
         access: ws.access,
         emailVerified: user.emailVerified,
         twoFactorEnabled: user.twoFactorEnabled,
+        // The platform pages stay closed until two-step sign-in is on.
+        twoFactorRequired: ws.role === 'SUPERADMIN' && trialRules().superadmin2fa,
       },
-      tenant: ws.tenant,
+      // Where a center on its free trial stands (the app shows the plans
+      // once it is locked); the sign-up phone stays on the server.
+      tenant: ws.tenant ? { ...ws.tenant, signupPhone: undefined, trial: trialStage(ws.tenant) } : ws.tenant,
     };
   }
 }

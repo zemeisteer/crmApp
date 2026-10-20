@@ -23,7 +23,7 @@ import { useLanguage } from "@/lib/i18n-context";
 import type { TranslationKey } from "@/lib/i18n";
 import { ACCENT, ghostBtn, label, primaryBtn, sourceKey, statusKey, StatusBadge } from "./lead-ui";
 import PhoneInput from "@/components/PhoneInput";
-import { phoneOrEmpty } from "@/lib/validation";
+import { isCompleteUzPhone, phoneOrEmpty } from "@/lib/validation";
 import CustomFieldInputs, { cfSubmitError, useCfDraft, useCustomFieldDefs } from "@/components/custom-fields/CustomFieldInputs";
 import { formatCfValue } from "@/components/custom-fields/CustomFieldValues";
 import { activeDefs, cfValidate, conversionPayload, draftFrom, fromDraft, mappedStudentValues } from "@/lib/custom-fields";
@@ -123,6 +123,15 @@ export default function ConvertWizard({ lead, open, onClose }: { lead: Lead; ope
   // fields (an existing one keeps its own answers); values must parse.
   function next() {
     if (step === 2) {
+      // A new student needs a birth date and a guardian's phone to reach.
+      if (!linking && !birthDate) {
+        setError(t("adm.wiz.errBirthDate"));
+        return;
+      }
+      if (!linking && !isCompleteUzPhone(guardianPhone)) {
+        setError(t("adm.wiz.errGuardianPhone"));
+        return;
+      }
       const errs = cfValidate(studentDefs.defs ?? [], cf.draft, linking ? "update" : "create");
       cf.setErrors(errs);
       if (Object.keys(errs).length) {
@@ -279,11 +288,11 @@ export default function ConvertWizard({ lead, open, onClose }: { lead: Lead; ope
               />
             </div>
             <div>
-              <label style={label}>{t("adm.wiz.birthDate")}</label>
+              <label style={label}>{t("adm.wiz.birthDate")} *</label>
               <DatePicker value={birthDate} onChange={setBirthDate} />
             </div>
             <div>
-              <label style={label}>{t("adm.wiz.guardianPhone")}</label>
+              <label style={label}>{t("adm.wiz.guardianPhone")} *</label>
               <PhoneInput className="field-input" value={guardianPhone} onChange={setGuardianPhone} />
             </div>
             <div>

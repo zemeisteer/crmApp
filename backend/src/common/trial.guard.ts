@@ -25,7 +25,8 @@ export class TrialGuard implements CanActivate {
       throw new ForbiddenException("Markazingiz to'xtatilgan. Administrator bilan bog'laning.");
     }
     if (tenant.status === 'TRIAL' && tenant.trialEndsAt && new Date(tenant.trialEndsAt) < new Date()) {
-      throw new ForbiddenException("Sinov muddati tugagan. Davom etish uchun tarifni faollashtiring.");
+      // The same answer as TrialInterceptor (the app reads the code).
+      throw new ForbiddenException({ code: 'TRIAL_READ_ONLY', message: "Sinov muddati tugagan: ma'lumotlarni ko'rish mumkin, o'zgartirish uchun tarifni faollashtiring." });
     }
     return true;
   }

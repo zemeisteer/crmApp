@@ -218,6 +218,10 @@ export const tenants = pgTable('tenants', {
   smsProvider: text('sms_provider').notNull().default('eskiz'),
   smsApiToken: text('sms_api_token'),
   smsSender: text('sms_sender').notNull().default('4546'),
+  // The center's own switch for SMS (only when its plan includes SMS). The
+  // provider account itself is the platform's; smsApiToken above is kept for
+  // centers that once entered their own and is no longer editable by them.
+  smsEnabled: boolean('sms_enabled').notNull().default(true),
   notifyOnAttendance: boolean('notify_on_attendance').notNull().default(true),
   notifyOnPayment: boolean('notify_on_payment').notNull().default(true),
   notifyOnHomework: boolean('notify_on_homework').notNull().default(true),
@@ -237,10 +241,41 @@ export const tenants = pgTable('tenants', {
   remindLessons: boolean('remind_lessons').notNull().default(true),
   // Evening summary (20:00) to owners/admins/managers linked to the bot.
   dailyDigest: boolean('daily_digest').notNull().default(true),
+  // The phone confirmed with a code when the center signed up: one free
+  // trial per number (null for centers made before, or by the platform).
+  signupPhone: text('signup_phone'),
+  // An unpaid trial that ended long ago is deleted (trial/trial-rules.ts);
+  // the owners are told twice before, and these say when.
+  trialWarnedAt: timestamp('trial_warned_at'),
+  trialFinalWarnedAt: timestamp('trial_final_warned_at'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 }, (t) => ({
   subdomainIdx: uniqueIndex('tenants_subdomain_idx').on(t.subdomain),
+  signupPhoneIdx: uniqueIndex('tenants_signup_phone_idx').on(t.signupPhone).where(sql`signup_phone IS NOT NULL`),
+}));
+
+// A code sent to a phone at sign-up (only its hash is kept).
+export const signupPhoneCodes = pgTable('signup_phone_codes', {
+  id: text('id').primaryKey().$defaultFn(() => createId()),
+  phone: text('phone').notNull(), // "+998901234567"
+  codeHash: text('code_hash').notNull(),
+  attempts: integer('attempts').notNull().default(0),
+  expiresAt: timestamp('expires_at').notNull(),
+  usedAt: timestamp('used_at'),
+  ip: text('ip'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+}, (t) => ({
+  phoneIdx: index('signup_phone_codes_phone_idx').on(t.phone, t.createdAt),
+}));
+
+// AI requests of a center still on its free trial, per day of the center.
+export const trialAiUsage = pgTable('trial_ai_usage', {
+  tenantId: text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  day: text('day').notNull(), // YYYY-MM-DD
+  count: integer('count').notNull().default(0),
+}, (t) => ({
+  tenantDayIdx: uniqueIndex('trial_ai_usage_tenant_day_idx').on(t.tenantId, t.day),
 }));
 
 export const users = pgTable('users', {
@@ -773,6 +808,8 @@ export const plans = pgTable('plans', {
   featuresEn: text('features_en').notNull().default(''),
   popular: boolean('popular').notNull().default(false),
   active: boolean('active').notNull().default(true),
+  // Whether SMS messages (sent through the platform's provider) are part of the plan.
+  smsIncluded: boolean('sms_included').notNull().default(true),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 }, (t) => ({

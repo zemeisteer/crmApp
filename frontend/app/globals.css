@@ -489,9 +489,44 @@ select:focus-visible {
   }
 }
 
+/* A page of the staff app fades in when it opens, instead of popping in.
+   Opacity only, and not kept once done ("backwards"): a transform here, or
+   one left in effect, would make this wrapper the frame of every popup
+   placed with position: fixed (lists, date pickers), pushing them aside. */
+@keyframes page-enter {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.page-enter {
+  animation: page-enter 0.2s ease-out backwards;
+}
+
+/* Buttons, links and inputs change colour softly rather than at once. */
+a,
+button,
+.btn,
+.field-input {
+  transition-property: color, background-color, border-color, box-shadow, opacity;
+  transition-duration: 0.15s;
+  transition-timing-function: ease;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .skeleton {
     animation: none;
+  }
+  .page-enter {
+    animation: none;
+  }
+  a,
+  button,
+  .btn,
+  .field-input {
+    transition: none;
   }
 }
 

@@ -3,6 +3,9 @@ import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
+import { SignupPhoneService } from './signup-phone.service';
+import { EskizProvider } from '../notifications/sms/eskiz.provider';
+import { PlayMobileProvider } from '../notifications/sms/playmobile.provider';
 
 @Module({
   imports: [
@@ -17,7 +20,7 @@ import { AuthController } from './auth.controller';
       }),
     }),
   ],
-  providers: [AuthService],
+  providers: [AuthService, SignupPhoneService, EskizProvider, PlayMobileProvider],
   controllers: [AuthController],
   exports: [AuthService],
 })

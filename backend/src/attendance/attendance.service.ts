@@ -310,7 +310,11 @@ export class AttendanceService {
     }
     if (live.length === 1) return { kind: 'LESSON', lesson: live[0], running: isRunning(live[0]) };
     const running = live.filter(isRunning);
-    return running.length === 1 ? { kind: 'LESSON', lesson: running[0], running: true } : { kind: 'AMBIGUOUS', lessons: live };
+    if (running.length === 1) return { kind: 'LESSON', lesson: running[0], running: true };
+    // Back to back (a lesson still on, the next one's early window open):
+    // the one that has begun is the one meant. Two that have both begun stay ambiguous.
+    const begun = running.filter((l) => nowMinutes !== null && nowMinutes >= minutes(l.startTime));
+    return begun.length === 1 ? { kind: 'LESSON', lesson: begun[0], running: true } : { kind: 'AMBIGUOUS', lessons: live };
   }
 
   /**

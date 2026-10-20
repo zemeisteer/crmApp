@@ -2,6 +2,10 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ConflictException, NotFoundException } from '@nestjs/common';
 import { StudentsService } from './students.service';
 
+// The free trial's limits read the database; they are covered by
+// test/trial-protection.e2e-spec.ts. Here the service logic alone.
+vi.mock('../trial/trial-limits', () => ({ assertTrialRoom: vi.fn(async () => undefined), assertNotTrialImport: vi.fn(async () => undefined) }));
+
 // Awaitable stand-in for a drizzle select builder (select().from().where().for()/.limit()).
 function selectChain(result: unknown) {
   const c: Record<string, unknown> = {};

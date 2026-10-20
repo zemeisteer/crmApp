@@ -23,6 +23,11 @@ export class CreatePlanDto {
   @IsOptional()
   @IsBoolean()
   popular?: boolean;
+
+  // SMS messages (through the platform's provider) are part of this plan.
+  @IsOptional()
+  @IsBoolean()
+  smsIncluded?: boolean;
 }
 
 export class TranslateFeaturesDto {
@@ -39,4 +44,5 @@ export class UpdatePlanDto {
   @IsOptional() @IsString() featuresEn?: string;
   @IsOptional() @IsBoolean() popular?: boolean;
   @IsOptional() @IsBoolean() active?: boolean;
+  @IsOptional() @IsBoolean() smsIncluded?: boolean;
 }

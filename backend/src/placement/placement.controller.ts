@@ -9,6 +9,7 @@ import { CurrentUser } from '../common/current-user.decorator';
 import { ATTACHMENT_MAX_SIZE } from '../common/upload.util';
 import { PlacementService } from './placement.service';
 import { CreatePlacementTestDto, GradePlacementDto, SetPlacementActiveDto, SubmitPlacementDto } from './placement.dto';
+import { UsesAi } from '../trial/trial.interceptor';
 
 const STAFF = ['ADMIN', 'OWNER', 'MANAGER', 'TEACHER', 'RECEPTIONIST'];
 
@@ -24,6 +25,7 @@ export class PlacementController {
   }
 
   @Roles(...STAFF)
+  @UsesAi()
   @Post()
   create(@CurrentUser('tenantId') tenantId: string, @CurrentUser('sub') userId: string, @Body() dto: CreatePlacementTestDto) {
     return this.service.create(tenantId, userId, dto);
@@ -31,6 +33,7 @@ export class PlacementController {
 
   // Reads questions from a PDF for review; nothing is saved.
   @Roles(...STAFF)
+  @UsesAi()
   @Post('parse-pdf')
   @UseInterceptors(FileInterceptor('file', {
     storage: memoryStorage(),
@@ -73,6 +76,7 @@ export class PlacementController {
   }
 
   @Roles(...STAFF)
+  @UsesAi()
   @Post(':id/attempts/:attemptId/ai-review')
   aiReview(@CurrentUser('tenantId') tenantId: string, @Param('id') id: string, @Param('attemptId') attemptId: string) {
     return this.service.aiReviewAttempt(tenantId, id, attemptId);
