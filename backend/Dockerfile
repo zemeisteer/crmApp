@@ -28,6 +28,8 @@ COPY --from=builder /app/drizzle ./drizzle
 COPY --from=builder /app/drizzle.config.ts ./drizzle.config.ts
 COPY --from=builder /app/assets ./assets
 COPY --from=builder /app/scripts/migrate.cjs ./scripts/migrate.cjs
+# Read-only report after the sign-up changes (docs/DEPLOYMENT_GUIDE.md, section 9).
+COPY --from=builder /app/scripts/report-signups.cjs ./scripts/report-signups.cjs
 
 RUN mkdir -p /app/uploads && chown -R node:node /app
 
