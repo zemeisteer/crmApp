@@ -402,7 +402,7 @@ export default function LoginPage() {
         style={{
           flex: 1.1,
           background: "linear-gradient(135deg, #090514 0%, #161033 50%, #20154D 100%)",
-          display: "flex",
+          // display comes from the class: hidden on phones, flex from md up.
           flexDirection: "column",
           justifyContent: "space-between",
           padding: "56px 48px",

@@ -234,6 +234,8 @@ function SettingsContent() {
       setTwoFaCode("");
       setTwoFaRecovery(res.recoveryCodes);
       await refreshMe();
+      // The other sessions were signed out with the change.
+      loadSessions();
     } catch (err) {
       setTwoFaError(err instanceof ApiError ? err.message : t("common.errorGeneric"));
     } finally {
@@ -251,6 +253,7 @@ function SettingsContent() {
       setTwoFaPassword("");
       setTwoFaCurrent("");
       await refreshMe();
+      loadSessions();
     } catch (err) {
       setTwoFaError(err instanceof ApiError ? err.message : t("common.errorGeneric"));
     } finally {
