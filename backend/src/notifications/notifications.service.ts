@@ -22,6 +22,21 @@ import {
   UpdateNotificationSettingsDto,
 } from './dto/notification.dto';
 
+/**
+ * The platform account's SMS budget: PLATFORM_SMS_PER_CENTER_MONTH (1000) per
+ * center and PLATFORM_SMS_PER_MONTH (0 = no cap) in all, per UTC month. Empty
+ * (as docker-compose passes an unset one) means the default.
+ */
+export function smsBudget() {
+  const env = (k: string, d: number) => {
+    const v = Number(process.env[k]?.trim() || d);
+    return Number.isFinite(v) && v >= 0 ? v : d;
+  };
+  return { perCenter: env('PLATFORM_SMS_PER_CENTER_MONTH', 1000), total: env('PLATFORM_SMS_PER_MONTH', 0), month: new Date().toISOString().slice(0, 7) };
+}
+/** What counts against the budget: messages on their way, sent, or of unknown fate. */
+export const SMS_COUNTED = ['RESERVED', 'SENT', 'UNKNOWN'];
+
 @Injectable()
 export class NotificationsService {
   private readonly logger = new Logger(NotificationsService.name);
@@ -90,20 +105,13 @@ export class NotificationsService {
    * once cannot both take the last place.
    */
   private async reserveSms(tenantId: string, key: string, platformAccount: boolean): Promise<'GO' | 'DUPLICATE' | 'QUOTA'> {
-    const month = new Date().toISOString().slice(0, 7);
-    // Empty (as docker-compose passes an unset one) means the default.
-    const env = (k: string, d: number) => {
-      const v = Number(process.env[k]?.trim() || d);
-      return Number.isFinite(v) && v >= 0 ? v : d;
-    };
-    const perCenter = env('PLATFORM_SMS_PER_CENTER_MONTH', 1000);
-    const total = env('PLATFORM_SMS_PER_MONTH', 0);
+    const { month, perCenter, total } = smsBudget();
     return this.db.transaction(async (tx) => {
       await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`sms-send:${month}`}))`);
       const [existing] = await tx.select().from(smsSends).where(and(eq(smsSends.tenantId, tenantId), eq(smsSends.idempotencyKey, key)));
       if (existing && (existing.status !== 'FAILED' || existing.attempts >= 3)) return 'DUPLICATE';
       if (platformAccount) {
-        const counted = and(eq(smsSends.month, month), eq(smsSends.platformAccount, true), inArray(smsSends.status, ['RESERVED', 'SENT', 'UNKNOWN']));
+        const counted = and(eq(smsSends.month, month), eq(smsSends.platformAccount, true), inArray(smsSends.status, SMS_COUNTED));
         const [{ mine }] = await tx.select({ mine: sql<number>`count(*)::int` }).from(smsSends).where(and(counted, eq(smsSends.tenantId, tenantId)));
         if (mine >= perCenter) return 'QUOTA';
         if (total > 0) {
@@ -140,6 +148,16 @@ export class NotificationsService {
     });
     if (!tenant) throw new NotFoundException('Markaz topilmadi');
     const route = await this.smsRoute(tenantId);
+    // This month on the platform's account: used of the center's budget.
+    let budget: { month: string; used: number; limit: number } | null = null;
+    if (route.ok && route.platformAccount) {
+      const { month, perCenter } = smsBudget();
+      const [{ used }] = await this.db
+        .select({ used: sql<number>`count(*)::int` })
+        .from(smsSends)
+        .where(and(eq(smsSends.tenantId, tenantId), eq(smsSends.month, month), eq(smsSends.platformAccount, true), inArray(smsSends.status, SMS_COUNTED)));
+      budget = { month, used, limit: perCenter };
+    }
     // Field by field: what the settings screen shows, never a provider or token.
     return {
       id: tenant.id,
@@ -154,6 +172,7 @@ export class NotificationsService {
         includedInPlan: route.ok || route.reason !== 'NOT_IN_PLAN',
         enabled: tenant.smsEnabled,
         providerReady: route.ok ? route.configured : null,
+        budget,
       },
     };
   }

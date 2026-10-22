@@ -15,6 +15,7 @@ import { RemindersService } from '../src/reminders/reminders.service.js';
 import { StudentTutorService } from '../src/ai/student-tutor.service.js';
 import { AiService } from '../src/ai/ai.service.js';
 import { MockTestsService } from '../src/mock-tests/mock-tests.service.js';
+import { PlatformService } from '../src/platform/platform.service.js';
 
 // What a center may do in each state of its life (one table for the guard
 // and the interceptor), the trial limits on the side doors (invitation
@@ -225,6 +226,10 @@ describe('Trial states, side doors and the platform SMS budget (e2e)', () => {
       expect(provider).toHaveBeenCalledTimes(1);
       // ... and it still counts against the budget.
       expect((await notifications.send(c.id, msg('t2'))).errorMessage).toMatch(/^SMS_QUOTA/);
+      // The center sees its month used up; the platform admin sees the message of unknown fate.
+      expect((await notifications.getSettings(c.id)).sms.budget).toMatchObject({ used: 1, limit: 1 });
+      const unknown = await app.get(PlatformService).uncertainSms();
+      expect(unknown.filter((r) => r.tenantId === c.id)).toEqual([expect.objectContaining({ attempts: 1 })]);
       vi.restoreAllMocks();
       // A clear refusal: the budget comes back, the same key may try again.
       const d = await sms();

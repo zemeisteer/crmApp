@@ -37,6 +37,11 @@ export class PlatformController {
     return this.trialClaims.release(dto.phone, dto.reason, userId);
   }
 
+  @Get('sms-uncertain')
+  smsUncertain() {
+    return this.service.uncertainSms();
+  }
+
   @Get('dashboard')
   dashboard() {
     return this.service.dashboard();

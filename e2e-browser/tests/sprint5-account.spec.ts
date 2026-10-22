@@ -105,3 +105,29 @@ test.describe('on a phone', () => {
     }
   });
 });
+
+test('platform admin: the trial deletion preview says what would happen and why; a phone exception needs a used trial', async ({ page }) => {
+  test.skip(TARGET !== 'local', 'needs the disposable local database');
+  const admin = await newCenter('trialadm');
+  const ended = await newCenter('trialold');
+  await sql(`update users set role = 'SUPERADMIN' where email = $1`, [admin.email]);
+  // Ended long enough ago to be in the preview (TRIAL_PURGE is off here: nothing is sent).
+  await sql(`update tenants set trial_ends_at = now() - interval '200 days' where id = $1`, [ended.tenantId]);
+
+  await loginOnMainSite(page, admin.email);
+  await expectCenterDashboard(page, admin.sub);
+  await page.goto(centerUrl(admin.sub, '/admin/trials'));
+  await expect(page.getByRole('heading', { name: 'Sinov va SMS nazorati' })).toBeVisible();
+  await expect(page.getByRole('status').filter({ hasText: "TRIAL_PURGE o'chiq" })).toBeVisible();
+  const row = page.getByRole('row').filter({ hasText: ended.sub });
+  await expect(row).toContainText('Birinchi xat navbatda');
+  // The preview wrote nothing.
+  const [{ purge_on }] = await sql<{ purge_on: Date | null }>(`select trial_purge_on as purge_on from tenants where id = $1`, [ended.tenantId]);
+  expect(purge_on).toBeNull();
+
+  // A number that never had a trial: refused, with the reason.
+  await page.getByLabel('Telefon raqami').fill('+998 90 000 00 01');
+  await page.getByLabel('Sabab (kamida 10 belgi)').fill("Sinov: bu raqam hech qachon sinov olmagan");
+  await page.getByRole('button', { name: 'Ruxsat berish' }).click();
+  await expect(page.getByRole('alert').filter({ hasText: 'topilmadi' })).toHaveText('Bu raqam uchun ishlatilgan sinov topilmadi');
+});

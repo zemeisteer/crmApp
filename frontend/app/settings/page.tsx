@@ -1058,6 +1058,11 @@ function NotificationsSettingsTab() {
                 <div style={{ fontSize: 12.5, color: settings.sms?.providerReady === false ? "#B45309" : "#686B75", lineHeight: 1.5 }}>
                   {settings.sms?.providerReady === false ? t("ntf.smsProviderPending") : t("ntf.smsViaPlatform")}
                 </div>
+                {settings.sms?.budget && (
+                  <div data-testid="sms-budget" style={{ fontSize: 12.5, color: settings.sms.budget.used >= settings.sms.budget.limit ? "#B23A47" : "#4A4E58", fontWeight: 600 }}>
+                    {t("ntf.smsBudget").replace("{used}", String(settings.sms.budget.used)).replace("{limit}", String(settings.sms.budget.limit))}
+                  </div>
+                )}
               </div>
             )}
 

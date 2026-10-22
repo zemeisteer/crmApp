@@ -100,7 +100,7 @@ describe('NotificationsService', () => {
 
   it('settings say whether SMS is in the plan and on, and show no provider or token', async () => {
     const res = await service.getSettings('tenant-1');
-    expect(res.sms).toEqual({ includedInPlan: true, enabled: true, providerReady: true });
+    expect(res.sms).toEqual({ includedInPlan: true, enabled: true, providerReady: true, budget: null }); // its own token: not on the platform's budget
     expect(JSON.stringify(res)).not.toContain('token123');
     expect(res).not.toHaveProperty('smsApiToken');
 

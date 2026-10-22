@@ -2224,8 +2224,27 @@ export interface PlatformIntegrations {
   items: PlatformIntegration[];
 }
 
+export type TrialPurgeState =
+  | "DELETED" | "WOULD_DELETE" | "NO_RECIPIENT" | "TRIAL_CHANGED" | "FIRST_NOTICE_PENDING" | "FIRST_NOTICE_FAILED"
+  | "WAITING_FOR_FINAL" | "FINAL_NOTICE_PENDING" | "FINAL_NOTICE_FAILED" | "WAITING" | "KEPT";
+export interface TrialPurgeRow {
+  tenantId: string;
+  name: string;
+  subdomain: string;
+  trialEndsAt: string | null;
+  purgeOn: string | null;
+  state: TrialPurgeState;
+  detail?: string;
+}
+
 export const platformApi = {
   dashboard: () => request<PlatformDashboard>("/platform/dashboard"),
+  // What the deletion of unpaid trials would do now, and why. Changes nothing.
+  trialPurgePreview: () => request<{ purgeEnabled: boolean; report: TrialPurgeRow[] }>("/platform/trial-purge/preview"),
+  // "One phone, one free trial": lets this number have another one (audited).
+  smsUncertain: () => request<Array<{ id: string; tenantId: string; name: string; subdomain: string; attempts: number; at: string }>>("/platform/sms-uncertain"),
+  releaseTrialClaim: (phone: string, reason: string) =>
+    request<{ released: boolean }>("/platform/trial-claims/release", { method: "POST", body: JSON.stringify({ phone, reason }) }),
   subscriptions: (query: { search?: string; status?: string; plan?: string; page?: number; pageSize?: number } = {}) => {
     const q = new URLSearchParams();
     if (query.search) q.set("search", query.search);
@@ -3081,6 +3100,8 @@ export interface NotificationSettings {
     enabled: boolean;
     /** The platform has a provider account set up (null when SMS is not available). */
     providerReady: boolean | null;
+    /** This month on the platform's account (null: not on it, or SMS off). */
+    budget?: { month: string; used: number; limit: number } | null;
   };
   notifyOnAttendance: boolean;
   notifyOnPayment: boolean;
