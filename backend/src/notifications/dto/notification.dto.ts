@@ -8,6 +8,7 @@ import {
   IsString,
   Max,
   Min,
+  MaxLength,
   MinLength,
 } from 'class-validator';
 import { Type } from 'class-transformer';
@@ -44,6 +45,12 @@ export class SendNotificationDto {
     | 'ANNOUNCEMENT'
     | 'MANUAL'
     | 'LESSON_REMINDER';
+
+  // The same key twice sends one SMS (a retry, a double click).
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  idempotencyKey?: string;
 
   @IsOptional()
   @IsString()

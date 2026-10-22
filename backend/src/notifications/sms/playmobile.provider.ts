@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { SmsProvider, SendSmsResult } from './sms-provider.interface';
+import { maskPhone } from './eskiz.provider';
 
 @Injectable()
 export class PlayMobileProvider implements SmsProvider {
@@ -25,7 +26,7 @@ export class PlayMobileProvider implements SmsProvider {
       return { success: false, error: "SMS provayderi sozlanmagan (API token yo'q)" };
     }
     if (!token) {
-      this.logger.log(`[PlayMobile Sandbox/Mock] SMS to +${cleanPhone} via originator '${sender}': "${text}"`);
+      this.logger.log(`[PlayMobile Sandbox/Mock] SMS to ${maskPhone(cleanPhone)} via originator '${sender}' (${text.length} chars)`);
       return {
         success: true,
         messageId: `playmobile-mock-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
@@ -52,6 +53,7 @@ export class PlayMobileProvider implements SmsProvider {
 
       const res = await fetch('https://send.playmobile.uz/broker-api/send', {
         method: 'POST',
+        signal: AbortSignal.timeout(20_000),
         headers: {
           Authorization: `Basic ${token}`,
           'Content-Type': 'application/json',
@@ -65,6 +67,7 @@ export class PlayMobileProvider implements SmsProvider {
         return {
           success: false,
           error: json?.message || `PlayMobile API HTTP ${res.status}`,
+          uncertain: res.status >= 500,
           raw: json,
         };
       }
@@ -80,6 +83,7 @@ export class PlayMobileProvider implements SmsProvider {
       return {
         success: false,
         error: errorMsg,
+        uncertain: true,
       };
     }
   }

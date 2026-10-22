@@ -18,6 +18,8 @@ export interface JwtPayload {
   sid?: string;
   /** Set for the platform admin from the account as it is now (RolesGuard). */
   twoFactorEnabled?: boolean;
+  /** This session passed 2FA after the account's factor last changed. */
+  mfa?: boolean;
 }
 
 @Injectable()
@@ -47,7 +49,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 
     const user = await this.db.query.users.findFirst({
       where: eq(users.id, payload.sub),
-      columns: { id: true, role: true, twoFactorEnabled: true },
+      columns: { id: true, role: true, twoFactorEnabled: true, twoFactorChangedAt: true },
     });
     if (!user) throw new UnauthorizedException();
     // The token lives only as long as its session: after logout, a revoked
@@ -56,11 +58,13 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     // too; the client's refresh token then gets a new one silently.
     if (!payload.sid) throw new UnauthorizedException();
     const [session] = await this.db
-      .select({ id: sessions.id })
+      .select({ id: sessions.id, mfaAt: sessions.mfaAt })
       .from(sessions)
       .where(and(eq(sessions.id, payload.sid), eq(sessions.userId, user.id)));
     if (!session) throw new UnauthorizedException();
-    if (user.role === 'SUPERADMIN') return { ...payload, role: 'SUPERADMIN' as const, twoFactorEnabled: user.twoFactorEnabled };
+    // The account having 2FA on is not this session having passed it.
+    const mfa = user.twoFactorEnabled && !!session.mfaAt && (!user.twoFactorChangedAt || session.mfaAt >= user.twoFactorChangedAt);
+    if (user.role === 'SUPERADMIN') return { ...payload, role: 'SUPERADMIN' as const, twoFactorEnabled: user.twoFactorEnabled, mfa };
     if (payload.role === 'SUPERADMIN') throw new UnauthorizedException();
     if (!payload.tenantId) return payload; // no workspace: nothing tenant-scoped can be read with it
 

@@ -38,3 +38,12 @@ export class SaveIntegrationDto {
   @IsObject()
   values: Record<string, string | null>;
 }
+
+/** Giving a phone its free trial back: the reason is kept in the audit log. */
+export class ReleaseTrialClaimDto {
+  @IsString() @MaxLength(30)
+  phone: string;
+
+  @IsString() @MinLength(10) @MaxLength(500)
+  reason: string;
+}

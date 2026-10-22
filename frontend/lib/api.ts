@@ -412,6 +412,8 @@ export interface User {
   twoFactorEnabled?: boolean;
   /** The platform admin's pages wait for two-step sign-in. */
   twoFactorRequired?: boolean;
+  /** This session itself passed 2FA (the account having it on is not enough). */
+  sessionTwoFactor?: boolean;
 }
 
 export interface AuthResponse {
@@ -1365,10 +1367,12 @@ export const authApi = {
     category?: TenantCategory;
     phone?: string;
     phoneCode?: string;
+    signupAttemptId?: string;
   }) => request<AuthResponse>("/auth/register", { method: "POST", body: JSON.stringify(data) }),
   /** A code to the phone a new center signs up with; DEV: shown here (never in production). */
-  signupPhoneCode: (phone: string, email?: string) =>
-    request<{ channel: "SMS" | "EMAIL" | "DEV"; devCode?: string }>("/auth/register/phone", { method: "POST", body: JSON.stringify({ phone, email: email || undefined }) }),
+  // The attempt id comes back with the code and goes with the sign-up.
+  signupPhoneCode: (phone: string) =>
+    request<{ channel: "SMS" | "DEV"; attemptId: string; expiresAt: string; devCode?: string }>("/auth/register/phone", { method: "POST", body: JSON.stringify({ phone }) }),
 
   login: (data: { email?: string; login?: string; password: string }) =>
     request<LoginResponse>("/auth/login", { method: "POST", body: JSON.stringify(data) }),
@@ -1391,9 +1395,13 @@ export const authApi = {
   verifyTwoFactorLogin: (pendingToken: string, code: string) =>
     request<LoginResponse>("/auth/2fa/verify-login", { method: "POST", body: JSON.stringify({ pendingToken, code }) }),
 
-  setupTwoFactor: () => request<{ secret: string; qrDataUrl: string }>("/auth/2fa/setup", { method: "POST" }),
-  confirmTwoFactor: (code: string) => request<{ message: string }>("/auth/2fa/confirm", { method: "POST", body: JSON.stringify({ code }) }),
-  disableTwoFactor: (code: string) => request<{ message: string }>("/auth/2fa/disable", { method: "POST", body: JSON.stringify({ code }) }),
+  // With 2FA already on, a new key needs the password and the current code
+  // (or a recovery code); the key stays pending until confirmed.
+  setupTwoFactor: (reauth?: { password: string; code: string }) =>
+    request<{ secret: string; qrDataUrl: string; expiresAt: string }>("/auth/2fa/setup", { method: "POST", body: JSON.stringify(reauth ?? {}) }),
+  /** The recovery codes come back once, here. */
+  confirmTwoFactor: (code: string) => request<{ message: string; recoveryCodes: string[] }>("/auth/2fa/confirm", { method: "POST", body: JSON.stringify({ code }) }),
+  disableTwoFactor: (reauth: { password: string; code: string }) => request<{ message: string }>("/auth/2fa/disable", { method: "POST", body: JSON.stringify(reauth) }),
 
   logout: () => {
     const refreshToken = getRefreshToken();
@@ -2216,8 +2224,27 @@ export interface PlatformIntegrations {
   items: PlatformIntegration[];
 }
 
+export type TrialPurgeState =
+  | "DELETED" | "WOULD_DELETE" | "NO_RECIPIENT" | "TRIAL_CHANGED" | "FIRST_NOTICE_PENDING" | "FIRST_NOTICE_FAILED"
+  | "WAITING_FOR_FINAL" | "FINAL_NOTICE_PENDING" | "FINAL_NOTICE_FAILED" | "WAITING" | "KEPT";
+export interface TrialPurgeRow {
+  tenantId: string;
+  name: string;
+  subdomain: string;
+  trialEndsAt: string | null;
+  purgeOn: string | null;
+  state: TrialPurgeState;
+  detail?: string;
+}
+
 export const platformApi = {
   dashboard: () => request<PlatformDashboard>("/platform/dashboard"),
+  // What the deletion of unpaid trials would do now, and why. Changes nothing.
+  trialPurgePreview: () => request<{ purgeEnabled: boolean; report: TrialPurgeRow[] }>("/platform/trial-purge/preview"),
+  // "One phone, one free trial": lets this number have another one (audited).
+  smsUncertain: () => request<Array<{ id: string; tenantId: string; name: string; subdomain: string; attempts: number; at: string }>>("/platform/sms-uncertain"),
+  releaseTrialClaim: (phone: string, reason: string) =>
+    request<{ released: boolean }>("/platform/trial-claims/release", { method: "POST", body: JSON.stringify({ phone, reason }) }),
   subscriptions: (query: { search?: string; status?: string; plan?: string; page?: number; pageSize?: number } = {}) => {
     const q = new URLSearchParams();
     if (query.search) q.set("search", query.search);
@@ -3073,6 +3100,8 @@ export interface NotificationSettings {
     enabled: boolean;
     /** The platform has a provider account set up (null when SMS is not available). */
     providerReady: boolean | null;
+    /** This month on the platform's account (null: not on it, or SMS off). */
+    budget?: { month: string; used: number; limit: number } | null;
   };
   notifyOnAttendance: boolean;
   notifyOnPayment: boolean;

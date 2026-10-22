@@ -245,14 +245,66 @@ export const tenants = pgTable('tenants', {
   // trial per number (null for centers made before, or by the platform).
   signupPhone: text('signup_phone'),
   // An unpaid trial that ended long ago is deleted (trial/trial-rules.ts);
-  // the owners are told twice before, and these say when.
+  // the owners are told twice before. These say when the provider took each
+  // notice (accepted - not that anyone read it).
   trialWarnedAt: timestamp('trial_warned_at'),
   trialFinalWarnedAt: timestamp('trial_final_warned_at'),
+  // The deletion date the notices name, and the trial end it was counted
+  // from: a trial extended since (or a payment) cancels the deletion.
+  trialPurgeOn: timestamp('trial_purge_on'),
+  trialPurgeBasis: timestamp('trial_purge_basis'),
+  // The sign-up attempt that made this center: a retry of the same attempt
+  // (the answer was lost on the way) gets this center back, not a second one.
+  signupAttemptId: text('signup_attempt_id'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 }, (t) => ({
   subdomainIdx: uniqueIndex('tenants_subdomain_idx').on(t.subdomain),
   signupPhoneIdx: uniqueIndex('tenants_signup_phone_idx').on(t.signupPhone).where(sql`signup_phone IS NOT NULL`),
+  signupAttemptIdx: uniqueIndex('tenants_signup_attempt_idx').on(t.signupAttemptId).where(sql`signup_attempt_id IS NOT NULL`),
+}));
+
+// The e-mails that announce an unpaid trial's deletion (an outbox: each is
+// tried until the provider takes it or gives up for good).
+export const trialNotices = pgTable('trial_notices', {
+  id: text('id').primaryKey().$defaultFn(() => createId()),
+  tenantId: text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  kind: text('kind').notNull(), // FIRST (14 days before) | FINAL (7 days before)
+  recipient: text('recipient').notNull(),
+  // PENDING -> SENDING (one worker holds it until lockedUntil) -> ACCEPTED,
+  // or FAILED after the last attempt.
+  status: text('status').notNull().default('PENDING'),
+  attempts: integer('attempts').notNull().default(0),
+  lastError: text('last_error'),
+  providerMessageId: text('provider_message_id'),
+  lockedUntil: timestamp('locked_until'),
+  nextAttemptAt: timestamp('next_attempt_at').notNull().defaultNow(),
+  acceptedAt: timestamp('accepted_at'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+}, (t) => ({
+  uniq: uniqueIndex('trial_notices_tenant_kind_recipient_idx').on(t.tenantId, t.kind, t.recipient),
+}));
+
+// Every SMS a center sends, by its idempotency key: the same message is
+// sent once (a retry, a double click, a provider timeout), and messages on
+// the platform's provider account count against its monthly budget
+// (notifications.service.ts).
+export const smsSends = pgTable('sms_sends', {
+  id: text('id').primaryKey().$defaultFn(() => createId()),
+  tenantId: text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  idempotencyKey: text('idempotency_key').notNull(),
+  month: text('month').notNull(), // "2026-10" (UTC)
+  // Sent on the platform's provider account (not the center's own token).
+  platformAccount: boolean('platform_account').notNull(),
+  // RESERVED (being sent) -> SENT | FAILED (the provider refused: may be
+  // tried again) | UNKNOWN (timed out: may have gone, never sent again).
+  status: text('status').notNull().default('RESERVED'),
+  attempts: integer('attempts').notNull().default(1),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+}, (t) => ({
+  keyIdx: uniqueIndex('sms_sends_tenant_key_idx').on(t.tenantId, t.idempotencyKey),
+  monthIdx: index('sms_sends_month_idx').on(t.month, t.platformAccount),
 }));
 
 // A code sent to a phone at sign-up (only its hash is kept).
@@ -264,9 +316,40 @@ export const signupPhoneCodes = pgTable('signup_phone_codes', {
   expiresAt: timestamp('expires_at').notNull(),
   usedAt: timestamp('used_at'),
   ip: text('ip'),
+  // The sign-up attempt the code was asked for (it is given back with the code).
+  attemptId: text('attempt_id'),
+  purpose: text('purpose').notNull().default('SIGNUP'),
+  // SMS, or DEV (shown in the answer; development and tests only).
+  channel: text('channel').notNull().default('SMS'),
+  // SENDING -> SENT, or FAILED (the provider did not take it: the code opens nothing).
+  status: text('status').notNull().default('SENT'),
+  // A newer code for the same phone makes this one invalid.
+  supersededAt: timestamp('superseded_at'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
 }, (t) => ({
   phoneIdx: index('signup_phone_codes_phone_idx').on(t.phone, t.createdAt),
+  ipIdx: index('signup_phone_codes_ip_idx').on(t.ip, t.createdAt),
+}));
+
+// Which phones have had their free trial - kept apart from the centers, so
+// deleting a center (by its owner, the platform, or the clean-up of unpaid
+// trials) does not give the phone a new one. Only a keyed fingerprint of the
+// number is kept, never the number.
+export const trialClaims = pgTable('trial_claims', {
+  id: text('id').primaryKey().$defaultFn(() => createId()),
+  phoneFingerprint: text('phone_fingerprint').notNull(),
+  // Ids only (no foreign key): the center may be gone.
+  firstTenantId: text('first_tenant_id'),
+  lastTenantId: text('last_tenant_id'),
+  claimedAt: timestamp('claimed_at').notNull().defaultNow(),
+  // A center of this phone paid the platform: signing up again is allowed, without a new free trial.
+  paidAt: timestamp('paid_at'),
+  // The platform admin gave the trial back (audited): the next sign-up gets one.
+  releasedAt: timestamp('released_at'),
+  releasedBy: text('released_by'),
+  releaseReason: text('release_reason'),
+}, (t) => ({
+  fingerprintIdx: uniqueIndex('trial_claims_fingerprint_idx').on(t.phoneFingerprint),
 }));
 
 // AI requests of a center still on its free trial, per day of the center.
@@ -293,6 +376,15 @@ export const users = pgTable('users', {
   verifyTokenHash: text('verify_token_hash'),
   twoFactorSecret: text('two_factor_secret'),
   twoFactorEnabled: boolean('two_factor_enabled').notNull().default(false),
+  // A new key waits here until it is confirmed (it never replaces the active
+  // one before that), for a short while and for one confirmation.
+  twoFactorPendingSecret: text('two_factor_pending_secret'),
+  twoFactorPendingExpiresAt: timestamp('two_factor_pending_expires_at'),
+  // When the factor was last turned on, replaced or off: a session that
+  // passed 2FA before this no longer counts as verified.
+  twoFactorChangedAt: timestamp('two_factor_changed_at'),
+  // One-time recovery codes, SHA-256 hashed; each is removed when used.
+  twoFactorRecoveryHashes: text('two_factor_recovery_hashes').array(),
   // Staff Telegram chat for CRM reminders, linked through a one-time bot
   // deep link (see TelegramService.generateStaffLinkToken).
   telegramChatId: text('telegram_chat_id'),
@@ -315,6 +407,9 @@ export const sessions = pgTable('sessions', {
   tenantId: text('tenant_id').references(() => tenants.id, { onDelete: 'cascade' }),
   userAgent: text('user_agent'),
   ip: text('ip'),
+  // When this session itself passed two-step sign-in (null: it did not).
+  // The account having 2FA on says nothing about an older session.
+  mfaAt: timestamp('mfa_at'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   lastUsedAt: timestamp('last_used_at').notNull().defaultNow(),
 }, (t) => ({
@@ -1089,6 +1184,8 @@ export const authHandoffCodes = pgTable('auth_handoff_codes', {
   codeHash: text('code_hash').notNull(),
   userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   tenantId: text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  // The 2FA state of the session that asked: the new session gets the same.
+  mfaAt: timestamp('mfa_at'),
   expiresAt: timestamp('expires_at').notNull(),
   usedAt: timestamp('used_at'),
   createdAt: timestamp('created_at').notNull().defaultNow(),

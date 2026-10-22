@@ -35,6 +35,7 @@ interface AuthContextValue {
     category?: TenantCategory;
     phone?: string;
     phoneCode?: string;
+    signupAttemptId?: string;
   }) => Promise<void>;
   logout: () => void;
   refreshMe: () => Promise<void>;
@@ -199,6 +200,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     category?: TenantCategory;
     phone?: string;
     phoneCode?: string;
+    signupAttemptId?: string;
   }) {
     const res = await authApi.register(data);
     setToken(res.accessToken);

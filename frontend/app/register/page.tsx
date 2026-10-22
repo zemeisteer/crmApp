@@ -20,7 +20,7 @@ export default function RegisterPage() {
   // One free trial per phone: the number is confirmed with a code.
   const [phone, setPhone] = useState("");
   const [phoneCode, setPhoneCode] = useState("");
-  const [codeSent, setCodeSent] = useState<null | { channel: "SMS" | "EMAIL" | "DEV"; devCode?: string }>(null);
+  const [codeSent, setCodeSent] = useState<null | { channel: "SMS" | "DEV"; attemptId: string; devCode?: string }>(null);
   const [sendingCode, setSendingCode] = useState(false);
   // The server takes one code a minute: the button waits as long.
   const [waitResend, setWaitResend] = useState(false);
@@ -33,7 +33,7 @@ export default function RegisterPage() {
     }
     setSendingCode(true);
     try {
-      const res = await authApi.signupPhoneCode(phone, email.trim().toLowerCase() || undefined);
+      const res = await authApi.signupPhoneCode(phone);
       setCodeSent(res);
       setWaitResend(true);
       setTimeout(() => setWaitResend(false), 60_000);
@@ -72,6 +72,8 @@ export default function RegisterPage() {
         password,
         phone,
         phoneCode: phoneCode.trim(),
+        // Ties the code to this sign-up; a retry of it gets the same center back.
+        signupAttemptId: codeSent.attemptId,
       });
     } catch (err) {
       setError(err instanceof ApiError ? err.message : (lang === "UZ" ? "Xatolik yuz berdi" : lang === "RU" ? "Произошла ошибка" : "An error occurred"));
@@ -122,7 +124,7 @@ export default function RegisterPage() {
         style={{
           flex: 1.1,
           background: "linear-gradient(135deg, #090514 0%, #161033 50%, #20154D 100%)",
-          display: "flex",
+          // display comes from the class: hidden on phones, flex from md up.
           flexDirection: "column",
           justifyContent: "space-between",
           padding: "56px 48px",
@@ -481,9 +483,7 @@ export default function RegisterPage() {
                 {codeSent
                   ? codeSent.channel === "SMS"
                     ? t("reg.codeSms")
-                    : codeSent.channel === "EMAIL"
-                      ? t("reg.codeEmail")
-                      : `${t("reg.codeDev")} ${codeSent.devCode}`
+                    : `${t("reg.codeDev")} ${codeSent.devCode}`
                   : t("reg.phoneHint")}
               </div>
               {codeSent && (

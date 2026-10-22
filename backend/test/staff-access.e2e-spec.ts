@@ -92,25 +92,25 @@ describe('Staff access lists (e2e)', () => {
     expect(unclassified).toEqual([]);
   });
 
-  it('each item, added to a role that lacks it, works; removed from a role that has it, is refused', async () => {
+  // One test per item: a few requests each, so a slow machine (the whole
+  // suite in parallel) does not run one long loop past the time limit.
+  // Items that are rules rather than routes are checked on their own below.
+  it.each(ACCESS_CATALOG.filter((x) => x.routes.length > 0).map((k) => [k.key, k] as const))('%s, added to a role that lacks it, works; removed from a role that has it, is refused', async (_key, k) => {
     const wrong: string[] = [];
-    // Items that are rules rather than routes are checked on their own below.
-    for (const k of ACCESS_CATALOG.filter((x) => x.routes.length > 0)) {
-      const route = k.routes[0];
-      const lacking = CONFIGURABLE_ROLES.find((r) => !k.template.includes(r));
-      if (lacking) {
-        await setAccess(lacking, [...templateFor(lacking), k.key]);
-        const res = await call(lacking, route);
-        if (res.status === 403) wrong.push(`added ${k.key} to ${lacking}: ${route} -> 403 ${res.body?.message ?? ''}`);
-        await setAccess(lacking, null);
-      }
-      const having = k.template[0];
-      if (having) {
-        await setAccess(having, templateFor(having).filter((x) => x !== k.key));
-        const res = await call(having, route);
-        if (res.status !== 403) wrong.push(`removed ${k.key} from ${having}: ${route} -> ${res.status}`);
-        await setAccess(having, null);
-      }
+    const route = k.routes[0];
+    const lacking = CONFIGURABLE_ROLES.find((r) => !k.template.includes(r));
+    if (lacking) {
+      await setAccess(lacking, [...templateFor(lacking), k.key]);
+      const res = await call(lacking, route);
+      if (res.status === 403) wrong.push(`added ${k.key} to ${lacking}: ${route} -> 403 ${res.body?.message ?? ''}`);
+      await setAccess(lacking, null);
+    }
+    const having = k.template[0];
+    if (having) {
+      await setAccess(having, templateFor(having).filter((x) => x !== k.key));
+      const res = await call(having, route);
+      if (res.status !== 403) wrong.push(`removed ${k.key} from ${having}: ${route} -> ${res.status}`);
+      await setAccess(having, null);
     }
     expect(wrong).toEqual([]);
   });

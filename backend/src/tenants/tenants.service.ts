@@ -8,6 +8,7 @@ import { seatHeldWhere } from '../common/seats';
 import { LeadsService } from '../leads/leads.service';
 import { CreateTenantDto, UpdateTenantDto, UpdateTenantStatusDto, PublicApplyDto } from './dto/tenant.dto';
 import { FilesService } from '../files/files.service';
+import { TrialClaimsService } from '../trial/trial-claims.service';
 
 // Faster than any human can fill the form in.
 const PUBLIC_FORM_MIN_FILL_MS = 2_000;
@@ -20,6 +21,7 @@ export class TenantsService {
     @Inject(DB) private readonly db: Database,
     private readonly leads: LeadsService,
     private readonly files: FilesService,
+    private readonly trialClaims: TrialClaimsService,
   ) {}
 
   // Superadmin: every center with its size, this month's income, owner and
@@ -345,7 +347,11 @@ export class TenantsService {
 
   async remove(id: string) {
     await this.findOne(id);
-    await this.db.delete(tenants).where(eq(tenants.id, id));
+    await this.db.transaction(async (tx) => {
+      // A center that paid keeps its phone's right to sign up again.
+      await this.trialClaims.noteBeforeDelete(tx, id);
+      await tx.delete(tenants).where(eq(tenants.id, id));
+    });
     return { success: true };
   }
 
@@ -370,7 +376,10 @@ export class TenantsService {
     if (!user) throw new NotFoundException();
     const valid = await bcrypt.compare(password, user.passwordHash);
     if (!valid) throw new BadRequestException("Parol noto'g'ri");
-    await this.db.delete(tenants).where(eq(tenants.id, tenantId));
+    await this.db.transaction(async (tx) => {
+      await this.trialClaims.noteBeforeDelete(tx, tenantId);
+      await tx.delete(tenants).where(eq(tenants.id, tenantId));
+    });
     return { success: true };
   }
 }

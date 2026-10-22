@@ -344,6 +344,16 @@ const PLATFORM_ITEMS: Array<{ href: string; labelKey: TranslationKey; icon: Reac
     ),
   },
   {
+    href: "/admin/trials",
+    labelKey: "nav.trials" as TranslationKey,
+    icon: (
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="13" r="8" />
+        <path d="M12 9v4l2 2M9 2h6" />
+      </svg>
+    ),
+  },
+  {
     href: "/admin/integrations",
     labelKey: "nav.integrations" as TranslationKey,
     icon: (

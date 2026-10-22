@@ -1,7 +1,7 @@
 import { BadRequestException, ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { and, desc, eq, ilike, inArray, isNull, or, sql, type SQL } from 'drizzle-orm';
 import { DB, Database } from '../db/db.module';
-import { plans, platformSubscriptions, students, tenants, users } from '../db/schema';
+import { plans, platformSubscriptions, smsSends, students, tenants, users } from '../db/schema';
 import { AuditService } from '../audit/audit.service';
 import { ListSubscriptionsDto, RecordPaymentDto, UpdateSubscriptionDto } from './dto/platform.dto';
 
@@ -66,6 +66,21 @@ export class PlatformService {
   }
 
   // ---- Dashboard ----
+
+  /**
+   * SMS the provider may or may not have sent (it timed out or failed on its
+   * side): never sent again automatically, still counted in the budget. To be
+   * checked against the provider's own report. Last 60 days, newest first.
+   */
+  async uncertainSms() {
+    return this.db
+      .select({ id: smsSends.id, tenantId: smsSends.tenantId, name: tenants.name, subdomain: tenants.subdomain, attempts: smsSends.attempts, at: smsSends.updatedAt })
+      .from(smsSends)
+      .innerJoin(tenants, eq(tenants.id, smsSends.tenantId))
+      .where(and(eq(smsSends.status, 'UNKNOWN'), sql`${smsSends.updatedAt} > now() - interval '60 days'`))
+      .orderBy(desc(smsSends.updatedAt))
+      .limit(200);
+  }
 
   async dashboard() {
     const now = new Date();

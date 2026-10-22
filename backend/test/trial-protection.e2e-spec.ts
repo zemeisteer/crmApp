@@ -10,6 +10,8 @@ import { configureApp } from '../src/app.setup.js';
 import { DB, Database } from '../src/db/db.module.js';
 import { auditLogs, leads, organizationMemberships, platformSubscriptions, students, tenants, users } from '../src/db/schema.js';
 import { TrialLifecycleService } from '../src/trial/trial-lifecycle.service.js';
+import { EmailService } from '../src/email/email.service.js';
+import { vi } from 'vitest';
 
 // The free trial's guards (src/trial/trial-rules.ts), each switched on here
 // (the other suites run with them off): a phone confirmed with a code at
@@ -72,13 +74,13 @@ describe('Free trial protection (e2e)', () => {
 
     it('the code is sent once a minute; a wrong code is refused; the right one signs up', async () => {
       const sent = (await http().post('/api/auth/register/phone').send({ phone }).expect(201)).body;
-      // No SMS provider and no e-mail here, and not production: the code comes back.
-      expect(sent).toEqual({ channel: 'DEV', devCode: expect.stringMatching(/^\d{6}$/) });
+      // No SMS provider here, and a test machine: the code comes back (DEV).
+      expect(sent).toEqual({ channel: 'DEV', devCode: expect.stringMatching(/^\d{6}$/), attemptId: expect.any(String), expiresAt: expect.any(String) });
       expect((await http().post('/api/auth/register/phone').send({ phone }).expect(429)).body.code).toBe('CODE_TOO_SOON');
 
       const wrong = sent.devCode === '123456' ? '654321' : '123456';
-      expect((await signUp('phone', { phone, phoneCode: wrong }).expect(400)).body.code).toBe('CODE_WRONG');
-      const ok = (await signUp('phone', { phone, phoneCode: sent.devCode }).expect(201)).body;
+      expect((await signUp('phone', { phone, phoneCode: wrong, signupAttemptId: sent.attemptId }).expect(400)).body.code).toBe('CODE_WRONG');
+      const ok = (await signUp('phone', { phone, phoneCode: sent.devCode, signupAttemptId: sent.attemptId }).expect(201)).body;
       const [row] = await db.select({ signupPhone: tenants.signupPhone }).from(tenants).where(eq(tenants.id, ok.tenant.id));
       expect(row.signupPhone).toBe(phone);
       // The phone stays on the server: /auth/me does not show it.
@@ -97,8 +99,8 @@ describe('Free trial protection (e2e)', () => {
       const p = `+99891${tail}2`;
       const sent = (await http().post('/api/auth/register/phone').send({ phone: p }).expect(201)).body;
       const wrong = sent.devCode === '111111' ? '222222' : '111111';
-      for (let i = 0; i < 5; i++) await signUp('attempts', { phone: p, phoneCode: wrong }).expect(400);
-      expect((await signUp('attempts', { phone: p, phoneCode: sent.devCode }).expect(400)).body.code).toBe('CODE_ATTEMPTS');
+      for (let i = 0; i < 5; i++) await signUp('attempts', { phone: p, phoneCode: wrong, signupAttemptId: sent.attemptId }).expect(400);
+      expect((await signUp('attempts', { phone: p, phoneCode: sent.devCode, signupAttemptId: sent.attemptId }).expect(400)).body.code).toBe('CODE_ATTEMPTS');
     });
 
     it('two sign-ups at once with the same number: one trial', async () => {
@@ -222,19 +224,26 @@ describe('Free trial protection (e2e)', () => {
       // Ended 47 days ago: the deletion date is 13 days ahead.
       for (const c of [doomed, paid]) await db.update(tenants).set({ trialEndsAt: new Date(now - 47 * DAY) }).where(eq(tenants.id, c.tenantId));
       const ids = [doomed.tenantId, paid.tenantId];
+      // The mail provider takes every notice (nothing leaves the machine);
+      // the outbox's failures have their own suite (trial-purge-outbox).
+      const deliver = vi.spyOn(app.get(EmailService), 'deliver').mockResolvedValue({ accepted: true, providerMessageId: 'test' });
 
+      // The first notice names a date two weeks ahead.
       let r = await lifecycle.run(new Date(now), ids);
       expect(r).toMatchObject({ warned: 1, deleted: 0 });
       expect((await lifecycle.run(new Date(now), ids)).warned).toBe(0); // told once
-      // The pass did not run for two weeks (the deletion date has passed):
-      // the last notice goes out first, and nothing is deleted with it ...
+      // The pass did not run for two weeks (the deletion date has come):
+      // the last notice goes out first, nothing is deleted with it, and the
+      // date it names is a week after it ...
       r = await lifecycle.run(new Date(now + 14 * DAY), ids);
       expect(r).toMatchObject({ warned: 1, deleted: 0 });
-      // ... nor while that notice is under 6 days old ...
-      expect((await lifecycle.run(new Date(now + 19 * DAY), ids)).deleted).toBe(0);
+      expect(deliver.mock.calls[1][1]).toContain(new Date(now + 21 * DAY).toISOString().slice(0, 10));
+      // ... nothing before that date ...
+      expect((await lifecycle.run(new Date(now + 20 * DAY), ids)).deleted).toBe(0);
       // ... then the center goes; the one that paid stays.
-      r = await lifecycle.run(new Date(now + 20 * DAY), ids);
+      r = await lifecycle.run(new Date(now + 21 * DAY), ids);
       expect(r.deletedIds).toEqual([doomed.tenantId]);
+      deliver.mockRestore();
 
       expect(await db.select({ id: tenants.id }).from(tenants).where(eq(tenants.id, doomed.tenantId))).toEqual([]);
       expect(await db.select({ id: students.id }).from(students).where(eq(students.tenantId, doomed.tenantId))).toEqual([]);

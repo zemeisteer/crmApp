@@ -49,7 +49,8 @@ describe('SMS by plan (e2e)', () => {
 
   it('a center sees whether SMS is in its plan and on; no provider, token or sender', async () => {
     const s = await settings();
-    expect(s.sms).toEqual({ includedInPlan: true, enabled: true, providerReady: expect.any(Boolean) });
+    // This month's use of the platform account: a count, nothing about the provider.
+    expect(s.sms).toEqual({ includedInPlan: true, enabled: true, providerReady: expect.any(Boolean), budget: { month: expect.stringMatching(/^\d{4}-\d{2}$/), used: 0, limit: 1000 } });
     for (const field of ['smsApiToken', 'smsProvider', 'smsSender', 'hasSmsApiToken']) expect(s).not.toHaveProperty(field);
   });
 

@@ -2,6 +2,10 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { SmsProvider, SendSmsResult } from './sms-provider.interface';
 
+const SEND_TIMEOUT_MS = 20_000;
+/** "+99890***67": enough to tell messages apart in a log, not to read the number. */
+export const maskPhone = (digits: string) => `+${digits.slice(0, 5)}***${digits.slice(-2)}`;
+
 @Injectable()
 export class EskizProvider implements SmsProvider {
   readonly name = 'eskiz';
@@ -25,7 +29,7 @@ export class EskizProvider implements SmsProvider {
       return { success: false, error: "SMS provayderi sozlanmagan (API token yo'q)" };
     }
     if (!token) {
-      this.logger.log(`[Eskiz Sandbox/Mock] SMS to +${cleanPhone} via sender '${sender}': "${text}"`);
+      this.logger.log(`[Eskiz Sandbox/Mock] SMS to ${maskPhone(cleanPhone)} via sender '${sender}' (${text.length} chars)`);
       return {
         success: true,
         messageId: `eskiz-mock-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
@@ -41,6 +45,7 @@ export class EskizProvider implements SmsProvider {
 
       const res = await fetch('https://notify.eskiz.uz/api/message/sms/send', {
         method: 'POST',
+        signal: AbortSignal.timeout(SEND_TIMEOUT_MS),
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/x-www-form-urlencoded',
@@ -54,6 +59,7 @@ export class EskizProvider implements SmsProvider {
         return {
           success: false,
           error: json?.message || `Eskiz API HTTP ${res.status}`,
+          uncertain: res.status >= 500,
           raw: json,
         };
       }
@@ -69,6 +75,7 @@ export class EskizProvider implements SmsProvider {
       return {
         success: false,
         error: errorMsg,
+        uncertain: true,
       };
     }
   }

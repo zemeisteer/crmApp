@@ -1,3 +1,5 @@
+import { centerState, centerWorkRefusal } from '../trial/trial-access';
+import { chargeTrialAi } from '../trial/trial-limits';
 import { BadRequestException, ConflictException, ForbiddenException, Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { and, count, desc, eq, inArray, isNull, or, sql } from 'drizzle-orm';
 import { DB, Database } from '../db/db.module';
@@ -303,13 +305,27 @@ export class MockTestsService {
     const [a] = await this.db.select().from(mockAttempts).where(and(eq(mockAttempts.id, attemptId), eq(mockAttempts.tenantId, tenantId)));
     if (!a) throw new NotFoundException('Urinish topilmadi');
     if (!(await this.aiAvailable(tenantId))) throw new ConflictException({ code: 'AI_OFF', message: 'AI baholash markazda yoqilmagan' });
-    if (/^s\d$/.test(section)) await this.gradePracticeWithAi(a.id, section);
-    else if (section === 'writing' || section === 'speaking') await this.gradeWithAi(a.id, section);
+    if (/^s\d$/.test(section)) await this.gradePracticeWithAi(a.id, section, true);
+    else if (section === 'writing' || section === 'speaking') await this.gradeWithAi(a.id, section, true);
     else throw new BadRequestException("Bo'lim noto'g'ri");
     return this.attemptDetail(tenantId, attemptId);
   }
 
   // --------------------------------------------------------------- portal
+
+  /**
+   * Whether the AI may be asked for work a student started (marking a
+   * submitted section, an AI practice set) - those come from the cabinet,
+   * which TrialInterceptor does not see: never for a center whose trial is
+   * over or that is suspended; on a running trial, one of the center's daily
+   * AI requests (TRIAL_AI_PER_DAY, shared with its staff). Without it the
+   * section waits for the teacher.
+   */
+  private async centerAiAllowed(tenantId: string) {
+    const [t] = await this.db.select({ status: tenants.status, trialEndsAt: tenants.trialEndsAt, tz: tenants.timezone }).from(tenants).where(eq(tenants.id, tenantId));
+    if (!t || centerWorkRefusal(t)) return false;
+    return centerState(t) !== 'TRIAL' || chargeTrialAi(this.db, tenantId, t.tz);
+  }
 
   // AI marking needs an AI key on the server and the student AI switched on
   // by the center (a daily limit above 0).
@@ -583,7 +599,7 @@ export class MockTestsService {
 
   // The AI marks the writing tasks of a practice section (0-10 each, with a
   // short comment); the teacher can change the scores later.
-  async gradePracticeWithAi(attemptId: string, key: string) {
+  async gradePracticeWithAi(attemptId: string, key: string, charged = false) {
     const [a] = await this.db.select().from(mockAttempts).where(eq(mockAttempts.id, attemptId));
     if (!a) return;
     const [test] = await this.db.select().from(mockTests).where(eq(mockTests.id, a.testId));
@@ -594,6 +610,7 @@ export class MockTestsService {
     const answers = parse<Record<string, Record<string, string>>>(a.answers, {})[key] ?? {};
     let tasks: PracticeTaskResult[] | null = [];
     try {
+      if (!charged && !(await this.centerAiAllowed(a.tenantId))) throw new Error("the center's AI allowance is used up or closed");
       for (let i = 0; i < section.tasks.length; i++) {
         const task = section.tasks[i];
         const text = (answers[`t${i}`] ?? '').trim();
@@ -672,6 +689,9 @@ export class MockTestsService {
     if (!group) throw new BadRequestException("Bu yo'nalishda o'qimaysiz");
     if (!(await this.aiAvailable(tenantId))) throw new ConflictException({ code: 'AI_OFF', message: 'AI markazda yoqilmagan' });
     const day = await this.localDay(tenantId);
+    if (!(await this.centerAiAllowed(tenantId))) {
+      throw new ConflictException({ code: 'LIMIT', message: "Markazning bugungi AI limiti tugagan — ertaga yana urinib ko'ring" });
+    }
     if (!(await this.reservePractice(studentId, tenantId, day))) {
       throw new ConflictException({ code: 'LIMIT', message: `Bugun ${STUDENT_PRACTICE_PER_DAY} ta AI mashq yaratdingiz — ertaga yana urinib ko'ring` });
     }
@@ -704,7 +724,7 @@ export class MockTestsService {
 
   // ------------------------------------------------------------ AI marking
 
-  async gradeWithAi(attemptId: string, section: 'writing' | 'speaking') {
+  async gradeWithAi(attemptId: string, section: 'writing' | 'speaking', charged = false) {
     const [a] = await this.db.select().from(mockAttempts).where(eq(mockAttempts.id, attemptId));
     if (!a) return;
     const [test] = await this.db.select().from(mockTests).where(eq(mockTests.id, a.testId));
@@ -712,6 +732,7 @@ export class MockTestsService {
     const answers = parse<Answers>(a.answers, {});
     let result: SectionResult;
     try {
+      if (!charged && !(await this.centerAiAllowed(a.tenantId))) throw new Error("the center's AI allowance is used up or closed");
       result = section === 'writing' ? await this.aiWriting(content, answers) : await this.aiSpeaking(content, answers);
     } catch (err) {
       this.logger.warn(`AI examiner failed (${section}): ${(err as Error).message}`);

@@ -1,7 +1,9 @@
 import { ForbiddenException, Inject, Injectable, Logger, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
 import { and, desc, eq, gte, inArray, isNull, lt, sql } from 'drizzle-orm';
 import { DB, Database } from '../db/db.module';
-import { aiUsage, enrollments, groups, studentAiMessages, students } from '../db/schema';
+import { aiUsage, enrollments, groups, studentAiMessages, students, tenants } from '../db/schema';
+import { centerState, centerWorkRefusal } from '../trial/trial-access';
+import { chargeTrialAi } from '../trial/trial-limits';
 import { teacherGroupIds } from '../common/teacher-scope';
 import { DEFAULT_TIMEZONE, isValidTimeZone, zonedParts } from '../common/timezone';
 import { AiService } from './ai.service';
@@ -110,6 +112,21 @@ export class StudentTutorService {
     const day = this.localDay(student, now);
     const used = await this.reserve(student, limit, day);
     if (used === null) return { status: 'limit', limit };
+    // The center's state too (trial-access.ts): none once its trial is over
+    // or it is suspended; on its trial, the same daily allowance its staff
+    // draw from.
+    const [center] = await this.db
+      .select({ status: tenants.status, trialEndsAt: tenants.trialEndsAt, tz: tenants.timezone })
+      .from(tenants)
+      .where(eq(tenants.id, student.tenantId));
+    if (!center || centerWorkRefusal(center)) {
+      await this.refund(student, day);
+      return { status: 'off' };
+    }
+    if (centerState(center) === 'TRIAL' && !(await chargeTrialAi(this.db, student.tenantId, center.tz))) {
+      await this.refund(student, day);
+      return { status: 'limit', limit };
+    }
 
     try {
       const question = text.trim().slice(0, TUTOR_MAX_QUESTION);

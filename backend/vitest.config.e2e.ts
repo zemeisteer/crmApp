@@ -48,6 +48,9 @@ export default defineConfig({
       TRIAL_LIMITS: 'off',
       SUPERADMIN_2FA: 'off',
       TRIAL_PURGE: 'off',
+      // Every suite asks for sign-up codes from one address (127.0.0.1); the
+      // per-address limit itself is tested in test/signup-integrity.e2e-spec.ts.
+      SIGNUP_CODES_PER_IP_HOUR: '100000',
     },
   },
 });

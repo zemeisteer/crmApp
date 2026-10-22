@@ -141,13 +141,15 @@ export default function LoginPage() {
             className="field-input"
             required
             autoFocus
-            inputMode="numeric"
-            maxLength={6}
+            maxLength={11}
+            autoComplete="one-time-code"
             value={code}
             onChange={(e) => setCode(e.target.value)}
             placeholder="000000"
+            aria-describedby="twofa-recovery-hint"
             style={{ textAlign: "center", fontSize: 22, letterSpacing: 8, height: 48 }}
           />
+          <div id="twofa-recovery-hint" style={{ fontSize: 12, color: "#686B75", textAlign: "center" }}>{t("twofa.recoveryLoginHint")}</div>
           <button
             className="btn"
             type="submit"
@@ -400,7 +402,7 @@ export default function LoginPage() {
         style={{
           flex: 1.1,
           background: "linear-gradient(135deg, #090514 0%, #161033 50%, #20154D 100%)",
-          display: "flex",
+          // display comes from the class: hidden on phones, flex from md up.
           flexDirection: "column",
           justifyContent: "space-between",
           padding: "56px 48px",

@@ -311,6 +311,20 @@ bash scripts/production/release-info.sh       # RELEASE OK: shu commit qurilgan,
 
 `/api/health` javobidagi `revision` va image'lardagi `org.opencontainers.image.revision` belgisi qaysi commit ishlayotganini ko'rsatadi. Orqaga qaytarish (ilova va baza alohida): `docs/STAGING.md`, "Orqaga qaytarish".
 
+### Migratsiyalar 0062–0065 bilan chiqarish (2FA, ro'yxatdan o'tish, trial, SMS byudjeti)
+
+**Oldin:**
+- Platforma adminlarini ogohlantiring: `SUPERADMIN_2FA` yoqiq bo'lsa (productionda sukut bo'yicha yoqiq), chiqarishdan keyin ular **bir marta chiqib, ilovadagi kod bilan qayta kirishi** kerak. 2FA holati endi sessiyada saqlanadi, eski sessiyalarda u yo'q. Kirgandan keyin Sozlamalar → Xavfsizlik'da 2FA'ni qayta yoqib, **tiklash kodlarini** saqlab qo'yish tavsiya etiladi.
+- `.env`: `TRIAL_PHONE_KEY` ni bir marta qo'ying (yoki bo'sh qoldiring, shunda `JWT_SECRET` ishlatiladi) va keyin **o'zgartirmang**. Ixtiyoriy limitlar: `SIGNUP_CODES_PER_IP_HOUR`, `SIGNUP_CODES_PER_HOUR`, `PLATFORM_SMS_PER_CENTER_MONTH`, `PLATFORM_SMS_PER_MONTH` (`.env.production.example`).
+- Ro'yxatdan o'tish endi faqat SMS bilan tasdiqlanadi: `ESKIZ_API_TOKEN` yoki `PLAYMOBILE_API_TOKEN` bo'lmasa, yangi markazlar ro'yxatdan o'ta olmaydi ("SMS hozir mavjud emas"), agar `SIGNUP_PHONE_CHECK` yoqiq bo'lsa.
+- `TRIAL_PURGE` ni yoqmang. Avval `GET /api/platform/trial-purge/preview` natijasini ko'ring.
+
+**Keyin:**
+```bash
+bash scripts/production/stack.sh exec backend node scripts/report-signups.cjs   # faqat o'qiydi
+```
+"Fewer claims than phones" chiqsa, API'ni bir marta qayta ishga tushiring (u yetishmaganlarini yozadi). Batafsil: `docs/TRIAL_AND_LIMITS.md`.
+
 ---
 
 ## 10. Monitoring va Nosozliklarni Aniqlash (Troubleshooting)
