@@ -76,3 +76,28 @@ describe('AiService: reading questions from a PDF', () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 });
+
+describe('AiService: no made-up answers', () => {
+  it('without an AI key, materials and homework suggestions say AI is not connected', async () => {
+    const ai = service({});
+    await expect(ai.generateMaterial({ subject: 'Matematika', topic: 'Kasrlar', type: 'QUIZ' } as never)).rejects.toMatchObject({ response: { code: 'AI_OFF' } });
+    await expect(ai.suggestHomework({ subject: 'Matematika', request: '5 ta misol' })).rejects.toMatchObject({ response: { code: 'AI_OFF' } });
+  });
+
+  it('an answer that is not the JSON asked for is "busy", not a server error', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(gemini('Here you go: { not json')));
+    await expect(service({ GEMINI_API_KEY: 'k' }).suggestHomework({ subject: 'Matematika' })).rejects.toBeInstanceOf(ServiceUnavailableException);
+  });
+
+  it('a main model that hangs is not tried twice: the next try is the lighter model', async () => {
+    const models: string[] = [];
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+      models.push(String(url).match(/models\/([^:]+)/)![1]);
+      if (models.length === 1) throw new DOMException('The operation was aborted due to timeout', 'TimeoutError');
+      return gemini('Material matni');
+    }));
+    const r = await service({ GEMINI_API_KEY: 'k' }).generateMaterial({ subject: 'Matematika', topic: 'Kasrlar', type: 'HOMEWORK' } as never);
+    expect(r.material).toBe('Material matni');
+    expect(models).toEqual(['gemini-flash-latest', 'gemini-flash-lite-latest']);
+  });
+});
