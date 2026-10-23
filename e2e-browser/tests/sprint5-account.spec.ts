@@ -131,3 +131,17 @@ test('platform admin: the trial deletion preview says what would happen and why;
   await page.getByRole('button', { name: 'Ruxsat berish' }).click();
   await expect(page.getByRole('alert').filter({ hasText: 'topilmadi' })).toHaveText('Bu raqam uchun ishlatilgan sinov topilmadi');
 });
+
+test('a paid period that ran out: the grace banner with its date, then read-only for non-payment; the plans page shows the paid date', async ({ page }) => {
+  test.skip(TARGET !== 'local', 'needs the disposable local database');
+  const c = await newCenter('pastdue');
+  await sql(`update tenants set status = 'PAST_DUE', paid_until = now() - interval '2 days' where id = $1`, [c.tenantId]);
+  await loginOnMainSite(page, c.email);
+  await expectCenterDashboard(page, c.sub);
+  await expect(page.getByRole('status').filter({ hasText: "To'langan muddat tugadi" })).toBeVisible();
+  await page.goto(centerUrl(c.sub, '/pricing'));
+  await expect(page.getByTestId('paid-until')).toBeVisible();
+  await sql(`update tenants set status = 'SUSPENDED', suspended_reason = 'NON_PAYMENT' where id = $1`, [c.tenantId]);
+  await page.goto(centerUrl(c.sub, '/dashboard'));
+  await expect(page.getByRole('status').filter({ hasText: "To'lov qilinmagani uchun" })).toBeVisible();
+});

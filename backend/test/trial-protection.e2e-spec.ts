@@ -272,8 +272,9 @@ describe('Free trial protection (e2e)', () => {
       await db.delete(organizationMemberships).where(eq(organizationMemberships.userId, reg.user.id));
       const sa = (await http().post('/api/auth/login').send({ email, password: 'password123' }).expect(201)).body.accessToken;
 
-      const logins = await db.select().from(auditLogs).where(and(eq(auditLogs.action, 'superadmin_login'), eq(auditLogs.userId, reg.user.id)));
-      expect(logins.length).toBeGreaterThan(0);
+      // The audit row is written after the answer (AuditService.log does not
+      // wait): look until it is there.
+      await expect.poll(async () => (await db.select().from(auditLogs).where(and(eq(auditLogs.action, 'superadmin_login'), eq(auditLogs.userId, reg.user.id)))).length, { timeout: 10_000 }).toBeGreaterThan(0);
 
       expect((await http().get('/api/auth/me').set(bearer(sa)).expect(200)).body.user.twoFactorRequired).toBe(true);
       expect((await http().get('/api/platform/dashboard').set(bearer(sa)).expect(403)).body.code).toBe('TWO_FACTOR_REQUIRED');

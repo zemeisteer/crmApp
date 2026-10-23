@@ -16,6 +16,30 @@ function TrialBanner() {
   const { t, lang } = useLanguage();
   if (!tenant || user?.role === "SUPERADMIN") return null;
 
+  // Suspended for non-payment: paying lifts it at once.
+  if (tenant.status === "SUSPENDED" && tenant.billing?.suspendedForNonPayment) {
+    return (
+      <div role="status" style={{ background: "#FDEBEC", color: "#B23A47", padding: "10px 24px", fontSize: 13, fontWeight: 600, textAlign: "center" }}>
+        {t("billing.suspended")}{" "}
+        <Link href="/pricing" style={{ textDecoration: "underline" }}>
+          {t("billing.payNow")}
+        </Link>
+      </div>
+    );
+  }
+
+  // The paid period ran out: the center still works until the grace date.
+  if (tenant.status === "PAST_DUE") {
+    return (
+      <div role="status" style={{ background: "#FFF7E6", color: "#A15C00", padding: "10px 24px", fontSize: 13, fontWeight: 600, textAlign: "center" }}>
+        {t("billing.pastDue").replace("{date}", tenant.billing?.graceUntil ? formatDate(tenant.billing.graceUntil, lang) : "")}{" "}
+        <Link href="/pricing" style={{ textDecoration: "underline" }}>
+          {t("billing.payNow")}
+        </Link>
+      </div>
+    );
+  }
+
   if (tenant.status === "SUSPENDED") {
     return (
       <div style={{ background: "#FDEBEC", color: "#B23A47", padding: "10px 24px", fontSize: 13, fontWeight: 600, textAlign: "center" }}>

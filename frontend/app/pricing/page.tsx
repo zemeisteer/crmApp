@@ -7,6 +7,7 @@ import Select from "@/components/Select";
 import { useAuth } from "@/lib/auth-context";
 import { platformBillingApi, plansApi, Plan, ApiError } from "@/lib/api";
 import { useCenterClock } from "@/lib/use-center-clock";
+import { formatDate } from "@/lib/format-date";
 import { useLanguage } from "@/lib/i18n-context";
 import { planFeatureLines } from "@/lib/plans";
 
@@ -63,6 +64,7 @@ function TenantPricing() {
         <h1 style={{ fontSize: 22, fontWeight: 800 }}>{t("pricing.title")}</h1>
         <div style={{ fontSize: 13, color: "#686B75", marginTop: 2 }}>
           {t("pricing.currentPlan")}: <strong>{tenant?.plan}</strong> · {t("pricing.status")}: <strong>{tenant?.status}</strong>
+          {tenant?.billing?.paidUntil && <> · <span data-testid="paid-until">{t("billing.paidUntil").replace("{date}", formatDate(tenant.billing.paidUntil, lang))}</span></>}
         </div>
       </div>
 

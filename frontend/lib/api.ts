@@ -273,6 +273,8 @@ export interface Tenant {
   trialEndsAt: string | null;
   /** Where a center on its free trial stands (from /auth/me). */
   trial?: { stage: "ACTIVE" | "TRIAL" | "READ_ONLY" | "LOCKED"; endsAt: string | null; lockAt: string | null; purgeAt: string | null };
+  /** The period paid to CRMAPP (from /auth/me): until when, and the grace after it. */
+  billing?: { paidUntil: string | null; graceUntil: string | null; suspendedForNonPayment: boolean };
   onboardingStep?: string;
   teachingCategories?: string[];
   country?: string;
@@ -2176,6 +2178,9 @@ export interface PlatformSubscription extends PlatformCenterRef {
   price: number;
   status: TenantStatus;
   trialEndsAt: string | null;
+  /** The end of the period paid to CRMAPP; null: never paid through billing. */
+  paidUntil: string | null;
+  suspendedReason: string | null;
   createdAt: string;
   lastPaidMonth: string | null;
   totalPaid: number;
@@ -2242,6 +2247,9 @@ export const platformApi = {
   // What the deletion of unpaid trials would do now, and why. Changes nothing.
   trialPurgePreview: () => request<{ purgeEnabled: boolean; report: TrialPurgeRow[] }>("/platform/trial-purge/preview"),
   // "One phone, one free trial": lets this number have another one (audited).
+  // Which paying centers the renewal pass would move now. Changes nothing.
+  billingPreview: () =>
+    request<{ enforce: boolean; report: Array<{ tenantId: string; name: string; subdomain: string; paidUntil: string; from: "ACTIVE" | "PAST_DUE"; to: "PAST_DUE" | "SUSPENDED" }> }>("/platform/billing/preview"),
   smsUncertain: () => request<Array<{ id: string; tenantId: string; name: string; subdomain: string; attempts: number; at: string }>>("/platform/sms-uncertain"),
   releaseTrialClaim: (phone: string, reason: string) =>
     request<{ released: boolean }>("/platform/trial-claims/release", { method: "POST", body: JSON.stringify({ phone, reason }) }),
