@@ -4,15 +4,24 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { and, count, eq, ne } from 'drizzle-orm';
+import { and, count, eq, isNotNull, isNull, ne, sql } from 'drizzle-orm';
 import { DB, Database } from '../db/db.module';
 import {
+  attendance,
   branches,
+  groups,
   organizationMemberships,
+  payments,
   students,
   subjects,
   tenants,
+  users,
 } from '../db/schema';
+import { parseSiteContent } from '../tenants/site-content';
+
+/** The first things a new center does, in the order the checklist shows them. */
+export const CHECKLIST = ['group', 'students', 'attendance', 'payment', 'team', 'telegram', 'site'] as const;
+export type ChecklistKey = (typeof CHECKLIST)[number];
 import {
   BranchStepDto,
   CategoriesStepDto,
@@ -67,6 +76,33 @@ const STEP_TRANSITIONS: Record<string, string> = {
 @Injectable()
 export class OnboardingService {
   constructor(@Inject(DB) private readonly db: Database) {}
+
+  /**
+   * The "first steps" checklist on the dashboard, read from what the center
+   * has actually done (nothing to mark by hand): a group, students, an
+   * attendance mark, a payment, a colleague, Telegram linked, the site
+   * filled in.
+   */
+  async checklist(tenantId: string) {
+    const one = async (q: Promise<Array<{ n: number }>>) => ((await q)[0]?.n ?? 0) > 0;
+    const n = sql<number>`count(*)::int`;
+    const [tenant] = await this.db.select({ siteContent: tenants.siteContent, logoUrl: tenants.logoUrl }).from(tenants).where(eq(tenants.id, tenantId));
+    const site = parseSiteContent(tenant?.siteContent ?? null);
+    const done: Record<ChecklistKey, boolean> = {
+      group: await one(this.db.select({ n }).from(groups).where(and(eq(groups.tenantId, tenantId), isNull(groups.deletedAt)))),
+      students: await one(this.db.select({ n }).from(students).where(and(eq(students.tenantId, tenantId), isNull(students.deletedAt)))),
+      attendance: await one(this.db.select({ n }).from(attendance).where(eq(attendance.tenantId, tenantId))),
+      payment: await one(this.db.select({ n }).from(payments).where(eq(payments.tenantId, tenantId))),
+      team: await one(this.db.select({ n }).from(organizationMemberships).where(and(eq(organizationMemberships.tenantId, tenantId), eq(organizationMemberships.status, 'ACTIVE'), ne(organizationMemberships.role, 'OWNER')))),
+      telegram:
+        (await one(this.db.select({ n }).from(organizationMemberships).innerJoin(users, eq(users.id, organizationMemberships.userId))
+          .where(and(eq(organizationMemberships.tenantId, tenantId), isNotNull(users.telegramChatId))))) ||
+        (await one(this.db.select({ n }).from(students).where(and(eq(students.tenantId, tenantId), isNotNull(students.telegramChatId))))),
+      site: !!(tenant?.logoUrl || site.heroTitle || site.about),
+    };
+    const items = CHECKLIST.map((key) => ({ key, done: done[key] }));
+    return { items, done: items.filter((i) => i.done).length, total: items.length };
+  }
 
   async getState(tenantId: string) {
     const tenant = await this.db.query.tenants.findFirst({

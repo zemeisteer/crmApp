@@ -14,6 +14,7 @@ import TeacherHome from "@/components/dashboard/TeacherHome";
 import AnnouncementBanners from "@/components/dashboard/AnnouncementBanners";
 import { MONTH_KEYS, MONTH_SHORT_KEYS, type TranslationKey } from "@/lib/i18n";
 import { formatDate } from "@/lib/format-date";
+import FirstSteps from "@/components/FirstSteps";
 
 const ACCENT = "#4F46E5";
 const WEEKDAY_SHORT_KEYS: TranslationKey[] = [
@@ -161,6 +162,7 @@ function DashboardContent() {
       </div>
 
       <div style={{ padding: "26px 32px", display: "flex", flexDirection: "column", gap: 22, overflow: "auto" }}>
+        <FirstSteps />
         {loading ? (
           <DashboardSkeleton />
         ) : (

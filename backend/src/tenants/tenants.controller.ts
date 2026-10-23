@@ -23,6 +23,13 @@ export class TenantsController {
     private readonly files: FilesService,
   ) {}
 
+  // Public: the centers' sites for the main site's sitemap.xml.
+  @Throttle({ default: { limit: 30, ttl: 60_000 } })
+  @Get('public-sitemap')
+  publicSitemap() {
+    return this.service.publicSitemap();
+  }
+
   // Public: resolve a subdomain (used by the login page / public site)
   @Get('by-subdomain/:subdomain')
   findBySubdomain(@Param('subdomain') subdomain: string) {

@@ -360,6 +360,9 @@ export interface PublicShowcaseData {
     website?: string | null;
     websiteLabel?: string | null;
     language?: string;
+    /** The center's own verified domain (the site's canonical address). */
+    customDomain?: string | null;
+    updatedAt?: string;
   };
   stats: {
     coursesCount: number;
@@ -2282,6 +2285,13 @@ export const platformApi = {
   /** A value of null removes the stored key (the name goes back to .env). The admin's password is asked every time. */
   saveIntegration: (id: string, password: string, values: Record<string, string | null>) =>
     request<PlatformIntegration & { restartNeeded: boolean }>(`/platform/integrations/${id}`, { method: "PUT", body: JSON.stringify({ password, values }) }),
+};
+
+// ---- First steps (dashboard checklist) ----
+
+export type ChecklistKey = "group" | "students" | "attendance" | "payment" | "team" | "telegram" | "site";
+export const checklistApi = {
+  get: () => request<{ items: Array<{ key: ChecklistKey; done: boolean }>; done: number; total: number }>("/onboarding/checklist"),
 };
 
 // ---- A center's own domains ----

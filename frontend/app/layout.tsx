@@ -3,6 +3,7 @@ import "./globals.css";
 import { AuthProvider } from "@/lib/auth-context";
 import { LanguageProvider } from "@/lib/i18n-context";
 import SmoothAnchors from "@/components/SmoothAnchors";
+import { ROOT_DOMAIN } from "@/lib/domain";
 
 // Where the browser supports it (Chrome and Firefox on Android), the page
 // itself is resized by the on-screen keyboard, so a field at the bottom of
@@ -14,9 +15,13 @@ export const viewport: Viewport = {
   interactiveWidget: "resizes-content",
 };
 
+// The main site as search results and link previews show it; each center's
+// site has its own (app/site/[subdomain]/layout.tsx).
 export const metadata: Metadata = {
-  title: "TalimCRM",
-  description: "O'quv markazlar uchun boshqaruv tizimi",
+  metadataBase: new URL(`https://${ROOT_DOMAIN}`),
+  title: { default: "TalimCRM - o'quv markazlar uchun CRM", template: "%s" },
+  description: "O'quv markazni bitta tizimda boshqaring: lidlar, guruhlar, davomat, to'lovlar, o'quvchi va ota-ona kabinetlari, Telegram va AI. Bepul sinab ko'ring.",
+  openGraph: { type: "website", siteName: "TalimCRM", title: "TalimCRM - o'quv markazlar uchun CRM", description: "Lidlar, guruhlar, davomat, to'lovlar, kabinetlar, Telegram va AI - bitta tizimda.", locale: "uz_UZ" },
 };
 
 export default function RootLayout({

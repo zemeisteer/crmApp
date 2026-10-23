@@ -1,16 +1,12 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { ROOT_DOMAIN, customHost, subdomainFromHost } from "@/lib/domain";
+import { serverApiBase } from "@/lib/server-api";
 
 // A center's own domain (custom-domains/ in the API): which center it is,
 // asked once a minute per host. Only verified domains answer.
 const CUSTOM_TTL_MS = 60_000;
 const customCache = new Map<string, { at: number; sub: string | null }>();
-function apiBase() {
-  const internal = process.env.INTERNAL_API_URL?.trim();
-  if (internal) return internal.replace(/\/$/, "");
-  const pub = process.env.NEXT_PUBLIC_API_URL?.trim() || "";
-  return /^https?:\/\//.test(pub) ? pub.replace(/\/$/, "") : null;
-}
+const apiBase = serverApiBase;
 async function centerOfDomain(host: string): Promise<string | null> {
   const hit = customCache.get(host);
   if (hit && Date.now() - hit.at < CUSTOM_TTL_MS) return hit.sub;
