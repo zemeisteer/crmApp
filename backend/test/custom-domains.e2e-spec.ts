@@ -23,6 +23,9 @@ describe('Custom domains (e2e)', () => {
   const http = () => request(app.getHttpServer() as App);
   const bearer = (t: string) => ({ Authorization: `Bearer ${t}` });
   const dnsRecords = new Map<string, string[][]>();
+  // The platform's own domain, whatever the environment says.
+  const ROOT = 'talimcrm.test';
+  const before = process.env.ROOT_DOMAIN;
   let n = 0;
 
   const center = async () => {
@@ -34,6 +37,7 @@ describe('Custom domains (e2e)', () => {
   const add = (c: { token: string }, domain: string) => http().post('/api/custom-domains').set(bearer(c.token)).send({ domain });
 
   beforeAll(async () => {
+    process.env.ROOT_DOMAIN = ROOT;
     const moduleFixture: TestingModule = await Test.createTestingModule({ imports: [AppModule] })
       .overrideProvider(ThrottlerStorage)
       .useValue({ increment: async () => ({ totalHits: 1, timeToExpire: 0, isBlocked: false, timeToBlockExpire: 0 }) })
@@ -48,11 +52,13 @@ describe('Custom domains (e2e)', () => {
 
   afterAll(async () => {
     await app?.close();
+    if (before === undefined) delete process.env.ROOT_DOMAIN;
+    else process.env.ROOT_DOMAIN = before;
   });
 
   it('only a real domain of the center: not the platform own, not localhost, not an address', async () => {
     const c = await center();
-    for (const bad of ['academy', 'localhost', `x.${process.env.ROOT_DOMAIN || 'crmapp.com'}`, '10.0.0.1', 'bad_domain.uz', '-a.uz']) {
+    for (const bad of ['academy', 'localhost', `x.${ROOT}`, ROOT, '10.0.0.1', 'bad_domain.uz', '-a.uz']) {
       const res = await add(c, bad);
       expect([bad, res.status]).toEqual([bad, 400]);
     }

@@ -53,7 +53,9 @@ describe('Sign-up integrity (e2e)', () => {
       .compile();
     app = moduleFixture.createNestApplication<NestExpressApplication>();
     configureApp(app);
-    await app.init();
+    // One listening server: requests at once would otherwise each start
+    // their own (supertest), which can reset connections on a busy runner.
+    await app.listen(0);
     db = app.get<Database>(DB);
     auth = app.get(AuthService);
     email = app.get(EmailService);
