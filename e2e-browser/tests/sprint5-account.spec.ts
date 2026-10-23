@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { centerUrl, cleanUpStagingCenters, expectCenterDashboard, loginOnMainSite, newCenter, TARGET } from './support';
+import { API, centerUrl, cleanUpStagingCenters, expectCenterDashboard, loginOnMainSite, newCenter, TARGET } from './support';
 
 // Sprint 5 through the pages: turning on two-step sign-in shows recovery
 // codes once and ends the other sessions; one of the codes signs in; a
@@ -170,4 +170,24 @@ test("plan entitlements: the platform admin unticks a feature in the plan editor
   await expectCenterDashboard(page, c.sub);
   await expect(page.getByRole('link', { name: 'Sertifikatlar' })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Mock va mashqlar' })).toHaveCount(0);
+});
+
+test('platform switches: the admin turns AI off for one center from the page; that center is refused, then the exception is removed', async ({ page }) => {
+  test.skip(TARGET !== 'local', 'needs the disposable local database');
+  const admin = await newCenter('flagadm');
+  const c = await newCenter('flagctr');
+  await sql(`update users set role = 'SUPERADMIN' where email = $1`, [admin.email]);
+  await loginOnMainSite(page, admin.email);
+  await expectCenterDashboard(page, admin.sub);
+  await page.goto(centerUrl(admin.sub, '/admin/flags'));
+  await expect(page.getByRole('heading', { name: "Platforma o'chirgichlari" })).toBeVisible();
+  const ai = page.getByTestId('flag-ai');
+  await expect(ai.getByRole('switch')).toHaveAttribute('aria-checked', 'true');
+  await ai.getByLabel('Markaz subdomeni').fill(c.sub);
+  await ai.getByRole('button', { name: "Istisno qo'shish" }).click();
+  await expect(ai.getByRole('listitem').filter({ hasText: c.sub })).toBeVisible();
+  const refused = await fetch(`${API}/ai/materials`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${c.token}` }, body: JSON.stringify({ subject: 'Matematika', topic: 'Kasrlar', type: 'HOMEWORK' }) });
+  expect(refused.status).toBe(503);
+  await ai.getByRole('listitem').filter({ hasText: c.sub }).getByRole('button', { name: 'Olib tashlash' }).click();
+  await expect(ai.getByRole('listitem')).toHaveCount(0);
 });

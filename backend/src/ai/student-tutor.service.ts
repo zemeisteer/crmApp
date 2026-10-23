@@ -9,6 +9,7 @@ import { teacherGroupIds } from '../common/teacher-scope';
 import { DEFAULT_TIMEZONE, isValidTimeZone, zonedParts } from '../common/timezone';
 import { AiService } from './ai.service';
 import { tutorTopicsPrompt, type TutorTurn } from './tutor-prompt';
+import { flagOn } from '../feature-flags/flags';
 
 // The students' AI tutor, shared by the Telegram bot and the web cabinet:
 // one conversation, one daily limit per student (set by the center).
@@ -109,7 +110,7 @@ export class StudentTutorService {
   async ask(student: TutorStudent, text: string, now = new Date()): Promise<TutorAnswer> {
     const limit = student.tenant?.studentAiDailyLimit ?? 20;
     if (limit <= 0) return { status: 'off' };
-    if (!this.ai.isConfigured) return { status: 'unavailable' };
+    if (!this.ai.isConfigured || !(await flagOn(this.db, 'ai', student.tenantId))) return { status: 'unavailable' };
     const day = this.localDay(student, now);
     const used = await this.reserve(student, limit, day);
     if (used === null) return { status: 'limit', limit };

@@ -1,4 +1,4 @@
-import { CallHandler, ExecutionContext, ForbiddenException, HttpException, HttpStatus, Inject, Injectable, NestInterceptor, SetMetadata } from '@nestjs/common';
+import { CallHandler, ExecutionContext, ForbiddenException, HttpException, HttpStatus, Inject, Injectable, NestInterceptor, ServiceUnavailableException, SetMetadata } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { eq } from 'drizzle-orm';
 import { Observable, catchError, from, mergeMap, throwError } from 'rxjs';
@@ -9,6 +9,7 @@ import { trialRules } from './trial-rules';
 import { centerAccess, centerState } from './trial-access';
 import { chargeTrialAi, refundTrialAi } from './trial-limits';
 import { allows, notInPlan, type Entitlements, type Feature } from '../plans/entitlements';
+import { flagOn } from '../feature-flags/flags';
 
 const USES_AI = 'usesAi';
 /**
@@ -62,6 +63,9 @@ export class TrialInterceptor implements NestInterceptor {
 
     const usesAi = this.reflector.getAllAndOverride<boolean>(USES_AI, [context.getHandler(), context.getClass()]);
     if (usesAi && !allows(ent, 'AI_TOOLS')) throw notInPlan('AI_TOOLS');
+    if (usesAi && !(await flagOn(this.db, 'ai', user.tenantId))) {
+      throw new ServiceUnavailableException({ code: 'FEATURE_DISABLED', feature: 'ai', message: "AI vaqtincha o'chirilgan. Birozdan so'ng urinib ko'ring." });
+    }
     if (usesAi && centerState(tenant, new Date(), rules) === 'TRIAL') {
       if (!(await chargeTrialAi(this.db, user.tenantId, tenant.tz))) {
         throw new HttpException(

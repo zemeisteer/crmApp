@@ -7,3 +7,8 @@ export class SetFeatureFlagDto {
   @IsBoolean()
   enabled: boolean;
 }
+
+export class SetFlagStateDto {
+  @IsBoolean()
+  enabled: boolean;
+}
