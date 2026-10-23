@@ -77,7 +77,7 @@ describe('PortalService', () => {
     const mockBilling = {
       generateClickLink: vi.fn().mockResolvedValue({ url: 'https://my.click.uz/pay?id=123', transactionId: 'tx-1' }),
       generatePaymeLink: vi.fn().mockResolvedValue({ url: 'https://checkout.paycom.uz/abc', transactionId: 'tx-2' }),
-      getConfig: vi.fn().mockReturnValue({ clickEnabled: true, paymeEnabled: false }),
+      getConfig: vi.fn().mockResolvedValue({ clickEnabled: true, paymeEnabled: false }),
     };
 
     mockLedger = {

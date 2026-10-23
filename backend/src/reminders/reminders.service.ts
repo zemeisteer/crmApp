@@ -4,6 +4,8 @@ import { ConfigService } from '@nestjs/config';
 import { and, count, eq, gte, inArray, isNull, lt, ne, sum } from 'drizzle-orm';
 import { DB, Database } from '../db/db.module';
 import { attendance, enrollments, groups, leads, organizationMemberships, payments, reminderLog, students, teachers, tenants, users } from '../db/schema';
+import { InvoicesService } from '../invoices/invoices.service';
+import { lessonOccurrences } from '../lessons/occurrences';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PaymentsService } from '../payments/payments.service';
 import { TelegramService } from '../telegram/telegram.service';
@@ -14,11 +16,21 @@ import { runsOn } from '../common/weekdays';
 //  - lessons: a Telegram message to students and the teacher ~2 hours before
 //    today's lesson;
 //  - payments: from the center's "reminder day" of the month, debtors (same
-//    rule as the payments page) get Telegram + SMS, once per month.
+//    rule as the payments page) get Telegram + SMS, once per month;
+//  - attendance: after the day's last lesson, teachers who left a lesson
+//    unmarked, and the owners/admins get the list;
+//  - invoices: the month's invoices are issued in its first days.
 // Nothing is sent at night (07:00-21:00 in the center's time zone), and
 // reminder_log makes every reminder go out once, across restarts.
 
 export const LESSON_LEAD_MINUTES = 120;
+// The attendance reminder goes this long after the day's last lesson ends,
+// and not later than LATEST_EVENING (center time).
+export const ATTENDANCE_GRACE_MINUTES = 30;
+const LATEST_EVENING = 23 * 60;
+// Automatic invoices are issued in the month's first days only (catching up
+// after downtime), never in the middle of a month a center switched them on in.
+export const AUTO_INVOICE_LAST_DAY = 5;
 const DAY_START = 7;
 const DAY_END = 21;
 
@@ -36,12 +48,13 @@ export class RemindersService {
     private readonly notifications: NotificationsService,
     private readonly payments: PaymentsService,
     private readonly telegram: TelegramService,
+    private readonly invoices: InvoicesService,
   ) {}
 
   // One pass over every live center. `now` is injectable for tests.
   async scan(now = new Date()) {
     const list = await this.db.select().from(tenants).where(ne(tenants.status, 'SUSPENDED'));
-    const out = { lessons: 0, payments: 0, digests: 0 };
+    const out = { lessons: 0, payments: 0, digests: 0, attendance: 0, invoices: 0 };
     for (const t of list) {
       // A center whose trial is over sends nothing (trial-access.ts).
       if (centerWorkRefusal(t, now)) continue;
@@ -49,6 +62,8 @@ export class RemindersService {
         out.lessons += await this.lessonReminders(t, now);
         out.payments += await this.paymentReminders(t, now);
         out.digests += await this.dailyDigests(t, now);
+        out.attendance += await this.attendanceReminders(t, now);
+        out.invoices += await this.monthlyInvoices(t, now);
       } catch (err) {
         this.logger.warn(`Reminders for tenant ${t.id} failed: ${(err as Error).message}`);
       }
@@ -178,6 +193,106 @@ export class RemindersService {
     return sent;
   }
 
+  // ---- Attendance left unmarked, after the day's last lesson ----
+
+  async attendanceReminders(t: Tenant, now: Date) {
+    if (!t.remindAttendance) return 0;
+    const c = this.clock(t, now);
+    const lessons = (await lessonOccurrences(this.db, t.id, c.date, c.date)).filter((l) => !l.cancelled);
+    if (lessons.length === 0) return 0;
+    const toMin = (hhmm: string) => {
+      const [h, m] = hhmm.split(':').map(Number);
+      return h * 60 + m;
+    };
+    const lastEnd = Math.max(...lessons.map((l) => toMin(l.endTime || l.startTime)));
+    if (c.minutes < lastEnd + ATTENDANCE_GRACE_MINUTES || c.minutes >= LATEST_EVENING) return 0;
+
+    // A lesson counts as marked when any mark exists for it: one of its own
+    // (its timetable row) or a day-level mark of the group.
+    const marks = await this.db
+      .selectDistinct({ groupId: attendance.groupId, scheduleId: attendance.scheduleId })
+      .from(attendance)
+      .where(and(eq(attendance.tenantId, t.id), eq(attendance.date, c.date)));
+    const marked = new Set(marks.map((m) => `${m.groupId}:${m.scheduleId ?? ''}`));
+    const groupIds = [...new Set(lessons.map((l) => l.groupId))];
+    // Groups nobody studies in have nothing to mark.
+    const withStudents = new Set(
+      (
+        await this.db
+          .selectDistinct({ groupId: enrollments.groupId })
+          .from(enrollments)
+          .innerJoin(students, eq(students.id, enrollments.studentId))
+          .where(and(inArray(enrollments.groupId, groupIds), eq(enrollments.status, 'ACTIVE'), isNull(students.deletedAt)))
+      ).map((r) => r.groupId),
+    );
+    const open = lessons.filter(
+      (l) => withStudents.has(l.groupId) && !marked.has(`${l.groupId}:`) && !(l.scheduleId && marked.has(`${l.groupId}:${l.scheduleId}`)),
+    );
+    if (open.length === 0) return 0;
+
+    const names = new Map(
+      (await this.db.select({ id: groups.id, name: groups.name }).from(groups).where(inArray(groups.id, groupIds))).map((g) => [g.id, g.name]),
+    );
+    const teacherIds = [...new Set(open.map((l) => l.teacherId).filter((x): x is string => Boolean(x)))];
+    const teacherRows = teacherIds.length
+      ? await this.db
+          .select({ id: teachers.id, fullName: teachers.fullName, userId: users.id, chat: users.telegramChatId })
+          .from(teachers)
+          .leftJoin(users, eq(users.id, teachers.userId))
+          .where(and(inArray(teachers.id, teacherIds), isNull(teachers.deletedAt)))
+      : [];
+    const byTeacher = new Map(teacherRows.map((r) => [r.id, r]));
+    const line = (l: (typeof open)[number]) => `• ${l.startTime.slice(0, 5)} — ${escape(names.get(l.groupId) ?? '')}`;
+
+    let sent = 0;
+    for (const [teacherId, rows] of groupBy(open, (l) => l.teacherId)) {
+      const tch = teacherId ? byTeacher.get(teacherId) : undefined;
+      if (!tch?.chat || !tch.userId || !(await this.once(t.id, 'ATTENDANCE_TEACHER', tch.userId, c.date))) continue;
+      await this.notifications.send(t.id, {
+        channel: 'TELEGRAM',
+        event: 'LESSON_REMINDER',
+        recipient: tch.chat,
+        content: [`📝 Bugungi darslarda davomat belgilanmagan:`, ...rows.map(line), '', `Iltimos, belgilab qo'ying: kim keldi, kim kelmadi.`].join('\n'),
+      });
+      sent++;
+    }
+
+    const heads = await this.db
+      .select({ id: users.id, chat: users.telegramChatId })
+      .from(users)
+      .innerJoin(organizationMemberships, and(eq(organizationMemberships.userId, users.id), eq(organizationMemberships.tenantId, t.id)))
+      .where(and(eq(users.tenantId, t.id), eq(organizationMemberships.status, 'ACTIVE'), inArray(organizationMemberships.role, ['OWNER', 'ADMIN'])));
+    const summary = [
+      `📝 <b>Davomat belgilanmagan</b> — ${open.length} ta dars (${lessons.length} tadan)`,
+      ...open.map((l) => `${line(l)} · ${escape((l.teacherId && byTeacher.get(l.teacherId)?.fullName) || "o'qituvchi yo'q")}`),
+    ].join('\n');
+    for (const h of heads) {
+      if (!h.chat || !(await this.once(t.id, 'ATTENDANCE_ADMIN', h.id, c.date))) continue;
+      await this.notifications.send(t.id, { channel: 'TELEGRAM', event: 'LESSON_REMINDER', recipient: h.chat, content: summary });
+      sent++;
+    }
+    return sent;
+  }
+
+  // ---- The month's invoices, issued by themselves ----
+
+  async monthlyInvoices(t: Tenant, now: Date) {
+    if (!t.autoInvoices) return 0;
+    const c = this.clock(t, now);
+    if (c.day > AUTO_INVOICE_LAST_DAY || c.hour < 6) return 0;
+    // Once a month. The generator itself never issues one twice (one invoice
+    // per enrollment and month), so a pass after a pressed button is harmless;
+    // the mark is set only after it went through, so a failure is retried.
+    const [done] = await this.db
+      .select({ id: reminderLog.id })
+      .from(reminderLog)
+      .where(and(eq(reminderLog.tenantId, t.id), eq(reminderLog.kind, 'AUTO_INVOICES'), eq(reminderLog.targetId, t.id), eq(reminderLog.key, c.month)));
+    if (done) return 0;
+    const r = await this.invoices.generateMonthly(t.id, c.month);
+    await this.once(t.id, 'AUTO_INVOICES', t.id, c.month);
+    return r.generatedCount;
+  }
+
   // ---- Evening summary for owners / admins / managers ----
 
   async dailyDigests(t: Tenant, now: Date) {
@@ -249,6 +364,15 @@ export class RemindersService {
     const route = await this.notifications.smsRoute(t.id);
     return route.ok && route.configured;
   }
+}
+
+function groupBy<T, K>(rows: T[], key: (r: T) => K) {
+  const out = new Map<K, T[]>();
+  for (const r of rows) {
+    const k = key(r);
+    out.set(k, [...(out.get(k) ?? []), r]);
+  }
+  return out;
 }
 
 function escape(v: string) {

@@ -484,6 +484,27 @@
       "when": 1796900000000,
       "tag": "0068_tenant_domains",
       "breakpoints": true
+    },
+    {
+      "idx": 69,
+      "version": "7",
+      "when": 1797000000000,
+      "tag": "0069_auto_invoices_attendance_reminder",
+      "breakpoints": true
+    },
+    {
+      "idx": 70,
+      "version": "7",
+      "when": 1797100000000,
+      "tag": "0070_tenant_payment_accounts",
+      "breakpoints": true
+    },
+    {
+      "idx": 71,
+      "version": "7",
+      "when": 1797200000000,
+      "tag": "0071_job_candidates",
+      "breakpoints": true
     }
   ]
 }

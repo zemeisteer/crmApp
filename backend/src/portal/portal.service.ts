@@ -671,7 +671,7 @@ export class PortalService {
       status: effectiveExpected === 0 || debtAmount === 0 ? 'PAID' : monthPaid > 0 ? 'PARTIAL' : 'UNPAID',
       history,
       // Only configured providers get a "pay online" button.
-      online: { click: this.billing.getConfig().clickEnabled, payme: this.billing.getConfig().paymeEnabled },
+      online: await this.billing.getConfig(tenantId).then((c) => ({ click: c.clickEnabled, payme: c.paymeEnabled })),
     };
   }
 

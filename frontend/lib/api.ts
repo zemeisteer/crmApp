@@ -1134,9 +1134,57 @@ export interface PublicPlacementTest {
   questions: PublicQuestion[];
 }
 
+// ---- Teacher hiring ----
+
+export type CandidateStage = "NEW" | "TEST" | "INTERVIEW" | "DEMO" | "OFFER" | "HIRED" | "REJECTED";
+export interface Candidate {
+  id: string;
+  fullName: string;
+  phone: string | null;
+  email: string | null;
+  subject: string | null;
+  source: string | null;
+  notes: string | null;
+  stage: CandidateStage;
+  testPercent: number | null;
+  testAttemptId: string | null;
+  interviewAt: string | null;
+  interviewScore: number | null;
+  interviewNotes: string | null;
+  demoAt: string | null;
+  demoScore: number | null;
+  demoNotes: string | null;
+  decisionNote: string | null;
+  teacherId: string | null;
+  history: Array<{ stage: CandidateStage; at: string; by: string | null }>;
+  createdAt: string;
+  updatedAt: string;
+}
+export interface CandidateDetail extends Candidate {
+  attempts: Array<{ id: string; testId: string; testTitle: string; percent: number; correct: number; total: number; reviewStatus: string; createdAt: string }>;
+}
+
+export const hiringApi = {
+  list: (params: { stage?: CandidateStage; q?: string } = {}) => {
+    const qs = new URLSearchParams(Object.entries(params).filter(([, v]) => v) as [string, string][]).toString();
+    return request<{ items: Candidate[]; counts: Record<CandidateStage, number> }>(`/hiring/candidates${qs ? `?${qs}` : ""}`);
+  },
+  create: (data: { fullName: string; phone?: string; email?: string; subject?: string; source?: string; notes?: string }) =>
+    request<Candidate>("/hiring/candidates", { method: "POST", body: JSON.stringify(data) }),
+  get: (id: string) => request<CandidateDetail>(`/hiring/candidates/${id}`),
+  update: (id: string, data: Record<string, unknown>) =>
+    request<Candidate>(`/hiring/candidates/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
+  hire: (id: string) => request<{ candidate: Candidate; teacherId: string }>(`/hiring/candidates/${id}/hire`, { method: "POST" }),
+  archive: (id: string) => request<{ success: boolean }>(`/hiring/candidates/${id}`, { method: "DELETE" }),
+};
+
+/** Who a placement test is for: applicants (filed as leads) or teacher candidates. */
+export type PlacementAudience = "STUDENT" | "CANDIDATE";
+
 export const placementApi = {
-  list: () => request<PlacementTestSummary[]>("/placement-tests"),
+  list: (audience: PlacementAudience = "STUDENT") => request<PlacementTestSummary[]>(`/placement-tests${audience === "CANDIDATE" ? "?audience=CANDIDATE" : ""}`),
   create: (data: {
+    audience?: PlacementAudience;
     subject: string;
     title?: string;
     level?: "BEGINNER" | "INTERMEDIATE" | "ADVANCED";
@@ -1944,8 +1992,30 @@ export const staffApi = {
 
 // ---- Billing (Click / Payme — online payments & webhook engine Spec §27) ----
 
+export type PaymentProvider = "CLICK" | "PAYME";
+export interface PaymentAccount {
+  connected: boolean;
+  merchantId: string | null;
+  serviceId: string | null;
+  /** Set in the merchant cabinet as the callback address. */
+  webhookUrl: string;
+  updatedAt: string | null;
+}
+/** The center's own Click / Payme accounts (the secret never comes back). */
+export interface PaymentAccounts {
+  canStore: boolean;
+  click: PaymentAccount;
+  payme: PaymentAccount;
+  /** The platform-wide account a center without its own falls back to. */
+  platformFallback: { click: boolean; payme: boolean };
+}
+
 export const billingApi = {
   getConfig: () => request<{ clickEnabled: boolean; paymeEnabled: boolean }>("/billing/config"),
+  accounts: () => request<PaymentAccounts>("/billing/accounts"),
+  saveAccount: (provider: PaymentProvider, data: { merchantId: string; serviceId?: string; secret?: string }) =>
+    request<PaymentAccounts>(`/billing/accounts/${provider}`, { method: "PUT", body: JSON.stringify(data) }),
+  removeAccount: (provider: PaymentProvider) => request<PaymentAccounts>(`/billing/accounts/${provider}`, { method: "DELETE" }),
   clickLink: (data: { studentId: string; amount: number; forMonth: string; invoiceId?: string }) =>
     request<BillingLink>("/billing/click/link", { method: "POST", body: JSON.stringify(data) }),
   paymeLink: (data: { studentId: string; amount: number; forMonth: string; invoiceId?: string }) =>
@@ -3175,6 +3245,10 @@ export interface NotificationSettings {
   remindPaymentDay?: number;
   remindLessons?: boolean;
   dailyDigest?: boolean;
+  /** After the last lesson: teachers who left attendance unmarked. */
+  remindAttendance?: boolean;
+  /** The month's invoices issued by themselves on the 1st. */
+  autoInvoices?: boolean;
 }
 
 export type DebtorReminderPreview = {

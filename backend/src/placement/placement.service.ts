@@ -1,6 +1,7 @@
 import { BadRequestException, Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { randomBytes } from 'crypto';
 import { and, desc, eq, sql } from 'drizzle-orm';
+import { HiringService } from '../hiring/hiring.service';
 import { DB, Database } from '../db/db.module';
 import { placementAttempts, placementTests, tenants } from '../db/schema';
 import { AiService } from '../ai/ai.service';
@@ -20,6 +21,7 @@ export class PlacementService {
     @Inject(DB) private readonly db: Database,
     private readonly ai: AiService,
     private readonly leads: LeadsService,
+    private readonly hiring: HiringService,
   ) {}
 
   // Older tests stored a simpler format; normalizeQuestion reads both.
@@ -63,6 +65,7 @@ export class PlacementService {
       subject: dto.subject,
       language: dto.language ?? 'UZ',
       questions: JSON.stringify(questions),
+      audience: dto.audience ?? 'STUDENT',
       token: randomBytes(9).toString('base64url'),
     }).returning();
     return { ...this.view(test), source, questions };
@@ -81,10 +84,10 @@ export class PlacementService {
   }
 
   private view(t: typeof placementTests.$inferSelect) {
-    return { id: t.id, title: t.title, subject: t.subject, language: t.language, token: t.token, active: t.active, createdAt: t.createdAt };
+    return { id: t.id, title: t.title, subject: t.subject, language: t.language, audience: t.audience, token: t.token, active: t.active, createdAt: t.createdAt };
   }
 
-  async list(tenantId: string) {
+  async list(tenantId: string, audience: 'STUDENT' | 'CANDIDATE' = 'STUDENT') {
     const rows = await this.db
       .select({
         test: placementTests,
@@ -94,7 +97,7 @@ export class PlacementService {
         pending: sql<number>`(select count(*)::int from placement_attempts pa where pa.test_id = "placement_tests"."id" and pa.review_status = 'PENDING')`,
       })
       .from(placementTests)
-      .where(eq(placementTests.tenantId, tenantId))
+      .where(and(eq(placementTests.tenantId, tenantId), eq(placementTests.audience, audience)))
       .orderBy(desc(placementTests.createdAt));
     return rows.map((r) => ({ ...this.view(r.test), questionCount: this.parse(r.test).length, attempts: r.attempts, pending: r.pending }));
   }
@@ -201,8 +204,16 @@ export class PlacementService {
       suggestedLevel: r.level,
       reviewStatus: r.pending ? 'PENDING' : 'DONE',
     }).returning({ id: placementAttempts.id });
-    // File the applicant under admissions. A failure here must not lose the
-    // result the student just submitted.
+    // A teacher candidate goes under hiring, an applicant under admissions.
+    // A failure here must not lose the result just submitted.
+    if (test.audience === 'CANDIDATE') {
+      try {
+        await this.hiring.recordTestAttempt(test.tenantId, { fullName: dto.fullName.trim(), phone: dto.phone, subject: test.subject, attemptId: attempt.id, percent: r.percent });
+      } catch (err) {
+        this.logger.warn(`Candidate test ${attempt.id} not filed: ${(err as Error).message}`);
+      }
+      return { correct: r.earned, total: r.total, percent: r.percent, suggestedLevel: r.level, pending: r.pending };
+    }
     try {
       const leadId = await this.leads.recordPlacementAttempt(test.tenantId, {
         fullName: dto.fullName.trim(), phone: dto.phone, subject: test.subject, testTitle: test.title,

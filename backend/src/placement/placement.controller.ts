@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Query, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Throttle } from '@nestjs/throttler';
 import { memoryStorage } from 'multer';
@@ -20,8 +20,8 @@ export class PlacementController {
 
   @Roles(...STAFF)
   @Get()
-  list(@CurrentUser('tenantId') tenantId: string) {
-    return this.service.list(tenantId);
+  list(@CurrentUser('tenantId') tenantId: string, @Query('audience') audience?: string) {
+    return this.service.list(tenantId, audience === 'CANDIDATE' ? 'CANDIDATE' : 'STUDENT');
   }
 
   @Roles(...STAFF)

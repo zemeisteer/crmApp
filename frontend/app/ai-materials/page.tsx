@@ -5,7 +5,7 @@ import DashboardShell from "@/components/DashboardShell";
 import Select from "@/components/Select";
 import LoadError from "@/components/LoadError";
 import MarkdownLite from "@/components/MarkdownLite";
-import MaterialActions from "@/components/ai/MaterialActions";
+import MaterialActions, { type MaterialGiven } from "@/components/ai/MaterialActions";
 import { aiApi, groupsApi, homeworkApi, Group, Homework, ApiError } from "@/lib/api";
 import { useLanguage } from "@/lib/i18n-context";
 import type { TranslationKey } from "@/lib/i18n";
@@ -44,6 +44,7 @@ interface SavedAiMaterial {
   type: string;
   customInstructions?: string;
   content: string;
+  given?: MaterialGiven[];
 }
 
 const STORAGE_KEY = "talimcrm_saved_ai_materials_v1";
@@ -488,9 +489,21 @@ function AiMaterialsContent() {
                 </div>
 
                 <div style={{ marginBottom: 14, paddingBottom: 14, borderBottom: "1px solid #F1F0EC" }}>
-                  <MaterialActions key={activeMaterial.id} material={activeMaterial} groups={groups} defaultGroupId={groupId !== "ALL" ? groupId : undefined} />
+                  <MaterialActions
+                    key={activeMaterial.id}
+                    material={activeMaterial}
+                    groups={groups}
+                    defaultGroupId={groupId !== "ALL" ? groupId : undefined}
+                    onGiven={(entry) => {
+                      // Remembered with the material: to which groups, by whom, when.
+                      const updated = { ...activeMaterial, given: [...(activeMaterial.given ?? []), entry] };
+                      setActiveMaterial(updated);
+                      persistHistory(history.map((h) => (h.id === updated.id ? updated : h)));
+                    }}
+                  />
                 </div>
-                <div style={{ maxHeight: 520, overflowY: "auto", paddingRight: 6 }}>
+                {/* The whole material, in the page's own scroll (no box inside it). */}
+                <div>
                   <MarkdownLite text={activeMaterial.content} />
                 </div>
               </div>
@@ -605,6 +618,7 @@ function AiMaterialsContent() {
                               whiteSpace: "nowrap",
                             }}
                           >
+                            {h.given?.length ? <span style={{ fontSize: 10.5, fontWeight: 800, color: "#15803D", background: "#ECFDF5", borderRadius: 6, padding: "1px 6px", marginRight: 6 }}>✓ {t("aim.givenBadge")}</span> : null}
                             {h.topic}
                           </div>
                           {h.customInstructions && (

@@ -6,6 +6,7 @@ import Select from "@/components/Select";
 import {
   ApiError,
   placementApi,
+  type PlacementAudience,
   type Group,
   type PlacementAttempt,
   type PlacementQuestion,
@@ -30,7 +31,7 @@ type Draft = TestQuestion & { include: boolean };
 // Level test for new students. The center creates it (AI, from a PDF or by
 // hand), shares the link, and the student solves it on their own phone or
 // computer; results show up in the "Tests & results" tab.
-export default function PlacementTestModal({ groups, onClose }: { groups: Group[]; onClose: () => void }) {
+export default function PlacementTestModal({ groups, onClose, audience = "STUDENT" }: { groups: Group[]; onClose: () => void; audience?: PlacementAudience }) {
   const { t, lang } = useLanguage();
   const { tenant } = useAuth();
   const linkOf = (token: string) => placementLink(token, tenant?.subdomain);
@@ -61,6 +62,7 @@ export default function PlacementTestModal({ groups, onClose }: { groups: Group[
     setBusy(true);
     try {
       const res = await placementApi.create({
+        audience,
         subject,
         title: title.trim() || undefined,
         groupId: groupId || undefined,
@@ -127,6 +129,7 @@ export default function PlacementTestModal({ groups, onClose }: { groups: Group[
     setError(null);
     try {
       const res = await placementApi.create({
+        audience,
         subject,
         title: title.trim() || undefined,
         language: lang,
@@ -177,8 +180,8 @@ export default function PlacementTestModal({ groups, onClose }: { groups: Group[
 
   useEffect(() => {
     if (tab !== "list") return;
-    placementApi.list().then(setTests).catch(() => setTests([]));
-  }, [tab, created]);
+    placementApi.list(audience).then(setTests).catch(() => setTests([]));
+  }, [tab, created, audience]);
 
   async function toggleOpen(id: string) {
     setOpenTest((cur) => (cur === id ? null : id));
@@ -191,7 +194,7 @@ export default function PlacementTestModal({ groups, onClose }: { groups: Group[
   async function reloadAttempts(id: string) {
     const rows = await placementApi.attempts(id).catch(() => null);
     if (rows) setAttempts((a) => ({ ...a, [id]: rows }));
-    placementApi.list().then(setTests).catch(() => undefined);
+    placementApi.list(audience).then(setTests).catch(() => undefined);
   }
 
   async function rename(test: PlacementTestSummary) {
@@ -219,7 +222,7 @@ export default function PlacementTestModal({ groups, onClose }: { groups: Group[
   const sourceLabel = { ai: t("placement.sourceAiBtn"), pdf: t("placement.sourcePdfBtn"), manual: t("placement.sourceManualBtn") };
 
   return (
-    <Modal open onClose={onClose} title={`🧭 ${t("placement.title")}`} width={820}>
+    <Modal open onClose={onClose} title={`🧭 ${t(audience === "CANDIDATE" ? "hire.testsTitle" : "placement.title")}`} width={820}>
       <div style={{ display: "flex", gap: 4, background: "#F2F1EC", padding: 4, borderRadius: 10, marginBottom: 16 }}>
         {tabBtn("new", t("placement.tabNew"))}
         {tabBtn("list", t("placement.tabList"))}

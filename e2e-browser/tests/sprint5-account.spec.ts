@@ -180,11 +180,12 @@ test('platform switches: the admin turns AI off for one center from the page; th
   await loginOnMainSite(page, admin.email);
   await expectCenterDashboard(page, admin.sub);
   await page.goto(centerUrl(admin.sub, '/admin/flags'));
-  await expect(page.getByRole('heading', { name: "Platforma o'chirgichlari" })).toBeVisible();
+  await expect(page.getByRole('heading', { name: "Favqulodda to'xtatish" })).toBeVisible();
   const ai = page.getByTestId('flag-ai');
   await expect(ai.getByRole('switch')).toHaveAttribute('aria-checked', 'true');
+  await ai.getByText('Faqat bitta markaz uchun (ixtiyoriy)').click();
   await ai.getByLabel('Markaz subdomeni').fill(c.sub);
-  await ai.getByRole('button', { name: "Istisno qo'shish" }).click();
+  await ai.getByRole('button', { name: "Qo'shish", exact: true }).click();
   await expect(ai.getByRole('listitem').filter({ hasText: c.sub })).toBeVisible();
   const refused = await fetch(`${API}/ai/materials`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${c.token}` }, body: JSON.stringify({ subject: 'Matematika', topic: 'Kasrlar', type: 'HOMEWORK' }) });
   expect(refused.status).toBe(503);

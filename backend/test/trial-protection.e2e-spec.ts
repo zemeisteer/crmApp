@@ -11,6 +11,7 @@ import { DB, Database } from '../src/db/db.module.js';
 import { auditLogs, leads, organizationMemberships, platformSubscriptions, students, tenants, users } from '../src/db/schema.js';
 import { TrialLifecycleService } from '../src/trial/trial-lifecycle.service.js';
 import { EmailService } from '../src/email/email.service.js';
+import { AiService } from '../src/ai/ai.service.js';
 import { vi } from 'vitest';
 
 // The free trial's guards (src/trial/trial-rules.ts), each switched on here
@@ -159,6 +160,8 @@ describe('Free trial protection (e2e)', () => {
 
     it('the AI: a daily allowance on the trial, none for a paying center', async () => {
       process.env.TRIAL_AI_PER_DAY = '2';
+      // No AI key in tests (the AI answers 503 then): a stand-in answer, so the allowance is what is tested.
+      vi.spyOn(app.get(AiService), 'suggestHomework').mockResolvedValue({ suggestion: 'Mashq', source: 'ai' } as never);
       const ask = () => http().post('/api/ai/suggest-homework').set(bearer(owner)).send({ subject: 'Ingliz tili', topic: 'Present Simple' });
       for (let i = 0; i < 2; i++) expect((await ask()).status).not.toBe(429);
       const third = await ask().expect(429);

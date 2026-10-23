@@ -15,8 +15,15 @@ import { tutorPrompt, type TutorContext } from './tutor-prompt';
 const MODEL = 'claude-sonnet-5';
 // What a person sees when the AI is overloaded after all retries.
 const AI_BUSY = "AI xizmati hozir band. Bir necha daqiqadan keyin qayta urinib ko'ring.";
+// Said plainly instead of a made-up answer: a template that looks like the
+// AI's would mislead the teacher (and the students it reaches).
+const aiOff = () =>
+  new ServiceUnavailableException({ code: 'AI_OFF', message: "AI ulanmagan: platforma admini \"API va integratsiyalar\" bo'limida AI kalitini qo'shishi kerak." });
 // A large PDF can take a while; past this a request is treated as lost.
-const GEMINI_TIMEOUT_MS = 180_000;
+// How long one try may take: a PDF is read slowly; text answers come in
+// seconds, and a model that is overloaded can hang without answering.
+const GEMINI_TIMEOUT_MS = 75_000;
+const GEMINI_PDF_TIMEOUT_MS = 180_000;
 
 // A question read from a file keeps its text without the file's own number
 // ("3. She ___" -> "She ___"): the test numbers its questions itself, and a
@@ -96,7 +103,11 @@ export class AiService {
       { model: 'gemini-flash-lite-latest', wait: 4000 },
       { model: 'gemini-flash-lite-latest', wait: 8000 },
     ];
+    let primaryHung = false;
     for (const { model, wait } of attempts) {
+      // An overloaded model that did not answer at all will not on a second
+      // try: go straight to the lighter one.
+      if (primaryHung && model === primary) continue;
       if (wait) await this.sleep(wait);
       let res: Response;
       try {
@@ -107,9 +118,10 @@ export class AiService {
             contents: [{ role: 'user', parts: [...(pdf ? [{ inline_data: { mime_type: 'application/pdf', data: pdf.toString('base64') } }] : []), { text: prompt }] }],
             generationConfig: { maxOutputTokens: Math.max(maxTokens, 2048) },
           }),
-          signal: AbortSignal.timeout(GEMINI_TIMEOUT_MS),
+          signal: AbortSignal.timeout(pdf ? GEMINI_PDF_TIMEOUT_MS : GEMINI_TIMEOUT_MS),
         });
       } catch (err) {
+        if (model === primary) primaryHung = true;
         this.logger.warn(`Gemini (${model}) unreachable: ${err instanceof Error ? err.message : String(err)} - retrying`);
         continue;
       }
@@ -177,76 +189,12 @@ Fan: ${dto.subject}
 Daraja: ${dto.level || "belgilanmagan"}
 Mavzu: ${dto.topic}${dto.customInstructions ? `\nO'qituvchi maxsus talabi / tafsifi: ${dto.customInstructions}` : ''}`;
 
-    try {
-      if (this.aiConfigured()) {
-        const text = await this.complete(prompt, 1500);
-        if (text) return { material: text };
-      }
-    } catch (e) {
-      if (this.aiConfigured()) throw e;
-    }
-
-    return { material: this.buildFallbackMaterial(dto) };
+    if (!this.aiConfigured()) throw aiOff();
+    const text = await this.complete(prompt, 1500);
+    if (!text.trim()) throw new ServiceUnavailableException(AI_BUSY);
+    return { material: text };
   }
 
-  private buildFallbackMaterial(dto: GenerateMaterialDto): string {
-    const isPlan = dto.type === 'LESSON_PLAN';
-    const isQuiz = dto.type === 'QUIZ';
-    const lvl = dto.level || 'Umumiy daraja';
-
-    if (isPlan) {
-      return `📌 Dars rejasi: ${dto.topic}
-Fan: ${dto.subject} | Daraja: ${lvl}
-${dto.customInstructions ? `O'qituvchi eslatmasi: ${dto.customInstructions}\n` : ''}
-1. Dars maqsadi:
-- O'quvchilarga ${dto.topic} tushunchasini to'liq yetkazish
-- Amaliy misollar va mashqlar orqali ko'nikmani mustahkamlash
-
-2. Dars bosqichlari (80-90 daqiqa):
-- 00-10 min: Kirish, o'tgan mavzuni takrorlash va "Warm-up" savollari
-- 10-35 min: Yangi mavzuni tushuntirish va taqdimot (${dto.topic})
-- 35-65 min: Amaliy mashqlar va guruhlarda ishlash
-- 65-75 min: Mustaqil mini-test yoki nazorat topshirig'i
-- 75-80 min: Xulosa, savol-javob va uyga vazifa berish
-
-3. Tavsiya etiladigan qo'shimcha resurslar:
-- Mavzuga oid ko'rgazmali materiallar va amaliy tarqatmalar`;
-    }
-
-    if (isQuiz) {
-      return `📝 Test va Quiz: ${dto.topic}
-Fan: ${dto.subject} | Daraja: ${lvl}
-${dto.customInstructions ? `O'qituvchi eslatmasi: ${dto.customInstructions}\n` : ''}
-1-savol. ${dto.topic} mavzusiga oid asosiy tushuncha qaysi javobda to'g'ri ko'rsatilgan?
-A) Asosiy ta'rif va qoida 1
-B) Noto'g'ri variant
-C) Chalg'ituvchi variant
-D) Qo'shimcha holat
-(To'g'ri javob: A)
-
-2-savol. Quyidagi berilgan topshiriqni to'g'ri bajaring:
-A) Variant 1
-B) Variant 2 (To'g'ri)
-C) Variant 3
-D) Variant 4
-
-3-savol. Amaliy vaziyat / Case-study topshirig'i:
-- Berilgan ma'lumotni tahlil qiling va qisqa xulosa yozing (3-4 jumla).`;
-    }
-
-    return `📚 Uyga vazifa: ${dto.topic}
-Fan: ${dto.subject} | Daraja: ${lvl}
-${dto.customInstructions ? `O'qituvchi eslatmasi: ${dto.customInstructions}\n` : ''}
-1. Nazariy qism:
-- ${dto.topic} mavzusi bo'yicha qoidalar va formulalarni yodlash.
-
-2. Amaliy mashqlar:
-- Darslikdagi tegishli mavzu bo'yicha 1-5 gacha mashqlarni daftarga to'liq yechish.
-- O'rganilgan yangi terminlar ishtirokida 5 ta mustaqil misol yoki gap tuzish.
-
-3. Kengaytirilgan topshiriq:
-- Keyingi mavzu bo'yicha qisqa tayyorgarlik ko'rish.`;
-  }
 
   async suggestHomework(dto: { subject?: string; groupName?: string; topic?: string; level?: string; request?: string }) {
     const subject = dto.subject || 'Ingliz tili';
@@ -254,9 +202,8 @@ ${dto.customInstructions ? `O'qituvchi eslatmasi: ${dto.customInstructions}\n` :
     const topic = dto.topic || '';
     const request = dto.request?.trim() || '';
 
-    try {
-      if (this.aiConfigured()) {
-        const prompt = `Sen o'quv markazi uchun tajribali o'qituvchi yordamchisisan.
+    if (!this.aiConfigured()) throw aiOff();
+    const prompt = `Sen o'quv markazi uchun tajribali o'qituvchi yordamchisisan.
 Quyidagi guruh va fan uchun aniq, qiziqarli va professional uyga vazifa (homework) tavsiya et.
 Fan: ${subject}
 Guruh nomi: ${groupName || "umumiy"}
@@ -271,62 +218,28 @@ Oddiy matn yoz: jadval, LaTeX va HTML ishlatma.
 
 Javobni FAQAT quyidagi JSON formatida ber (boshqa hech qanday so'z qo'shma):
 {
-  "title": "Vazifa sarlavhasi (masalan: Unit 5: Present Perfect vs Past Simple mashqlari)",
-  "description": "O'quvchiga 1-2 gapli qisqa ko'rsatma (masalan: Biriktirilgan fayldagi 3 ta mashqni daftarga bajaring.)",
-  "content": "Vazifaning to'liq matni (qatorlar \\n bilan)",
-  "dueDays": 3
+"title": "Vazifa sarlavhasi (masalan: Unit 5: Present Perfect vs Past Simple mashqlari)",
+"description": "O'quvchiga 1-2 gapli qisqa ko'rsatma (masalan: Biriktirilgan fayldagi 3 ta mashqni daftarga bajaring.)",
+"content": "Vazifaning to'liq matni (qatorlar \\n bilan)",
+"dueDays": 3
 }`;
-        const text = await this.complete(prompt, 4000);
-        const match = text.match(/\{[\s\S]*\}/);
-        if (match) {
-          const parsed = JSON.parse(match[0]);
-          return {
-            title: String(parsed.title ?? '').slice(0, 160),
-            description: String(parsed.description ?? ''),
-            content: typeof parsed.content === 'string' && parsed.content.trim() ? parsed.content.trim() : null,
-            dueDays: parsed.dueDays || 3,
-          };
-        }
-      }
+    const text = await this.complete(prompt, 4000);
+    const match = text.match(/\{[\s\S]*\}/);
+    let parsed: { title?: unknown; description?: unknown; content?: unknown; dueDays?: number } | null = null;
+    try {
+      parsed = match ? JSON.parse(match[0]) : null;
     } catch {
-      // Fallback
+      parsed = null; // not the JSON asked for: "busy, try again" below
     }
-
-    // Without an AI key: still honour the teacher's own description.
-    if (request) {
+    if (parsed) {
       return {
-        title: topic || request.split(/[.!?\n]/)[0].slice(0, 80),
-        description: `1. ${request}\n2. Bajarilgan ishni daftarga toza yozib, keyingi darsga olib keling.\n3. Tushunmagan joylaringizni belgilab, savol sifatida yozib keling.`,
-        dueDays: 3,
-        content: null,
+        title: String(parsed.title ?? '').slice(0, 160),
+        description: String(parsed.description ?? ''),
+        content: typeof parsed.content === 'string' && parsed.content.trim() ? parsed.content.trim() : null,
+        dueDays: parsed.dueDays || 3,
       };
     }
-
-    const isEnglish = /ingliz|ielts|cefr|english/i.test(`${subject} ${groupName} ${topic}`);
-    const isMath = /matem|math|algebra|geomet/i.test(`${subject} ${groupName} ${topic}`);
-
-    if (isEnglish) {
-      return {
-        title: topic ? `${topic} — Homework & Practice` : `${groupName || "English"} — Unit 4 Grammar & Vocabulary`,
-        description: `1. Kitobdagi 4-mavzu bo'yicha Ex 1-6 mashqlarni daftarda to'liq bajaring.\n2. Berilgan 15 ta yangi so'z bilan kamida 2 tadan gap tuzing.\n3. Reading matnini o'qib, savollarga yozma javob tayyorlang (kamida 80-100 so'z).`,
-        dueDays: 3,
-        content: null,
-      };
-    } else if (isMath) {
-      return {
-        title: topic ? `${topic} — Misollar to'plami` : `${groupName || "Matematika"} — Amaliy masalalar va formulalar`,
-        description: `1. Darslikdagi §12 mavzu qoidalarini takrorlash va formulalarni yodlash.\n2. 145-155-misollarni daftarga to'liq yechish (har bir qadamni ko'rsatgan holda).\n3. 2 ta murakkabroq mantiqiy masalani mustaqil yechishga harakat qiling.`,
-        dueDays: 2,
-        content: null,
-      };
-    } else {
-      return {
-        title: topic ? `${topic} — Mustaqil ish` : `${subject} — Amaliy topshiriq va mashqlar`,
-        description: `1. O'tilgan mavzu bo'yicha konspektni to'ldiring.\n2. Mavzu oxiridagi savollarga yozma javob yozing.\n3. Amaliy mashqlarni bajaring va keyingi darsda savollarga tayyor bo'ling.`,
-        dueDays: 3,
-        content: null,
-      };
-    }
+    throw new ServiceUnavailableException(AI_BUSY);
   }
 
   // Questions for an exam's question bank, mixed types. Needs an AI key: a

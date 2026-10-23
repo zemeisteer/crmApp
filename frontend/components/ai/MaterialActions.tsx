@@ -9,6 +9,8 @@ import QuestionDraftsModal from "@/components/tests/QuestionDraftsModal";
 import { ApiError, aiApi, examsApi, homeworkApi, type Exam, type Group } from "@/lib/api";
 import { useLanguage } from "@/lib/i18n-context";
 import type { TestQuestion } from "@/lib/tests";
+import { useAuth } from "@/lib/auth-context";
+import { formatDate } from "@/lib/format-date";
 
 const ACCENT = "#4F46E5";
 
@@ -24,18 +26,27 @@ export function stripAnswerKey(text: string) {
   return { text: lines.slice(0, end).join("\n").trimEnd(), removed: true };
 }
 
+/** Once given as homework: to which groups, by whom, when. */
+export interface MaterialGiven {
+  groups: string[];
+  by: string;
+  at: string;
+}
+
 export interface MaterialLike {
   topic: string;
   subject: string;
   level?: string;
   content: string;
+  given?: MaterialGiven[];
 }
 
 // What a teacher can do with an AI material: give it to groups as homework
 // (the text becomes an attached PDF), turn it into exam questions, or
 // download it as a PDF. Until then a material is only visible to staff.
-export default function MaterialActions({ material, groups, defaultGroupId }: { material: MaterialLike; groups: Group[]; defaultGroupId?: string }) {
-  const { t } = useLanguage();
+export default function MaterialActions({ material, groups, defaultGroupId, onGiven }: { material: MaterialLike; groups: Group[]; defaultGroupId?: string; onGiven?: (entry: MaterialGiven) => void }) {
+  const { t, lang } = useLanguage();
+  const { user } = useAuth();
   const [mode, setMode] = useState<null | "homework" | "exam">(null);
   const [busy, setBusy] = useState<null | "pdf">(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -66,7 +77,17 @@ export default function MaterialActions({ material, groups, defaultGroupId }: { 
           {busy === "pdf" ? t("common.loading") : `⬇️ ${t("aim.downloadPdf")}`}
         </button>
       </div>
-      <div style={{ fontSize: 11.5, color: "#686B75" }}>{t("aim.visibilityHint")}</div>
+      {material.given?.length ? (
+        <div data-testid="material-given" style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12.5, color: "#15803D", background: "#ECFDF5", borderRadius: 8, padding: "8px 12px" }}>
+          {material.given.map((g, i) => (
+            <div key={i}>
+              📤 <b>{t("aim.givenTo")}</b> {g.groups.join(", ")} — {g.by}, {formatDate(g.at, lang)}
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div style={{ fontSize: 11.5, color: "#686B75" }}>{t("aim.visibilityHint")}</div>
+      )}
       {notice && <div style={{ fontSize: 12.5, fontWeight: 600, color: "#15803D", background: "#ECFDF5", borderRadius: 8, padding: "8px 12px" }}>✓ {notice}</div>}
       {error && <div role="alert" style={{ fontSize: 12.5, fontWeight: 600, color: "#B23A47", background: "#FDEBEC", borderRadius: 8, padding: "8px 12px" }}>{error}</div>}
 
@@ -76,9 +97,10 @@ export default function MaterialActions({ material, groups, defaultGroupId }: { 
           groups={groups}
           defaultGroupId={defaultGroupId}
           onClose={() => setMode(null)}
-          onDone={(n) => {
+          onDone={(n, names) => {
             setMode(null);
             setNotice(t("aim.sentHomework").replace("{n}", String(n)));
+            onGiven?.({ groups: names, by: user?.fullName ?? "", at: new Date().toISOString() });
           }}
         />
       )}
@@ -96,7 +118,7 @@ export default function MaterialActions({ material, groups, defaultGroupId }: { 
   );
 }
 
-function HomeworkModal({ material, groups, defaultGroupId, onClose, onDone }: { material: MaterialLike; groups: Group[]; defaultGroupId?: string; onClose: () => void; onDone: (groups: number) => void }) {
+function HomeworkModal({ material, groups, defaultGroupId, onClose, onDone }: { material: MaterialLike; groups: Group[]; defaultGroupId?: string; onClose: () => void; onDone: (groups: number, names: string[]) => void }) {
   const { t } = useLanguage();
   const [groupIds, setGroupIds] = useState<string[]>(defaultGroupId ? [defaultGroupId] : []);
   const [title, setTitle] = useState(material.topic);
@@ -122,7 +144,7 @@ function HomeworkModal({ material, groups, defaultGroupId, onClose, onDone }: { 
     try {
       const created = await homeworkApi.create({ groupIds, title: title.trim(), description: description.trim() || undefined, dueDate: dueDate || undefined });
       await Promise.all(created.map((h) => homeworkApi.attachText(h.id, { title: title.trim(), content: hideKey ? keyCut.text : material.content })));
-      onDone(created.length);
+      onDone(created.length, groups.filter((g) => groupIds.includes(g.id)).map((g) => g.name));
     } catch (err) {
       setError(err instanceof ApiError ? err.message : t("common.errorGeneric"));
     } finally {

@@ -5,7 +5,7 @@ import { App } from 'supertest/types';
 import { eq, inArray } from 'drizzle-orm';
 import { AppModule } from '../src/app.module.js';
 import { DB, type Database } from '../src/db/db.module.js';
-import { enrollments, groupPriceHistory, students, tenants, users } from '../src/db/schema.js';
+import { enrollments, groupPriceHistory, invoices, students, tenants, users } from '../src/db/schema.js';
 import { NotificationsService } from '../src/notifications/notifications.service.js';
 import { TelegramService } from '../src/telegram/telegram.service.js';
 import { RemindersService } from '../src/reminders/reminders.service.js';
@@ -123,5 +123,79 @@ describe('Automatic reminders (e2e)', () => {
 
     await http().patch('/api/notifications/settings').set(auth()).send({ dailyDigest: false }).expect(200);
     expect(await r.dailyDigests(await tenantRow(), new Date('2026-09-29T15:10:00Z'))).toBe(0);
+  });
+
+  it('after the last lesson, reminds the teacher who left attendance unmarked and tells the owner; nothing once marked', async () => {
+    // A fresh center, so only these lessons count.
+    const reg = (await http().post('/api/auth/register')
+      .send({ centerName: `Att ${suffix}`, subdomain: `att-${suffix}`, email: `att-${suffix}@test.uz`, password: 'password123', fullName: 'Att Owner' })
+      .expect(201)).body;
+    const a = { Authorization: `Bearer ${reg.accessToken}` };
+    const tId = reg.tenant?.id ?? reg.user.tenantId;
+    const row = async () => (await db.select().from(tenants).where(eq(tenants.id, tId)))[0];
+    const ownerChat = `5${String(suffix).slice(-8)}`;
+    await db.update(users).set({ telegramChatId: ownerChat }).where(eq(users.id, reg.user.id));
+    const tid = (await http().post('/api/teachers').set(a).send({ fullName: 'Forgetful Teacher', subject: 'Math' }).expect(201)).body.id as string;
+    const acc = (await http().post(`/api/teachers/${tid}/account`).set(a).send({ email: `att-t-${suffix}@test.uz`, password: 'secret123' }).expect(201)).body;
+    const teacherChat = `4${String(suffix).slice(-8)}`;
+    await db.update(users).set({ telegramChatId: teacherChat }).where(eq(users.id, acc.user.id));
+    const g1 = (await http().post('/api/groups').set(a).send({ name: 'Marked Group', subject: 'Math', teacherId: tid, scheduleDays: 'Dushanba', startTime: '14:00', endTime: '15:30' }).expect(201)).body.id as string;
+    const g2 = (await http().post('/api/groups').set(a).send({ name: 'Unmarked Group', subject: 'Math', teacherId: tid, scheduleDays: 'Dushanba', startTime: '16:00', endTime: '17:30' }).expect(201)).body.id as string;
+    await http().post('/api/groups').set(a).send({ name: 'Empty Group', subject: 'Math', scheduleDays: 'Dushanba', startTime: '16:00', endTime: '17:30' }).expect(201);
+    const k1 = (await http().post('/api/students').set(a).send({ fullName: 'Kid One', groupIds: [g1] }).expect(201)).body.id as string;
+    const k2 = (await http().post('/api/students').set(a).send({ fullName: 'Kid Two', groupIds: [g2] }).expect(201)).body.id as string;
+    await db.update(enrollments).set({ joinedAt: new Date('2026-09-01T05:00:00Z') }).where(inArray(enrollments.studentId, [k1, k2]));
+    await http().post('/api/attendance').set(a).send({ groupId: g1, date: '2026-09-28', entries: [{ studentId: k1, status: 'PRESENT' }] }).expect(201);
+
+    const r = app.get(RemindersService);
+    sent.length = 0;
+    // 17:30 + 30 min = 18:00 Tashkent (13:00 UTC): not before.
+    expect(await r.attendanceReminders(await row(), new Date('2026-09-28T12:50:00Z'))).toBe(0);
+    const AT_18 = new Date('2026-09-28T13:05:00Z');
+    expect(await r.attendanceReminders(await row(), AT_18)).toBe(2); // the teacher + the owner
+    const toTeacher = sent.find((s) => s.recipient === teacherChat)!.content;
+    expect(toTeacher).toContain('Unmarked Group');
+    expect(toTeacher).not.toContain('Empty Group'); // nobody to mark
+    const toOwner = sent.find((s) => s.recipient === ownerChat)!.content;
+    expect(toOwner).toContain('Forgetful Teacher');
+    expect(toOwner).not.toContain('Marked Group');
+    expect(toOwner).not.toContain('Empty Group');
+    expect(await r.attendanceReminders(await row(), AT_18)).toBe(0); // once a day
+
+    // A day with every lesson marked: nothing at all.
+    await http().post('/api/attendance').set(a).send({ groupId: g1, date: '2026-10-05', entries: [{ studentId: k1, status: 'PRESENT' }] }).expect(201);
+    await http().post('/api/attendance').set(a).send({ groupId: g2, date: '2026-10-05', entries: [{ studentId: k2, status: 'ABSENT' }] }).expect(201);
+    sent.length = 0;
+    expect(await r.attendanceReminders(await row(), new Date('2026-10-05T13:05:00Z'))).toBe(0);
+
+    await http().patch('/api/notifications/settings').set(a).send({ remindAttendance: false }).expect(200);
+    expect(await r.attendanceReminders(await row(), new Date('2026-10-12T13:05:00Z'))).toBe(0);
+  });
+
+  it("issues the month's invoices by itself on the 1st, once, and not when switched off", async () => {
+    const reg = (await http().post('/api/auth/register')
+      .send({ centerName: `Inv ${suffix}`, subdomain: `inv-${suffix}`, email: `inv-${suffix}@test.uz`, password: 'password123', fullName: 'Inv Owner' })
+      .expect(201)).body;
+    const a = { Authorization: `Bearer ${reg.accessToken}` };
+    const tId = reg.tenant?.id ?? reg.user.tenantId;
+    const row = async () => (await db.select().from(tenants).where(eq(tenants.id, tId)))[0];
+    const g = (await http().post('/api/groups').set(a).send({ name: 'Billed Group', subject: 'Math', monthlyPrice: 250_000 }).expect(201)).body.id as string;
+    await http().post('/api/students').set(a).send({ fullName: 'Billed Kid', groupIds: [g] }).expect(201);
+    const count = async (m: string) => (await db.select().from(invoices).where(eq(invoices.tenantId, tId))).filter((i) => i.forMonth === m).length;
+
+    const r = app.get(RemindersService);
+    const month = (d: Date) => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Tashkent', year: 'numeric', month: '2-digit' }).format(d);
+    // The middle of a month: nothing (a center that just turned it on is not billed mid-month).
+    expect(await r.monthlyInvoices(await row(), new Date('2026-10-15T05:00:00Z'))).toBe(0);
+    // The 1st, 08:00 Tashkent.
+    const FIRST = new Date('2026-11-01T03:00:00Z');
+    expect(await r.monthlyInvoices(await row(), FIRST)).toBe(1);
+    expect(await count(month(FIRST))).toBe(1);
+    expect(await r.monthlyInvoices(await row(), new Date('2026-11-02T03:00:00Z'))).toBe(0); // once
+    expect(await count(month(FIRST))).toBe(1);
+
+    await http().patch('/api/notifications/settings').set(a).send({ autoInvoices: false }).expect(200);
+    expect((await http().get('/api/notifications/settings').set(a).expect(200)).body.autoInvoices).toBe(false);
+    expect(await r.monthlyInvoices(await row(), new Date('2026-12-01T03:00:00Z'))).toBe(0);
   });
 });

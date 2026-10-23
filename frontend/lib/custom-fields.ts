@@ -229,3 +229,30 @@ export function conversionPayload(
   }
   return Object.keys(out).length ? out : undefined;
 }
+
+// Uzbek/Russian Cyrillic to Latin, for a field's key made from its name.
+const CYR: Record<string, string> = {
+  а: "a", б: "b", в: "v", г: "g", ғ: "g", д: "d", е: "e", ё: "yo", ж: "j", з: "z", и: "i", й: "y", к: "k", қ: "q", л: "l", м: "m",
+  н: "n", о: "o", ў: "o", п: "p", р: "r", с: "s", т: "t", у: "u", ф: "f", х: "x", ҳ: "h", ц: "ts", ч: "ch", ш: "sh", щ: "sh",
+  ъ: "", ы: "i", ь: "", э: "e", ю: "yu", я: "ya",
+};
+
+/**
+ * A field's key from its name, as the person types it: "Eng zo'ri" ->
+ * "eng_zori", "Maktab raqami" -> "maktab_raqami", "Школа" -> "shkola".
+ * Small Latin letters, digits and _, starting with a letter, at most 40.
+ */
+export function fieldKeyFromLabel(label: string): string {
+  const latin = label
+    .replace(/№/g, " ")
+    .toLowerCase()
+    .split("")
+    .map((ch) => CYR[ch] ?? ch)
+    .join("")
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/['`’ʻʼ‘]/g, "");
+  let key = latin.replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+  if (key && !/^[a-z]/.test(key)) key = `f_${key}`;
+  return key.slice(0, 40).replace(/_+$/, "");
+}

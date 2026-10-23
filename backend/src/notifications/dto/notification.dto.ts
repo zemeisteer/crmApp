@@ -104,6 +104,16 @@ export class UpdateNotificationSettingsDto {
   @IsOptional()
   @IsBoolean()
   dailyDigest?: boolean;
+
+  // After the last lesson: teachers who left attendance unmarked.
+  @IsOptional()
+  @IsBoolean()
+  remindAttendance?: boolean;
+
+  // The month's invoices issued by themselves on the 1st.
+  @IsOptional()
+  @IsBoolean()
+  autoInvoices?: boolean;
 }
 
 export class QueryNotificationsDto {
