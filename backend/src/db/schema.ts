@@ -912,6 +912,9 @@ export const plans = pgTable('plans', {
   active: boolean('active').notNull().default(true),
   // Whether SMS messages (sent through the platform's provider) are part of the plan.
   smsIncluded: boolean('sms_included').notNull().default(true),
+  // What the plan includes (plans/entitlements.ts): features on/off and
+  // limits; a missing key means included / no limit.
+  entitlements: jsonb('entitlements').$type<Record<string, boolean | number | null>>().notNull().default({}),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 }, (t) => ({

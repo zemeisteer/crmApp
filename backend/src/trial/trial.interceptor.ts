@@ -3,15 +3,22 @@ import { Reflector } from '@nestjs/core';
 import { eq } from 'drizzle-orm';
 import { Observable, catchError, from, mergeMap, throwError } from 'rxjs';
 import { DB, Database } from '../db/db.module';
-import { tenants } from '../db/schema';
+import { plans, tenants } from '../db/schema';
 import { routeIdOf } from '../common/route-id';
 import { trialRules } from './trial-rules';
 import { centerAccess, centerState } from './trial-access';
 import { chargeTrialAi, refundTrialAi } from './trial-limits';
+import { allows, notInPlan, type Entitlements, type Feature } from '../plans/entitlements';
 
 const USES_AI = 'usesAi';
-/** The handler asks the AI: a center on its free trial has a daily allowance. */
+/**
+ * The handler asks the AI: the plan must include AI_TOOLS, and a center on
+ * its free trial has a daily allowance.
+ */
 export const UsesAi = () => SetMetadata(USES_AI, true);
+const REQUIRES_FEATURE = 'requiresFeature';
+/** The route (or the whole controller) is part of a plan feature (plans/entitlements.ts). */
+export const RequiresFeature = (feature: Feature) => SetMetadata(REQUIRES_FEATURE, feature);
 
 /**
  * Runs after the guards, so the signed-in member is known:
@@ -38,8 +45,9 @@ export class TrialInterceptor implements NestInterceptor {
     if (!user?.tenantId || user.role === 'SUPERADMIN' || user.studentId) return next.handle();
 
     const [tenant] = await this.db
-      .select({ status: tenants.status, trialEndsAt: tenants.trialEndsAt, suspendedReason: tenants.suspendedReason, tz: tenants.timezone })
+      .select({ status: tenants.status, trialEndsAt: tenants.trialEndsAt, suspendedReason: tenants.suspendedReason, tz: tenants.timezone, entitlements: plans.entitlements })
       .from(tenants)
+      .leftJoin(plans, eq(plans.key, tenants.plan))
       .where(eq(tenants.id, user.tenantId));
     if (!tenant) return next.handle();
 
@@ -47,7 +55,13 @@ export class TrialInterceptor implements NestInterceptor {
     const refusal = centerAccess(tenant, req.method, routeIdOf(context) ?? `${req.method} ?`, new Date(), rules);
     if (refusal) throw new ForbiddenException(refusal);
 
+    // What the plan includes (a missing plan includes everything).
+    const ent = (tenant.entitlements ?? {}) as Entitlements;
+    const feature = this.reflector.getAllAndOverride<Feature | undefined>(REQUIRES_FEATURE, [context.getHandler(), context.getClass()]);
+    if (feature && !allows(ent, feature)) throw notInPlan(feature);
+
     const usesAi = this.reflector.getAllAndOverride<boolean>(USES_AI, [context.getHandler(), context.getClass()]);
+    if (usesAi && !allows(ent, 'AI_TOOLS')) throw notInPlan('AI_TOOLS');
     if (usesAi && centerState(tenant, new Date(), rules) === 'TRIAL') {
       if (!(await chargeTrialAi(this.db, user.tenantId, tenant.tz))) {
         throw new HttpException(

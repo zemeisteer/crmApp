@@ -273,6 +273,8 @@ export interface Tenant {
   trialEndsAt: string | null;
   /** Where a center on its free trial stands (from /auth/me). */
   trial?: { stage: "ACTIVE" | "TRIAL" | "READ_ONLY" | "LOCKED"; endsAt: string | null; lockAt: string | null; purgeAt: string | null };
+  /** What the center's plan includes (from /auth/me). */
+  entitlements?: Entitlements;
   /** The period paid to CRMAPP (from /auth/me): until when, and the grace after it. */
   billing?: { paidUntil: string | null; graceUntil: string | null; suspendedForNonPayment: boolean };
   onboardingStep?: string;
@@ -1172,6 +1174,12 @@ export interface LeaderboardEntry {
   badge: "GOLD" | "SILVER" | "BRONZE" | "TOP_PERFORMER" | "PARTICIPANT";
 }
 
+export const PLAN_FEATURES = ["AI_TOOLS", "AI_TUTOR", "MOCK_EXAMS", "CERTIFICATES"] as const;
+export const PLAN_LIMITS = ["MAX_STUDENTS", "MAX_STAFF", "MAX_BRANCHES"] as const;
+export type Entitlements = Partial<Record<(typeof PLAN_FEATURES)[number], boolean> & Record<(typeof PLAN_LIMITS)[number], number | null>>;
+/** A feature the center's plan does not leave out (missing means included). */
+export const planAllows = (e: Entitlements | undefined, f: (typeof PLAN_FEATURES)[number]) => e?.[f] !== false;
+
 export interface Plan {
   id: string;
   key: string;
@@ -1185,6 +1193,8 @@ export interface Plan {
   active: boolean;
   /** SMS messages are part of this plan. */
   smsIncluded?: boolean;
+  /** What the plan includes (missing: included / no limit). */
+  entitlements?: Entitlements;
   tenantCount?: number;
   createdAt: string;
   updatedAt: string;
@@ -2134,9 +2144,9 @@ export const examsApi = {
 export const plansApi = {
   listPublic: () => request<Plan[]>("/plans/public"),
   listAll: () => request<Plan[]>("/plans"),
-  create: (data: { key: string; name: string; price: number; features?: string; featuresRu?: string; featuresEn?: string; popular?: boolean; active?: boolean; smsIncluded?: boolean }) =>
+  create: (data: { key: string; name: string; price: number; features?: string; featuresRu?: string; featuresEn?: string; popular?: boolean; active?: boolean; smsIncluded?: boolean; entitlements?: Entitlements }) =>
     request<Plan>("/plans", { method: "POST", body: JSON.stringify(data) }),
-  update: (id: string, data: Partial<{ name: string; price: number; features: string; featuresRu: string; featuresEn: string; popular: boolean; active: boolean; smsIncluded: boolean }>) =>
+  update: (id: string, data: Partial<{ name: string; price: number; features: string; featuresRu: string; featuresEn: string; popular: boolean; active: boolean; smsIncluded: boolean; entitlements: Entitlements }>) =>
     request<Plan>(`/plans/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
   remove: (id: string) => request<{ success: boolean }>(`/plans/${id}`, { method: "DELETE" }),
   /** The Uzbek feature list in Russian and English (for the form to fill in). */

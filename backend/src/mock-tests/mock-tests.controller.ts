@@ -12,13 +12,14 @@ import { MockTestsService } from './mock-tests.service';
 import { CreateMockTestDto, GenerateMockQuestionsDto, RegradeMockAttemptDto, ReviewMockAttemptDto, ReviewPracticeDto, UpdateMockTestDto } from './dto/mock-tests.dto';
 import { AiService } from '../ai/ai.service';
 import { FilesService } from '../files/files.service';
-import { UsesAi } from '../trial/trial.interceptor';
+import { UsesAi, RequiresFeature } from '../trial/trial.interceptor';
 
 // Recordings for Listening and pictures (charts) for Writing Task 1.
 const ASSET_TYPES = /^(audio\/(mpeg|mp3|mp4|x-m4a|aac|wav|x-wav|ogg|webm)|image\/(jpeg|png|webp|gif))$/;
 
 @UseGuards(JwtAuthGuard, RolesGuard, TrialGuard)
 @Roles('ADMIN', 'MANAGER', 'TEACHER')
+@RequiresFeature('MOCK_EXAMS')
 @Controller('mock-tests')
 export class MockTestsController {
   constructor(

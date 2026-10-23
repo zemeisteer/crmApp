@@ -1,3 +1,4 @@
+import { RequiresFeature } from '../trial/trial.interceptor';
 import {
   Body,
   Controller,
@@ -15,6 +16,7 @@ import { CurrentUser } from '../common/current-user.decorator';
 import { CertificatesService } from './certificates.service';
 import { CreateCertificateDto, QueryCertificateDto } from './dto/certificate.dto';
 
+@RequiresFeature('CERTIFICATES')
 @Controller('certificates')
 export class CertificatesController {
   constructor(private readonly service: CertificatesService) {}

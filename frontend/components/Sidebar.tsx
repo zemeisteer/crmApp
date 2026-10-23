@@ -4,7 +4,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
-import { authApi, fileUrl } from "@/lib/api";
+import { authApi, fileUrl, planAllows, type PLAN_FEATURES } from "@/lib/api";
 import { useLanguage } from "@/lib/i18n-context";
 import type { TranslationKey } from "@/lib/i18n";
 import type { Role, WorkspaceItem } from "@/lib/api";
@@ -21,7 +21,11 @@ interface NavItem {
   roles?: Role[];
   /** The access item(s) that open this page for staff whose access the owner sets (any of them). */
   access?: string | string[];
+  /** Hidden when the center's plan leaves this feature out (plans entitlements). */
+  feature?: PlanFeature;
 }
+
+type PlanFeature = (typeof PLAN_FEATURES)[number];
 
 const CONFIGURABLE: Role[] = ["MANAGER", "RECEPTIONIST", "ACCOUNTANT", "TEACHER"];
 
@@ -170,6 +174,7 @@ const NAV_ITEMS: NavItem[] = [
   {
     href: "/ai-materials",
     access: "ai.use",
+    feature: "AI_TOOLS",
     labelKey: "nav.aiMaterials" as TranslationKey,
     badge: "AI",
     roles: ["SUPERADMIN", "ADMIN", "MANAGER", "TEACHER"],
@@ -195,6 +200,7 @@ const NAV_ITEMS: NavItem[] = [
   {
     href: "/mock-tests",
     access: "mockTests.manage",
+    feature: "MOCK_EXAMS",
     labelKey: "nav.mockTests" as TranslationKey,
     roles: ["SUPERADMIN", "ADMIN", "MANAGER", "TEACHER"],
     icon: (
@@ -207,6 +213,7 @@ const NAV_ITEMS: NavItem[] = [
   {
     href: "/certificates",
     access: "certificates.manage",
+    feature: "CERTIFICATES",
     labelKey: "nav.certificates" as TranslationKey,
     roles: ["SUPERADMIN", "ADMIN", "MANAGER", "TEACHER"],
     icon: (
@@ -230,6 +237,7 @@ const NAV_ITEMS: NavItem[] = [
   {
     href: "/ai-insights",
     access: "ai.use",
+    feature: "AI_TOOLS",
     labelKey: "nav.aiInsights" as TranslationKey,
     badge: "AI",
     roles: ["SUPERADMIN", "ADMIN", "MANAGER", "TEACHER"],
@@ -539,7 +547,7 @@ export default function Sidebar({ open, onClose }: { open?: boolean; onClose?: (
           );
         })}
 
-        {!isPlatformMode(user?.role, !!tenant) && NAV_ITEMS.filter((item) => canSee(item, user?.role, user?.access)).map((item) => {
+        {!isPlatformMode(user?.role, !!tenant) && NAV_ITEMS.filter((item) => canSee(item, user?.role, user?.access) && (!item.feature || planAllows(tenant?.entitlements, item.feature))).map((item) => {
           const active = pathname === item.href || pathname.startsWith(item.href + "/");
           return (
             <Link

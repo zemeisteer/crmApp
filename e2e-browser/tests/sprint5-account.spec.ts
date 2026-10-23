@@ -145,3 +145,29 @@ test('a paid period that ran out: the grace banner with its date, then read-only
   await page.goto(centerUrl(c.sub, '/dashboard'));
   await expect(page.getByRole('status').filter({ hasText: "To'lov qilinmagani uchun" })).toBeVisible();
 });
+
+test("plan entitlements: the platform admin unticks a feature in the plan editor; that center's menu no longer shows it and the API refuses it", async ({ page }) => {
+  test.skip(TARGET !== 'local', 'needs the disposable local database');
+  const admin = await newCenter('entadm');
+  const c = await newCenter('entctr');
+  const key = `ENT_${Date.now().toString(36).toUpperCase()}`;
+  await sql(`insert into plans (id, key, name, price) values ($1, $1, $2, 1000)`, [key, `Ent ${key}`]);
+  await sql(`update tenants set plan = $1, status = 'ACTIVE' where id = $2`, [key, c.tenantId]);
+  await sql(`update users set role = 'SUPERADMIN' where email = $1`, [admin.email]);
+
+  await loginOnMainSite(page, admin.email);
+  await expectCenterDashboard(page, admin.sub);
+  await page.goto(centerUrl(admin.sub, '/pricing'));
+  await page.getByTestId(`plan-${key}`).getByRole('button', { name: 'Tahrirlash' }).click();
+  await page.getByLabel('Mock imtihonlar').uncheck();
+  await page.getByLabel("O'quvchilar limiti").fill('5');
+  await page.getByRole('button', { name: 'Saqlash', exact: true }).click();
+  await expect.poll(async () => (await sql<{ e: Record<string, unknown> }>(`select entitlements as e from plans where key = $1`, [key]))[0].e).toEqual({ MOCK_EXAMS: false, MAX_STUDENTS: 5 });
+
+  await page.context().clearCookies();
+  await page.evaluate(() => localStorage.clear());
+  await loginOnMainSite(page, c.email);
+  await expectCenterDashboard(page, c.sub);
+  await expect(page.getByRole('link', { name: 'Sertifikatlar' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Mock va mashqlar' })).toHaveCount(0);
+});

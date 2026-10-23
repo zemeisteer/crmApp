@@ -138,10 +138,16 @@ describe('Two-factor hardening (e2e)', () => {
     const email = `tf-step-${suffix}@test.uz`;
     await http().post('/api/auth/register').send({ centerName: `TF step ${suffix}`, subdomain: `tf-step-${suffix}`, email, password: PASSWORD, fullName: 'TF Step' }).expect(201);
     const { secret } = await enable((await login(email)).accessToken);
-    const at = (secondsAgo: number) => totp({ secret, epoch: Math.floor(Date.now() / 1000) - secondsAgo });
-    expect((await loginWith2fa(email, await at(30))).status).toBe(201);
-    expect((await loginWith2fa(email, await at(90))).status).toBe(401);
-    expect((await loginWith2fa(email, await at(-60))).status).toBe(401);
+    // The password step first (slow under load), then the code made at the
+    // moment it is checked: the step it belongs to is what is tested.
+    const withCodeFrom = async (secondsAgo: number) => {
+      const pending = await login(email);
+      const code = await totp({ secret, epoch: Math.floor(Date.now() / 1000) - secondsAgo });
+      return http().post('/api/auth/2fa/verify-login').send({ pendingToken: pending.pendingToken, code });
+    };
+    expect((await withCodeFrom(30)).status).toBe(201);
+    expect((await withCodeFrom(90)).status).toBe(401);
+    expect((await withCodeFrom(-60)).status).toBe(401);
   });
 
   it('turning 2FA off needs the password and the factor, and ends the other sessions', async () => {

@@ -1,5 +1,6 @@
 import { centerState, centerWorkRefusal } from '../trial/trial-access';
 import { chargeTrialAi, refundTrialAi } from '../trial/trial-limits';
+import { allows, entitlementsOf } from '../plans/entitlements';
 import { BadRequestException, ConflictException, ForbiddenException, Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { and, count, desc, eq, inArray, isNull, or, sql } from 'drizzle-orm';
 import { DB, Database } from '../db/db.module';
@@ -324,6 +325,7 @@ export class MockTestsService {
   private async centerAiAllowed(tenantId: string): Promise<'NO' | 'FREE' | 'CHARGED'> {
     const [t] = await this.db.select({ status: tenants.status, trialEndsAt: tenants.trialEndsAt, tz: tenants.timezone }).from(tenants).where(eq(tenants.id, tenantId));
     if (!t || centerWorkRefusal(t)) return 'NO';
+    if (!allows(await entitlementsOf(this.db, tenantId), 'AI_TOOLS')) return 'NO';
     if (centerState(t) !== 'TRIAL') return 'FREE';
     return (await chargeTrialAi(this.db, tenantId, t.tz)) ? 'CHARGED' : 'NO';
   }

@@ -39,6 +39,8 @@ describe('TelegramService AI tutor', () => {
         from: () => ({
           // parent chats: none in these tests
           innerJoin: () => ({ where: () => ({ orderBy: async () => [] }) }),
+          // the center's plan (plans/entitlements.ts): includes everything
+          leftJoin: () => ({ where: async () => [{ entitlements: {} }] }),
           where: () => {
             const quota = Promise.resolve([{ used: usedToday }]);
             return Object.assign(quota, {

@@ -1,5 +1,6 @@
+import { entitlementsOf, limitOf, planLimitReached } from '../plans/entitlements';
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import { DB, Database } from '../db/db.module';
 import { branches } from '../db/schema';
 import { CreateBranchDto, UpdateBranchDto } from './dto/branch.dto';
@@ -16,8 +17,17 @@ export class BranchesService {
   }
 
   async create(tenantId: string, dto: CreateBranchDto) {
-    const [branch] = await this.db.insert(branches).values({ tenantId, ...dto }).returning();
-    return branch;
+    return this.db.transaction(async (tx) => {
+      // The plan's limit (plans/entitlements.ts), counted under a lock.
+      const max = limitOf(await entitlementsOf(tx, tenantId), 'MAX_BRANCHES');
+      if (max !== null) {
+        await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`branches:${tenantId}`}))`);
+        const [{ n }] = await tx.select({ n: sql<number>`count(*)::int` }).from(branches).where(eq(branches.tenantId, tenantId));
+        if (n + 1 > max) throw planLimitReached('filial', max);
+      }
+      const [branch] = await tx.insert(branches).values({ tenantId, ...dto }).returning();
+      return branch;
+    });
   }
 
   async update(tenantId: string, id: string, dto: UpdateBranchDto) {
