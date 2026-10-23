@@ -13,6 +13,8 @@ describe('Access matrix (e2e)', () => {
   const suffix = Date.now();
   const tokens: Record<string, string> = {};
   const as = (role: string) => ({ Authorization: `Bearer ${tokens[role]}` });
+  const ROLES = ['OWNER', 'ADMIN', 'MANAGER', 'RECEPTIONIST', 'ACCOUNTANT', 'TEACHER'];
+  let matrix: { capabilities: Array<{ key: string; route: string | null; allowed: Record<string, boolean> }> };
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({ imports: [AppModule] }).compile();
@@ -27,6 +29,7 @@ describe('Access matrix (e2e)', () => {
       const inv = await http().post('/api/invitations').set(as('OWNER')).send({ email: `acc-${role.toLowerCase()}-${suffix}@test.uz`, role }).expect(201);
       tokens[role] = (await http().post(`/api/invitations/${inv.body.token}/accept`).send({ fullName: `${role} user`, password: 'password12345' }).expect(201)).body.accessToken;
     }
+    matrix = (await http().get('/api/access/matrix').set(as('OWNER')).expect(200)).body;
   }, 120_000);
 
   afterAll(async () => {
@@ -45,21 +48,20 @@ describe('Access matrix (e2e)', () => {
     expect(row('leads.view')).toMatchObject({ MANAGER: true, RECEPTIONIST: true, ACCOUNTANT: false, TEACHER: false });
   });
 
-  it('says "no" exactly where a real request is refused', async () => {
-    const m = (await http().get('/api/access/matrix').set(as('OWNER')).expect(200)).body;
+  // One test per role: a role's requests fit the time limit even when the
+  // whole suite runs in parallel on a busy machine.
+  it.each(ROLES)('%s: the matrix says "no" exactly where a real request is refused', async (role) => {
     const mismatches: string[] = [];
-    for (const c of m.capabilities as Array<{ key: string; route: string | null; allowed: Record<string, boolean> }>) {
+    for (const c of matrix.capabilities) {
       if (!c.route) continue;
       const [method, path] = c.route.split(' ');
       const url = path.replace(':id', 'no-such-id').replace(':kind', 'teachers');
-      for (const role of m.roles as string[]) {
-        const req = http()[method.toLowerCase() as 'get' | 'post' | 'patch' | 'delete'](url).set(as(role));
-        // An empty body: refused by the guard (403) before validation, or
-        // refused by validation / not found when allowed - nothing is made.
-        const res = method === 'GET' || method === 'DELETE' ? await req : await req.send({});
-        const refused = res.status === 403;
-        if (refused === c.allowed[role]) mismatches.push(`${c.key} ${role}: matrix ${c.allowed[role] ? 'yes' : 'no'}, ${method} ${url} -> ${res.status}`);
-      }
+      const req = http()[method.toLowerCase() as 'get' | 'post' | 'patch' | 'delete'](url).set(as(role));
+      // An empty body: refused by the guard (403) before validation, or
+      // refused by validation / not found when allowed - nothing is made.
+      const res = method === 'GET' || method === 'DELETE' ? await req : await req.send({});
+      const refused = res.status === 403;
+      if (refused === c.allowed[role]) mismatches.push(`${c.key} ${role}: matrix ${c.allowed[role] ? 'yes' : 'no'}, ${method} ${url} -> ${res.status}`);
     }
     expect(mismatches).toEqual([]);
   });
