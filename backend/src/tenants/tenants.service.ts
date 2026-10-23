@@ -1,8 +1,8 @@
 import { BadRequestException, ConflictException, Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
+import { and, asc, eq, inArray, isNotNull, isNull, ne, sql } from 'drizzle-orm';
 import * as bcrypt from 'bcryptjs';
 import { DB, Database } from '../db/db.module';
-import { tenants, users, groups, students, teachers, payments, attendance, branches, announcements, auditLogs, organizationMemberships, enrollments, placementTests } from '../db/schema';
+import { tenants, users, groups, students, teachers, payments, attendance, branches, announcements, auditLogs, organizationMemberships, enrollments, placementTests, tenantDomains } from '../db/schema';
 import { normalizeSiteContent, parseSiteContent } from './site-content';
 import { seatHeldWhere } from '../common/seats';
 import { LeadsService } from '../leads/leads.service';
@@ -111,6 +111,23 @@ export class TenantsService {
     };
   }
 
+  /**
+   * The centers whose public site search engines may list (the main site's
+   * sitemap.xml): not suspended. Only what the sites themselves show:
+   * the address and when it last changed.
+   */
+  async publicSitemap() {
+    const rows = await this.db
+      .select({ subdomain: tenants.subdomain, updatedAt: tenants.updatedAt, tenantId: tenants.id })
+      .from(tenants)
+      .where(ne(tenants.status, 'SUSPENDED'))
+      .orderBy(asc(tenants.subdomain))
+      .limit(50_000);
+    const domains = await this.db.select({ tenantId: tenantDomains.tenantId, domain: tenantDomains.domain }).from(tenantDomains).where(isNotNull(tenantDomains.verifiedAt));
+    const byTenant = new Map(domains.map((d) => [d.tenantId, d.domain]));
+    return rows.map((r) => ({ subdomain: r.subdomain, customDomain: byTenant.get(r.tenantId) ?? null, updatedAt: r.updatedAt }));
+  }
+
   async getPublicShowcase(subdomain: string) {
     const tenant = await this.db.query.tenants.findFirst({
       where: eq(tenants.subdomain, subdomain),
@@ -163,6 +180,11 @@ export class TenantsService {
       placementTest = pt ?? null;
     }
 
+    // The center's own verified domain, if any: the site's canonical address.
+    const [own] = await this.db.select({ domain: tenantDomains.domain }).from(tenantDomains)
+      .where(and(eq(tenantDomains.tenantId, tenant.id), isNotNull(tenantDomains.verifiedAt)))
+      .orderBy(asc(tenantDomains.verifiedAt)).limit(1);
+
     // Extract unique subjects and course programs
     const subjectMap = new Map<string, { subject: string; courses: string[]; groupCount: number }>();
     for (const g of activeGroups) {
@@ -190,6 +212,8 @@ export class TenantsService {
         website: tenant.website,
         websiteLabel: tenant.websiteLabel,
         language: tenant.language,
+        customDomain: own?.domain ?? null,
+        updatedAt: tenant.updatedAt,
       },
       stats: {
         coursesCount: activeGroups.length,

@@ -360,6 +360,9 @@ export interface PublicShowcaseData {
     website?: string | null;
     websiteLabel?: string | null;
     language?: string;
+    /** The center's own verified domain (the site's canonical address). */
+    customDomain?: string | null;
+    updatedAt?: string;
   };
   stats: {
     coursesCount: number;
