@@ -4,6 +4,9 @@ import { ThrottlerStorage } from '@nestjs/throttler';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { vi } from 'vitest';
+// vi.mock below is hoisted above these, so the app loads the replaced check.
+import { AppModule } from '../src/app.module.js';
+import { configureApp } from '../src/app.setup.js';
 
 // The "signups" switch turned off. Turning it off in the shared database
 // would stop other suites' sign-ups running at the same time, so here the
@@ -14,8 +17,6 @@ vi.mock('../src/feature-flags/flags.js', async (importOriginal) => {
   return { ...real, flagOn: vi.fn(async (db: unknown, key: string, tenantId?: string | null) => (off.has(key) ? false : real.flagOn(db as never, key as never, tenantId))) };
 });
 
-const { AppModule } = await import('../src/app.module.js');
-const { configureApp } = await import('../src/app.setup.js');
 
 describe('Sign-ups paused (e2e)', () => {
   let app: NestExpressApplication;
