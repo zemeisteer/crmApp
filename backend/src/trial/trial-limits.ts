@@ -65,11 +65,15 @@ export async function assertNotTrialImport(db: Exec, tenantId: string): Promise<
  * One statement: the counter only rises below the limit, so requests at
  * once cannot pass it. With TRIAL_LIMITS off nothing is counted.
  */
+function aiDay(timezone?: string | null) {
+  const p = zonedParts(new Date(), isValidTimeZone(timezone) ? timezone! : DEFAULT_TIMEZONE);
+  return `${p.year}-${String(p.month).padStart(2, '0')}-${String(p.day).padStart(2, '0')}`;
+}
+
 export async function chargeTrialAi(db: Pick<Database, 'insert'>, tenantId: string, timezone?: string | null): Promise<boolean> {
   const rules = trialRules();
   if (!rules.limits) return true;
-  const p = zonedParts(new Date(), isValidTimeZone(timezone) ? timezone! : DEFAULT_TIMEZONE);
-  const day = `${p.year}-${String(p.month).padStart(2, '0')}-${String(p.day).padStart(2, '0')}`;
+  const day = aiDay(timezone);
   const rows = await db
     .insert(trialAiUsage)
     .values({ tenantId, day, count: 1 })
@@ -80,4 +84,16 @@ export async function chargeTrialAi(db: Pick<Database, 'insert'>, tenantId: stri
     })
     .returning({ count: trialAiUsage.count });
   return rows.length > 0 && rows[0].count <= rules.aiPerDay;
+}
+
+/**
+ * Gives back a request taken by chargeTrialAi that got no answer (the AI
+ * failed): a failure does not use up the day. Never below zero.
+ */
+export async function refundTrialAi(db: Pick<Database, 'update'>, tenantId: string, timezone?: string | null): Promise<void> {
+  if (!trialRules().limits) return;
+  await db
+    .update(trialAiUsage)
+    .set({ count: sql`greatest(${trialAiUsage.count} - 1, 0)` })
+    .where(and(eq(trialAiUsage.tenantId, tenantId), eq(trialAiUsage.day, aiDay(timezone))));
 }

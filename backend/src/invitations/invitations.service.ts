@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   Inject,
   Injectable,
@@ -202,77 +203,60 @@ export class InvitationsService {
           throw new UnauthorizedException("Parol noto'g'ri kiritildi");
         }
       }
-
-      // Existing user joining a new organization
-      // Check existing membership
-      const existingMembership = await this.db.query.organizationMemberships.findFirst({
-        where: and(
-          eq(organizationMemberships.userId, user.id),
-          eq(organizationMemberships.tenantId, invitation.tenantId),
-        ),
-      });
-      const member = user;
-
-      await this.db.transaction(async (tx) => {
-        if (joinsStaff) await assertTrialRoom(tx, invitation.tenantId, 'staff', existingMembership?.status === 'ACTIVE' ? 0 : 1, true, { countPending: false });
-        await this.markAccepted(tx, invitation.id);
-        if (existingMembership) {
-          await tx
-            .update(organizationMemberships)
-            .set({
-              role: invitation.role as any,
-              status: 'ACTIVE',
-              removedAt: null,
-              removedByUserId: null,
-              updatedAt: new Date(),
-            })
-            .where(eq(organizationMemberships.id, existingMembership.id));
-        } else {
-          await tx.insert(organizationMemberships).values({
-            userId: member.id,
-            tenantId: invitation.tenantId,
-            role: invitation.role as any,
-            status: 'ACTIVE',
-          });
-        }
-      });
-    } else {
+    } else if (!dto.fullName?.trim() || !dto.password || dto.password.length < 6) {
       // New user registering via invitation
-      if (!dto.fullName?.trim() || !dto.password || dto.password.length < 6) {
-        throw new BadRequestException(
-          'Yangi foydalanuvchi uchun ism va parol (kamida 6 ta belgi) kiritilishi shart',
-        );
-      }
+      throw new BadRequestException(
+        'Yangi foydalanuvchi uchun ism va parol (kamida 6 ta belgi) kiritilishi shart',
+      );
+    }
+    const existing = user;
+    // Hashed before the transaction: it is slow and needs no lock.
+    const passwordHash = existing ? null : await bcrypt.hash(dto.password!, 10);
 
-      const passwordHash = await bcrypt.hash(dto.password, 10);
-      const fullName = dto.fullName.trim();
+    // One transaction: the staff limit, the invitation marked used (once),
+    // and the member added - all of it, or nothing.
+    try {
       user = await this.db.transaction(async (tx) => {
-        if (joinsStaff) await assertTrialRoom(tx, invitation.tenantId, 'staff', 1, true, { countPending: false });
         await this.markAccepted(tx, invitation.id);
-        const [newUser] = await tx
+        if (existing) {
+          const membership = await tx.query.organizationMemberships.findFirst({
+            where: and(eq(organizationMemberships.userId, existing.id), eq(organizationMemberships.tenantId, invitation.tenantId)),
+          });
+          if (joinsStaff) await assertTrialRoom(tx, invitation.tenantId, 'staff', membership?.status === 'ACTIVE' ? 0 : 1, true, { countPending: false });
+          if (membership) {
+            await tx
+              .update(organizationMemberships)
+              .set({ role: invitation.role as any, status: 'ACTIVE', removedAt: null, removedByUserId: null, updatedAt: new Date() })
+              .where(eq(organizationMemberships.id, membership.id));
+          } else {
+            await tx.insert(organizationMemberships).values({ userId: existing.id, tenantId: invitation.tenantId, role: invitation.role as any, status: 'ACTIVE' });
+          }
+          return existing;
+        }
+        if (joinsStaff) await assertTrialRoom(tx, invitation.tenantId, 'staff', 1, true, { countPending: false });
+        const [created] = await tx
           .insert(users)
           .values({
             tenantId: invitation.tenantId,
-            fullName,
+            fullName: dto.fullName!.trim(),
             email: invitation.email || `${invitation.phone || Date.now()}@user.crmapp`,
             phone: invitation.phone || null,
-            passwordHash,
+            passwordHash: passwordHash!,
             role: invitation.role as any,
             emailVerified: true,
           })
           .returning();
-
-        // Create membership
-        await tx.insert(organizationMemberships).values({
-          userId: newUser.id,
-          tenantId: invitation.tenantId,
-          role: invitation.role as any,
-          status: 'ACTIVE',
-        });
-        return newUser;
+        await tx.insert(organizationMemberships).values({ userId: created.id, tenantId: invitation.tenantId, role: invitation.role as any, status: 'ACTIVE' });
+        return created;
       });
+    } catch (err) {
+      // The account was created a moment ago (another invitation accepted at
+      // the same time): nothing was written here; accepting again signs in to it.
+      if ((err as { code?: string; cause?: { code?: string } }).code === '23505' || (err as { cause?: { code?: string } }).cause?.code === '23505') {
+        throw new ConflictException({ code: 'ACCOUNT_EXISTS', message: "Bu email yoki telefon bilan profil hozirgina yaratildi. Taklifnomani parolingiz bilan qayta qabul qiling." });
+      }
+      throw err;
     }
-    if (!user) throw new NotFoundException('Foydalanuvchi topilmadi');
 
     // Sign JWT with the invited tenant context and role
     const tokens = await this.authService.issueFullSession({

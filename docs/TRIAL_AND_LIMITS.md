@@ -60,7 +60,7 @@ bitta SQL, limitdan oshib keta olmaydi. Sinovdagi markazning barcha AI eshiklari
 
 O'quvchining o'z kunlik limiti (`studentAiDailyLimit`) bundan tashqari amal qiladi.
 Telegram bot boshqa AI chaqirmaydi (xodim botidagi baholash — AI emas).
-Ma'lum chegara: AI javob bermasa, sinov hisoblagichi qaytarilmaydi (o'quvchi limiti qaytariladi).
+AI javob bermasa (xato), so'rov hisoblanmaydi: sinov hisoblagichi ham, o'quvchi limiti ham qaytariladi.
 
 ## 4. SMS — platforma hisobi
 

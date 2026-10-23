@@ -1,13 +1,13 @@
 import { CallHandler, ExecutionContext, ForbiddenException, HttpException, HttpStatus, Inject, Injectable, NestInterceptor, SetMetadata } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { eq } from 'drizzle-orm';
-import { Observable } from 'rxjs';
+import { Observable, catchError, from, mergeMap, throwError } from 'rxjs';
 import { DB, Database } from '../db/db.module';
 import { tenants } from '../db/schema';
 import { routeIdOf } from '../common/route-id';
 import { trialRules } from './trial-rules';
 import { centerAccess, centerState } from './trial-access';
-import { chargeTrialAi } from './trial-limits';
+import { chargeTrialAi, refundTrialAi } from './trial-limits';
 
 const USES_AI = 'usesAi';
 /** The handler asks the AI: a center on its free trial has a daily allowance. */
@@ -55,6 +55,11 @@ export class TrialInterceptor implements NestInterceptor {
           HttpStatus.TOO_MANY_REQUESTS,
         );
       }
+      // No answer, no charge: a failed request gives its place back.
+      const tenantId = user.tenantId;
+      return next.handle().pipe(
+        catchError((err: unknown) => from(refundTrialAi(this.db, tenantId, tenant.tz).catch(() => undefined)).pipe(mergeMap(() => throwError(() => err)))),
+      );
     }
     return next.handle();
   }
