@@ -13,6 +13,17 @@ import { useLanguage } from "@/lib/i18n-context";
 import type { TranslationKey } from "@/lib/i18n";
 import { formatDate } from "@/lib/format-date";
 import { centerHost } from "@/lib/domain";
+import { STATUS_COLORS } from "@/lib/platform";
+
+// A status and a plan read at a glance: the same colours as the other platform pages.
+const TRIAL_ENDED_TONE = { bg: "#F2F1EC", fg: "#4A4E58" };
+const PLAN_TONES = [{ bg: "#F2F1EC", fg: "#4A4E58" }, { bg: "#E6F4FF", fg: "#0B5CAD" }, { bg: "#F1EBFF", fg: "#5B21B6" }, { bg: "#E6F7F4", fg: "#0F766E" }];
+/** Free plans grey, then by price: blue, purple, teal. */
+function planTone(plans: Array<{ key: string; price?: number }>, key: string) {
+  const paid = plans.filter((p) => (p.price ?? 0) > 0).sort((a, b) => (a.price ?? 0) - (b.price ?? 0));
+  const i = paid.findIndex((p) => p.key === key);
+  return i < 0 ? PLAN_TONES[0] : PLAN_TONES[1 + (i % (PLAN_TONES.length - 1))];
+}
 
 const ACCENT = "#4F46E5";
 
@@ -248,6 +259,7 @@ function AdminContent() {
                           disabled={savingId === tn.id}
                           onChange={(v) => onChangePlan(tn.id, v)}
                           options={(plans.some((p) => p.key === tn.plan) ? plans : [...plans, { key: tn.plan, name: tn.plan } as Plan]).map((p) => ({ value: p.key, label: p.name }))}
+                          tone={planTone(plans, tn.plan)}
                           style={{ minWidth: 140 }}
                         />
                       </td>
@@ -258,6 +270,7 @@ function AdminContent() {
                           disabled={savingId === tn.id}
                           onChange={(v) => onChangeStatus(tn.id, v)}
                           options={Object.keys(STATUS_LABEL_KEYS).map((v) => ({ value: v, label: t(STATUS_LABEL_KEYS[v]) }))}
+                          tone={left !== null && left <= 0 ? TRIAL_ENDED_TONE : STATUS_COLORS[tn.status as keyof typeof STATUS_COLORS]}
                           style={{ minWidth: 150 }}
                         />
                         {left !== null && (

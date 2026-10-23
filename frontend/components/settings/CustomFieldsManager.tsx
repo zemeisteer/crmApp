@@ -14,7 +14,7 @@ import {
 } from "@/lib/api";
 import { useLanguage } from "@/lib/i18n-context";
 import type { TranslationKey } from "@/lib/i18n";
-import { activeDefs } from "@/lib/custom-fields";
+import { activeDefs, fieldKeyFromLabel } from "@/lib/custom-fields";
 
 const ACCENT = "#4F46E5";
 const MAX_ACTIVE = 30;
@@ -158,7 +158,7 @@ export default function CustomFieldsManager() {
                   <code style={{ fontSize: 11.5, color: "#686B75" }}>{d.key}</code>
                   <span style={badge("#4F46E5", "#EEF0FF")}>{t(typeKey(d.fieldType))}</span>
                   {d.required && <span style={badge("#B91C1C", "#FEE2E2")}>{t("cf.required")}</span>}
-                  {d.entityType === "STUDENT" && d.portalVisible && <span style={badge("#0F766E", "#CCFBF1")}>{t("cf.portalBadge")}</span>}
+                  {d.entityType === "STUDENT" && d.portalVisible && <span style={badge("#0F766E", "#CCFBF1")} title={t("cf.portalHint")}>{t("cf.portalBadge")}</span>}
                   {d.entityType === "LEAD" && d.studentFieldId && (
                     <span style={badge("#92400E", "#FEF3C7")}>{t("cf.mappedTo").replace("{label}", labelOf(d.studentFieldId) ?? "?")}</span>
                   )}
@@ -232,6 +232,8 @@ function FieldEditor({
   const editing = !!def;
   const [label, setLabel] = useState(def?.label ?? "");
   const [key, setKey] = useState("");
+  // The key follows the name until the person writes one of their own.
+  const [keyTouched, setKeyTouched] = useState(false);
   const [fieldType, setFieldType] = useState<CustomFieldType>(def?.fieldType ?? "TEXT");
   const [required, setRequired] = useState(def?.required ?? false);
   const [portalVisible, setPortalVisible] = useState(def?.portalVisible ?? false);
@@ -401,7 +403,11 @@ function FieldEditor({
             placeholder={t("cf.labelPh")}
             aria-invalid={!!errors.label}
             aria-describedby={errors.label ? "cf-def-label-err" : undefined}
-            onChange={(e) => { setLabel(e.target.value); setErrors((x) => ({ ...x, label: undefined })); }}
+            onChange={(e) => {
+              setLabel(e.target.value);
+              if (!editing && !keyTouched) setKey(fieldKeyFromLabel(e.target.value));
+              setErrors((x) => ({ ...x, label: undefined }));
+            }}
           />
           {errors.label && <div id="cf-def-label-err" role="alert" style={fieldErr}>{errors.label}</div>}
         </div>
@@ -421,7 +427,7 @@ function FieldEditor({
               placeholder="maktab_nomi"
               aria-invalid={!!errors.key}
               aria-describedby={`cf-def-key-hint${errors.key ? " cf-def-key-err" : ""}`}
-              onChange={(e) => { setKey(e.target.value); setErrors((x) => ({ ...x, key: undefined })); }}
+              onChange={(e) => { setKey(e.target.value); setKeyTouched(true); setErrors((x) => ({ ...x, key: undefined })); }}
             />
             <div id="cf-def-key-hint" style={{ marginTop: 5, fontSize: 12, color: "#686B75" }}>{t("cf.keyHint")}</div>
             {errors.key && <div id="cf-def-key-err" role="alert" style={fieldErr}>{errors.key}</div>}

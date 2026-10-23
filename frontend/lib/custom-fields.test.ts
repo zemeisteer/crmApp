@@ -96,3 +96,14 @@ test("conversion sends only what differs from the carried values", () => {
   assert.equal(conversionPayload([a, b, c], { [a.id]: "carried", [b.id]: "keep", [c.id]: null }, carried), undefined);
   assert.deepEqual(conversionPayload([a, b, c], { [a.id]: "changed", [b.id]: "", [c.id]: false }, carried), { [a.id]: "changed", [b.id]: null, [c.id]: false });
 });
+
+test("a field's key is made from its name as it is typed", async () => {
+  const { fieldKeyFromLabel } = await import("./custom-fields.ts");
+  assert.equal(fieldKeyFromLabel("Eng zo'ri"), "eng_zori");
+  assert.equal(fieldKeyFromLabel("Maktab raqami"), "maktab_raqami");
+  assert.equal(fieldKeyFromLabel("O‘qish joyi"), "oqish_joyi");
+  assert.equal(fieldKeyFromLabel("Школа №5"), "shkola_5");
+  assert.equal(fieldKeyFromLabel("2-sinf"), "f_2_sinf");
+  assert.equal(fieldKeyFromLabel("   "), "");
+  assert.ok(fieldKeyFromLabel("a".repeat(60)).length <= 40);
+});

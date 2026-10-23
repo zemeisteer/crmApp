@@ -55,21 +55,29 @@ function Switch({ flag, onChanged }: { flag: FlagOverview; onChanged: () => void
           <h2 style={{ fontSize: 16, fontWeight: 800 }}>{t(`pf.fl.${flag.key}` as TranslationKey)}</h2>
           <div style={{ fontSize: 13, color: "#686B75", marginTop: 4, lineHeight: 1.55 }}>{t(`pf.fl.${flag.key}.d` as TranslationKey)}</div>
         </div>
-        <button
-          type="button"
-          role="switch"
-          aria-checked={flag.enabled}
-          aria-label={t(`pf.fl.${flag.key}` as TranslationKey)}
-          disabled={busy}
-          onClick={toggleGlobal}
-          className="btn"
-          style={{ background: flag.enabled ? "#E9F8EF" : "#FDEBEC", color: flag.enabled ? "#16794A" : "#B23A47", border: "none", borderRadius: 100, padding: "8px 16px", fontSize: 13, fontWeight: 800, cursor: busy ? "wait" : "pointer" }}
-        >
-          {flag.enabled ? t("pf.fl.on") : t("pf.fl.off")}
-        </button>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 800, padding: "6px 12px", borderRadius: 100, background: flag.enabled ? "#E9F8EF" : "#FDEBEC", color: flag.enabled ? "#16794A" : "#B23A47" }}>
+            <span aria-hidden="true" style={{ width: 8, height: 8, borderRadius: 100, background: flag.enabled ? "#16794A" : "#B23A47" }} />
+            {flag.enabled ? t("pf.fl.on") : t("pf.fl.off")}
+          </span>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={flag.enabled}
+            aria-label={t(`pf.fl.${flag.key}` as TranslationKey)}
+            disabled={busy}
+            onClick={toggleGlobal}
+            className="btn"
+            style={{ background: flag.enabled ? "#fff" : ACCENT, color: flag.enabled ? "#B23A47" : "#fff", border: flag.enabled ? "1px solid #F3C6CB" : "none", borderRadius: 9, padding: "8px 14px", fontSize: 13, fontWeight: 700, cursor: busy ? "wait" : "pointer" }}
+          >
+            {flag.enabled ? t("pf.fl.turnOff") : t("pf.fl.turnOn")}
+          </button>
+        </div>
       </div>
 
-      <div>
+      <details open={flag.overrides.length > 0}>
+        <summary style={{ cursor: "pointer", fontSize: 12.5, fontWeight: 700, color: "#4A4E58" }}>{t("pf.fl.oneCenter")}</summary>
+      <div style={{ marginTop: 8 }}>
         <div style={{ fontSize: 12.5, fontWeight: 700, color: "#4A4E58", marginBottom: 6 }}>
           {flag.enabled ? t("pf.fl.offFor") : t("pf.fl.onFor")}
         </div>
@@ -96,6 +104,7 @@ function Switch({ flag, onChanged }: { flag: FlagOverview; onChanged: () => void
           </button>
         </form>
       </div>
+      </details>
       {error && <div role="alert" style={{ fontSize: 13, fontWeight: 600, padding: "9px 12px", borderRadius: 10, background: "#FDEBEC", color: "#B23A47" }}>{error}</div>}
     </section>
   );

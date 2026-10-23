@@ -24,6 +24,7 @@ export default function Select({
   ariaLabel,
   searchable,
   searchPlaceholder,
+  tone,
 }: {
   options: SelectOption[];
   value: string;
@@ -38,6 +39,8 @@ export default function Select({
   sheetOnPhone?: boolean;
   sheetTitle?: string;
   ariaLabel?: string;
+  // A coloured field (a status at a glance): background and text colour.
+  tone?: { bg: string; fg: string };
   // A search box at the top of the list; on by itself for more than 8 options.
   searchable?: boolean;
   searchPlaceholder?: string;
@@ -97,12 +100,13 @@ export default function Select({
           textAlign: "left",
           opacity: disabled ? 0.6 : 1,
           width: "100%",
-          borderColor: open ? ACCENT : undefined,
+          borderColor: open ? ACCENT : tone ? tone.bg : undefined,
           boxShadow: open ? "0 0 0 3px rgba(79, 70, 229, 0.12)" : undefined,
           transition: "border-color 0.15s, box-shadow 0.15s",
+          ...(tone ? { background: tone.bg, color: tone.fg, fontWeight: 700 } : {}),
         }}
       >
-        <span style={{ color: selectedLabel ? "#181A1F" : "#686B75", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: wrap ? "normal" : "nowrap", lineHeight: wrap ? 1.35 : undefined }}>
+        <span style={{ color: tone ? tone.fg : selectedLabel ? "#181A1F" : "#686B75", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: wrap ? "normal" : "nowrap", lineHeight: wrap ? 1.35 : undefined }}>
           {selectedLabel || effectivePlaceholder}
         </span>
         <svg
