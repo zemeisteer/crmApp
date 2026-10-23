@@ -13,12 +13,13 @@ import { plans, tenants } from '../db/schema';
  *   AI_TUTOR      the students' AI tutor (cabinet and Telegram)
  *   MOCK_EXAMS    mock exams and practice sets
  *   CERTIFICATES  certificates
+ *   CUSTOM_DOMAIN the center's public site on its own domain
  * Limits (a number, or null for none):
  *   MAX_STUDENTS, MAX_STAFF, MAX_BRANCHES
  *
  * SMS stays with plans.smsIncluded (notifications.service.ts smsRoute).
  */
-export const FEATURES = ['AI_TOOLS', 'AI_TUTOR', 'MOCK_EXAMS', 'CERTIFICATES'] as const;
+export const FEATURES = ['AI_TOOLS', 'AI_TUTOR', 'MOCK_EXAMS', 'CERTIFICATES', 'CUSTOM_DOMAIN'] as const;
 export const LIMITS = ['MAX_STUDENTS', 'MAX_STAFF', 'MAX_BRANCHES'] as const;
 export type Feature = (typeof FEATURES)[number];
 export type Limit = (typeof LIMITS)[number];
@@ -45,6 +46,7 @@ const LABELS: Record<Feature, string> = {
   AI_TUTOR: "O'quvchilar uchun AI ustoz",
   MOCK_EXAMS: 'Mock imtihonlar',
   CERTIFICATES: 'Sertifikatlar',
+  CUSTOM_DOMAIN: "O'z domeni",
 };
 
 export const notInPlan = (f: Feature) =>

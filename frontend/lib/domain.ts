@@ -113,3 +113,18 @@ export function safeNextPath(wanted: string | null | undefined): string {
   if (/[\u0000-\u001f]/.test(wanted) || wanted.startsWith("/auth/")) return fallback;
   return wanted;
 }
+
+/**
+ * A host that is neither the platform's own (the main site, a center
+ * subdomain, localhost) nor an address: possibly a center's own domain
+ * (academy.uz), which the site's front door looks up (proxy.ts).
+ */
+export function customHost(host: string | null | undefined, root: string = ROOT_DOMAIN): string | null {
+  if (!host) return null;
+  const name = host.toLowerCase().replace(/:\d+$/, "").replace(/\.$/, "");
+  if (!name.includes(".")) return null;
+  if (name === root || name.endsWith(`.${root}`)) return null;
+  if (name === "localhost" || name.endsWith(".localhost")) return null;
+  if (/^[\d.]+$/.test(name) || name.startsWith("[")) return null;
+  return name;
+}
