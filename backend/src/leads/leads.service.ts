@@ -604,6 +604,8 @@ export class LeadsService {
     const channel = dto.channel ?? 'public_form';
     // Marketing attribution from the landing URL, kept on the timeline.
     const utm = Object.fromEntries(Object.entries(dto.utm ?? {}).filter(([, v]) => typeof v === 'string' && v.trim()).map(([k, v]) => [k, v!.trim()]));
+    // The ad's network, when the link says so, is the lead's source; a plain visit stays WEBSITE.
+    const source = sourceFromUtm(utm.source as string | undefined);
     const [existing] = await this.findDuplicates(this.db, tenantId, phoneNormalized, null);
     const noteText = channel === 'placement_test'
       ? 'Onlayn daraja testini topshirdi'
@@ -645,7 +647,7 @@ export class LeadsService {
           phone: dto.phone.trim(),
           phoneNormalized,
           secondaryPhone: dto.secondaryPhone?.trim() || null,
-          source: 'WEBSITE',
+          source,
           desiredSubjectId,
           legacySubject: desiredSubjectId ? null : subjectText,
           preferredBranchId: branchId,
@@ -656,7 +658,7 @@ export class LeadsService {
         }).returning();
         await this.recordActivity(tx, {
           tenantId, leadId: row.id, actorUserId: null, type: 'STATUS_CHANGE', toStatus: 'NEW',
-          metadata: { kind: 'CREATED', source: 'WEBSITE', channel, ...(Object.keys(utm).length ? { utm } : {}) },
+          metadata: { kind: 'CREATED', source, channel, ...(Object.keys(utm).length ? { utm } : {}) },
         });
         return row;
       });
@@ -1154,4 +1156,17 @@ export class LeadsService {
     this.audit.log({ tenantId, userId: actor.userId, action: 'export', entityType: 'lead', entityId: 'csv', meta: { rows: rows.length } });
     return '﻿' + [header.join(','), ...lines].join('\r\n');
   }
+}
+
+/**
+ * The lead source an ad link names (utm_source): Instagram and Telegram by
+ * name, other paid networks as ADVERTISEMENT; anything else, or none, WEBSITE.
+ */
+export function sourceFromUtm(utmSource?: string): 'INSTAGRAM' | 'TELEGRAM' | 'ADVERTISEMENT' | 'WEBSITE' {
+  const s = (utmSource ?? '').trim().toLowerCase();
+  if (!s) return 'WEBSITE';
+  if (/^(instagram|insta|ig)$/.test(s)) return 'INSTAGRAM';
+  if (/^(telegram|tg|t\.me)$/.test(s)) return 'TELEGRAM';
+  if (/^(facebook|fb|meta|google|youtube|yt|tiktok|yandex|vk|ads?)$/.test(s)) return 'ADVERTISEMENT';
+  return 'WEBSITE';
 }
