@@ -29,6 +29,12 @@ export class CreatePlacementTestDto {
   @IsIn(['UZ', 'RU', 'EN'])
   language?: 'UZ' | 'RU' | 'EN';
 
+  // Who takes it: applicants (default; filed as leads) or teacher candidates
+  // (filed under hiring).
+  @IsOptional()
+  @IsIn(['STUDENT', 'CANDIDATE'])
+  audience?: 'STUDENT' | 'CANDIDATE';
+
   // Ready questions (e.g. reviewed after a PDF import) instead of generating.
   @IsOptional()
   @IsArray()

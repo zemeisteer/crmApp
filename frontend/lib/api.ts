@@ -1134,9 +1134,57 @@ export interface PublicPlacementTest {
   questions: PublicQuestion[];
 }
 
+// ---- Teacher hiring ----
+
+export type CandidateStage = "NEW" | "TEST" | "INTERVIEW" | "DEMO" | "OFFER" | "HIRED" | "REJECTED";
+export interface Candidate {
+  id: string;
+  fullName: string;
+  phone: string | null;
+  email: string | null;
+  subject: string | null;
+  source: string | null;
+  notes: string | null;
+  stage: CandidateStage;
+  testPercent: number | null;
+  testAttemptId: string | null;
+  interviewAt: string | null;
+  interviewScore: number | null;
+  interviewNotes: string | null;
+  demoAt: string | null;
+  demoScore: number | null;
+  demoNotes: string | null;
+  decisionNote: string | null;
+  teacherId: string | null;
+  history: Array<{ stage: CandidateStage; at: string; by: string | null }>;
+  createdAt: string;
+  updatedAt: string;
+}
+export interface CandidateDetail extends Candidate {
+  attempts: Array<{ id: string; testId: string; testTitle: string; percent: number; correct: number; total: number; reviewStatus: string; createdAt: string }>;
+}
+
+export const hiringApi = {
+  list: (params: { stage?: CandidateStage; q?: string } = {}) => {
+    const qs = new URLSearchParams(Object.entries(params).filter(([, v]) => v) as [string, string][]).toString();
+    return request<{ items: Candidate[]; counts: Record<CandidateStage, number> }>(`/hiring/candidates${qs ? `?${qs}` : ""}`);
+  },
+  create: (data: { fullName: string; phone?: string; email?: string; subject?: string; source?: string; notes?: string }) =>
+    request<Candidate>("/hiring/candidates", { method: "POST", body: JSON.stringify(data) }),
+  get: (id: string) => request<CandidateDetail>(`/hiring/candidates/${id}`),
+  update: (id: string, data: Record<string, unknown>) =>
+    request<Candidate>(`/hiring/candidates/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
+  hire: (id: string) => request<{ candidate: Candidate; teacherId: string }>(`/hiring/candidates/${id}/hire`, { method: "POST" }),
+  archive: (id: string) => request<{ success: boolean }>(`/hiring/candidates/${id}`, { method: "DELETE" }),
+};
+
+/** Who a placement test is for: applicants (filed as leads) or teacher candidates. */
+export type PlacementAudience = "STUDENT" | "CANDIDATE";
+
 export const placementApi = {
-  list: () => request<PlacementTestSummary[]>("/placement-tests"),
+  list: (audience: PlacementAudience = "STUDENT") => request<PlacementTestSummary[]>(`/placement-tests${audience === "CANDIDATE" ? "?audience=CANDIDATE" : ""}`),
   create: (data: {
+    audience?: PlacementAudience;
     subject: string;
     title?: string;
     level?: "BEGINNER" | "INTERMEDIATE" | "ADVANCED";

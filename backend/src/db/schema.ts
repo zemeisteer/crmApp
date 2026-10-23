@@ -1129,6 +1129,9 @@ export const placementTests = pgTable('placement_tests', {
   subject: text('subject').notNull(),
   language: text('language').notNull().default('UZ'),
   questions: text('questions').notNull(), // JSON: PlacementQuestion[]
+  // STUDENT: a level test for applicants (filed under admissions); CANDIDATE:
+  // a test for teacher candidates (filed under hiring).
+  audience: text('audience').notNull().default('STUDENT'),
   token: text('token').notNull(),
   active: boolean('active').notNull().default(true),
   createdAt: timestamp('created_at').notNull().defaultNow(),
@@ -1144,6 +1147,8 @@ export const placementAttempts = pgTable('placement_attempts', {
   // The admissions lead this attempt was filed under (matched or created
   // by phone when the test was submitted).
   leadId: text('lead_id').references((): AnyPgColumn => leads.id, { onDelete: 'set null' }),
+  // The teacher candidate it was filed under (a CANDIDATE test).
+  candidateId: text('candidate_id').references((): AnyPgColumn => jobCandidates.id, { onDelete: 'set null' }),
   fullName: text('full_name').notNull(),
   phone: text('phone'),
   answers: text('answers').notNull(), // JSON: string[] by question index
@@ -1159,6 +1164,40 @@ export const placementAttempts = pgTable('placement_attempts', {
   testIdx: index('placement_attempts_test_idx').on(t.testId),
   leadIdx: index('placement_attempts_lead_idx').on(t.leadId),
   tenantIdx: index('placement_attempts_tenant_idx').on(t.tenantId),
+}));
+
+// Teacher hiring (hiring/): a candidate goes new -> test -> interview ->
+// demo lesson -> decision, and a hired one becomes a teacher (teacherId).
+export const jobCandidates = pgTable('job_candidates', {
+  id: text('id').primaryKey().$defaultFn(() => createId()),
+  tenantId: text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  fullName: text('full_name').notNull(),
+  phone: text('phone'),
+  phoneNormalized: text('phone_normalized'),
+  email: text('email'),
+  subject: text('subject'),
+  source: text('source'),
+  notes: text('notes'),
+  stage: text('stage').notNull().default('NEW'),
+  testPercent: integer('test_percent'),
+  testAttemptId: text('test_attempt_id'),
+  interviewAt: timestamp('interview_at'),
+  interviewScore: integer('interview_score'),
+  interviewNotes: text('interview_notes'),
+  demoAt: timestamp('demo_at'),
+  demoScore: integer('demo_score'),
+  demoNotes: text('demo_notes'),
+  decisionNote: text('decision_note'),
+  teacherId: text('teacher_id').references(() => teachers.id, { onDelete: 'set null' }),
+  // JSON: [{ stage, at, by }] - every stage it went through.
+  history: text('history').notNull().default('[]'),
+  createdByUserId: text('created_by_user_id').references(() => users.id, { onDelete: 'set null' }),
+  archivedAt: timestamp('archived_at'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+}, (t) => ({
+  tenantStageIdx: index('job_candidates_tenant_stage_idx').on(t.tenantId, t.stage),
+  tenantPhoneIdx: index('job_candidates_tenant_phone_idx').on(t.tenantId, t.phoneNormalized),
 }));
 
 // Outgoing event notifications to a tenant's own systems (Zapier-style).
