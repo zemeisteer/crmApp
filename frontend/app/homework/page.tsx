@@ -16,6 +16,7 @@ import { matchesSubject, extractUniqueSubjects } from "@/lib/subject";
 import { formatDate as fmtDate } from "@/lib/format-date";
 import { useCenterClock } from "@/lib/use-center-clock";
 import { PrivateImg, PrivateLink } from "@/components/PrivateFile";
+import Link from "next/link";
 
 const ACCENT = "#4F46E5";
 
@@ -555,6 +556,8 @@ function HomeworkContent() {
       dueToday: states.filter((x) => x.status === "TODAY").length,
       avgDone: rated.length ? Math.round((rated.reduce((s2, x) => s2 + Math.min(1, x.done / x.size), 0) / rated.length) * 100) : null,
       notSubmitted: open.reduce((s2, x) => s2 + Math.max(0, x.size - x.done), 0),
+      // Handed in and waiting for the teacher's mark.
+      toGrade: items.reduce((s2, h) => s2 + (h.completions ?? []).filter((c) => c.status === "SUBMITTED").length, 0),
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [items, groups, today]);
@@ -635,8 +638,9 @@ function HomeworkContent() {
         ) : (
           <>
             {items.length > 0 && (
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0,1fr))", gap: 16, marginBottom: 16 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 16, marginBottom: 16 }}>
                 {[
+                  { label: t("hws.toGrade"), value: String(hwStats.toGrade), warn: hwStats.toGrade > 0 },
                   { label: t("hws.active"), value: String(hwStats.active) },
                   { label: t("hws.dueToday"), value: String(hwStats.dueToday), warn: hwStats.dueToday > 0 },
                   { label: t("hws.avgDone"), value: hwStats.avgDone === null ? "—" : `${hwStats.avgDone}%` },
@@ -665,9 +669,30 @@ function HomeworkContent() {
               </div>
             )}
 
-            {filtered.length === 0 ? (
+            {items.length === 0 ? (
+              // The first visit: what this page is for and the two ways to start.
+              <div data-testid="homework-empty" style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 28, display: "flex", flexDirection: "column", gap: 16 }}>
+                <div>
+                  <div style={{ fontSize: 17, fontWeight: 800, fontFamily: "'Manrope', sans-serif" }}>{t("hwe.title")}</div>
+                  <div style={{ fontSize: 13.5, color: "#686B75", marginTop: 4, lineHeight: 1.6 }}>{t("hwe.text")}</div>
+                </div>
+                <ol style={{ margin: 0, paddingLeft: 20, display: "flex", flexDirection: "column", gap: 6, fontSize: 13.5, color: "#3A3D45", lineHeight: 1.55 }}>
+                  <li>{t("hwe.step1")}</li>
+                  <li>{t("hwe.step2")}</li>
+                  <li>{t("hwe.step3")}</li>
+                </ol>
+                <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                  <button type="button" className="btn" onClick={() => setModalOpen(true)} style={{ background: ACCENT, color: "#fff", border: "none", fontSize: 13.5, fontWeight: 700, padding: "10px 18px", borderRadius: 9 }}>
+                    + {t("hwe.create")}
+                  </button>
+                  <Link href="/ai-materials" className="btn" style={{ background: "#F1EBFF", color: "#5B21B6", fontSize: 13.5, fontWeight: 700, padding: "10px 18px", borderRadius: 9, textDecoration: "none" }}>
+                    ✨ {t("hwe.withAi")}
+                  </Link>
+                </div>
+              </div>
+            ) : filtered.length === 0 ? (
               <div style={{ color: "#686B75", fontSize: 14, background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 32, textAlign: "center" }}>
-                {items.length === 0 ? t("homework.noHomeworkYet") : t("homework.noSearchResults")}
+                {t("homework.noSearchResults")}
               </div>
             ) : (
               <>
