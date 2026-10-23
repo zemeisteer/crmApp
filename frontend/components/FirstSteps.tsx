@@ -68,7 +68,7 @@ export default function FirstSteps() {
           {t("fs.hide")}
         </button>
       </div>
-      <div role="progressbar" aria-valuemin={0} aria-valuemax={data.total} aria-valuenow={data.done} style={{ height: 6, background: "#F2F1EC", borderRadius: 100 }}>
+      <div role="progressbar" aria-labelledby="first-steps-title" aria-valuemin={0} aria-valuemax={data.total} aria-valuenow={data.done} style={{ height: 6, background: "#F2F1EC", borderRadius: 100 }}>
         <div style={{ height: 6, width: `${(data.done / data.total) * 100}%`, background: ACCENT, borderRadius: 100 }} />
       </div>
       <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 8 }}>
