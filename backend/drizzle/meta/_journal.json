@@ -477,6 +477,13 @@
       "when": 1796800000000,
       "tag": "0067_plan_entitlements",
       "breakpoints": true
+    },
+    {
+      "idx": 68,
+      "version": "7",
+      "when": 1796900000000,
+      "tag": "0068_tenant_domains",
+      "breakpoints": true
     }
   ]
 }

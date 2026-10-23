@@ -191,3 +191,20 @@ test('platform switches: the admin turns AI off for one center from the page; th
   await ai.getByRole('listitem').filter({ hasText: c.sub }).getByRole('button', { name: 'Olib tashlash' }).click();
   await expect(ai.getByRole('listitem')).toHaveCount(0);
 });
+
+test("a center's own domain: added in the site settings, the DNS record to add is shown, not connected until proved", async ({ page }) => {
+  test.skip(TARGET !== 'local', 'needs the disposable local database');
+  const c = await newCenter('owndom');
+  await loginOnMainSite(page, c.email);
+  await expectCenterDashboard(page, c.sub);
+  await page.goto(centerUrl(c.sub, '/settings'));
+  await page.getByRole('button', { name: 'Sayt', exact: true }).click();
+  const box = page.getByTestId('custom-domains');
+  await box.getByLabel('Domen').fill(`${c.sub}-academy.uz`);
+  await box.getByRole('button', { name: "Domen qo'shish" }).click();
+  await expect(box.getByText(`_talimcrm.${c.sub}-academy.uz`)).toBeVisible();
+  await expect(box.getByText('Tasdiqlanmagan')).toBeVisible();
+  // No DNS record here: checking says so.
+  await box.getByRole('button', { name: 'Tekshirish' }).click();
+  await expect(box.getByRole('alert')).toContainText('TXT');
+});

@@ -327,6 +327,27 @@ bash scripts/production/stack.sh exec backend node scripts/report-signups.cjs   
 
 ---
 
+### Platforma to'lovi va o'chirgichlar (migratsiyalar 0066–0068)
+
+- `BILLING_ENFORCE` sukut bo'yicha **o'chiq**. Yoqishdan oldin admin panel → "Sinov va SMS nazorati" → "To'langan muddat: oldindan ko'rish"ni tekshiring: 0066 migratsiyasi to'lagan markazlarga oxirgi to'langan oydan `paid_until` qo'yadi, ba'zilarining muddati allaqachon o'tgan bo'lishi mumkin. Batafsil: `docs/PLATFORM_BILLING.md`.
+- Favqulodda to'xtatish (AI, SMS, Telegram, ro'yxatdan o'tish): admin panel → "Platforma o'chirgichlari".
+
+### Markazning o'z domeni (HTTPS)
+
+Markaz domenini tasdiqlagach (TXT yozuvi), domen serverga yo'naltirilgan bo'lishi kerak (CNAME `<subdomen>.<DOMAIN>` yoki A yozuv). nginx barcha hostlarni qabul qiladi, lekin 443 portda faqat platforma sertifikati bor — har domenga sertifikat va server bloki kerak:
+
+```bash
+# 1) sertifikat (80-port orqali, nginx ishlab turganda)
+docker compose -f docker-compose.prod.yml run --rm certbot certonly --webroot -w /var/www/certbot -d academy.uz -d www.academy.uz
+# 2) nginx/conf.d/custom-academy.uz.conf - talimcrm.conf dagi 443 blokining nusxasi:
+#    server_name academy.uz www.academy.uz;
+#    ssl_certificate     /etc/letsencrypt/live/academy.uz/fullchain.pem;
+#    ssl_certificate_key /etc/letsencrypt/live/academy.uz/privkey.pem;
+# 3) bash scripts/production/stack.sh exec nginx nginx -s reload
+```
+
+Domen faqat markaz saytini ko'rsatadi (`/`); kirish va kabinetlar markaz subdomeniga yo'naltiriladi. Frontend API'ga ichki manzil orqali so'raydi (`INTERNAL_API_URL`, compose'da bor).
+
 ## 10. Monitoring va Nosozliklarni Aniqlash (Troubleshooting)
 
 ```bash

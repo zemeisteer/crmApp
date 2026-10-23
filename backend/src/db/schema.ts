@@ -296,6 +296,20 @@ export const trialNotices = pgTable('trial_notices', {
 // sent once (a retry, a double click, a provider timeout), and messages on
 // the platform's provider account count against its monthly budget
 // (notifications.service.ts).
+// A center's own domain for its public site (custom-domains/). Proved by a
+// DNS TXT record before it resolves; a domain is verified by one center only.
+export const tenantDomains = pgTable('tenant_domains', {
+  id: text('id').primaryKey().$defaultFn(() => createId()),
+  tenantId: text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  domain: text('domain').notNull(),
+  verificationToken: text('verification_token').notNull(),
+  verifiedAt: timestamp('verified_at'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+}, (t) => ({
+  tenantDomainIdx: uniqueIndex('tenant_domains_tenant_domain_idx').on(t.tenantId, t.domain),
+  verifiedIdx: uniqueIndex('tenant_domains_verified_idx').on(t.domain).where(sql`${t.verifiedAt} is not null`),
+}));
+
 export const smsSends = pgTable('sms_sends', {
   id: text('id').primaryKey().$defaultFn(() => createId()),
   tenantId: text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),

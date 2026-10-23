@@ -6,6 +6,7 @@ import DashboardShell from "@/components/DashboardShell";
 import AccessMatrixPanel from "@/components/settings/AccessMatrix";
 import StaffAccessEditor, { isConfigurableRole } from "@/components/settings/StaffAccessEditor";
 import SiteContentEditor from "@/components/settings/SiteContentEditor";
+import CustomDomains from "@/components/settings/CustomDomains";
 import BranchesManager from "@/components/settings/BranchesManager";
 import CustomFieldsManager from "@/components/settings/CustomFieldsManager";
 import MakeupPolicyCard from "@/components/settings/MakeupPolicyCard";
@@ -560,6 +561,12 @@ function SettingsContent() {
           {tab === "fields" && isAdminRole(user?.role) && <CustomFieldsManager />}
 
           {tab === "site" && <SiteContentEditor />}
+          {tab === "site" && isAdminRole(user?.role) && (
+            <div className="card" style={{ padding: 20, marginTop: 16 }}>
+              <div style={{ fontSize: 15, fontWeight: 800, marginBottom: 10 }}>{t("dom.title")}</div>
+              <CustomDomains />
+            </div>
+          )}
 
           {tab === "staff" && (
             <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 22, maxWidth: 720 }}>

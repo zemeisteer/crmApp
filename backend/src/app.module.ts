@@ -12,6 +12,7 @@ import { FeatureFlagsModule } from './feature-flags/feature-flags.module';
 import { TelegramModule } from './telegram/telegram.module';
 import { AuthModule } from './auth/auth.module';
 import { TenantsModule } from './tenants/tenants.module';
+import { CustomDomainsModule } from './custom-domains/custom-domains.module';
 import { GroupsModule } from './groups/groups.module';
 import { StudentsModule } from './students/students.module';
 import { TeachersModule } from './teachers/teachers.module';
@@ -71,6 +72,7 @@ import { InvoicesModule } from './invoices/invoices.module';
     TelegramModule,
     AuthModule,
     TenantsModule,
+    CustomDomainsModule,
     GroupsModule,
     StudentsModule,
     TeachersModule,

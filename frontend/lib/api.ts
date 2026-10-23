@@ -1174,7 +1174,7 @@ export interface LeaderboardEntry {
   badge: "GOLD" | "SILVER" | "BRONZE" | "TOP_PERFORMER" | "PARTICIPANT";
 }
 
-export const PLAN_FEATURES = ["AI_TOOLS", "AI_TUTOR", "MOCK_EXAMS", "CERTIFICATES"] as const;
+export const PLAN_FEATURES = ["AI_TOOLS", "AI_TUTOR", "MOCK_EXAMS", "CERTIFICATES", "CUSTOM_DOMAIN"] as const;
 export const PLAN_LIMITS = ["MAX_STUDENTS", "MAX_STAFF", "MAX_BRANCHES"] as const;
 export type Entitlements = Partial<Record<(typeof PLAN_FEATURES)[number], boolean> & Record<(typeof PLAN_LIMITS)[number], number | null>>;
 /** A feature the center's plan does not leave out (missing means included). */
@@ -2282,6 +2282,26 @@ export const platformApi = {
   /** A value of null removes the stored key (the name goes back to .env). The admin's password is asked every time. */
   saveIntegration: (id: string, password: string, values: Record<string, string | null>) =>
     request<PlatformIntegration & { restartNeeded: boolean }>(`/platform/integrations/${id}`, { method: "PUT", body: JSON.stringify({ password, values }) }),
+};
+
+// ---- A center's own domains ----
+
+export interface CustomDomain {
+  id: string;
+  domain: string;
+  verified: boolean;
+  verifiedAt: string | null;
+  /** The TXT record that proves it. */
+  txtName: string;
+  txtValue: string;
+  createdAt: string;
+}
+
+export const customDomainsApi = {
+  list: () => request<CustomDomain[]>("/custom-domains"),
+  add: (domain: string) => request<CustomDomain>("/custom-domains", { method: "POST", body: JSON.stringify({ domain }) }),
+  verify: (id: string) => request<CustomDomain>(`/custom-domains/${id}/verify`, { method: "POST" }),
+  remove: (id: string) => request<{ success: boolean }>(`/custom-domains/${id}`, { method: "DELETE" }),
 };
 
 // ---- Platform switches (feature flags) ----
