@@ -7,6 +7,7 @@ import { EskizProvider } from '../notifications/sms/eskiz.provider';
 import { PlayMobileProvider } from '../notifications/sms/playmobile.provider';
 import { normalizePhone, maskPhone } from '../leads/phone';
 import { TrialClaimsService } from '../trial/trial-claims.service';
+import { flagOn, signupsPaused } from '../feature-flags/flags';
 
 const CODE_TTL_MS = 10 * 60_000;
 const RESEND_AFTER_MS = 60_000;
@@ -59,6 +60,7 @@ export class SignupPhoneService {
   }
 
   async start(rawPhone: string, ip: string | undefined) {
+    if (!(await flagOn(this.db, 'signups'))) throw signupsPaused();
     const phone = this.normalize(rawPhone);
     // A phone whose trial was had (and not paid for or released): no code at all.
     await this.claims.rightOf(phone);

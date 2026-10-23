@@ -2284,6 +2284,23 @@ export const platformApi = {
     request<PlatformIntegration & { restartNeeded: boolean }>(`/platform/integrations/${id}`, { method: "PUT", body: JSON.stringify({ password, values }) }),
 };
 
+// ---- Platform switches (feature flags) ----
+
+export type FlagKey = "ai" | "sms" | "telegram" | "signups";
+export interface FlagOverview {
+  key: FlagKey;
+  enabled: boolean;
+  overrides: Array<{ tenantId: string; name: string | null; subdomain: string | null; enabled: boolean }>;
+}
+
+export const featureFlagsApi = {
+  overview: () => request<FlagOverview[]>("/feature-flags/overview"),
+  setGlobal: (key: FlagKey, enabled: boolean) => request("/feature-flags/global", { method: "POST", body: JSON.stringify({ key, enabled }) }),
+  setForTenant: (key: FlagKey, tenantId: string, enabled: boolean) =>
+    request(`/feature-flags/${key}/tenants/${tenantId}`, { method: "PUT", body: JSON.stringify({ enabled }) }),
+  clearForTenant: (key: FlagKey, tenantId: string) => request(`/feature-flags/${key}/tenants/${tenantId}`, { method: "DELETE" }),
+};
+
 // ---- Webhooks ----
 
 export const webhooksApi = {

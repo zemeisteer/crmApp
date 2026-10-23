@@ -16,6 +16,7 @@ import { centerWorkRefusal } from '../trial/trial-access';
 import { TelegramService } from '../telegram/telegram.service';
 import { EskizProvider } from './sms/eskiz.provider';
 import { PlayMobileProvider } from './sms/playmobile.provider';
+import { flagOn } from '../feature-flags/flags';
 import {
   QueryNotificationsDto,
   SendNotificationDto,
@@ -61,7 +62,7 @@ export class NotificationsService {
    */
   async smsRoute(tenantId: string): Promise<
     | { ok: true; provider: 'eskiz' | 'playmobile'; token: string | undefined; sender: string; configured: boolean; platformAccount: boolean }
-    | { ok: false; reason: 'NO_CENTER' | 'CENTER_INACTIVE' | 'NOT_IN_PLAN' | 'OFF'; message: string }
+    | { ok: false; reason: 'NO_CENTER' | 'CENTER_INACTIVE' | 'NOT_IN_PLAN' | 'OFF' | 'DISABLED'; message: string }
   > {
     const [row] = await this.db
       .select({
@@ -79,6 +80,8 @@ export class NotificationsService {
       .leftJoin(plans, eq(plans.key, tenants.plan))
       .where(eq(tenants.id, tenantId));
     if (!row) return { ok: false, reason: 'NO_CENTER', message: 'Markaz topilmadi' };
+    // The platform's switch (feature-flags/flags.ts): an emergency stop for all SMS.
+    if (!(await flagOn(this.db, 'sms', tenantId))) return { ok: false, reason: 'DISABLED', message: "SMS yuborish vaqtincha o'chirilgan" };
     if (centerWorkRefusal(row)) return { ok: false, reason: 'CENTER_INACTIVE', message: "Markaz faol emas (sinov muddati tugagan yoki to'xtatilgan)" };
     if (row.smsIncluded === false) return { ok: false, reason: 'NOT_IN_PLAN', message: 'SMS tarifingizga kiritilmagan' };
     if (!row.smsEnabled) return { ok: false, reason: 'OFF', message: "SMS markaz sozlamalarida o'chirilgan" };
@@ -201,7 +204,11 @@ export class NotificationsService {
     let providerName: string = 'system';
     let providerMessageId: string | null = null;
 
-    if (dto.channel === 'TELEGRAM') {
+    if (dto.channel === 'TELEGRAM' && !(await flagOn(this.db, 'telegram', tenantId))) {
+      status = 'FAILED';
+      errorMessage = "Telegram xabarlari vaqtincha o'chirilgan";
+      providerName = 'telegram';
+    } else if (dto.channel === 'TELEGRAM') {
       providerName = 'telegram';
       try {
         if (dto.studentId) {

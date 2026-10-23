@@ -27,6 +27,7 @@ type Tx = Parameters<Parameters<Database['transaction']>[0]>[0];
 import { trialRules, trialStage } from '../trial/trial-rules';
 import { billingRules } from '../platform-billing/billing-period';
 import { entitlementsOf } from '../plans/entitlements';
+import { flagOn, signupsPaused } from '../feature-flags/flags';
 
 function hashToken(token: string) {
   return createHash('sha256').update(token).digest('hex');
@@ -131,6 +132,7 @@ export class AuthService {
   }
 
   async register(dto: RegisterDto) {
+    if (!(await flagOn(this.db, 'signups'))) throw signupsPaused();
     const passwordIssue = isPasswordStrongEnough(dto.password);
     if (passwordIssue) throw new BadRequestException(passwordIssue);
     const email = dto.email.trim().toLowerCase();

@@ -49,6 +49,7 @@ import {
 } from './practice';
 import { DEFAULT_TIMEZONE, isValidTimeZone, zonedParts } from '../common/timezone';
 import { FilesService } from '../files/files.service';
+import { flagOn } from '../feature-flags/flags';
 
 type Tx = Parameters<Parameters<Database['transaction']>[0]>[0];
 
@@ -326,6 +327,7 @@ export class MockTestsService {
     const [t] = await this.db.select({ status: tenants.status, trialEndsAt: tenants.trialEndsAt, tz: tenants.timezone }).from(tenants).where(eq(tenants.id, tenantId));
     if (!t || centerWorkRefusal(t)) return 'NO';
     if (!allows(await entitlementsOf(this.db, tenantId), 'AI_TOOLS')) return 'NO';
+    if (!(await flagOn(this.db, 'ai', tenantId))) return 'NO';
     if (centerState(t) !== 'TRIAL') return 'FREE';
     return (await chargeTrialAi(this.db, tenantId, t.tz)) ? 'CHARGED' : 'NO';
   }

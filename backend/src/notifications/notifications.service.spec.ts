@@ -1,6 +1,9 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { NotificationsService } from './notifications.service';
 
+// The platform's switches (feature-flags/flags.ts) have their own tests: on here.
+vi.mock('../feature-flags/flags', () => ({ flagOn: vi.fn(async () => true) }));
+
 describe('NotificationsService', () => {
   let service: NotificationsService;
   let mockDb: any;
@@ -166,8 +169,8 @@ describe('NotificationsService', () => {
   it('should trigger attendance notification to telegram and parent phone', async () => {
     await service.notifyAttendance('tenant-1', 'student-1', 'ABSENT', '2026-09-22', 'Ingliz tili B2');
 
-    expect(mockTelegram.notifyStudent).toHaveBeenCalled();
-    // Sent without waiting (fire and forget): the SMS goes once its route is read.
+    // Sent without waiting (fire and forget): each goes once its switch and route are read.
+    await vi.waitFor(() => expect(mockTelegram.notifyStudent).toHaveBeenCalled());
     await vi.waitFor(() => expect(mockEskiz.sendSms).toHaveBeenCalled());
   });
 

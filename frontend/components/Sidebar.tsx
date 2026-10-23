@@ -362,6 +362,16 @@ const PLATFORM_ITEMS: Array<{ href: string; labelKey: TranslationKey; icon: Reac
     ),
   },
   {
+    href: "/admin/flags",
+    labelKey: "nav.flags" as TranslationKey,
+    icon: (
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="2" y="7" width="20" height="10" rx="5" />
+        <circle cx="16" cy="12" r="3" />
+      </svg>
+    ),
+  },
+  {
     href: "/admin/integrations",
     labelKey: "nav.integrations" as TranslationKey,
     icon: (
