@@ -147,6 +147,8 @@ export class NotificationsService {
         remindPaymentDay: true,
         remindLessons: true,
         dailyDigest: true,
+        remindAttendance: true,
+        autoInvoices: true,
       },
     });
     if (!tenant) throw new NotFoundException('Markaz topilmadi');
@@ -171,6 +173,8 @@ export class NotificationsService {
       remindPaymentDay: tenant.remindPaymentDay,
       remindLessons: tenant.remindLessons,
       dailyDigest: tenant.dailyDigest,
+      remindAttendance: tenant.remindAttendance,
+      autoInvoices: tenant.autoInvoices,
       sms: {
         includedInPlan: route.ok || route.reason !== 'NOT_IN_PLAN',
         enabled: tenant.smsEnabled,
@@ -189,6 +193,8 @@ export class NotificationsService {
     if (dto.remindPaymentDay !== undefined) patch.remindPaymentDay = dto.remindPaymentDay;
     if (dto.remindLessons !== undefined) patch.remindLessons = dto.remindLessons;
     if (dto.dailyDigest !== undefined) patch.dailyDigest = dto.dailyDigest;
+    if (dto.remindAttendance !== undefined) patch.remindAttendance = dto.remindAttendance;
+    if (dto.autoInvoices !== undefined) patch.autoInvoices = dto.autoInvoices;
 
     await this.db.update(tenants).set(patch).where(eq(tenants.id, tenantId));
     return this.getSettings(tenantId);

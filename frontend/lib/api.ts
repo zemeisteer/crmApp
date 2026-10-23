@@ -3175,6 +3175,10 @@ export interface NotificationSettings {
   remindPaymentDay?: number;
   remindLessons?: boolean;
   dailyDigest?: boolean;
+  /** After the last lesson: teachers who left attendance unmarked. */
+  remindAttendance?: boolean;
+  /** The month's invoices issued by themselves on the 1st. */
+  autoInvoices?: boolean;
 }
 
 export type DebtorReminderPreview = {

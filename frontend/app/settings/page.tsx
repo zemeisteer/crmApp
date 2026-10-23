@@ -966,6 +966,8 @@ function NotificationsSettingsTab() {
         remindPaymentDay: settings.remindPaymentDay,
         remindLessons: settings.remindLessons,
         dailyDigest: settings.dailyDigest,
+        remindAttendance: settings.remindAttendance,
+        autoInvoices: settings.autoInvoices,
       };
       const updated = await notificationsApi.updateSettings(payload);
       setSettings(updated);
@@ -1128,6 +1130,14 @@ function NotificationsSettingsTab() {
               <label style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13, cursor: "pointer" }}>
                 <input type="checkbox" checked={settings.dailyDigest ?? true} onChange={(e) => setSettings({ ...settings, dailyDigest: e.target.checked })} style={{ accentColor: ACCENT }} />
                 <span><b>📈 {t("rem.digest")}</b> {t("rem.digestHint")}</span>
+              </label>
+              <label style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13, cursor: "pointer" }}>
+                <input type="checkbox" checked={settings.remindAttendance ?? true} onChange={(e) => setSettings({ ...settings, remindAttendance: e.target.checked })} style={{ accentColor: ACCENT }} />
+                <span><b>📝 {t("rem.attendance")}</b> {t("rem.attendanceHint")}</span>
+              </label>
+              <label style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13, cursor: "pointer" }}>
+                <input type="checkbox" checked={settings.autoInvoices ?? true} onChange={(e) => setSettings({ ...settings, autoInvoices: e.target.checked })} style={{ accentColor: ACCENT }} />
+                <span><b>🧾 {t("rem.autoInvoices")}</b> {t("rem.autoInvoicesHint")}</span>
               </label>
             </div>
 

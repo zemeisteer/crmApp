@@ -248,6 +248,12 @@ export const tenants = pgTable('tenants', {
   remindLessons: boolean('remind_lessons').notNull().default(true),
   // Evening summary (20:00) to owners/admins/managers linked to the bot.
   dailyDigest: boolean('daily_digest').notNull().default(true),
+  // After the day's last lesson: teachers with lessons left unmarked are
+  // reminded, and owners/admins get the list (nothing when all are marked).
+  remindAttendance: boolean('remind_attendance').notNull().default(true),
+  // The month's invoices are issued by themselves in the first days of the
+  // month (center time), the same as pressing "generate".
+  autoInvoices: boolean('auto_invoices').notNull().default(true),
   // The phone confirmed with a code when the center signed up: one free
   // trial per number (null for centers made before, or by the platform).
   signupPhone: text('signup_phone'),
