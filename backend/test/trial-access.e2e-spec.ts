@@ -163,12 +163,12 @@ describe('Trial states, side doors and the platform SMS budget (e2e)', () => {
     process.env.TRIAL_AI_PER_DAY = '1';
     const mock = app.get(MockTestsService) as any;
     const c = await center();
-    expect(await mock.centerAiAllowed(c.id)).toBe(true);
-    expect(await mock.centerAiAllowed(c.id)).toBe(false); // the day's one is used
+    expect(await mock.centerAiAllowed(c.id)).toBe('CHARGED');
+    expect(await mock.centerAiAllowed(c.id)).toBe('NO'); // the day's one is used
     await put(c.id, 'ACTIVE');
-    expect(await mock.centerAiAllowed(c.id)).toBe(true); // a paying center is not counted
+    expect(await mock.centerAiAllowed(c.id)).toBe('FREE'); // a paying center is not counted
     await put(c.id, 'SUSPENDED');
-    expect(await mock.centerAiAllowed(c.id)).toBe(false);
+    expect(await mock.centerAiAllowed(c.id)).toBe('NO');
     process.env.TRIAL_AI_PER_DAY = '20';
   });
 

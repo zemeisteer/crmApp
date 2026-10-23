@@ -3,7 +3,7 @@ import { and, desc, eq, gte, inArray, isNull, lt, sql } from 'drizzle-orm';
 import { DB, Database } from '../db/db.module';
 import { aiUsage, enrollments, groups, studentAiMessages, students, tenants } from '../db/schema';
 import { centerState, centerWorkRefusal } from '../trial/trial-access';
-import { chargeTrialAi } from '../trial/trial-limits';
+import { chargeTrialAi, refundTrialAi } from '../trial/trial-limits';
 import { teacherGroupIds } from '../common/teacher-scope';
 import { DEFAULT_TIMEZONE, isValidTimeZone, zonedParts } from '../common/timezone';
 import { AiService } from './ai.service';
@@ -123,7 +123,8 @@ export class StudentTutorService {
       await this.refund(student, day);
       return { status: 'off' };
     }
-    if (centerState(center) === 'TRIAL' && !(await chargeTrialAi(this.db, student.tenantId, center.tz))) {
+    const onTrial = centerState(center) === 'TRIAL';
+    if (onTrial && !(await chargeTrialAi(this.db, student.tenantId, center.tz))) {
       await this.refund(student, day);
       return { status: 'limit', limit };
     }
@@ -163,6 +164,8 @@ export class StudentTutorService {
     } catch (err) {
       this.logger.error(`AI tutor failed for student ${student.id}: ${(err as Error).message}`);
       await this.refund(student, day);
+      // The center's trial request too: no answer, no charge.
+      if (onTrial) await refundTrialAi(this.db, student.tenantId, center.tz).catch(() => undefined);
       return { status: 'error' };
     }
   }
