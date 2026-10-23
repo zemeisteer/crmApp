@@ -2287,6 +2287,13 @@ export const platformApi = {
     request<PlatformIntegration & { restartNeeded: boolean }>(`/platform/integrations/${id}`, { method: "PUT", body: JSON.stringify({ password, values }) }),
 };
 
+// ---- First steps (dashboard checklist) ----
+
+export type ChecklistKey = "group" | "students" | "attendance" | "payment" | "team" | "telegram" | "site";
+export const checklistApi = {
+  get: () => request<{ items: Array<{ key: ChecklistKey; done: boolean }>; done: number; total: number }>("/onboarding/checklist"),
+};
+
 // ---- A center's own domains ----
 
 export interface CustomDomain {

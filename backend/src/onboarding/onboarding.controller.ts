@@ -31,6 +31,12 @@ export class OnboardingController {
     return this.onboardingService.getState(tenantId);
   }
 
+  // The dashboard's "first steps", from what the center has done.
+  @Get('checklist')
+  checklist(@CurrentUser('tenantId') tenantId: string) {
+    return this.onboardingService.checklist(tenantId);
+  }
+
   @Throttle({ default: { limit: 30, ttl: 60_000 } })
   @Post('check-subdomain')
   checkSubdomain(
