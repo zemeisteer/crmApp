@@ -8,12 +8,13 @@ import { BillingService } from './billing.service';
 import { BillingController } from './billing.controller';
 import { ClickPaymentProvider } from './providers/click.provider';
 import { PaymePaymentProvider } from './providers/payme.provider';
+import { PaymentAccountsService } from './payment-accounts.service';
 
 @Module({
   imports: [DbModule, ConfigModule, TelegramModule, NotificationsModule, AuditModule],
-  providers: [BillingService, ClickPaymentProvider, PaymePaymentProvider],
+  providers: [BillingService, ClickPaymentProvider, PaymePaymentProvider, PaymentAccountsService],
   controllers: [BillingController],
-  exports: [BillingService, ClickPaymentProvider, PaymePaymentProvider],
+  exports: [BillingService, ClickPaymentProvider, PaymePaymentProvider, PaymentAccountsService],
 })
 export class BillingModule {}
 

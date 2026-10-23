@@ -7,6 +7,7 @@ import AccessMatrixPanel from "@/components/settings/AccessMatrix";
 import StaffAccessEditor, { isConfigurableRole } from "@/components/settings/StaffAccessEditor";
 import SiteContentEditor from "@/components/settings/SiteContentEditor";
 import CustomDomains from "@/components/settings/CustomDomains";
+import PaymentAccounts from "@/components/settings/PaymentAccounts";
 import BranchesManager from "@/components/settings/BranchesManager";
 import CustomFieldsManager from "@/components/settings/CustomFieldsManager";
 import MakeupPolicyCard from "@/components/settings/MakeupPolicyCard";
@@ -809,13 +810,16 @@ function SettingsContent() {
                   activeLabel={t("settings.enabled")}
                   inactiveLabel={t("settings.disabled")}
                 />
-                <IntegrationRow label={t("settings.clickPaymentLabel")} active={false} hint="backend/.env: CLICK_MERCHANT_ID, CLICK_SERVICE_ID, CLICK_SECRET_KEY" activeLabel={t("settings.enabled")} inactiveLabel={t("settings.disabled")} />
-                <IntegrationRow label={t("settings.paymePaymentLabel")} active={false} hint="backend/.env: PAYME_MERCHANT_ID, PAYME_KEY" activeLabel={t("settings.enabled")} inactiveLabel={t("settings.disabled")} />
-                <IntegrationRow label={t("settings.aiAssistantLabel")} active={false} hint="backend/.env: ANTHROPIC_API_KEY" activeLabel={t("settings.enabled")} inactiveLabel={t("settings.disabled")} />
               </div>
               {telegramStatus?.configured && (
                 <div style={{ marginTop: 16, background: "#ECEBFB", borderRadius: 12, padding: "14px 18px", fontSize: 12.5, color: "#4A4E58", lineHeight: 1.6 }}>
                   {t("settings.telegramLinkHint")}
+                </div>
+              )}
+              {isAdminRole(user?.role) && (
+                <div style={{ marginTop: 22 }}>
+                  <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 700, fontSize: 15, marginBottom: 8 }}>{t("pacc.title")}</div>
+                  <PaymentAccounts />
                 </div>
               )}
             </div>

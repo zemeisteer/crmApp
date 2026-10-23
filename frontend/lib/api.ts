@@ -1944,8 +1944,30 @@ export const staffApi = {
 
 // ---- Billing (Click / Payme — online payments & webhook engine Spec §27) ----
 
+export type PaymentProvider = "CLICK" | "PAYME";
+export interface PaymentAccount {
+  connected: boolean;
+  merchantId: string | null;
+  serviceId: string | null;
+  /** Set in the merchant cabinet as the callback address. */
+  webhookUrl: string;
+  updatedAt: string | null;
+}
+/** The center's own Click / Payme accounts (the secret never comes back). */
+export interface PaymentAccounts {
+  canStore: boolean;
+  click: PaymentAccount;
+  payme: PaymentAccount;
+  /** The platform-wide account a center without its own falls back to. */
+  platformFallback: { click: boolean; payme: boolean };
+}
+
 export const billingApi = {
   getConfig: () => request<{ clickEnabled: boolean; paymeEnabled: boolean }>("/billing/config"),
+  accounts: () => request<PaymentAccounts>("/billing/accounts"),
+  saveAccount: (provider: PaymentProvider, data: { merchantId: string; serviceId?: string; secret?: string }) =>
+    request<PaymentAccounts>(`/billing/accounts/${provider}`, { method: "PUT", body: JSON.stringify(data) }),
+  removeAccount: (provider: PaymentProvider) => request<PaymentAccounts>(`/billing/accounts/${provider}`, { method: "DELETE" }),
   clickLink: (data: { studentId: string; amount: number; forMonth: string; invoiceId?: string }) =>
     request<BillingLink>("/billing/click/link", { method: "POST", body: JSON.stringify(data) }),
   paymeLink: (data: { studentId: string; amount: number; forMonth: string; invoiceId?: string }) =>

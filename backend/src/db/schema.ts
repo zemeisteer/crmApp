@@ -868,6 +868,22 @@ export const billingTransactions = pgTable('billing_transactions', {
   invoiceIdx: index('billing_tx_invoice_idx').on(t.invoiceId),
 }));
 
+// A center's own Click / Payme merchant account (billing/payment-accounts):
+// students pay the center directly. `secret` (Click's secret key, Payme's
+// key) is sealed with SETTINGS_KEY, bound to the center and the provider.
+export const tenantPaymentAccounts = pgTable('tenant_payment_accounts', {
+  id: text('id').primaryKey().$defaultFn(() => createId()),
+  tenantId: text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  provider: billingProviderEnum('provider').notNull(),
+  merchantId: text('merchant_id').notNull(),
+  serviceId: text('service_id'),
+  secret: text('secret').notNull(),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+}, (t) => ({
+  tenantProviderIdx: uniqueIndex('tenant_payment_accounts_tenant_provider_idx').on(t.tenantId, t.provider),
+}));
+
 export const homework = pgTable('homework', {
   id: text('id').primaryKey().$defaultFn(() => createId()),
   tenantId: text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),

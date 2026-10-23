@@ -6,7 +6,7 @@ import {
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { and, eq, ne } from 'drizzle-orm';
+import { and, eq, ne, type SQL } from 'drizzle-orm';
 import { DB, Database } from '../db/db.module';
 import { billingTransactions, invoices, payments, students } from '../db/schema';
 import { allocateToInvoices, lockInvoice, lockOpenInvoices, lockStudentLedger } from '../payments/allocation';
@@ -16,6 +16,15 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { AuditService } from '../audit/audit.service';
 import { CLICK_ERROR, ClickPaymentProvider } from './providers/click.provider';
 import { PAYME_ERROR, PaymePaymentProvider } from './providers/payme.provider';
+import { type GatewayCredentials, type GatewayProvider, PaymentAccountsService } from './payment-accounts.service';
+
+/**
+ * Whose callback this is. A center's own route (`/webhook/:tenantId`) is
+ * checked with that center's key and sees only its transactions. The old
+ * shared route is checked with the platform-wide key and never touches a
+ * center that has its own account.
+ */
+type Scope = { tenantId: string } | null;
 
 @Injectable()
 export class BillingService {
@@ -27,15 +36,32 @@ export class BillingService {
     private readonly audit: AuditService,
     private readonly clickProvider: ClickPaymentProvider,
     private readonly paymeProvider: PaymePaymentProvider,
+    private readonly accounts: PaymentAccountsService,
   ) {}
 
-  getConfig() {
-    return {
-      clickEnabled: Boolean(
-        this.config.get<string>('CLICK_MERCHANT_ID') && this.config.get<string>('CLICK_SERVICE_ID'),
-      ),
-      paymeEnabled: Boolean(this.config.get<string>('PAYME_MERCHANT_ID')),
-    };
+  /** Which online payments this center can take (its own account, or the platform's). */
+  async getConfig(tenantId: string) {
+    const [click, payme] = await Promise.all([this.accounts.resolve(tenantId, 'CLICK'), this.accounts.resolve(tenantId, 'PAYME')]);
+    return { clickEnabled: Boolean(click), paymeEnabled: Boolean(payme) };
+  }
+
+  private notConnected(name: string) {
+    return new ServiceUnavailableException(`${name} ulanmagan: markaz admini Sozlamalar → "Onlayn to'lovlar" bo'limida o'z ${name} hisobini qo'shishi kerak.`);
+  }
+
+  /** The callback's credentials: the center's own on its route, the platform's on the shared one. */
+  private async callbackCredentials(scope: Scope, provider: GatewayProvider): Promise<GatewayCredentials | null> {
+    return scope ? this.accounts.own(scope.tenantId, provider) : this.accounts.platform(provider);
+  }
+
+  /** A transaction the callback may act on (see Scope). */
+  private async findTx(where: SQL, scope: Scope, provider: GatewayProvider) {
+    const tx = await this.db.query.billingTransactions.findFirst({
+      where: scope ? and(where, eq(billingTransactions.tenantId, scope.tenantId)) : where,
+    });
+    if (!tx) return undefined;
+    if (!scope && (await this.accounts.hasOwn(tx.tenantId, provider))) return undefined;
+    return tx;
   }
 
   private async createPendingTx(
@@ -92,17 +118,12 @@ export class BillingService {
   }
 
   async generateClickLink(tenantId: string, dto: GeneratePaymentLinkDto) {
-    const merchantId = this.config.get<string>('CLICK_MERCHANT_ID');
-    const serviceId = this.config.get<string>('CLICK_SERVICE_ID');
-    if (!merchantId || !serviceId) {
-      throw new ServiceUnavailableException(
-        'Click integratsiyasi sozlanmagan: CLICK_MERCHANT_ID / CLICK_SERVICE_ID',
-      );
-    }
+    const acc = await this.accounts.resolve(tenantId, 'CLICK');
+    if (!acc?.serviceId) throw this.notConnected('Click');
     const tx = await this.createPendingTx(tenantId, dto, 'CLICK');
     const url = this.clickProvider.generateCheckoutUrl({
-      merchantId,
-      serviceId,
+      merchantId: acc.merchantId,
+      serviceId: acc.serviceId,
       transactionId: tx.id,
       amount: dto.amount,
     });
@@ -110,15 +131,11 @@ export class BillingService {
   }
 
   async generatePaymeLink(tenantId: string, dto: GeneratePaymentLinkDto) {
-    const merchantId = this.config.get<string>('PAYME_MERCHANT_ID');
-    if (!merchantId) {
-      throw new ServiceUnavailableException(
-        'Payme integratsiyasi sozlanmagan: PAYME_MERCHANT_ID',
-      );
-    }
+    const acc = await this.accounts.resolve(tenantId, 'PAYME');
+    if (!acc) throw this.notConnected('Payme');
     const tx = await this.createPendingTx(tenantId, dto, 'PAYME');
     const url = this.paymeProvider.generateCheckoutUrl({
-      merchantId,
+      merchantId: acc.merchantId,
       transactionId: tx.id,
       amount: dto.amount,
     });
@@ -248,8 +265,9 @@ export class BillingService {
   }
 
   // ---- Click webhook (single endpoint, action 0 = Prepare, 1 = Complete) ----
-  async handleClickWebhook(body: Record<string, string>) {
-    const secret = this.config.get<string>('CLICK_SECRET_KEY');
+  async handleClickWebhook(body: Record<string, string>, scope: Scope = null) {
+    const creds = await this.callbackCredentials(scope, 'CLICK');
+    const secret = creds?.secret;
     if (!secret) {
       return { error: CLICK_ERROR.ACTION_NOT_FOUND, error_note: 'Click sozlanmagan' };
     }
@@ -288,9 +306,7 @@ export class BillingService {
       };
     }
 
-    const tx = await this.db.query.billingTransactions.findFirst({
-      where: eq(billingTransactions.id, merchant_trans_id),
-    });
+    const tx = await this.findTx(eq(billingTransactions.id, merchant_trans_id), scope, 'CLICK');
     if (!tx) {
       return {
         click_trans_id,
@@ -384,8 +400,8 @@ export class BillingService {
   }
 
   // ---- Payme webhook (JSON-RPC 2.0) ----
-  async handlePaymeWebhook(authHeader: string | undefined, body: any) {
-    const key = this.config.get<string>('PAYME_KEY');
+  async handlePaymeWebhook(authHeader: string | undefined, body: any, scope: Scope = null) {
+    const key = (await this.callbackCredentials(scope, 'PAYME'))?.secret;
     if (!key || !this.paymeProvider.verifyBasicAuth(authHeader, key)) {
       return {
         error: { code: PAYME_ERROR.ACCESS_DENIED, message: 'Insufficient privilege' },
@@ -404,9 +420,7 @@ export class BillingService {
             id,
           };
         }
-        const tx = await this.db.query.billingTransactions.findFirst({
-          where: eq(billingTransactions.id, txId),
-        });
+        const tx = await this.findTx(eq(billingTransactions.id, txId), scope, 'PAYME');
         if (!tx) {
           return {
             error: { code: PAYME_ERROR.ACCOUNT_NOT_FOUND, message: 'Transaction not found' },
@@ -428,9 +442,7 @@ export class BillingService {
             id,
           };
         }
-        const tx = await this.db.query.billingTransactions.findFirst({
-          where: eq(billingTransactions.id, txId),
-        });
+        const tx = await this.findTx(eq(billingTransactions.id, txId), scope, 'PAYME');
         if (!tx) {
           return {
             error: { code: PAYME_ERROR.ACCOUNT_NOT_FOUND, message: 'Transaction not found' },
@@ -478,9 +490,7 @@ export class BillingService {
         };
       }
       case 'PerformTransaction': {
-        const tx = await this.db.query.billingTransactions.findFirst({
-          where: eq(billingTransactions.providerTxId, params.id),
-        });
+        const tx = await this.findTx(eq(billingTransactions.providerTxId, params.id), scope, 'PAYME');
         if (!tx) {
           return {
             error: { code: PAYME_ERROR.TRANSACTION_NOT_FOUND, message: 'Transaction not found' },
@@ -509,9 +519,7 @@ export class BillingService {
         };
       }
       case 'CancelTransaction': {
-        const tx = await this.db.query.billingTransactions.findFirst({
-          where: eq(billingTransactions.providerTxId, params.id),
-        });
+        const tx = await this.findTx(eq(billingTransactions.providerTxId, params.id), scope, 'PAYME');
         if (!tx) {
           return {
             error: { code: PAYME_ERROR.TRANSACTION_NOT_FOUND, message: 'Transaction not found' },
@@ -552,9 +560,7 @@ export class BillingService {
         };
       }
       case 'CheckTransaction': {
-        const tx = await this.db.query.billingTransactions.findFirst({
-          where: eq(billingTransactions.providerTxId, params.id),
-        });
+        const tx = await this.findTx(eq(billingTransactions.providerTxId, params.id), scope, 'PAYME');
         if (!tx) {
           return {
             error: { code: PAYME_ERROR.TRANSACTION_NOT_FOUND, message: 'Transaction not found' },
