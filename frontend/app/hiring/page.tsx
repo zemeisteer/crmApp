@@ -6,7 +6,10 @@ import DashboardShell from "@/components/DashboardShell";
 import Modal from "@/components/Modal";
 import Select from "@/components/Select";
 import PlacementTestModal from "@/components/students/PlacementTestModal";
-import { ApiError, groupsApi, hiringApi, type Candidate, type CandidateDetail, type CandidateStage, type Group } from "@/lib/api";
+import DatePicker from "@/components/DatePicker";
+import PhoneInput from "@/components/PhoneInput";
+import { ApiError, groupsApi, hiringApi, subjectsApi, type Candidate, type CandidateDetail, type CandidateStage, type Group } from "@/lib/api";
+import { NAME_PATTERN, NAME_TITLE, PHONE_PATTERN, PHONE_TITLE, phoneOrEmpty } from "@/lib/validation";
 import { useAuth } from "@/lib/auth-context";
 import { useLanguage } from "@/lib/i18n-context";
 import type { TranslationKey } from "@/lib/i18n";
@@ -55,7 +58,7 @@ function HiringContent() {
         setCounts(r.counts);
         setError(null);
       })
-      .catch((e) => setError(e instanceof ApiError ? e.message : t("common.errorGeneric")));
+      .catch((e) => setError(errorText(e, t)));
   }, [stage, q, t]);
 
   useEffect(() => {
@@ -180,63 +183,173 @@ function HiringContent() {
   );
 }
 
+// Common Uzbek sources of candidates; anything else is typed under "Boshqa".
+const SOURCES = ["Telegram", "Instagram", "hh.uz / OLX", "REFERRAL", "OTHER"] as const;
+// Interview and demo times: every half hour of the working day.
+const TIMES = Array.from({ length: 28 }, (_, i) => `${String(8 + Math.floor(i / 2)).padStart(2, "0")}:${i % 2 ? "30" : "00"}`);
+
+function errorText(e: unknown, t: (k: TranslationKey) => string) {
+  if (e instanceof ApiError) return e.message;
+  // A failed fetch (the server restarting, no connection) says so plainly.
+  return t("hire.netError");
+}
+
+function SubjectField({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const { t } = useLanguage();
+  const [subjects, setSubjects] = useState<string[] | null>(null);
+  useEffect(() => {
+    subjectsApi.list("ACTIVE").then((s) => setSubjects(s.map((x) => x.name))).catch(() => setSubjects([]));
+  }, []);
+  // The center's subjects when it has them; a free field otherwise.
+  if (subjects && subjects.length > 0) {
+    const options = [...new Set([...subjects, ...(value ? [value] : [])])];
+    return <Select value={value} onChange={onChange} placeholder={t("hire.f.subjectPick")} options={options.map((s) => ({ value: s, label: s }))} />;
+  }
+  return <input className="field-input" value={value} onChange={(e) => onChange(e.target.value)} maxLength={100} />;
+}
+
+function SourceField({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const { t } = useLanguage();
+  const known = SOURCES.map((s) => (s === "REFERRAL" ? t("hire.src.referral") : s === "OTHER" ? t("hire.src.other") : s));
+  const isOther = value !== "" && !known.includes(value);
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+      <Select value={isOther ? t("hire.src.other") : value} onChange={(v) => onChange(v === t("hire.src.other") ? " " : v)} placeholder="—" options={known.map((s) => ({ value: s, label: s }))} />
+      {isOther && <input className="field-input" value={value.trim()} onChange={(e) => onChange(e.target.value || " ")} placeholder={t("hire.f.sourceHint")} maxLength={100} />}
+    </div>
+  );
+}
+
+/** Name, phone, email, subject, source: checked as they are typed. */
+function ContactFields({
+  form,
+  set,
+}: {
+  form: { fullName: string; phone: string; email: string; subject: string; source: string };
+  set: (k: "fullName" | "phone" | "email" | "subject" | "source", v: string) => void;
+}) {
+  const { t } = useLanguage();
+  return (
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 10 }}>
+      <label style={LBL}>
+        {t("hire.f.name")} *
+        <input className="field-input" required pattern={NAME_PATTERN} title={NAME_TITLE} value={form.fullName} onChange={(e) => set("fullName", e.target.value)} />
+      </label>
+      <label style={LBL}>
+        {t("hire.f.phone")} *
+        <PhoneInput className="field-input" required pattern={PHONE_PATTERN} title={PHONE_TITLE} value={form.phone} onChange={(v) => set("phone", v)} />
+      </label>
+      <label style={LBL}>
+        Email
+        <input className="field-input" type="email" value={form.email} onChange={(e) => set("email", e.target.value)} placeholder="nomzod@gmail.com" maxLength={160} />
+      </label>
+      <div style={LBL}>
+        {t("hire.f.subject")}
+        <SubjectField value={form.subject} onChange={(v) => set("subject", v)} />
+      </div>
+      <div style={LBL}>
+        {t("hire.f.source")}
+        <SourceField value={form.source} onChange={(v) => set("source", v)} />
+      </div>
+    </div>
+  );
+}
+
+const contactBody = (f: { fullName: string; phone: string; email: string; subject: string; source: string }) => ({
+  fullName: f.fullName.trim(),
+  phone: phoneOrEmpty(f.phone) || undefined,
+  email: f.email.trim() || undefined,
+  subject: f.subject.trim() || undefined,
+  source: f.source.trim() || undefined,
+});
+
 function AddCandidate({ onClose, onCreated }: { onClose: () => void; onCreated: (c: Candidate) => void }) {
   const { t } = useLanguage();
-  const [form, setForm] = useState({ fullName: "", phone: "", email: "", subject: "", source: "", notes: "" });
+  const [form, setForm] = useState({ fullName: "", phone: "", email: "", subject: "", source: "" });
+  const [notes, setNotes] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setForm({ ...form, [k]: e.target.value });
 
   return (
-    <Modal open onClose={onClose} title={t("hire.add")}>
+    <Modal open onClose={onClose} title={t("hire.add")} width={560}>
       <form
         onSubmit={async (e) => {
           e.preventDefault();
           setBusy(true);
           setError(null);
           try {
-            const clean = Object.fromEntries(Object.entries(form).map(([k, v]) => [k, v.trim() || undefined])) as typeof form;
-            onCreated(await hiringApi.create({ ...clean, fullName: form.fullName.trim() }));
+            onCreated(await hiringApi.create({ ...contactBody(form), notes: notes.trim() || undefined }));
           } catch (err) {
-            setError(err instanceof ApiError ? err.message : t("common.errorGeneric"));
+            setError(errorText(err, t));
           } finally {
             setBusy(false);
           }
         }}
-        style={{ display: "flex", flexDirection: "column", gap: 10 }}
+        style={{ display: "flex", flexDirection: "column", gap: 12 }}
       >
-        <label style={LBL}>{t("hire.f.name")}<input className="field-input" required minLength={2} value={form.fullName} onChange={set("fullName")} /></label>
-        <label style={LBL}>{t("hire.f.phone")}<input className="field-input" value={form.phone} onChange={set("phone")} placeholder="+998 90 123 45 67" /></label>
-        <label style={LBL}>Email<input className="field-input" type="email" value={form.email} onChange={set("email")} /></label>
-        <label style={LBL}>{t("hire.f.subject")}<input className="field-input" value={form.subject} onChange={set("subject")} /></label>
-        <label style={LBL}>{t("hire.f.source")}<input className="field-input" value={form.source} onChange={set("source")} placeholder={t("hire.f.sourceHint")} /></label>
-        <label style={LBL}>{t("hire.f.notes")}<textarea className="field-input" rows={3} value={form.notes} onChange={set("notes")} /></label>
-        {error && <div role="alert" style={{ color: "#B23A47", fontSize: 12.5 }}>{error}</div>}
+        <div style={{ fontSize: 12.5, color: "#686B75", lineHeight: 1.5 }}>{t("hire.addHint")}</div>
+        <ContactFields form={form} set={(k, v) => setForm({ ...form, [k]: v })} />
+        <label style={LBL}>
+          {t("hire.f.notes")}
+          <textarea className="field-input" rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder={t("hire.f.notesHint")} maxLength={4000} />
+        </label>
+        {error && <div role="alert" style={{ color: "#B23A47", fontSize: 12.5, fontWeight: 600 }}>{error}</div>}
         <button className="btn" type="submit" disabled={busy} style={{ background: ACCENT, color: "#fff", border: "none", fontSize: 13.5, fontWeight: 700, padding: "10px 18px", borderRadius: 9, alignSelf: "flex-start" }}>
-          {busy ? t("common.saving") : t("common.save")}
+          {busy ? t("common.saving") : t("hire.addSubmit")}
         </button>
       </form>
     </Modal>
   );
 }
 
-// "2026-11-03T10:00:00.000Z" -> the value a datetime-local input shows (local time).
-function toLocalInput(v: string | null) {
-  if (!v) return "";
-  const d = new Date(v);
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+// ---- The candidate's card: one step at a time ----
+
+type Step = 0 | 1 | 2 | 3; // test, interview, demo lesson, decision
+const STEP_KEYS: TranslationKey[] = ["hire.step.test", "hire.step.interview", "hire.step.demo", "hire.step.decision"];
+const stepOf = (s: CandidateStage): Step => (s === "NEW" || s === "TEST" ? 0 : s === "INTERVIEW" ? 1 : s === "DEMO" ? 2 : 3);
+// Where "next" leads from each step.
+const NEXT_STAGE: Record<0 | 1 | 2, CandidateStage> = { 0: "INTERVIEW", 1: "DEMO", 2: "OFFER" };
+
+function Stars({ value, onChange, label }: { value: number | null; onChange: (v: number | null) => void; label: string }) {
+  const { t } = useLanguage();
+  return (
+    <div role="radiogroup" aria-label={label} style={{ display: "flex", gap: 2, alignItems: "center" }}>
+      {[1, 2, 3, 4, 5].map((n) => (
+        <button
+          key={n}
+          type="button"
+          role="radio"
+          aria-checked={value === n}
+          aria-label={`${n}/5`}
+          onClick={() => onChange(value === n ? null : n)}
+          style={{ background: "none", border: "none", cursor: "pointer", fontSize: 26, lineHeight: 1, padding: "0 2px", color: value && n <= value ? "#F59E0B" : "#D9D7D0" }}
+        >
+          ★
+        </button>
+      ))}
+      <span style={{ fontSize: 12.5, color: "#686B75", marginLeft: 6 }}>{value ? t(`hire.score.${value}` as TranslationKey) : t("hire.score.none")}</span>
+    </div>
+  );
 }
 
-function Section({ title, done, children }: { title: string; done: boolean; children: React.ReactNode }) {
+// An ISO moment as the center-free pair the pickers show: "YYYY-MM-DD" and "HH:MM".
+function splitWhen(iso: string | null) {
+  if (!iso) return { date: "", time: "" };
+  const d = new Date(iso);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return { date: `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`, time: `${pad(d.getHours())}:${pad(d.getMinutes())}` };
+}
+
+function WhenField({ value, onChange }: { value: string | null; onChange: (iso: string | null) => void }) {
+  const { t } = useLanguage();
+  const { date, time } = splitWhen(value);
+  const join = (d: string, tm: string) => (d ? new Date(`${d}T${tm || "10:00"}:00`).toISOString() : null);
+  const times = time && !TIMES.includes(time) ? [...TIMES, time].sort() : TIMES;
   return (
-    <section style={{ border: "1px solid #EAE8E2", borderRadius: 12, padding: 14, display: "flex", flexDirection: "column", gap: 8 }}>
-      <div style={{ fontWeight: 800, fontSize: 13.5, display: "flex", gap: 8, alignItems: "center" }}>
-        <span aria-hidden="true">{done ? "✅" : "⬜"}</span>
-        {title}
-      </div>
-      {children}
-    </section>
+    <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1.4fr) minmax(0, 1fr)", gap: 8 }}>
+      <DatePicker value={date} onChange={(d) => onChange(join(d, time))} placeholder={t("hire.f.pickDate")} />
+      <Select value={time} onChange={(tm) => onChange(join(date || new Date().toISOString().slice(0, 10), tm))} placeholder={t("hire.f.pickTime")} options={times.map((x) => ({ value: x, label: x }))} />
+    </div>
   );
 }
 
@@ -245,156 +358,244 @@ function CandidateModal({ id, onClose, onChanged }: { id: string; onClose: () =>
   const { user } = useAuth();
   const canHire = user?.role === "OWNER" || user?.role === "ADMIN" || user?.role === "SUPERADMIN";
   const [c, setC] = useState<CandidateDetail | null>(null);
+  const [step, setStep] = useState<Step>(0);
   const [draft, setDraft] = useState<Partial<CandidateDetail>>({});
+  const [editContact, setEditContact] = useState(false);
+  const [contact, setContact] = useState({ fullName: "", phone: "", email: "", subject: "", source: "" });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
-  const reload = useCallback(() => {
-    hiringApi.get(id).then((x) => {
-      setC(x);
-      setDraft({});
-    }).catch((e) => setError(e instanceof ApiError ? e.message : t("common.errorGeneric")));
-  }, [id, t]);
-  useEffect(reload, [reload]);
+  const reload = useCallback(
+    (moveTo?: Step) => {
+      hiringApi
+        .get(id)
+        .then((x) => {
+          setC(x);
+          setDraft({});
+          setStep(moveTo ?? stepOf(x.stage));
+          setContact({ fullName: x.fullName, phone: x.phone ?? "", email: x.email ?? "", subject: x.subject ?? "", source: x.source ?? "" });
+        })
+        .catch((e) => setError(errorText(e, t)));
+    },
+    [id, t],
+  );
+  useEffect(() => reload(), [reload]);
 
   if (!c) return null;
   const v = <K extends keyof CandidateDetail>(k: K) => (k in draft ? draft[k] : c[k]) as CandidateDetail[K];
   const put = <K extends keyof CandidateDetail>(k: K, value: CandidateDetail[K]) => setDraft({ ...draft, [k]: value });
-  const hired = c.stage === "HIRED";
+  const closed = c.stage === "HIRED" || c.stage === "REJECTED";
+  const reached = stepOf(c.stage);
 
-  async function act(fn: () => Promise<unknown>, done?: string) {
+  async function run(fn: () => Promise<unknown>, done: string, moveTo?: Step) {
     setBusy(true);
     setError(null);
     setNotice(null);
     try {
       await fn();
       onChanged();
-      reload();
-      if (done) setNotice(done);
+      reload(moveTo);
+      setNotice(done);
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : t("common.errorGeneric"));
+      setError(errorText(e, t));
     } finally {
       setBusy(false);
     }
   }
 
-  function save() {
-    const d = draft;
+  // This step's fields (only what was changed), and the next stage when moving on.
+  function stepBody(advance: boolean) {
     const body: Record<string, unknown> = {};
-    for (const k of ["fullName", "phone", "email", "subject", "source", "notes", "interviewNotes", "demoNotes", "decisionNote"] as const) {
-      if (k in d) body[k] = (d[k] as string | null) ?? "";
-    }
-    for (const k of ["testPercent", "interviewScore", "demoScore"] as const) {
-      if (k in d && d[k] != null) body[k] = d[k];
-    }
-    for (const k of ["interviewAt", "demoAt"] as const) {
-      if (k in d && d[k]) body[k] = new Date(d[k] as string).toISOString();
-    }
-    if (d.stage && d.stage !== c!.stage) body.stage = d.stage;
-    return act(() => hiringApi.update(id, body), t("hire.saved"));
+    const fields: Record<Step, (keyof CandidateDetail)[]> = {
+      0: ["testPercent"],
+      1: ["interviewAt", "interviewScore", "interviewNotes"],
+      2: ["demoAt", "demoScore", "demoNotes"],
+      3: ["decisionNote"],
+    };
+    for (const k of fields[step]) if (k in draft && draft[k] != null) body[k] = draft[k];
+    for (const k of ["interviewNotes", "demoNotes", "decisionNote"] as const) if (k in draft && draft[k] == null) body[k] = "";
+    if (step === 0 && c!.stage === "NEW" && body.testPercent != null) body.stage = "TEST";
+    if (advance && step < 3) body.stage = NEXT_STAGE[step as 0 | 1 | 2];
+    return body;
   }
 
-  const scoreSelect = (k: "interviewScore" | "demoScore") => (
-    <Select
-      value={v(k) ? String(v(k)) : ""}
-      onChange={(x) => put(k, x ? Number(x) : null)}
-      options={[{ value: "", label: "—" }, ...[1, 2, 3, 4, 5].map((n) => ({ value: String(n), label: `${"★".repeat(n)} ${n}/5` }))]}
-    />
-  );
+  const btn = (bg: string, fg = "#fff"): React.CSSProperties => ({ background: bg, color: fg, border: "none", fontSize: 13.5, fontWeight: 700, padding: "10px 18px", borderRadius: 9 });
+  const dirty = Object.keys(draft).length > 0;
 
   return (
-    <Modal open onClose={onClose} title={c.fullName} width={720}>
-      <div style={{ display: "flex", flexDirection: "column", gap: 12 }} data-testid="candidate-modal">
-        <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-          <StageChip stage={c.stage} />
-          {!hired && (
-            <div style={{ width: 220 }}>
-              <Select
-                value={v("stage")}
-                onChange={(x) => put("stage", x as CandidateStage)}
-                options={STAGES.filter((s) => s !== "HIRED").map((s) => ({ value: s, label: `${t("hire.moveTo")} ${t(stageKey(s))}` }))}
-              />
-            </div>
-          )}
-          {hired && c.teacherId && (
-            <Link href={`/teachers/${c.teacherId}`} style={{ fontSize: 13, fontWeight: 700, color: ACCENT }}>{t("hire.openTeacher")} →</Link>
-          )}
+    <Modal open onClose={onClose} title={c.fullName} width={680}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 14 }} data-testid="candidate-modal">
+        {/* Who: one line, editable on demand. */}
+        <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+          <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", fontSize: 13, color: "#4A4E58" }}>
+            <StageChip stage={c.stage} />
+            {[c.phone, c.email, c.subject, c.source].filter(Boolean).join(" · ") || t("hire.noContact")}
+          </div>
+          <button type="button" className="btn" onClick={() => setEditContact(!editContact)} style={{ background: "#F2F1EC", color: "#181A1F", border: "none", fontSize: 12.5, fontWeight: 700, padding: "6px 12px", borderRadius: 8 }}>
+            ✏️ {t("hire.editContact")}
+          </button>
         </div>
-
-        <Section title={t("hire.sec.contact")} done>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 8 }}>
-            <label style={LBL}>{t("hire.f.name")}<input className="field-input" value={v("fullName")} onChange={(e) => put("fullName", e.target.value)} /></label>
-            <label style={LBL}>{t("hire.f.phone")}<input className="field-input" value={v("phone") ?? ""} onChange={(e) => put("phone", e.target.value)} /></label>
-            <label style={LBL}>Email<input className="field-input" value={v("email") ?? ""} onChange={(e) => put("email", e.target.value)} /></label>
-            <label style={LBL}>{t("hire.f.subject")}<input className="field-input" value={v("subject") ?? ""} onChange={(e) => put("subject", e.target.value)} /></label>
-            <label style={LBL}>{t("hire.f.source")}<input className="field-input" value={v("source") ?? ""} onChange={(e) => put("source", e.target.value)} /></label>
-          </div>
-          <label style={LBL}>{t("hire.f.notes")}<textarea className="field-input" rows={2} value={v("notes") ?? ""} onChange={(e) => put("notes", e.target.value)} /></label>
-        </Section>
-
-        <Section title={t("hire.sec.test")} done={c.testPercent != null}>
-          <div style={{ fontSize: 12.5, color: "#686B75", lineHeight: 1.5 }}>{t("hire.testHint")}</div>
-          {c.attempts.map((a) => (
-            <div key={a.id} style={{ fontSize: 13 }}>
-              🧭 <b>{a.testTitle}</b> — {a.percent}% ({a.correct}/{a.total}){a.reviewStatus === "PENDING" ? ` · ${t("hire.pendingReview")}` : ""} · {formatDateTime(a.createdAt, lang)}
-            </div>
-          ))}
-          <label style={{ ...LBL, maxWidth: 200 }}>
-            {t("hire.f.testPercent")}
-            <input className="field-input" type="number" min={0} max={100} value={v("testPercent") ?? ""} onChange={(e) => put("testPercent", e.target.value === "" ? null : Number(e.target.value))} />
-          </label>
-        </Section>
-
-        <Section title={t("hire.sec.interview")} done={c.interviewScore != null}>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 8 }}>
-            <label style={LBL}>{t("hire.f.when")}<input className="field-input" type="datetime-local" value={toLocalInput(v("interviewAt"))} onChange={(e) => put("interviewAt", e.target.value || null)} /></label>
-            <div style={LBL}>{t("hire.f.score")}{scoreSelect("interviewScore")}</div>
-          </div>
-          <label style={LBL}>{t("hire.f.notes")}<textarea className="field-input" rows={2} value={v("interviewNotes") ?? ""} onChange={(e) => put("interviewNotes", e.target.value)} /></label>
-        </Section>
-
-        <Section title={t("hire.sec.demo")} done={c.demoScore != null}>
-          <div style={{ fontSize: 12.5, color: "#686B75" }}>{t("hire.demoHint")}</div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 8 }}>
-            <label style={LBL}>{t("hire.f.when")}<input className="field-input" type="datetime-local" value={toLocalInput(v("demoAt"))} onChange={(e) => put("demoAt", e.target.value || null)} /></label>
-            <div style={LBL}>{t("hire.f.score")}{scoreSelect("demoScore")}</div>
-          </div>
-          <label style={LBL}>{t("hire.f.notes")}<textarea className="field-input" rows={2} value={v("demoNotes") ?? ""} onChange={(e) => put("demoNotes", e.target.value)} /></label>
-        </Section>
-
-        <Section title={t("hire.sec.decision")} done={["OFFER", "HIRED", "REJECTED"].includes(c.stage)}>
-          <label style={LBL}>{t("hire.f.decisionNote")}<textarea className="field-input" rows={2} value={v("decisionNote") ?? ""} onChange={(e) => put("decisionNote", e.target.value)} /></label>
-        </Section>
-
-        {c.history.length > 0 && (
-          <div style={{ fontSize: 12, color: "#686B75", display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
-            {c.history.map((h, i) => (
-              <span key={i}>{i > 0 && "→ "}{t(stageKey(h.stage))} ({formatDate(h.at, lang)})</span>
-            ))}
-          </div>
+        {editContact && (
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              void run(() => hiringApi.update(id, { ...contactBody(contact), phone: phoneOrEmpty(contact.phone), email: contact.email.trim() }), t("hire.saved")).then(() => setEditContact(false));
+            }}
+            style={{ border: "1px solid #EAE8E2", borderRadius: 12, padding: 14, display: "flex", flexDirection: "column", gap: 10 }}
+          >
+            <ContactFields form={contact} set={(k, val) => setContact({ ...contact, [k]: val })} />
+            <button className="btn" type="submit" disabled={busy} style={{ ...btn(ACCENT), alignSelf: "flex-start" }}>{t("common.save")}</button>
+          </form>
         )}
 
-        {error && <div role="alert" style={{ color: "#B23A47", fontSize: 13, fontWeight: 600 }}>{error}</div>}
-        {notice && <div role="status" style={{ color: "#16794A", fontSize: 13, fontWeight: 600 }}>{notice}</div>}
+        {/* Where they are: four steps, the reached ones can be opened. */}
+        <ol aria-label={t("hire.steps")} style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 6 }}>
+          {STEP_KEYS.map((key, i) => {
+            const done = i < reached || c.stage === "HIRED";
+            const open = i === step;
+            return (
+              <li key={key}>
+                <button
+                  type="button"
+                  aria-current={open ? "step" : undefined}
+                  onClick={() => setStep(i as Step)}
+                  style={{
+                    width: "100%",
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    gap: 4,
+                    padding: "8px 4px",
+                    borderRadius: 10,
+                    cursor: "pointer",
+                    border: `1.5px solid ${open ? ACCENT : "#EAE8E2"}`,
+                    background: open ? "#EEF0FF" : "#fff",
+                  }}
+                >
+                  <span style={{ width: 26, height: 26, borderRadius: 100, display: "grid", placeItems: "center", fontSize: 13, fontWeight: 800, background: done ? "#16794A" : open ? ACCENT : "#F2F1EC", color: done || open ? "#fff" : "#686B75" }}>
+                    {done ? "✓" : i + 1}
+                  </span>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: open ? ACCENT : "#4A4E58", textAlign: "center" }}>{t(key)}</span>
+                </button>
+              </li>
+            );
+          })}
+        </ol>
 
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <button type="button" className="btn" disabled={busy || Object.keys(draft).length === 0} onClick={save} style={{ background: ACCENT, color: "#fff", border: "none", fontSize: 13.5, fontWeight: 700, padding: "10px 18px", borderRadius: 9 }}>
-            {busy ? t("common.saving") : t("common.save")}
-          </button>
-          {canHire && !hired && c.stage !== "REJECTED" && (
-            <button
-              type="button"
-              className="btn"
-              disabled={busy}
-              onClick={() => {
-                if (window.confirm(t("hire.confirmHire").replace("{name}", c.fullName))) void act(() => hiringApi.hire(id), t("hire.hiredNotice"));
-              }}
-              style={{ background: "#16794A", color: "#fff", border: "none", fontSize: 13.5, fontWeight: 700, padding: "10px 18px", borderRadius: 9 }}
-            >
-              👩‍🏫 {t("hire.makeTeacher")}
-            </button>
+        {/* The open step. */}
+        <section style={{ border: "1px solid #EAE8E2", borderRadius: 12, padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
+          <div style={{ fontSize: 13, color: "#686B75", lineHeight: 1.55 }}>{t(`hire.step.${["test", "interview", "demo", "decision"][step]}.hint` as TranslationKey)}</div>
+
+          {step === 0 && (
+            <>
+              {c.attempts.map((a) => (
+                <div key={a.id} style={{ fontSize: 13, background: "#F8F8FF", borderRadius: 8, padding: "8px 12px" }}>
+                  🧭 <b>{a.testTitle}</b>: {a.percent}% ({a.correct}/{a.total}){a.reviewStatus === "PENDING" ? ` · ${t("hire.pendingReview")}` : ""} · {formatDateTime(a.createdAt, lang)}
+                </div>
+              ))}
+              <label style={{ ...LBL, maxWidth: 220 }}>
+                {t("hire.f.testPercent")}
+                <input className="field-input" type="number" inputMode="numeric" min={0} max={100} value={v("testPercent") ?? ""} onChange={(e) => put("testPercent", e.target.value === "" ? null : Math.max(0, Math.min(100, Number(e.target.value))))} />
+              </label>
+            </>
           )}
+
+          {(step === 1 || step === 2) && (
+            <>
+              <div style={LBL}>
+                {t("hire.f.when")}
+                <WhenField value={v(step === 1 ? "interviewAt" : "demoAt")} onChange={(iso) => put(step === 1 ? "interviewAt" : "demoAt", iso)} />
+              </div>
+              <div style={LBL}>
+                {t("hire.f.score")}
+                <Stars label={t("hire.f.score")} value={v(step === 1 ? "interviewScore" : "demoScore")} onChange={(n) => put(step === 1 ? "interviewScore" : "demoScore", n)} />
+              </div>
+              <label style={LBL}>
+                {t("hire.f.notes")}
+                <textarea
+                  className="field-input"
+                  rows={3}
+                  maxLength={4000}
+                  placeholder={t(step === 1 ? "hire.f.interviewNotesHint" : "hire.f.demoNotesHint")}
+                  value={v(step === 1 ? "interviewNotes" : "demoNotes") ?? ""}
+                  onChange={(e) => put(step === 1 ? "interviewNotes" : "demoNotes", e.target.value)}
+                />
+              </label>
+            </>
+          )}
+
+          {step === 3 && (
+            <>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 8, fontSize: 13 }}>
+                <div style={{ background: "#F8F8FF", borderRadius: 8, padding: "8px 12px" }}>{t("hire.step.test")}: <b>{c.testPercent == null ? "—" : `${c.testPercent}%`}</b></div>
+                <div style={{ background: "#F8F8FF", borderRadius: 8, padding: "8px 12px" }}>{t("hire.step.interview")}: <b style={{ color: "#B45309" }}>{score(c.interviewScore)}</b></div>
+                <div style={{ background: "#F8F8FF", borderRadius: 8, padding: "8px 12px" }}>{t("hire.step.demo")}: <b style={{ color: "#B45309" }}>{score(c.demoScore)}</b></div>
+              </div>
+              <label style={LBL}>
+                {t("hire.f.decisionNote")}
+                <textarea className="field-input" rows={3} maxLength={4000} value={v("decisionNote") ?? ""} onChange={(e) => put("decisionNote", e.target.value)} />
+              </label>
+              {c.stage === "HIRED" && c.teacherId && (
+                <div role="status" style={{ background: "#E9F8EF", color: "#16794A", borderRadius: 10, padding: "10px 14px", fontSize: 13, fontWeight: 600 }}>
+                  ✅ {t("hire.isTeacher")} <Link href={`/teachers/${c.teacherId}`} style={{ color: "#16794A", textDecoration: "underline" }}>{t("hire.openTeacher")} →</Link>
+                </div>
+              )}
+              {c.stage === "REJECTED" && <div role="status" style={{ background: "#FDEBEC", color: "#B23A47", borderRadius: 10, padding: "10px 14px", fontSize: 13, fontWeight: 600 }}>{t("hire.isRejected")}</div>}
+            </>
+          )}
+
+          {error && <div role="alert" style={{ color: "#B23A47", fontSize: 13, fontWeight: 600 }}>{error}</div>}
+          {notice && <div role="status" style={{ color: "#16794A", fontSize: 13, fontWeight: 600 }}>{notice}</div>}
+
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            {(dirty || step === 3) && c.stage !== "HIRED" && (
+              <button type="button" className="btn" disabled={busy || !dirty} onClick={() => run(() => hiringApi.update(id, stepBody(false)), t("hire.saved"), step)} style={btn(dirty ? ACCENT : "#C7C9D1")}>
+                {busy ? t("common.saving") : t("common.save")}
+              </button>
+            )}
+            {step < 3 && !closed && (
+              <button type="button" className="btn" disabled={busy} onClick={() => run(() => hiringApi.update(id, stepBody(true)), t("hire.moved"))} style={btn("#16794A")}>
+                {t("hire.next").replace("{step}", t(STEP_KEYS[step + 1]))} →
+              </button>
+            )}
+            {step === 3 && !closed && canHire && (
+              <button
+                type="button"
+                className="btn"
+                disabled={busy}
+                onClick={() => {
+                  if (window.confirm(t("hire.confirmHire").replace("{name}", c.fullName))) {
+                    void run(async () => {
+                      if (dirty) await hiringApi.update(id, stepBody(false));
+                      await hiringApi.hire(id);
+                    }, t("hire.hiredNotice"));
+                  }
+                }}
+                style={btn("#16794A")}
+              >
+                👩‍🏫 {t("hire.makeTeacher")}
+              </button>
+            )}
+            {step === 3 && !closed && (
+              <button type="button" className="btn" disabled={busy} onClick={() => run(() => hiringApi.update(id, { ...stepBody(false), stage: "REJECTED" }), t("hire.saved"))} style={btn("#FDEBEC", "#B23A47")}>
+                ✕ {t("hire.reject")}
+              </button>
+            )}
+            {c.stage === "REJECTED" && (
+              <button type="button" className="btn" disabled={busy} onClick={() => run(() => hiringApi.update(id, { stage: "DEMO" }), t("hire.saved"))} style={btn("#F2F1EC", "#181A1F")}>
+                ↺ {t("hire.reopen")}
+              </button>
+            )}
+          </div>
+        </section>
+
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+          <div style={{ fontSize: 12, color: "#686B75" }}>
+            {c.history.map((h, i) => (
+              <span key={i}>{i > 0 && " → "}{t(stageKey(h.stage))} ({formatDate(h.at, lang)})</span>
+            ))}
+          </div>
           <button
             type="button"
             className="btn"
@@ -404,10 +605,10 @@ function CandidateModal({ id, onClose, onChanged }: { id: string; onClose: () =>
                 void hiringApi.archive(id).then(() => {
                   onChanged();
                   onClose();
-                });
+                }).catch((e) => setError(errorText(e, t)));
               }
             }}
-            style={{ background: "transparent", color: "#B23A47", border: "1px solid #F3C6CB", fontSize: 13, fontWeight: 700, padding: "10px 16px", borderRadius: 9, marginLeft: "auto" }}
+            style={{ background: "transparent", color: "#B23A47", border: "none", fontSize: 12.5, fontWeight: 700, padding: "6px 8px" }}
           >
             {t("hire.archive")}
           </button>

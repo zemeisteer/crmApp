@@ -160,6 +160,7 @@ const NAV_ITEMS: NavItem[] = [
   },
   {
     href: "/hiring",
+    access: "hiring.manage",
     labelKey: "nav.hiring" as TranslationKey,
     roles: ["SUPERADMIN", "ADMIN", "MANAGER"],
     icon: (

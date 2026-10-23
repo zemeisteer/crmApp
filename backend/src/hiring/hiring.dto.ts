@@ -1,4 +1,12 @@
-import { IsIn, IsInt, IsISO8601, IsOptional, IsString, Max, MaxLength, Min, MinLength } from 'class-validator';
+import { IsEmail, IsIn, IsInt, IsISO8601, IsOptional, IsString, Matches, Max, MaxLength, Min, MinLength, ValidateIf } from 'class-validator';
+
+// A person's name: letters (Latin, Cyrillic, Uzbek), spaces, apostrophes, hyphens.
+const NAME = /^[A-Za-zÀ-ÖØ-öø-ÿА-Яа-яЁёЎўҚқҒғҲҳʻʼ'‘’ .\-]{2,120}$/;
+// A phone: digits with an optional +, spaces, dashes or brackets (8-15 digits).
+const PHONE = /^\+?[\d\s()-]{8,24}$/;
+const NAME_MSG = "Ismda faqat harflar bo'lsin";
+const PHONE_MSG = "Telefon raqami noto'g'ri (masalan: +998 90 123 45 67)";
+const EMAIL_MSG = "Email noto'g'ri";
 
 /**
  * A candidate's way through hiring: new → test → interview → demo lesson →
@@ -11,10 +19,11 @@ export class CreateCandidateDto {
   @IsString()
   @MinLength(2)
   @MaxLength(120)
+  @Matches(NAME, { message: NAME_MSG })
   fullName!: string;
 
-  @IsOptional() @IsString() @MaxLength(40) phone?: string;
-  @IsOptional() @IsString() @MaxLength(160) email?: string;
+  @IsOptional() @IsString() @Matches(PHONE, { message: PHONE_MSG }) phone?: string;
+  @IsOptional() @IsEmail({}, { message: EMAIL_MSG }) @MaxLength(160) email?: string;
   @IsOptional() @IsString() @MaxLength(100) subject?: string;
   // Where they came from: a job post, a referral, Telegram...
   @IsOptional() @IsString() @MaxLength(100) source?: string;
@@ -22,9 +31,10 @@ export class CreateCandidateDto {
 }
 
 export class UpdateCandidateDto {
-  @IsOptional() @IsString() @MinLength(2) @MaxLength(120) fullName?: string;
-  @IsOptional() @IsString() @MaxLength(40) phone?: string;
-  @IsOptional() @IsString() @MaxLength(160) email?: string;
+  @IsOptional() @IsString() @Matches(NAME, { message: NAME_MSG }) fullName?: string;
+  // An empty string clears these.
+  @IsOptional() @ValidateIf((o: UpdateCandidateDto) => o.phone !== '') @IsString() @Matches(PHONE, { message: PHONE_MSG }) phone?: string;
+  @IsOptional() @ValidateIf((o: UpdateCandidateDto) => o.email !== '') @IsEmail({}, { message: EMAIL_MSG }) @MaxLength(160) email?: string;
   @IsOptional() @IsString() @MaxLength(100) subject?: string;
   @IsOptional() @IsString() @MaxLength(100) source?: string;
   @IsOptional() @IsString() @MaxLength(4000) notes?: string;
