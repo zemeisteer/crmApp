@@ -26,6 +26,7 @@ import { TrialClaimsService } from '../trial/trial-claims.service';
 type Tx = Parameters<Parameters<Database['transaction']>[0]>[0];
 import { trialRules, trialStage } from '../trial/trial-rules';
 import { billingRules } from '../platform-billing/billing-period';
+import { entitlementsOf } from '../plans/entitlements';
 
 function hashToken(token: string) {
   return createHash('sha256').update(token).digest('hex');
@@ -822,7 +823,7 @@ export class AuthService {
       },
       // Where a center on its free trial stands (the app shows the plans
       // once it is locked); the sign-up phone stays on the server.
-      tenant: ws.tenant ? { ...ws.tenant, signupPhone: undefined, trial: trialStage(ws.tenant), billing: billingOf(ws.tenant) } : ws.tenant,
+      tenant: ws.tenant ? { ...ws.tenant, signupPhone: undefined, trial: trialStage(ws.tenant), billing: billingOf(ws.tenant), entitlements: await entitlementsOf(this.db, ws.tenant.id) } : ws.tenant,
     };
   }
 }

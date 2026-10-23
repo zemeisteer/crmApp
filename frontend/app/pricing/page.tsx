@@ -5,7 +5,8 @@ import DashboardShell from "@/components/DashboardShell";
 import Modal from "@/components/Modal";
 import Select from "@/components/Select";
 import { useAuth } from "@/lib/auth-context";
-import { platformBillingApi, plansApi, Plan, ApiError } from "@/lib/api";
+import { platformBillingApi, plansApi, Plan, ApiError, PLAN_FEATURES, PLAN_LIMITS, type Entitlements } from "@/lib/api";
+import type { TranslationKey } from "@/lib/i18n";
 import { useCenterClock } from "@/lib/use-center-clock";
 import { formatDate } from "@/lib/format-date";
 import { useLanguage } from "@/lib/i18n-context";
@@ -195,6 +196,7 @@ function SuperadminPlans() {
   const [popular, setPopular] = useState(false);
   // SMS (through the platform's provider) is part of the plan.
   const [smsIncluded, setSmsIncluded] = useState(true);
+  const [ent, setEnt] = useState<Entitlements>({});
   const [active, setActive] = useState(true);
   const [saving, setSaving] = useState(false);
   // The Russian and English lists are translated from the Uzbek one: a
@@ -314,6 +316,7 @@ function SuperadminPlans() {
     begin("", "", "", false, false);
     setPopular(false);
     setSmsIncluded(true);
+    setEnt({});
     setActive(true);
     setEditOpen(true);
   }
@@ -327,6 +330,7 @@ function SuperadminPlans() {
     begin(p.features, p.featuresRu ?? "", p.featuresEn ?? "", !!p.featuresRu?.trim(), !!p.featuresEn?.trim());
     setPopular(p.popular);
     setSmsIncluded(p.smsIncluded ?? true);
+    setEnt(p.entitlements ?? {});
     setActive(p.active);
     setEditOpen(true);
   }
@@ -357,9 +361,9 @@ function SuperadminPlans() {
         }
       }
       if (editing) {
-        await plansApi.update(editing.id, { name, price: Number(price), features: uz, featuresRu: ru, featuresEn: en, popular, active, smsIncluded });
+        await plansApi.update(editing.id, { name, price: Number(price), features: uz, featuresRu: ru, featuresEn: en, popular, active, smsIncluded, entitlements: ent });
       } else {
-        await plansApi.create({ key, name, price: Number(price), features: uz, featuresRu: ru, featuresEn: en, popular, active, smsIncluded });
+        await plansApi.create({ key, name, price: Number(price), features: uz, featuresRu: ru, featuresEn: en, popular, active, smsIncluded, entitlements: ent });
       }
       closeEdit();
       load();
@@ -405,6 +409,7 @@ function SuperadminPlans() {
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16 }}>
               {plans.map((p) => (
                 <div
+                  data-testid={`plan-${p.key}`}
                   key={p.id}
                   style={{
                     background: "#fff", border: `1.5px solid ${p.popular ? ACCENT : "#EAE8E2"}`, borderRadius: 16, padding: 24,
@@ -525,6 +530,33 @@ function SuperadminPlans() {
             </label>
           </div>
           <div style={{ fontSize: 12, color: "#686B75", marginTop: -4, lineHeight: 1.5 }}>{t("pricing.smsIncludedHint")}</div>
+          <fieldset style={{ border: "1px solid #EAE8E2", borderRadius: 12, padding: "12px 14px", display: "flex", flexDirection: "column", gap: 10 }}>
+            <legend style={{ fontSize: 13, fontWeight: 700, padding: "0 6px" }}>{t("pricing.entTitle")}</legend>
+            <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
+              {PLAN_FEATURES.map((f) => (
+                <label key={f} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 600 }}>
+                  <input type="checkbox" checked={ent[f] !== false} onChange={(e) => setEnt({ ...ent, [f]: e.target.checked })} /> {t(`pricing.ent.${f}` as TranslationKey)}
+                </label>
+              ))}
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: 10 }}>
+              {PLAN_LIMITS.map((l) => (
+                <label key={l} style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12.5, fontWeight: 600, color: "#4A4E58" }}>
+                  {t(`pricing.ent.${l}` as TranslationKey)}
+                  <input
+                    className="field-input"
+                    type="number"
+                    min={0}
+                    inputMode="numeric"
+                    placeholder={t("pricing.entUnlimited")}
+                    value={typeof ent[l] === "number" ? String(ent[l]) : ""}
+                    onChange={(e) => setEnt({ ...ent, [l]: e.target.value === "" ? null : Math.max(0, Math.floor(Number(e.target.value))) })}
+                  />
+                </label>
+              ))}
+            </div>
+            <div style={{ fontSize: 12, color: "#686B75", lineHeight: 1.5 }}>{t("pricing.entHint")}</div>
+          </fieldset>
           <button
             className="btn"
             type="submit"

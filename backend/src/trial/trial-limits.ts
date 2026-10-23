@@ -4,6 +4,7 @@ import type { Database } from '../db/db.module';
 import { invitations, organizationMemberships, students, tenants, trialAiUsage } from '../db/schema';
 import { DEFAULT_TIMEZONE, isValidTimeZone, zonedParts } from '../common/timezone';
 import { trialRules } from './trial-rules';
+import { entitlementsOf, limitOf, planLimitReached } from '../plans/entitlements';
 
 type Exec = Pick<Database, 'select' | 'execute'>;
 
@@ -24,29 +25,36 @@ async function onTrial(db: Exec, tenantId: string): Promise<boolean> {
  * still waiting do not stand in its way, the members it joins do.
  */
 export async function assertTrialRoom(db: Exec, tenantId: string, kind: 'students' | 'staff', adding = 1, inTransaction = false, opts: { countPending?: boolean } = {}): Promise<void> {
+  if (adding <= 0) return;
   const rules = trialRules();
-  if (!rules.limits || adding <= 0) return;
-  if (!(await onTrial(db, tenantId))) return;
+  // The plan's own limit (plans/entitlements.ts), for every center; on its
+  // free trial the trial's limit as well, whichever is reached first.
+  const planMax = limitOf(await entitlementsOf(db, tenantId), kind === 'students' ? 'MAX_STUDENTS' : 'MAX_STAFF');
+  const trialMax = rules.limits && (await onTrial(db, tenantId)) ? (kind === 'students' ? rules.maxStudents : rules.maxStaff) : null;
+  if (planMax === null && trialMax === null) return;
   if (inTransaction) await db.execute(sql`select pg_advisory_xact_lock(hashtext(${`trial-room:${tenantId}:${kind}`}))`);
 
+  let have: number;
   if (kind === 'students') {
     const [{ n }] = await db
       .select({ n: sql<number>`count(*)::int` })
       .from(students)
       .where(and(eq(students.tenantId, tenantId), isNull(students.deletedAt)));
-    if (n + adding > rules.maxStudents) throw limitReached(`Sinov davrida ${rules.maxStudents} tagacha o'quvchi qo'shish mumkin.`);
-    return;
+    have = n;
+  } else {
+    const [{ members }] = await db
+      .select({ members: sql<number>`count(*)::int` })
+      .from(organizationMemberships)
+      .where(and(eq(organizationMemberships.tenantId, tenantId), eq(organizationMemberships.status, 'ACTIVE'), ne(organizationMemberships.role, 'OWNER')));
+    const [{ pending }] = opts.countPending === false ? [{ pending: 0 }] : await db
+      .select({ pending: sql<number>`count(*)::int` })
+      .from(invitations)
+      .where(and(eq(invitations.tenantId, tenantId), eq(invitations.status, 'PENDING'), gt(invitations.expiresAt, new Date())));
+    have = members + pending;
   }
-
-  const [{ members }] = await db
-    .select({ members: sql<number>`count(*)::int` })
-    .from(organizationMemberships)
-    .where(and(eq(organizationMemberships.tenantId, tenantId), eq(organizationMemberships.status, 'ACTIVE'), ne(organizationMemberships.role, 'OWNER')));
-  const [{ pending }] = opts.countPending === false ? [{ pending: 0 }] : await db
-    .select({ pending: sql<number>`count(*)::int` })
-    .from(invitations)
-    .where(and(eq(invitations.tenantId, tenantId), eq(invitations.status, 'PENDING'), gt(invitations.expiresAt, new Date())));
-  if (members + pending + adding > rules.maxStaff) throw limitReached(`Sinov davrida ${rules.maxStaff} tagacha xodim qo'shish mumkin.`);
+  const what = kind === 'students' ? "o'quvchi" : 'xodim';
+  if (trialMax !== null && have + adding > trialMax) throw limitReached(`Sinov davrida ${trialMax} tagacha ${what} qo'shish mumkin.`);
+  if (planMax !== null && have + adding > planMax) throw planLimitReached(what, planMax);
 }
 
 /** Bulk import (spreadsheets) is not part of the free trial. */

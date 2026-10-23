@@ -4,6 +4,7 @@ import { DB, Database } from '../db/db.module';
 import { aiUsage, enrollments, groups, studentAiMessages, students, tenants } from '../db/schema';
 import { centerState, centerWorkRefusal } from '../trial/trial-access';
 import { chargeTrialAi, refundTrialAi } from '../trial/trial-limits';
+import { allows, entitlementsOf } from '../plans/entitlements';
 import { teacherGroupIds } from '../common/teacher-scope';
 import { DEFAULT_TIMEZONE, isValidTimeZone, zonedParts } from '../common/timezone';
 import { AiService } from './ai.service';
@@ -119,7 +120,8 @@ export class StudentTutorService {
       .select({ status: tenants.status, trialEndsAt: tenants.trialEndsAt, tz: tenants.timezone })
       .from(tenants)
       .where(eq(tenants.id, student.tenantId));
-    if (!center || centerWorkRefusal(center)) {
+    // Not in the center's plan (AI_TUTOR) counts as off too.
+    if (!center || centerWorkRefusal(center) || !allows(await entitlementsOf(this.db, student.tenantId), 'AI_TUTOR')) {
       await this.refund(student, day);
       return { status: 'off' };
     }

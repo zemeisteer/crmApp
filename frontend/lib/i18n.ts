@@ -3126,6 +3126,16 @@ export const dict = {
 
   // Pricing page (tenant view)
   "pricing.title": { UZ: "Tariflar", RU: "Тарифы", EN: "Pricing" },
+  "pricing.entTitle": { UZ: "Tarif imkoniyatlari", RU: "Возможности тарифа", EN: "What the plan includes" },
+  "pricing.ent.AI_TOOLS": { UZ: "AI vositalari (xodimlar)", RU: "AI-инструменты (сотрудники)", EN: "AI tools (staff)" },
+  "pricing.ent.AI_TUTOR": { UZ: "AI ustoz (o'quvchilar)", RU: "AI-наставник (ученики)", EN: "AI tutor (students)" },
+  "pricing.ent.MOCK_EXAMS": { UZ: "Mock imtihonlar", RU: "Mock-экзамены", EN: "Mock exams" },
+  "pricing.ent.CERTIFICATES": { UZ: "Sertifikatlar", RU: "Сертификаты", EN: "Certificates" },
+  "pricing.ent.MAX_STUDENTS": { UZ: "O'quvchilar limiti", RU: "Лимит учеников", EN: "Students limit" },
+  "pricing.ent.MAX_STAFF": { UZ: "Xodimlar limiti", RU: "Лимит сотрудников", EN: "Staff limit" },
+  "pricing.ent.MAX_BRANCHES": { UZ: "Filiallar limiti", RU: "Лимит филиалов", EN: "Branches limit" },
+  "pricing.entUnlimited": { UZ: "Cheksiz", RU: "Без ограничений", EN: "Unlimited" },
+  "pricing.entHint": { UZ: "Belgilanmagan funksiya bu tarifdagi markazlarga yopiladi; bo'sh limit — cheklovsiz. O'zgarish darhol kuchga kiradi.", RU: "Снятая функция закрывается для центров на этом тарифе; пустой лимит — без ограничений. Изменения действуют сразу.", EN: "An unticked feature is closed for centers on this plan; an empty limit means none. Changes apply at once." },
   "pricing.currentPlan": { UZ: "Joriy reja", RU: "Текущий план", EN: "Current plan" },
   "pricing.status": { UZ: "Holat", RU: "Статус", EN: "Status" },
   "pricing.mostPopular": { UZ: "Eng mashhur", RU: "Самый популярный", EN: "Most popular" },
