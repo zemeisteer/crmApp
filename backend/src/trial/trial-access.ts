@@ -10,7 +10,8 @@ import { trialRules, trialStage, type TrialRules } from './trial-rules';
  *   TRIAL      yes     yes      yes          (trial limits apply: trial-limits.ts)
  *   READ_ONLY  yes     no       yes          403 TRIAL_READ_ONLY
  *   LOCKED     no      no       yes          403 TRIAL_LOCKED
- *   SUSPENDED  yes     no       yes          403 CENTER_SUSPENDED
+ *   SUSPENDED  yes     no       yes          403 CENTER_SUSPENDED, or BILLING_SUSPENDED
+ *                                             (suspended for non-payment: paying lifts it)
  *
  * Payment provider callbacks carry no signed-in member and are not concerned.
  * The platform admin, and the student and parent cabinets, are not either
@@ -26,14 +27,15 @@ export const ALWAYS_OPEN = [
 ];
 
 export type CenterState = 'ACTIVE' | 'TRIAL' | 'READ_ONLY' | 'LOCKED' | 'SUSPENDED';
-export type AccessRefusal = { code: 'TRIAL_READ_ONLY' | 'TRIAL_LOCKED' | 'CENTER_SUSPENDED'; message: string };
+export type AccessRefusal = { code: 'TRIAL_READ_ONLY' | 'TRIAL_LOCKED' | 'CENTER_SUSPENDED' | 'BILLING_SUSPENDED'; message: string };
 
-type CenterRow = { status: string; trialEndsAt: Date | string | null };
+type CenterRow = { status: string; trialEndsAt: Date | string | null; suspendedReason?: string | null };
 
 const REFUSALS: Record<AccessRefusal['code'], string> = {
   TRIAL_READ_ONLY: "Sinov muddati tugagan: ma'lumotlarni ko'rish mumkin, o'zgartirish uchun tarifni faollashtiring.",
   TRIAL_LOCKED: 'Sinov muddati tugagan. Markazdan foydalanishni davom ettirish uchun tarifni faollashtiring.',
   CENTER_SUSPENDED: "Markazingiz to'xtatilgan. Administrator bilan bog'laning.",
+  BILLING_SUSPENDED: "To'lov muddati o'tgan: ma'lumotlarni ko'rish mumkin. Davom etish uchun tarifni to'lang.",
 };
 const refuse = (code: AccessRefusal['code']): AccessRefusal => ({ code, message: REFUSALS[code] });
 
@@ -51,7 +53,7 @@ export function centerAccess(center: CenterRow, method: string, route: string, n
   const write = method !== 'GET' && method !== 'HEAD' && method !== 'OPTIONS';
   if (state === 'LOCKED') return refuse('TRIAL_LOCKED');
   if (state === 'READ_ONLY' && write) return refuse('TRIAL_READ_ONLY');
-  if (state === 'SUSPENDED' && write) return refuse('CENTER_SUSPENDED');
+  if (state === 'SUSPENDED' && write) return refuse(center.suspendedReason === 'NON_PAYMENT' ? 'BILLING_SUSPENDED' : 'CENTER_SUSPENDED');
   return null;
 }
 
@@ -62,7 +64,7 @@ export function centerAccess(center: CenterRow, method: string, route: string, n
  */
 export function centerWorkRefusal(center: CenterRow, now = new Date(), rules: TrialRules = trialRules()): AccessRefusal | null {
   const state = centerState(center, now, rules);
-  if (state === 'SUSPENDED') return refuse('CENTER_SUSPENDED');
+  if (state === 'SUSPENDED') return refuse(center.suspendedReason === 'NON_PAYMENT' ? 'BILLING_SUSPENDED' : 'CENTER_SUSPENDED');
   if (state === 'LOCKED') return refuse('TRIAL_LOCKED');
   if (state === 'READ_ONLY') return refuse('TRIAL_READ_ONLY');
   return null;

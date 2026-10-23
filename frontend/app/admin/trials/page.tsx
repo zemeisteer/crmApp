@@ -201,6 +201,67 @@ function UncertainSms() {
   );
 }
 
+function RenewalPreview() {
+  const { t } = useLanguage();
+  const [data, setData] = useState<Awaited<ReturnType<typeof platformApi.billingPreview>> | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  function load() {
+    setError(null);
+    platformApi.billingPreview().then(setData).catch((e) => setError(e instanceof ApiError ? e.message : ""));
+  }
+  useEffect(load, []);
+
+  return (
+    <section style={card} aria-labelledby="renewal-title">
+      <h2 id="renewal-title" style={{ fontSize: 16, fontWeight: 800 }}>{t("pf.tr.renewalTitle")}</h2>
+      <div style={{ fontSize: 13, color: "#686B75", marginTop: 4, marginBottom: 12, lineHeight: 1.55 }}>{t("pf.tr.renewalHint")}</div>
+      {error !== null ? (
+        <LoadError message={error || t("adm.loadError")} onRetry={load} compact />
+      ) : !data ? (
+        <div style={{ color: "#686B75", fontSize: 14 }}>{t("common.loading")}</div>
+      ) : (
+        <>
+          <div role="status" style={{ fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: 10, marginBottom: 12, background: data.enforce ? "#FDEBEC" : "#EEF0FF", color: data.enforce ? "#B23A47" : "#33357A" }}>
+            {data.enforce ? t("pf.tr.enforceOn") : t("pf.tr.enforceOff")}
+          </div>
+          {data.report.length === 0 ? (
+            <div style={{ fontSize: 13.5, color: "#686B75" }}>{t("pf.tr.renewalNone")}</div>
+          ) : (
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 480 }}>
+                <thead>
+                  <tr>
+                    <th style={th}>{t("pf.tr.center")}</th>
+                    <th style={th}>{t("pf.tr.paidUntil")}</th>
+                    <th style={th}>{t("pf.tr.state")}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.report.map((r) => (
+                    <tr key={r.tenantId}>
+                      <td style={td}>
+                        <div style={{ fontWeight: 700 }}>{r.name}</div>
+                        <div style={{ fontSize: 12, color: "#686B75" }}>{r.subdomain}</div>
+                      </td>
+                      <td style={td}>{day(r.paidUntil)}</td>
+                      <td style={td}>
+                        <span style={{ display: "inline-block", fontSize: 12, fontWeight: 700, padding: "3px 10px", borderRadius: 100, background: r.to === "SUSPENDED" ? "#FDEBEC" : "#FFF7E6", color: r.to === "SUSPENDED" ? "#B23A47" : "#8A5A00" }}>
+                          {t(r.to === "SUSPENDED" ? "pf.tr.toSuspended" : "pf.tr.toPastDue")}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </>
+      )}
+    </section>
+  );
+}
+
 function TrialsContent() {
   const { t } = useLanguage();
   return (
@@ -210,6 +271,7 @@ function TrialsContent() {
         <div style={{ fontSize: 13, color: "#686B75", marginTop: 2 }}>{t("pf.tr.subtitle")}</div>
       </div>
       <div style={{ padding: "22px 32px", display: "flex", flexDirection: "column", gap: 18 }}>
+        <RenewalPreview />
         <PurgePreview />
         <ReleaseClaim />
         <UncertainSms />

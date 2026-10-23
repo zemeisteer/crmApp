@@ -38,7 +38,7 @@ export class TrialInterceptor implements NestInterceptor {
     if (!user?.tenantId || user.role === 'SUPERADMIN' || user.studentId) return next.handle();
 
     const [tenant] = await this.db
-      .select({ status: tenants.status, trialEndsAt: tenants.trialEndsAt, tz: tenants.timezone })
+      .select({ status: tenants.status, trialEndsAt: tenants.trialEndsAt, suspendedReason: tenants.suspendedReason, tz: tenants.timezone })
       .from(tenants)
       .where(eq(tenants.id, user.tenantId));
     if (!tenant) return next.handle();

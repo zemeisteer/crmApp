@@ -9,6 +9,7 @@ import { PlatformSettingsService } from './platform-settings.service';
 import { ListSubscriptionsDto, RecordPaymentDto, ReleaseTrialClaimDto, SaveIntegrationDto, UpdateSubscriptionDto } from './dto/platform.dto';
 import { TrialClaimsService } from '../trial/trial-claims.service';
 import { TrialLifecycleService } from '../trial/trial-lifecycle.service';
+import { BillingLifecycleService } from '../platform-billing/billing-lifecycle.service';
 import { trialRules } from '../trial/trial-rules';
 
 // The platform admin's own pages: every route is SUPERADMIN only.
@@ -21,7 +22,16 @@ export class PlatformController {
     private readonly settings: PlatformSettingsService,
     private readonly trialClaims: TrialClaimsService,
     private readonly trialLifecycle: TrialLifecycleService,
+    private readonly billingLifecycle: BillingLifecycleService,
   ) {}
+
+  // Which paying centers the renewal pass would move now (past due,
+  // suspended for non-payment). Writes and sends nothing.
+  @Get('billing/preview')
+  async billingPreview() {
+    const { report, enforce } = await this.billingLifecycle.run(new Date(), undefined, { dryRun: true });
+    return { enforce, report };
+  }
 
   // What the trial deletion pass would do now, center by center, and why.
   // Writes and sends nothing (works with TRIAL_PURGE off too).

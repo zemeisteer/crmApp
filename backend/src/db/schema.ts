@@ -215,6 +215,13 @@ export const tenants = pgTable('tenants', {
   plan: text('plan').notNull().default('STARTER'),
   status: tenantStatusEnum('status').notNull().default('TRIAL'),
   trialEndsAt: timestamp('trial_ends_at'),
+  // The end of the period paid to CRMAPP (platform-billing): each payment adds
+  // a month to it. Null: never paid through billing (old or comped centers),
+  // which the renewal pass leaves alone.
+  paidUntil: timestamp('paid_until'),
+  // Why a SUSPENDED center is suspended: NON_PAYMENT (the renewal pass; a
+  // payment lifts it) or null (the platform admin's own decision).
+  suspendedReason: text('suspended_reason'),
   smsProvider: text('sms_provider').notNull().default('eskiz'),
   smsApiToken: text('sms_api_token'),
   smsSender: text('sms_sender').notNull().default('4546'),
@@ -920,7 +927,15 @@ export const platformSubscriptions = pgTable('platform_subscriptions', {
   status: billingTxStatusEnum('status').notNull().default('CREATED'),
   provider: billingProviderEnum('provider'),
   providerTxId: text('provider_tx_id'),
+  // When the provider opened its transaction (Payme's create_time, answered
+  // the same on every retry).
+  providerCreatedAt: timestamp('provider_created_at'),
   paidAt: timestamp('paid_at'),
+  // The period this payment bought (from where the paid time ended, or now).
+  periodStart: timestamp('period_start'),
+  periodEnd: timestamp('period_end'),
+  cancelledAt: timestamp('cancelled_at'),
+  cancelReason: integer('cancel_reason'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
 }, (t) => ({
   tenantIdx: index('platform_subs_tenant_idx').on(t.tenantId),

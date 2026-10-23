@@ -111,6 +111,10 @@ services:
       # SMS on the platform's provider account: a monthly budget.
       PLATFORM_SMS_PER_CENTER_MONTH: ${PLATFORM_SMS_PER_CENTER_MONTH:-}
       PLATFORM_SMS_PER_MONTH: ${PLATFORM_SMS_PER_MONTH:-}
+      # The paid period (platform-billing/billing-period.ts): off until switched on.
+      BILLING_ENFORCE: ${BILLING_ENFORCE:-}
+      BILLING_GRACE_DAYS: ${BILLING_GRACE_DAYS:-}
+      BILLING_SCAN_MS: ${BILLING_SCAN_MS:-}
       EMAIL_FROM: ${EMAIL_FROM:-}
       CLICK_MERCHANT_ID: ${CLICK_MERCHANT_ID:-}
       CLICK_SERVICE_ID: ${CLICK_SERVICE_ID:-}

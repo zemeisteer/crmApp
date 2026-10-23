@@ -3,6 +3,7 @@ import { and, desc, eq, ilike, inArray, isNull, or, sql, type SQL } from 'drizzl
 import { DB, Database } from '../db/db.module';
 import { plans, platformSubscriptions, smsSends, students, tenants, users } from '../db/schema';
 import { AuditService } from '../audit/audit.service';
+import { applyPayment } from '../platform-billing/billing-period';
 import { ListSubscriptionsDto, RecordPaymentDto, UpdateSubscriptionDto } from './dto/platform.dto';
 
 const DAY_MS = 86_400_000;
@@ -31,8 +32,10 @@ export function monthEnd(month: string): Date {
  * date, a paid tariff to the end of the last month paid for; a free tariff
  * has nothing to run out. Negative: overdue by that many days.
  */
-export function daysLeft(now: Date, t: { status: string; trialEndsAt: Date | null }, price: number, lastPaidMonth: string | null): number | null {
+export function daysLeft(now: Date, t: { status: string; trialEndsAt: Date | null; paidUntil?: Date | null }, price: number, lastPaidMonth: string | null): number | null {
   if (t.status === 'TRIAL') return t.trialEndsAt ? Math.ceil((t.trialEndsAt.getTime() - now.getTime()) / DAY_MS) : null;
+  // The paid period (billing-period.ts) when there is one; the month labels for older centers.
+  if (t.paidUntil) return Math.ceil((t.paidUntil.getTime() - now.getTime()) / DAY_MS);
   if (price <= 0) return null;
   if (!lastPaidMonth) return 0;
   return Math.ceil((monthEnd(lastPaidMonth).getTime() - now.getTime()) / DAY_MS);
@@ -88,7 +91,7 @@ export class PlatformService {
     const months = lastMonths(month, 6);
     const { all: planList, byKey } = await this.planMap();
     const list = await this.db
-      .select({ id: tenants.id, name: tenants.name, subdomain: tenants.subdomain, plan: tenants.plan, status: tenants.status, trialEndsAt: tenants.trialEndsAt, createdAt: tenants.createdAt })
+      .select({ id: tenants.id, name: tenants.name, subdomain: tenants.subdomain, plan: tenants.plan, status: tenants.status, trialEndsAt: tenants.trialEndsAt, paidUntil: tenants.paidUntil, suspendedReason: tenants.suspendedReason, createdAt: tenants.createdAt })
       .from(tenants);
     const paid = await this.paidByTenant();
 
@@ -191,7 +194,7 @@ export class PlatformService {
     const [[count], rows, { byKey }] = await Promise.all([
       this.db.select({ n: sql<number>`count(*)::int` }).from(tenants).where(where),
       this.db
-        .select({ id: tenants.id, name: tenants.name, subdomain: tenants.subdomain, plan: tenants.plan, status: tenants.status, trialEndsAt: tenants.trialEndsAt, createdAt: tenants.createdAt })
+        .select({ id: tenants.id, name: tenants.name, subdomain: tenants.subdomain, plan: tenants.plan, status: tenants.status, trialEndsAt: tenants.trialEndsAt, paidUntil: tenants.paidUntil, suspendedReason: tenants.suspendedReason, createdAt: tenants.createdAt })
         .from(tenants)
         .where(where)
         .orderBy(desc(tenants.createdAt), tenants.id)
@@ -286,12 +289,14 @@ export class PlatformService {
         .where(and(eq(platformSubscriptions.tenantId, tenantId), eq(platformSubscriptions.forMonth, dto.forMonth)))
         .for('update');
       if (existing?.status === 'PAID') throw new ConflictException("Bu oy uchun to'lov allaqachon qayd etilgan");
-      const values = { plan: planKey, amount, status: 'PAID' as const, provider: null, providerTxId: null, paidAt: new Date() };
-      const [saved] = existing
+      // The invoice, then the payment through the same path as Click/Payme
+      // (billing-period.ts): its month is added to the paid time.
+      const values = { plan: planKey, amount, status: 'CREATED' as const, provider: null, providerTxId: null, providerCreatedAt: null, cancelledAt: null, cancelReason: null };
+      const [invoice] = existing
         ? await tx.update(platformSubscriptions).set(values).where(eq(platformSubscriptions.id, existing.id)).returning()
         : await tx.insert(platformSubscriptions).values({ tenantId, forMonth: dto.forMonth, ...values }).returning();
-      await tx.update(tenants).set({ plan: planKey, status: 'ACTIVE', updatedAt: new Date() }).where(eq(tenants.id, tenantId));
-      return saved;
+      const paid = await applyPayment(tx, invoice.id);
+      return paid.sub!;
     });
     this.audit.log({ tenantId, userId: actorId, action: 'create', entityType: 'platform_payment', entityId: row.id, meta: { forMonth: dto.forMonth, plan: planKey, amount, manual: true } });
     return row;
