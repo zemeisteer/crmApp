@@ -49,7 +49,7 @@ describe('Public application form (e2e)', () => {
     await app?.close();
   });
 
-  it('creates a WEBSITE lead with subject match and UTM, returns no internal id, and notifies the owner', async () => {
+  it('creates a lead with subject match and UTM (an Instagram link is an Instagram lead), returns no internal id, and notifies the owner', async () => {
     const res = await apply({
       fullName: 'Web Applicant', phone: '90 555 11 22', subject: 'ingliz tili', notes: 'Kechqurun',
       utmSource: 'instagram', utmCampaign: 'autumn',
@@ -57,7 +57,7 @@ describe('Public application form (e2e)', () => {
     expect(res.body).toEqual({ success: true, message: expect.any(String) });
 
     const [lead] = await leadsByName('Web Applicant');
-    expect(lead).toMatchObject({ source: 'WEBSITE', status: 'NEW', phoneNormalized: '+998905551122' });
+    expect(lead).toMatchObject({ source: 'INSTAGRAM', status: 'NEW', phoneNormalized: '+998905551122' });
     expect(lead.desiredSubject?.name).toBe('Ingliz tili');
 
     const timeline = await http().get(`/api/leads/${lead.id}/timeline`).set('Authorization', `Bearer ${token}`).expect(200);
