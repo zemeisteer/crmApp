@@ -505,6 +505,13 @@
       "when": 1797200000000,
       "tag": "0071_job_candidates",
       "breakpoints": true
+    },
+    {
+      "idx": 72,
+      "version": "7",
+      "when": 1797300000000,
+      "tag": "0072_card_payments",
+      "breakpoints": true
     }
   ]
 }

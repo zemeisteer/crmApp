@@ -10,6 +10,7 @@ import { AiModule } from '../ai/ai.module';
 import { PortalTutorController } from './portal-tutor.controller';
 import { PortalMockController } from './portal-mock.controller';
 import { MockTestsModule } from '../mock-tests/mock-tests.module';
+import { CardPaymentsModule } from '../card-payments/card-payments.module';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { MockTestsModule } from '../mock-tests/mock-tests.module';
     ExamsModule,
     AiModule,
     MockTestsModule,
+    CardPaymentsModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],

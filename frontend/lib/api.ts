@@ -1992,6 +1992,43 @@ export const staffApi = {
 
 // ---- Billing (Click / Payme — online payments & webhook engine Spec §27) ----
 
+// ---- Paying by card transfer (a receipt checked by staff) ----
+
+export type CardClaimStatus = "PENDING" | "CONFIRMED" | "REJECTED";
+export interface CardClaim {
+  id: string;
+  studentId: string;
+  studentName: string;
+  studentPhone: string | null;
+  invoiceId: string | null;
+  amount: number;
+  forMonth: string;
+  receiptFile: string;
+  note: string | null;
+  sentBy: "student" | "parent";
+  status: CardClaimStatus;
+  rejectReason: string | null;
+  reviewedBy: string | null;
+  reviewedAt: string | null;
+  paymentId: string | null;
+  createdAt: string;
+}
+export interface PortalCardPayment {
+  card: { number: string; holder: string } | null;
+  claims: Array<{ id: string; amount: number; forMonth: string; status: CardClaimStatus; rejectReason: string | null; createdAt: string; reviewedAt: string | null }>;
+}
+
+export const cardPaymentsApi = {
+  getCard: () => request<{ card: { number: string; holder: string } | null }>("/card-payments/card"),
+  setCard: (data: { cardNumber: string; cardHolder: string }) =>
+    request<{ card: { number: string; holder: string } | null }>("/card-payments/card", { method: "PUT", body: JSON.stringify(data) }),
+  claims: (status?: CardClaimStatus) => request<{ pending: number; items: CardClaim[] }>(`/card-payments/claims${status ? `?status=${status}` : ""}`),
+  confirm: (id: string, amount?: number) =>
+    request<{ id: string; status: string; paymentId: string }>(`/card-payments/claims/${id}/confirm`, { method: "POST", body: JSON.stringify(amount ? { amount } : {}) }),
+  reject: (id: string, reason: string) =>
+    request<{ id: string; status: string }>(`/card-payments/claims/${id}/reject`, { method: "POST", body: JSON.stringify({ reason }) }),
+};
+
 export type PaymentProvider = "CLICK" | "PAYME";
 export interface PaymentAccount {
   connected: boolean;
@@ -3187,6 +3224,25 @@ export const portalApi = {
     request<SubmitAttemptResult>(`/portal/exams/${id}/submit`, { method: "POST", body: JSON.stringify({ answers }) }),
   getInvoices: () => request<Invoice[]>("/portal/invoices"),
   getPayments: () => request<PortalPayments>("/portal/payments"),
+  getCardPayment: () => request<PortalCardPayment>("/portal/card-payment"),
+  // "I paid by card": the amount, and a picture (or PDF) of the receipt.
+  sendCardPayment: async (data: { amount: number; forMonth?: string; invoiceId?: string; note?: string; file: File }) => {
+    const form = new FormData();
+    form.append("amount", String(data.amount));
+    if (data.forMonth) form.append("forMonth", data.forMonth);
+    if (data.invoiceId) form.append("invoiceId", data.invoiceId);
+    if (data.note) form.append("note", data.note);
+    form.append("file", data.file);
+    const token = getPortalToken();
+    const res = await fetch(`${API_URL}/portal/card-payment`, {
+      method: "POST",
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      body: form,
+    });
+    const body = await res.json().catch(() => null);
+    if (!res.ok) throw new ApiError(body?.message || "Yuborilmadi", res.status, body);
+    return body as { id: string; status: CardClaimStatus };
+  },
   createCheckoutLink: (data: { provider: "CLICK" | "PAYME"; amount?: number; forMonth?: string; invoiceId?: string }) =>
     request<BillingLink>("/portal/payments/checkout-link", {
       method: "POST",

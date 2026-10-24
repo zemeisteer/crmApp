@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   ForbiddenException,
@@ -15,6 +16,7 @@ import { unlink } from 'fs/promises';
 import { ATTACHMENT_MAX_SIZE, attachmentStorage } from '../common/upload.util';
 import { Throttle } from '@nestjs/throttler';
 import { PortalService } from './portal.service';
+import { CardPaymentsService } from '../card-payments/card-payments.service';
 import { PortalAuthGuard } from './portal-auth.guard';
 import { PortalUser, PortalUserPayload } from './portal-user.decorator';
 import { JwtAuthGuard } from '../common/jwt-auth.guard';
@@ -27,12 +29,18 @@ function onlyStudent(user: PortalUserPayload) {
   if (user.viewer === 'parent') throw new ForbiddenException("Bu amalni o'quvchining o'zi bajaradi");
 }
 
+// A receipt: a screenshot or photo, or the bank's PDF.
+const RECEIPT_FILE_TYPES = /^(image\/(jpeg|png|webp|heic|heif)|application\/pdf)$/;
+
 // Photos from a phone camera, PDFs and office documents.
 const HOMEWORK_FILE_TYPES = /^(image\/(jpeg|png|webp|heic|heif)|application\/pdf|application\/msword|application\/vnd\.openxmlformats-officedocument\.wordprocessingml\.document)$/;
 
 @Controller('portal')
 export class PortalController {
-  constructor(private readonly service: PortalService) {}
+  constructor(
+    private readonly service: PortalService,
+    private readonly cardPayments: CardPaymentsService,
+  ) {}
 
   // Public portal authentication
   @Post('auth/token')
@@ -188,6 +196,45 @@ export class PortalController {
     @Body() body: { provider: 'CLICK' | 'PAYME'; amount?: number; forMonth?: string; invoiceId?: string },
   ) {
     return this.service.createCheckoutLink(user.studentId, user.tenantId, body);
+  }
+
+  // Paying by card transfer: the center's card and this student's receipts.
+  @UseGuards(PortalAuthGuard)
+  @Get('card-payment')
+  cardPayment(@PortalUser() user: PortalUserPayload) {
+    return this.cardPayments.cabinetView(user.tenantId, user.studentId);
+  }
+
+  // "I paid": the receipt picture, the amount and the month (or invoice).
+  // A student or a parent may send it; staff confirm it on the site.
+  @UseGuards(PortalAuthGuard)
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @Post('card-payment')
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: attachmentStorage,
+      limits: { fileSize: ATTACHMENT_MAX_SIZE },
+      fileFilter: (_req, file, cb) => cb(null, RECEIPT_FILE_TYPES.test(file.mimetype)),
+    }),
+  )
+  async sendCardPayment(
+    @PortalUser() user: PortalUserPayload,
+    @Body() body: { amount?: string; forMonth?: string; invoiceId?: string; note?: string },
+    @UploadedFile() file?: Express.Multer.File,
+  ) {
+    if (!file) throw new BadRequestException("Chek rasmini (skrinshot) yuklang: JPG, PNG yoki PDF");
+    try {
+      return await this.cardPayments.submit(user.tenantId, user.studentId, user.viewer, {
+        amount: Number(body.amount),
+        forMonth: body.forMonth,
+        invoiceId: body.invoiceId || undefined,
+        note: body.note,
+        receiptFile: file.filename,
+      });
+    } catch (err) {
+      await unlink(file.path).catch(() => undefined);
+      throw err;
+    }
   }
 
   @UseGuards(PortalAuthGuard)
