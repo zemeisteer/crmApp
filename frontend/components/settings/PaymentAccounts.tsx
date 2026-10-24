@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { ApiError, billingApi, type PaymentAccounts as Accounts, type PaymentProvider } from "@/lib/api";
 import { useLanguage } from "@/lib/i18n-context";
+import CardSettings from "./CardSettings";
 
 const ACCENT = "#4F46E5";
 const code: React.CSSProperties = { fontFamily: "ui-monospace, monospace", fontSize: 12, background: "#F4F3EF", border: "1px solid #EAE8E2", borderRadius: 6, padding: "2px 6px", wordBreak: "break-all" };
@@ -67,8 +68,9 @@ export default function PaymentAccounts() {
           </div>
         );
       })}
+      <CardSettings />
       <div style={{ fontSize: 12.5, color: "#4A4E58", background: "#F8F8FF", border: "1px solid #E0E7FF", borderRadius: 10, padding: "10px 14px", lineHeight: 1.6 }}>
-        💡 {t("pacc.noYatt")}
+        💡 {t("pacc.noYatt2")}
       </div>
     </div>
   );

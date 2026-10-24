@@ -19,7 +19,8 @@ export type FileKind =
   | 'EXAM_MATERIAL'
   | 'MOCK_ASSET'
   | 'MOCK_IMPORT'
-  | 'MOCK_SPEAKING';
+  | 'MOCK_SPEAKING'
+  | 'PAYMENT_RECEIPT';
 
 export const PUBLIC_KINDS: ReadonlySet<string> = new Set(['PUBLIC_LOGO', 'PUBLIC_SITE']);
 
@@ -171,6 +172,8 @@ export class FilesService {
         case 'MOCK_IMPORT':
         case 'MOCK_SPEAKING':
           return access.has('mockTests.manage');
+        case 'PAYMENT_RECEIPT':
+          return access.has('payments.view');
         default:
           return false;
       }
@@ -211,6 +214,7 @@ export class FilesService {
         }
         case 'HOMEWORK_SUBMISSION':
         case 'MOCK_SPEAKING':
+        case 'PAYMENT_RECEIPT':
           return r.studentId === studentId;
         case 'MOCK_ASSET':
           return openTests.has(r.ownerId);
