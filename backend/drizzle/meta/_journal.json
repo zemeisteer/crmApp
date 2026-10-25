@@ -512,6 +512,13 @@
       "when": 1797300000000,
       "tag": "0072_card_payments",
       "breakpoints": true
+    },
+    {
+      "idx": 73,
+      "version": "7",
+      "when": 1797400000000,
+      "tag": "0073_signals",
+      "breakpoints": true
     }
   ]
 }

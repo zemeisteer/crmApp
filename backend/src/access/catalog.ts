@@ -191,6 +191,10 @@ export const ACCESS_CATALOG: AccessKey[] = [
   { key: 'announcements.manage', area: 'center', template: [], routes: ['POST /api/announcements', 'DELETE /api/announcements/:id'] },
   { key: 'import.run', area: 'center', template: [], routes: ['GET /api/import/:kind/template.xlsx', 'POST /api/import/:kind'] },
   {
+    key: 'signals.manage', area: 'center', template: [M],
+    routes: ['GET /api/signals', 'PATCH /api/signals/:id'],
+  },
+  {
     key: 'hiring.manage', area: 'center', template: [M],
     routes: ['GET /api/hiring/candidates', 'POST /api/hiring/candidates', 'GET /api/hiring/candidates/:id', 'PATCH /api/hiring/candidates/:id', 'DELETE /api/hiring/candidates/:id'],
   },

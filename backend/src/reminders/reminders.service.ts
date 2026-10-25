@@ -11,6 +11,7 @@ import { PaymentsService } from '../payments/payments.service';
 import { TelegramService } from '../telegram/telegram.service';
 import { DEFAULT_TIMEZONE, isValidTimeZone, zonedDayBounds, zonedParts } from '../common/timezone';
 import { runsOn } from '../common/weekdays';
+import { SignalsService } from '../signals/signals.service';
 
 // Automatic reminders, run every few minutes by RemindersScanner:
 //  - lessons: a Telegram message to students and the teacher ~2 hours before
@@ -49,12 +50,13 @@ export class RemindersService {
     private readonly payments: PaymentsService,
     private readonly telegram: TelegramService,
     private readonly invoices: InvoicesService,
+    private readonly signals: SignalsService,
   ) {}
 
   // One pass over every live center. `now` is injectable for tests.
   async scan(now = new Date()) {
     const list = await this.db.select().from(tenants).where(ne(tenants.status, 'SUSPENDED'));
-    const out = { lessons: 0, payments: 0, digests: 0, attendance: 0, invoices: 0 };
+    const out = { lessons: 0, payments: 0, digests: 0, attendance: 0, invoices: 0, signals: 0 };
     for (const t of list) {
       // A center whose trial is over sends nothing (trial-access.ts).
       if (centerWorkRefusal(t, now)) continue;
@@ -64,6 +66,8 @@ export class RemindersService {
         out.digests += await this.dailyDigests(t, now);
         out.attendance += await this.attendanceReminders(t, now);
         out.invoices += await this.monthlyInvoices(t, now);
+        const s = await this.signals.run(t, now);
+        out.signals += s.absences + s.trials;
       } catch (err) {
         this.logger.warn(`Reminders for tenant ${t.id} failed: ${(err as Error).message}`);
       }
@@ -188,6 +192,16 @@ export class RemindersService {
       if (sms && phone) {
         await this.notifications.send(t.id, { channel: 'SMS', event: 'PAYMENT_DUE', recipient: phone, studentId: d.studentId, content: text, idempotencyKey: `PAYMENT_DUE:${d.studentId}:${c.month}` });
       }
+      // Why it went out, for the signals page (the amount is only reported, never changed).
+      await this.signals.record(t.id, {
+        rule: 'PAYMENT_OVERDUE',
+        subjectType: 'student',
+        subjectId: d.studentId,
+        key: c.month,
+        reason: `${c.month} oyi uchun ${money(d.debtAmount)} so'm qarz; eslatma kuni: har oyning ${t.remindPaymentDay}-sanasi`,
+        facts: { month: c.month, debt: d.debtAmount, remindDay: t.remindPaymentDay, telegram: Boolean(chat), sms: Boolean(sms && phone) },
+        action: 'REMINDED_STUDENT',
+      });
       sent++;
     }
     return sent;

@@ -105,6 +105,20 @@ export class UpdateNotificationSettingsDto {
   @IsBoolean()
   dailyDigest?: boolean;
 
+  // Signals: this many absences in a row tell the managers (0 = off).
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(20)
+  absenceStreakAlert?: number;
+
+  // Signals: days with no contact after a trial lesson before a follow-up task (0 = off).
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(30)
+  trialFollowUpDays?: number;
+
   // After the last lesson: teachers who left attendance unmarked.
   @IsOptional()
   @IsBoolean()
