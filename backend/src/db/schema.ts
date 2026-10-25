@@ -254,6 +254,10 @@ export const tenants = pgTable('tenants', {
   // The month's invoices are issued by themselves in the first days of the
   // month (center time), the same as pressing "generate".
   autoInvoices: boolean('auto_invoices').notNull().default(true),
+  // A card students pay to by transfer (centers without Click/Payme, or
+  // besides them): shown in the cabinet; the receipt is checked by staff.
+  cardNumber: text('card_number'),
+  cardHolder: text('card_holder'),
   // The phone confirmed with a code when the center signed up: one free
   // trial per number (null for centers made before, or by the platform).
   signupPhone: text('signup_phone'),
@@ -882,6 +886,31 @@ export const tenantPaymentAccounts = pgTable('tenant_payment_accounts', {
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 }, (t) => ({
   tenantProviderIdx: uniqueIndex('tenant_payment_accounts_tenant_provider_idx').on(t.tenantId, t.provider),
+}));
+
+// "I paid by card": a student's (or parent's) transfer to the center's card
+// with a receipt picture, waiting for staff to confirm it (then it becomes a
+// real payment, paymentId) or reject it (card-payments/).
+export const paymentClaims = pgTable('payment_claims', {
+  id: text('id').primaryKey().$defaultFn(() => createId()),
+  tenantId: text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  studentId: text('student_id').notNull().references(() => students.id, { onDelete: 'cascade' }),
+  invoiceId: text('invoice_id').references(() => invoices.id, { onDelete: 'set null' }),
+  amount: integer('amount').notNull(),
+  forMonth: text('for_month').notNull(),
+  receiptFile: text('receipt_file').notNull(),
+  note: text('note'),
+  // Who sent it from the cabinet: the student or a parent.
+  sentBy: text('sent_by').notNull().default('student'),
+  status: text('status').notNull().default('PENDING'), // PENDING | CONFIRMED | REJECTED
+  rejectReason: text('reject_reason'),
+  reviewedByUserId: text('reviewed_by_user_id').references(() => users.id, { onDelete: 'set null' }),
+  reviewedAt: timestamp('reviewed_at'),
+  paymentId: text('payment_id').references(() => payments.id, { onDelete: 'set null' }),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+}, (t) => ({
+  tenantStatusIdx: index('payment_claims_tenant_status_idx').on(t.tenantId, t.status),
+  studentIdx: index('payment_claims_student_idx').on(t.studentId),
 }));
 
 export const homework = pgTable('homework', {

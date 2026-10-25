@@ -1,5 +1,6 @@
 "use client";
 
+import CardClaims from "@/components/payments/CardClaims";
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import DashboardShell from "@/components/DashboardShell";
@@ -20,6 +21,7 @@ import {
   exportApi,
   notificationsApi,
   billingApi,
+  cardPaymentsApi,
   invoicesApi,
   reportsApi,
   Invoice,
@@ -124,8 +126,8 @@ const EXPENSE_CATEGORIES: { value: ExpenseCategory; labelKey: TranslationKey; co
   { value: "OTHER", labelKey: "payments.expenses.catOther", color: "#64748B" },
 ];
 
-type TabType = "history" | "debtors" | "invoices" | "expenses" | "cash";
-const TABS: TabType[] = ["history", "debtors", "invoices", "expenses", "cash"];
+type TabType = "history" | "debtors" | "invoices" | "expenses" | "cash" | "cards";
+const TABS: TabType[] = ["history", "debtors", "invoices", "expenses", "cash", "cards"];
 const MONTH_PARAM = /^\d{4}-(0[1-9]|1[0-2])$/;
 type Period = "day" | "week" | "month" | "year";
 
@@ -550,6 +552,12 @@ function PaymentsContent() {
   // (?tab=…&month=…&status=…), so a reload or the back button returns to the
   // same view instead of the first tab with no filter.
   const params = useSearchParams();
+  // Receipts sent by card transfer and not yet checked (the tab's badge).
+  const [cardPending, setCardPending] = useState(0);
+  useEffect(() => {
+    if (!can(user, "payments.view")) return;
+    cardPaymentsApi.claims("PENDING").then((r) => setCardPending(r.pending)).catch(() => undefined);
+  }, [user]);
   const [activeTab, setActiveTab] = useState<TabType>(() => {
     const tab = params.get("tab") as TabType | null;
     return tab && TABS.includes(tab) ? tab : "history";
@@ -1260,6 +1268,29 @@ function PaymentsContent() {
               }}
             >
               {t("cash.tab")}
+            </button>
+            )}
+            {can(user, "payments.view") && (
+            <button
+              onClick={() => setActiveTab("cards")}
+              data-testid="cards-tab"
+              style={{
+                fontSize: 13,
+                fontWeight: 700,
+                padding: "7px 16px",
+                borderRadius: 8,
+                cursor: "pointer",
+                border: "none",
+                background: activeTab === "cards" ? "#fff" : "transparent",
+                color: activeTab === "cards" ? "#181A1F" : "#686B75",
+                boxShadow: activeTab === "cards" ? "0 1px 3px rgba(18,19,26,0.08)" : "none",
+                transition: "all 0.15s ease",
+              }}
+            >
+              💳 {t("cc.tab")}
+              {cardPending > 0 && (
+                <span style={{ marginLeft: 6, background: "#DC2626", color: "#fff", borderRadius: 100, fontSize: 11, padding: "1px 7px" }}>{cardPending}</span>
+              )}
             </button>
             )}
           </div>
@@ -2212,6 +2243,8 @@ function PaymentsContent() {
         {/* TAB 4: EXPENSES & CASH FLOW (P&L) (Master Spec Section 24)                 */}
         {/* ========================================================================= */}
         {activeTab === "cash" && <CashDayPanel canClose={can(user, "cash.close")} />}
+
+        {activeTab === "cards" && <CardClaims canDecide={can(user, "payments.take")} onCount={setCardPending} />}
         {remindersOpen && <DebtorRemindersDialog forMonth={debtorsData?.forMonth || selectedMonth} onClose={() => setRemindersOpen(false)} />}
 
         {activeTab === "expenses" && (

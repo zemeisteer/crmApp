@@ -1,5 +1,6 @@
 "use client";
 
+import CardTransfer from "./CardTransfer";
 import { useEffect, useState } from "react";
 import { portalApi, type PortalAttendance, type PortalHomework, type PortalPastLesson, type PortalPayments, type PortalSchedule } from "@/lib/api";
 import { useLanguage } from "@/lib/i18n-context";
@@ -797,6 +798,8 @@ export function PaymentsTab({ payments, checkoutLoading, onPay, payError }: { pa
         )}
         {payError && <div role="alert" style={{ marginTop: 10, fontSize: 13, background: "rgba(255,255,255,0.92)", color: "#B91C1C", borderRadius: 10, padding: "8px 12px" }}>{payError}</div>}
       </div>
+
+      <CardTransfer debt={debt} forMonth={payments?.forMonth} />
 
       <div style={{ ...card, padding: 0, overflow: "hidden" }}>
         <div style={{ padding: "14px 16px", fontFamily: "'Manrope', sans-serif", fontSize: 16, fontWeight: 700, borderBottom: "1px solid #F0EEE8" }}>{t("ptl.history")}</div>
