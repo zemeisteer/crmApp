@@ -45,6 +45,17 @@ describe('configuration', () => {
   });
 });
 
+describe('evaluation CSV', () => {
+  it('reads quoted text with commas, quotes and new lines', async () => {
+    const { parseCsv } = await import('../../scripts/eval-classifier');
+    expect(parseCsv('text,label\n"Salom, ""ustoz""\nqachon?",schedule\r\nRahmat,other\n')).toEqual([
+      ['text', 'label'],
+      ['Salom, "ustoz"\nqachon?', 'schedule'],
+      ['Rahmat', 'other'],
+    ]);
+  });
+});
+
 describe('summarize', () => {
   it('accuracy, confident-only accuracy and a confusion matrix', () => {
     const s = summarize([

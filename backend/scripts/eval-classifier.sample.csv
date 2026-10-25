@@ -1,0 +1,18 @@
+text,label
+"Assalomu alaykum, bu oy uchun qancha to'lashim kerak?",payment
+"To'lov qildim, chekni yubordim, tasdiqlab qo'yasizmi?",payment
+"Qarzim qolganmi hali?",payment
+"Оплатил через Click, проверьте пожалуйста",payment
+"Ingliz tili kursi necha pul turadi?",price
+"Сколько стоит курс по математике в месяц?",price
+"Ikki farzand o'qisa chegirma bormi?",price
+"Ertaga dars bormi?",schedule
+"Bugun darsga bora olmayman, kasalman",schedule
+"Dars soat nechida boshlanadi?",schedule
+"Завтра урок будет во сколько?",schedule
+"O'qituvchi darsga kech qolyapti, bu nima gap?",complaint
+"Bolam darsdan hech narsa tushunmayapti, juda norozimiz",complaint
+"Очень недовольны, учитель грубо разговаривает",complaint
+"Rahmat, hammasi yaxshi",other
+"Sertifikat qachon beriladi?",other
+"Salom",other
