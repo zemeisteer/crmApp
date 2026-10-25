@@ -3413,6 +3413,7 @@ export const dict = {
   "cls.opt.schedule": { UZ: "Jadval", RU: "Расписание", EN: "Schedule" },
   "cls.opt.complaint": { UZ: "Shikoyat", RU: "Жалоба", EN: "Complaint" },
   "cls.opt.other": { UZ: "Boshqa", RU: "Другое", EN: "Other" },
+  "sig.tabInsights": { UZ: "Tahlil", RU: "Анализ", EN: "Analysis" },
   "pricing.currentPlan": { UZ: "Joriy reja", RU: "Текущий план", EN: "Current plan" },
   "pricing.status": { UZ: "Holat", RU: "Статус", EN: "Status" },
   "pricing.mostPopular": { UZ: "Eng mashhur", RU: "Самый популярный", EN: "Most popular" },

@@ -110,7 +110,7 @@ export class SignalsService {
         `${escape(st?.fullName ?? '')}${st?.phone ? ` · ${escape(st.phone)}` : ''}`,
         `${run.count} ta dars (${run.since} – ${run.last})${groupNames.length ? ` · ${escape(groupNames.join(', '))}` : ''}`,
         '',
-        `Sababini bilish uchun bog'laning. TalimCRM → Signallar.`,
+        `Sababini bilish uchun bog'laning. TalimCRM → AI tahlil → Signallar.`,
       ].join('\n');
       for (const chat of chats) await this.telegram.sendMessage(chat, text);
     }

@@ -159,17 +159,6 @@ const NAV_ITEMS: NavItem[] = [
     ),
   },
   {
-    href: "/signals",
-    access: "signals.manage",
-    labelKey: "nav.signals" as TranslationKey,
-    roles: ["SUPERADMIN", "ADMIN", "MANAGER"],
-    icon: (
-      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
-      </svg>
-    ),
-  },
-  {
     href: "/hiring",
     access: "hiring.manage",
     labelKey: "nav.hiring" as TranslationKey,
