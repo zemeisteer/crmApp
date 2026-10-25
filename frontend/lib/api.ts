@@ -1992,6 +1992,67 @@ export const staffApi = {
 
 // ---- Billing (Click / Payme — online payments & webhook engine Spec §27) ----
 
+// ---- Rule signals and the suggest-only message classifier ----
+
+export type SignalRule = "ABSENCE_STREAK" | "TRIAL_FOLLOW_UP" | "PAYMENT_OVERDUE";
+export interface Signal {
+  id: string;
+  rule: SignalRule;
+  subjectType: "student" | "lead";
+  subjectId: string;
+  subjectName: string | null;
+  key: string;
+  reason: string;
+  facts: Record<string, unknown>;
+  action: string;
+  status: "OPEN" | "DONE" | "DISMISSED";
+  resolvedBy: string | null;
+  resolvedAt: string | null;
+  createdAt: string;
+}
+export const signalsApi = {
+  list: (q: { status?: string; rule?: string } = {}) => {
+    const qs = new URLSearchParams(Object.entries(q).filter(([, v]) => v) as [string, string][]).toString();
+    return request<{ open: Partial<Record<SignalRule, number>>; items: Signal[] }>(`/signals${qs ? `?${qs}` : ""}`);
+  },
+  resolve: (id: string, status: "DONE" | "DISMISSED" | "OPEN") => request<Signal>(`/signals/${id}`, { method: "PATCH", body: JSON.stringify({ status }) }),
+};
+
+export interface Classification {
+  id: string;
+  source: string;
+  inputText: string;
+  chosen: string | null;
+  probability: number | null;
+  provider: string;
+  modelVersion: string;
+  status: "SUGGESTED" | "NEEDS_HUMAN";
+  error: string | null;
+  ruleAction: string | null;
+  finalLabel: string | null;
+  finalAction: string | null;
+  createdAt: string;
+}
+export interface ClassificationReview {
+  items: Classification[];
+  options: Record<string, string>;
+  settings: { provider: string; modelVersion: string | null; threshold: number; perTenantPerHour: number };
+  stats: {
+    labelled: number;
+    answered: number;
+    accuracy: number | null;
+    confident: number;
+    confidentAccuracy: number | null;
+    needsHuman: number;
+    matrix: Record<string, Record<string, number>>;
+  };
+}
+export const classificationsApi = {
+  list: (labeled?: "yes" | "no") => request<ClassificationReview>(`/classifications${labeled ? `?labeled=${labeled}` : ""}`),
+  label: (id: string, finalLabel: string, finalAction?: string) =>
+    request<Classification>(`/classifications/${id}`, { method: "PATCH", body: JSON.stringify({ finalLabel, finalAction }) }),
+};
+
 // ---- Paying by card transfer (a receipt checked by staff) ----
 
 export type CardClaimStatus = "PENDING" | "CONFIRMED" | "REJECTED";
@@ -3303,6 +3364,10 @@ export interface NotificationSettings {
   dailyDigest?: boolean;
   /** After the last lesson: teachers who left attendance unmarked. */
   remindAttendance?: boolean;
+  /** Absences in a row that tell the managers (0 = off). */
+  absenceStreakAlert?: number;
+  /** Days with no contact after a trial lesson before a follow-up task (0 = off). */
+  trialFollowUpDays?: number;
   /** The month's invoices issued by themselves on the 1st. */
   autoInvoices?: boolean;
 }

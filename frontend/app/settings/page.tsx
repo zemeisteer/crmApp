@@ -972,6 +972,8 @@ function NotificationsSettingsTab() {
         dailyDigest: settings.dailyDigest,
         remindAttendance: settings.remindAttendance,
         autoInvoices: settings.autoInvoices,
+        absenceStreakAlert: settings.absenceStreakAlert,
+        trialFollowUpDays: settings.trialFollowUpDays,
       };
       const updated = await notificationsApi.updateSettings(payload);
       setSettings(updated);
@@ -1135,6 +1137,26 @@ function NotificationsSettingsTab() {
                 <input type="checkbox" checked={settings.dailyDigest ?? true} onChange={(e) => setSettings({ ...settings, dailyDigest: e.target.checked })} style={{ accentColor: ACCENT }} />
                 <span><b>📈 {t("rem.digest")}</b> {t("rem.digestHint")}</span>
               </label>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                <span style={{ fontSize: 13, fontWeight: 600, minWidth: 180 }}>⚠️ {t("sig.setAbsence")}</span>
+                <div style={{ width: 220 }}>
+                  <Select
+                    value={String(settings.absenceStreakAlert ?? 3)}
+                    onChange={(v) => setSettings({ ...settings, absenceStreakAlert: Number(v) })}
+                    options={[{ value: "0", label: t("rem.off") }, ...[2, 3, 4, 5, 6].map((n) => ({ value: String(n), label: t("sig.setAbsenceN").replace("{n}", String(n)) }))]}
+                  />
+                </div>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                <span style={{ fontSize: 13, fontWeight: 600, minWidth: 180 }}>📞 {t("sig.setTrial")}</span>
+                <div style={{ width: 220 }}>
+                  <Select
+                    value={String(settings.trialFollowUpDays ?? 2)}
+                    onChange={(v) => setSettings({ ...settings, trialFollowUpDays: Number(v) })}
+                    options={[{ value: "0", label: t("rem.off") }, ...[1, 2, 3, 5, 7].map((n) => ({ value: String(n), label: t("sig.setTrialN").replace("{n}", String(n)) }))]}
+                  />
+                </div>
+              </div>
               <label style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13, cursor: "pointer" }}>
                 <input type="checkbox" checked={settings.remindAttendance ?? true} onChange={(e) => setSettings({ ...settings, remindAttendance: e.target.checked })} style={{ accentColor: ACCENT }} />
                 <span><b>📝 {t("rem.attendance")}</b> {t("rem.attendanceHint")}</span>
