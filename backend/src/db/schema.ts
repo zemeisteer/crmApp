@@ -12,6 +12,7 @@ import {
   check,
   bigint,
   bigserial,
+  real,
   type AnyPgColumn,
 } from 'drizzle-orm/pg-core';
 import { relations, sql } from 'drizzle-orm';
@@ -254,6 +255,11 @@ export const tenants = pgTable('tenants', {
   // The month's invoices are issued by themselves in the first days of the
   // month (center time), the same as pressing "generate".
   autoInvoices: boolean('auto_invoices').notNull().default(true),
+  // Rule signals (signals/): this many absences in a row tell the managers
+  // (0 = off); this many days with no contact after a trial lesson make a
+  // follow-up task (0 = off).
+  absenceStreakAlert: integer('absence_streak_alert').notNull().default(3),
+  trialFollowUpDays: integer('trial_follow_up_days').notNull().default(2),
   // A card students pay to by transfer (centers without Click/Payme, or
   // besides them): shown in the cabinet; the receipt is checked by staff.
   cardNumber: text('card_number'),
@@ -911,6 +917,58 @@ export const paymentClaims = pgTable('payment_claims', {
 }, (t) => ({
   tenantStatusIdx: index('payment_claims_tenant_status_idx').on(t.tenantId, t.status),
   studentIdx: index('payment_claims_student_idx').on(t.studentId),
+}));
+
+// What a rule decided and why (signals/): which rule fired, with which
+// values, and what it did (a message, a task). One row per rule, subject and
+// key, so a rule fires once per occasion. Rules only notify or schedule;
+// anything that deletes, expels or changes money is left to a person.
+export const signals = pgTable('signals', {
+  id: text('id').primaryKey().$defaultFn(() => createId()),
+  tenantId: text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  rule: text('rule').notNull(), // ABSENCE_STREAK | TRIAL_FOLLOW_UP | PAYMENT_OVERDUE
+  subjectType: text('subject_type').notNull(), // student | lead
+  subjectId: text('subject_id').notNull(),
+  key: text('key').notNull(),
+  reason: text('reason').notNull(),
+  facts: jsonb('facts').notNull(),
+  action: text('action').notNull(),
+  status: text('status').notNull().default('OPEN'), // OPEN | DONE | DISMISSED
+  resolvedByUserId: text('resolved_by_user_id').references(() => users.id, { onDelete: 'set null' }),
+  resolvedAt: timestamp('resolved_at'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+}, (t) => ({
+  onceIdx: uniqueIndex('signals_once_idx').on(t.tenantId, t.rule, t.subjectId, t.key),
+  tenantStatusIdx: index('signals_tenant_status_idx').on(t.tenantId, t.status, t.createdAt),
+}));
+
+// Suggest-only message classification (classifier/): what a model thought an
+// incoming message is about, how sure it was, and what the person (or the
+// bot's own menu) did. Nothing acts on it: it is kept to measure accuracy
+// before anything is ever switched on. One center's messages only.
+export const messageClassifications = pgTable('message_classifications', {
+  id: text('id').primaryKey().$defaultFn(() => createId()),
+  tenantId: text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  source: text('source').notNull(), // telegram:student | telegram:parent | eval
+  sourceRef: text('source_ref'),
+  inputText: text('input_text').notNull(),
+  options: jsonb('options').notNull(),
+  chosen: text('chosen'),
+  probability: real('probability'),
+  probabilities: jsonb('probabilities'),
+  provider: text('provider').notNull(), // gemini | strands
+  modelVersion: text('model_version').notNull(),
+  status: text('status').notNull(), // SUGGESTED | NEEDS_HUMAN
+  error: text('error'),
+  latencyMs: integer('latency_ms'),
+  ruleAction: text('rule_action'), // what the old flow did (the bot's menu)
+  finalLabel: text('final_label'), // the person's answer
+  finalAction: text('final_action'),
+  decidedByUserId: text('decided_by_user_id').references(() => users.id, { onDelete: 'set null' }),
+  decidedAt: timestamp('decided_at'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+}, (t) => ({
+  tenantCreatedIdx: index('message_classifications_tenant_created_idx').on(t.tenantId, t.createdAt),
 }));
 
 export const homework = pgTable('homework', {

@@ -11,6 +11,7 @@ import { can } from "@/lib/access";
 import { MONTH_KEYS, MONTH_SHORT_KEYS } from "@/lib/i18n";
 import { formatTime } from "@/lib/format-date";
 import { buildInsights, type Insight, type Severity } from "@/lib/insights";
+import { MessagesReview, SignalsList, chip } from "@/components/signals/SignalsPanels";
 
 const ACCENT = "#4F46E5";
 const card: React.CSSProperties = { background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 20 };
@@ -43,6 +44,15 @@ function AiInsightsContent() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<Severity | "all">("all");
   const [updatedAt] = useState(() => new Date());
+  // The rule signals and the classifier's trial review sit beside the analysis.
+  const seesSignals = can(user, "signals.manage");
+  const seesMessages = user?.role === "OWNER" || user?.role === "ADMIN" || user?.role === "SUPERADMIN";
+  const [tab, setTab] = useState<"insights" | "signals" | "messages">("insights");
+  useEffect(() => {
+    const want = new URLSearchParams(window.location.search).get("tab");
+    if (want === "signals" && seesSignals) setTab("signals");
+    if (want === "messages" && seesMessages) setTab("messages");
+  }, [seesSignals, seesMessages]);
 
   useEffect(() => {
     // Teachers may not read the full report; they still get their groups.
@@ -99,9 +109,25 @@ function AiInsightsContent() {
         <div style={{ fontSize: 12.5, color: "#686B75" }}>
           {t("aiInsights.lastUpdated")} {formatTime(updatedAt, lang)}
         </div>
+        {seesSignals && (
+          <div role="tablist" style={{ display: "flex", gap: 8, flexWrap: "wrap", width: "100%" }}>
+            <button type="button" role="tab" aria-selected={tab === "insights"} className="btn" onClick={() => setTab("insights")} style={chip(tab === "insights")}>📊 {t("sig.tabInsights")}</button>
+            <button type="button" role="tab" aria-selected={tab === "signals"} className="btn" onClick={() => setTab("signals")} style={chip(tab === "signals")}>⚠️ {t("sig.tabSignals")}</button>
+            {seesMessages && (
+              <button type="button" role="tab" aria-selected={tab === "messages"} className="btn" onClick={() => setTab("messages")} style={chip(tab === "messages")}>🧪 {t("sig.tabMessages")}</button>
+            )}
+          </div>
+        )}
       </div>
 
-      <div style={{ flex: 1, minHeight: 0, padding: "26px 32px", overflow: "auto", boxSizing: "border-box", display: "flex", flexDirection: "column", gap: 18 }}>
+      {tab !== "insights" && (
+        <div style={{ flex: 1, minHeight: 0, padding: "20px 32px", overflow: "auto", boxSizing: "border-box", display: "flex", flexDirection: "column", gap: 14 }}>
+          <div style={{ fontSize: 13, color: "#686B75", lineHeight: 1.5, maxWidth: 760 }}>{t("sig.subtitle")}</div>
+          {tab === "signals" ? <SignalsList /> : <MessagesReview />}
+        </div>
+      )}
+
+      <div style={{ flex: 1, minHeight: 0, padding: "26px 32px", overflow: "auto", boxSizing: "border-box", display: tab === "insights" ? "flex" : "none", flexDirection: "column", gap: 18 }}>
         {loading ? (
           <div style={{ color: "#686B75", fontSize: 14 }}>{t("common.loading")}</div>
         ) : (

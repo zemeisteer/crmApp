@@ -92,6 +92,9 @@ describe('Automatic reminders (e2e)', () => {
     expect(payment.every((s) => s.channel === 'TELEGRAM')).toBe(true); // no SMS token in tests
     expect(n).toBeGreaterThanOrEqual(1);
     expect(await r.paymentReminders(await tenantRow(), MON_10)).toBe(0); // once a month
+    // Each reminder keeps its reason on the signals page.
+    const overdue = (await http().get('/api/signals?rule=PAYMENT_OVERDUE').set(auth()).expect(200)).body.items;
+    expect(overdue.find((s: { subjectName: string }) => s.subjectName === 'Owes Money')).toMatchObject({ action: 'REMINDED_STUDENT', facts: { month: '2026-09', remindDay: 5 } });
 
     await http().patch('/api/notifications/settings').set(auth()).send({ remindPaymentDay: 40 }).expect(400);
   });

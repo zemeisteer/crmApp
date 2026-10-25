@@ -28,6 +28,7 @@ import { DEFAULT_TIMEZONE, isValidTimeZone, zonedDayBounds, zonedParts } from '.
 import { lessonOccurrences, lessonsOfGroupOn } from '../lessons/occurrences';
 import { lessonInstant, staysByMember, staysOf, wasMember } from '../enrollments/membership';
 import { StudentTutorService, type TutorStudent } from '../ai/student-tutor.service';
+import { ClassifierService } from '../classifier/classifier.service';
 import { tutorReplyHtml } from '../ai/tutor-prompt';
 
 // Students' AI tutor: the button opens a conversation; every message goes
@@ -112,7 +113,16 @@ export class TelegramService {
     private readonly config: ConfigService,
     private readonly tutor: StudentTutorService,
     private readonly moduleRef: ModuleRef,
+    private readonly classifier: ClassifierService,
   ) {}
+
+  // Suggest-only: what a student's or parent's own message is about, logged
+  // beside the bot's usual answer (classifier/). Off unless configured; it
+  // never changes what the bot does and never waits for it.
+  private shadowClassify(tenantId: string | null | undefined, text: string, source: string, ref: string) {
+    if (!tenantId || text.startsWith('/')) return;
+    void this.classifier.shadow(tenantId, text, source, ref, 'BOT_MENU');
+  }
 
   // Attendance sheets open in teachers' chats: "<chatId>:<groupId>" -> marks
   // (saved only on "Save", so a mis-tap never messages parents).
@@ -806,6 +816,8 @@ export class TelegramService {
     // 3. Parents see their (chosen) child.
     const child = await this.parentChild(chatId);
     if (child) {
+      const button = PARENT_KEYBOARD.keyboard.some((row) => row.some((b) => b.text === text)) || text.startsWith('👤 ') || text === '⬅️ Menyu';
+      if (!button) this.shadowClassify(child.tenantId, text, 'telegram:parent', child.id);
       await this.handleParentText(chatId, child, text);
       return;
     }
@@ -850,6 +862,8 @@ export class TelegramService {
       return;
     }
 
+    // A message of their own (not a button, not the AI tutor conversation).
+    if (!menuButton) this.shadowClassify(student.tenantId, text, 'telegram:student', student.id);
     await this.studentMenu(chatId, student, text, MAIN_KEYBOARD, false);
   }
 

@@ -147,6 +147,8 @@ export class NotificationsService {
         remindPaymentDay: true,
         remindLessons: true,
         dailyDigest: true,
+        absenceStreakAlert: true,
+        trialFollowUpDays: true,
         remindAttendance: true,
         autoInvoices: true,
       },
@@ -173,6 +175,8 @@ export class NotificationsService {
       remindPaymentDay: tenant.remindPaymentDay,
       remindLessons: tenant.remindLessons,
       dailyDigest: tenant.dailyDigest,
+      absenceStreakAlert: tenant.absenceStreakAlert,
+      trialFollowUpDays: tenant.trialFollowUpDays,
       remindAttendance: tenant.remindAttendance,
       autoInvoices: tenant.autoInvoices,
       sms: {
@@ -193,6 +197,8 @@ export class NotificationsService {
     if (dto.remindPaymentDay !== undefined) patch.remindPaymentDay = dto.remindPaymentDay;
     if (dto.remindLessons !== undefined) patch.remindLessons = dto.remindLessons;
     if (dto.dailyDigest !== undefined) patch.dailyDigest = dto.dailyDigest;
+    if (dto.absenceStreakAlert !== undefined) patch.absenceStreakAlert = dto.absenceStreakAlert;
+    if (dto.trialFollowUpDays !== undefined) patch.trialFollowUpDays = dto.trialFollowUpDays;
     if (dto.remindAttendance !== undefined) patch.remindAttendance = dto.remindAttendance;
     if (dto.autoInvoices !== undefined) patch.autoInvoices = dto.autoInvoices;
 
