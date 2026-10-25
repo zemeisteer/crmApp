@@ -12,6 +12,7 @@ import {
   check,
   bigint,
   bigserial,
+  real,
   type AnyPgColumn,
 } from 'drizzle-orm/pg-core';
 import { relations, sql } from 'drizzle-orm';
@@ -939,6 +940,35 @@ export const signals = pgTable('signals', {
 }, (t) => ({
   onceIdx: uniqueIndex('signals_once_idx').on(t.tenantId, t.rule, t.subjectId, t.key),
   tenantStatusIdx: index('signals_tenant_status_idx').on(t.tenantId, t.status, t.createdAt),
+}));
+
+// Suggest-only message classification (classifier/): what a model thought an
+// incoming message is about, how sure it was, and what the person (or the
+// bot's own menu) did. Nothing acts on it: it is kept to measure accuracy
+// before anything is ever switched on. One center's messages only.
+export const messageClassifications = pgTable('message_classifications', {
+  id: text('id').primaryKey().$defaultFn(() => createId()),
+  tenantId: text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  source: text('source').notNull(), // telegram:student | telegram:parent | eval
+  sourceRef: text('source_ref'),
+  inputText: text('input_text').notNull(),
+  options: jsonb('options').notNull(),
+  chosen: text('chosen'),
+  probability: real('probability'),
+  probabilities: jsonb('probabilities'),
+  provider: text('provider').notNull(), // gemini | strands
+  modelVersion: text('model_version').notNull(),
+  status: text('status').notNull(), // SUGGESTED | NEEDS_HUMAN
+  error: text('error'),
+  latencyMs: integer('latency_ms'),
+  ruleAction: text('rule_action'), // what the old flow did (the bot's menu)
+  finalLabel: text('final_label'), // the person's answer
+  finalAction: text('final_action'),
+  decidedByUserId: text('decided_by_user_id').references(() => users.id, { onDelete: 'set null' }),
+  decidedAt: timestamp('decided_at'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+}, (t) => ({
+  tenantCreatedIdx: index('message_classifications_tenant_created_idx').on(t.tenantId, t.createdAt),
 }));
 
 export const homework = pgTable('homework', {
