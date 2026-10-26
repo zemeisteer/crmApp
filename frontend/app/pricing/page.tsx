@@ -5,7 +5,8 @@ import DashboardShell from "@/components/DashboardShell";
 import Modal from "@/components/Modal";
 import Select from "@/components/Select";
 import { useAuth } from "@/lib/auth-context";
-import { platformBillingApi, plansApi, Plan, ApiError, PLAN_FEATURES, PLAN_LIMITS, type Entitlements } from "@/lib/api";
+import { platformBillingApi, plansApi, Plan, ApiError, PLAN_FEATURES, PLAN_LIMITS, type Entitlements, type PlatformCardView } from "@/lib/api";
+import PlatformCardPay from "@/components/billing/PlatformCardPay";
 import type { TranslationKey } from "@/lib/i18n";
 import { useCenterClock } from "@/lib/use-center-clock";
 import { formatDate } from "@/lib/format-date";
@@ -28,19 +29,29 @@ function TenantPricing() {
   const [loading, setLoading] = useState(true);
   const [payOpen, setPayOpen] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
-  const [provider, setProvider] = useState<"CLICK" | "PAYME">("CLICK");
+  const [provider, setProvider] = useState<"CLICK" | "PAYME" | "CARD">("CLICK");
+  // The platform's card (no Click/Payme contract needed) and our receipts for it.
+  const [cardView, setCardView] = useState<PlatformCardView | null>(null);
+  const [cardSent, setCardSent] = useState(false);
   const [link, setLink] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [genLoading, setGenLoading] = useState(false);
 
   useEffect(() => {
     plansApi.listPublic().then(setPlans).finally(() => setLoading(false));
+    loadCard();
   }, []);
+
+  function loadCard() {
+    platformBillingApi.card().then(setCardView).catch(() => setCardView(null));
+  }
 
   function openPay(plan: string) {
     setSelectedPlan(plan);
     setLink(null);
     setError(null);
+    setCardSent(false);
+    if (cardView?.card) setProvider("CARD");
     setPayOpen(true);
   }
 
@@ -49,6 +60,7 @@ function TenantPricing() {
     setGenLoading(true);
     setError(null);
     try {
+      if (provider === "CARD") return;
       const api = provider === "CLICK" ? platformBillingApi.clickLink : platformBillingApi.paymeLink;
       const res = await api({ plan: selectedPlan, forMonth: clock.month() });
       setLink(res.url);
@@ -115,7 +127,15 @@ function TenantPricing() {
                       </div>
                     ))}
                   </div>
-                  {isCurrent ? null : p.price === 0 ? (
+                  {isCurrent && p.price > 0 ? (
+                    <button
+                      className="btn"
+                      onClick={() => openPay(p.key)}
+                      style={{ background: "#fff", color: ACCENT, border: `1.5px solid ${ACCENT}`, fontSize: 13, fontWeight: 700, padding: "10px 16px", borderRadius: 9 }}
+                    >
+                      {t("pcp.renew")}
+                    </button>
+                  ) : isCurrent ? null : p.price === 0 ? (
                     <span style={{ fontSize: 12, color: "#686B75" }}>{t("pricing.autoOnSignup")}</span>
                   ) : (
                     <button
@@ -131,10 +151,27 @@ function TenantPricing() {
             })}
           </div>
         )}
+        {cardView && cardView.claims.length > 0 && (
+          <div style={{ marginTop: 22, maxWidth: 960, background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 18, display: "flex", flexDirection: "column", gap: 8 }} data-testid="platform-card-claims">
+            <div style={{ fontWeight: 800, fontSize: 14 }}>💳 {t("pcp.mine")}</div>
+            {cardView.claims.map((c) => (
+              <div key={c.id} style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", fontSize: 13, padding: "8px 10px", borderRadius: 10, background: "#F7F6F2" }}>
+                <span>{c.forMonth} · {c.plan} · {formatMoney(c.amount)} · {formatDate(c.createdAt, lang)}</span>
+                <span style={{ fontWeight: 700, color: c.status === "CONFIRMED" ? "#16794A" : c.status === "REJECTED" ? "#B23A47" : "#B45309" }}>
+                  {t(`ct.s.${c.status}` as TranslationKey)}{c.status === "REJECTED" && c.rejectReason ? `: ${c.rejectReason}` : ""}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <Modal open={payOpen} onClose={() => setPayOpen(false)} title={t("pricing.choosePaymentModal")}>
-        {link ? (
+        {cardSent ? (
+          <div role="status" style={{ background: "#E9F8EF", color: "#167A48", fontSize: 13.5, fontWeight: 600, padding: "12px 14px", borderRadius: 10, lineHeight: 1.5 }}>
+            ✓ {t("pcp.sent")}
+          </div>
+        ) : link ? (
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
             <div style={{ background: "#E9F8EF", color: "#167A48", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: 10 }}>
               {t("pricing.linkCreated")}
@@ -157,11 +194,29 @@ function TenantPricing() {
             <div>
               <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>{t("pricing.paymentMethod")}</div>
               <Select
-                options={[{ value: "CLICK", label: t("payment.methodClick") }, { value: "PAYME", label: t("payment.methodPayme") }]}
+                options={[
+                  ...(cardView?.card ? [{ value: "CARD", label: `💳 ${t("pcp.method")}` }] : []),
+                  { value: "CLICK", label: t("payment.methodClick") },
+                  { value: "PAYME", label: t("payment.methodPayme") },
+                ]}
                 value={provider}
-                onChange={(v) => setProvider(v as "CLICK" | "PAYME")}
+                onChange={(v) => setProvider(v as "CLICK" | "PAYME" | "CARD")}
               />
             </div>
+            {provider === "CARD" && cardView?.card && selectedPlan ? (
+              <PlatformCardPay
+                card={cardView.card}
+                plan={selectedPlan}
+                planName={plans.find((x) => x.key === selectedPlan)?.name ?? selectedPlan}
+                amount={plans.find((x) => x.key === selectedPlan)?.price ?? 0}
+                // Renewing early pays for the month the paid time runs out in.
+                forMonth={tenant?.billing?.paidUntil && new Date(tenant.billing.paidUntil) > new Date() ? tenant.billing.paidUntil.slice(0, 7) : clock.month()}
+                onSent={() => {
+                  setCardSent(true);
+                  loadCard();
+                }}
+              />
+            ) : (
             <button
               className="btn"
               onClick={onGenerate}
@@ -170,6 +225,7 @@ function TenantPricing() {
             >
               {genLoading ? t("pricing.generatingLink") : t("pricing.getLink")}
             </button>
+            )}
           </div>
         )}
       </Modal>

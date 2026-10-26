@@ -1,5 +1,6 @@
 "use client";
 
+import PlatformCardClaims from "@/components/billing/PlatformCardClaims";
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import DashboardShell from "@/components/DashboardShell";
@@ -34,6 +35,10 @@ function SubscriptionsContent() {
   const [plans, setPlans] = useState<Plan[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [managing, setManaging] = useState<PlatformSubscription | null>(null);
+  // The centers list, or their receipts for payments by card.
+  const [view, setView] = useState<"list" | "cards">(params.get("tab") === "cards" ? "cards" : "list");
+  const [cardPending, setCardPending] = useState(0);
+  useEffect(() => { platformApi.cardClaims("PENDING").then((r) => setCardPending(r.pending)).catch(() => undefined); }, [view]);
 
   // Typing searches after a pause, from the first page.
   useEffect(() => {
@@ -69,9 +74,31 @@ function SubscriptionsContent() {
       <div style={{ padding: "22px 32px", borderBottom: "1px solid #EAE8E2" }}>
         <h1 style={{ fontSize: 22, fontWeight: 800 }}>{t("pf.sub.title")}</h1>
         <div style={{ fontSize: 13, color: "#686B75", marginTop: 2 }}>{t("pf.sub.subtitle")}{data ? ` · ${monthLabel(data.month, lang)}` : ""}</div>
+        <div role="tablist" style={{ display: "flex", gap: 8, marginTop: 14 }}>
+          {(["list", "cards"] as const).map((v) => (
+            <button
+              key={v}
+              type="button"
+              role="tab"
+              aria-selected={view === v}
+              className="btn"
+              onClick={() => setView(v)}
+              style={{ background: view === v ? "#4F46E5" : "#fff", color: view === v ? "#fff" : "#4A4E58", border: `1px solid ${view === v ? "#4F46E5" : "#EAE8E2"}`, borderRadius: 100, padding: "7px 14px", fontSize: 13, fontWeight: 700 }}
+            >
+              {v === "list" ? t("pf.sub.title") : `💳 ${t("pcp.adminTab")}`}
+              {v === "cards" && cardPending > 0 && <span style={{ marginLeft: 6, background: "#DC2626", color: "#fff", borderRadius: 100, fontSize: 11, padding: "1px 7px" }}>{cardPending}</span>}
+            </button>
+          ))}
+        </div>
       </div>
 
-      <div style={{ padding: "22px 32px", display: "flex", flexDirection: "column", gap: 16 }}>
+      {view === "cards" && (
+        <div style={{ padding: "22px 32px" }}>
+          <PlatformCardClaims />
+        </div>
+      )}
+
+      <div style={{ padding: "22px 32px", display: view === "list" ? "flex" : "none", flexDirection: "column", gap: 16 }}>
         <div className="adm-toolbar">
           <input className="field-input" placeholder={t("pf.sub.search")} value={search} onChange={(e) => setSearch(e.target.value)} style={{ width: 280 }} aria-label={t("pf.sub.search")} />
           <Select ariaLabel={t("pf.sub.colStatus")} value={status} onChange={(v) => { setStatus(v); setPage(1); }} options={[{ value: "", label: t("sa.allStatuses") }, ...STATUSES.map((s) => ({ value: s, label: t(STATUS_LABEL_KEYS[s]) }))]} style={{ width: 200 }} />

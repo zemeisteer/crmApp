@@ -2126,7 +2126,46 @@ export const billingApi = {
 
 // ---- Platform billing (a tenant paying TalimCRM itself) ----
 
+/** The platform's card (when set) and this center's receipts sent for it. */
+export interface PlatformCardView {
+  card: { number: string; holder: string } | null;
+  claims: Array<{ id: string; plan: string; forMonth: string; amount: number; status: "PENDING" | "CONFIRMED" | "REJECTED"; rejectReason: string | null; createdAt: string }>;
+}
+export interface PlatformCardClaim {
+  id: string;
+  tenantId: string;
+  centerName: string;
+  subdomain: string;
+  plan: string;
+  forMonth: string;
+  amount: number;
+  receiptFile: string;
+  note: string | null;
+  status: "PENDING" | "CONFIRMED" | "REJECTED";
+  rejectReason: string | null;
+  reviewedBy: string | null;
+  reviewedAt: string | null;
+  createdAt: string;
+}
+
 export const platformBillingApi = {
+  card: () => request<PlatformCardView>("/platform-billing/card"),
+  sendCardClaim: async (data: { plan: string; forMonth: string; note?: string; file: File }) => {
+    const form = new FormData();
+    form.append("plan", data.plan);
+    form.append("forMonth", data.forMonth);
+    if (data.note) form.append("note", data.note);
+    form.append("file", data.file);
+    const token = getToken();
+    const res = await fetch(`${API_URL}/platform-billing/card`, {
+      method: "POST",
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      body: form,
+    });
+    const body = await res.json().catch(() => null);
+    if (!res.ok) throw new ApiError(body?.message || "Yuborilmadi", res.status, body);
+    return body as { id: string };
+  },
   clickLink: (data: { plan: string; forMonth: string }) =>
     request<BillingLink & { amount: number }>("/platform-billing/click/link", { method: "POST", body: JSON.stringify(data) }),
   paymeLink: (data: { plan: string; forMonth: string }) =>
@@ -2449,6 +2488,12 @@ export const platformApi = {
   payments: (tenantId: string) => request<PlatformPayment[]>(`/platform/subscriptions/${tenantId}/payments`),
   recordPayment: (tenantId: string, data: { forMonth: string; plan?: string; amount?: number }) =>
     request<PlatformPayment>(`/platform/subscriptions/${tenantId}/payments`, { method: "POST", body: JSON.stringify(data) }),
+  // Centers' subscription payments by card transfer (a receipt to check).
+  cardClaims: (status?: "PENDING" | "CONFIRMED" | "REJECTED") =>
+    request<{ pending: number; card: { number: string; holder: string } | null; items: PlatformCardClaim[] }>(`/platform/card-claims${status ? `?status=${status}` : ""}`),
+  confirmCardClaim: (id: string) => request<{ id: string; status: string }>(`/platform/card-claims/${id}/confirm`, { method: "POST" }),
+  rejectCardClaim: (id: string, reason: string) =>
+    request<{ id: string; status: string }>(`/platform/card-claims/${id}/reject`, { method: "POST", body: JSON.stringify({ reason }) }),
   integrations: () => request<PlatformIntegrations>("/platform/integrations"),
   /** A value of null removes the stored key (the name goes back to .env). The admin's password is asked every time. */
   saveIntegration: (id: string, password: string, values: Record<string, string | null>) =>
