@@ -4,7 +4,7 @@ import { INestApplication, ValidationPipe } from '@nestjs/common';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { createHash, randomUUID } from 'crypto';
-import { readdirSync, readFileSync, statSync } from 'fs';
+import { existsSync, readdirSync, readFileSync, statSync } from 'fs';
 import { join } from 'path';
 import { and, eq, sql } from 'drizzle-orm';
 import { AppModule } from '../src/app.module.js';
@@ -12,6 +12,7 @@ import { DB, type Database } from '../src/db/db.module.js';
 import { auditLogs, organizationMemberships, platformPaymentClaims, platformSubscriptions, tenants, users } from '../src/db/schema.js';
 import { TelegramService } from '../src/telegram/telegram.service.js';
 import { EmailService } from '../src/email/email.service.js';
+import { NoticeOutboxService } from '../src/notice-outbox/notice-outbox.service.js';
 import { UPLOAD_DIR } from '../src/common/upload.util.js';
 import { CHECKS } from '../scripts/check-platform-billing.js';
 
@@ -29,12 +30,14 @@ describe('Paying the platform by card (e2e)', () => {
   const http = () => request(app.getHttpServer());
   let sa: Record<string, string>;
   const told: string[] = [];
+  let outbox: NoticeOutboxService;
   const PAYME_KEY = 'pc_payme_key';
   const CLICK = { merchant: 'pc_click_m', service: 'pc_click_s', secret: 'pc_click_secret' };
   // A marker in every receipt this suite uploads: its files are told apart
   // from other suites' uploads in the shared folder.
   const MARK = `pcard-${suffix}`;
-  const receipt = () => Buffer.concat([Buffer.from('89504e470d0a1a0a', 'hex'), Buffer.from(MARK)]);
+  // `v`: one character that makes another picture of the same size.
+  const receipt = (v = 'A') => Buffer.concat([Buffer.from('89504e470d0a1a0a', 'hex'), Buffer.from(MARK + v)]);
   // Only files of this suite's exact size, written since it began, are read.
   const started = Date.now() - 5_000;
   const ourFiles = () => readdirSync(UPLOAD_DIR).filter((f) => {
@@ -68,12 +71,13 @@ describe('Paying the platform by card (e2e)', () => {
     await app.init();
     db = app.get<Database>(DB);
     const tg = app.get(TelegramService);
-    tg.sendMessage = (async (_c: string, text: string) => {
+    tg.deliverMessage = (async (_c: string, text: string) => {
       told.push(text);
-      return 1;
-    }) as typeof tg.sendMessage;
+      return { ok: true };
+    }) as typeof tg.deliverMessage;
     const mail = app.get(EmailService);
     mail.deliver = (async () => ({ accepted: true })) as typeof mail.deliver;
+    outbox = app.get(NoticeOutboxService);
 
     const email = `pcard-sa-${suffix}@test.uz`;
     const s = (await http().post('/api/auth/register').send({ centerName: `PSa ${suffix}`, subdomain: `psa-${suffix}`, email, password: 'password123', fullName: 'Platform Admin' }).expect(201)).body;
@@ -102,11 +106,12 @@ describe('Paying the platform by card (e2e)', () => {
     return { auth: { Authorization: `Bearer ${reg.accessToken}` }, tenantId: (reg.tenant?.id ?? reg.user.tenantId) as string };
   }
 
-  const send = (auth: Record<string, string>, opts: { plan?: string; key?: string; file?: boolean; forMonth?: string } = {}) => {
+  const send = (auth: Record<string, string>, opts: { plan?: string; key?: string; file?: boolean; forMonth?: string; v?: string; note?: string } = {}) => {
     let r = http().post('/api/platform-billing/card').set(auth).field('plan', opts.plan ?? 'STANDARD');
     if (opts.forMonth) r = r.field('forMonth', opts.forMonth);
+    if (opts.note) r = r.field('note', opts.note);
     if (opts.key) r = r.set('Idempotency-Key', opts.key);
-    return opts.file === false ? r : r.attach('file', receipt(), { filename: 'chek.png', contentType: 'image/png' });
+    return opts.file === false ? r : r.attach('file', receipt(opts.v), { filename: 'chek.png', contentType: 'image/png' });
   };
   const confirm = (id: string) => http().post(`/api/platform/card-claims/${id}/confirm`).set(sa);
   const reject = (id: string, reason = 'Pul kelmadi') => http().post(`/api/platform/card-claims/${id}/reject`).set(sa).send({ reason });
@@ -142,7 +147,7 @@ describe('Paying the platform by card (e2e)', () => {
     expect(claim.forMonth).toBe(view.nextMonth);
     expect(claim).toMatchObject({ status: 'PENDING', plan: 'STANDARD', replay: false });
     expect(claim.amount).toBeGreaterThan(0);
-    await new Promise((r) => setTimeout(r, 200));
+    await outbox.drain();
     expect(told.some((m) => m.includes(`PCard`) && m.includes(claim.forMonth))).toBe(true);
 
     await http().post(`/api/platform/card-claims/${claim.id}/confirm`).set(c.auth).expect(403);
@@ -253,6 +258,41 @@ describe('Paying the platform by card (e2e)', () => {
     const again = (await send(c.auth).expect(201)).body;
     expect(again.forMonth).toBe(first.forMonth);
   }, 90_000); // several sign-ups and uploads; slower when the whole suite runs at once
+
+  it('the same key with other content is a conflict, never the old receipt; a plain retry keeps the key; files in use stay', async () => {
+    card();
+    const c = await center();
+    const before = ourFiles().length;
+    const key = randomUUID();
+    // The first send reached the server, its answer was lost (a timeout).
+    const first = (await send(c.auth, { key, v: 'A' }).expect(201)).body;
+    // A plain retry: same key, same picture -> the same receipt, the copy removed.
+    expect((await send(c.auth, { key, v: 'A' }).expect(201)).body).toMatchObject({ id: first.id, replay: true });
+    expect(ourFiles().length - before).toBe(1);
+    // The user picked another picture but the browser kept the key: 409, not "sent".
+    const other = await send(c.auth, { key, v: 'B' }).expect(409);
+    expect(other.body.code).toBe('KEY_REUSED');
+    // ... or another tariff, or another note.
+    expect((await send(c.auth, { key, v: 'A', plan: 'PRO' }).expect(409)).body.code).toBe('KEY_REUSED');
+    expect((await send(c.auth, { key, v: 'A', note: 'boshqa' }).expect(409)).body.code).toBe('KEY_REUSED');
+    // A new picture as a new send (a new key) while the first waits: the month already has a receipt.
+    const fresh = await send(c.auth, { key: randomUUID(), v: 'B' }).expect(409);
+    expect(fresh.body.code).toBe('PENDING');
+    // Only the receipt in use is on disk; the stored one is untouched.
+    expect(ourFiles().length - before).toBe(1);
+    const [row] = await db.select().from(platformPaymentClaims).where(eq(platformPaymentClaims.id, first.id));
+    expect(existsSync(join(UPLOAD_DIR, row.receiptFile))).toBe(true);
+    expect(row.receiptSha256).toBe(createHash('sha256').update(receipt('A')).digest('hex'));
+
+    // Rejected: the next receipt is a new send with a new key, accepted.
+    await reject(first.id).expect(201);
+    const second = (await send(c.auth, { key: randomUUID(), v: 'B' }).expect(201)).body;
+    expect(second).toMatchObject({ status: 'PENDING', replay: false });
+    expect(second.id).not.toBe(first.id);
+    // The old key replayed (an old tab): the rejected receipt comes back as it is - REJECTED, not a success.
+    expect((await send(c.auth, { key, v: 'A' }).expect(201)).body).toMatchObject({ id: first.id, status: 'REJECTED', replay: true });
+    expect(ourFiles().length - before).toBe(2);
+  }, 90_000);
 
   it('early renewal pays for the month the paid time runs out in; an expired one for this month', async () => {
     card();

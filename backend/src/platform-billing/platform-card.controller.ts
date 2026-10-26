@@ -1,6 +1,8 @@
 import { BadRequestException, Body, Controller, Get, Headers, Param, Post, Query, Res, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import type { Response } from 'express';
+import { createHash } from 'crypto';
+import { createReadStream } from 'fs';
 import { unlink } from 'fs/promises';
 import { IsOptional, IsString, MaxLength } from 'class-validator';
 import { JwtAuthGuard } from '../common/jwt-auth.guard';
@@ -12,6 +14,13 @@ import { PlatformCardService } from './platform-card.service';
 
 // A receipt: a screenshot or photo, or the bank's PDF.
 const RECEIPT_FILE_TYPES = /^(image\/(jpeg|png|webp|heic|heif)|application\/pdf)$/;
+
+function sha256File(path: string) {
+  return new Promise<string>((resolve, reject) => {
+    const h = createHash('sha256');
+    createReadStream(path).on('data', (c) => h.update(c)).on('end', () => resolve(h.digest('hex'))).on('error', reject);
+  });
+}
 
 class RejectDto {
   @IsString() @MaxLength(300) reason!: string;
@@ -53,10 +62,12 @@ export class PlatformCardController {
   ) {
     if (!file) throw new BadRequestException("Chek rasmini (skrinshot) yuklang: JPG, PNG yoki PDF");
     try {
-      const { claim, replay } = await this.service.submit(tenantId, userId, { plan: body.plan, note: body.note, receiptFile: file.filename, idempotencyKey });
-      // A retried send: the first upload is the receipt; this copy goes.
-      if (replay) await unlink(file.path).catch(() => undefined);
-      return { ...claim, idempotencyKey: undefined, replay };
+      // The receipt's own content, not its random stored name: a retry of the same picture is the same send.
+      const receiptSha256 = await sha256File(file.path);
+      const { claim, replay } = await this.service.submit(tenantId, userId, { plan: body.plan, note: body.note, receiptFile: file.filename, receiptSha256, idempotencyKey });
+      // A retried send: the first upload is the receipt; this copy goes (never the one in use).
+      if (replay && claim.receiptFile !== file.filename) await unlink(file.path).catch(() => undefined);
+      return { ...claim, idempotencyKey: undefined, requestHash: undefined, receiptSha256: undefined, replay };
     } catch (err) {
       // A refused upload leaves no file behind.
       await unlink(file.path).catch(() => undefined);

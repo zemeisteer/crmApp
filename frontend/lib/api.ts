@@ -2200,7 +2200,7 @@ export const platformBillingApi = {
     form.append("file", data.file);
     const res = await authedFetch("/platform-billing/card", { method: "POST", headers: { "Idempotency-Key": data.idempotencyKey }, body: form });
     if (!res.ok) throw await apiErrorOf(res, "Yuborilmadi");
-    return (await res.json()) as { id: string; forMonth: string; replay: boolean };
+    return (await res.json()) as { id: string; forMonth: string; status: "PENDING" | "CONFIRMED" | "REJECTED"; replay: boolean };
   },
   clickLink: (data: { plan: string; forMonth: string }) =>
     request<BillingLink & { amount: number }>("/platform-billing/click/link", { method: "POST", body: JSON.stringify(data) }),

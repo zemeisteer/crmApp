@@ -1,14 +1,15 @@
-import { BadRequestException, ConflictException, Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm';
+import { createHash } from 'crypto';
 import { existsSync } from 'fs';
 import { join } from 'path';
 import { DB, Database } from '../db/db.module';
 import { organizationMemberships, platformPaymentClaims, tenants, users } from '../db/schema';
 import { AuditService } from '../audit/audit.service';
-import { EmailService } from '../email/email.service';
 import { PlansService } from '../plans/plans.service';
-import { TelegramService } from '../telegram/telegram.service';
+import { Notice, NoticeOutboxService } from '../notice-outbox/notice-outbox.service';
+import { LedgerTx as Tx } from '../payments/allocation';
 import { UPLOAD_DIR } from '../common/upload.util';
 import { isUniqueViolation } from '../common/db-errors';
 import { applyPayment, nextPaymentMonth, openMonthInvoice } from './billing-period';
@@ -38,15 +39,12 @@ type Claim = typeof platformPaymentClaims.$inferSelect;
  */
 @Injectable()
 export class PlatformCardService {
-  private readonly logger = new Logger('PlatformCard');
-
   constructor(
     @Inject(DB) private readonly db: Database,
     private readonly config: ConfigService,
     private readonly plans: PlansService,
-    private readonly telegram: TelegramService,
-    private readonly email: EmailService,
     private readonly audit: AuditService,
+    private readonly outbox: NoticeOutboxService,
   ) {}
 
   card() {
@@ -77,17 +75,28 @@ export class PlatformCardService {
   }
 
   /**
-   * "We paid": one receipt waiting per center and month (a unique index),
-   * and a retry of the same send (the same key) gets the same receipt back
-   * (`replay`) - the caller then removes the duplicate upload.
+   * "We paid": one receipt waiting per center and month (a unique index).
+   * The key names one send and its content (plan, note, the receipt file's
+   * own sha256 - not its random stored name):
+   *  - same key, same content: the same receipt back (`replay`), the
+   *    caller removes the duplicate upload;
+   *  - same key, other content: 409 KEY_REUSED - never the old receipt
+   *    passed off as the new one's success;
+   *  - another key while a receipt for the month waits: 409 PENDING.
    */
-  async submit(tenantId: string, userId: string, dto: { plan: string; note?: string; receiptFile: string; idempotencyKey?: string }): Promise<{ claim: Claim; replay: boolean }> {
+  async submit(
+    tenantId: string,
+    userId: string,
+    dto: { plan: string; note?: string; receiptFile: string; receiptSha256: string; idempotencyKey?: string },
+  ): Promise<{ claim: Claim; replay: boolean }> {
     if (!this.card()) throw new BadRequestException("Karta orqali to'lov hozircha yoqilmagan");
     const key = dto.idempotencyKey?.trim() || null;
     if (key && !KEY_RE.test(key)) throw new BadRequestException("Idempotency-Key noto'g'ri");
+    const note = dto.note?.trim().slice(0, 500) || null;
+    const requestHash = createHash('sha256').update(JSON.stringify([dto.plan, note, dto.receiptSha256])).digest('hex');
     if (key) {
       const prior = await this.byKey(tenantId, key);
-      if (prior) return { claim: prior, replay: true };
+      if (prior) return { claim: this.sameSend(prior, dto.plan, requestHash), replay: true };
     }
     const plan = await this.plans.getByKey(dto.plan).catch(() => null);
     if (!plan) throw new NotFoundException('Tarif topilmadi');
@@ -99,28 +108,42 @@ export class PlatformCardService {
       claim = await this.db.transaction(async (tx) => {
         const [row] = await tx
           .insert(platformPaymentClaims)
-          .values({ tenantId, plan: plan.key, forMonth, amount: plan.price, receiptFile: dto.receiptFile, note: dto.note?.trim().slice(0, 500) || null, sentByUserId: userId, idempotencyKey: key })
+          .values({ tenantId, plan: plan.key, forMonth, amount: plan.price, receiptFile: dto.receiptFile, note, sentByUserId: userId, idempotencyKey: key, requestHash, receiptSha256: dto.receiptSha256 })
           .returning();
         await this.audit.record(tx, { tenantId, userId, action: 'create', entityType: 'platform_payment_claim', entityId: row.id, meta: { plan: plan.key, forMonth, amount: plan.price } });
+        await this.outbox.enqueue(tx, await this.platformNotices(tx, tenantId, row.id, plan.name, plan.price, forMonth));
         return row;
       });
     } catch (err) {
       const idem = isUniqueViolation(err, 'platform_payment_claims_idem_idx');
       const pending = isUniqueViolation(err, 'platform_payment_claims_one_pending_idx');
-      // The same send that raced us (either index may report it first): its
-      // receipt is committed by now, so it is the answer.
+      // The same key that raced us (either index may report it first): its
+      // receipt is committed by now - the answer if it carried the same content.
       if (key && (idem || pending)) {
         const prior = await this.byKey(tenantId, key);
-        if (prior) return { claim: prior, replay: true };
+        if (prior) return { claim: this.sameSend(prior, dto.plan, requestHash), replay: true };
       }
       if (pending) {
-        throw new ConflictException({ code: 'PENDING', message: `${forMonth} oyi uchun yuborilgan chek hali tekshirilmoqda` });
+        throw new ConflictException({ code: 'PENDING', message: `${forMonth} oyi uchun chek allaqachon yuborilgan va tekshirilmoqda (ehtimol avvalgi yuborish yetib kelgan). Natijasini kuting.` });
       }
       throw err;
     }
-    // After the commit: a Telegram or mail hiccup never loses the receipt.
-    void this.tellPlatform(tenantId, plan.name, plan.price, forMonth).catch((err) => this.logger.warn(`notice: ${(err as Error).message}`));
+    // After the commit; the messages themselves are already safe in the outbox.
+    void this.outbox.kick();
     return { claim, replay: false };
+  }
+
+  /** The receipt a key already made, if this send carries the same content. */
+  private sameSend(prior: Claim, plan: string, requestHash: string) {
+    // Receipts from before the hash (0077) are compared by tariff only.
+    const same = prior.requestHash ? prior.requestHash === requestHash : prior.plan === plan;
+    if (!same) {
+      throw new ConflictException({
+        code: 'KEY_REUSED',
+        message: "Bu yuborish kaliti boshqa chek yoki tarif bilan ishlatilgan. Yangi chek alohida yuboriladi: sahifani yangilab qayta yuboring.",
+      });
+    }
+    return prior;
   }
 
   private async byKey(tenantId: string, key: string) {
@@ -128,15 +151,15 @@ export class PlatformCardService {
     return c;
   }
 
-  /** The platform admins: in Telegram when linked, else by mail. */
-  private async tellPlatform(tenantId: string, planName: string, amount: number, forMonth: string) {
-    const [t] = await this.db.select({ name: tenants.name, subdomain: tenants.subdomain }).from(tenants).where(eq(tenants.id, tenantId));
-    const admins = await this.db.select({ email: users.email, chat: users.telegramChatId }).from(users).where(eq(users.role, 'SUPERADMIN'));
+  /** The platform admins: in Telegram when linked, else by mail - one outbox row each. */
+  private async platformNotices(tx: Tx, tenantId: string, claimId: string, planName: string, amount: number, forMonth: string): Promise<Notice[]> {
+    const [t] = await tx.select({ name: tenants.name, subdomain: tenants.subdomain }).from(tenants).where(eq(tenants.id, tenantId));
+    const admins = await tx.select({ email: users.email, chat: users.telegramChatId }).from(users).where(eq(users.role, 'SUPERADMIN'));
     const text = `💳 Obuna uchun karta to'lovi keldi\n${t?.name ?? ''} (${t?.subdomain ?? ''})\n${planName} · ${forMonth} · ${money(amount)} so'm\n\nTekshirib tasdiqlang: Platforma → Obunalar → "Karta to'lovlari".`;
-    for (const a of admins) {
-      if (a.chat) await this.telegram.sendMessage(a.chat, escape(text));
-      else await this.email.deliver(a.email, `TalimCRM: ${t?.name ?? ''} karta orqali to'ladi`, text);
-    }
+    const kind = 'platform_claim.new';
+    return admins.map((a): Notice => a.chat
+      ? { tenantId, kind, channel: 'TELEGRAM', recipient: a.chat, body: escape(text), dedupeKey: `${kind}:${claimId}:tg:${a.chat}` }
+      : { tenantId, kind, channel: 'EMAIL', recipient: a.email, subject: `TalimCRM: ${t?.name ?? ''} karta orqali to'ladi`, body: text, dedupeKey: `${kind}:${claimId}:mail:${a.email.toLowerCase()}` });
   }
 
   // ---- the platform admin ----
@@ -198,7 +221,7 @@ export class PlatformCardService {
     const out = await this.db.transaction(async (tx) => {
       const [claim] = await tx.select().from(platformPaymentClaims).where(eq(platformPaymentClaims.id, id)).for('update');
       if (!claim) throw new NotFoundException('Chek topilmadi');
-      if (claim.status === 'CONFIRMED') return { claim, replay: true, paidUntil: null as Date | null };
+      if (claim.status === 'CONFIRMED') return { claim, replay: true };
       if (claim.status === 'REJECTED') throw new ConflictException({ code: 'REJECTED', message: 'Bu chek rad etilgan' });
       const invoice = await openMonthInvoice(tx, claim.tenantId, claim.forMonth, claim.plan, claim.amount, null);
       const paid = await applyPayment(tx, invoice.id);
@@ -209,11 +232,11 @@ export class PlatformCardService {
         .where(eq(platformPaymentClaims.id, id))
         .returning();
       await this.audit.record(tx, { tenantId: claim.tenantId, userId: actorId, action: 'create', entityType: 'platform_payment', entityId: paid.sub.id, meta: { forMonth: claim.forMonth, plan: claim.plan, amount: claim.amount, card: true, claim: id } });
-      return { claim: done, replay: false, paidUntil: paid.sub.periodEnd };
+      const text = `✅ ${claim.forMonth} oyi uchun ${money(claim.amount)} so'm to'lovingiz tasdiqlandi. Obuna ${paid.sub.periodEnd?.toISOString().slice(0, 10)} gacha uzaytirildi. Rahmat!`;
+      await this.outbox.enqueue(tx, await this.centerNotices(tx, claim.tenantId, 'platform_claim.confirmed', id, text));
+      return { claim: done, replay: false };
     });
-    if (!out.replay) {
-      void this.tellCenter(out.claim.tenantId, `✅ ${out.claim.forMonth} oyi uchun ${money(out.claim.amount)} so'm to'lovingiz tasdiqlandi. Obuna ${out.paidUntil?.toISOString().slice(0, 10)} gacha uzaytirildi. Rahmat!`).catch(() => undefined);
-    }
+    if (!out.replay) void this.outbox.kick();
     return { id, status: 'CONFIRMED', subscriptionId: out.claim.subscriptionId, replay: out.replay };
   }
 
@@ -232,22 +255,25 @@ export class PlatformCardService {
         .where(eq(platformPaymentClaims.id, id))
         .returning();
       await this.audit.record(tx, { tenantId: claim.tenantId, userId: actorId, action: 'update', entityType: 'platform_payment_claim', entityId: id, meta: { rejected: why } });
+      await this.outbox.enqueue(tx, await this.centerNotices(tx, claim.tenantId, 'platform_claim.rejected', id, `❌ ${claim.forMonth} oyi uchun karta to'lovi tasdiqlanmadi: ${why}`));
       return { claim: done, replay: false };
     });
-    if (!out.replay) void this.tellCenter(out.claim.tenantId, `❌ ${out.claim.forMonth} oyi uchun karta to'lovi tasdiqlanmadi: ${why}`).catch(() => undefined);
+    if (!out.replay) void this.outbox.kick();
     return { id, status: 'REJECTED', replay: out.replay };
   }
 
-  /** The center's owners and admins: Telegram when linked, and mail. */
-  private async tellCenter(tenantId: string, text: string) {
-    const people = await this.db
+  /** The center's owners and admins: Telegram when linked, and mail - one outbox row each. */
+  private async centerNotices(tx: Tx, tenantId: string, kind: string, claimId: string, text: string): Promise<Notice[]> {
+    const people = await tx
       .select({ email: users.email, chat: users.telegramChatId })
       .from(organizationMemberships)
       .innerJoin(users, eq(users.id, organizationMemberships.userId))
       .where(and(eq(organizationMemberships.tenantId, tenantId), eq(organizationMemberships.status, 'ACTIVE'), inArray(organizationMemberships.role, ['OWNER', 'ADMIN'])));
+    const out: Notice[] = [];
     for (const p of people) {
-      if (p.chat) await this.telegram.sendMessage(p.chat, escape(text));
-      await this.email.deliver(p.email, "TalimCRM: obuna to'lovi", `${text}\n\nTalimCRM`);
+      if (p.chat) out.push({ tenantId, kind, channel: 'TELEGRAM', recipient: p.chat, body: escape(text), dedupeKey: `${kind}:${claimId}:tg:${p.chat}` });
+      out.push({ tenantId, kind, channel: 'EMAIL', recipient: p.email, subject: "TalimCRM: obuna to'lovi", body: `${text}\n\nTalimCRM`, dedupeKey: `${kind}:${claimId}:mail:${p.email.toLowerCase()}` });
     }
+    return out;
   }
 }

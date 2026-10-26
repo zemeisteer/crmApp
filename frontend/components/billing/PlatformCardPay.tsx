@@ -6,6 +6,20 @@ import { useLanguage } from "@/lib/i18n-context";
 
 const ACCENT = "#4F46E5";
 const money = (n: number) => new Intl.NumberFormat("uz-UZ").format(n);
+const newKey = () => (typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `k${Date.now()}${Math.random().toString(36).slice(2)}`);
+
+/** The picture's content hash (what the server compares); name, size and date where hashing is unavailable. */
+async function fileFingerprint(file: File) {
+  try {
+    if (typeof crypto !== "undefined" && crypto.subtle) {
+      const digest = await crypto.subtle.digest("SHA-256", await file.arrayBuffer());
+      return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, "0")).join("");
+    }
+  } catch {
+    /* fall through */
+  }
+  return `${file.name}:${file.size}:${file.lastModified}`;
+}
 
 /**
  * Paying the platform by card transfer: the platform's card, the tariff's
@@ -35,9 +49,11 @@ export default function PlatformCardPay({
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
-  // One key for this send: retrying after a timeout or a lost answer
-  // returns the receipt already made instead of a second one.
-  const key = useRef<string>(typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `k${Date.now()}${Math.random().toString(36).slice(2)}`);
+  // One key per send, tied to what it carries (tariff, note, the picture's
+  // content): retrying the same thing after a timeout or a lost answer keeps
+  // the key, so the server returns the receipt already made; changing the
+  // picture, the note or the tariff is a new send with a new key.
+  const sendKey = useRef<{ fingerprint: string; key: string } | null>(null);
 
   useEffect(() => {
     if (!file || !file.type.startsWith("image/")) return setPreview(null);
@@ -61,9 +77,24 @@ export default function PlatformCardPay({
     setBusy(true);
     setError(null);
     try {
-      await platformBillingApi.sendCardClaim({ plan, note: note.trim() || undefined, file, idempotencyKey: key.current });
+      const fingerprint = JSON.stringify([plan, note.trim(), await fileFingerprint(file)]);
+      if (sendKey.current?.fingerprint !== fingerprint) sendKey.current = { fingerprint, key: newKey() };
+      const r = await platformBillingApi.sendCardClaim({ plan, note: note.trim() || undefined, file, idempotencyKey: sendKey.current.key });
+      // The same send replayed after it was decided (an old tab): say so, never "sent".
+      if (r.status === "REJECTED") {
+        sendKey.current = null;
+        return setError(t("pcp.err.replayRejected"));
+      }
       onSent();
     } catch (e) {
+      if (e instanceof ApiError && e.status === 409) {
+        const code = e.body?.code;
+        // KEY_REUSED cannot normally happen (the key follows the content); start over with a new key.
+        if (code === "KEY_REUSED") sendKey.current = null;
+        // PENDING: an earlier send (perhaps one whose answer was lost) is already being checked.
+        setError(code === "PENDING" ? t("pcp.err.pendingExists") : e.message);
+        return;
+      }
       // A lost connection: the same key on "send" again cannot make a second receipt.
       setError(e instanceof ApiError ? (e.status === 0 ? t("pcp.err.sendNetwork") : e.message) : t("pcp.err.sendNetwork"));
     } finally {
