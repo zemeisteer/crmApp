@@ -165,60 +165,54 @@ export class CardPaymentsService {
     };
   }
 
-  private async pendingClaim(tenantId: string, id: string) {
-    const [c] = await this.db.select().from(paymentClaims).where(and(eq(paymentClaims.id, id), eq(paymentClaims.tenantId, tenantId)));
-    if (!c) throw new NotFoundException("To'lov topilmadi");
-    if (c.status !== 'PENDING') throw new ConflictException(c.status === 'CONFIRMED' ? 'Bu to\'lov allaqachon tasdiqlangan' : 'Bu to\'lov rad etilgan');
-    return c;
-  }
-
   /**
    * Confirms the receipt: it becomes a payment (by transfer) for the month or
    * invoice it was sent for, at the amount the staff member saw on the
-   * receipt. Claimed first and keyed by the receipt, so two presses make one
-   * payment.
+   * receipt. The receipt row is locked for the whole decision (a second
+   * confirm or a reject waits, then sees it decided). The payment is made
+   * first, keyed by the receipt: if the process stops before the receipt
+   * is marked, a retry finds that same payment (the key) and finishes -
+   * never a receipt "confirmed" with no payment, never two payments.
    */
   async confirm(tenantId: string, userId: string, id: string, amountSeen?: number) {
-    const c = await this.pendingClaim(tenantId, id);
-    const amount = amountSeen && amountSeen > 0 ? Math.round(amountSeen) : c.amount;
-    const [claimed] = await this.db
-      .update(paymentClaims)
-      .set({ status: 'CONFIRMED', reviewedByUserId: userId, reviewedAt: new Date(), amount })
-      .where(and(eq(paymentClaims.id, id), eq(paymentClaims.status, 'PENDING')))
-      .returning({ id: paymentClaims.id });
-    if (!claimed) throw new ConflictException("Bu to'lovni boshqa xodim hozirgina ko'rib chiqdi");
-    let paymentId: string;
-    try {
+    const out = await this.db.transaction(async (tx) => {
+      const [c] = await tx.select().from(paymentClaims).where(and(eq(paymentClaims.id, id), eq(paymentClaims.tenantId, tenantId))).for('update');
+      if (!c) throw new NotFoundException("To'lov topilmadi");
+      if (c.status !== 'PENDING') throw new ConflictException(c.status === 'CONFIRMED' ? "Bu to'lov allaqachon tasdiqlangan" : "Bu to'lov rad etilgan");
+      const amount = amountSeen && amountSeen > 0 ? Math.round(amountSeen) : c.amount;
       const payment = (await this.payments.create(
         tenantId,
         { studentId: c.studentId, amount, method: 'BANK_TRANSFER', forMonth: c.forMonth, ...(c.invoiceId ? { invoiceId: c.invoiceId } : {}) },
         userId,
         `card-claim:${c.id}`,
       )) as { id: string };
-      paymentId = payment.id;
-    } catch (err) {
-      await this.db.update(paymentClaims).set({ status: 'PENDING', reviewedByUserId: null, reviewedAt: null, amount: c.amount }).where(eq(paymentClaims.id, id));
-      throw err;
-    }
-    await this.db.update(paymentClaims).set({ paymentId }).where(eq(paymentClaims.id, id));
-    this.audit.log({ tenantId, userId, action: 'update', entityType: 'payment_claim', entityId: id, meta: { confirmed: paymentId, amount } });
+      await tx
+        .update(paymentClaims)
+        .set({ status: 'CONFIRMED', reviewedByUserId: userId, reviewedAt: new Date(), amount, paymentId: payment.id })
+        .where(eq(paymentClaims.id, id));
+      await this.audit.record(tx, { tenantId, userId, action: 'update', entityType: 'payment_claim', entityId: id, meta: { confirmed: payment.id, amount } });
+      return { c, amount, paymentId: payment.id };
+    });
     void this.telegram
-      .notifyStudent(c.studentId, `✅ Karta orqali ${money(amount)} so'm to'lovingiz tasdiqlandi (${c.forMonth}). Rahmat!`)
+      .notifyStudent(out.c.studentId, `✅ Karta orqali ${money(out.amount)} so'm to'lovingiz tasdiqlandi (${out.c.forMonth}). Rahmat!`)
       .catch(() => undefined);
-    return { id, status: 'CONFIRMED', paymentId };
+    return { id, status: 'CONFIRMED', paymentId: out.paymentId };
   }
 
   async reject(tenantId: string, userId: string, id: string, reason: string) {
-    const c = await this.pendingClaim(tenantId, id);
     const why = reason.trim().slice(0, 300);
     if (!why) throw new BadRequestException('Rad etish sababini yozing');
-    const [done] = await this.db
-      .update(paymentClaims)
-      .set({ status: 'REJECTED', rejectReason: why, reviewedByUserId: userId, reviewedAt: new Date() })
-      .where(and(eq(paymentClaims.id, id), eq(paymentClaims.status, 'PENDING')))
-      .returning({ id: paymentClaims.id });
-    if (!done) throw new ConflictException("Bu to'lovni boshqa xodim hozirgina ko'rib chiqdi");
-    this.audit.log({ tenantId, userId, action: 'update', entityType: 'payment_claim', entityId: id, meta: { rejected: why } });
+    const c = await this.db.transaction(async (tx) => {
+      const [row] = await tx.select().from(paymentClaims).where(and(eq(paymentClaims.id, id), eq(paymentClaims.tenantId, tenantId))).for('update');
+      if (!row) throw new NotFoundException("To'lov topilmadi");
+      if (row.status !== 'PENDING') throw new ConflictException(row.status === 'CONFIRMED' ? "Bu to'lov allaqachon tasdiqlangan" : "Bu to'lov rad etilgan");
+      await tx
+        .update(paymentClaims)
+        .set({ status: 'REJECTED', rejectReason: why, reviewedByUserId: userId, reviewedAt: new Date() })
+        .where(eq(paymentClaims.id, id));
+      await this.audit.record(tx, { tenantId, userId, action: 'update', entityType: 'payment_claim', entityId: id, meta: { rejected: why } });
+      return row;
+    });
     void this.telegram
       .notifyStudent(c.studentId, `❌ Karta orqali ${money(c.amount)} so'm to'lov tasdiqlanmadi: ${escape(why)}. Savol bo'lsa, markazga murojaat qiling.`)
       .catch(() => undefined);

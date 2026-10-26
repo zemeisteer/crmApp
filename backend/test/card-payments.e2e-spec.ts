@@ -3,6 +3,7 @@ import { INestApplication, ValidationPipe } from '@nestjs/common';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from '../src/app.module.js';
+import { eq } from 'drizzle-orm';
 import { TelegramService } from '../src/telegram/telegram.service.js';
 
 // Paying by card transfer: the center shows its card in the cabinet, the
@@ -103,6 +104,55 @@ describe('Card transfer payments (e2e)', () => {
     expect(studentTold.at(-1)).toContain("summa ko'rinmaydi");
     const mine = (await http().get('/api/portal/card-payment').set(portal).expect(200)).body.claims;
     expect(mine[0]).toMatchObject({ status: 'REJECTED', rejectReason: "Chekda summa ko'rinmaydi" });
+  });
+
+  it('two confirms at once, or a confirm racing a reject: one decision, at most one payment', async () => {
+    const { DB } = await import('../src/db/db.module.js');
+    const { payments } = await import('../src/db/schema.js');
+    const db = app.get(DB);
+    const countPayments = async () => (await db.select().from(payments).where(eq(payments.studentId, studentId))).length;
+    const before = await countPayments();
+    const a = (await send('120000').expect(201)).body;
+    const [x, y] = await Promise.all([
+      http().post(`/api/card-payments/claims/${a.id}/confirm`).set(owner).send({}),
+      http().post(`/api/card-payments/claims/${a.id}/confirm`).set(owner).send({}),
+    ]);
+    expect([x.status, y.status].sort()).toEqual([201, 409]);
+    expect((await countPayments()) - before).toBe(1);
+
+    const b = (await send('130000').expect(201)).body;
+    const [ok, no] = await Promise.all([
+      http().post(`/api/card-payments/claims/${b.id}/confirm`).set(owner).send({}),
+      http().post(`/api/card-payments/claims/${b.id}/reject`).set(owner).send({ reason: 'Pul kelmadi' }),
+    ]);
+    expect([ok.status, no.status].sort()).toEqual([201, 409]);
+    const paidNow = (await countPayments()) - before;
+    expect(paidNow).toBe(ok.status === 201 ? 2 : 1);
+  });
+
+  it('a stop after the payment and before the receipt is marked: a retry finishes with that same payment', async () => {
+    const { DB } = await import('../src/db/db.module.js');
+    const { payments, paymentClaims } = await import('../src/db/schema.js');
+    const { sql } = await import('drizzle-orm');
+    const db = app.get(DB);
+    const c = (await send('140000').expect(201)).body;
+    // Fault injection: marking this receipt fails (after its payment was made).
+    const fn = `cp_fail_${suffix}`;
+    await db.execute(sql.raw(`create or replace function ${fn}() returns trigger language plpgsql as $$ begin if new.id = '${c.id}' and new.status = 'CONFIRMED' then raise exception 'injected failure'; end if; return new; end $$`));
+    await db.execute(sql.raw(`create trigger ${fn} before update on payment_claims for each row execute function ${fn}()`));
+    try {
+      await http().post(`/api/card-payments/claims/${c.id}/confirm`).set(owner).send({}).expect(500);
+    } finally {
+      await db.execute(sql.raw(`drop trigger if exists ${fn} on payment_claims`));
+      await db.execute(sql.raw(`drop function if exists ${fn}()`));
+    }
+    const [still] = await db.select().from(paymentClaims).where(eq(paymentClaims.id, c.id));
+    expect(still.status).toBe('PENDING');
+    const made = await db.select().from(payments).where(eq(payments.studentId, studentId));
+    const done = (await http().post(`/api/card-payments/claims/${c.id}/confirm`).set(owner).send({}).expect(201)).body;
+    // The retry reuses the payment made before the stop: no second one.
+    expect(await db.select().from(payments).where(eq(payments.studentId, studentId))).toHaveLength(made.length);
+    expect(made.some((p: { id: string }) => p.id === done.paymentId)).toBe(true);
   });
 
   it('teachers do not see the receipts', async () => {
