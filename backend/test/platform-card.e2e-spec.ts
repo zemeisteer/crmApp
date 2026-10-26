@@ -155,6 +155,11 @@ describe('Paying the platform by card (e2e)', () => {
     expect((await invoices(c.tenantId)).filter((s) => s.status === 'PAID')).toHaveLength(1);
     expect(await paymentAudits(c.tenantId)).toHaveLength(1);
 
+    // The center's subscription history says it was paid by card; so does the platform admin's.
+    const view2 = (await http().get('/api/platform-billing/card').set(c.auth).expect(200)).body;
+    expect(view2.history).toEqual([expect.objectContaining({ forMonth: claim.forMonth, method: 'CARD', amount: claim.amount })]);
+    const adminHistory = (await http().get(`/api/platform/subscriptions/${c.tenantId}/payments`).set(sa).expect(200)).body;
+    expect(adminHistory.find((h: { forMonth: string }) => h.forMonth === claim.forMonth)).toMatchObject({ method: 'CARD', status: 'PAID' });
     // The next receipt is for the next month.
     const next = (await send(c.auth).expect(201)).body;
     expect(next.forMonth > claim.forMonth).toBe(true);

@@ -1,7 +1,7 @@
 import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { and, desc, eq, ilike, inArray, isNull, or, sql, type SQL } from 'drizzle-orm';
 import { DB, Database } from '../db/db.module';
-import { plans, platformSubscriptions, smsSends, students, tenants, users } from '../db/schema';
+import { plans, platformPaymentClaims, platformSubscriptions, smsSends, students, tenants, users } from '../db/schema';
 import { AuditService } from '../audit/audit.service';
 import { applyPayment, assertRecordableMonth, openMonthInvoice } from '../platform-billing/billing-period';
 import { ListSubscriptionsDto, RecordPaymentDto, UpdateSubscriptionDto } from './dto/platform.dto';
@@ -239,8 +239,11 @@ export class PlatformService {
       .select({
         id: platformSubscriptions.id, plan: platformSubscriptions.plan, amount: platformSubscriptions.amount, forMonth: platformSubscriptions.forMonth,
         status: platformSubscriptions.status, provider: platformSubscriptions.provider, paidAt: platformSubscriptions.paidAt, createdAt: platformSubscriptions.createdAt,
+        // How it was paid: Click/Payme, a card receipt, or recorded by hand.
+        method: sql<string>`case when ${platformPaymentClaims.id} is not null then 'CARD' else coalesce(${platformSubscriptions.provider}::text, 'MANUAL') end`,
       })
       .from(platformSubscriptions)
+      .leftJoin(platformPaymentClaims, and(eq(platformPaymentClaims.subscriptionId, platformSubscriptions.id), eq(platformPaymentClaims.status, 'CONFIRMED')))
       .where(eq(platformSubscriptions.tenantId, tenantId))
       .orderBy(desc(platformSubscriptions.forMonth))
       .limit(36);

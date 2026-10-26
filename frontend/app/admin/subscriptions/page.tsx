@@ -321,7 +321,7 @@ function ManageSubscription({ sub, plans, month, onClose, onChanged }: { sub: Pl
               {history.map((h) => (
                 <div key={h.id} style={{ display: "flex", justifyContent: "space-between", gap: 10, fontSize: 13, background: "#FAF9F6", borderRadius: 10, padding: "8px 12px" }}>
                   <span>
-                    <b>{monthLabel(h.forMonth, lang)}</b> · {h.plan} · {h.provider ?? t("pf.dash.manual")}
+                    <b>{monthLabel(h.forMonth, lang)}</b> · {h.plan} · {h.method === "CARD" ? `💳 ${t("ph.cardReceipt")}` : h.provider ?? t("pf.dash.manual")}
                     {h.paidAt ? <span style={{ color: "#686B75" }}> · {formatDate(h.paidAt, lang, "short")}</span> : null}
                   </span>
                   <span style={{ whiteSpace: "nowrap" }}>
