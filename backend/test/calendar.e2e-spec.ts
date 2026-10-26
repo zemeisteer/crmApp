@@ -379,6 +379,47 @@ describe('Calendar: subscriptions and Google sync (e2e)', () => {
     expect((await http().get('/api/calendar/google').set(bearer(t1)).expect(200)).body.connection).toBeNull();
   });
 
+  it("the center's time zone across a daylight-saving change: the feed and Google move each lesson to its own UTC time", async () => {
+    // New York leaves summer time on 2026-11-01: 16:00 is 20:00Z on Saturday 10-31 and 21:00Z on Monday 11-02.
+    const db = app.get<Database>(DB);
+    const [tA] = await db.select({ id: tenants.id, tz: tenants.timezone }).from(tenants).where(eq(tenants.subdomain, `cal-a-${suffix}`));
+    const tch = (await http().get('/api/teachers').set(bearer(ownerA)).expect(200)).body;
+    const t1Teacher = (Array.isArray(tch) ? tch : tch.items).find((t: { fullName: string }) => t.fullName === 'Cal T1').id;
+    const gDst = (await http().post('/api/groups').set(bearer(ownerA)).send({ name: 'Cal DST', subject: 'Math', teacherId: t1Teacher, scheduleDays: 'Shanba,Dushanba', startTime: '16:00', endTime: '17:00' }).expect(201)).body.id;
+    await db.update(tenants).set({ timezone: 'America/New_York' }).where(eq(tenants.id, tA.id));
+    try {
+      const body = await ics(t1Url);
+      const block = (date: string) => body.split('BEGIN:VEVENT').find((e) => e.includes('SUMMARY:Cal DST') && e.includes(`DTSTART:${date}`));
+      expect(block('20261031T200000Z')).toBeDefined(); // EDT, UTC-4
+      expect(block('20261102T210000Z')).toBeDefined(); // EST, UTC-5
+      expect(body).not.toContain('DTSTART:20261102T200000Z');
+      // Google (connected again: the test before disconnected it): the next pass writes the same instants.
+      const { url } = (await http().post('/api/calendar/google/connect').set(bearer(t1)).send({}).expect(201)).body;
+      await http().get(`/api/calendar/google/callback?code=good-code&state=${new URL(url).searchParams.get('state')}`).expect(302);
+      connectionId = (await db.select().from(calendarConnections).where(eq(calendarConnections.userId, t1User)))[0].id;
+      await forceDue();
+      await sync();
+      const of = async (date: string) => {
+        const k = await key(gDst, date);
+        return google.ours().find((e) => e.extendedProperties?.private?.key === k);
+      };
+      expect((await of('2026-10-31'))?.start.dateTime).toBe('2026-10-31T20:00:00.000Z');
+      expect((await of('2026-11-02'))?.start.dateTime).toBe('2026-11-02T21:00:00.000Z');
+      // Back to Tashkent (no daylight saving): the same lessons move to 11:00Z, in place, no copies.
+      await db.update(tenants).set({ timezone: tA.tz }).where(eq(tenants.id, tA.id));
+      const before = google.ours().length;
+      await forceDue();
+      await sync();
+      expect((await of('2026-11-02'))?.start.dateTime).toBe('2026-11-02T11:00:00.000Z');
+      expect(google.ours().length).toBe(before);
+    } finally {
+      await db.update(tenants).set({ timezone: tA.tz }).where(eq(tenants.id, tA.id));
+      await http().delete(`/api/groups/${gDst}`).set(bearer(ownerA));
+      await forceDue();
+      await sync();
+    }
+  });
+
   it('cabinet tokens and anonymous callers cannot reach the Google or staff routes', async () => {
     await http().get('/api/calendar/google').expect(401);
     await http().post('/api/calendar/google/connect').send({}).expect(401);

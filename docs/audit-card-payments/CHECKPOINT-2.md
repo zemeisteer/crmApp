@@ -12,7 +12,7 @@ No push, no PR, no merge, no deploy.
 | 2 | Platform receipt idempotency (request hash, file content hash) | done (API 16/16; browser spec written, run in stage 6) |
 | 3 | Payment notification outbox (worker, retry, failed list) | done (`notice-outbox.e2e-spec.ts` 7/7) |
 | 4 | Click/Payme callback vs invoice change race | done (`platform-billing-race.e2e-spec.ts` 7/7, 4 failed before the fix) |
-| 5 | Four features deep check | todo |
+| 5 | Four features deep check | API part done (no defect found; new tests: DST/time zone in feed and Google mock, make-up history and roles, chat parallel order/paging/markup/open stream after leaving a group, custom-field roles/markup/isolation); browser in stage 6 |
 | 6 | Run the site in the cloud, browser checklist | todo |
 | 7 | Final checks, REPORT-2.md, patch | todo |
 

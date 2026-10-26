@@ -278,4 +278,24 @@ describe('Custom fields (e2e)', () => {
     expect(fields).toEqual([{ id: shown.id, label: 'Kurs boshlanishi', value: '2026-11-01' }]);
     await http().get('/api/portal/custom-fields').expect(401);
   });
+
+  it('roles beyond owner/admin/manager/teacher; markup in labels and values is kept as data; list search still works', async () => {
+    const rec = (await invite(ownerA, 'RECEPTIONIST', 'rec')).token;
+    const acc = (await invite(ownerA, 'ACCOUNTANT', 'acc')).token;
+    await field(rec, { entityType: 'STUDENT', label: 'X', fieldType: 'TEXT' }).expect(403);
+    await field(acc, { entityType: 'STUDENT', label: 'X', fieldType: 'TEXT' }).expect(403);
+    const evilLabel = '<img src=x onerror=alert(1)> Izoh';
+    const f = (await field(ownerA, { entityType: 'STUDENT', label: evilLabel, fieldType: 'TEXT' }).expect(201)).body;
+    expect(f.label).toBe(evilLabel);
+    const evil = '"><script>alert(document.cookie)</script>';
+    const st = (await http().post('/api/students').set(bearer(ownerA)).send({ fullName: `CF Xss ${suffix}`, customFields: { [levelS.id]: levelS.options[0].id, [f.id]: evil } }).expect(201)).body;
+    expect((await http().get(`/api/students/${st.id}`).set(bearer(rec)).expect(200)).body.customFields[f.id]).toBe(evil);
+    // The list and its search are unaffected by the extra fields.
+    const found = (await http().get(`/api/students?search=${encodeURIComponent(`CF Xss ${suffix}`)}&page=1`).set(bearer(rec)).expect(200)).body;
+    expect((found.items ?? found).map((x: { id: string }) => x.id)).toContain(st.id);
+    // Another center never sees the definition or the value.
+    expect((await http().get('/api/custom-fields?entityType=STUDENT').set(bearer(ownerB)).expect(200)).body.some((d: { id: string }) => d.id === f.id)).toBe(false);
+    await http().get(`/api/students/${st.id}`).set(bearer(ownerB)).expect(404);
+    await http().post(`/api/custom-fields/${f.id}/archive`).set(bearer(ownerA)).expect(201);
+  });
 });

@@ -1,4 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { ThrottlerStorage } from '@nestjs/throttler';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import type { AddressInfo } from 'net';
 import request from 'supertest';
@@ -80,7 +81,11 @@ describe('Chat (e2e)', () => {
 
   beforeAll(async () => {
     process.env.CHAT_HEARTBEAT_MS = '300';
-    const moduleFixture: TestingModule = await Test.createTestingModule({ imports: [AppModule] }).compile();
+    // One address sends every request here; the send limit has its own check (security suites).
+    const moduleFixture: TestingModule = await Test.createTestingModule({ imports: [AppModule] })
+      .overrideProvider(ThrottlerStorage)
+      .useValue({ increment: async () => ({ totalHits: 1, timeToExpire: 0, isBlocked: false, timeToBlockExpire: 0 }) })
+      .compile();
     app = moduleFixture.createNestApplication<NestExpressApplication>();
     configureApp(app);
     await app.listen(0, '127.0.0.1');
@@ -246,11 +251,49 @@ describe('Chat (e2e)', () => {
     void c;
   });
 
+  it('many sends at once: each one message, numbered without gaps, paged both ways without repeats; any text comes back as text', async () => {
+    const group = (await http().get('/api/chat/conversations').set(bearer(t1)).expect(200)).body.find((c: { kind: string }) => c.kind === 'GROUP').id;
+    const ids = Array.from({ length: 10 }, () => cid());
+    const res = await Promise.all(ids.map((id, i) => send(t1, group, `parallel ${i}`, id)));
+    expect(res.every((r) => r.status === 201)).toBe(true);
+    // The same ten again (a reconnecting client retrying): still ten.
+    await Promise.all(ids.map((id, i) => send(t1, group, `parallel ${i}`, id).expect(201)));
+    const seqs = res.map((r) => r.body.message.seq as number).sort((a, b) => a - b);
+    expect(new Set(seqs).size).toBe(10);
+    expect(seqs[9] - seqs[0]).toBe(9);
+    const all: Array<{ seq: number; body: string }> = [];
+    let page = (await msgs(t1, group, `?after=${seqs[0] - 1}&limit=4`).expect(200)).body.messages as Array<{ seq: number; body: string }>;
+    while (page.length) {
+      all.push(...page);
+      page = (await msgs(t1, group, `?after=${page.at(-1)!.seq}&limit=4`).expect(200)).body.messages;
+    }
+    const ours = all.filter((m) => m.body.startsWith('parallel '));
+    expect(ours.map((m) => m.seq)).toEqual(seqs);
+    const back = (await msgs(t1, group, `?before=${seqs[9] + 1}&limit=5`).expect(200)).body.messages as Array<{ seq: number }>;
+    expect(new Set(back.map((m) => m.seq)).size).toBe(back.length);
+    // Markup is data: stored and returned as typed (the page shows it as text, see the browser suite).
+    const evil = '<img src=x onerror="alert(1)"><script>alert(2)</script>';
+    const m = (await send(t1, group, evil).expect(201)).body.message;
+    expect(m.body).toBe(evil);
+    const r = await msgs(t1, group, `?after=${m.seq - 1}`).expect(200);
+    expect(r.headers['content-type']).toMatch(/application\/json/);
+    expect(r.body.messages[0].body).toBe(evil);
+  });
+
   it('revoking access stops reads, sends and live events', async () => {
     const group = (await http().get('/api/chat/conversations').set(bearer(t1)).expect(200)).body.find((c: { kind: string }) => c.kind === 'GROUP').id;
     const t1Stream = await stream('/api/chat/stream', t1);
+    const s1Stream = await stream('/api/portal/chat/stream', s1Cab);
     // S1 leaves G1: the teacher no longer teaches them.
     await http().delete(`/api/students/${s1}/enroll/${g1}`).set(bearer(ownerA)).expect(200);
+    // The cabinet's stream opened while still in the group hears nothing more of it.
+    const after = (await send(t1, group, 'Guruhga yangi xabar').expect(201)).body.message;
+    const s2Hears = await stream('/api/portal/chat/stream', s2Cab);
+    await send(t1, group, 'Yana biri').expect(201);
+    expect(await s2Hears.waitFor(() => s2Hears.events.some((e) => e.data.conversationId === group))).toBe(true);
+    expect(s1Stream.events.some((e) => e.data.conversationId === group && (e.data.seq ?? 0) >= after.seq)).toBe(false);
+    s2Hears.close();
+    s1Stream.close();
     await msgs(t1, teacherConv).expect(404);
     await send(t1, teacherConv, 'x').expect(404);
     // The cabinet keeps its history but cannot write to a teacher who no longer teaches it.

@@ -166,7 +166,23 @@ describe('Make-up lessons (e2e)', () => {
     await http().post(`/api/makeups/bookings/${booking.id}/cancel`).set(bearer(recA)).expect(201);
     expect((await credit(c1)).status).toBe('ISSUED');
     await http().post(`/api/makeups/bookings/${booking.id}/cancel`).set(bearer(recA)).expect(409);
-    await book(recA, c1, { mode: 'GROUP_LESSON', targetGroupId: g2, date: next(3) }).expect(201);
+    const again = (await book(recA, c1, { mode: 'GROUP_LESSON', targetGroupId: g2, date: next(3) }).expect(201)).body;
+    // The same request repeated (a double click): refused, not a second booking.
+    await book(recA, c1, { mode: 'GROUP_LESSON', targetGroupId: g2, date: next(3) }).expect(409);
+    // Moved again and again: every earlier booking stays as history, one is live, all on the same origin lesson.
+    const now = await credit(c1);
+    expect(now.bookings.filter((x: { status: string }) => x.status === 'BOOKED')).toHaveLength(1);
+    expect(now.bookings.find((x: { id: string }) => x.id === booking.id)).toMatchObject({ status: 'CANCELLED' });
+    expect(now.bookings.some((x: { id: string }) => x.id === (again.id ?? again.booking?.id))).toBe(true);
+    expect(now.bookings.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('roles: the accountant and teachers do not manage make-ups', async () => {
+    const acc = (await invite(ownerA, 'ACCOUNTANT', 'acc')).token;
+    await http().get('/api/makeups/credits').set(bearer(acc)).expect(403);
+    await issue(acc, { studentId: s1, groupId: g1, date: last(1), reason: 'ABSENT' }).expect(403);
+    await http().get('/api/makeups/credits').set(bearer(t1)).expect(403);
+    await book(t1, c1, { mode: 'GROUP_LESSON', targetGroupId: g2, date: next(3) }).expect(403);
   });
 
   it('attendance consumes the credit exactly once; the original absence and payroll are untouched', async () => {
