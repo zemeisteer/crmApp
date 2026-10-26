@@ -278,7 +278,9 @@ export class TrialLifecycleService implements OnModuleInit, OnModuleDestroy {
       if (!due) return false;
       await this.claims.noteBeforeDelete(tx, tenantId);
       await tx.delete(tenants).where(eq(tenants.id, tenantId));
-      this.audit.log({ tenantId: null, userId: null, action: 'trial_purge', entityType: 'tenant', entityId: tenantId, meta: { name: t.name, subdomain: t.subdomain, trialEndsAt: t.trialEndsAt, purgeOn: t.trialPurgeOn } });
+      // In the same transaction: the record of the deletion exists exactly
+      // when the deletion does (a rollback leaves neither).
+      await this.audit.record(tx, { tenantId: null, userId: null, action: 'trial_purge', entityType: 'tenant', entityId: tenantId, meta: { name: t.name, subdomain: t.subdomain, trialEndsAt: t.trialEndsAt, purgeOn: t.trialPurgeOn } });
       return true;
     });
   }

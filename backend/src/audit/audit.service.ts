@@ -30,6 +30,25 @@ export class AuditService {
       .catch(() => undefined);
   }
 
+  /**
+   * An audit row that must exist exactly when the change it records does:
+   * written in the caller's transaction and awaited, so a rollback takes it
+   * back and a commit is never without it.
+   */
+  async record(
+    tx: Pick<Database, 'insert'>,
+    entry: { tenantId: string | null; userId: string | null; action: string; entityType: string; entityId: string; meta?: unknown },
+  ) {
+    await tx.insert(auditLogs).values({
+      tenantId: entry.tenantId,
+      userId: entry.userId,
+      action: entry.action,
+      entityType: entry.entityType,
+      entityId: entry.entityId,
+      meta: entry.meta ? JSON.stringify(entry.meta) : null,
+    });
+  }
+
   findAll(tenantId: string, entityType?: string) {
     const conditions = [eq(auditLogs.tenantId, tenantId)];
     if (entityType) conditions.push(eq(auditLogs.entityType, entityType));
