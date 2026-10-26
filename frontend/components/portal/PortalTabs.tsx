@@ -803,7 +803,24 @@ export function PaymentsTab({ payments, checkoutLoading, onPay, payError }: { pa
 
       <div style={{ ...card, padding: 0, overflow: "hidden" }}>
         <div style={{ padding: "14px 16px", fontFamily: "'Manrope', sans-serif", fontSize: 16, fontWeight: 700, borderBottom: "1px solid #F0EEE8" }}>{t("ptl.history")}</div>
-        {history.length === 0 ? (
+        {/* Receipts sent by card and not (yet) payments: never missing from the history. */}
+        {(payments?.openReceipts ?? []).map((r) => (
+          <div key={r.id} data-testid="history-receipt" style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 16px", borderBottom: "1px solid #F7F6F2", background: r.status === "PENDING" ? "#FFFBEB" : "#FEF2F2" }}>
+            <div style={{ width: 38, height: 38, flexShrink: 0, borderRadius: 11, background: r.status === "PENDING" ? "#FEF3C7" : "#FEE2E2", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 17 }}>
+              {r.status === "PENDING" ? "⏳" : "✕"}
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 14, fontWeight: 700 }}>{monthLabel(r.forMonth, t)}</div>
+              <div style={{ fontSize: 12, color: "#686B75" }}>💳 {t("ph.viaCard")} · {formatDate(r.createdAt, lang)}</div>
+              {r.status === "REJECTED" && r.rejectReason && <div style={{ fontSize: 12, color: "#B91C1C" }}>{r.rejectReason}</div>}
+            </div>
+            <div style={{ textAlign: "right" }}>
+              <div style={{ fontFamily: "'Manrope', sans-serif", fontSize: 15, fontWeight: 800, color: "#686B75" }}>{money(r.amount)}</div>
+              <div style={{ fontSize: 11.5, color: r.status === "PENDING" ? "#B45309" : "#DC2626", fontWeight: 700 }}>{t(r.status === "PENDING" ? "ph.checking" : "ph.rejected")}</div>
+            </div>
+          </div>
+        ))}
+        {history.length === 0 && !(payments?.openReceipts?.length) ? (
           <div style={{ padding: 24, textAlign: "center", color: "#686B75", fontSize: 13.5 }}>{t("ptl.noHistory")}</div>
         ) : (
           history.map((p) => (
@@ -813,7 +830,10 @@ export function PaymentsTab({ payments, checkoutLoading, onPay, payError }: { pa
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 14, fontWeight: 700 }}>{p.forMonth ? monthLabel(p.forMonth, t) : "—"}</div>
-                <div style={{ fontSize: 12, color: "#686B75" }}>{p.paidAt ? formatDate(p.paidAt, lang) : "—"}</div>
+                <div style={{ fontSize: 12, color: "#686B75" }}>
+                  {p.paidAt ? formatDate(p.paidAt, lang) : "—"}
+                  {p.viaCard && <> · 💳 {t("ph.viaCard")}</>}
+                </div>
               </div>
               <div style={{ textAlign: "right" }}>
                 <div style={{ fontFamily: "'Manrope', sans-serif", fontSize: 15, fontWeight: 800 }}>{money(p.amount)}</div>

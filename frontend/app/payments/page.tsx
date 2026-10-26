@@ -40,6 +40,7 @@ import {
 import { clampPage, pageQuery, parsePageParam } from "@/lib/list-paging";
 import { useCenterClock } from "@/lib/use-center-clock";
 import CashDayPanel from "@/components/payments/CashDay";
+import { PrivateLink } from "@/components/PrivateFile";
 import DebtorRemindersDialog from "@/components/payments/DebtorReminders";
 import { centerWallClock } from "@/lib/center-time";
 import { useLanguage } from "@/lib/i18n-context";
@@ -419,7 +420,7 @@ function PaymentReceiptModal({
             <div style={{ display: "flex", justifyContent: "space-between" }}>
               <span style={{ color: "#64748B" }}>{t("payments.receipt.method")}:</span>
               <span style={{ fontWeight: 600 }}>
-                {payment.method ? t(METHOD_LABEL_KEYS[payment.method] || "payment.methodCash") : "—"}
+                {payment.cardReceipt ? `💳 ${t("ph.cardReceipt")}` : payment.method ? t(METHOD_LABEL_KEYS[payment.method] || "payment.methodCash") : "—"}
               </span>
             </div>
 
@@ -1688,7 +1689,12 @@ function PaymentsContent() {
                               )}
                             </td>
                             <td>
-                              {p.method ? t(METHOD_LABEL_KEYS[p.method] || "payment.methodCash") : "—"}
+                              {p.cardReceipt ? (
+                                <span style={{ display: "inline-flex", flexDirection: "column", gap: 2 }}>
+                                  <span>💳 {t("ph.cardReceipt")}</span>
+                                  <PrivateLink name={p.cardReceipt.receiptFile} style={{ fontSize: 12, color: "#4F46E5", fontWeight: 700 }}>{t("ph.openReceipt")}</PrivateLink>
+                                </span>
+                              ) : p.method ? t(METHOD_LABEL_KEYS[p.method] || "payment.methodCash") : "—"}
                             </td>
                             <td>
                               <span className={`badge ${STATUS_CLASS[p.status] || "badge-neutral"}`}>

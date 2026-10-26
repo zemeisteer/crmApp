@@ -158,6 +158,13 @@ describe('Card transfer payments (e2e)', () => {
     // Both audit rows: the receipt's decision and the payment, one commit.
     expect(await auditOf(claim.id)).toHaveLength(1);
     expect(await db.select().from(auditLogs).where(and(eq(auditLogs.entityType, 'payment'), eq(auditLogs.entityId, done.paymentId)))).toHaveLength(1);
+    // In the payment history: the center sees it was a card receipt and can open the receipt...
+    const page = (await http().get(`/api/payments?page=1&studentId=${studentId}`).set(owner).expect(200)).body;
+    const listed = page.items.find((p: { id: string }) => p.id === done.paymentId);
+    expect(listed.cardReceipt).toMatchObject({ claimId: claim.id, receiptFile: expect.any(String) });
+    // ...and the student's cabinet marks it as paid by card.
+    const cab = (await http().get('/api/portal/payments').set(portal).expect(200)).body;
+    expect(cab.history.find((p: { id: string }) => p.id === done.paymentId)).toMatchObject({ viaCard: true });
   });
 
   it('a rejected receipt says why; it never becomes a payment', async () => {
@@ -170,6 +177,9 @@ describe('Card transfer payments (e2e)', () => {
     const mine = (await http().get('/api/portal/card-payment').set(portal).expect(200)).body.claims;
     expect(mine[0]).toMatchObject({ status: 'REJECTED', rejectReason: "Chekda summa ko'rinmaydi" });
     expect(await paymentsOf(claim.id)).toHaveLength(0);
+    // A rejected (or waiting) receipt stays visible in the cabinet's payment history, with the reason.
+    const cab = (await http().get('/api/portal/payments').set(portal).expect(200)).body;
+    expect(cab.openReceipts.find((r: { id: string }) => r.id === claim.id)).toMatchObject({ status: 'REJECTED', rejectReason: "Chekda summa ko'rinmaydi" });
   });
 
   it('two admins confirm at once, or a confirm races a reject: one decision, at most one payment', async () => {

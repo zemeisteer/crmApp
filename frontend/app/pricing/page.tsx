@@ -168,6 +168,23 @@ function TenantPricing() {
             ))}
           </div>
         )}
+        {cardView && cardView.history.length > 0 && (
+          <div style={{ marginTop: 16, maxWidth: 960, background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 18, display: "flex", flexDirection: "column", gap: 8 }} data-testid="platform-payment-history">
+            <div style={{ fontWeight: 800, fontSize: 14 }}>🧾 {t("ph.subHistory")}</div>
+            {cardView.history.map((h) => (
+              <div key={h.id} style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", fontSize: 13, padding: "8px 10px", borderRadius: 10, background: "#F7F6F2" }}>
+                <span>
+                  <b>{h.forMonth}</b> · {h.plan} · {t(`ph.m.${h.method}` as TranslationKey)}
+                  {h.paidAt ? ` · ${formatDate(h.paidAt, lang)}` : ""}
+                </span>
+                <span style={{ fontWeight: 700 }}>
+                  {formatMoney(h.amount)}
+                  {h.periodEnd && <span style={{ fontWeight: 500, color: "#686B75" }}> · {t("ph.until").replace("{date}", formatDate(h.periodEnd, lang))}</span>}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <Modal open={payOpen} onClose={() => setPayOpen(false)} title={t("pricing.choosePaymentModal")}>

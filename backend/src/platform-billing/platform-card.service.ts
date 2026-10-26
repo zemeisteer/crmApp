@@ -5,7 +5,7 @@ import { createHash } from 'crypto';
 import { existsSync } from 'fs';
 import { join } from 'path';
 import { DB, Database } from '../db/db.module';
-import { organizationMemberships, platformPaymentClaims, tenants, users } from '../db/schema';
+import { organizationMemberships, platformPaymentClaims, platformSubscriptions, tenants, users } from '../db/schema';
 import { AuditService } from '../audit/audit.service';
 import { PlansService } from '../plans/plans.service';
 import { Notice, NoticeOutboxService } from '../notice-outbox/notice-outbox.service';
@@ -70,8 +70,24 @@ export class PlatformCardService {
       .where(eq(platformPaymentClaims.tenantId, tenantId))
       .orderBy(desc(platformPaymentClaims.createdAt), desc(platformPaymentClaims.id))
       .limit(12);
+    // The center's own payment history: every paid month and how it was paid.
+    const history = await this.db
+      .select({
+        id: platformSubscriptions.id,
+        plan: platformSubscriptions.plan,
+        forMonth: platformSubscriptions.forMonth,
+        amount: platformSubscriptions.amount,
+        paidAt: platformSubscriptions.paidAt,
+        periodEnd: platformSubscriptions.periodEnd,
+        method: sql<string>`case when ${platformPaymentClaims.id} is not null then 'CARD' else coalesce(${platformSubscriptions.provider}::text, 'MANUAL') end`,
+      })
+      .from(platformSubscriptions)
+      .leftJoin(platformPaymentClaims, and(eq(platformPaymentClaims.subscriptionId, platformSubscriptions.id), eq(platformPaymentClaims.status, 'CONFIRMED')))
+      .where(and(eq(platformSubscriptions.tenantId, tenantId), eq(platformSubscriptions.status, 'PAID')))
+      .orderBy(desc(platformSubscriptions.paidAt))
+      .limit(24);
     // What a new payment would be for: shown before sending, decided here.
-    return { card: this.card(), nextMonth: await nextPaymentMonth(this.db, tenantId), claims };
+    return { card: this.card(), nextMonth: await nextPaymentMonth(this.db, tenantId), claims, history };
   }
 
   /**

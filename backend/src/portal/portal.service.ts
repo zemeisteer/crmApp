@@ -26,6 +26,7 @@ import {
   homework,
   homeworkCompletions,
   invoices,
+  paymentClaims,
   payments,
   schedules,
   studentGuardians,
@@ -650,11 +651,28 @@ export class PortalService {
     const me = ledger.students[0];
     const due = me ? ledger.due(me, currentMonth) : { expected: 0, discount: 0, paid: 0, debt: 0 };
 
-    const history = await this.db.query.payments.findMany({
+    const paid = await this.db.query.payments.findMany({
       where: and(eq(payments.studentId, studentId), eq(payments.tenantId, tenantId)),
       columns: { idempotencyKey: false, requestHash: false },
       orderBy: [desc(payments.paidAt), desc(payments.createdAt)],
     });
+    // Which of them were card receipts the center confirmed.
+    const viaCard = new Set(
+      paid.length
+        ? (await this.db
+            .select({ paymentId: paymentClaims.paymentId })
+            .from(paymentClaims)
+            .where(and(eq(paymentClaims.tenantId, tenantId), inArray(paymentClaims.paymentId, paid.map((p) => p.id))))).map((r) => r.paymentId)
+        : [],
+    );
+    // Card receipts not (yet) payments: the history shows them as being
+    // checked or rejected, so a paid screenshot never "disappears".
+    const openReceipts = await this.db
+      .select({ id: paymentClaims.id, amount: paymentClaims.amount, forMonth: paymentClaims.forMonth, status: paymentClaims.status, rejectReason: paymentClaims.rejectReason, createdAt: paymentClaims.createdAt })
+      .from(paymentClaims)
+      .where(and(eq(paymentClaims.tenantId, tenantId), eq(paymentClaims.studentId, studentId), inArray(paymentClaims.status, ['PENDING', 'REJECTED'])))
+      .orderBy(desc(paymentClaims.createdAt))
+      .limit(20);
 
     const expectedTuition = due.expected;
     const monthPaid = due.paid;
@@ -669,7 +687,8 @@ export class PortalService {
       monthDiscount: due.discount,
       debtAmount,
       status: effectiveExpected === 0 || debtAmount === 0 ? 'PAID' : monthPaid > 0 ? 'PARTIAL' : 'UNPAID',
-      history,
+      history: paid.map((p) => ({ ...p, viaCard: viaCard.has(p.id) })),
+      openReceipts,
       // Only configured providers get a "pay online" button.
       online: await this.billing.getConfig(tenantId).then((c) => ({ click: c.clickEnabled, payme: c.paymeEnabled })),
     };
