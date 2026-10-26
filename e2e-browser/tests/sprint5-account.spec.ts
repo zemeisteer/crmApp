@@ -81,6 +81,9 @@ test('a trial that is over: read-only with the date, then closed except the plan
   await page.getByRole('link', { name: 'Tarifni tanlang' }).click();
   await expect(page).toHaveURL(centerUrl(c.sub, '/pricing'));
   await page.getByRole('button', { name: 'Faollashtirish' }).first().click();
+  // The window opens on the card (the platform has one here); Click is chosen.
+  await page.getByRole('dialog').getByRole('button', { name: /Karta orqali/ }).click();
+  await page.getByRole('option', { name: 'Click' }).click();
   const answer = page.waitForResponse((r) => r.url().includes('/platform-billing/click/link'));
   await page.getByRole('button', { name: 'Havola olish' }).click();
   const res = await answer;
