@@ -63,6 +63,9 @@ describe('Card transfer payments (e2e)', () => {
     // One big invoice for the month the receipts are for: every payment lands on it.
     await http().post('/api/invoices').set(owner).send({ studentId, amount: 9_000_000, dueDate: '2026-11-10', forMonth: '2026-11' }).expect(201);
     const { pin } = (await http().post(`/api/students/${studentId}/portal-pin`).set(owner).expect(201)).body;
+    // This suite's worker sends this suite's messages only (suites share the database).
+    outbox.onlyTenants = [reg.tenant?.id ?? reg.user.tenantId];
+    outbox.paused = false;
     portal = { Authorization: `Bearer ${(await http().post('/api/portal/auth/phone/verify').send({ phone, pin }).expect(201)).body.accessToken}` };
   });
 

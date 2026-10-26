@@ -52,8 +52,14 @@ export class NoticeOutboxService implements OnModuleInit, OnModuleDestroy {
   private timer: NodeJS.Timeout | null = null;
   private running: Promise<unknown> | null = null;
   private again = false;
-  /** Tests stop the after-commit kick to play "the process stopped after the commit". */
-  paused = false;
+  /**
+   * Test hooks. `paused`: no after-commit kick ("the process stopped after
+   * the commit"); on by default under NODE_ENV=test, so a suite that does
+   * not send messages never delivers another suite's. `onlyTenants`: a
+   * suite's worker takes only its own centers' rows (suites share one database).
+   */
+  paused = process.env.NODE_ENV === 'test';
+  onlyTenants: string[] | null = null;
 
   constructor(
     @Inject(DB) private readonly db: Database,
@@ -139,14 +145,16 @@ export class NoticeOutboxService implements OnModuleInit, OnModuleDestroy {
   }
 
   private async claim(now: Date, limit: number): Promise<Row[]> {
+    if (this.onlyTenants && this.onlyTenants.length === 0) return [];
     const at = now.toISOString();
     const res = await this.db.execute(sql`
       update ${noticeOutbox}
          set status = 'SENDING', locked_until = ${new Date(now.getTime() + LOCK_MS).toISOString()}::timestamp, attempts = attempts + 1
        where id in (
          select id from ${noticeOutbox}
-          where (status = 'PENDING' and next_attempt_at <= ${at}::timestamp)
-             or (status = 'SENDING' and locked_until < ${at}::timestamp)
+          where ((status = 'PENDING' and next_attempt_at <= ${at}::timestamp)
+             or (status = 'SENDING' and locked_until < ${at}::timestamp))
+            ${this.onlyTenants ? sql`and tenant_id in (${sql.join(this.onlyTenants.map((t) => sql`${t}`), sql`, `)})` : sql``}
           order by next_attempt_at, id
           limit ${limit}
           for update skip locked)

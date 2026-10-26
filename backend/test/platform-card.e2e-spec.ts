@@ -78,6 +78,9 @@ describe('Paying the platform by card (e2e)', () => {
     const mail = app.get(EmailService);
     mail.deliver = (async () => ({ accepted: true })) as typeof mail.deliver;
     outbox = app.get(NoticeOutboxService);
+    // This suite's worker sends this suite's messages only (center() adds each center).
+    outbox.onlyTenants = [];
+    outbox.paused = false;
 
     const email = `pcard-sa-${suffix}@test.uz`;
     const s = (await http().post('/api/auth/register').send({ centerName: `PSa ${suffix}`, subdomain: `psa-${suffix}`, email, password: 'password123', fullName: 'Platform Admin' }).expect(201)).body;
@@ -103,7 +106,9 @@ describe('Paying the platform by card (e2e)', () => {
       .send({ centerName: `PCard ${i} ${suffix}`, subdomain: `pc${i}-${suffix}`, email: `pc${i}-${suffix}@test.uz`, password: 'password123', fullName: 'PCard Owner' })
       .expect(201)).body;
     await db.update(users).set({ telegramChatId: `2${i}${String(suffix).slice(-7)}` }).where(eq(users.id, reg.user.id));
-    return { auth: { Authorization: `Bearer ${reg.accessToken}` }, tenantId: (reg.tenant?.id ?? reg.user.tenantId) as string };
+    const tenantId = (reg.tenant?.id ?? reg.user.tenantId) as string;
+    outbox.onlyTenants!.push(tenantId);
+    return { auth: { Authorization: `Bearer ${reg.accessToken}` }, tenantId };
   }
 
   const send = (auth: Record<string, string>, opts: { plan?: string; key?: string; file?: boolean; forMonth?: string; v?: string; note?: string } = {}) => {

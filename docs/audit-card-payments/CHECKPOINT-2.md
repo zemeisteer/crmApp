@@ -9,8 +9,8 @@ No push, no PR, no merge, no deploy.
 | # | Task | State |
 |---|------|-------|
 | 1 | Student card receipt: payment + allocations + claim + audit + messages in one transaction | done |
-| 2 | Platform receipt idempotency (request hash, file content hash) | todo |
-| 3 | Payment notification outbox (worker, retry, failed list) | infrastructure done with 1; platform card + tests todo |
+| 2 | Platform receipt idempotency (request hash, file content hash) | done (API 16/16; browser spec written, run in stage 6) |
+| 3 | Payment notification outbox (worker, retry, failed list) | done (`notice-outbox.e2e-spec.ts` 7/7) |
 | 4 | Click/Payme callback vs invoice change race | todo |
 | 5 | Four features deep check | todo |
 | 6 | Run the site in the cloud, browser checklist | todo |
