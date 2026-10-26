@@ -1,6 +1,8 @@
-import { eq, sql } from 'drizzle-orm';
+import { BadRequestException, ConflictException } from '@nestjs/common';
+import { and, eq, sql } from 'drizzle-orm';
 import type { Database } from '../db/db.module';
 import { platformSubscriptions, tenants } from '../db/schema';
+import { DEFAULT_TIMEZONE, isValidTimeZone, zonedParts } from '../common/timezone';
 
 type Tx = Parameters<Parameters<Database['transaction']>[0]>[0];
 
@@ -23,6 +25,118 @@ const count = (name: string, fallback: number) => {
  */
 export function billingRules() {
   return { enforce: flag('BILLING_ENFORCE', false), graceDays: count('BILLING_GRACE_DAYS', 7) };
+}
+
+// ---- Which month a payment is for (one rule for card, Click, Payme) ----
+
+const MONTH_RE = /^(\d{4})-(0[1-9]|1[0-2])$/;
+
+/** A real month label: "YYYY-MM" with a month 01-12 (00 and 13 are not). */
+export function isMonthLabel(v: unknown): v is string {
+  return typeof v === 'string' && MONTH_RE.test(v);
+}
+
+/** The month label of an instant, in the center's time zone. */
+export function monthLabelOf(d: Date, tz: string): string {
+  const p = zonedParts(d, isValidTimeZone(tz) ? tz : DEFAULT_TIMEZONE);
+  return `${p.year}-${String(p.month).padStart(2, '0')}`;
+}
+
+/** The label after this one ("2026-12" -> "2027-01"). */
+export function nextMonthLabel(label: string): string {
+  const [y, m] = label.split('-').map(Number);
+  return m === 12 ? `${y + 1}-01` : `${y}-${String(m + 1).padStart(2, '0')}`;
+}
+
+/** Months between two labels (b - a). */
+export function monthsBetween(a: string, b: string): number {
+  const [ay, am] = a.split('-').map(Number);
+  const [by, bm] = b.split('-').map(Number);
+  return (by - ay) * 12 + (bm - am);
+}
+
+/**
+ * The month a new payment pays for. The label is where the paid time
+ * continues: the month the paid time runs out in when paying early, or
+ * this month (center time) when it has run out or never began - skipping
+ * any month already paid (a manual payment may have used it). The browser
+ * never chooses it; what the payment buys is decided by applyPayment
+ * (from where the paid time ends, or now) whatever the label.
+ */
+export function paymentMonth(paidUntil: Date | null, now: Date, tz: string, paidLabels: Set<string>): string {
+  let label = monthLabelOf(paidUntil && paidUntil > now ? paidUntil : now, tz);
+  while (paidLabels.has(label)) label = nextMonthLabel(label);
+  return label;
+}
+
+/** The month a new payment of this center is for (reads its paid time and paid months). */
+export async function nextPaymentMonth(db: Pick<Database, 'select'>, tenantId: string, now = new Date()): Promise<string> {
+  const [t] = await db.select({ paidUntil: tenants.paidUntil, timezone: tenants.timezone }).from(tenants).where(eq(tenants.id, tenantId));
+  const paid = await db
+    .select({ forMonth: platformSubscriptions.forMonth })
+    .from(platformSubscriptions)
+    .where(and(eq(platformSubscriptions.tenantId, tenantId), eq(platformSubscriptions.status, 'PAID')));
+  return paymentMonth(t?.paidUntil ?? null, now, t?.timezone ?? DEFAULT_TIMEZONE, new Set(paid.map((p) => p.forMonth)));
+}
+
+/**
+ * A month the platform admin may record a payment for by hand: a real
+ * month, not more than two years back nor one year ahead.
+ */
+export function assertRecordableMonth(label: unknown, now = new Date(), tz = DEFAULT_TIMEZONE): string {
+  if (!isMonthLabel(label)) throw new BadRequestException("Oy YYYY-MM ko'rinishida bo'lishi kerak (01-12)");
+  const d = monthsBetween(monthLabelOf(now, tz), label);
+  if (d < -24 || d > 12) throw new BadRequestException("Bu oy uchun to'lov yozib bo'lmaydi (2 yil oldin - 1 yil keyin oralig'ida)");
+  return label;
+}
+
+// A Payme transaction not performed within 12 hours is cancelled by Payme.
+export const PROVIDER_TIMEOUT_MS = 12 * 3_600_000;
+
+/**
+ * The month's invoice, ready to be paid (by a provider link, a card receipt
+ * or by hand). Every payment path goes through here, in one lock order:
+ * the center's payment lock, then the invoice row, then (in applyPayment)
+ * the center row.
+ *
+ * - A paid month is never paid again (409 ALREADY_PAID).
+ * - A provider transaction under way is never taken over (409
+ *   PAYMENT_IN_PROGRESS); one Payme has timed out is closed as cancelled
+ *   (reason 4) and kept, with its transaction id, for Payme to ask about.
+ * - A cancelled invoice stays as history; a new one is made.
+ * - An invoice nobody is paying yet (CREATED) is reused.
+ */
+export async function openMonthInvoice(
+  tx: Tx,
+  tenantId: string,
+  forMonth: string,
+  plan: string,
+  amount: number,
+  provider: 'CLICK' | 'PAYME' | null,
+  now = new Date(),
+) {
+  await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`platform-pay:${tenantId}`}))`);
+  const [live] = await tx
+    .select()
+    .from(platformSubscriptions)
+    .where(and(eq(platformSubscriptions.tenantId, tenantId), eq(platformSubscriptions.forMonth, forMonth), sql`${platformSubscriptions.status} <> 'CANCELLED'`))
+    .for('update');
+  if (live?.status === 'PAID') {
+    throw new ConflictException({ code: 'ALREADY_PAID', message: "Bu oy uchun to'lov allaqachon qilingan" });
+  }
+  if (live?.status === 'PENDING') {
+    const started = live.providerCreatedAt ?? live.createdAt;
+    if (now.getTime() - started.getTime() < PROVIDER_TIMEOUT_MS) {
+      throw new ConflictException({ code: 'PAYMENT_IN_PROGRESS', message: "Bu oy uchun to'lov hozir Click/Payme orqali amalga oshirilmoqda. Birozdan so'ng urinib ko'ring." });
+    }
+    await reversePayment(tx, live.id, now, 4);
+  }
+  const fresh = { plan, amount, provider, status: 'CREATED' as const, providerTxId: null, providerCreatedAt: null, cancelledAt: null, cancelReason: null };
+  const [invoice] =
+    live?.status === 'CREATED'
+      ? await tx.update(platformSubscriptions).set(fresh).where(eq(platformSubscriptions.id, live.id)).returning()
+      : await tx.insert(platformSubscriptions).values({ tenantId, forMonth, ...fresh }).returning();
+  return invoice;
 }
 
 /** The same day of the next month (the 31st becomes the month's last day). */

@@ -1,9 +1,9 @@
-import { BadRequestException, ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { and, desc, eq, ilike, inArray, isNull, or, sql, type SQL } from 'drizzle-orm';
 import { DB, Database } from '../db/db.module';
 import { plans, platformSubscriptions, smsSends, students, tenants, users } from '../db/schema';
 import { AuditService } from '../audit/audit.service';
-import { applyPayment } from '../platform-billing/billing-period';
+import { applyPayment, assertRecordableMonth, openMonthInvoice } from '../platform-billing/billing-period';
 import { ListSubscriptionsDto, RecordPaymentDto, UpdateSubscriptionDto } from './dto/platform.dto';
 
 const DAY_MS = 86_400_000;
@@ -281,24 +281,15 @@ export class PlatformService {
     const amount = dto.amount ?? plan.price;
     if (amount <= 0) throw new BadRequestException("Bepul tarif uchun to'lov qayd etilmaydi");
 
-    const row = await this.db.transaction(async (tx) => {
-      // One at a time per center: two clicks at once must not both find "no
-      // row yet" (FOR UPDATE locks nothing when there is no row to lock).
-      await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`platform-pay:${tenantId}`}))`);
-      const [existing] = await tx.select().from(platformSubscriptions)
-        .where(and(eq(platformSubscriptions.tenantId, tenantId), eq(platformSubscriptions.forMonth, dto.forMonth)))
-        .for('update');
-      if (existing?.status === 'PAID') throw new ConflictException("Bu oy uchun to'lov allaqachon qayd etilgan");
-      // The invoice, then the payment through the same path as Click/Payme
-      // (billing-period.ts): its month is added to the paid time.
-      const values = { plan: planKey, amount, status: 'CREATED' as const, provider: null, providerTxId: null, providerCreatedAt: null, cancelledAt: null, cancelReason: null };
-      const [invoice] = existing
-        ? await tx.update(platformSubscriptions).set(values).where(eq(platformSubscriptions.id, existing.id)).returning()
-        : await tx.insert(platformSubscriptions).values({ tenantId, forMonth: dto.forMonth, ...values }).returning();
-      const paid = await applyPayment(tx, invoice.id);
-      return paid.sub!;
+    const forMonth = assertRecordableMonth(dto.forMonth, new Date(), tenant.timezone);
+    // The invoice, then the payment, through the same path and locks as
+    // Click/Payme and card receipts (billing-period.ts); the audit row in
+    // the same transaction.
+    return this.db.transaction(async (tx) => {
+      const invoice = await openMonthInvoice(tx, tenantId, forMonth, planKey, amount, null);
+      const paid = (await applyPayment(tx, invoice.id)).sub!;
+      await this.audit.record(tx, { tenantId, userId: actorId, action: 'create', entityType: 'platform_payment', entityId: paid.id, meta: { forMonth, plan: planKey, amount, manual: true } });
+      return paid;
     });
-    this.audit.log({ tenantId, userId: actorId, action: 'create', entityType: 'platform_payment', entityId: row.id, meta: { forMonth: dto.forMonth, plan: planKey, amount, manual: true } });
-    return row;
   }
 }

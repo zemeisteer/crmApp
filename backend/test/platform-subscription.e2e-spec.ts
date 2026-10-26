@@ -97,11 +97,14 @@ describe('Platform subscription: periods, renewal, grace, providers (e2e)', () =
     expect(second.getTime() - first.getTime()).toBeGreaterThan(27 * DAY);
   });
 
-  it('a payment link for a month already paid does not undo the payment', async () => {
+  it('a payment link never reopens a paid month: the server picks the next month, whatever the browser asks', async () => {
     const c = await center();
     const id = await payByPayme(c, '2026-11', `pm-c-${tail}`);
-    const res = await link(c, '2026-11', 'click');
-    expect([res.status, res.body.code]).toEqual([409, 'ALREADY_PAID']);
+    const paidMonth = (await invoice(id)).forMonth;
+    // The browser asks for the paid month again: it gets a new invoice for the next one.
+    const res = (await link(c, paidMonth, 'click').expect(201)).body;
+    expect(res.subscriptionId).not.toBe(id);
+    expect((await invoice(res.subscriptionId)).forMonth > paidMonth).toBe(true);
     expect((await invoice(id)).status).toBe('PAID');
   });
 

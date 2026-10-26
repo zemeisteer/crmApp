@@ -8,11 +8,11 @@ Run locally (the user's standing choice for pasted "cloud" briefs).
 
 | # | Task | State |
 |---|------|-------|
-| 1 | Atomic card confirm (one transaction, lock order, idempotent, confirm/reject race, fault injection) | in progress |
-| 2 | Duplicate receipts (DB constraint + idempotency key), server-side billing period | todo |
-| 3 | Card vs Click/Payme clashes | todo |
+| 1 | Atomic card confirm (one transaction, lock order, idempotent, confirm/reject race, fault injection) | done (`platform-card.e2e-spec.ts`) |
+| 2 | Duplicate receipts (DB constraint + idempotency key), server-side billing period | done (migration 0076, `billing-period.spec.ts`) |
+| 3 | Card vs Click/Payme clashes | done (`openMonthInvoice`, e2e) |
 | 4 | Admin/customer UI (auth/refresh, states, pagination) | todo |
-| 5 | trial-purge-outbox audit flake | cause found: `AuditService.log` is not awaited and runs outside the deleting transaction |
+| 5 | trial-purge-outbox audit flake | done: audit written in the deleting transaction (`AuditService.record`) |
 | 6 | Security + four features regression | todo |
 | 7 | Browser E2E for the card flow, competitor backlog | todo |
 

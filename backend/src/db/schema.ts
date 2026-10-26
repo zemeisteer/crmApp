@@ -1065,7 +1065,10 @@ export const platformSubscriptions = pgTable('platform_subscriptions', {
   createdAt: timestamp('created_at').notNull().defaultNow(),
 }, (t) => ({
   tenantIdx: index('platform_subs_tenant_idx').on(t.tenantId),
-  uniq: uniqueIndex('platform_subs_tenant_month_idx').on(t.tenantId, t.forMonth),
+  // One live invoice per center and month. A cancelled one stays as history
+  // (a provider may still ask about its transaction) and a new one is made.
+  uniqLive: uniqueIndex('platform_subs_tenant_month_live_idx').on(t.tenantId, t.forMonth).where(sql`status <> 'CANCELLED'`),
+  providerTxIdx: index('platform_subs_provider_tx_idx').on(t.providerTxId),
 }));
 
 // A center paying the platform by card transfer (platform-billing/card):
@@ -1085,10 +1088,15 @@ export const platformPaymentClaims = pgTable('platform_payment_claims', {
   reviewedByUserId: text('reviewed_by_user_id').references(() => users.id, { onDelete: 'set null' }),
   reviewedAt: timestamp('reviewed_at'),
   subscriptionId: text('subscription_id').references(() => platformSubscriptions.id, { onDelete: 'set null' }),
+  // The browser's key for one "send": a retry with it gets the same receipt back.
+  idempotencyKey: text('idempotency_key'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
 }, (t) => ({
   statusIdx: index('platform_payment_claims_status_idx').on(t.status, t.createdAt),
   tenantIdx: index('platform_payment_claims_tenant_idx').on(t.tenantId),
+  // One receipt waiting per center and month; after a rejection a new one may come.
+  onePending: uniqueIndex('platform_payment_claims_one_pending_idx').on(t.tenantId, t.forMonth).where(sql`status = 'PENDING'`),
+  idemIdx: uniqueIndex('platform_payment_claims_idem_idx').on(t.tenantId, t.idempotencyKey).where(sql`idempotency_key IS NOT NULL`),
 }));
 
 // Integration keys the platform admin enters in the panel (AI, Telegram,

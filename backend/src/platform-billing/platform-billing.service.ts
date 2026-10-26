@@ -1,4 +1,4 @@
-import { ConflictException, Inject, Injectable, Logger, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
+import { Inject, Injectable, Logger, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createHash, timingSafeEqual } from 'crypto';
 import { and, eq } from 'drizzle-orm';
@@ -6,7 +6,7 @@ import { DB, Database } from '../db/db.module';
 import { platformSubscriptions } from '../db/schema';
 import { GeneratePlatformLinkDto } from './dto/platform-billing.dto';
 import { PlansService } from '../plans/plans.service';
-import { applyPayment, reversePayment } from './billing-period';
+import { applyPayment, nextPaymentMonth, openMonthInvoice, PROVIDER_TIMEOUT_MS as PAYME_TIMEOUT_MS, reversePayment } from './billing-period';
 
 function md5(input: string) {
   return createHash('md5').update(input).digest('hex');
@@ -23,8 +23,6 @@ const PAYME = {
   ACCOUNT_NOT_FOUND: -31050,
   ACCOUNT_BUSY: -31051, // another transaction is open for it, or it is paid
 } as const;
-// A Payme transaction not performed within 12 hours is cancelled.
-const PAYME_TIMEOUT_MS = 12 * 3_600_000;
 const CLICK = { SIGN: -1, AMOUNT: -2, ACTION: -3, ALREADY_PAID: -4, NOT_FOUND: -6, CANCELLED: -9 } as const;
 
 /**
@@ -52,26 +50,15 @@ export class PlatformBillingService {
   }
 
   /**
-   * The invoice for this month label, ready for a new payment: a paid one is
-   * never reopened (409 ALREADY_PAID), nor one a provider is paying now.
+   * The invoice for the next month to pay, ready for a provider payment. The
+   * month and the price are the server's (the browser's month is ignored):
+   * see nextPaymentMonth and openMonthInvoice.
    */
   private async openInvoice(tenantId: string, dto: GeneratePlatformLinkDto, provider: 'CLICK' | 'PAYME') {
     const amount = await this.priceFor(dto.plan);
     return this.db.transaction(async (tx) => {
-      const [existing] = await tx.select().from(platformSubscriptions)
-        .where(and(eq(platformSubscriptions.tenantId, tenantId), eq(platformSubscriptions.forMonth, dto.forMonth)))
-        .for('update');
-      if (existing?.status === 'PAID') {
-        throw new ConflictException({ code: 'ALREADY_PAID', message: "Bu oy uchun to'lov allaqachon qilingan" });
-      }
-      if (existing?.status === 'PENDING' && existing.providerCreatedAt && Date.now() - existing.providerCreatedAt.getTime() < PAYME_TIMEOUT_MS) {
-        throw new ConflictException({ code: 'PAYMENT_IN_PROGRESS', message: "Bu oy uchun to'lov hozir amalga oshirilmoqda. Birozdan so'ng urinib ko'ring." });
-      }
-      const fresh = { plan: dto.plan, amount, provider, status: 'CREATED' as const, providerTxId: null, providerCreatedAt: null, cancelledAt: null, cancelReason: null };
-      const [sub] = existing
-        ? await tx.update(platformSubscriptions).set(fresh).where(eq(platformSubscriptions.id, existing.id)).returning()
-        : await tx.insert(platformSubscriptions).values({ tenantId, forMonth: dto.forMonth, ...fresh }).returning();
-      return sub;
+      const forMonth = await nextPaymentMonth(tx, tenantId);
+      return openMonthInvoice(tx, tenantId, forMonth, dto.plan, amount, provider);
     });
   }
 

@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, Get, Param, Post, Query, Res, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, Headers, Param, Post, Query, Res, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import type { Response } from 'express';
 import { unlink } from 'fs/promises';
@@ -19,7 +19,8 @@ class RejectDto {
 
 class ClaimBody {
   @IsString() @MaxLength(60) plan!: string;
-  @IsString() @MaxLength(7) forMonth!: string;
+  // Ignored: the month is the server's (the next month to pay).
+  @IsOptional() @IsString() @MaxLength(7) forMonth?: string;
   @IsOptional() @IsString() @MaxLength(500) note?: string;
 }
 
@@ -43,11 +44,21 @@ export class PlatformCardController {
       fileFilter: (_req, file, cb) => cb(null, RECEIPT_FILE_TYPES.test(file.mimetype)),
     }),
   )
-  async send(@CurrentUser('tenantId') tenantId: string, @CurrentUser('sub') userId: string, @Body() body: ClaimBody, @UploadedFile() file?: Express.Multer.File) {
+  async send(
+    @CurrentUser('tenantId') tenantId: string,
+    @CurrentUser('sub') userId: string,
+    @Body() body: ClaimBody,
+    @Headers('idempotency-key') idempotencyKey?: string,
+    @UploadedFile() file?: Express.Multer.File,
+  ) {
     if (!file) throw new BadRequestException("Chek rasmini (skrinshot) yuklang: JPG, PNG yoki PDF");
     try {
-      return await this.service.submit(tenantId, userId, { plan: body.plan, forMonth: body.forMonth, note: body.note, receiptFile: file.filename });
+      const { claim, replay } = await this.service.submit(tenantId, userId, { plan: body.plan, note: body.note, receiptFile: file.filename, idempotencyKey });
+      // A retried send: the first upload is the receipt; this copy goes.
+      if (replay) await unlink(file.path).catch(() => undefined);
+      return { ...claim, idempotencyKey: undefined, replay };
     } catch (err) {
+      // A refused upload leaves no file behind.
       await unlink(file.path).catch(() => undefined);
       throw err;
     }
@@ -62,8 +73,8 @@ export class PlatformCardAdminController {
   constructor(private readonly service: PlatformCardService) {}
 
   @Get()
-  list(@Query('status') status?: string) {
-    return this.service.list(status);
+  list(@Query('status') status?: string, @Query('page') page?: string, @Query('pageSize') pageSize?: string) {
+    return this.service.list({ status, page: Number(page), pageSize: Number(pageSize) });
   }
 
   @Get(':id/receipt')
