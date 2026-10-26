@@ -4,7 +4,7 @@ import { INestApplication, ValidationPipe } from '@nestjs/common';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { createHash, randomUUID } from 'crypto';
-import { readdirSync, readFileSync } from 'fs';
+import { readdirSync, readFileSync, statSync } from 'fs';
 import { join } from 'path';
 import { and, eq, sql } from 'drizzle-orm';
 import { AppModule } from '../src/app.module.js';
@@ -35,9 +35,13 @@ describe('Paying the platform by card (e2e)', () => {
   // from other suites' uploads in the shared folder.
   const MARK = `pcard-${suffix}`;
   const receipt = () => Buffer.concat([Buffer.from('89504e470d0a1a0a', 'hex'), Buffer.from(MARK)]);
+  // Only files of this suite's exact size, written since it began, are read.
+  const started = Date.now() - 5_000;
   const ourFiles = () => readdirSync(UPLOAD_DIR).filter((f) => {
     try {
-      return readFileSync(join(UPLOAD_DIR, f)).includes(MARK);
+      const path = join(UPLOAD_DIR, f);
+      const st = statSync(path);
+      return st.size === receipt().length && st.mtimeMs >= started && readFileSync(path).includes(MARK);
     } catch {
       return false;
     }
@@ -248,7 +252,7 @@ describe('Paying the platform by card (e2e)', () => {
     await reject(first.id).expect(201);
     const again = (await send(c.auth).expect(201)).body;
     expect(again.forMonth).toBe(first.forMonth);
-  });
+  }, 90_000); // several sign-ups and uploads; slower when the whole suite runs at once
 
   it('early renewal pays for the month the paid time runs out in; an expired one for this month', async () => {
     card();
