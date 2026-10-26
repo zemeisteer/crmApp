@@ -11,10 +11,10 @@ Run locally (the user's standing choice for pasted "cloud" briefs).
 | 1 | Atomic card confirm (one transaction, lock order, idempotent, confirm/reject race, fault injection) | done (`platform-card.e2e-spec.ts`) |
 | 2 | Duplicate receipts (DB constraint + idempotency key), server-side billing period | done (migration 0076, `billing-period.spec.ts`) |
 | 3 | Card vs Click/Payme clashes | done (`openMonthInvoice`, e2e) |
-| 4 | Admin/customer UI (auth/refresh, states, pagination) | todo |
+| 4 | Admin/customer UI (auth/refresh, states, pagination) | done |
 | 5 | trial-purge-outbox audit flake | done: audit written in the deleting transaction (`AuditService.record`) |
-| 6 | Security + four features regression | todo |
-| 7 | Browser E2E for the card flow, competitor backlog | todo |
+| 6 | Security + four features regression | done (isolation test; existing suites green) |
+| 7 | Browser E2E for the card flow, competitor backlog | done (`platform-card.spec.ts`, `BACKLOG.md`) |
 
 ## Findings (confirmed in code)
 
@@ -26,4 +26,4 @@ Run locally (the user's standing choice for pasted "cloud" briefs).
 
 ## Next steps
 
-See the table; each finished step is committed locally on `claude/card-pay-audit`.
+All seven are done; REPORT.md has the results, the limits and what to do next.

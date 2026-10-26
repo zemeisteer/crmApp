@@ -107,7 +107,7 @@ Fayllar:
 | Migratsiya: bo'sh bazadan oxirgisigacha | o'tdi |
 | Migratsiya: eski sxemadan (dev baza 0075 → 0076) | o'tdi |
 | Migratsiya: takroriy PENDING cheklar ustida | aniq xabar bilan to'xtadi, ma'lumot o'chmadi. Hal qilingach ikki marta o'tdi |
-| Brauzer (Playwright, butun to'plam) | BROWSER_RESULT |
+| Brauzer (Playwright, butun to'plam, 66 test) | 65 o'tdi, 1 yiqildi: `sprint5-account` testi oynani Click usulida kutardi, endi esa karta bor bo'lsa oyna karta usuli bilan ochiladi. Testda Click aniq tanlab qo'yildi, maqsadi o'zgarmadi. Tariflar bilan bog'liq 4 fayl qayta yugurildi: 14/14 |
 
 ## Brauzerda tekshirilgan sahifa va tugmalar
 
@@ -160,4 +160,6 @@ Test akkauntlari brauzer testlarida har safar yangidan yaratiladi (`zzbr-*`, alo
 
 ## Patch
 
-`PATCH_LOCATION`
+- **Bitta diff:** `C:\Users\user\Documents\GitHub\crmApp-dev\card-pay-audit.diff` (`5d4aa37..claude/card-pay-audit`)
+- **Commitlar bo'yicha:** `C:\Users\user\Documents\GitHub\crmApp-dev\card-pay-audit-patches\` (`git am` bilan qo'llanadi)
+- **Lokal branch:** `claude/card-pay-audit` (push qilinmagan)
