@@ -33,6 +33,8 @@ export const INTEGRATIONS: IntegrationDef[] = [
   { id: 'sms', group: 'messaging', keys: [s('ESKIZ_API_TOKEN'), v('ESKIZ_SENDER'), s('PLAYMOBILE_API_TOKEN'), v('PLAYMOBILE_ORIGINATOR')], need: [['ESKIZ_API_TOKEN'], ['PLAYMOBILE_API_TOKEN']] },
   { id: 'platformClick', group: 'payments', keys: [v('PLATFORM_CLICK_MERCHANT_ID'), v('PLATFORM_CLICK_SERVICE_ID'), s('PLATFORM_CLICK_SECRET_KEY')], need: [['PLATFORM_CLICK_MERCHANT_ID', 'PLATFORM_CLICK_SERVICE_ID', 'PLATFORM_CLICK_SECRET_KEY']] },
   { id: 'platformPayme', group: 'payments', keys: [v('PLATFORM_PAYME_MERCHANT_ID'), s('PLATFORM_PAYME_KEY')], need: [['PLATFORM_PAYME_MERCHANT_ID', 'PLATFORM_PAYME_KEY']] },
+  // The card centers pay the platform to by transfer (a receipt the platform admin confirms).
+  { id: 'platformCard', group: 'payments', keys: [v('PLATFORM_CARD_NUMBER'), v('PLATFORM_CARD_HOLDER')], need: [['PLATFORM_CARD_NUMBER', 'PLATFORM_CARD_HOLDER']] },
   { id: 'centerClick', group: 'payments', keys: [v('CLICK_MERCHANT_ID'), v('CLICK_SERVICE_ID'), s('CLICK_SECRET_KEY')], need: [['CLICK_MERCHANT_ID', 'CLICK_SERVICE_ID', 'CLICK_SECRET_KEY']] },
   { id: 'centerPayme', group: 'payments', keys: [v('PAYME_MERCHANT_ID'), s('PAYME_KEY')], need: [['PAYME_MERCHANT_ID', 'PAYME_KEY']] },
   { id: 'googleCalendar', group: 'other', keys: [v('GOOGLE_CLIENT_ID'), s('GOOGLE_CLIENT_SECRET'), v('GOOGLE_REDIRECT_URI')], need: [['GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET', 'GOOGLE_REDIRECT_URI']], restart: true },

@@ -22,6 +22,8 @@ export const ALWAYS_OPEN = [
   /^[A-Z]+ \/api\/auth\//,
   /^GET \/api\/plans(\/public)?$/,
   /^POST \/api\/platform-billing\/(click|payme)\/link$/,
+  // Paying by card: the card and the receipt (a locked center must be able to pay).
+  /^(GET|POST) \/api\/platform-billing\/card$/,
   /^GET \/api\/tenants\/me\/export$/,
   /^DELETE \/api\/tenants\/me$/,
 ];

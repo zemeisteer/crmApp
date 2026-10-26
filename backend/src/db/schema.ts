@@ -1068,6 +1068,29 @@ export const platformSubscriptions = pgTable('platform_subscriptions', {
   uniq: uniqueIndex('platform_subs_tenant_month_idx').on(t.tenantId, t.forMonth),
 }));
 
+// A center paying the platform by card transfer (platform-billing/card):
+// the receipt waits for the platform admin, whose "confirm" records the
+// month paid through the same path as Click/Payme (subscriptionId).
+export const platformPaymentClaims = pgTable('platform_payment_claims', {
+  id: text('id').primaryKey().$defaultFn(() => createId()),
+  tenantId: text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  plan: text('plan').notNull(),
+  forMonth: text('for_month').notNull(),
+  amount: integer('amount').notNull(),
+  receiptFile: text('receipt_file').notNull(),
+  note: text('note'),
+  sentByUserId: text('sent_by_user_id').references(() => users.id, { onDelete: 'set null' }),
+  status: text('status').notNull().default('PENDING'), // PENDING | CONFIRMED | REJECTED
+  rejectReason: text('reject_reason'),
+  reviewedByUserId: text('reviewed_by_user_id').references(() => users.id, { onDelete: 'set null' }),
+  reviewedAt: timestamp('reviewed_at'),
+  subscriptionId: text('subscription_id').references(() => platformSubscriptions.id, { onDelete: 'set null' }),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+}, (t) => ({
+  statusIdx: index('platform_payment_claims_status_idx').on(t.status, t.createdAt),
+  tenantIdx: index('platform_payment_claims_tenant_idx').on(t.tenantId),
+}));
+
 // Integration keys the platform admin enters in the panel (AI, Telegram,
 // payment providers...). The value is sealed with AES-256-GCM under
 // SETTINGS_KEY, which lives only in the server's environment: a copy of the
