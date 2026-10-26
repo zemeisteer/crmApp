@@ -63,9 +63,9 @@ export class FilesService {
   // ---- references ---------------------------------------------------------
 
   /** Records that `name` belongs to a record (idempotent). */
-  async register(tenantId: string, name: string | null | undefined, kind: FileKind, ownerId: string, studentId?: string | null) {
+  async register(tenantId: string, name: string | null | undefined, kind: FileKind, ownerId: string, studentId?: string | null, tx: Pick<Database, 'insert'> = this.db) {
     if (!isStoredFileName(name)) return;
-    await this.db.insert(fileRefs).values({ tenantId, name, kind, ownerId, studentId: studentId ?? null }).onConflictDoNothing();
+    await tx.insert(fileRefs).values({ tenantId, name, kind, ownerId, studentId: studentId ?? null }).onConflictDoNothing();
   }
 
   /** Drops the references of a record (its file was replaced or the record removed). */

@@ -1,5 +1,6 @@
 // Read-only consistency check of platform billing (centers paying the
-// platform: card receipts, Click, Payme, payments by hand). It only reads
+// platform: card receipts, Click, Payme, payments by hand) and of students'
+// card receipts at their centers (receipt <-> payment). It only reads
 // and reports; it never changes a row - money records are fixed by a
 // person who has looked at them, not by a guess.
 //
@@ -62,6 +63,54 @@ export const CHECKS: Check[] = [
     why: 'One provider transaction id on more than one invoice.',
     sql: `select provider, provider_tx_id, count(*)::int as n from platform_subscriptions
            where provider_tx_id is not null group by provider, provider_tx_id having count(*) > 1`,
+  },
+  // ---- students' card receipts at their center (payment_claims) ----
+  {
+    name: 'student_receipt_rejected_with_payment',
+    why: "A student's card receipt is REJECTED but a payment was recorded for it (money counted as received for a refused receipt).",
+    sql: `select c.id as claim_id, c.tenant_id, c.student_id, p.id as payment_id, p.status as payment_status, p.amount
+            from payment_claims c join payments p on p.tenant_id = c.tenant_id and p.idempotency_key = 'card-claim:' || c.id
+           where c.status = 'REJECTED'`,
+  },
+  {
+    name: 'student_receipt_pending_with_payment',
+    why: "A student's card receipt still waits, but a payment was already recorded for it (a confirm stopped half way, before the fix). Confirming it links that payment.",
+    sql: `select c.id as claim_id, c.tenant_id, c.student_id, p.id as payment_id, p.amount
+            from payment_claims c join payments p on p.tenant_id = c.tenant_id and p.idempotency_key = 'card-claim:' || c.id
+           where c.status = 'PENDING'`,
+  },
+  {
+    name: 'student_receipt_confirmed_without_payment',
+    why: "A student's card receipt is CONFIRMED but has no PAID payment of its own.",
+    sql: `select c.id as claim_id, c.tenant_id, c.student_id, c.payment_id, p.status as payment_status
+            from payment_claims c left join payments p on p.id = c.payment_id
+           where c.status = 'CONFIRMED' and (p.id is null or p.status <> 'PAID')`,
+  },
+  {
+    name: 'student_receipt_payment_mismatch',
+    why: "A confirmed receipt and its payment disagree: amount, student, center, or the payment is not the receipt's own.",
+    sql: `select c.id as claim_id, c.tenant_id, c.amount as claim_amount, p.amount as payment_amount, p.student_id, c.student_id as claim_student, p.idempotency_key
+            from payment_claims c join payments p on p.id = c.payment_id
+           where c.status = 'CONFIRMED'
+             and (p.amount <> c.amount or p.student_id <> c.student_id or p.tenant_id <> c.tenant_id
+                  or p.idempotency_key is distinct from 'card-claim:' || c.id)`,
+  },
+  {
+    name: 'student_receipt_two_payments',
+    why: 'More than one payment points at one receipt.',
+    sql: `select payment_id, count(*)::int as n from payment_claims where payment_id is not null group by payment_id having count(*) > 1`,
+  },
+  {
+    name: 'payment_allocated_beyond_amount',
+    why: 'A payment is spread over invoices for more than its own amount.',
+    sql: `select p.id as payment_id, p.tenant_id, p.amount, sum(a.amount)::int as allocated
+            from payments p join payment_allocations a on a.payment_id = p.id
+           group by p.id, p.tenant_id, p.amount having sum(a.amount) > p.amount`,
+  },
+  {
+    name: 'payment_messages_failed',
+    why: 'Payment messages (receipt sent / confirmed / rejected) that the outbox gave up on: see GET /api/platform/notice-outbox?status=FAILED.',
+    sql: `select kind, channel, count(*)::int as n, max(last_error) as an_error from notice_outbox where status = 'FAILED' group by kind, channel`,
   },
 ];
 

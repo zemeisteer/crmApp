@@ -1090,6 +1090,11 @@ export const platformPaymentClaims = pgTable('platform_payment_claims', {
   subscriptionId: text('subscription_id').references(() => platformSubscriptions.id, { onDelete: 'set null' }),
   // The browser's key for one "send": a retry with it gets the same receipt back.
   idempotencyKey: text('idempotency_key'),
+  // What that send carried: sha256 of [plan, note, receipt content hash]. The
+  // same key with other content is a conflict, never the old receipt.
+  requestHash: text('request_hash'),
+  // sha256 of the receipt file's bytes (not of its random stored name).
+  receiptSha256: text('receipt_sha256'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
 }, (t) => ({
   statusIdx: index('platform_payment_claims_status_idx').on(t.status, t.createdAt),
@@ -1097,6 +1102,38 @@ export const platformPaymentClaims = pgTable('platform_payment_claims', {
   // One receipt waiting per center and month; after a rejection a new one may come.
   onePending: uniqueIndex('platform_payment_claims_one_pending_idx').on(t.tenantId, t.forMonth).where(sql`status = 'PENDING'`),
   idemIdx: uniqueIndex('platform_payment_claims_idem_idx').on(t.tenantId, t.idempotencyKey).where(sql`idempotency_key IS NOT NULL`),
+}));
+
+// Messages about payments (a receipt sent, confirmed, rejected), written in
+// the same transaction as the change they announce and sent afterwards by
+// a worker (notice-outbox/): a rollback leaves no message, a crash after the
+// commit loses none. One row per recipient and channel, so one failure never
+// holds back the others. PENDING -> SENDING (one worker holds it until
+// lockedUntil) -> SENT, or back to PENDING with a later nextAttemptAt, or
+// FAILED after the last attempt (kept for the platform admin to see and retry).
+export const noticeOutbox = pgTable('notice_outbox', {
+  id: text('id').primaryKey().$defaultFn(() => createId()),
+  tenantId: text('tenant_id').references(() => tenants.id, { onDelete: 'cascade' }),
+  // What it announces, e.g. card_claim.confirmed (for the admin's list).
+  kind: text('kind').notNull(),
+  // TELEGRAM (recipient: chat id) | EMAIL (recipient: address)
+  channel: text('channel').notNull(),
+  recipient: text('recipient').notNull(),
+  subject: text('subject'),
+  body: text('body').notNull(),
+  // One message per occasion and recipient: enqueueing it twice is a no-op.
+  dedupeKey: text('dedupe_key').notNull(),
+  status: text('status').notNull().default('PENDING'),
+  attempts: integer('attempts').notNull().default(0),
+  lastError: text('last_error'),
+  providerMessageId: text('provider_message_id'),
+  lockedUntil: timestamp('locked_until'),
+  nextAttemptAt: timestamp('next_attempt_at').notNull().defaultNow(),
+  sentAt: timestamp('sent_at'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+}, (t) => ({
+  dedupeIdx: uniqueIndex('notice_outbox_dedupe_idx').on(t.dedupeKey),
+  dueIdx: index('notice_outbox_due_idx').on(t.status, t.nextAttemptAt),
 }));
 
 // Integration keys the platform admin enters in the panel (AI, Telegram,

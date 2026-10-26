@@ -168,7 +168,13 @@ function ClaimModal({ claim, canDecide, onClose, onDone }: { claim: CardClaim; c
                   type="button"
                   className="btn"
                   disabled={busy || !(Number(amount) >= 1000)}
-                  onClick={() => run(() => cardPaymentsApi.confirm(claim.id, Number(amount)))}
+                  onClick={() =>
+                    run(async () => {
+                      const r = await cardPaymentsApi.confirm(claim.id, Number(amount));
+                      // A payment the earlier code had already recorded: its amount stands.
+                      if (r.adopted && r.amount !== Number(amount)) window.alert(t("cc.adopted").replace("{amount}", money(r.amount)));
+                    })
+                  }
                   style={{ background: "#16794A", color: "#fff", border: "none", fontSize: 13.5, fontWeight: 700, padding: "10px 18px", borderRadius: 9 }}
                 >
                   ✓ {t("cc.confirm").replace("{amount}", money(Number(amount) || 0))}

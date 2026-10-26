@@ -566,6 +566,34 @@ export class TelegramService {
     }
   }
 
+  /**
+   * Like sendMessage, but says what happened, for messages a worker retries
+   * (notice-outbox/). Never throws and never logs the text or the token.
+   * `permanent`: Telegram refused this chat for good (blocked the bot, no
+   * such chat) - a retry would not help. Telegram has no idempotency key: a
+   * message whose answer was lost may arrive twice.
+   */
+  async deliverMessage(chatId: string, text: string): Promise<{ ok: boolean; messageId?: string; error?: string; permanent?: boolean }> {
+    if (!this.token) return { ok: false, error: 'NOT_CONFIGURED', permanent: true };
+    try {
+      const res = await fetch(`https://api.telegram.org/bot${this.token}/sendMessage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'HTML' }),
+        signal: AbortSignal.timeout(15_000),
+      });
+      if (!res.ok) {
+        const body = (await res.json().catch(() => null)) as { description?: string } | null;
+        const why = (body?.description ?? '').slice(0, 120);
+        return { ok: false, error: `telegram ${res.status}${why ? `: ${why}` : ''}`, permanent: res.status === 400 || res.status === 403 };
+      }
+      const body = (await res.json().catch(() => null)) as { result?: { message_id?: number } } | null;
+      return { ok: true, messageId: body?.result?.message_id != null ? String(body.result.message_id) : undefined };
+    } catch (err) {
+      return { ok: false, error: `telegram: ${(err as Error).name === 'TimeoutError' ? 'timeout' : (err as Error).message.replaceAll(this.token, '***')}` };
+    }
+  }
+
   async sendPhoto(chatId: string, photoBuffer: Buffer, caption?: string) {
     if (!this.token) {
       this.logger.warn('TELEGRAM_BOT_TOKEN not set — skipping sendPhoto');

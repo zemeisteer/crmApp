@@ -60,6 +60,7 @@ import { InvitationsModule } from './invitations/invitations.module';
 import { SubjectsModule } from './subjects/subjects.module';
 import { OnboardingModule } from './onboarding/onboarding.module';
 import { InvoicesModule } from './invoices/invoices.module';
+import { NoticeOutboxModule } from './notice-outbox/notice-outbox.module';
 
 @Module({
   imports: [
@@ -73,6 +74,7 @@ import { InvoicesModule } from './invoices/invoices.module';
     WebhooksModule,
     FeatureFlagsModule,
     TelegramModule,
+    NoticeOutboxModule,
     AuthModule,
     TenantsModule,
     CustomDomainsModule,

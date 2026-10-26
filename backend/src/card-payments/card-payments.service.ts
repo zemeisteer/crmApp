@@ -1,11 +1,12 @@
-import { BadRequestException, ConflictException, Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { and, count, desc, eq, inArray } from 'drizzle-orm';
 import { AuditService } from '../audit/audit.service';
 import { DB, Database } from '../db/db.module';
-import { invoices, organizationMemberships, paymentClaims, students, tenants, users } from '../db/schema';
+import { invoices, organizationMemberships, paymentClaims, payments, students, telegramParentChats, tenants, users } from '../db/schema';
 import { FilesService } from '../files/files.service';
-import { PaymentsService } from '../payments/payments.service';
-import { TelegramService } from '../telegram/telegram.service';
+import { CARD_CLAIM_KEY, PaymentsService } from '../payments/payments.service';
+import { LedgerTx } from '../payments/allocation';
+import { Notice, NoticeOutboxService } from '../notice-outbox/notice-outbox.service';
 import { MAX_MONEY } from '../common/money';
 
 /** Pending receipts one student may have at a time (a guard against a stuck double-send). */
@@ -25,14 +26,12 @@ export const groupCard = (digits: string) => digits.replace(/(\d{4})(?=\d)/g, '$
  */
 @Injectable()
 export class CardPaymentsService {
-  private readonly logger = new Logger(CardPaymentsService.name);
-
   constructor(
     @Inject(DB) private readonly db: Database,
     private readonly payments: PaymentsService,
     private readonly files: FilesService,
-    private readonly telegram: TelegramService,
     private readonly audit: AuditService,
+    private readonly outbox: NoticeOutboxService,
   ) {}
 
   // ---- the center's card ----
@@ -109,19 +108,23 @@ export class CardPaymentsService {
       .where(and(eq(paymentClaims.tenantId, tenantId), eq(paymentClaims.studentId, studentId), eq(paymentClaims.status, 'PENDING')));
     if (n >= MAX_PENDING_CLAIMS) throw new ConflictException("Avvalgi cheklaringiz hali tekshirilmagan. Markaz tasdiqlashini kuting.");
 
-    const [claim] = await this.db
-      .insert(paymentClaims)
-      .values({ tenantId, studentId, invoiceId, amount, forMonth, receiptFile: dto.receiptFile, note: dto.note?.trim().slice(0, 500) || null, sentBy })
-      .returning();
-    await this.files.register(tenantId, dto.receiptFile, 'PAYMENT_RECEIPT', claim.id, studentId);
-    // Told in the background: a Telegram hiccup never loses the receipt.
-    void this.tellStaff(tenantId, student.fullName, amount, forMonth, sentBy).catch((err) => this.logger.warn(`card claim notice: ${(err as Error).message}`));
+    // The receipt, its file reference and the staff's messages: one commit.
+    const claim = await this.db.transaction(async (tx) => {
+      const [row] = await tx
+        .insert(paymentClaims)
+        .values({ tenantId, studentId, invoiceId, amount, forMonth, receiptFile: dto.receiptFile, note: dto.note?.trim().slice(0, 500) || null, sentBy })
+        .returning();
+      await this.files.register(tenantId, dto.receiptFile, 'PAYMENT_RECEIPT', row.id, studentId, tx);
+      await this.outbox.enqueue(tx, await this.staffNotices(tx, tenantId, row.id, student.fullName, amount, forMonth, sentBy));
+      return row;
+    });
+    void this.outbox.kick();
     return claim;
   }
 
-  /** Owners, admins and accountants linked to the bot hear of a new receipt at once. */
-  private async tellStaff(tenantId: string, studentName: string, amount: number, forMonth: string, sentBy: string) {
-    const staff = await this.db
+  /** Owners, admins and accountants linked to the bot hear of a new receipt (one message each). */
+  private async staffNotices(tx: LedgerTx, tenantId: string, claimId: string, studentName: string, amount: number, forMonth: string, sentBy: string): Promise<Notice[]> {
+    const staff = await tx
       .select({ chat: users.telegramChatId })
       .from(users)
       .innerJoin(organizationMemberships, and(eq(organizationMemberships.userId, users.id), eq(organizationMemberships.tenantId, tenantId)))
@@ -133,9 +136,16 @@ export class CardPaymentsService {
       '',
       `Chekni tekshirib tasdiqlang: TalimCRM → To'lovlar → "Karta to'lovlari".`,
     ].join('\n');
-    for (const chat of new Set(staff.map((s) => s.chat).filter((c): c is string => Boolean(c)))) {
-      await this.telegram.sendMessage(chat, text);
-    }
+    const chats = new Set(staff.map((s) => s.chat).filter((c): c is string => Boolean(c)));
+    return [...chats].map((chat) => ({ tenantId, kind: 'card_claim.new', channel: 'TELEGRAM' as const, recipient: chat, body: text, dedupeKey: `card_claim.new:${claimId}:tg:${chat}` }));
+  }
+
+  /** The student's own chat and every linked parent's (as TelegramService.notifyStudent reaches them). */
+  private async studentNotices(tx: LedgerTx, tenantId: string, studentId: string, kind: string, claimId: string, text: string): Promise<Notice[]> {
+    const [st] = await tx.select({ chat: students.telegramChatId }).from(students).where(eq(students.id, studentId));
+    const parents = await tx.select({ chat: telegramParentChats.chatId }).from(telegramParentChats).where(eq(telegramParentChats.studentId, studentId));
+    const chats = new Set([st?.chat, ...parents.map((p) => p.chat)].filter((c): c is string => Boolean(c)));
+    return [...chats].map((chat) => ({ tenantId, kind, channel: 'TELEGRAM' as const, recipient: chat, body: text, dedupeKey: `${kind}:${claimId}:tg:${chat}` }));
   }
 
   // ---- staff ----
@@ -168,54 +178,100 @@ export class CardPaymentsService {
   /**
    * Confirms the receipt: it becomes a payment (by transfer) for the month or
    * invoice it was sent for, at the amount the staff member saw on the
-   * receipt. The receipt row is locked for the whole decision (a second
-   * confirm or a reject waits, then sees it decided). The payment is made
-   * first, keyed by the receipt: if the process stops before the receipt
-   * is marked, a retry finds that same payment (the key) and finishes -
-   * never a receipt "confirmed" with no payment, never two payments.
+   * receipt. ONE transaction holds the receipt's row lock, the payment, its
+   * invoice allocations, the receipt's new state, both audit rows and the
+   * student's message (outbox): a failure anywhere leaves none of them, so
+   * a receipt is never PENDING beside a payment made for it, and a reject
+   * that comes next finds nothing paid. A second confirm or a reject waits
+   * for the lock, then sees the decision.
+   *
+   * Receipts left PENDING with a payment by the earlier code (which saved
+   * the payment in a transaction of its own) are taken over: confirm links
+   * that payment (its amount stands), reject is refused.
    */
   async confirm(tenantId: string, userId: string, id: string, amountSeen?: number) {
     const out = await this.db.transaction(async (tx) => {
-      const [c] = await tx.select().from(paymentClaims).where(and(eq(paymentClaims.id, id), eq(paymentClaims.tenantId, tenantId))).for('update');
-      if (!c) throw new NotFoundException("To'lov topilmadi");
-      if (c.status !== 'PENDING') throw new ConflictException(c.status === 'CONFIRMED' ? "Bu to'lov allaqachon tasdiqlangan" : "Bu to'lov rad etilgan");
+      const c = await this.lockPending(tx, tenantId, id);
       const amount = amountSeen && amountSeen > 0 ? Math.round(amountSeen) : c.amount;
-      const payment = (await this.payments.create(
-        tenantId,
-        { studentId: c.studentId, amount, method: 'BANK_TRANSFER', forMonth: c.forMonth, ...(c.invoiceId ? { invoiceId: c.invoiceId } : {}) },
-        userId,
-        `card-claim:${c.id}`,
-      )) as { id: string };
+      if (amount > MAX_MONEY) throw new BadRequestException("To'lov summasi juda katta");
+      const orphan = await this.paymentOf(tx, tenantId, id);
+      let paymentId: string;
+      let made: typeof payments.$inferSelect | null = null;
+      let finalAmount = amount;
+      if (orphan) {
+        paymentId = orphan.id;
+        finalAmount = orphan.amount;
+      } else {
+        const created = await this.payments.createInTx(
+          tx,
+          tenantId,
+          { studentId: c.studentId, amount, method: 'BANK_TRANSFER', forMonth: c.forMonth, ...(c.invoiceId ? { invoiceId: c.invoiceId } : {}) },
+          userId,
+          `${CARD_CLAIM_KEY}${c.id}`,
+        );
+        // The key is checked under the ledger lock above: no payment of this receipt exists.
+        if ('replayOf' in created) throw new ConflictException("Bu chek bo'yicha to'lov allaqachon yozilgan");
+        made = created.payment;
+        paymentId = made.id;
+      }
       await tx
         .update(paymentClaims)
-        .set({ status: 'CONFIRMED', reviewedByUserId: userId, reviewedAt: new Date(), amount, paymentId: payment.id })
+        .set({ status: 'CONFIRMED', reviewedByUserId: userId, reviewedAt: new Date(), amount: finalAmount, paymentId })
         .where(eq(paymentClaims.id, id));
-      await this.audit.record(tx, { tenantId, userId, action: 'update', entityType: 'payment_claim', entityId: id, meta: { confirmed: payment.id, amount } });
-      return { c, amount, paymentId: payment.id };
+      await this.audit.record(tx, {
+        tenantId,
+        userId,
+        action: 'update',
+        entityType: 'payment_claim',
+        entityId: id,
+        meta: { confirmed: paymentId, amount: finalAmount, ...(orphan ? { adoptedPayment: true, amountSeen: amount } : {}) },
+      });
+      const text = `✅ Karta orqali ${money(finalAmount)} so'm to'lovingiz tasdiqlandi (${c.forMonth}). Rahmat!`;
+      await this.outbox.enqueue(tx, await this.studentNotices(tx, tenantId, c.studentId, 'card_claim.confirmed', id, text));
+      return { paymentId, made, amount: finalAmount, adopted: !!orphan };
     });
-    void this.telegram
-      .notifyStudent(out.c.studentId, `✅ Karta orqali ${money(out.amount)} so'm to'lovingiz tasdiqlandi (${out.c.forMonth}). Rahmat!`)
-      .catch(() => undefined);
-    return { id, status: 'CONFIRMED', paymentId: out.paymentId };
+    // Only now, after the commit.
+    if (out.made) this.payments.afterCommit(tenantId, out.made);
+    void this.outbox.kick();
+    return { id, status: 'CONFIRMED', paymentId: out.paymentId, amount: out.amount, ...(out.adopted ? { adopted: true } : {}) };
   }
 
   async reject(tenantId: string, userId: string, id: string, reason: string) {
     const why = reason.trim().slice(0, 300);
     if (!why) throw new BadRequestException('Rad etish sababini yozing');
-    const c = await this.db.transaction(async (tx) => {
-      const [row] = await tx.select().from(paymentClaims).where(and(eq(paymentClaims.id, id), eq(paymentClaims.tenantId, tenantId))).for('update');
-      if (!row) throw new NotFoundException("To'lov topilmadi");
-      if (row.status !== 'PENDING') throw new ConflictException(row.status === 'CONFIRMED' ? "Bu to'lov allaqachon tasdiqlangan" : "Bu to'lov rad etilgan");
+    await this.db.transaction(async (tx) => {
+      const row = await this.lockPending(tx, tenantId, id);
+      // A payment made for it (by the earlier code, before a stop): money was
+      // recorded, so the receipt can only be confirmed - never PAID beside REJECTED.
+      if (await this.paymentOf(tx, tenantId, id)) {
+        throw new ConflictException({ code: 'PAYMENT_EXISTS', message: "Bu chek bo'yicha to'lov allaqachon yozilgan: uni rad etib bo'lmaydi, tasdiqlang" });
+      }
       await tx
         .update(paymentClaims)
         .set({ status: 'REJECTED', rejectReason: why, reviewedByUserId: userId, reviewedAt: new Date() })
         .where(eq(paymentClaims.id, id));
       await this.audit.record(tx, { tenantId, userId, action: 'update', entityType: 'payment_claim', entityId: id, meta: { rejected: why } });
-      return row;
+      const text = `❌ Karta orqali ${money(row.amount)} so'm to'lov tasdiqlanmadi: ${escape(why)}. Savol bo'lsa, markazga murojaat qiling.`;
+      await this.outbox.enqueue(tx, await this.studentNotices(tx, tenantId, row.studentId, 'card_claim.rejected', id, text));
     });
-    void this.telegram
-      .notifyStudent(c.studentId, `❌ Karta orqali ${money(c.amount)} so'm to'lov tasdiqlanmadi: ${escape(why)}. Savol bo'lsa, markazga murojaat qiling.`)
-      .catch(() => undefined);
+    void this.outbox.kick();
     return { id, status: 'REJECTED' };
+  }
+
+  /** The receipt, row-locked for the decision; only a PENDING one may be decided. */
+  private async lockPending(tx: LedgerTx, tenantId: string, id: string) {
+    const [c] = await tx.select().from(paymentClaims).where(and(eq(paymentClaims.id, id), eq(paymentClaims.tenantId, tenantId))).for('update');
+    if (!c) throw new NotFoundException("To'lov topilmadi");
+    if (c.status !== 'PENDING') throw new ConflictException(c.status === 'CONFIRMED' ? "Bu to'lov allaqachon tasdiqlangan" : "Bu to'lov rad etilgan");
+    return c;
+  }
+
+  /** The payment made for this receipt, if any (by its key). */
+  private async paymentOf(tx: LedgerTx, tenantId: string, claimId: string) {
+    const [p] = await tx
+      .select()
+      .from(payments)
+      .where(and(eq(payments.tenantId, tenantId), eq(payments.idempotencyKey, `${CARD_CLAIM_KEY}${claimId}`)));
+    return p;
   }
 }

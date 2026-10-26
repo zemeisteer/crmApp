@@ -2121,7 +2121,7 @@ export const cardPaymentsApi = {
     request<{ card: { number: string; holder: string } | null }>("/card-payments/card", { method: "PUT", body: JSON.stringify(data) }),
   claims: (status?: CardClaimStatus) => request<{ pending: number; items: CardClaim[] }>(`/card-payments/claims${status ? `?status=${status}` : ""}`),
   confirm: (id: string, amount?: number) =>
-    request<{ id: string; status: string; paymentId: string }>(`/card-payments/claims/${id}/confirm`, { method: "POST", body: JSON.stringify(amount ? { amount } : {}) }),
+    request<{ id: string; status: string; paymentId: string; amount: number; adopted?: boolean }>(`/card-payments/claims/${id}/confirm`, { method: "POST", body: JSON.stringify(amount ? { amount } : {}) }),
   reject: (id: string, reason: string) =>
     request<{ id: string; status: string }>(`/card-payments/claims/${id}/reject`, { method: "POST", body: JSON.stringify({ reason }) }),
 };

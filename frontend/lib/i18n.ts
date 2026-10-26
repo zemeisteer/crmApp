@@ -3324,6 +3324,7 @@ export const dict = {
   "cc.openPdf": { UZ: "PDF chekni ochish", RU: "Открыть PDF-чек", EN: "Open the PDF receipt" },
   "cc.openFull": { UZ: "To'liq hajmda ochish", RU: "Открыть в полном размере", EN: "Open full size" },
   "cc.receipt": { UZ: "To'lov cheki", RU: "Чек об оплате", EN: "Payment receipt" },
+  "cc.adopted": { UZ: "Bu chek bo'yicha to'lov avvalroq yozilgan ekan ({amount} so'm). Chek shu to'lovga bog'landi; summani tuzatish kerak bo'lsa, To'lovlar bo'limida tuzating.", RU: "По этому чеку платёж уже был записан ранее ({amount} сум). Чек привязан к нему; если сумма неверна, исправьте её в разделе «Платежи».", EN: "A payment for this receipt had already been recorded ({amount} sum). The receipt is linked to it; if the amount is wrong, correct it under Payments." },
   "cc.checkHint": { UZ: "Bank ilovangizda shu summa shu kuni kelganini tekshiring. Chekdagi summa boshqacha bo'lsa, to'g'risini yozing.", RU: "Проверьте в банковском приложении, что эта сумма пришла в этот день. Если сумма в чеке другая, укажите верную.", EN: "Check in your bank app that this amount arrived that day. If the receipt shows a different amount, type the right one." },
   "cc.amountSeen": { UZ: "Kelgan summa (so'm)", RU: "Поступившая сумма (сум)", EN: "Amount received (UZS)" },
   "cc.confirm": { UZ: "Tasdiqlash: {amount} so'm", RU: "Подтвердить: {amount} сум", EN: "Confirm: {amount} UZS" },

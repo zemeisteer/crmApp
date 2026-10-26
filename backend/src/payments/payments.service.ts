@@ -15,6 +15,11 @@ import { AuditService } from '../audit/audit.service';
 
 const MONTH = /^[0-9]{4}-(0[1-9]|1[0-2])$/;
 
+/** The idempotency key prefix of payments made by confirming a card receipt. */
+export const CARD_CLAIM_KEY = 'card-claim:';
+
+export type CreatedPayment = { payment: typeof payments.$inferSelect; invoiceIds: string[] } | { replayOf: string };
+
 // node-postgres error, possibly wrapped by drizzle.
 function isUniqueViolation(err: unknown, constraint: string) {
   const top = err as { code?: string; constraint?: string; cause?: { code?: string; constraint?: string } };
@@ -184,8 +189,58 @@ export class PaymentsService {
   // invoices' row locks make two cashiers (or one double click) work one
   // after the other, each from the balance the other left; the idempotency
   // key makes a retried request return the first payment instead of a
-  // second one. Notifications go out only after the commit.
+  // second one. The audit row is part of the transaction; notifications go
+  // out only after the commit.
   async create(tenantId: string, dto: CreatePaymentDto, userId?: string, headerKey?: string) {
+    const key = (dto.idempotencyKey ?? headerKey)?.trim() || null;
+    // Keys of this form belong to card receipts (card-payments.service.ts).
+    if (key?.startsWith(CARD_CLAIM_KEY)) throw new BadRequestException("Idempotency-Key noto'g'ri");
+    let created: CreatedPayment;
+    try {
+      created = await this.db.transaction((tx) => this.createInTx(tx, tenantId, dto, userId, headerKey));
+    } catch (err) {
+      // The same key used at the same moment for another student: the
+      // unique index stopped the second insert.
+      if (key && isUniqueViolation(err, 'payments_tenant_idem_uniq')) {
+        const replayOf = await this.replayOf(this.db, tenantId, key, this.requestHash(dto, key));
+        if (replayOf) return this.findOne(tenantId, replayOf);
+      }
+      throw err;
+    }
+    // A retry gets the first payment back; nothing is sent twice.
+    if ('replayOf' in created) return this.findOne(tenantId, created.replayOf);
+    this.afterCommit(tenantId, created.payment);
+    // With the student and groups, so the receipt shown right after saving
+    // has a name and a course instead of an id.
+    return this.findOne(tenantId, created.payment.id);
+  }
+
+  private requestHash(dto: CreatePaymentDto, key: string | null) {
+    if (!key) return null;
+    const discount = dto.discount ?? 0;
+    return createHash('sha256')
+      .update(JSON.stringify([dto.studentId, dto.amount, discount, dto.method ?? 'CASH', dto.status ?? 'PAID', dto.forMonth, dto.invoiceId ?? null, dto.paidAt ?? null]))
+      .digest('hex');
+  }
+
+  private async replayOf(db: Database | LedgerTx, tenantId: string, key: string, requestHash: string | null) {
+    const [prior] = await db
+      .select({ id: payments.id, requestHash: payments.requestHash })
+      .from(payments)
+      .where(and(eq(payments.tenantId, tenantId), eq(payments.idempotencyKey, key)));
+    if (!prior) return null;
+    if (prior.requestHash !== requestHash) {
+      throw new ConflictException("Bu Idempotency-Key boshqa to'lov uchun ishlatilgan");
+    }
+    return prior.id;
+  }
+
+  /**
+   * The payment, its invoice allocations and its audit row, in the caller's
+   * transaction (a card receipt's confirmation adds its own rows to the same
+   * one). Sends nothing: after the commit the caller calls afterCommit().
+   */
+  async createInTx(tx: LedgerTx, tenantId: string, dto: CreatePaymentDto, userId?: string, headerKey?: string): Promise<CreatedPayment> {
     const discount = dto.discount ?? 0;
     if (discount < 0) throw new BadRequestException("Chegirma manfiy bo'lishi mumkin emas");
     if (dto.amount + discount <= 0) throw new BadRequestException("To'lov summasi 0 dan katta bo'lishi kerak");
@@ -196,101 +251,68 @@ export class PaymentsService {
 
     const key = (dto.idempotencyKey ?? headerKey)?.trim() || null;
     if (key && (key.length < 8 || key.length > 120)) throw new BadRequestException("Idempotency-Key 8-120 belgidan iborat bo'lishi kerak");
-    const requestHash = key
-      ? createHash('sha256')
-          .update(JSON.stringify([dto.studentId, dto.amount, discount, method, status, dto.forMonth, dto.invoiceId ?? null, dto.paidAt ?? null]))
-          .digest('hex')
-      : null;
-    const replay = async (db: Database | LedgerTx) => {
-      if (!key) return null;
-      const [prior] = await db
-        .select({ id: payments.id, requestHash: payments.requestHash })
-        .from(payments)
-        .where(and(eq(payments.tenantId, tenantId), eq(payments.idempotencyKey, key)));
-      if (!prior) return null;
-      if (prior.requestHash !== requestHash) {
-        throw new ConflictException("Bu Idempotency-Key boshqa to'lov uchun ishlatilgan");
+    const requestHash = this.requestHash(dto, key);
+
+    const student = await tx.query.students.findFirst({
+      where: and(eq(students.id, dto.studentId), eq(students.tenantId, tenantId), isNull(students.deletedAt)),
+      columns: { id: true },
+    });
+    if (!student) throw new NotFoundException("O'quvchi topilmadi");
+
+    await lockStudentLedger(tx, student.id);
+    const replayOf = key ? await this.replayOf(tx, tenantId, key, requestHash) : null;
+    if (replayOf) return { replayOf };
+
+    let forMonth = dto.forMonth;
+    let targets: Array<typeof invoices.$inferSelect> = [];
+    if (dto.invoiceId) {
+      const inv = await lockInvoice(tx, tenantId, student.id, dto.invoiceId);
+      if (!inv) throw new NotFoundException('Hisob-faktura topilmadi');
+      if (inv.status === 'CANCELLED') {
+        throw new BadRequestException("Bekor qilingan hisob-faktura uchun to'lov qabul qilib bo'lmaydi");
       }
-      return prior.id;
-    };
-
-    let created: { payment: typeof payments.$inferSelect; invoiceIds: string[] } | { replayOf: string };
-    try {
-      created = await this.db.transaction(async (tx) => {
-        const student = await tx.query.students.findFirst({
-          where: and(eq(students.id, dto.studentId), eq(students.tenantId, tenantId), isNull(students.deletedAt)),
-          columns: { id: true },
-        });
-        if (!student) throw new NotFoundException("O'quvchi topilmadi");
-
-        await lockStudentLedger(tx, student.id);
-        const replayOf = await replay(tx);
-        if (replayOf) return { replayOf };
-
-        let forMonth = dto.forMonth;
-        let targets: Array<typeof invoices.$inferSelect> = [];
-        if (dto.invoiceId) {
-          const inv = await lockInvoice(tx, tenantId, student.id, dto.invoiceId);
-          if (!inv) throw new NotFoundException('Hisob-faktura topilmadi');
-          if (inv.status === 'CANCELLED') {
-            throw new BadRequestException("Bekor qilingan hisob-faktura uchun to'lov qabul qilib bo'lmaydi");
-          }
-          if (inv.forMonth !== dto.forMonth) {
-            throw new BadRequestException(`Hisob-faktura ${inv.forMonth} oyi uchun, to'lov esa ${dto.forMonth} oyi uchun kiritilgan`);
-          }
-          if (dto.amount + discount > inv.remainingAmount) {
-            throw new BadRequestException(
-              `To'lov summasi chegirma bilan (${dto.amount + discount}) hisob-fakturaning qoldiq summasidan (${inv.remainingAmount}) oshib ketishi mumkin emas`,
-            );
-          }
-          forMonth = inv.forMonth;
-          targets = [inv];
-        } else if (status === 'PAID') {
-          // No invoice named: the month's open invoices, oldest due first.
-          targets = await lockOpenInvoices(tx, tenantId, student.id, forMonth);
-        }
-
-        const [payment] = await tx
-          .insert(payments)
-          .values({
-            tenantId,
-            studentId: student.id,
-            invoiceId: targets[0]?.id ?? null,
-            amount: dto.amount,
-            discount,
-            method: method as (typeof payments.$inferInsert)['method'],
-            status: status as (typeof payments.$inferInsert)['status'],
-            forMonth,
-            receiptNumber: `RCP-${new Date().toISOString().slice(0, 7).replace('-', '')}-${Math.floor(100000 + Math.random() * 900000)}`,
-            idempotencyKey: key,
-            requestHash,
-            recordedById: userId ?? null,
-            paidAt: paidAt ?? new Date(),
-          })
-          .returning();
-
-        // Only money that has actually been received settles an invoice.
-        const { invoiceIds } =
-          status === 'PAID'
-            ? await allocateToInvoices(tx, { tenantId, paymentId: payment.id, amount: dto.amount, discount }, targets)
-            : { invoiceIds: [] as string[] };
-        return { payment, invoiceIds };
-      });
-    } catch (err) {
-      // The same key used at the same moment for another student: the
-      // unique index stopped the second insert.
-      if (key && isUniqueViolation(err, 'payments_tenant_idem_uniq')) {
-        const replayOf = await replay(this.db);
-        if (replayOf) return this.findOne(tenantId, replayOf);
+      if (inv.forMonth !== dto.forMonth) {
+        throw new BadRequestException(`Hisob-faktura ${inv.forMonth} oyi uchun, to'lov esa ${dto.forMonth} oyi uchun kiritilgan`);
       }
-      throw err;
+      if (dto.amount + discount > inv.remainingAmount) {
+        throw new BadRequestException(
+          `To'lov summasi chegirma bilan (${dto.amount + discount}) hisob-fakturaning qoldiq summasidan (${inv.remainingAmount}) oshib ketishi mumkin emas`,
+        );
+      }
+      forMonth = inv.forMonth;
+      targets = [inv];
+    } else if (status === 'PAID') {
+      // No invoice named: the month's open invoices, oldest due first.
+      targets = await lockOpenInvoices(tx, tenantId, student.id, forMonth);
     }
 
-    // A retry gets the first payment back; nothing is sent twice.
-    if ('replayOf' in created) return this.findOne(tenantId, created.replayOf);
-    const { payment, invoiceIds } = created;
+    const [payment] = await tx
+      .insert(payments)
+      .values({
+        tenantId,
+        studentId: student.id,
+        invoiceId: targets[0]?.id ?? null,
+        amount: dto.amount,
+        discount,
+        method: method as (typeof payments.$inferInsert)['method'],
+        status: status as (typeof payments.$inferInsert)['status'],
+        forMonth,
+        receiptNumber: `RCP-${new Date().toISOString().slice(0, 7).replace('-', '')}-${Math.floor(100000 + Math.random() * 900000)}`,
+        idempotencyKey: key,
+        requestHash,
+        recordedById: userId ?? null,
+        paidAt: paidAt ?? new Date(),
+      })
+      .returning();
 
-    this.audit.log({
+    // Only money that has actually been received settles an invoice.
+    const { invoiceIds } =
+      status === 'PAID'
+        ? await allocateToInvoices(tx, { tenantId, paymentId: payment.id, amount: dto.amount, discount }, targets)
+        : { invoiceIds: [] as string[] };
+
+    // In the transaction: the record exists exactly when the payment does.
+    await this.audit.record(tx, {
       tenantId,
       userId: userId || null,
       action: 'create',
@@ -305,7 +327,11 @@ export class PaymentsService {
         receiptNumber: payment.receiptNumber,
       },
     });
+    return { payment, invoiceIds };
+  }
 
+  /** After the commit only: the student's message and the center's webhooks. */
+  afterCommit(tenantId: string, payment: typeof payments.$inferSelect) {
     if (payment.status === 'PAID') {
       void this.notifications.notifyPaymentReceived(
         tenantId,
@@ -316,9 +342,6 @@ export class PaymentsService {
     }
     const { idempotencyKey: _k, requestHash: _h, ...publicPayment } = payment;
     void this.webhooks.dispatch(tenantId, 'payment.created', publicPayment);
-    // With the student and groups, so the receipt shown right after saving
-    // has a name and a course instead of an id.
-    return this.findOne(tenantId, payment.id);
   }
 
   async summary(tenantId: string) {
