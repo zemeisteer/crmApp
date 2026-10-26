@@ -6,7 +6,7 @@ import { DB, Database } from '../db/db.module';
 import { platformSubscriptions } from '../db/schema';
 import { GeneratePlatformLinkDto } from './dto/platform-billing.dto';
 import { PlansService } from '../plans/plans.service';
-import { applyPayment, nextPaymentMonth, openMonthInvoice, PROVIDER_TIMEOUT_MS as PAYME_TIMEOUT_MS, reversePayment } from './billing-period';
+import { applyPayment, lockInvoiceForCallback, nextPaymentMonth, openMonthInvoice, providerTxTaken, PROVIDER_TIMEOUT_MS as PAYME_TIMEOUT_MS, reversePayment } from './billing-period';
 
 function md5(input: string) {
   return createHash('md5').update(input).digest('hex');
@@ -99,29 +99,35 @@ export class PlatformBillingService {
     if (!sign_string || !sameText(expected, sign_string)) {
       return { click_trans_id, merchant_trans_id, error: CLICK.SIGN, error_note: 'SIGN CHECK FAILED' };
     }
-    const sub = await this.db.query.platformSubscriptions.findFirst({ where: eq(platformSubscriptions.id, merchant_trans_id) });
-    if (!sub) return { click_trans_id, merchant_trans_id, error: CLICK.NOT_FOUND, error_note: 'Transaction not found' };
-    if (Number(amount) !== sub.amount) return { click_trans_id, merchant_trans_id, error: CLICK.AMOUNT, error_note: 'Incorrect amount' };
-    if (sub.status === 'PAID') return { click_trans_id, merchant_trans_id, error: CLICK.ALREADY_PAID, error_note: 'Already paid' };
-    if (sub.status === 'CANCELLED') return { click_trans_id, merchant_trans_id, error: CLICK.CANCELLED, error_note: 'Transaction cancelled' };
-
-    if (action === '0') {
-      return { click_trans_id, merchant_trans_id, merchant_prepare_id: sub.id, error: 0, error_note: 'Success' };
-    }
-    if (action === '1') {
-      if (merchant_prepare_id !== sub.id) return { click_trans_id, merchant_trans_id, error: CLICK.NOT_FOUND, error_note: 'Transaction not found' };
+    const ok = (extra: Record<string, unknown>) => ({ click_trans_id, merchant_trans_id, ...extra, error: 0, error_note: 'Success' });
+    const no = (error: number, error_note: string) => ({ click_trans_id, merchant_trans_id, error, error_note });
+    if (action !== '0' && action !== '1') return no(CLICK.ACTION, 'Action not found');
+    // One transaction: the checks below and the write are made on the
+    // locked invoice - a plan or amount changed meanwhile is seen here.
+    const out = await this.db.transaction(async (tx) => {
+      const sub = await lockInvoiceForCallback(tx, String(merchant_trans_id ?? ''));
+      if (!sub) return no(CLICK.NOT_FOUND, 'Transaction not found');
+      if (Number(amount) !== sub.amount) return no(CLICK.AMOUNT, 'Incorrect amount');
+      if (sub.status === 'PAID') return no(CLICK.ALREADY_PAID, 'Already paid');
+      if (sub.status === 'CANCELLED') return no(CLICK.CANCELLED, 'Transaction cancelled');
+      // A Payme transaction is open on this invoice: Click never takes it over.
+      if (sub.status === 'PENDING') return no(CLICK.CANCELLED, 'Another payment is in progress');
+      // This Click transaction already belongs to another invoice.
+      if (await providerTxTaken(tx, 'CLICK', String(click_trans_id), sub.id)) return no(CLICK.NOT_FOUND, 'Transaction not found');
+      if (action === '0') return ok({ merchant_prepare_id: sub.id });
+      if (merchant_prepare_id !== sub.id) return no(CLICK.NOT_FOUND, 'Transaction not found');
       // Click reports a payment that failed on its side with error < 0.
       if (Number(body.error ?? 0) < 0) {
-        await this.db.transaction((tx) => reversePayment(tx, sub.id));
-        return { click_trans_id, merchant_trans_id, error: CLICK.CANCELLED, error_note: 'Transaction cancelled' };
+        await reversePayment(tx, sub.id);
+        return no(CLICK.CANCELLED, 'Transaction cancelled');
       }
-      const r = await this.db.transaction((tx) => applyPayment(tx, sub.id, new Date(), { providerTxId: click_trans_id }));
-      if (r.outcome === 'ALREADY_PAID') return { click_trans_id, merchant_trans_id, error: CLICK.ALREADY_PAID, error_note: 'Already paid' };
-      if (r.outcome !== 'PAID') return { click_trans_id, merchant_trans_id, error: CLICK.CANCELLED, error_note: 'Transaction cancelled' };
+      const r = await applyPayment(tx, sub.id, new Date(), { providerTxId: String(click_trans_id), provider: 'CLICK' });
+      if (r.outcome === 'ALREADY_PAID') return no(CLICK.ALREADY_PAID, 'Already paid');
+      if (r.outcome !== 'PAID') return no(CLICK.CANCELLED, 'Transaction cancelled');
       this.logger.log(`Platform payment ${sub.id} (Click) applied`);
-      return { click_trans_id, merchant_trans_id, merchant_confirm_id: sub.id, error: 0, error_note: 'Success' };
-    }
-    return { click_trans_id, merchant_trans_id, error: CLICK.ACTION, error_note: 'Action not found' };
+      return ok({ merchant_confirm_id: sub.id });
+    });
+    return out;
   }
 
   // ---- Payme (JSON-RPC 2.0) ----
@@ -133,10 +139,18 @@ export class PlatformBillingService {
     }
     const { method, params, id } = body ?? {};
     const fail = (code: number, message: string) => ({ error: { code, message }, id });
-    const byTx = () => this.db.query.platformSubscriptions.findFirst({ where: eq(platformSubscriptions.providerTxId, String(params?.id ?? '')) });
+    // Payme's transaction ids only: a Click transaction id never matches here.
+    const byTx = () => this.db.query.platformSubscriptions.findFirst({
+      where: and(eq(platformSubscriptions.provider, 'PAYME'), eq(platformSubscriptions.providerTxId, String(params?.id ?? ''))),
+    });
     const state = (s: typeof platformSubscriptions.$inferSelect) =>
       s.status === 'PAID' ? 2 : s.status === 'CANCELLED' ? (s.paidAt ? -2 : -1) : 1;
     const ms = (d: Date | null) => (d ? d.getTime() : 0);
+    // The invoice of this Payme transaction, locked; undefined if it is no longer this transaction's.
+    const lockTx = async (tx: Parameters<Parameters<Database['transaction']>[0]>[0], subId: string) => {
+      const sub = await lockInvoiceForCallback(tx, subId);
+      return sub && sub.provider === 'PAYME' && sub.providerTxId === String(params?.id ?? '') ? sub : undefined;
+    };
 
     switch (method) {
       case 'CheckPerformTransaction': {
@@ -147,44 +161,57 @@ export class PlatformBillingService {
         return { result: { allow: true }, id };
       }
       case 'CreateTransaction': {
-        const sub = await this.byAccount(params);
-        if (!sub) return fail(PAYME.ACCOUNT_NOT_FOUND, 'Not found');
-        if (params.amount !== sub.amount * 100) return fail(PAYME.INVALID_AMOUNT, 'Incorrect amount');
-        if (sub.providerTxId && sub.providerTxId === params.id && sub.provider === 'PAYME') {
-          return { result: { create_time: ms(sub.providerCreatedAt), transaction: sub.id, state: state(sub) }, id };
-        }
-        if (sub.status !== 'CREATED') return fail(PAYME.ACCOUNT_BUSY, 'Another transaction is open or it is paid');
-        const now = new Date();
-        // Only a CREATED invoice is taken: two at once cannot both open it.
-        const [opened] = await this.db.update(platformSubscriptions)
-          .set({ status: 'PENDING', provider: 'PAYME', providerTxId: String(params.id), providerCreatedAt: now })
-          .where(and(eq(platformSubscriptions.id, sub.id), eq(platformSubscriptions.status, 'CREATED')))
-          .returning();
-        if (!opened) return fail(PAYME.ACCOUNT_BUSY, 'Another transaction is open');
-        return { result: { create_time: now.getTime(), transaction: sub.id, state: 1 }, id };
+        const subId = params?.account?.transaction_param;
+        if (!subId) return fail(PAYME.ACCOUNT_NOT_FOUND, 'Not found');
+        const txId = String(params.id);
+        // The amount check and the opening are one locked step: a plan or
+        // amount changed meanwhile is seen here, never paid at the old price.
+        return this.db.transaction(async (tx) => {
+          const sub = await lockInvoiceForCallback(tx, String(subId));
+          if (!sub) return fail(PAYME.ACCOUNT_NOT_FOUND, 'Not found');
+          if (params.amount !== sub.amount * 100) return fail(PAYME.INVALID_AMOUNT, 'Incorrect amount');
+          if (sub.providerTxId === txId && sub.provider === 'PAYME') {
+            return { result: { create_time: ms(sub.providerCreatedAt), transaction: sub.id, state: state(sub) }, id };
+          }
+          if (sub.status !== 'CREATED') return fail(PAYME.ACCOUNT_BUSY, 'Another transaction is open or it is paid');
+          // This Payme transaction is already another invoice's.
+          if (await providerTxTaken(tx, 'PAYME', txId, sub.id)) return fail(PAYME.CANT_PERFORM, 'Transaction belongs to another account');
+          const now = new Date();
+          await tx.update(platformSubscriptions)
+            .set({ status: 'PENDING', provider: 'PAYME', providerTxId: txId, providerCreatedAt: now })
+            .where(eq(platformSubscriptions.id, sub.id));
+          return { result: { create_time: now.getTime(), transaction: sub.id, state: 1 }, id };
+        });
       }
       case 'PerformTransaction': {
-        const sub = await byTx();
-        if (!sub) return fail(PAYME.TX_NOT_FOUND, 'Not found');
-        if (sub.status === 'PAID') return { result: { transaction: sub.id, perform_time: ms(sub.paidAt), state: 2 }, id };
-        if (sub.status === 'CANCELLED') return fail(PAYME.CANT_PERFORM, 'Cancelled');
-        if (sub.providerCreatedAt && Date.now() - sub.providerCreatedAt.getTime() > PAYME_TIMEOUT_MS) {
-          await this.db.transaction((tx) => reversePayment(tx, sub.id, new Date(), 4));
-          return fail(PAYME.CANT_PERFORM, 'Timed out');
-        }
-        const r = await this.db.transaction((tx) => applyPayment(tx, sub.id));
-        if (r.outcome === 'CANCELLED') return fail(PAYME.CANT_PERFORM, 'Cancelled');
-        const paid = r.sub!;
-        this.logger.log(`Platform payment ${sub.id} (Payme) applied`);
-        return { result: { transaction: sub.id, perform_time: ms(paid.paidAt), state: 2 }, id };
+        const found = await byTx();
+        if (!found) return fail(PAYME.TX_NOT_FOUND, 'Not found');
+        return this.db.transaction(async (tx) => {
+          const sub = await lockTx(tx, found.id);
+          if (!sub) return fail(PAYME.TX_NOT_FOUND, 'Not found');
+          if (sub.status === 'PAID') return { result: { transaction: sub.id, perform_time: ms(sub.paidAt), state: 2 }, id };
+          if (sub.status === 'CANCELLED') return fail(PAYME.CANT_PERFORM, 'Cancelled');
+          if (sub.providerCreatedAt && Date.now() - sub.providerCreatedAt.getTime() > PAYME_TIMEOUT_MS) {
+            await reversePayment(tx, sub.id, new Date(), 4);
+            return fail(PAYME.CANT_PERFORM, 'Timed out');
+          }
+          const r = await applyPayment(tx, sub.id, new Date(), { provider: 'PAYME' });
+          if (r.outcome === 'CANCELLED') return fail(PAYME.CANT_PERFORM, 'Cancelled');
+          this.logger.log(`Platform payment ${sub.id} (Payme) applied`);
+          return { result: { transaction: sub.id, perform_time: ms(r.sub!.paidAt), state: 2 }, id };
+        });
       }
       case 'CancelTransaction': {
-        const sub = await byTx();
-        if (!sub) return fail(PAYME.TX_NOT_FOUND, 'Not found');
-        const r = await this.db.transaction((tx) => reversePayment(tx, sub.id, new Date(), typeof params.reason === 'number' ? params.reason : undefined));
-        const after = r.sub!;
-        if (r.outcome === 'REVERSED') this.logger.warn(`Platform payment ${sub.id} (Payme) cancelled after payment: the month is taken back`);
-        return { result: { transaction: sub.id, cancel_time: ms(after.cancelledAt), state: state(after) }, id };
+        const found = await byTx();
+        if (!found) return fail(PAYME.TX_NOT_FOUND, 'Not found');
+        return this.db.transaction(async (tx) => {
+          const sub = await lockTx(tx, found.id);
+          if (!sub) return fail(PAYME.TX_NOT_FOUND, 'Not found');
+          const r = await reversePayment(tx, sub.id, new Date(), typeof params.reason === 'number' ? params.reason : undefined);
+          const after = r.sub!;
+          if (r.outcome === 'REVERSED') this.logger.warn(`Platform payment ${sub.id} (Payme) cancelled after payment: the month is taken back`);
+          return { result: { transaction: sub.id, cancel_time: ms(after.cancelledAt), state: state(after) }, id };
+        });
       }
       case 'CheckTransaction': {
         const sub = await byTx();

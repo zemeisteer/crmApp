@@ -139,6 +139,30 @@ export async function openMonthInvoice(
   return invoice;
 }
 
+/**
+ * A provider callback's invoice, locked in the order every payment path
+ * uses (the center's payment lock, then the invoice row): what the
+ * callback checks (amount, state, transaction id) is what it writes on.
+ * Read once without a lock only to learn the center.
+ */
+export async function lockInvoiceForCallback(tx: Tx, subscriptionId: string) {
+  const [peek] = await tx.select({ tenantId: platformSubscriptions.tenantId }).from(platformSubscriptions).where(eq(platformSubscriptions.id, subscriptionId));
+  if (!peek) return undefined;
+  await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`platform-pay:${peek.tenantId}`}))`);
+  const [sub] = await tx.select().from(platformSubscriptions).where(eq(platformSubscriptions.id, subscriptionId)).for('update');
+  return sub;
+}
+
+/** Another invoice already carries this provider's transaction id. */
+export async function providerTxTaken(tx: Tx, provider: 'CLICK' | 'PAYME', providerTxId: string, subscriptionId: string) {
+  const [other] = await tx
+    .select({ id: platformSubscriptions.id })
+    .from(platformSubscriptions)
+    .where(and(eq(platformSubscriptions.provider, provider), eq(platformSubscriptions.providerTxId, providerTxId), sql`${platformSubscriptions.id} <> ${subscriptionId}`))
+    .limit(1);
+  return !!other;
+}
+
 /** The same day of the next month (the 31st becomes the month's last day). */
 export function addMonth(d: Date): Date {
   const next = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1, d.getUTCHours(), d.getUTCMinutes(), d.getUTCSeconds(), d.getUTCMilliseconds()));
@@ -154,7 +178,7 @@ export function addMonth(d: Date): Date {
  * loses nothing) or now. A center suspended for non-payment comes back; one
  * the platform admin suspended stays suspended (the payment still counts).
  */
-export async function applyPayment(tx: Tx, subscriptionId: string, now = new Date(), opts: { providerTxId?: string } = {}) {
+export async function applyPayment(tx: Tx, subscriptionId: string, now = new Date(), opts: { providerTxId?: string; provider?: 'CLICK' | 'PAYME' } = {}) {
   const [sub] = await tx.select().from(platformSubscriptions).where(eq(platformSubscriptions.id, subscriptionId)).for('update');
   if (!sub) return { outcome: 'NOT_FOUND' as const };
   if (sub.status === 'PAID') return { outcome: 'ALREADY_PAID' as const, sub };
@@ -165,7 +189,7 @@ export async function applyPayment(tx: Tx, subscriptionId: string, now = new Dat
   const end = addMonth(start);
   const [paid] = await tx
     .update(platformSubscriptions)
-    .set({ status: 'PAID', paidAt: now, periodStart: start, periodEnd: end, ...(opts.providerTxId ? { providerTxId: opts.providerTxId } : {}) })
+    .set({ status: 'PAID', paidAt: now, periodStart: start, periodEnd: end, ...(opts.providerTxId ? { providerTxId: opts.providerTxId } : {}), ...(opts.provider ? { provider: opts.provider } : {}) })
     .where(eq(platformSubscriptions.id, sub.id))
     .returning();
   const adminSuspended = t.status === 'SUSPENDED' && t.suspendedReason !== 'NON_PAYMENT';
