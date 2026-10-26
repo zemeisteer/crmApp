@@ -35,6 +35,9 @@ export default function PlatformCardPay({
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  // One key for this send: retrying after a timeout or a lost answer
+  // returns the receipt already made instead of a second one.
+  const key = useRef<string>(typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `k${Date.now()}${Math.random().toString(36).slice(2)}`);
 
   useEffect(() => {
     if (!file || !file.type.startsWith("image/")) return setPreview(null);
@@ -58,10 +61,11 @@ export default function PlatformCardPay({
     setBusy(true);
     setError(null);
     try {
-      await platformBillingApi.sendCardClaim({ plan, forMonth, note: note.trim() || undefined, file });
+      await platformBillingApi.sendCardClaim({ plan, note: note.trim() || undefined, file, idempotencyKey: key.current });
       onSent();
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : t("common.errorGeneric"));
+      // A lost connection: the same key on "send" again cannot make a second receipt.
+      setError(e instanceof ApiError ? (e.status === 0 ? t("pcp.err.sendNetwork") : e.message) : t("pcp.err.sendNetwork"));
     } finally {
       setBusy(false);
     }

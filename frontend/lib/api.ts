@@ -199,6 +199,42 @@ async function request<T>(
   return body as T;
 }
 
+/**
+ * A fetch with the staff sign-in and the same silent refresh as request(),
+ * for files: an upload (FormData) or a download (Blob). A lost connection
+ * is an ApiError with status 0, so callers tell it apart from a refusal.
+ */
+export async function authedFetch(path: string, init: RequestInit = {}, _retried = false): Promise<Response> {
+  const token = getToken();
+  const headers: Record<string, string> = { ...(init.headers as Record<string, string> | undefined) };
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+  let res: Response;
+  try {
+    res = await fetch(`${API_URL}${path}`, { ...init, headers });
+  } catch (err) {
+    if ((err as Error)?.name === "AbortError") throw err;
+    throw new ApiError("Server bilan aloqa yo'q", 0);
+  }
+  if (res.status === 401 && token && !_retried && !leavingForCenter && (await tryRefresh())) {
+    return authedFetch(path, init, true);
+  }
+  return res;
+}
+
+/** The answer's error as an ApiError (its JSON message when there is one). */
+export async function apiErrorOf(res: Response, fallback: string): Promise<ApiError> {
+  const body = await res.json().catch(() => null);
+  const message = Array.isArray(body?.message) ? body.message.join(", ") : body?.message || fallback;
+  return new ApiError(message, res.status, body);
+}
+
+/** A private file as a Blob (signed in, refreshed when needed). */
+export async function fetchBlob(path: string, signal?: AbortSignal): Promise<Blob> {
+  const res = await authedFetch(path, { signal });
+  if (!res.ok) throw await apiErrorOf(res, "Faylni ochib bo'lmadi");
+  return res.blob();
+}
+
 // Downloads a file (xlsx/pdf) as a Blob, using the same auth header as
 // request(), and triggers a browser save via a temporary <a download>.
 async function download(path: string, filename: string, body?: unknown) {
@@ -2129,6 +2165,8 @@ export const billingApi = {
 /** The platform's card (when set) and this center's receipts sent for it. */
 export interface PlatformCardView {
   card: { number: string; holder: string } | null;
+  /** The month a new payment would be for (the server decides it). */
+  nextMonth: string;
   claims: Array<{ id: string; plan: string; forMonth: string; amount: number; status: "PENDING" | "CONFIRMED" | "REJECTED"; rejectReason: string | null; createdAt: string }>;
 }
 export interface PlatformCardClaim {
@@ -2150,21 +2188,19 @@ export interface PlatformCardClaim {
 
 export const platformBillingApi = {
   card: () => request<PlatformCardView>("/platform-billing/card"),
-  sendCardClaim: async (data: { plan: string; forMonth: string; note?: string; file: File }) => {
+  /**
+   * "We paid", with the receipt. The month and amount are the server's. The
+   * key names this one send: a retry with it (after a timeout, a double
+   * click) returns the same receipt instead of a second one.
+   */
+  sendCardClaim: async (data: { plan: string; note?: string; file: File; idempotencyKey: string }) => {
     const form = new FormData();
     form.append("plan", data.plan);
-    form.append("forMonth", data.forMonth);
     if (data.note) form.append("note", data.note);
     form.append("file", data.file);
-    const token = getToken();
-    const res = await fetch(`${API_URL}/platform-billing/card`, {
-      method: "POST",
-      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-      body: form,
-    });
-    const body = await res.json().catch(() => null);
-    if (!res.ok) throw new ApiError(body?.message || "Yuborilmadi", res.status, body);
-    return body as { id: string };
+    const res = await authedFetch("/platform-billing/card", { method: "POST", headers: { "Idempotency-Key": data.idempotencyKey }, body: form });
+    if (!res.ok) throw await apiErrorOf(res, "Yuborilmadi");
+    return (await res.json()) as { id: string; forMonth: string; replay: boolean };
   },
   clickLink: (data: { plan: string; forMonth: string }) =>
     request<BillingLink & { amount: number }>("/platform-billing/click/link", { method: "POST", body: JSON.stringify(data) }),
@@ -2489,11 +2525,14 @@ export const platformApi = {
   recordPayment: (tenantId: string, data: { forMonth: string; plan?: string; amount?: number }) =>
     request<PlatformPayment>(`/platform/subscriptions/${tenantId}/payments`, { method: "POST", body: JSON.stringify(data) }),
   // Centers' subscription payments by card transfer (a receipt to check).
-  cardClaims: (status?: "PENDING" | "CONFIRMED" | "REJECTED") =>
-    request<{ pending: number; card: { number: string; holder: string } | null; items: PlatformCardClaim[] }>(`/platform/card-claims${status ? `?status=${status}` : ""}`),
-  confirmCardClaim: (id: string) => request<{ id: string; status: string }>(`/platform/card-claims/${id}/confirm`, { method: "POST" }),
+  cardClaims: (q: { status?: "PENDING" | "CONFIRMED" | "REJECTED"; page?: number; pageSize?: number } = {}) => {
+    const qs = new URLSearchParams(Object.entries(q).filter(([, v]) => v !== undefined).map(([k, v]) => [k, String(v)])).toString();
+    return request<{ page: number; pageSize: number; total: number; pending: number; card: { number: string; holder: string } | null; items: PlatformCardClaim[] }>(`/platform/card-claims${qs ? `?${qs}` : ""}`);
+  },
+  cardClaimReceipt: (id: string, signal?: AbortSignal) => fetchBlob(`/platform/card-claims/${id}/receipt`, signal),
+  confirmCardClaim: (id: string) => request<{ id: string; status: string; replay: boolean }>(`/platform/card-claims/${id}/confirm`, { method: "POST" }),
   rejectCardClaim: (id: string, reason: string) =>
-    request<{ id: string; status: string }>(`/platform/card-claims/${id}/reject`, { method: "POST", body: JSON.stringify({ reason }) }),
+    request<{ id: string; status: string; replay: boolean }>(`/platform/card-claims/${id}/reject`, { method: "POST", body: JSON.stringify({ reason }) }),
   integrations: () => request<PlatformIntegrations>("/platform/integrations"),
   /** A value of null removes the stored key (the name goes back to .env). The admin's password is asked every time. */
   saveIntegration: (id: string, password: string, values: Record<string, string | null>) =>

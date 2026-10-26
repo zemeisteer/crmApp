@@ -209,8 +209,8 @@ function TenantPricing() {
                 plan={selectedPlan}
                 planName={plans.find((x) => x.key === selectedPlan)?.name ?? selectedPlan}
                 amount={plans.find((x) => x.key === selectedPlan)?.price ?? 0}
-                // Renewing early pays for the month the paid time runs out in.
-                forMonth={tenant?.billing?.paidUntil && new Date(tenant.billing.paidUntil) > new Date() ? tenant.billing.paidUntil.slice(0, 7) : clock.month()}
+                // The server's month (the next one to pay); shown, not chosen here.
+                forMonth={cardView.nextMonth}
                 onSent={() => {
                   setCardSent(true);
                   loadCard();

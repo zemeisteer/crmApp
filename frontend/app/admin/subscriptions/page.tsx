@@ -38,7 +38,7 @@ function SubscriptionsContent() {
   // The centers list, or their receipts for payments by card.
   const [view, setView] = useState<"list" | "cards">(params.get("tab") === "cards" ? "cards" : "list");
   const [cardPending, setCardPending] = useState(0);
-  useEffect(() => { platformApi.cardClaims("PENDING").then((r) => setCardPending(r.pending)).catch(() => undefined); }, [view]);
+  useEffect(() => { platformApi.cardClaims({ status: "PENDING", pageSize: 1 }).then((r) => setCardPending(r.pending)).catch(() => undefined); }, [view]);
 
   // Typing searches after a pause, from the first page.
   useEffect(() => {
@@ -94,7 +94,7 @@ function SubscriptionsContent() {
 
       {view === "cards" && (
         <div style={{ padding: "22px 32px" }}>
-          <PlatformCardClaims />
+          <PlatformCardClaims onPendingChange={setCardPending} />
         </div>
       )}
 
