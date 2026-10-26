@@ -96,9 +96,15 @@ test('two tabs send at once: one receipt; the other tab says one is already bein
   await a.locator('input[type="file"]').setInputFiles({ name: 'chek.png', mimeType: 'image/png', buffer: PNG_A });
   await b.locator('input[type="file"]').setInputFiles({ name: 'chek.png', mimeType: 'image/png', buffer: PNG_A });
   await Promise.all([a.getByRole('button', { name: 'Chekni yuborish' }).click(), b.getByRole('button', { name: 'Chekni yuborish' }).click()]);
-  const sent = page.getByRole('dialog').getByRole('status').or(other.getByRole('dialog').getByRole('status'));
-  await expect(sent.first()).toContainText('Chek yuborildi');
-  const refused = a.getByRole('alert').or(b.getByRole('alert'));
-  await expect(refused.first()).toContainText('allaqachon yetib kelgan');
+  // Exactly one tab says "sent", the other says a receipt is already being checked.
+  const resultOf = async (p: Page, pay: typeof a) => {
+    const sent = p.getByRole('dialog').getByRole('status');
+    const refused = pay.getByRole('alert');
+    await expect(sent.or(refused)).toBeVisible();
+    return (await sent.count()) > 0 ? (await sent.textContent()) ?? '' : `ALERT ${(await refused.textContent()) ?? ''}`;
+  };
+  const results = [await resultOf(page, a), await resultOf(other, b)];
+  expect(results.filter((r) => r.includes('Chek yuborildi'))).toHaveLength(1);
+  expect(results.filter((r) => r.startsWith('ALERT') && r.includes('allaqachon yetib kelgan'))).toHaveLength(1);
   expect(await claims(c.sub)).toHaveLength(1);
 });
