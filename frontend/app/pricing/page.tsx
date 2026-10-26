@@ -29,7 +29,9 @@ function TenantPricing() {
   const [loading, setLoading] = useState(true);
   const [payOpen, setPayOpen] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
-  const [provider, setProvider] = useState<"CLICK" | "PAYME" | "CARD">("CLICK");
+  // null until chosen: then card when the platform has one (even if its
+  // details arrive after the window opened), else Click.
+  const [chosenProvider, setProvider] = useState<"CLICK" | "PAYME" | "CARD" | null>(null);
   // The platform's card (no Click/Payme contract needed) and our receipts for it.
   const [cardView, setCardView] = useState<PlatformCardView | null>(null);
   const [cardSent, setCardSent] = useState(false);
@@ -51,9 +53,11 @@ function TenantPricing() {
     setLink(null);
     setError(null);
     setCardSent(false);
-    if (cardView?.card) setProvider("CARD");
+    setProvider(null);
     setPayOpen(true);
   }
+
+  const provider = chosenProvider ?? (cardView?.card ? "CARD" : "CLICK");
 
   async function onGenerate() {
     if (!selectedPlan) return;
