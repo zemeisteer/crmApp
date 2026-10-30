@@ -3,23 +3,12 @@
 import { useEffect, useRef, useState } from "react";
 import { ApiError, platformBillingApi, type PlatformCardView } from "@/lib/api";
 import { useLanguage } from "@/lib/i18n-context";
+import { fileFingerprint, newKey } from "@/lib/send-key";
 
 const ACCENT = "#4F46E5";
 const money = (n: number) => new Intl.NumberFormat("uz-UZ").format(n);
-const newKey = () => (typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `k${Date.now()}${Math.random().toString(36).slice(2)}`);
 
 /** The picture's content hash (what the server compares); name, size and date where hashing is unavailable. */
-async function fileFingerprint(file: File) {
-  try {
-    if (typeof crypto !== "undefined" && crypto.subtle) {
-      const digest = await crypto.subtle.digest("SHA-256", await file.arrayBuffer());
-      return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, "0")).join("");
-    }
-  } catch {
-    /* fall through */
-  }
-  return `${file.name}:${file.size}:${file.lastModified}`;
-}
 
 /**
  * Paying the platform by card transfer: the platform's card, the tariff's

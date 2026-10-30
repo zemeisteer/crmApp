@@ -3381,7 +3381,7 @@ export const portalApi = {
   getPayments: () => request<PortalPayments>("/portal/payments"),
   getCardPayment: () => request<PortalCardPayment>("/portal/card-payment"),
   // "I paid by card": the amount, and a picture (or PDF) of the receipt.
-  sendCardPayment: async (data: { amount: number; forMonth?: string; invoiceId?: string; note?: string; file: File }) => {
+  sendCardPayment: async (data: { amount: number; forMonth?: string; invoiceId?: string; note?: string; file: File; idempotencyKey?: string }) => {
     const form = new FormData();
     form.append("amount", String(data.amount));
     if (data.forMonth) form.append("forMonth", data.forMonth);
@@ -3391,7 +3391,7 @@ export const portalApi = {
     const token = getPortalToken();
     const res = await fetch(`${API_URL}/portal/card-payment`, {
       method: "POST",
-      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}), ...(data.idempotencyKey ? { "Idempotency-Key": data.idempotencyKey } : {}) },
       body: form,
     });
     const body = await res.json().catch(() => null);

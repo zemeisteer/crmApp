@@ -1,26 +1,17 @@
 import { BadRequestException, Body, Controller, Get, Headers, Param, Post, Query, Res, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import type { Response } from 'express';
-import { createHash } from 'crypto';
-import { createReadStream } from 'fs';
 import { unlink } from 'fs/promises';
 import { IsOptional, IsString, MaxLength } from 'class-validator';
 import { JwtAuthGuard } from '../common/jwt-auth.guard';
 import { RolesGuard } from '../common/roles.guard';
 import { Roles } from '../common/roles.decorator';
 import { CurrentUser } from '../common/current-user.decorator';
-import { ATTACHMENT_MAX_SIZE, attachmentStorage, setUploadHeaders } from '../common/upload.util';
+import { ATTACHMENT_MAX_SIZE, attachmentStorage, setUploadHeaders, sha256File } from '../common/upload.util';
 import { PlatformCardService } from './platform-card.service';
 
 // A receipt: a screenshot or photo, or the bank's PDF.
 const RECEIPT_FILE_TYPES = /^(image\/(jpeg|png|webp|heic|heif)|application\/pdf)$/;
-
-function sha256File(path: string) {
-  return new Promise<string>((resolve, reject) => {
-    const h = createHash('sha256');
-    createReadStream(path).on('data', (c) => h.update(c)).on('end', () => resolve(h.digest('hex'))).on('error', reject);
-  });
-}
 
 class RejectDto {
   @IsString() @MaxLength(300) reason!: string;
