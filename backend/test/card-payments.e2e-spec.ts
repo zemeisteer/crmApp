@@ -4,6 +4,11 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from '../src/app.module.js';
 import { and, eq, like, sql } from 'drizzle-orm';
+import { createHash } from 'crypto';
+import { existsSync } from 'fs';
+import { CardPaymentsService } from '../src/card-payments/card-payments.service.js';
+import { join } from 'path';
+import { UPLOAD_DIR } from '../src/common/upload.util.js';
 import { TelegramService } from '../src/telegram/telegram.service.js';
 import { NoticeOutboxService } from '../src/notice-outbox/notice-outbox.service.js';
 import { PaymentsService } from '../src/payments/payments.service.js';
@@ -158,6 +163,13 @@ describe('Card transfer payments (e2e)', () => {
     // Both audit rows: the receipt's decision and the payment, one commit.
     expect(await auditOf(claim.id)).toHaveLength(1);
     expect(await db.select().from(auditLogs).where(and(eq(auditLogs.entityType, 'payment'), eq(auditLogs.entityId, done.paymentId)))).toHaveLength(1);
+    // In the payment history: the center sees it was a card receipt and can open the receipt...
+    const page = (await http().get(`/api/payments?page=1&studentId=${studentId}`).set(owner).expect(200)).body;
+    const listed = page.items.find((p: { id: string }) => p.id === done.paymentId);
+    expect(listed.cardReceipt).toMatchObject({ claimId: claim.id, receiptFile: expect.any(String) });
+    // ...and the student's cabinet marks it as paid by card.
+    const cab = (await http().get('/api/portal/payments').set(portal).expect(200)).body;
+    expect(cab.history.find((p: { id: string }) => p.id === done.paymentId)).toMatchObject({ viaCard: true });
   });
 
   it('a rejected receipt says why; it never becomes a payment', async () => {
@@ -170,6 +182,9 @@ describe('Card transfer payments (e2e)', () => {
     const mine = (await http().get('/api/portal/card-payment').set(portal).expect(200)).body.claims;
     expect(mine[0]).toMatchObject({ status: 'REJECTED', rejectReason: "Chekda summa ko'rinmaydi" });
     expect(await paymentsOf(claim.id)).toHaveLength(0);
+    // A rejected (or waiting) receipt stays visible in the cabinet's payment history, with the reason.
+    const cab = (await http().get('/api/portal/payments').set(portal).expect(200)).body;
+    expect(cab.openReceipts.find((r: { id: string }) => r.id === claim.id)).toMatchObject({ status: 'REJECTED', rejectReason: "Chekda summa ko'rinmaydi" });
   });
 
   it('two admins confirm at once, or a confirm races a reject: one decision, at most one payment', async () => {
@@ -307,5 +322,32 @@ describe('Card transfer payments (e2e)', () => {
     await http().post('/api/staff').set(owner).send({ email: `card-t-${suffix}@test.uz`, fullName: 'Card Teacher', role: 'TEACHER', password: 'password12345' }).expect(201);
     const t = (await http().post('/api/auth/login').send({ email: `card-t-${suffix}@test.uz`, password: 'password12345' }).expect(201)).body.accessToken;
     await http().get('/api/card-payments/claims').set({ Authorization: `Bearer ${t}` }).expect(403);
+  });
+
+  it('a double click or a retry with one key makes one receipt; the same key with other content is refused', async () => {
+    const keyed = (key: string, amount = '410000', picture = png) =>
+      http().post('/api/portal/card-payment').set(portal).set('Idempotency-Key', key).field('amount', amount).field('forMonth', '2026-11').attach('file', picture, { filename: 'chek.png', contentType: 'image/png' });
+    const key = `retry-key-${suffix}`;
+    const [a, b] = await Promise.all([keyed(key), keyed(key)]);
+    expect([a.status, b.status]).toEqual([201, 201]);
+    expect(a.body.id).toBe(b.body.id);
+    expect([a.body.replay, b.body.replay].sort()).toEqual([false, true]);
+    expect(a.body.idempotencyKey).toBeUndefined();
+    expect(a.body.requestHash).toBeUndefined();
+    // Later, after a lost answer: the same receipt.
+    expect((await keyed(key).expect(201)).body).toMatchObject({ id: a.body.id, replay: true });
+    const rows = await db.select().from(paymentClaims).where(and(eq(paymentClaims.studentId, studentId), eq(paymentClaims.idempotencyKey, key)));
+    expect(rows).toHaveLength(1);
+    // The file in use stays.
+    expect(existsSync(join(UPLOAD_DIR, rows[0].receiptFile))).toBe(true);
+
+    // Directly: the cabinet's limit (10 a minute) is not what this is about.
+    const direct = (over: { amount?: number; receiptSha256?: string; idempotencyKey?: string }) =>
+      app.get(CardPaymentsService).submit(rows[0].tenantId, studentId, 'student', { amount: 410000, forMonth: '2026-11', receiptFile: 'unused.png', receiptSha256: createHash('sha256').update(png).digest('hex'), idempotencyKey: key, ...over });
+    await expect(direct({})).resolves.toMatchObject({ replay: true, claim: { id: a.body.id } });
+    await expect(direct({ amount: 420000 })).rejects.toMatchObject({ response: { code: 'KEY_REUSED' } });
+    await expect(direct({ receiptSha256: 'other' })).rejects.toMatchObject({ response: { code: 'KEY_REUSED' } });
+    await expect(direct({ idempotencyKey: 'bad' })).rejects.toMatchObject({ status: 400 });
+    await http().post(`/api/card-payments/claims/${a.body.id}/reject`).set(owner).send({ reason: 'test' }).expect(201);
   });
 });

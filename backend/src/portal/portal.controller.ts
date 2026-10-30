@@ -1,4 +1,4 @@
-import {
+import { Headers,
   BadRequestException,
   Body,
   Controller,
@@ -13,7 +13,7 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { unlink } from 'fs/promises';
-import { ATTACHMENT_MAX_SIZE, attachmentStorage } from '../common/upload.util';
+import { ATTACHMENT_MAX_SIZE, attachmentStorage, sha256File } from '../common/upload.util';
 import { Throttle } from '@nestjs/throttler';
 import { PortalService } from './portal.service';
 import { CardPaymentsService } from '../card-payments/card-payments.service';
@@ -220,17 +220,23 @@ export class PortalController {
   async sendCardPayment(
     @PortalUser() user: PortalUserPayload,
     @Body() body: { amount?: string; forMonth?: string; invoiceId?: string; note?: string },
+    @Headers('idempotency-key') idempotencyKey?: string,
     @UploadedFile() file?: Express.Multer.File,
   ) {
     if (!file) throw new BadRequestException("Chek rasmini (skrinshot) yuklang: JPG, PNG yoki PDF");
     try {
-      return await this.cardPayments.submit(user.tenantId, user.studentId, user.viewer, {
+      const { claim, replay } = await this.cardPayments.submit(user.tenantId, user.studentId, user.viewer, {
         amount: Number(body.amount),
         forMonth: body.forMonth,
         invoiceId: body.invoiceId || undefined,
         note: body.note,
         receiptFile: file.filename,
+        receiptSha256: await sha256File(file.path),
+        idempotencyKey,
       });
+      // A retried send: the first upload is the receipt; this copy goes (never the one in use).
+      if (replay && claim.receiptFile !== file.filename) await unlink(file.path).catch(() => undefined);
+      return { ...claim, idempotencyKey: undefined, requestHash: undefined, replay };
     } catch (err) {
       await unlink(file.path).catch(() => undefined);
       throw err;

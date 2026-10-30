@@ -1,3 +1,5 @@
+import { createHash } from 'crypto';
+import { createReadStream } from 'fs';
 import { diskStorage } from 'multer';
 import { extname, join } from 'path';
 import { createId } from '@paralleldrive/cuid2';
@@ -7,6 +9,14 @@ import type { ServerResponse } from 'http';
 // content-addressed-ish filenames (cuid) so nothing collides, original
 // name is kept separately in the DB for display/download.
 export const UPLOAD_DIR = join(__dirname, '..', '..', 'uploads');
+
+/** The content's own hash, not the random stored name: a retry of the same file is the same file. */
+export function sha256File(path: string) {
+  return new Promise<string>((resolve, reject) => {
+    const h = createHash('sha256');
+    createReadStream(path).on('data', (c) => h.update(c)).on('end', () => resolve(h.digest('hex'))).on('error', reject);
+  });
+}
 
 // The stored name's extension comes from the declared type through this
 // list, never from the client's file name: the files are served from the

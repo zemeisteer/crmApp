@@ -913,10 +913,16 @@ export const paymentClaims = pgTable('payment_claims', {
   reviewedByUserId: text('reviewed_by_user_id').references(() => users.id, { onDelete: 'set null' }),
   reviewedAt: timestamp('reviewed_at'),
   paymentId: text('payment_id').references(() => payments.id, { onDelete: 'set null' }),
+  // The browser's key for one "send", and what that send carried: as on
+  // platform_payment_claims, a retry gets the same receipt back and the same
+  // key with other content is a conflict.
+  idempotencyKey: text('idempotency_key'),
+  requestHash: text('request_hash'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
 }, (t) => ({
   tenantStatusIdx: index('payment_claims_tenant_status_idx').on(t.tenantId, t.status),
   studentIdx: index('payment_claims_student_idx').on(t.studentId),
+  idemIdx: uniqueIndex('payment_claims_idem_idx').on(t.tenantId, t.studentId, t.idempotencyKey).where(sql`idempotency_key IS NOT NULL`),
 }));
 
 // What a rule decided and why (signals/): which rule fired, with which

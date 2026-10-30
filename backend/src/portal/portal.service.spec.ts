@@ -215,12 +215,22 @@ describe('PortalService', () => {
         },
       ]);
 
+      // Which payments came from a card receipt, then the receipts still open.
+      const rows = (list: unknown[]) => {
+        const chain = { from: () => chain, where: () => chain, orderBy: () => chain, limit: () => chain, then: (done: (v: unknown[]) => unknown) => Promise.resolve(list).then(done) };
+        return chain;
+      };
+      const select = vi.fn().mockReturnValueOnce(rows([{ paymentId: 'pay-1' }])).mockReturnValueOnce(rows([{ id: 'claim-2', status: 'REJECTED' }]));
+      Object.assign(mockDb, { select });
+
       const res = await service.getPayments('student-1', 'tenant-1');
       expect(res.expectedTuition).toBe(600000);
       expect(res.monthPaid).toBe(400000);
       expect(res.debtAmount).toBe(200000); // 600k - 400k = 200k
       expect(res.status).toBe('PARTIAL');
       expect(res.history).toHaveLength(1);
+      expect(res.history[0]).toMatchObject({ id: 'pay-1', viaCard: true });
+      expect(res.openReceipts).toEqual([{ id: 'claim-2', status: 'REJECTED' }]);
     });
   });
 

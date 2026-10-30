@@ -895,6 +895,10 @@ export interface Payment {
   receiptNumber?: string | null;
   paidAt: string | null;
   createdAt: string;
+  /** Made by confirming a card receipt (a screenshot the student sent): the receipt. */
+  cardReceipt?: { claimId: string; receiptFile: string } | null;
+  /** In the cabinet: paid to the center's card with a receipt. */
+  viaCard?: boolean;
   student?: {
     id: string;
     fullName: string;
@@ -2167,6 +2171,8 @@ export interface PlatformCardView {
   card: { number: string; holder: string } | null;
   /** The month a new payment would be for (the server decides it). */
   nextMonth: string;
+  /** Every paid month of the subscription, and how it was paid. */
+  history: Array<{ id: string; plan: string; forMonth: string; amount: number; paidAt: string | null; periodEnd: string | null; method: "CLICK" | "PAYME" | "CARD" | "MANUAL" }>;
   claims: Array<{ id: string; plan: string; forMonth: string; amount: number; status: "PENDING" | "CONFIRMED" | "REJECTED"; rejectReason: string | null; createdAt: string }>;
 }
 export interface PlatformCardClaim {
@@ -2453,6 +2459,8 @@ export interface PlatformPayment {
   forMonth: string;
   status: "CREATED" | "PENDING" | "PAID" | "FAILED" | "CANCELLED";
   provider: "CLICK" | "PAYME" | null;
+  /** How it was paid: Click, Payme, a card receipt, or recorded by hand. */
+  method?: "CLICK" | "PAYME" | "CARD" | "MANUAL";
   paidAt: string | null;
   createdAt: string;
 }
@@ -3277,6 +3285,8 @@ export interface PortalPayments {
   debtAmount: number;
   status: "PAID" | "PARTIAL" | "UNPAID";
   history: Payment[];
+  /** Card receipts not (yet) payments: being checked, or rejected with the reason. */
+  openReceipts?: Array<{ id: string; amount: number; forMonth: string; status: "PENDING" | "REJECTED"; rejectReason: string | null; createdAt: string }>;
   online?: { click: boolean; payme: boolean };
 }
 
@@ -3371,7 +3381,7 @@ export const portalApi = {
   getPayments: () => request<PortalPayments>("/portal/payments"),
   getCardPayment: () => request<PortalCardPayment>("/portal/card-payment"),
   // "I paid by card": the amount, and a picture (or PDF) of the receipt.
-  sendCardPayment: async (data: { amount: number; forMonth?: string; invoiceId?: string; note?: string; file: File }) => {
+  sendCardPayment: async (data: { amount: number; forMonth?: string; invoiceId?: string; note?: string; file: File; idempotencyKey?: string }) => {
     const form = new FormData();
     form.append("amount", String(data.amount));
     if (data.forMonth) form.append("forMonth", data.forMonth);
@@ -3381,7 +3391,7 @@ export const portalApi = {
     const token = getPortalToken();
     const res = await fetch(`${API_URL}/portal/card-payment`, {
       method: "POST",
-      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}), ...(data.idempotencyKey ? { "Idempotency-Key": data.idempotencyKey } : {}) },
       body: form,
     });
     const body = await res.json().catch(() => null);

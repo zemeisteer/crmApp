@@ -9,6 +9,7 @@ import { DB, Database } from '../src/db/db.module.js';
 import { attendance, students, tenants } from '../src/db/schema.js';
 import { TelegramService } from '../src/telegram/telegram.service.js';
 import { WebhooksService } from '../src/webhooks/webhooks.service.js';
+import { pinClockToMorning } from './pin-clock.js';
 
 // A scanned student card is a mark like any other: the same lesson, center,
 // permission and membership checks; never a guess about which lesson; one
@@ -17,6 +18,8 @@ import { WebhooksService } from '../src/webhooks/webhooks.service.js';
 // (Replaces the mocked unit tests of qrCheckIn: these run on PostgreSQL.
 // Telegram and webhooks are observed at the service boundary - nothing is sent.)
 describe('QR attendance (e2e)', () => {
+  pinClockToMorning();
+
   let app: NestExpressApplication;
   let db: Database;
   const suffix = Date.now();
@@ -29,7 +32,6 @@ describe('QR attendance (e2e)', () => {
   const today = () => dateOf(tashkent(0));
   const todayName = () => DAYS[dow(tashkent(0))];
   const otherDayName = () => DAYS[dow(tashkent(3))];
-  const hourNow = () => tashkent(0).getUTCHours();
 
   let owner: string, ownerB: string, tenantId: string;
   type Spy = { mock: { calls: unknown[][] } };
@@ -166,21 +168,17 @@ describe('QR attendance (e2e)', () => {
   });
 
   it('two lessons in one day: the one that is on; when neither is, the scanner has to say - no guess', async () => {
-    // Morning and afternoon halves of the day: one of them is on now.
+    // Morning and afternoon halves of the day: the morning one is on.
     const g = await group('halves', { scheduleDays: todayName(), startTime: '00:05', endTime: '11:55' });
     await http().post('/api/schedule').set(bearer(owner)).send({ groupId: g, dayOfWeek: dow(tashkent(0)), startTime: '12:30', endTime: '23:55' }).expect(201);
     const rows = await rowsOf(g);
     const s = await student('halves', [g]);
-    const minutesNow = hourNow() * 60 + tashkent(0).getUTCMinutes();
-    // (11:55-12:00 belongs to neither or both: outside it exactly one lesson is on)
-    if (minutesNow < 11 * 60 + 50 || minutesNow > 12 * 60 + 5) {
-      const expected = rows.find((r) => (minutesNow < 12 * 60 ? r.startTime === '00:05' : r.startTime === '12:30'))!.id;
-      expect((await scan(owner, s).expect(201)).body.attendance.scheduleId).toBe(expected);
-      expect(await marksOf(s)).toHaveLength(1);
-    }
+    const expected = rows.find((r) => r.startTime === '00:05')!.id;
+    expect((await scan(owner, s).expect(201)).body.attendance.scheduleId).toBe(expected);
+    expect(await marksOf(s)).toHaveLength(1);
 
     // Two short lessons, neither on now.
-    const [a, b] = hourNow() < 12 ? [['14:00', '15:00'], ['16:00', '17:00']] : [['01:00', '02:00'], ['03:00', '04:00']];
+    const [a, b] = [['14:00', '15:00'], ['16:00', '17:00']];
     const far = await group('far', { scheduleDays: todayName(), startTime: a[0], endTime: a[1] });
     await http().post('/api/schedule').set(bearer(owner)).send({ groupId: far, dayOfWeek: dow(tashkent(0)), startTime: b[0], endTime: b[1] }).expect(201);
     const farRows = await rowsOf(far);
@@ -199,17 +197,16 @@ describe('QR attendance (e2e)', () => {
   });
 
   it('a student in two groups: the group whose lesson is on; otherwise the scanner has to say', async () => {
-    // One group's lesson fills the half of the day we are in; the other group meets in the other half.
-    const morning = hourNow() < 12;
-    const [a] = morning ? [['14:00', '15:00']] : [['01:00', '02:00']];
-    const on = await group('on now', { scheduleDays: todayName(), startTime: morning ? '00:05' : '12:05', endTime: morning ? '11:55' : '23:55' });
+    // One group's lesson fills the morning; the other group meets in the afternoon.
+    const a = ['14:00', '15:00'];
+    const on = await group('on now', { scheduleDays: todayName(), startTime: '00:05', endTime: '11:55' });
     const later = await group('later', { scheduleDays: todayName(), startTime: a[0], endTime: a[1] });
     const s = await student('two groups', [on, later]);
     expect((await scan(owner, s).expect(201)).body.group.id).toBe(on);
     expect((await marksOf(s)).map((m) => m.groupId)).toEqual([on]);
     // Two groups, neither lesson on: which one?
     const l1 = await group('later one', { scheduleDays: todayName(), startTime: a[0], endTime: a[1] });
-    const [b] = hourNow() < 12 ? [['16:00', '17:00']] : [['03:00', '04:00']];
+    const b = ['16:00', '17:00'];
     const l2 = await group('later two', { scheduleDays: todayName(), startTime: b[0], endTime: b[1] });
     const s2 = await student('two later', [l1, l2]);
     const unclear = await scan(owner, s2).expect(400);

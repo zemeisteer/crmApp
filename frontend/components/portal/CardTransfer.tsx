@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ApiError, portalApi, type PortalCardPayment } from "@/lib/api";
 import { useLanguage } from "@/lib/i18n-context";
 import { formatDate } from "@/lib/format-date";
+import { fileFingerprint, newKey } from "@/lib/send-key";
 
 const ACCENT = "#4F46E5";
 const money = (n: number) => new Intl.NumberFormat("uz-UZ").format(n);
@@ -25,6 +26,9 @@ export default function CardTransfer({ debt, forMonth, onSent }: { debt: number;
   const [sent, setSent] = useState(false);
   const [copied, setCopied] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  // One key per send, tied to what it carries: retrying after a lost answer
+  // keeps the key, so the server returns the receipt already made.
+  const sendKey = useRef<{ fingerprint: string; key: string } | null>(null);
   // A thumbnail of the chosen picture, so the student sees it is the right one.
   const [preview, setPreview] = useState<string | null>(null);
   useEffect(() => {
@@ -61,7 +65,10 @@ export default function CardTransfer({ debt, forMonth, onSent }: { debt: number;
     setBusy(true);
     setError(null);
     try {
-      await portalApi.sendCardPayment({ amount: Number(amount), forMonth, note: note.trim() || undefined, file });
+      const fingerprint = JSON.stringify([amount, forMonth, note.trim(), await fileFingerprint(file)]);
+      if (sendKey.current?.fingerprint !== fingerprint) sendKey.current = { fingerprint, key: newKey() };
+      await portalApi.sendCardPayment({ amount: Number(amount), forMonth, note: note.trim() || undefined, file, idempotencyKey: sendKey.current.key });
+      sendKey.current = null;
       setSent(true);
       setFile(null);
       setNote("");
@@ -69,6 +76,7 @@ export default function CardTransfer({ debt, forMonth, onSent }: { debt: number;
       load();
       onSent?.();
     } catch (err) {
+      if (err instanceof ApiError && err.body?.code === "KEY_REUSED") sendKey.current = null;
       setError(err instanceof ApiError ? err.message : t("common.errorGeneric"));
     } finally {
       setBusy(false);
