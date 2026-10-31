@@ -1,6 +1,8 @@
 import { createHash } from 'crypto';
 import { createReadStream } from 'fs';
-import { diskStorage } from 'multer';
+import { BadRequestException } from '@nestjs/common';
+import { open } from 'fs/promises';
+import { diskStorage, type StorageEngine } from 'multer';
 import { extname, join } from 'path';
 import { createId } from '@paralleldrive/cuid2';
 import type { ServerResponse } from 'http';
@@ -57,12 +59,55 @@ export function safeUploadExtension(mimetype: string | undefined): string {
   return SAFE_EXTENSIONS[base] ?? '';
 }
 
-export const attachmentStorage = diskStorage({
+const diskAttachments = diskStorage({
   destination: UPLOAD_DIR,
   filename: (_req, file, cb) => {
     cb(null, `${createId()}${safeUploadExtension(file.mimetype)}`);
   },
 });
+
+// What the bytes of a picture or a PDF start with: these are shown in place,
+// so the declared type must be true. (Recordings and documents are not checked.)
+const FILE_SIGNATURES: Record<string, (head: Buffer) => boolean> = {
+  'image/jpeg': (h) => h[0] === 0xff && h[1] === 0xd8 && h[2] === 0xff,
+  'image/png': (h) => h.subarray(0, 8).equals(Buffer.from('89504e470d0a1a0a', 'hex')),
+  'image/gif': (h) => h.subarray(0, 4).toString('latin1') === 'GIF8',
+  'image/webp': (h) => h.subarray(0, 4).toString('latin1') === 'RIFF' && h.subarray(8, 12).toString('latin1') === 'WEBP',
+  'image/heic': (h) => h.subarray(4, 8).toString('latin1') === 'ftyp',
+  'image/heif': (h) => h.subarray(4, 8).toString('latin1') === 'ftyp',
+  'application/pdf': (h) => h.includes('%PDF-'),
+};
+
+async function readHead(path: string) {
+  const file = await open(path, 'r');
+  try {
+    const head = Buffer.alloc(1024);
+    const { bytesRead } = await file.read(head, 0, head.length, 0);
+    return head.subarray(0, bytesRead);
+  } finally {
+    await file.close();
+  }
+}
+
+/** The disk storage, refusing a file whose content is not its declared type. */
+export const attachmentStorage: StorageEngine = {
+  _handleFile(req, file, cb) {
+    diskAttachments._handleFile(req, file, (err, info) => {
+      const check = FILE_SIGNATURES[file.mimetype];
+      if (err || !check || !info?.path) return cb(err, info);
+      readHead(info.path)
+        .then((head) => {
+          if (check(head)) return cb(null, info);
+          diskAttachments._removeFile(req, { ...file, ...info } as Express.Multer.File, () =>
+            cb(new BadRequestException("Fayl tanlangan turga mos kelmaydi: boshqa fayl yuklang")));
+        })
+        .catch((e) => cb(e));
+    });
+  },
+  _removeFile(req, file, cb) {
+    diskAttachments._removeFile(req, file, cb);
+  },
+};
 
 export const ATTACHMENT_MAX_SIZE = 15 * 1024 * 1024; // 15MB
 

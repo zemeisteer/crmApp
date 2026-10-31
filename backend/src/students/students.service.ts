@@ -3,7 +3,7 @@ import { and, count, eq, ilike, isNotNull, isNull, inArray, or } from 'drizzle-o
 import { DB, Database } from '../db/db.module';
 import { branches, enrollmentPeriods, enrollments, genderEnum, groups, leads, organizationMemberships, studentGuardians, studentPortalPins, students, users } from '../db/schema';
 import { randomInt } from 'crypto';
-import * as bcrypt from 'bcrypt';
+import { hashPassword } from '../common/password';
 import { CreateStudentDto, LinkGuardianDto, UpdateStudentDto } from './dto/student.dto';
 import { AuditService } from '../audit/audit.service';
 import { blankToNull, idempotencyKey, lockIdempotencyKey, requestHash } from '../common/create-idempotency';
@@ -361,7 +361,7 @@ export class StudentsService {
   async issuePortalPin(tenantId: string, userId: string, id: string) {
     const student = await this.findOne(tenantId, id);
     const pin = String(randomInt(0, 1_000_000)).padStart(6, '0');
-    const pinHash = await bcrypt.hash(pin, 10);
+    const pinHash = await hashPassword(pin);
     await this.db.insert(studentPortalPins).values({ studentId: id, pinHash, updatedAt: new Date() })
       .onConflictDoUpdate({ target: studentPortalPins.studentId, set: { pinHash, updatedAt: new Date() } });
     this.audit.log({ tenantId, userId, action: 'update', entityType: 'student', entityId: id, meta: { portalPin: 'issued' } });

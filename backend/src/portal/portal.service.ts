@@ -46,6 +46,7 @@ import { TelegramService } from '../telegram/telegram.service';
 import { normalizePhone } from '../leads/phone';
 import { createHash, randomInt } from 'crypto';
 import * as bcrypt from 'bcrypt';
+import { recordSignInFailure } from '../common/security-events';
 import { FilesService } from '../files/files.service';
 
 export type PortalViewer = 'student' | 'parent';
@@ -204,7 +205,7 @@ export class PortalService {
 
   // Step 2: check the Telegram code or the PIN. When the number belongs to
   // several students (siblings), the caller picks one from `choose`.
-  async verifyPhoneLogin(rawPhone: string, body: { code?: string; pin?: string; studentId?: string; subdomain?: string }) {
+  async verifyPhoneLogin(rawPhone: string, body: { ip?: string; code?: string; pin?: string; studentId?: string; subdomain?: string }) {
     const phone = normalizePhone(rawPhone);
     if (!phone) throw new BadRequestException("Telefon raqami noto'g'ri");
     const matched = await this.studentsByPhone(phone, body.subdomain);
@@ -218,6 +219,7 @@ export class PortalService {
       if (!row || row.attempts >= 5) throw new UnauthorizedException("Kod eskirgan. Yangi kod so'rang.");
       if (row.codeHash !== this.hashCode(phone, body.code.trim())) {
         await this.db.update(portalLoginCodes).set({ attempts: row.attempts + 1 }).where(eq(portalLoginCodes.id, row.id));
+        recordSignInFailure('cabinet', phone, body.ip);
         throw new UnauthorizedException("Kod noto'g'ri");
       }
       codeRowId = row.id;
@@ -228,7 +230,10 @@ export class PortalService {
         const hash = pins.get(s.id);
         if (hash && (await bcrypt.compare(body.pin.trim(), hash))) allowed.push(s);
       }
-      if (allowed.length === 0) throw new UnauthorizedException("PIN noto'g'ri");
+      if (allowed.length === 0) {
+        recordSignInFailure('cabinet', phone, body.ip);
+        throw new UnauthorizedException("PIN noto'g'ri");
+      }
     } else {
       throw new BadRequestException('Kod yoki PIN kiriting');
     }

@@ -1,4 +1,4 @@
-import { Headers,
+import { Ip, Headers,
   BadRequestException,
   Body,
   Controller,
@@ -64,8 +64,10 @@ export class PortalController {
     @Body('pin') pin?: string,
     @Body('studentId') studentId?: string,
     @Body('subdomain') subdomain?: string,
+    @Ip() ip?: string,
   ) {
     return this.service.verifyPhoneLogin(String(phone ?? ''), {
+      ip,
       subdomain: typeof subdomain === 'string' ? subdomain : undefined,
       code: typeof code === 'string' ? code : undefined,
       pin: typeof pin === 'string' ? pin : undefined,
