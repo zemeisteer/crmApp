@@ -9,7 +9,7 @@ import { ForbiddenException,
 import { effectiveAccess } from '../access/catalog';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
-import * as bcrypt from 'bcryptjs';
+import * as bcrypt from 'bcrypt';
 import { generateSecret as generateTotpSecret, generateURI as generateTotpUri, verify as verifyTotp } from 'otplib';
 import * as qrcode from 'qrcode';
 import { randomBytes, createHash } from 'crypto';

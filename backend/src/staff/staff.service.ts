@@ -6,7 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { and, eq, or } from 'drizzle-orm';
-import * as bcrypt from 'bcryptjs';
+import * as bcrypt from 'bcrypt';
 import { DB, Database } from '../db/db.module';
 import { authHandoffCodes, organizationMemberships, sessions, users } from '../db/schema';
 import { AuditService } from '../audit/audit.service';

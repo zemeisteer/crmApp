@@ -8,7 +8,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import * as crypto from 'crypto';
-import * as bcrypt from 'bcryptjs';
+import * as bcrypt from 'bcrypt';
 import { and, desc, eq, or } from 'drizzle-orm';
 import { DB, Database } from '../db/db.module';
 import {

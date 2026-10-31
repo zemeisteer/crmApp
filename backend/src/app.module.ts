@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { ThrottlerModule } from '@nestjs/throttler';
+import { UserThrottlerGuard } from './common/user-throttler.guard';
 import { APP_GUARD } from '@nestjs/core';
 import { DbModule } from './db/db.module';
 import { LedgerModule } from './ledger/ledger.module';
@@ -126,6 +127,6 @@ import { NoticeOutboxModule } from './notice-outbox/notice-outbox.module';
     OnboardingModule,
     InvoicesModule,
   ],
-  providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
+  providers: [{ provide: APP_GUARD, useClass: UserThrottlerGuard }],
 })
 export class AppModule {}

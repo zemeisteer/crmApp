@@ -45,7 +45,7 @@ import { ExamsService } from '../exams/exams.service';
 import { TelegramService } from '../telegram/telegram.service';
 import { normalizePhone } from '../leads/phone';
 import { createHash, randomInt } from 'crypto';
-import * as bcrypt from 'bcryptjs';
+import * as bcrypt from 'bcrypt';
 import { FilesService } from '../files/files.service';
 
 export type PortalViewer = 'student' | 'parent';

@@ -3,7 +3,7 @@ import { and, count, eq, ilike, isNotNull, isNull, inArray, or } from 'drizzle-o
 import { DB, Database } from '../db/db.module';
 import { branches, enrollmentPeriods, enrollments, genderEnum, groups, leads, organizationMemberships, studentGuardians, studentPortalPins, students, users } from '../db/schema';
 import { randomInt } from 'crypto';
-import * as bcrypt from 'bcryptjs';
+import * as bcrypt from 'bcrypt';
 import { CreateStudentDto, LinkGuardianDto, UpdateStudentDto } from './dto/student.dto';
 import { AuditService } from '../audit/audit.service';
 import { blankToNull, idempotencyKey, lockIdempotencyKey, requestHash } from '../common/create-idempotency';

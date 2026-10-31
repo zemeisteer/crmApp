@@ -1,6 +1,6 @@
 import { BadRequestException, ConflictException, Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { and, asc, eq, inArray, isNotNull, isNull, ne, sql } from 'drizzle-orm';
-import * as bcrypt from 'bcryptjs';
+import * as bcrypt from 'bcrypt';
 import { DB, Database } from '../db/db.module';
 import { tenants, users, groups, students, teachers, payments, attendance, branches, announcements, auditLogs, organizationMemberships, enrollments, placementTests, tenantDomains } from '../db/schema';
 import { normalizeSiteContent, parseSiteContent } from './site-content';
