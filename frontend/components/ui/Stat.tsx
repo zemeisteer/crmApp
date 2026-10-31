@@ -6,9 +6,9 @@ import CountUp from "./CountUp";
 /** A small colored chip next to a number: +12%, -5 (green for good, red for bad). */
 export function KpiChip({ children, tone = "success" }: { children: ReactNode; tone?: "success" | "danger" | "warning" | "neutral" }) {
   const colors = {
-    success: { background: "var(--success)", color: "#fff" },
-    danger: { background: "var(--danger)", color: "#fff" },
-    warning: { background: "var(--warning)", color: "#fff" },
+    success: { background: "var(--success)", color: "var(--on-color)" },
+    danger: { background: "var(--danger)", color: "var(--on-color)" },
+    warning: { background: "var(--warning)", color: "var(--on-color)" },
     neutral: { background: "var(--surface-sunken)", color: "var(--text-soft)" },
   }[tone];
   return <span style={{ fontSize: 11, fontWeight: 700, padding: "3px 8px", borderRadius: "var(--radius-pill)", lineHeight: 1.4, whiteSpace: "nowrap", ...colors }}>{children}</span>;

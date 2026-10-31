@@ -20,6 +20,8 @@
   --ink: #16161d;
   --ink-hover: #2b2b36;
   --on-ink: #ffffff;
+  /* Text on a colored fill (accent, status): white in both themes. */
+  --on-color: #ffffff;
   --primary: var(--ink);
   --primary-hover: var(--ink-hover);
   --primary-soft: #efedf8;
@@ -421,10 +423,10 @@ button:focus-visible,
 }
 .btn-primary { background: var(--primary); color: var(--on-ink); }
 .btn-primary:hover { background: var(--primary-hover); opacity: 1; }
-.btn-accent { background: var(--accent); color: #fff; }
+.btn-accent { background: var(--accent); color: var(--on-color); }
 .btn-ghost { background: var(--surface); color: var(--text); border: 1px solid var(--border); }
 .btn-ghost:hover { background: var(--surface-muted); opacity: 1; }
-.btn-danger { background: var(--danger); color: #fff; }
+.btn-danger { background: var(--danger); color: var(--on-color); }
 .btn-sm { min-height: 32px; padding: 0 12px; font-size: 12.5px; }
 
 .nav-item {

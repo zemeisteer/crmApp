@@ -5,7 +5,7 @@ type Tone = "surface" | "accent" | "ink" | "lav" | "sky" | "mint" | "peach";
 const TONES: Record<Tone, CSSProperties> = {
   surface: { background: "var(--surface)", color: "var(--text)" },
   // The one hero card of a page: the brand accent.
-  accent: { background: "var(--accent-gradient)", color: "#fff" },
+  accent: { background: "var(--accent-gradient)", color: "var(--on-color)" },
   ink: { background: "var(--ink)", color: "var(--on-ink)" },
   lav: { background: "var(--lav)", color: "var(--text)" },
   sky: { background: "var(--sky)", color: "var(--text)" },
