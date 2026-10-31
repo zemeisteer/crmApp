@@ -1,8 +1,9 @@
-import { IsIn, IsInt, IsNotEmpty, IsOptional, IsPositive, IsString, Max } from 'class-validator';
+import { IsIn, IsInt, IsNotEmpty, IsOptional, IsPositive, IsString, Max, MaxLength } from 'class-validator';
 import { MAX_MONEY } from '../../common/money';
 
 export class CreateExpenseDto {
   @IsString()
+  @MaxLength(2000)
   @IsNotEmpty()
   title: string;
 
@@ -20,21 +21,25 @@ export class CreateExpenseDto {
   paymentMethod?: string;
 
   @IsString()
+  @MaxLength(2000)
   @IsNotEmpty()
   date: string; // YYYY-MM-DD
 
   @IsOptional()
   @IsString()
+  @MaxLength(2000)
   branchId?: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(50000)
   notes?: string;
 }
 
 export class UpdateExpenseDto {
   @IsOptional()
   @IsString()
+  @MaxLength(2000)
   title?: string;
 
   @IsOptional()
@@ -53,13 +58,16 @@ export class UpdateExpenseDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(2000)
   date?: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(2000)
   branchId?: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(50000)
   notes?: string;
 }

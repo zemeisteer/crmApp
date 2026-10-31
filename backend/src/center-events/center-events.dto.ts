@@ -34,6 +34,7 @@ export class CreateCenterEventDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(2000)
   roomId?: string;
 
   @IsOptional()
@@ -85,6 +86,7 @@ export class UpdateCenterEventDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(2000)
   roomId?: string | null;
 
   @IsOptional()

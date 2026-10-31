@@ -50,6 +50,13 @@ describe('Passwords and uploads (e2e)', () => {
     await http().post('/api/auth/login').send({ email, password: 'password123' }).expect(201);
   });
 
+  it('an over-long field is refused, and so is an over-large request', async () => {
+    const auth = { Authorization: `Bearer ${token}` };
+    await http().post('/api/groups').set(auth).send({ name: 'x'.repeat(2001), subject: 'English' }).expect(400);
+    const large = await http().post('/api/auth/login').send({ email: 'a@test.uz', password: 'y'.repeat(200_000) });
+    expect(large.status).toBe(413);
+  });
+
   it('a password longer than bcrypt reads is refused, not silently cut', async () => {
     const long = `A1${'x'.repeat(80)}`;
     await http().post('/api/auth/register')

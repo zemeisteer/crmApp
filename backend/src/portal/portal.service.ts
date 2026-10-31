@@ -93,7 +93,7 @@ export class PortalService {
         ...(parentUserId ? { parentUserId } : {}),
       },
       {
-        expiresIn: '30d',
+        expiresIn: '7d',
       },
     );
   }

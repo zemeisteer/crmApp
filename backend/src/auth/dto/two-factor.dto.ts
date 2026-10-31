@@ -2,14 +2,17 @@ import { IsOptional, IsString, MaxLength } from 'class-validator';
 
 export class VerifyTwoFactorDto {
   @IsString()
+  @MaxLength(2000)
   pendingToken: string;
 
   @IsString()
+  @MaxLength(2000)
   code: string;
 }
 
 export class ConfirmTwoFactorDto {
   @IsString()
+  @MaxLength(2000)
   code: string;
 }
 

@@ -3,13 +3,16 @@ import { MAX_MONEY } from '../../common/money';
 
 export class CreateGroupDto {
   @IsString()
+  @MaxLength(2000)
   name: string;
 
   @IsString()
+  @MaxLength(2000)
   subject: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(2000)
   courseId?: string;
 
   @IsOptional()
@@ -18,18 +21,22 @@ export class CreateGroupDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(2000)
   level?: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(2000)
   teacherId?: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(2000)
   branchId?: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(2000)
   startDate?: string;
 
   @IsOptional()
@@ -39,18 +46,22 @@ export class CreateGroupDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(2000)
   schedule?: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(2000)
   scheduleDays?: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(2000)
   startTime?: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(2000)
   endTime?: string;
 
   @IsOptional()
@@ -61,6 +72,7 @@ export class CreateGroupDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(50000)
   description?: string;
 
   @IsOptional()

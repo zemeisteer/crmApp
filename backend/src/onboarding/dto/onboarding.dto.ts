@@ -21,33 +21,40 @@ export class CheckSubdomainDto {
 
 export class ProfileStepDto {
   @IsString()
+  @MaxLength(2000)
   @IsNotEmpty()
   name: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(2000)
   phone?: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(2000)
   country?: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(2000)
   timezone?: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(2000)
   currency?: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(2000)
   logoUrl?: string;
 }
 
 export class CategoriesStepDto {
   @IsArray()
   @IsString({ each: true })
+  @MaxLength(2000, { each: true })
   categories: string[];
 }
 
@@ -64,14 +71,17 @@ export class WorkspaceStepDto {
 
 export class BranchStepDto {
   @IsString()
+  @MaxLength(2000)
   @IsNotEmpty()
   name: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(2000)
   address?: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(2000)
   phone?: string;
 }

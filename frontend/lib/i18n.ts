@@ -3606,9 +3606,9 @@ export const dict = {
   },
   "privacy.s3Title": { UZ: "3. Ma'lumotlaringizni nazorat qilish", RU: "3. Контроль над вашими данными", EN: "3. Controlling your data" },
   "privacy.s3Body": {
-    UZ: "Sozlamalar sahifasidan barcha markaz ma'lumotlaringizni JSON formatida eksport qilishingiz yoki hisobingizni butunlay o'chirishingiz mumkin — bu amal darhol va qaytarib bo'lmas tarzda bajariladi.",
-    RU: "На странице Настроек вы можете экспортировать все данные вашего центра в формате JSON или полностью удалить свой аккаунт — это действие выполняется немедленно и необратимо.",
-    EN: "From the Settings page you can export all your center's data as JSON or permanently delete your account — this action happens immediately and cannot be undone.",
+    UZ: "Sozlamalar sahifasidan barcha markaz ma'lumotlaringizni JSON formatida eksport qilishingiz yoki hisobingizni butunlay o'chirishingiz mumkin — bu amal darhol va qaytarib bo'lmas tarzda bajariladi. O'chirilgan ma'lumotlar zaxira nusxalarda yana 14 kungacha qolishi mumkin, keyin ular ham o'chib ketadi.",
+    RU: "На странице Настроек вы можете экспортировать все данные вашего центра в формате JSON или полностью удалить свой аккаунт — это действие выполняется немедленно и необратимо. Удалённые данные могут оставаться в резервных копиях ещё до 14 дней, затем удаляются и оттуда.",
+    EN: "From the Settings page you can export all your center's data as JSON or permanently delete your account — this action happens immediately and cannot be undone. Deleted data may stay in backups for up to 14 more days, and is then removed from them too.",
   },
   "privacy.s4Title": { UZ: "4. Xavfsizlik", RU: "4. Безопасность", EN: "4. Security" },
   "privacy.s4Body": {

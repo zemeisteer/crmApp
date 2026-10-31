@@ -1,4 +1,4 @@
-import { IsEnum, IsOptional, IsString, IsEmail } from 'class-validator';
+import { IsEnum, IsOptional, IsString, IsEmail, MaxLength } from 'class-validator';
 
 export class CreateInvitationDto {
   @IsEnum(['ADMIN', 'MANAGER', 'RECEPTIONIST', 'ACCOUNTANT', 'TEACHER', 'STUDENT', 'PARENT'])
@@ -10,5 +10,6 @@ export class CreateInvitationDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(2000)
   phone?: string;
 }

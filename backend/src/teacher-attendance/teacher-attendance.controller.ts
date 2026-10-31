@@ -9,11 +9,13 @@ import { TeacherAttendanceService } from './teacher-attendance.service';
 
 class TeacherMarkEntryDto {
   @IsString()
+  @MaxLength(2000)
   groupId!: string;
 
   // Which lesson of that day (its timetable row); needed when the group has several.
   @IsOptional()
   @IsString()
+  @MaxLength(2000)
   scheduleId?: string | null;
 
   @IsIn(['PRESENT', 'LATE', 'ABSENT'])
@@ -21,6 +23,7 @@ class TeacherMarkEntryDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(2000)
   substituteTeacherId?: string | null;
 
   @IsOptional()

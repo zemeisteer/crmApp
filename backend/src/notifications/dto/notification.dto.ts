@@ -15,6 +15,7 @@ import { Type } from 'class-transformer';
 
 export class SendNotificationDto {
   @IsString()
+  @MaxLength(2000)
   @MinLength(1)
   recipient: string;
 
@@ -54,18 +55,22 @@ export class SendNotificationDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(2000)
   title?: string;
 
   @IsString()
+  @MaxLength(50000)
   @MinLength(1)
   content: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(2000)
   studentId?: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(2000)
   userId?: string;
 }
 
@@ -133,10 +138,12 @@ export class UpdateNotificationSettingsDto {
 export class QueryNotificationsDto {
   @IsOptional()
   @IsString()
+  @MaxLength(2000)
   channel?: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(2000)
   status?: string;
 
   @IsOptional()
@@ -153,10 +160,12 @@ export class QueryNotificationsDto {
 export class SendDebtorRemindersDto {
   @IsOptional()
   @IsString()
+  @MaxLength(2000)
   forMonth?: string;
 
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
+  @MaxLength(2000, { each: true })
   studentIds?: string[];
 }

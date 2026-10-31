@@ -1,7 +1,7 @@
 import { BadRequestException, Body, Controller, Delete, Get, Param, Patch, Post, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Throttle } from '@nestjs/throttler';
-import { IsString } from 'class-validator';
+import { IsString, MaxLength } from 'class-validator';
 import { JwtAuthGuard } from '../common/jwt-auth.guard';
 import { RolesGuard } from '../common/roles.guard';
 import { Roles } from '../common/roles.decorator';
@@ -13,6 +13,7 @@ import { FilesService } from '../files/files.service';
 
 class DeleteMyTenantDto {
   @IsString()
+  @MaxLength(2000)
   password: string;
 }
 
