@@ -5,7 +5,7 @@ import { useLanguage } from "@/lib/i18n-context";
 import { usePopoverPlacement } from "@/lib/use-popover";
 import type { TranslationKey } from "@/lib/i18n";
 
-const ACCENT = "#4F46E5";
+const ACCENT = "var(--primary)";
 const MONTH_KEYS: TranslationKey[] = [
   "month.jan", "month.feb", "month.mar", "month.apr", "month.may", "month.jun",
   "month.jul", "month.aug", "month.sep", "month.oct", "month.nov", "month.dec",
@@ -58,8 +58,8 @@ export default function MonthPicker({
         className="field-input"
         style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, cursor: "pointer", textAlign: "left", width: "100%" }}
       >
-        <span style={{ color: displayLabel ? "#181A1F" : "#686B75" }}>{displayLabel || effectivePlaceholder}</span>
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#686B75" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+        <span style={{ color: displayLabel ? "var(--text)" : "var(--text-muted)" }}>{displayLabel || effectivePlaceholder}</span>
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
           <rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" />
         </svg>
       </button>
@@ -71,20 +71,20 @@ export default function MonthPicker({
             right: 0,
             width: 250,
             zIndex: 50,
-            background: "#fff",
-            border: "1px solid #EAE8E2",
-            borderRadius: 14,
+            background: "var(--surface)",
+            border: "1px solid var(--border)",
+            borderRadius: "var(--radius-lg)",
             padding: 14,
             boxShadow: "0 12px 32px rgba(18,19,26,0.14)",
             ...place,
           }}
         >
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-            <button type="button" onClick={() => setViewYear((v) => v - 1)} style={{ background: "none", border: "none", cursor: "pointer", padding: 4, color: "#4A4E58" }}>
+            <button type="button" onClick={() => setViewYear((v) => v - 1)} style={{ background: "none", border: "none", cursor: "pointer", padding: 4, color: "var(--text-soft)" }}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
             </button>
             <span style={{ fontSize: 13.5, fontWeight: 700 }}>{viewYear}</span>
-            <button type="button" onClick={() => setViewYear((v) => v + 1)} style={{ background: "none", border: "none", cursor: "pointer", padding: 4, color: "#4A4E58" }}>
+            <button type="button" onClick={() => setViewYear((v) => v + 1)} style={{ background: "none", border: "none", cursor: "pointer", padding: 4, color: "var(--text-soft)" }}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6" /></svg>
             </button>
           </div>
@@ -97,10 +97,10 @@ export default function MonthPicker({
                   key={labelKey}
                   onClick={() => pick(i)}
                   style={{
-                    padding: "8px 4px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 12,
+                    padding: "8px 4px", borderRadius: "var(--radius-xs)", border: "none", cursor: "pointer", fontSize: 12,
                     fontWeight: isSelected ? 700 : 500,
-                    background: isSelected ? ACCENT : "#F7F6F3",
-                    color: isSelected ? "#fff" : "#181A1F",
+                    background: isSelected ? ACCENT : "var(--surface-muted)",
+                    color: isSelected ? "var(--on-ink)" : "var(--text)",
                   }}
                 >
                   {t(labelKey)}

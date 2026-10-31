@@ -181,22 +181,22 @@ function CertificatesContent() {
   return (
     <div className="space-y-6">
       {/* Top action banner */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-white border border-slate-200 p-6 rounded-2xl shadow-sm">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-surface border border-line p-6 rounded-2xl shadow-sm">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <span className="w-2.5 h-2.5 rounded-full bg-indigo-600" />
-            <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">
+            <span className="w-2.5 h-2.5 rounded-full bg-primary" />
+            <h1 className="text-xl sm:text-2xl font-extrabold text-fg tracking-tight">
               {t("cert.title")}
             </h1>
           </div>
-          <p className="text-xs sm:text-sm text-slate-600">
+          <p className="text-xs sm:text-sm text-soft">
             {t("cert.subtitle")}
           </p>
         </div>
 
         <button
           onClick={openCreateModal}
-          className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold inline-flex items-center gap-2 shadow-sm transition-all cursor-pointer"
+          className="px-4 py-2.5 rounded-xl bg-primary hover:bg-primary text-white text-xs font-bold inline-flex items-center gap-2 shadow-sm transition-all cursor-pointer"
         >
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
             <line x1="12" y1="5" x2="12" y2="19" />
@@ -217,12 +217,12 @@ function CertificatesContent() {
               setSearch(e.target.value);
               setPage(1);
             }}
-            className="w-full bg-white border border-slate-300 rounded-xl px-4 py-2.5 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 shadow-sm"
+            className="w-full bg-surface border border-line-strong rounded-xl px-4 py-2.5 text-xs text-fg placeholder-faint focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary shadow-sm"
           />
           {search && (
             <button
               onClick={() => setSearch("")}
-              className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-700 text-xs cursor-pointer"
+              className="absolute right-3 top-2.5 text-faint hover:text-soft text-xs cursor-pointer"
             >
               ✕
             </button>
@@ -244,17 +244,17 @@ function CertificatesContent() {
 
       {/* Main content list */}
       {loading ? (
-        <div className="p-12 text-center text-slate-500 text-sm font-medium">{t("cert.loading")}</div>
+        <div className="p-12 text-center text-muted text-sm font-medium">{t("cert.loading")}</div>
       ) : filtered.length === 0 ? (
-        <div className="p-12 text-center bg-white border border-slate-200 rounded-2xl shadow-sm">
-          <div className="w-12 h-12 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center mx-auto mb-3">
+        <div className="p-12 text-center bg-surface border border-line rounded-2xl shadow-sm">
+          <div className="w-12 h-12 rounded-full bg-surface-muted text-muted flex items-center justify-center mx-auto mb-3">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <circle cx="12" cy="8" r="6" />
               <path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11" />
             </svg>
           </div>
-          <p className="text-slate-900 font-bold text-sm">{t("cert.none")}</p>
-          <p className="text-slate-500 text-xs mt-1">
+          <p className="text-fg font-bold text-sm">{t("cert.none")}</p>
+          <p className="text-muted text-xs mt-1">
             {search || filterGroup ? t("cert.tryFilters") : t("cert.issueFirst")}
           </p>
         </div>
@@ -263,55 +263,55 @@ function CertificatesContent() {
           {paged.map((cert) => (
             <div
               key={cert.id}
-              className="bg-white border border-slate-200 hover:border-indigo-400 rounded-2xl p-5 transition-all shadow-sm flex flex-col justify-between"
+              className="bg-surface border border-line hover:border-primary rounded-2xl p-5 transition-all shadow-sm flex flex-col justify-between"
             >
               <div>
                 <div className="flex items-start justify-between gap-3 mb-3">
                   <div>
-                    <span className="text-[10px] font-mono font-bold text-amber-800 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded">
+                    <span className="text-[10px] font-mono font-bold text-warning bg-warning-soft border border-warning-border px-2 py-0.5 rounded">
                       {cert.code}
                     </span>
-                    <h3 className="text-base font-bold text-slate-900 mt-1.5 line-clamp-1">
+                    <h3 className="text-base font-bold text-fg mt-1.5 line-clamp-1">
                       {cert.title}
                     </h3>
                   </div>
                   {cert.grade && (
-                    <span className="text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2.5 py-1 rounded-lg shrink-0">
+                    <span className="text-xs font-bold text-primary bg-primary-soft border border-primary-border px-2.5 py-1 rounded-lg shrink-0">
                       {cert.grade}
                     </span>
                   )}
                 </div>
 
-                <div className="space-y-1.5 text-xs text-slate-600 mb-4">
+                <div className="space-y-1.5 text-xs text-soft mb-4">
                   <div className="flex items-center gap-2">
-                    <span className="text-slate-500 font-medium">{t("cert.student")}</span>
-                    <span className="font-bold text-slate-900">
+                    <span className="text-muted font-medium">{t("cert.student")}</span>
+                    <span className="font-bold text-fg">
                       {cert.student?.fullName || "—"}
                     </span>
                   </div>
                   {cert.group && (
                     <div className="flex items-center gap-2">
-                      <span className="text-slate-500 font-medium">{t("cert.group")}</span>
-                      <span className="text-slate-800 font-semibold">
+                      <span className="text-muted font-medium">{t("cert.group")}</span>
+                      <span className="text-fg font-semibold">
                         {cert.group.name} ({cert.group.subject})
                       </span>
                     </div>
                   )}
                   <div className="flex items-center gap-2">
-                    <span className="text-slate-500 font-medium">{t("cert.date")}</span>
-                    <span className="text-slate-700 font-semibold">
+                    <span className="text-muted font-medium">{t("cert.date")}</span>
+                    <span className="text-soft font-semibold">
                       {cert.issueDate ? formatDate(cert.issueDate, "UZ", "numeric") : "—"}
                     </span>
                   </div>
                 </div>
               </div>
 
-              <div className="pt-4 border-t border-slate-100 flex items-center justify-between gap-2">
+              <div className="pt-4 border-t border-line flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
                   <Link
                     href={`/verify/${cert.code}`}
                     target="_blank"
-                    className="px-3 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold inline-flex items-center gap-1.5 transition-all border border-indigo-200"
+                    className="px-3 py-1.5 rounded-lg bg-primary-soft hover:bg-primary-soft text-primary text-xs font-bold inline-flex items-center gap-1.5 transition-all border border-primary-border"
                   >
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
@@ -323,7 +323,7 @@ function CertificatesContent() {
 
                   <button
                     onClick={() => copyVerificationLink(cert.code)}
-                    className="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold inline-flex items-center gap-1.5 transition-all cursor-pointer border border-slate-200"
+                    className="px-3 py-1.5 rounded-lg bg-surface-muted hover:bg-line text-soft text-xs font-semibold inline-flex items-center gap-1.5 transition-all cursor-pointer border border-line"
                   >
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
@@ -335,7 +335,7 @@ function CertificatesContent() {
 
                 <button
                   onClick={() => handleDelete(cert.id)}
-                  className="p-1.5 text-slate-400 hover:text-rose-600 transition-colors cursor-pointer"
+                  className="p-1.5 text-faint hover:text-danger transition-colors cursor-pointer"
                   title={t("common.delete")}
                 >
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -363,14 +363,14 @@ function CertificatesContent() {
       <Modal open={modalOpen} onClose={() => setModalOpen(false)} title={t("cert.new")}>
         <form onSubmit={handleSubmit} className="space-y-4">
           {error && (
-            <div role="alert" className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold">
+            <div role="alert" className="p-3 rounded-xl bg-danger-soft border border-danger-border text-danger text-xs font-semibold">
               {error}
             </div>
           )}
 
           <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1">
-              {t("cert.studentLabel")} <span className="text-rose-500">*</span>
+            <label className="block text-xs font-bold text-soft mb-1">
+              {t("cert.studentLabel")} <span className="text-danger">*</span>
             </label>
             <Select
               value={studentId}
@@ -383,7 +383,7 @@ function CertificatesContent() {
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1">
+            <label className="block text-xs font-bold text-soft mb-1">
               {t("cert.groupOpt")}
             </label>
             <Select
@@ -394,14 +394,14 @@ function CertificatesContent() {
               options={[{ value: "", label: t("cert.noGroup") }, ...studentGroups.map((s) => ({ value: s.groupId, label: stayLabel(s) }))]}
             />
             {studentId && stays !== null && studentGroups.length === 0 && (
-              <div style={{ fontSize: 12, color: "#686B75", marginTop: 5 }}>{t("cert.studentNoGroups")}</div>
+              <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 5 }}>{t("cert.studentNoGroups")}</div>
             )}
-            {staysError && <div role="alert" style={{ fontSize: 12, color: "#B23A47", marginTop: 5 }}>{t("common.errorGeneric")}</div>}
+            {staysError && <div role="alert" style={{ fontSize: 12, color: "var(--danger)", marginTop: 5 }}>{t("common.errorGeneric")}</div>}
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1">
-              {t("cert.name")} <span className="text-rose-500">*</span>
+            <label className="block text-xs font-bold text-soft mb-1">
+              {t("cert.name")} <span className="text-danger">*</span>
             </label>
             <input
               type="text"
@@ -409,13 +409,13 @@ function CertificatesContent() {
               placeholder={t("cert.namePh")}
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2 text-xs text-slate-900 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 shadow-sm"
+              className="w-full bg-surface border border-line-strong rounded-xl px-3.5 py-2 text-xs text-fg focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary shadow-sm"
             />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">
+              <label className="block text-xs font-bold text-soft mb-1">
                 {t("cert.grade")}
               </label>
               <input
@@ -423,26 +423,26 @@ function CertificatesContent() {
                 placeholder="A+, IELTS 7.5, 95%"
                 value={grade}
                 onChange={(e) => setGrade(e.target.value)}
-                className="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2 text-xs text-slate-900 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 shadow-sm"
+                className="w-full bg-surface border border-line-strong rounded-xl px-3.5 py-2 text-xs text-fg focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary shadow-sm"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">
+              <label className="block text-xs font-bold text-soft mb-1">
                 {t("cert.issueDate")}
               </label>
               <input
                 type="date"
                 value={issueDate}
                 onChange={(e) => setIssueDate(e.target.value)}
-                className="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2 text-xs text-slate-900 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 shadow-sm"
+                className="w-full bg-surface border border-line-strong rounded-xl px-3.5 py-2 text-xs text-fg focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary shadow-sm"
               />
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">
+              <label className="block text-xs font-bold text-soft mb-1">
                 {t("cert.signer")}
               </label>
               <input
@@ -450,12 +450,12 @@ function CertificatesContent() {
                 value={signatoryName}
                 onChange={(e) => setSignatoryName(e.target.value)}
                 placeholder={t("cert.signerPh")}
-                className="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2 text-xs text-slate-900 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 shadow-sm"
+                className="w-full bg-surface border border-line-strong rounded-xl px-3.5 py-2 text-xs text-fg focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary shadow-sm"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">
+              <label className="block text-xs font-bold text-soft mb-1">
                 {t("cert.position")}
               </label>
               <input
@@ -463,13 +463,13 @@ function CertificatesContent() {
                 value={signatoryTitle}
                 onChange={(e) => setSignatoryTitle(e.target.value)}
                 placeholder={t("cert.positionPh")}
-                className="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2 text-xs text-slate-900 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 shadow-sm"
+                className="w-full bg-surface border border-line-strong rounded-xl px-3.5 py-2 text-xs text-fg focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary shadow-sm"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1">
+            <label className="block text-xs font-bold text-soft mb-1">
               {t("cert.note")}
             </label>
             <textarea
@@ -477,22 +477,22 @@ function CertificatesContent() {
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder={t("cert.notePh")}
-              className="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2 text-xs text-slate-900 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 shadow-sm resize-none"
+              className="w-full bg-surface border border-line-strong rounded-xl px-3.5 py-2 text-xs text-fg focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary shadow-sm resize-none"
             />
           </div>
 
-          <div className="pt-3 flex justify-end gap-2 border-t border-slate-100">
+          <div className="pt-3 flex justify-end gap-2 border-t border-line">
             <button
               type="button"
               onClick={() => setModalOpen(false)}
-              className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold cursor-pointer border border-slate-200"
+              className="px-4 py-2 rounded-xl bg-surface-muted hover:bg-line text-soft text-xs font-semibold cursor-pointer border border-line"
             >
               {t("common.cancel")}
             </button>
             <button
               type="submit"
               disabled={saving}
-              className="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold disabled:opacity-50 cursor-pointer shadow-sm"
+              className="px-5 py-2 rounded-xl bg-primary hover:bg-primary text-white text-xs font-bold disabled:opacity-50 cursor-pointer shadow-sm"
             >
               {saving ? t("common.saving") : t("cert.issue")}
             </button>

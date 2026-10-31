@@ -7,7 +7,7 @@ import { useLanguage } from "@/lib/i18n-context";
 import { ApiError, authApi } from "@/lib/api";
 import PhoneInput from "@/components/PhoneInput";
 
-const ACCENT = "#4F46E5";
+const ACCENT = "var(--primary)";
 
 export default function RegisterPage() {
   const { register } = useAuth();
@@ -82,7 +82,7 @@ export default function RegisterPage() {
   }
 
   return (
-    <div style={{ minHeight: "100vh", display: "flex", background: "#F7F7F5", position: "relative" }}>
+    <div style={{ minHeight: "100vh", display: "flex", background: "var(--surface-muted)", position: "relative" }}>
       {/* Top right language switch */}
       <div
         style={{
@@ -92,8 +92,8 @@ export default function RegisterPage() {
           zIndex: 10,
           display: "flex",
           gap: 4,
-          background: "#F2F1EC",
-          borderRadius: 9,
+          background: "var(--surface-muted)",
+          borderRadius: "var(--radius-sm)",
           padding: 3,
         }}
       >
@@ -106,11 +106,11 @@ export default function RegisterPage() {
               fontSize: 11,
               fontWeight: 700,
               padding: "6px 10px",
-              borderRadius: 7,
+              borderRadius: "var(--radius-xs)",
               border: "none",
               cursor: "pointer",
-              background: lang === l ? "#fff" : "transparent",
-              color: lang === l ? "#181A1F" : "#686B75",
+              background: lang === l ? "var(--surface)" : "transparent",
+              color: lang === l ? "var(--text)" : "var(--text-muted)",
               boxShadow: lang === l ? "0 1px 3px rgba(18,19,26,0.08)" : "none",
             }}
           >
@@ -168,8 +168,8 @@ export default function RegisterPage() {
             style={{
               width: 36,
               height: 36,
-              borderRadius: 10,
-              background: "linear-gradient(135deg, #6366F1, #4F46E5)",
+              borderRadius: "var(--radius-sm)",
+              background: "linear-gradient(135deg, var(--primary), var(--primary))",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -181,7 +181,7 @@ export default function RegisterPage() {
               height="20"
               viewBox="0 0 24 24"
               fill="none"
-              stroke="#FFFFFF"
+              stroke="var(--surface)"
               strokeWidth="2.2"
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -192,10 +192,10 @@ export default function RegisterPage() {
           </div>
           <span
             style={{
-              fontFamily: "'Manrope', sans-serif",
+              fontFamily: "var(--font-display)",
               fontWeight: 800,
               fontSize: 21,
-              color: "#fff",
+              color: "var(--on-ink)",
               letterSpacing: "-0.02em",
             }}
           >
@@ -220,17 +220,17 @@ export default function RegisterPage() {
               alignItems: "center",
               gap: 8,
               padding: "6px 14px",
-              borderRadius: 100,
+              borderRadius: "var(--radius-pill)",
               background: "rgba(255, 255, 255, 0.08)",
               border: "1px solid rgba(255, 255, 255, 0.12)",
-              color: "#C7D2FE",
+              color: "var(--primary-border)",
               fontSize: 12.5,
               fontWeight: 600,
               backdropFilter: "blur(10px)",
               width: "fit-content",
             }}
           >
-            <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#10B981" }} />
+            <span style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--success)" }} />
             {t("landing.badge")}
           </div>
 
@@ -239,14 +239,14 @@ export default function RegisterPage() {
               fontSize: 36,
               lineHeight: 1.25,
               fontWeight: 800,
-              color: "#FFFFFF",
+              color: "var(--on-ink)",
               letterSpacing: "-0.025em",
             }}
           >
             {t("register.createCenterTitle")}
           </h1>
 
-          <p style={{ fontSize: 15.5, lineHeight: 1.65, color: "#C4C2E0" }}>
+          <p style={{ fontSize: 15.5, lineHeight: 1.65, color: "var(--primary-border)" }}>
             {t("register.createCenterSubtitle")}
           </p>
 
@@ -256,7 +256,7 @@ export default function RegisterPage() {
               t("register.heroFeature2"),
               t("register.heroFeature3"),
             ].map((feature, idx) => (
-              <div key={idx} style={{ display: "flex", alignItems: "center", gap: 12, color: "#E0E7FF", fontSize: 14 }}>
+              <div key={idx} style={{ display: "flex", alignItems: "center", gap: 12, color: "var(--primary-soft)", fontSize: 14 }}>
                 <div
                   style={{
                     width: 20,
@@ -269,7 +269,7 @@ export default function RegisterPage() {
                     flexShrink: 0,
                   }}
                 >
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#A5B4FC" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--primary-border)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                     <polyline points="20 6 9 17 4 12" />
                   </svg>
                 </div>
@@ -280,7 +280,7 @@ export default function RegisterPage() {
         </div>
 
         {/* Footer info */}
-        <div style={{ position: "relative", zIndex: 2, fontSize: 13, color: "#8E8CA8" }}>
+        <div style={{ position: "relative", zIndex: 2, fontSize: 13, color: "var(--text-faint)" }}>
           TalimCRM &copy; {new Date().getFullYear()} — {t("auth.allRightsReserved")}
         </div>
       </div>
@@ -292,7 +292,7 @@ export default function RegisterPage() {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          background: "#FFFFFF",
+          background: "var(--surface)",
           padding: "32px 24px",
         }}
       >
@@ -303,13 +303,13 @@ export default function RegisterPage() {
               style={{
                 fontSize: 28,
                 fontWeight: 800,
-                color: "#111827",
+                color: "var(--text)",
                 letterSpacing: "-0.03em",
               }}
             >
               {t("register.createCenterTitle")}
             </h2>
-            <p style={{ fontSize: 14.5, color: "#6B7280", lineHeight: 1.5 }}>
+            <p style={{ fontSize: 14.5, color: "var(--text-muted)", lineHeight: 1.5 }}>
               {t("register.createCenterSubtitle")}
             </p>
           </div>
@@ -317,19 +317,19 @@ export default function RegisterPage() {
           {error && (
             <div role="alert"
               style={{
-                background: "#FEF2F2",
-                border: "1px solid #FEE2E2",
-                color: "#B91C1C",
+                background: "var(--danger-soft)",
+                border: "1px solid var(--danger-border)",
+                color: "var(--danger)",
                 fontSize: 13.5,
                 fontWeight: 600,
                 padding: "12px 16px",
-                borderRadius: 12,
+                borderRadius: "var(--radius-md)",
                 display: "flex",
                 alignItems: "center",
                 gap: 10,
               }}
             >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="2">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--danger)" strokeWidth="2">
                 <circle cx="12" cy="12" r="10" />
                 <line x1="12" y1="8" x2="12" y2="12" />
                 <line x1="12" y1="16" x2="12.01" y2="16" />
@@ -346,7 +346,7 @@ export default function RegisterPage() {
                   display: "block",
                   fontSize: 13,
                   fontWeight: 600,
-                  color: "#374151",
+                  color: "var(--text-soft)",
                   marginBottom: 6,
                 }}
               >
@@ -364,8 +364,8 @@ export default function RegisterPage() {
                   height: 46,
                   padding: "0 14px",
                   fontSize: 14.5,
-                  borderRadius: 10,
-                  border: "1.5px solid #E5E7EB",
+                  borderRadius: "var(--radius-sm)",
+                  border: "1.5px solid var(--border)",
                   outline: "none",
                   boxSizing: "border-box",
                 }}
@@ -379,7 +379,7 @@ export default function RegisterPage() {
                   display: "block",
                   fontSize: 13,
                   fontWeight: 600,
-                  color: "#374151",
+                  color: "var(--text-soft)",
                   marginBottom: 6,
                 }}
               >
@@ -397,8 +397,8 @@ export default function RegisterPage() {
                   height: 46,
                   padding: "0 14px",
                   fontSize: 14.5,
-                  borderRadius: 10,
-                  border: "1.5px solid #E5E7EB",
+                  borderRadius: "var(--radius-sm)",
+                  border: "1.5px solid var(--border)",
                   outline: "none",
                   boxSizing: "border-box",
                 }}
@@ -412,7 +412,7 @@ export default function RegisterPage() {
                   display: "block",
                   fontSize: 13,
                   fontWeight: 600,
-                  color: "#374151",
+                  color: "var(--text-soft)",
                   marginBottom: 6,
                 }}
               >
@@ -431,8 +431,8 @@ export default function RegisterPage() {
                   height: 46,
                   padding: "0 14px",
                   fontSize: 14.5,
-                  borderRadius: 10,
-                  border: "1.5px solid #E5E7EB",
+                  borderRadius: "var(--radius-sm)",
+                  border: "1.5px solid var(--border)",
                   outline: "none",
                   boxSizing: "border-box",
                 }}
@@ -447,7 +447,7 @@ export default function RegisterPage() {
                   display: "block",
                   fontSize: 13,
                   fontWeight: 600,
-                  color: "#374151",
+                  color: "var(--text-soft)",
                   marginBottom: 6,
                 }}
               >
@@ -464,8 +464,8 @@ export default function RegisterPage() {
                   height: 46,
                   padding: "0 14px",
                   fontSize: 14.5,
-                  borderRadius: 10,
-                  border: "1.5px solid #E5E7EB",
+                  borderRadius: "var(--radius-sm)",
+                  border: "1.5px solid var(--border)",
                   outline: "none",
                   boxSizing: "border-box",
                 }}
@@ -474,12 +474,12 @@ export default function RegisterPage() {
                   type="button"
                   onClick={sendCode}
                   disabled={sendingCode || waitResend}
-                  style={{ height: 46, padding: "0 14px", borderRadius: 10, border: "1.5px solid #C7D2FE", background: "#EEF0FF", color: ACCENT, fontWeight: 700, fontSize: 13, cursor: "pointer", whiteSpace: "nowrap" }}
+                  style={{ height: 46, padding: "0 14px", borderRadius: "var(--radius-sm)", border: "1.5px solid var(--primary-border)", background: "var(--primary-soft)", color: ACCENT, fontWeight: 700, fontSize: 13, cursor: "pointer", whiteSpace: "nowrap" }}
                 >
                   {sendingCode ? t("reg.sending") : codeSent ? t("reg.resend") : t("reg.getCode")}
                 </button>
               </div>
-              <div style={{ fontSize: 12, color: "#6B7280", marginTop: 6, lineHeight: 1.5 }}>
+              <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 6, lineHeight: 1.5 }}>
                 {codeSent
                   ? codeSent.channel === "SMS"
                     ? t("reg.codeSms")
@@ -501,8 +501,8 @@ export default function RegisterPage() {
                   height: 46, marginTop: 8, letterSpacing: "0.3em",
                   padding: "0 14px",
                   fontSize: 14.5,
-                  borderRadius: 10,
-                  border: "1.5px solid #E5E7EB",
+                  borderRadius: "var(--radius-sm)",
+                  border: "1.5px solid var(--border)",
                   outline: "none",
                   boxSizing: "border-box",
                 }}
@@ -517,7 +517,7 @@ export default function RegisterPage() {
                   display: "block",
                   fontSize: 13,
                   fontWeight: 600,
-                  color: "#374151",
+                  color: "var(--text-soft)",
                   marginBottom: 6,
                 }}
               >
@@ -537,8 +537,8 @@ export default function RegisterPage() {
                   height: 46,
                   padding: "0 14px",
                   fontSize: 14.5,
-                  borderRadius: 10,
-                  border: "1.5px solid #E5E7EB",
+                  borderRadius: "var(--radius-sm)",
+                  border: "1.5px solid var(--border)",
                   outline: "none",
                   boxSizing: "border-box",
                 }}
@@ -554,7 +554,7 @@ export default function RegisterPage() {
                 onChange={(e) => setAgreed(e.target.checked)}
                 style={{ marginTop: 3, cursor: "pointer", width: 16, height: 16, accentColor: ACCENT }}
               />
-              <label htmlFor="terms-checkbox" style={{ fontSize: 12.5, color: "#6B7280", lineHeight: 1.4, cursor: "pointer" }}>
+              <label htmlFor="terms-checkbox" style={{ fontSize: 12.5, color: "var(--text-muted)", lineHeight: 1.4, cursor: "pointer" }}>
                 {t("auth.termsAgreement")}
               </label>
             </div>
@@ -568,11 +568,11 @@ export default function RegisterPage() {
               style={{
                 width: "100%",
                 height: 48,
-                background: loading ? "#9CA3AF" : ACCENT,
-                color: "#FFFFFF",
+                background: loading ? "var(--text-faint)" : ACCENT,
+                color: "var(--on-ink)",
                 fontSize: 15,
                 fontWeight: 700,
-                borderRadius: 11,
+                borderRadius: "var(--radius-sm)",
                 border: "none",
                 cursor: loading ? "not-allowed" : "pointer",
                 boxShadow: "0 4px 14px rgba(79, 70, 229, 0.3)",
@@ -607,10 +607,10 @@ export default function RegisterPage() {
           <div
             style={{
               paddingTop: 12,
-              borderTop: "1px solid #F3F4F6",
+              borderTop: "1px solid var(--border)",
               textAlign: "center",
               fontSize: 13.5,
-              color: "#6B7280",
+              color: "var(--text-muted)",
             }}
           >
             {t("auth.haveAccount")}{" "}

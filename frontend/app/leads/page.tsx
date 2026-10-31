@@ -146,7 +146,7 @@ function LeadsContent() {
   if (!canRead) {
     return (
       <div className="adm-page">
-        <div style={{ ...card, color: "#686B75" }}>{t("adm.noPermission")}</div>
+        <div style={{ ...card, color: "var(--text-muted)" }}>{t("adm.noPermission")}</div>
       </div>
     );
   }
@@ -168,20 +168,20 @@ function LeadsContent() {
       title={hint}
       style={{ ...card, textAlign: "left", cursor: onClick ? "pointer" : "default", padding: 16 }}
     >
-      <div style={{ fontSize: 12, color: "#686B75" }}>{labelText}</div>
+      <div style={{ fontSize: 12, color: "var(--text-muted)" }}>{labelText}</div>
       <div style={{ fontSize: 24, fontWeight: 800, marginTop: 4, color }}>{value}</div>
     </button>
   );
 
   return (
     <>
-      <div className="adm-page" style={{ borderBottom: "1px solid #EAE8E2", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+      <div className="adm-page" style={{ borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
         <div>
           <h1 style={{ fontSize: 22, fontWeight: 800 }}>{t("leads.title")}</h1>
-          <p style={{ fontSize: 12.5, color: "#686B75", marginTop: 2 }}>{t("leads.subtitle")}</p>
+          <p style={{ fontSize: 12.5, color: "var(--text-muted)", marginTop: 2 }}>{t("leads.subtitle")}</p>
         </div>
         <div className="adm-actions">
-          <div style={{ display: "flex", background: "#F2F1EC", borderRadius: 9, padding: 3, gap: 2 }}>
+          <div style={{ display: "flex", background: "var(--surface-muted)", borderRadius: "var(--radius-sm)", padding: 3, gap: 2 }}>
             {(["list", "pipeline"] as const).map((v) => (
               <button
                 key={v}
@@ -190,12 +190,12 @@ function LeadsContent() {
                 aria-pressed={view === v}
                 style={{
                   border: "none",
-                  background: view === v ? "#fff" : "transparent",
-                  color: view === v ? "#181A1F" : "#686B75",
+                  background: view === v ? "var(--surface)" : "transparent",
+                  color: view === v ? "var(--text)" : "var(--text-muted)",
                   fontWeight: 700,
                   fontSize: 12.5,
                   padding: "6px 14px",
-                  borderRadius: 7,
+                  borderRadius: "var(--radius-xs)",
                   cursor: "pointer",
                 }}
               >
@@ -218,7 +218,7 @@ function LeadsContent() {
 
       <div className="adm-page" style={{ display: "grid", gap: 16 }}>
         {toast && (
-          <div role="status" style={{ background: "#FEE2E2", color: "#B91C1C", fontWeight: 600, fontSize: 13, padding: "10px 14px", borderRadius: 10 }}>
+          <div role="status" style={{ background: "var(--danger-soft)", color: "var(--danger)", fontWeight: 600, fontSize: 13, padding: "10px 14px", borderRadius: "var(--radius-sm)" }}>
             {toast}
           </div>
         )}
@@ -226,9 +226,9 @@ function LeadsContent() {
         <TelegramConnectCard />
 
         <div className="adm-stats">
-          {stat(t("adm.statOpen"), openCount ?? "—", "#181A1F")}
-          {stat(t("adm.statOverdue"), followUps?.overdue ?? "—", "#B91C1C", () => { setFollowUp("overdue"); setView("list"); })}
-          {stat(t("adm.statToday"), followUps?.today ?? "—", "#B45309", () => { setFollowUp("today"); setView("list"); })}
+          {stat(t("adm.statOpen"), openCount ?? "—", "var(--text)")}
+          {stat(t("adm.statOverdue"), followUps?.overdue ?? "—", "var(--danger)", () => { setFollowUp("overdue"); setView("list"); })}
+          {stat(t("adm.statToday"), followUps?.today ?? "—", "var(--warning)", () => { setFollowUp("today"); setView("list"); })}
           {stat(
             t("adm.statConversion"),
             conversion ? (conversion.rate === null ? "—" : `${conversion.rate}%`) : "—",
@@ -289,13 +289,13 @@ function LeadsContent() {
 
         {error ? (
           <div style={{ ...card, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
-            <span style={{ color: "#B91C1C", fontWeight: 600 }}>{error}</span>
+            <span style={{ color: "var(--danger)", fontWeight: 600 }}>{error}</span>
             <button type="button" className="btn" style={ghostBtn} onClick={load}>{t("adm.retry")}</button>
           </div>
         ) : loading && data.items.length === 0 ? (
           <ListSkeleton />
         ) : data.items.length === 0 ? (
-          <div style={{ ...card, color: "#686B75", textAlign: "center", padding: 32 }}>
+          <div style={{ ...card, color: "var(--text-muted)", textAlign: "center", padding: 32 }}>
             {search || status || source || manager || followUp ? t("leads.noSearchResults") : t("leads.noLeadsYet")}
           </div>
         ) : view === "list" ? (
@@ -321,9 +321,9 @@ function LeadsContent() {
                   {data.items.map((l) => (
                     <tr key={l.id} style={{ opacity: l.archivedAt ? 0.55 : 1 }}>
                       <td style={{ maxWidth: 320 }}>
-                        <Link href={`/leads/${l.id}`} style={{ fontWeight: 700, color: "#181A1F" }}>{l.fullName}</Link>
+                        <Link href={`/leads/${l.id}`} style={{ fontWeight: 700, color: "var(--text)" }}>{l.fullName}</Link>
                         {leadNote(l.notes) && (
-                          <div title={leadNote(l.notes)} style={{ fontSize: 12, color: "#686B75", marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          <div title={leadNote(l.notes)} style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                             💬 {leadNote(l.notes)}
                           </div>
                         )}
@@ -334,18 +334,18 @@ function LeadsContent() {
                       <td>
                         {l.desiredCourse?.name ?? l.desiredSubject?.name ?? l.legacySubject ?? "—"}
                         {l.extraSubjects && l.extraSubjects.length > 0 && (
-                          <span style={{ color: "#686B75", fontSize: 12 }}> +{l.extraSubjects.map((s) => s.name).join(", ")}</span>
+                          <span style={{ color: "var(--text-muted)", fontSize: 12 }}> +{l.extraSubjects.map((s) => s.name).join(", ")}</span>
                         )}
                       </td>
-                      <td>{l.assignedManager?.fullName ?? <span style={{ color: "#686B75" }}>{t("adm.unassigned")}</span>}</td>
-                      <td style={{ color: isOverdue(l.followUpAt) && OPEN_STATUSES.includes(l.status) ? "#B91C1C" : undefined, fontWeight: isOverdue(l.followUpAt) ? 700 : 400 }}>
+                      <td>{l.assignedManager?.fullName ?? <span style={{ color: "var(--text-muted)" }}>{t("adm.unassigned")}</span>}</td>
+                      <td style={{ color: isOverdue(l.followUpAt) && OPEN_STATUSES.includes(l.status) ? "var(--danger)" : undefined, fontWeight: isOverdue(l.followUpAt) ? 700 : 400 }}>
                         {formatDateTime(l.followUpAt, lang, tz)}
                       </td>
                       {cfColumns.map((d) => {
                         const text = formatCfValue(d, l.customFields?.[d.id], t, lang);
                         return (
                           <td key={d.id} style={{ maxWidth: 220 }}>
-                            <span title={text} style={{ display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: text === "—" ? "#686B75" : undefined }}>{text}</span>
+                            <span title={text} style={{ display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: text === "—" ? "var(--text-muted)" : undefined }}>{text}</span>
                           </td>
                         );
                       })}
@@ -362,10 +362,10 @@ function LeadsContent() {
                     <strong>{l.fullName}</strong>
                     <StatusBadge status={l.status} label={t(statusKey(l.status))} />
                   </div>
-                  <div style={{ fontSize: 13, color: "#5B5F6A" }}>{l.phone} · {t(sourceKey(l.source))}</div>
-                  {leadNote(l.notes) && <div style={{ fontSize: 12.5, color: "#686B75", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>💬 {leadNote(l.notes)}</div>}
+                  <div style={{ fontSize: 13, color: "var(--text-muted)" }}>{l.phone} · {t(sourceKey(l.source))}</div>
+                  {leadNote(l.notes) && <div style={{ fontSize: 12.5, color: "var(--text-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>💬 {leadNote(l.notes)}</div>}
                   {l.followUpAt && (
-                    <div style={{ fontSize: 12.5, color: isOverdue(l.followUpAt) ? "#B91C1C" : "#5B5F6A" }}>
+                    <div style={{ fontSize: 12.5, color: isOverdue(l.followUpAt) ? "var(--danger)" : "var(--text-muted)" }}>
                       {t("adm.colFollowUp")}: {formatDateTime(l.followUpAt, lang, tz)}
                     </div>
                   )}
@@ -379,28 +379,28 @@ function LeadsContent() {
           </div>
         ) : (
           <div style={{ display: "grid", gap: 8 }}>
-            <p style={{ fontSize: 12.5, color: "#686B75" }}>{t("adm.pipelineHint")}</p>
+            <p style={{ fontSize: 12.5, color: "var(--text-muted)" }}>{t("adm.pipelineHint")}</p>
             <div className="adm-pipeline">
               {BOARD_STATUSES.map((s) => {
                 const items = data.items.filter((l) => l.status === s);
                 const totalInStage = analytics?.snapshot.byStatus[s];
                 return (
-                  <section key={s} style={{ background: "#F7F6F2", borderRadius: 14, padding: 10, minHeight: 200 }} aria-label={t(statusKey(s))}>
+                  <section key={s} style={{ background: "var(--surface-muted)", borderRadius: "var(--radius-lg)", padding: 10, minHeight: 200 }} aria-label={t(statusKey(s))}>
                     <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "4px 6px 10px" }}>
                       <span style={{ fontWeight: 800, fontSize: 13, color: STATUS_STYLE[s].color }}>{t(statusKey(s))}</span>
-                      <span style={{ fontSize: 12, color: "#686B75", fontWeight: 700 }}>{totalInStage ?? items.length}</span>
+                      <span style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 700 }}>{totalInStage ?? items.length}</span>
                     </header>
                     <div style={{ display: "grid", gap: 8 }}>
                       {items.map((l) => (
                         <div key={l.id} style={{ ...card, padding: 12, display: "grid", gap: 6 }}>
-                          <Link href={`/leads/${l.id}`} style={{ fontWeight: 700, color: "#181A1F" }}>{l.fullName}</Link>
+                          <Link href={`/leads/${l.id}`} style={{ fontWeight: 700, color: "var(--text)" }}>{l.fullName}</Link>
                           <a href={telHref(l.phone)} style={{ fontSize: 12.5, color: ACCENT }}>{l.phone}</a>
-                          <div style={{ fontSize: 12, color: "#686B75" }}>
+                          <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
                             {t(sourceKey(l.source))}
                             {l.assignedManager ? ` · ${l.assignedManager.fullName}` : ""}
                           </div>
                           {l.followUpAt && (
-                            <div style={{ fontSize: 12, color: isOverdue(l.followUpAt) ? "#B91C1C" : "#5B5F6A", fontWeight: isOverdue(l.followUpAt) ? 700 : 400 }}>
+                            <div style={{ fontSize: 12, color: isOverdue(l.followUpAt) ? "var(--danger)" : "var(--text-muted)", fontWeight: isOverdue(l.followUpAt) ? 700 : 400 }}>
                               ⏰ {formatDateTime(l.followUpAt, lang, tz)}
                             </div>
                           )}

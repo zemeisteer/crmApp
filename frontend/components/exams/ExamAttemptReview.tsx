@@ -19,8 +19,8 @@ export function ExamAttemptReview({ examId, attemptId, onChanged }: { examId: st
     examsApi.getAttempt(examId, attemptId).then(setData).catch((e) => setError(e instanceof ApiError ? e.message : t("common.errorGeneric")));
   }, [examId, attemptId, t]);
 
-  if (error) return <div role="alert" style={{ background: "#FDEBEC", color: "#B23A47", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: 10 }}>{error}</div>;
-  if (!data) return <div style={{ fontSize: 13, color: "#686B75" }}>{t("common.loading")}</div>;
+  if (error) return <div role="alert" style={{ background: "var(--danger-soft)", color: "var(--danger)", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: "var(--radius-sm)" }}>{error}</div>;
+  if (!data) return <div style={{ fontSize: 13, color: "var(--text-muted)" }}>{t("common.loading")}</div>;
 
   const pct = data.maxScore ? Math.round((data.score / data.maxScore) * 100) : 0;
   return (
@@ -74,7 +74,7 @@ export default function ExamAttemptsModal({ exam, onClose, onChanged }: { exam: 
     <Modal open onClose={onClose} title={`${t("review.attemptsTitle")}: ${exam.title}`} width={780}>
       {open ? (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          <button type="button" onClick={() => setOpen(null)} style={{ alignSelf: "flex-start", background: "none", border: "none", color: "#4F46E5", fontWeight: 700, fontSize: 13, cursor: "pointer", padding: 0 }}>
+          <button type="button" onClick={() => setOpen(null)} style={{ alignSelf: "flex-start", background: "none", border: "none", color: "var(--primary)", fontWeight: 700, fontSize: 13, cursor: "pointer", padding: 0 }}>
             ← {t("placement.back")}
           </button>
           <div style={{ maxHeight: "65vh", overflowY: "auto", paddingRight: 4 }}>
@@ -82,7 +82,7 @@ export default function ExamAttemptsModal({ exam, onClose, onChanged }: { exam: 
           </div>
         </div>
       ) : attempts.length === 0 ? (
-        <div style={{ fontSize: 13, color: "#686B75" }}>{t("review.noAttempts")}</div>
+        <div style={{ fontSize: 13, color: "var(--text-muted)" }}>{t("review.noAttempts")}</div>
       ) : (
         <div style={{ overflowX: "auto" }}>
           <table className="table" style={{ margin: 0 }}>
@@ -107,7 +107,7 @@ export default function ExamAttemptsModal({ exam, onClose, onChanged }: { exam: 
                       type="button"
                       className="btn"
                       onClick={() => setOpen(a.id)}
-                      style={{ fontSize: 12, fontWeight: 700, padding: "4px 10px", borderRadius: 8, cursor: "pointer", whiteSpace: "nowrap", border: `1px solid ${a.reviewStatus === "PENDING" ? "#FCD34D" : "#E2E8F0"}`, background: a.reviewStatus === "PENDING" ? "#FEF3C7" : "#fff", color: a.reviewStatus === "PENDING" ? "#92400E" : "#0F172A" }}
+                      style={{ fontSize: 12, fontWeight: 700, padding: "4px 10px", borderRadius: "var(--radius-xs)", cursor: "pointer", whiteSpace: "nowrap", border: `1px solid ${a.reviewStatus === "PENDING" ? "var(--warning-border)" : "var(--border)"}`, background: a.reviewStatus === "PENDING" ? "var(--warning-soft)" : "var(--surface)", color: a.reviewStatus === "PENDING" ? "var(--warning)" : "var(--text)" }}
                     >
                       {a.reviewStatus === "PENDING" ? `⏳ ${t("review.check")}` : t("placement.details")}
                     </button>
@@ -124,10 +124,10 @@ export default function ExamAttemptsModal({ exam, onClose, onChanged }: { exam: 
 
 function Stat({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
-    <div style={{ flex: 1, minWidth: 160, padding: "10px 12px", borderRadius: 10, background: "#F8FAFC", border: "1px solid #E2E8F0" }}>
-      <div style={{ fontSize: 11.5, color: "#64748B", fontWeight: 600 }}>{label}</div>
-      <div style={{ fontSize: 16, fontWeight: 800, color: "#0F172A" }}>{value}</div>
-      {sub && <div style={{ fontSize: 12, color: "#94A3B8" }}>{sub}</div>}
+    <div style={{ flex: 1, minWidth: 160, padding: "10px 12px", borderRadius: "var(--radius-sm)", background: "var(--surface-muted)", border: "1px solid var(--border)" }}>
+      <div style={{ fontSize: 11.5, color: "var(--text-muted)", fontWeight: 600 }}>{label}</div>
+      <div style={{ fontSize: 16, fontWeight: 800, color: "var(--text)" }}>{value}</div>
+      {sub && <div style={{ fontSize: 12, color: "var(--text-faint)" }}>{sub}</div>}
     </div>
   );
 }

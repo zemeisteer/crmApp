@@ -15,7 +15,7 @@ import { useCenterClock } from "@/lib/use-center-clock";
 import { useLanguage } from "@/lib/i18n-context";
 import { formatDate } from "@/lib/format-date";
 
-const ACCENT = "#4F46E5";
+const ACCENT = "var(--primary)";
 
 function formatMoney(n: number) {
   return new Intl.NumberFormat("uz-UZ").format(n);
@@ -173,13 +173,13 @@ function TeacherDetailContent() {
   }, [teacher?.startDate, teacher?.createdAt, lang]);
 
   if (loading) {
-    return <div style={{ padding: 32, color: "#686B75", fontSize: 14 }}>{t("common.loading")}</div>;
+    return <div style={{ padding: 32, color: "var(--text-muted)", fontSize: 14 }}>{t("common.loading")}</div>;
   }
 
   if (notFound || !teacher) {
     return (
       <div style={{ padding: 32 }}>
-        <div style={{ color: "#686B75", fontSize: 14, background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 32, textAlign: "center" }}>
+        <div style={{ color: "var(--text-muted)", fontSize: 14, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 32, textAlign: "center" }}>
           {t("teacherDetail.notFound")}{" "}
           <Link href="/teachers" style={{ color: ACCENT, fontWeight: 600 }}>
             {t("teacherDetail.back")}
@@ -234,8 +234,8 @@ function TeacherDetailContent() {
 
   return (
     <>
-      <div style={{ padding: "22px 32px", borderBottom: "1px solid #EAE8E2" }}>
-        <Link href="/teachers" style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 600, color: "#686B75", marginBottom: 10 }}>
+      <div style={{ padding: "22px 32px", borderBottom: "1px solid var(--border)" }}>
+        <Link href="/teachers" style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 600, color: "var(--text-muted)", marginBottom: 10 }}>
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
             <path d="M15 18l-6-6 6-6" />
           </svg>
@@ -247,13 +247,13 @@ function TeacherDetailContent() {
               style={{
                 width: 46,
                 height: 46,
-                borderRadius: 12,
+                borderRadius: "var(--radius-md)",
                 background: ACCENT,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                color: "#fff",
-                fontFamily: "'Manrope', sans-serif",
+                color: "var(--on-ink)",
+                fontFamily: "var(--font-display)",
                 fontWeight: 700,
                 fontSize: 16,
               }}
@@ -262,7 +262,7 @@ function TeacherDetailContent() {
             </div>
             <div>
               <h1 style={{ fontSize: 22, fontWeight: 800 }}>{teacher.fullName}</h1>
-              <div style={{ fontSize: 13, color: "#686B75", marginTop: 2 }}>
+              <div style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 2 }}>
                 {teacher.subject || t("teacherDetail.directionMissing")}
                 {teacher.phone ? ` · ${teacher.phone}` : ""}
               </div>
@@ -272,14 +272,14 @@ function TeacherDetailContent() {
             <button
               className="btn"
               onClick={openEdit}
-              style={{ background: "#F2F1EC", color: "#181A1F", border: "none", fontSize: 13, fontWeight: 700, padding: "9px 16px", borderRadius: 9 }}
+              style={{ background: "var(--surface-muted)", color: "var(--text)", border: "none", fontSize: 13, fontWeight: 700, padding: "9px 16px", borderRadius: "var(--radius-sm)" }}
             >
               {t("teacherDetail.edit")}
             </button>
             <button
               className="btn"
               onClick={onDelete}
-              style={{ background: "#FDEBEC", color: "#B23A47", border: "none", fontSize: 13, fontWeight: 700, padding: "9px 16px", borderRadius: 9 }}
+              style={{ background: "var(--danger-soft)", color: "var(--danger)", border: "none", fontSize: 13, fontWeight: 700, padding: "9px 16px", borderRadius: "var(--radius-sm)" }}
             >
               {t("teacherDetail.delete")}
             </button>
@@ -289,21 +289,21 @@ function TeacherDetailContent() {
 
       <div style={{ flex: 1, minHeight: 0, padding: "26px 32px", display: "flex", flexDirection: "column", gap: 20, overflow: "auto", boxSizing: "border-box" }}>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0,1fr))", gap: 16 }}>
-          <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 14, padding: 18 }}>
-            <div style={{ fontSize: 12, color: "#686B75" }}>{t("teacherDetail.statGroups")}</div>
-            <div style={{ fontSize: 24, fontWeight: 800, fontFamily: "'Manrope', sans-serif", marginTop: 4 }}>{fullGroups.length}</div>
+          <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 18 }}>
+            <div style={{ fontSize: 12, color: "var(--text-muted)" }}>{t("teacherDetail.statGroups")}</div>
+            <div style={{ fontSize: 24, fontWeight: 800, fontFamily: "var(--font-display)", marginTop: 4 }}>{fullGroups.length}</div>
           </div>
-          <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 14, padding: 18 }}>
-            <div style={{ fontSize: 12, color: "#686B75" }}>{t("teacherDetail.statTotalStudents")}</div>
-            <div style={{ fontSize: 24, fontWeight: 800, fontFamily: "'Manrope', sans-serif", marginTop: 4 }}>{totalStudents}</div>
+          <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 18 }}>
+            <div style={{ fontSize: 12, color: "var(--text-muted)" }}>{t("teacherDetail.statTotalStudents")}</div>
+            <div style={{ fontSize: 24, fontWeight: 800, fontFamily: "var(--font-display)", marginTop: 4 }}>{totalStudents}</div>
           </div>
-          <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 14, padding: 18 }}>
-            <div style={{ fontSize: 12, color: "#686B75" }}>{t("teacherDetail.statMonthGroupRevenue")}</div>
-            <div style={{ fontSize: 24, fontWeight: 800, fontFamily: "'Manrope', sans-serif", marginTop: 4 }}>{formatMoney(totalRevenue)} {t("common.sumUnit")}</div>
+          <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 18 }}>
+            <div style={{ fontSize: 12, color: "var(--text-muted)" }}>{t("teacherDetail.statMonthGroupRevenue")}</div>
+            <div style={{ fontSize: 24, fontWeight: 800, fontFamily: "var(--font-display)", marginTop: 4 }}>{formatMoney(totalRevenue)} {t("common.sumUnit")}</div>
           </div>
-          <div style={{ background: "#ECEBFB", border: "1px solid #D7D3F8", borderRadius: 14, padding: 18 }}>
+          <div style={{ background: "var(--primary-soft)", border: "1px solid var(--primary-border)", borderRadius: "var(--radius-lg)", padding: 18 }}>
             <div style={{ fontSize: 12, color: ACCENT }}>{t("teacherDetail.statMonthCalculatedSalary")}</div>
-            <div style={{ fontSize: 24, fontWeight: 800, fontFamily: "'Manrope', sans-serif", marginTop: 4, color: ACCENT }}>
+            <div style={{ fontSize: 24, fontWeight: 800, fontFamily: "var(--font-display)", marginTop: 4, color: ACCENT }}>
               {/* Only the payroll engine's number (as in Reports -> Payroll); no
                   estimate of our own that could disagree with it. */}
               {payrollLine ? `${formatMoney(payrollLine.calculatedSalary)} ${t("common.sumUnit")}` : "—"}
@@ -320,7 +320,7 @@ function TeacherDetailContent() {
                   <Link
                     href="/reports?tab=payroll"
                     className="btn"
-                    style={{ background: ACCENT, color: "#fff", border: "none", fontSize: 11.5, fontWeight: 700, padding: "6px 12px", borderRadius: 7 }}
+                    style={{ background: ACCENT, color: "var(--on-ink)", border: "none", fontSize: 11.5, fontWeight: 700, padding: "6px 12px", borderRadius: "var(--radius-xs)" }}
                   >
                     {t("teacherDetail.payInReports")}
                   </Link>
@@ -332,37 +332,37 @@ function TeacherDetailContent() {
 
         {/* Dars yuklamasi statistikasi */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0,1fr))", gap: 16 }}>
-          <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 14, padding: "16px 18px", display: "flex", alignItems: "center", gap: 14 }}>
-            <div style={{ width: 44, height: 44, borderRadius: 10, background: "#EEF0FF", color: ACCENT, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20 }}>
+          <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: "16px 18px", display: "flex", alignItems: "center", gap: 14 }}>
+            <div style={{ width: 44, height: 44, borderRadius: "var(--radius-sm)", background: "var(--primary-soft)", color: ACCENT, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20 }}>
               📅
             </div>
             <div>
-              <div style={{ fontSize: 12, color: "#686B75", fontWeight: 600 }}>Bugungi darslar ({todayWeekday})</div>
-              <div style={{ fontSize: 20, fontWeight: 800, fontFamily: "'Manrope', sans-serif", color: "#181A1F" }}>{lessonsStats.daily} ta dars</div>
+              <div style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 600 }}>Bugungi darslar ({todayWeekday})</div>
+              <div style={{ fontSize: 20, fontWeight: 800, fontFamily: "var(--font-display)", color: "var(--text)" }}>{lessonsStats.daily} ta dars</div>
             </div>
           </div>
-          <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 14, padding: "16px 18px", display: "flex", alignItems: "center", gap: 14 }}>
-            <div style={{ width: 44, height: 44, borderRadius: 10, background: "#EBF8F2", color: "#167A48", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20 }}>
+          <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: "16px 18px", display: "flex", alignItems: "center", gap: 14 }}>
+            <div style={{ width: 44, height: 44, borderRadius: "var(--radius-sm)", background: "var(--success-soft)", color: "var(--success)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20 }}>
               🗓️
             </div>
             <div>
-              <div style={{ fontSize: 12, color: "#686B75", fontWeight: 600 }}>{t("tch.weeklyLessons")}</div>
-              <div style={{ fontSize: 20, fontWeight: 800, fontFamily: "'Manrope', sans-serif", color: "#181A1F" }}>{lessonsStats.weekly} ta dars</div>
+              <div style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 600 }}>{t("tch.weeklyLessons")}</div>
+              <div style={{ fontSize: 20, fontWeight: 800, fontFamily: "var(--font-display)", color: "var(--text)" }}>{lessonsStats.weekly} ta dars</div>
             </div>
           </div>
-          <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 14, padding: "16px 18px", display: "flex", alignItems: "center", gap: 14 }}>
-            <div style={{ width: 44, height: 44, borderRadius: 10, background: "#FFF6E5", color: "#F59E0B", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20 }}>
+          <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: "16px 18px", display: "flex", alignItems: "center", gap: 14 }}>
+            <div style={{ width: 44, height: 44, borderRadius: "var(--radius-sm)", background: "var(--warning-soft)", color: "var(--warning)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20 }}>
               ⏳
             </div>
             <div>
-              <div style={{ fontSize: 12, color: "#686B75", fontWeight: 600 }}>{t("tch.monthlyLessons")}</div>
-              <div style={{ fontSize: 20, fontWeight: 800, fontFamily: "'Manrope', sans-serif", color: "#181A1F" }}>{lessonsStats.monthly} ta dars</div>
+              <div style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 600 }}>{t("tch.monthlyLessons")}</div>
+              <div style={{ fontSize: 20, fontWeight: 800, fontFamily: "var(--font-display)", color: "var(--text)" }}>{lessonsStats.monthly} ta dars</div>
             </div>
           </div>
         </div>
 
-        <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 20 }}>
-          <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 700, fontSize: 15, marginBottom: 14 }}>{t("teacherDetail.aboutTeacher")}</div>
+        <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 20 }}>
+          <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 15, marginBottom: 14 }}>{t("teacherDetail.aboutTeacher")}</div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0,1fr))", gap: "18px 16px" }}>
             <InfoField label={t("teacherDetail.email")} value={teacher.email || "—"} />
             <InfoField label={t("teacherDetail.phone")} value={teacher.phone || "—"} />
@@ -399,10 +399,10 @@ function TeacherDetailContent() {
 
         <TeacherAccountCard teacher={teacher} canManage={can(user, "teachers.edit")} onChanged={(nt) => setTeacher((cur) => (cur ? { ...cur, ...nt } : cur))} />
 
-        <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, overflow: "hidden" }}>
-          <div style={{ padding: "16px 20px 4px", fontFamily: "'Manrope', sans-serif", fontWeight: 700, fontSize: 15 }}>{t("teacherDetail.groupsTitle")}</div>
+        <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", overflow: "hidden" }}>
+          <div style={{ padding: "16px 20px 4px", fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 15 }}>{t("teacherDetail.groupsTitle")}</div>
           {fullGroups.length === 0 ? (
-            <div style={{ color: "#686B75", fontSize: 14, padding: "24px 20px" }}>{t("teacherDetail.noGroupsAssigned")}</div>
+            <div style={{ color: "var(--text-muted)", fontSize: 14, padding: "24px 20px" }}>{t("teacherDetail.noGroupsAssigned")}</div>
           ) : (
             <table>
               <thead>
@@ -426,7 +426,7 @@ function TeacherDetailContent() {
                     <td style={{ textAlign: "right" }}>
                       <Link
                         href={`/groups/${g.id}`}
-                        style={{ fontWeight: 600, fontSize: 12.5, color: ACCENT, border: `1px solid ${ACCENT}`, padding: "6px 12px", borderRadius: 8 }}
+                        style={{ fontWeight: 600, fontSize: 12.5, color: ACCENT, border: `1px solid ${ACCENT}`, padding: "6px 12px", borderRadius: "var(--radius-xs)" }}
                       >
                         {t("teacherDetail.viewGroup")}
                       </Link>
@@ -438,10 +438,10 @@ function TeacherDetailContent() {
           )}
         </div>
 
-        <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, overflow: "hidden" }}>
-          <div style={{ padding: "16px 20px 4px", fontFamily: "'Manrope', sans-serif", fontWeight: 700, fontSize: 15 }}>{t("teacherDetail.salaryHistory")}</div>
+        <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", overflow: "hidden" }}>
+          <div style={{ padding: "16px 20px 4px", fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 15 }}>{t("teacherDetail.salaryHistory")}</div>
           {salaryPayments.length === 0 ? (
-            <div style={{ color: "#686B75", fontSize: 14, padding: "24px 20px" }}>{t("teacherDetail.noSalaryPayments")}</div>
+            <div style={{ color: "var(--text-muted)", fontSize: 14, padding: "24px 20px" }}>{t("teacherDetail.noSalaryPayments")}</div>
           ) : (
             <table>
               <thead>
@@ -455,7 +455,7 @@ function TeacherDetailContent() {
                 {salaryPayments.map((s) => (
                   <tr key={s.id}>
                     <td style={{ fontWeight: 600 }}>{s.forMonth}</td>
-                    <td style={{ textDecoration: s.reversedAt ? "line-through" : undefined, color: s.reversedAt ? "#686B75" : undefined }}>
+                    <td style={{ textDecoration: s.reversedAt ? "line-through" : undefined, color: s.reversedAt ? "var(--text-muted)" : undefined }}>
                       {formatMoney(s.amount)} {t("common.sumUnit")}
                       {s.reversedAt && <span className="badge badge-neutral" style={{ marginLeft: 8 }} title={s.reversalReason ?? undefined}>{t("rep2.reversed")}</span>}
                     </td>
@@ -471,7 +471,7 @@ function TeacherDetailContent() {
       <Modal open={editOpen} onClose={() => setEditOpen(false)} title={t("teacherDetail.modalEditTitle")}>
         <form onSubmit={onSaveEdit} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           {editError && (
-            <div style={{ background: "#FDEBEC", color: "#B23A47", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: 10 }}>{editError}</div>
+            <div style={{ background: "var(--danger-soft)", color: "var(--danger)", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: "var(--radius-sm)" }}>{editError}</div>
           )}
           <Field label={t("teacherDetail.fieldFullName")}>
             <input className="field-input" required value={fullName} onChange={(e) => setFullName(e.target.value)} />
@@ -527,7 +527,7 @@ function TeacherDetailContent() {
             className="btn"
             type="submit"
             disabled={saving}
-            style={{ background: ACCENT, color: "#fff", fontSize: 14, fontWeight: 700, padding: 12, borderRadius: 10, marginTop: 6 }}
+            style={{ background: ACCENT, color: "var(--on-ink)", fontSize: 14, fontWeight: 700, padding: 12, borderRadius: "var(--radius-sm)", marginTop: 6 }}
           >
             {saving ? t("common.saving") : t("common.save")}
           </button>
@@ -540,7 +540,7 @@ function TeacherDetailContent() {
 function InfoField({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <div style={{ fontSize: 11.5, color: "#686B75" }}>{label}</div>
+      <div style={{ fontSize: 11.5, color: "var(--text-muted)" }}>{label}</div>
       <div style={{ fontSize: 13.5, fontWeight: 600, marginTop: 3 }}>{value}</div>
     </div>
   );
@@ -549,7 +549,7 @@ function InfoField({ label, value }: { label: string; value: string }) {
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div role="group" aria-label={label}>
-      <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>{label}</div>
+      <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-soft)", marginBottom: 6 }}>{label}</div>
       {children}
     </div>
   );

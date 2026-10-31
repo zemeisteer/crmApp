@@ -16,11 +16,11 @@ import { useLanguage } from "@/lib/i18n-context";
 import type { TranslationKey } from "@/lib/i18n";
 import { monthLabel, money, nextMonth, STATUS_COLORS, STATUS_LABEL_KEYS } from "@/lib/platform";
 
-const ACCENT = "#4F46E5";
+const ACCENT = "var(--primary)";
 const PAGE_SIZE = 20;
 const STATUSES = Object.keys(STATUS_LABEL_KEYS) as TenantStatus[];
-const label: React.CSSProperties = { display: "block", fontSize: 12.5, fontWeight: 700, color: "#4A4E58", marginBottom: 6 };
-const pill = (bg: string, fg: string): React.CSSProperties => ({ display: "inline-block", fontSize: 11.5, fontWeight: 800, padding: "3px 10px", borderRadius: 100, background: bg, color: fg, whiteSpace: "nowrap" });
+const label: React.CSSProperties = { display: "block", fontSize: 12.5, fontWeight: 700, color: "var(--text-soft)", marginBottom: 6 };
+const pill = (bg: string, fg: string): React.CSSProperties => ({ display: "inline-block", fontSize: 11.5, fontWeight: 800, padding: "3px 10px", borderRadius: "var(--radius-pill)", background: bg, color: fg, whiteSpace: "nowrap" });
 
 function SubscriptionsContent() {
   const { t, lang } = useLanguage();
@@ -67,13 +67,13 @@ function SubscriptionsContent() {
     if (s.daysLeft === 0) return { text: s.status === "TRIAL" ? t("pf.dash.today") : n("pf.sub.overdue", 0), tone: "danger" };
     return { text: n("pf.dash.daysLeft", s.daysLeft), tone: s.daysLeft <= 7 ? "warn" : "ok" };
   }
-  const toneColor = { ok: "#16794A", warn: "#8A5A00", danger: "#B23A47", muted: "#686B75" };
+  const toneColor = { ok: "var(--success)", warn: "var(--warning)", danger: "var(--danger)", muted: "var(--text-muted)" };
 
   return (
     <>
-      <div style={{ padding: "22px 32px", borderBottom: "1px solid #EAE8E2" }}>
+      <div style={{ padding: "22px 32px", borderBottom: "1px solid var(--border)" }}>
         <h1 style={{ fontSize: 22, fontWeight: 800 }}>{t("pf.sub.title")}</h1>
-        <div style={{ fontSize: 13, color: "#686B75", marginTop: 2 }}>{t("pf.sub.subtitle")}{data ? ` · ${monthLabel(data.month, lang)}` : ""}</div>
+        <div style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 2 }}>{t("pf.sub.subtitle")}{data ? ` · ${monthLabel(data.month, lang)}` : ""}</div>
         <div role="tablist" style={{ display: "flex", gap: 8, marginTop: 14 }}>
           {(["list", "cards"] as const).map((v) => (
             <button
@@ -83,10 +83,10 @@ function SubscriptionsContent() {
               aria-selected={view === v}
               className="btn"
               onClick={() => setView(v)}
-              style={{ background: view === v ? "#4F46E5" : "#fff", color: view === v ? "#fff" : "#4A4E58", border: `1px solid ${view === v ? "#4F46E5" : "#EAE8E2"}`, borderRadius: 100, padding: "7px 14px", fontSize: 13, fontWeight: 700 }}
+              style={{ background: view === v ? "var(--primary)" : "var(--surface)", color: view === v ? "var(--on-ink)" : "var(--text-soft)", border: `1px solid ${view === v ? "var(--primary)" : "var(--border)"}`, borderRadius: "var(--radius-pill)", padding: "7px 14px", fontSize: 13, fontWeight: 700 }}
             >
               {v === "list" ? t("pf.sub.title") : `💳 ${t("pcp.adminTab")}`}
-              {v === "cards" && cardPending > 0 && <span style={{ marginLeft: 6, background: "#DC2626", color: "#fff", borderRadius: 100, fontSize: 11, padding: "1px 7px" }}>{cardPending}</span>}
+              {v === "cards" && cardPending > 0 && <span style={{ marginLeft: 6, background: "var(--danger)", color: "var(--on-ink)", borderRadius: "var(--radius-pill)", fontSize: 11, padding: "1px 7px" }}>{cardPending}</span>}
             </button>
           ))}
         </div>
@@ -103,18 +103,18 @@ function SubscriptionsContent() {
           <input className="field-input" placeholder={t("pf.sub.search")} value={search} onChange={(e) => setSearch(e.target.value)} style={{ width: 280 }} aria-label={t("pf.sub.search")} />
           <Select ariaLabel={t("pf.sub.colStatus")} value={status} onChange={(v) => { setStatus(v); setPage(1); }} options={[{ value: "", label: t("sa.allStatuses") }, ...STATUSES.map((s) => ({ value: s, label: t(STATUS_LABEL_KEYS[s]) }))]} style={{ width: 200 }} />
           <Select ariaLabel={t("pf.sub.colPlan")} value={plan} onChange={(v) => { setPlan(v); setPage(1); }} options={[{ value: "", label: t("pf.sub.allPlans") }, ...plans.map((p) => ({ value: p.key, label: p.name }))]} style={{ width: 200 }} />
-          {data && <span style={{ fontSize: 12.5, color: "#686B75", marginLeft: "auto" }}>{n("pf.sub.total", money(data.total))}</span>}
+          {data && <span style={{ fontSize: 12.5, color: "var(--text-muted)", marginLeft: "auto" }}>{n("pf.sub.total", money(data.total))}</span>}
         </div>
 
         {error !== null ? (
           <LoadError message={error || t("adm.loadError")} onRetry={load} />
         ) : !data ? (
-          <div style={{ color: "#686B75", fontSize: 14 }}>{t("common.loading")}</div>
+          <div style={{ color: "var(--text-muted)", fontSize: 14 }}>{t("common.loading")}</div>
         ) : data.items.length === 0 ? (
-          <div style={{ color: "#686B75", fontSize: 14, background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 32, textAlign: "center" }}>{t("pf.sub.empty")}</div>
+          <div style={{ color: "var(--text-muted)", fontSize: 14, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 32, textAlign: "center" }}>{t("pf.sub.empty")}</div>
         ) : (
           <>
-            <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, overflow: "hidden" }}>
+            <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", overflow: "hidden" }}>
               <table className="adm-table">
                 <thead>
                   <tr>
@@ -134,22 +134,22 @@ function SubscriptionsContent() {
                       <tr key={s.id}>
                         <td>
                           <div style={{ fontWeight: 700 }}>{s.name}</div>
-                          <div style={{ fontSize: 11.5, color: "#686B75" }}>{centerHost(s.subdomain)}</div>
+                          <div style={{ fontSize: 11.5, color: "var(--text-muted)" }}>{centerHost(s.subdomain)}</div>
                         </td>
                         <td>
                           <div style={{ fontWeight: 700 }}>{s.planName}</div>
-                          <div style={{ fontSize: 11.5, color: "#686B75" }}>{s.price > 0 ? `${sum(s.price)} / ${t("pf.sub.perMonth")}` : t("pf.dash.free")}</div>
+                          <div style={{ fontSize: 11.5, color: "var(--text-muted)" }}>{s.price > 0 ? `${sum(s.price)} / ${t("pf.sub.perMonth")}` : t("pf.dash.free")}</div>
                         </td>
                         <td><span style={pill(STATUS_COLORS[s.status].bg, STATUS_COLORS[s.status].fg)}>{t(STATUS_LABEL_KEYS[s.status])}</span></td>
                         <td>
-                          {s.paidThisMonth === null ? <span style={{ color: "#686B75" }}>—</span>
-                            : s.paidThisMonth ? <span style={pill("#E9F8EF", "#16794A")}>{t("pf.sub.paid")}</span>
-                            : <span style={pill("#FDEBEC", "#B23A47")}>{t("pf.sub.unpaid")}</span>}
+                          {s.paidThisMonth === null ? <span style={{ color: "var(--text-muted)" }}>—</span>
+                            : s.paidThisMonth ? <span style={pill("var(--success-soft)", "var(--success)")}>{t("pf.sub.paid")}</span>
+                            : <span style={pill("var(--danger-soft)", "var(--danger)")}>{t("pf.sub.unpaid")}</span>}
                         </td>
                         <td style={{ color: toneColor[left.tone], fontWeight: left.tone === "muted" ? 500 : 700 }}>{left.text}</td>
-                        <td style={{ textAlign: "right", fontWeight: 700 }}>{s.totalPaid > 0 ? sum(s.totalPaid) : <span style={{ color: "#686B75", fontWeight: 500 }}>—</span>}</td>
+                        <td style={{ textAlign: "right", fontWeight: 700 }}>{s.totalPaid > 0 ? sum(s.totalPaid) : <span style={{ color: "var(--text-muted)", fontWeight: 500 }}>—</span>}</td>
                         <td style={{ textAlign: "right" }}>
-                          <button type="button" className="btn" onClick={() => setManaging(s)} style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 9, padding: "7px 12px", fontSize: 12.5, fontWeight: 700, cursor: "pointer" }}>{t("pf.sub.manage")}</button>
+                          <button type="button" className="btn" onClick={() => setManaging(s)} style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", padding: "7px 12px", fontSize: 12.5, fontWeight: 700, cursor: "pointer" }}>{t("pf.sub.manage")}</button>
                         </td>
                       </tr>
                     );
@@ -271,7 +271,7 @@ function ManageSubscription({ sub, plans, month, onClose, onChanged }: { sub: Pl
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
             <div style={{ width: 200 }}><DatePicker value={trialEndsAt} onChange={setTrialEndsAt} /></div>
             {[7, 14, 30].map((d) => (
-              <button key={d} type="button" onClick={() => extend(d)} style={{ fontSize: 12, fontWeight: 700, padding: "6px 11px", borderRadius: 100, border: "1px solid #EAE8E2", background: "#fff", color: "#4A4E58", cursor: "pointer" }}>
+              <button key={d} type="button" onClick={() => extend(d)} style={{ fontSize: 12, fontWeight: 700, padding: "6px 11px", borderRadius: "var(--radius-pill)", border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text-soft)", cursor: "pointer" }}>
                 {t("pf.sub.extend").replace("{n}", String(d))}
               </button>
             ))}
@@ -279,16 +279,16 @@ function ManageSubscription({ sub, plans, month, onClose, onChanged }: { sub: Pl
         </div>
 
         <div style={{ display: "flex", justifyContent: "flex-end" }}>
-          <button type="button" className="btn" disabled={!changed || saving} onClick={save} style={{ background: !changed || saving ? "#A9ABB3" : ACCENT, color: "#fff", border: "none", borderRadius: 10, padding: "9px 16px", fontSize: 13.5, fontWeight: 700, cursor: !changed || saving ? "not-allowed" : "pointer" }}>
+          <button type="button" className="btn" disabled={!changed || saving} onClick={save} style={{ background: !changed || saving ? "var(--text-faint)" : ACCENT, color: "var(--on-ink)", border: "none", borderRadius: "var(--radius-sm)", padding: "9px 16px", fontSize: 13.5, fontWeight: 700, cursor: !changed || saving ? "not-allowed" : "pointer" }}>
             {saving ? t("common.loading") : t("pf.sub.saveChanges")}
           </button>
         </div>
 
-        <div style={{ borderTop: "1px solid #EAE8E2", paddingTop: 16 }}>
+        <div style={{ borderTop: "1px solid var(--border)", paddingTop: 16 }}>
           <div style={{ fontSize: 14.5, fontWeight: 800 }}>{t("pf.sub.payTitle")}</div>
-          <div style={{ fontSize: 12.5, color: "#686B75", margin: "2px 0 12px", lineHeight: 1.5 }}>{t("pf.sub.payHint")}</div>
+          <div style={{ fontSize: 12.5, color: "var(--text-muted)", margin: "2px 0 12px", lineHeight: 1.5 }}>{t("pf.sub.payHint")}</div>
           {planPrice <= 0 ? (
-            <div style={{ fontSize: 13, color: "#8A5A00", background: "#FFF7E6", border: "1px solid #F5DDA8", borderRadius: 10, padding: "10px 12px" }}>{t("pf.sub.payFree")}</div>
+            <div style={{ fontSize: 13, color: "var(--warning)", background: "var(--warning-soft)", border: "1px solid var(--warning-border)", borderRadius: "var(--radius-sm)", padding: "10px 12px" }}>{t("pf.sub.payFree")}</div>
           ) : (
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "flex-end" }}>
               <div style={{ width: 190 }}>
@@ -299,7 +299,7 @@ function ManageSubscription({ sub, plans, month, onClose, onChanged }: { sub: Pl
                 <span style={label}>{t("pf.sub.payAmount")}</span>
                 <input className="field-input" inputMode="numeric" value={amount} onChange={(e) => setAmount(e.target.value.replace(/\D/g, ""))} aria-label={t("pf.sub.payAmount")} />
               </div>
-              <button type="button" className="btn" disabled={paying} onClick={pay} style={{ background: "#16794A", color: "#fff", border: "none", borderRadius: 10, padding: "10px 16px", fontSize: 13.5, fontWeight: 700, cursor: paying ? "wait" : "pointer" }}>
+              <button type="button" className="btn" disabled={paying} onClick={pay} style={{ background: "var(--success)", color: "var(--on-ink)", border: "none", borderRadius: "var(--radius-sm)", padding: "10px 16px", fontSize: 13.5, fontWeight: 700, cursor: paying ? "wait" : "pointer" }}>
                 {paying ? t("common.loading") : t("pf.sub.payRecord")}
               </button>
             </div>
@@ -307,26 +307,26 @@ function ManageSubscription({ sub, plans, month, onClose, onChanged }: { sub: Pl
         </div>
 
         {message && (
-          <div role={message.error ? "alert" : "status"} style={{ fontSize: 13, fontWeight: 600, padding: "9px 12px", borderRadius: 10, background: message.error ? "#FDEBEC" : "#E9F8EF", color: message.error ? "#B23A47" : "#16794A" }}>{message.text}</div>
+          <div role={message.error ? "alert" : "status"} style={{ fontSize: 13, fontWeight: 600, padding: "9px 12px", borderRadius: "var(--radius-sm)", background: message.error ? "var(--danger-soft)" : "var(--success-soft)", color: message.error ? "var(--danger)" : "var(--success)" }}>{message.text}</div>
         )}
 
-        <div style={{ borderTop: "1px solid #EAE8E2", paddingTop: 14 }}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: "#686B75", marginBottom: 8 }}>{t("pf.sub.history")}</div>
+        <div style={{ borderTop: "1px solid var(--border)", paddingTop: 14 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-muted)", marginBottom: 8 }}>{t("pf.sub.history")}</div>
           {history === null ? (
-            <div style={{ fontSize: 13, color: "#686B75" }}>{t("common.loading")}</div>
+            <div style={{ fontSize: 13, color: "var(--text-muted)" }}>{t("common.loading")}</div>
           ) : history.length === 0 ? (
-            <div style={{ fontSize: 13, color: "#686B75" }}>{t("pf.sub.noHistory")}</div>
+            <div style={{ fontSize: 13, color: "var(--text-muted)" }}>{t("pf.sub.noHistory")}</div>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 6, maxHeight: 180, overflowY: "auto" }}>
               {history.map((h) => (
-                <div key={h.id} style={{ display: "flex", justifyContent: "space-between", gap: 10, fontSize: 13, background: "#FAF9F6", borderRadius: 10, padding: "8px 12px" }}>
+                <div key={h.id} style={{ display: "flex", justifyContent: "space-between", gap: 10, fontSize: 13, background: "var(--surface-muted)", borderRadius: "var(--radius-sm)", padding: "8px 12px" }}>
                   <span>
                     <b>{monthLabel(h.forMonth, lang)}</b> · {h.plan} · {h.provider ?? t("pf.dash.manual")}
-                    {h.paidAt ? <span style={{ color: "#686B75" }}> · {formatDate(h.paidAt, lang, "short")}</span> : null}
+                    {h.paidAt ? <span style={{ color: "var(--text-muted)" }}> · {formatDate(h.paidAt, lang, "short")}</span> : null}
                   </span>
                   <span style={{ whiteSpace: "nowrap" }}>
                     <b>{money(h.amount)}</b>{" "}
-                    <span style={pill(h.status === "PAID" ? "#E9F8EF" : "#F2F1EC", h.status === "PAID" ? "#16794A" : "#686B75")}>{t(`pf.sub.tx${h.status}`)}</span>
+                    <span style={pill(h.status === "PAID" ? "var(--success-soft)" : "var(--surface-muted)", h.status === "PAID" ? "var(--success)" : "var(--text-muted)")}>{t(`pf.sub.tx${h.status}`)}</span>
                   </span>
                 </div>
               ))}

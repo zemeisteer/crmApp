@@ -41,29 +41,29 @@ export default function PortalMakeups({ tz }: { tz: string }) {
     return d ? formatDate(localDate(d), lang, "short") : "—";
   };
 
-  const row: React.CSSProperties = { border: "1px solid #EAE8E2", borderRadius: 12, padding: "10px 12px", display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" };
-  const sub: React.CSSProperties = { fontSize: 12.5, fontWeight: 800, color: "#4A4E58", textTransform: "uppercase", letterSpacing: "0.03em", margin: "4px 0 0" };
+  const row: React.CSSProperties = { border: "1px solid var(--border)", borderRadius: "var(--radius-md)", padding: "10px 12px", display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" };
+  const sub: React.CSSProperties = { fontSize: 12.5, fontWeight: 800, color: "var(--text-soft)", textTransform: "uppercase", letterSpacing: "0.03em", margin: "4px 0 0" };
 
   return (
     <section aria-labelledby="portal-makeups-title" style={{ ...portalCard, marginTop: 14, display: "flex", flexDirection: "column", gap: 10 }}>
-      <h2 id="portal-makeups-title" style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 700, fontSize: 16, margin: 0 }}>{t("mk.portalTitle")}</h2>
-      <div style={{ fontSize: 13, color: "#686B75", lineHeight: 1.5 }}>{t("mk.portalHint")}</div>
+      <h2 id="portal-makeups-title" style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 16, margin: 0 }}>{t("mk.portalTitle")}</h2>
+      <div style={{ fontSize: 13, color: "var(--text-muted)", lineHeight: 1.5 }}>{t("mk.portalHint")}</div>
       {error ? (
-        <div role="alert" style={{ fontSize: 13, color: "#B23A47", fontWeight: 600 }}>{t("mk.loadError")}</div>
+        <div role="alert" style={{ fontSize: 13, color: "var(--danger)", fontWeight: 600 }}>{t("mk.loadError")}</div>
       ) : !data ? (
-        <div role="status" style={{ fontSize: 13, color: "#686B75" }}>{t("common.loading")}</div>
+        <div role="status" style={{ fontSize: 13, color: "var(--text-muted)" }}>{t("common.loading")}</div>
       ) : nothing ? (
-        <div style={{ fontSize: 13.5, color: "#686B75" }}>{t("mk.portalNone")}</div>
+        <div style={{ fontSize: 13.5, color: "var(--text-muted)" }}>{t("mk.portalNone")}</div>
       ) : (
         <>
           {upcoming.length > 0 && (
             <>
               <h3 style={sub}>{t("mk.portalUpcoming")}</h3>
               {upcoming.map((b) => (
-                <div key={b.id} style={{ ...row, borderColor: "#C7D2FE" }}>
+                <div key={b.id} style={{ ...row, borderColor: "var(--primary-border)" }}>
                   <div style={{ flex: "1 1 200px", minWidth: 0 }}>
                     <div style={{ fontSize: 14.5, fontWeight: 700 }}>{dayLabel(b.date, lang, t)} · {b.startTime}–{b.endTime}</div>
-                    <div style={{ fontSize: 12.5, color: "#6B6E78", marginTop: 3, display: "flex", flexWrap: "wrap", gap: "2px 10px", overflowWrap: "anywhere" }}>
+                    <div style={{ fontSize: 12.5, color: "var(--text-muted)", marginTop: 3, display: "flex", flexWrap: "wrap", gap: "2px 10px", overflowWrap: "anywhere" }}>
                       <span>{b.mode === "GROUP_LESSON" ? b.groupName ?? "—" : t("mk.session")}</span>
                       {b.teacherName && <span>👤 {b.teacherName}</span>}
                       {b.roomName && <span>🚪 {b.roomName}</span>}
@@ -82,7 +82,7 @@ export default function PortalMakeups({ tz }: { tz: string }) {
                 <div key={c.id} style={row}>
                   <div style={{ flex: "1 1 200px", minWidth: 0 }}>
                     <div style={{ fontSize: 14, fontWeight: 700, overflowWrap: "anywhere" }}>{c.originGroupName ?? "—"} · {dayLabel(c.originDate, lang, t)}</div>
-                    <div style={{ fontSize: 12.5, color: "#6B6E78", marginTop: 3 }}>
+                    <div style={{ fontSize: 12.5, color: "var(--text-muted)", marginTop: 3 }}>
                       {t(REASON_KEYS[c.reason])}
                       {" · "}
                       {c.expiresAt ? t("mk.portalUseBy").replace("{date}", expiryDay(c.expiresAt)) : t("mk.noExpiry")}
@@ -102,7 +102,7 @@ export default function PortalMakeups({ tz }: { tz: string }) {
                   <div key={b.id} style={row}>
                     <div style={{ flex: "1 1 200px", minWidth: 0 }}>
                       <div style={{ fontSize: 14, fontWeight: 700 }}>{dayLabel(b.date, lang, t)} · {b.startTime}–{b.endTime}</div>
-                      <div style={{ fontSize: 12.5, color: "#6B6E78", marginTop: 3, overflowWrap: "anywhere" }}>
+                      <div style={{ fontSize: 12.5, color: "var(--text-muted)", marginTop: 3, overflowWrap: "anywhere" }}>
                         {b.mode === "GROUP_LESSON" ? b.groupName ?? "—" : t("mk.session")}
                         {b.teacherName ? ` · ${b.teacherName}` : ""}
                       </div>

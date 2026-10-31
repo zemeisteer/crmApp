@@ -93,9 +93,9 @@ function AuditLogContent() {
 
   return (
     <>
-      <div style={{ padding: "22px 32px", borderBottom: "1px solid #EAE8E2" }}>
+      <div style={{ padding: "22px 32px", borderBottom: "1px solid var(--border)" }}>
         <h1 style={{ fontSize: 22, fontWeight: 800 }}>{t("auditLog.title")}</h1>
-        <div style={{ fontSize: 13, color: "#686B75", marginTop: 2, maxWidth: 640, lineHeight: 1.5 }}>
+        <div style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 2, maxWidth: 640, lineHeight: 1.5 }}>
           {t("auditLog.subtitle")}
         </div>
       </div>
@@ -135,13 +135,13 @@ function AuditLogContent() {
         </div>
 
         {loading ? (
-          <div style={{ color: "#686B75", fontSize: 14 }}>{t("common.loading")}</div>
+          <div style={{ color: "var(--text-muted)", fontSize: 14 }}>{t("common.loading")}</div>
         ) : filtered.length === 0 ? (
-          <div style={{ color: "#686B75", fontSize: 14, background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 32, textAlign: "center" }}>
+          <div style={{ color: "var(--text-muted)", fontSize: 14, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 32, textAlign: "center" }}>
             {logs.length === 0 ? t("auditLog.noRecords") : t("auditLog.noFilterResults")}
           </div>
         ) : (
-          <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, overflowX: "auto" }}>
+          <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", overflowX: "auto" }}>
             <table>
               <thead>
                 <tr>
@@ -163,7 +163,7 @@ function AuditLogContent() {
                       </span>
                     </td>
                     <td>{ENTITY_LABEL_KEYS[l.entityType] ? t(ENTITY_LABEL_KEYS[l.entityType]) : EXTRA_ENTITIES[l.entityType]?.[lang] ?? l.entityType}</td>
-                    <td style={{ fontSize: 12.5, color: "#4A4E58", maxWidth: 360 }}>
+                    <td style={{ fontSize: 12.5, color: "var(--text-soft)", maxWidth: 360 }}>
                       {describeAudit(l, lang)}
                     </td>
                   </tr>

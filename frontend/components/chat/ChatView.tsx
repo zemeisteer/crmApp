@@ -12,13 +12,13 @@ import { CHAT_ACCENT as ACCENT, UnreadBadge, conversationTitle, kindLabel, messa
 // Wide screens: the list and the open conversation side by side. Phones:
 // two screens - the list, or the conversation with a back button.
 const CSS = `
-.chat-layout{display:flex;flex:1;min-height:0;height:100%;background:#fff;border:1px solid #EAE8E2;border-radius:14px;overflow:hidden;min-width:0}
-.chat-list{width:320px;flex:0 0 320px;border-right:1px solid #EAE8E2;display:flex;flex-direction:column;min-height:0;min-width:0}
+.chat-layout{display:flex;flex:1;min-height:0;height:100%;background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden;min-width:0}
+.chat-list{width:320px;flex:0 0 320px;border-right:1px solid var(--border);display:flex;flex-direction:column;min-height:0;min-width:0}
 .chat-pane{flex:1;display:flex;flex-direction:column;min-height:0;min-width:0}
 .chat-back{display:none}
-.chat-item{display:flex;gap:10px;align-items:flex-start;width:100%;text-align:left;border:none;background:transparent;padding:11px 14px;cursor:pointer;font-family:inherit;color:#181A1F;border-bottom:1px solid #F2F1EC;min-width:0}
-.chat-item:hover{background:#FAFAF8}
-.chat-item[aria-current="true"]{background:#EEF0FF}
+.chat-item{display:flex;gap:10px;align-items:flex-start;width:100%;text-align:left;border:none;background:transparent;padding:11px 14px;cursor:pointer;font-family:inherit;color:var(--text);border-bottom:1px solid var(--border);min-width:0}
+.chat-item:hover{background:var(--surface-muted)}
+.chat-item[aria-current="true"]{background:var(--primary-soft)}
 @media (max-width:768px){
   .chat-list{width:100%;flex:1 1 auto;border-right:none}
   .chat-layout[data-view="thread"] .chat-list{display:none}
@@ -148,28 +148,28 @@ export default function ChatView({
     <div className="chat-layout" data-view={selectedId ? "thread" : "list"} data-chat-live={conn}>
       <style>{CSS}</style>
       <div className="chat-list">
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, padding: "12px 14px", borderBottom: "1px solid #EAE8E2" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, padding: "12px 14px", borderBottom: "1px solid var(--border)" }}>
           <h2 style={{ fontSize: 15, fontWeight: 800 }}>{t("chat.conversations")}</h2>
-          <button type="button" className="btn" onClick={() => setPicking((v) => !v)} aria-expanded={picking} style={{ background: ACCENT, color: "#fff", fontWeight: 700, fontSize: 12.5, padding: "7px 11px", borderRadius: 9, whiteSpace: "nowrap" }}>
+          <button type="button" className="btn" onClick={() => setPicking((v) => !v)} aria-expanded={picking} style={{ background: ACCENT, color: "var(--on-ink)", fontWeight: 700, fontSize: 12.5, padding: "7px 11px", borderRadius: "var(--radius-sm)", whiteSpace: "nowrap" }}>
             {t("chat.new")}
           </button>
         </div>
         {(stopped || conn === "waiting") && (
-          <div role="status" style={{ padding: "8px 14px", fontSize: 12.5, background: stopped ? "#FDEBEC" : "#FFF7E6", color: stopped ? "#B23A47" : "#92400E", borderBottom: "1px solid #EAE8E2" }}>
+          <div role="status" style={{ padding: "8px 14px", fontSize: 12.5, background: stopped ? "var(--danger-soft)" : "var(--warning-soft)", color: stopped ? "var(--danger)" : "var(--warning)", borderBottom: "1px solid var(--border)" }}>
             {stopped ? t("chat.liveStopped") : t("chat.reconnecting")}
           </div>
         )}
         {picking && <NewConversation client={client} teacher={teacher} onOpened={opened} onClose={() => setPicking(false)} />}
         <div style={{ flex: 1, minHeight: 0, overflowY: "auto" }} aria-busy={list === null}>
           {listError && !list ? (
-            <div role="alert" style={{ padding: 16, fontSize: 13, color: "#B23A47", display: "grid", gap: 8, justifyItems: "start" }}>
+            <div role="alert" style={{ padding: 16, fontSize: 13, color: "var(--danger)", display: "grid", gap: 8, justifyItems: "start" }}>
               {t("chat.loadError")}
-              <button type="button" className="btn" onClick={loadList} style={{ background: "#fff", color: "#181A1F", border: "1px solid #EAE8E2", fontWeight: 700, fontSize: 12.5, padding: "6px 12px", borderRadius: 8 }}>{t("chat.retryLoad")}</button>
+              <button type="button" className="btn" onClick={loadList} style={{ background: "var(--surface)", color: "var(--text)", border: "1px solid var(--border)", fontWeight: 700, fontSize: 12.5, padding: "6px 12px", borderRadius: "var(--radius-xs)" }}>{t("chat.retryLoad")}</button>
             </div>
           ) : list === null ? (
-            <div role="status" style={{ padding: 16, fontSize: 13, color: "#686B75" }}>{t("common.loading")}</div>
+            <div role="status" style={{ padding: 16, fontSize: 13, color: "var(--text-muted)" }}>{t("common.loading")}</div>
           ) : list.length === 0 ? (
-            <div style={{ padding: "24px 16px", fontSize: 13.5, color: "#686B75", lineHeight: 1.5 }}>{t("chat.noConversations")}</div>
+            <div style={{ padding: "24px 16px", fontSize: 13.5, color: "var(--text-muted)", lineHeight: 1.5 }}>{t("chat.noConversations")}</div>
           ) : (
             <ul aria-label={t("chat.conversations")} style={{ listStyle: "none", margin: 0, padding: 0 }}>
               {list.map((c) => {
@@ -180,10 +180,10 @@ export default function ChatView({
                       <span style={{ flex: 1, minWidth: 0 }}>
                         <span style={{ display: "flex", alignItems: "baseline", gap: 6, minWidth: 0 }}>
                           <span style={{ fontSize: 14, fontWeight: c.unread > 0 ? 800 : 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1, minWidth: 0 }}>{title}</span>
-                          {c.lastMessage && <span style={{ fontSize: 11.5, color: "#686B75", flexShrink: 0 }}>{messageTime(c.lastMessage.createdAt, lang)}</span>}
+                          {c.lastMessage && <span style={{ fontSize: 11.5, color: "var(--text-muted)", flexShrink: 0 }}>{messageTime(c.lastMessage.createdAt, lang)}</span>}
                         </span>
-                        <span style={{ display: "block", fontSize: 11.5, color: "#686B75", marginTop: 1 }}>{kindLabel(c.kind, client.side, t)}</span>
-                        <span style={{ display: "block", fontSize: 13, color: c.unread > 0 ? "#181A1F" : "#4A4E58", marginTop: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        <span style={{ display: "block", fontSize: 11.5, color: "var(--text-muted)", marginTop: 1 }}>{kindLabel(c.kind, client.side, t)}</span>
+                        <span style={{ display: "block", fontSize: 13, color: c.unread > 0 ? "var(--text)" : "var(--text-soft)", marginTop: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                           {c.lastMessage ? c.lastMessage.body : t("chat.noMessagesYet")}
                         </span>
                       </span>
@@ -210,7 +210,7 @@ export default function ChatView({
             onFound={onFound}
           />
         ) : (
-          <div style={{ flex: 1, display: "grid", placeContent: "center", textAlign: "center", padding: 24, color: "#686B75", fontSize: 13.5 }}>{t("chat.pickConversation")}</div>
+          <div style={{ flex: 1, display: "grid", placeContent: "center", textAlign: "center", padding: 24, color: "var(--text-muted)", fontSize: 13.5 }}>{t("chat.pickConversation")}</div>
         )}
       </div>
     </div>

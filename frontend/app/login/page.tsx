@@ -8,17 +8,17 @@ import { ApiError, WorkspaceItem } from "@/lib/api";
 import { centerHost, centerRedirectBase, forgetCenter, lastCenter, mainSiteUrl, subdomainFromHost } from "@/lib/domain";
 import { useCenterFromHost } from "@/lib/use-center-host";
 
-const ACCENT = "#4F46E5";
+const ACCENT = "var(--primary)";
 
 const ROLE_BADGE_COLORS: Record<string, { bg: string; color: string }> = {
-  OWNER: { bg: "#FEF3C7", color: "#92400E" },
-  ADMIN: { bg: "#EEF2FF", color: "#3730A3" },
-  MANAGER: { bg: "#E0E7FF", color: "#3730A3" },
-  TEACHER: { bg: "#ECFDF5", color: "#065F46" },
-  STUDENT: { bg: "#EFF6FF", color: "#1E40AF" },
-  PARENT: { bg: "#FDF2F8", color: "#9D174D" },
-  RECEPTIONIST: { bg: "#F3E8FF", color: "#6B21A8" },
-  ACCOUNTANT: { bg: "#FFFBEB", color: "#78350F" },
+  OWNER: { bg: "var(--warning-soft)", color: "var(--warning)" },
+  ADMIN: { bg: "var(--primary-soft)", color: "var(--primary)" },
+  MANAGER: { bg: "var(--primary-soft)", color: "var(--primary)" },
+  TEACHER: { bg: "var(--success-soft)", color: "var(--success)" },
+  STUDENT: { bg: "var(--info-soft)", color: "var(--info)" },
+  PARENT: { bg: "var(--pink-soft)", color: "var(--pink)" },
+  RECEPTIONIST: { bg: "var(--violet-soft)", color: "var(--violet)" },
+  ACCOUNTANT: { bg: "var(--warning-soft)", color: "var(--warning)" },
 };
 
 const ROLE_LABELS: Record<string, Record<"UZ" | "RU" | "EN", string>> = {
@@ -128,14 +128,14 @@ export default function LoginPage() {
   // 2FA screen
   if (pendingToken) {
     return (
-      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#F7F7F5" }}>
-        <form onSubmit={onSubmitCode} style={{ width: 380, background: "#fff", borderRadius: 16, padding: 32, display: "flex", flexDirection: "column", gap: 18, boxShadow: "0 10px 25px rgba(0,0,0,0.05)" }}>
+      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--surface-muted)" }}>
+        <form onSubmit={onSubmitCode} style={{ width: 380, background: "var(--surface)", borderRadius: "var(--radius-lg)", padding: 32, display: "flex", flexDirection: "column", gap: 18, boxShadow: "0 10px 25px rgba(0,0,0,0.05)" }}>
           <div>
             <h2 style={{ fontSize: 20, fontWeight: 800 }}>{t("twofa.title")}</h2>
-            <p style={{ fontSize: 13, color: "#686B75", marginTop: 4 }}>{t("twofa.subtitle")}</p>
+            <p style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 4 }}>{t("twofa.subtitle")}</p>
           </div>
           {error && (
-            <div role="alert" style={{ background: "#FDEBEC", color: "#B23A47", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: 10 }}>{error}</div>
+            <div role="alert" style={{ background: "var(--danger-soft)", color: "var(--danger)", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: "var(--radius-sm)" }}>{error}</div>
           )}
           <input
             className="field-input"
@@ -149,12 +149,12 @@ export default function LoginPage() {
             aria-describedby="twofa-recovery-hint"
             style={{ textAlign: "center", fontSize: 22, letterSpacing: 8, height: 48 }}
           />
-          <div id="twofa-recovery-hint" style={{ fontSize: 12, color: "#686B75", textAlign: "center" }}>{t("twofa.recoveryLoginHint")}</div>
+          <div id="twofa-recovery-hint" style={{ fontSize: 12, color: "var(--text-muted)", textAlign: "center" }}>{t("twofa.recoveryLoginHint")}</div>
           <button
             className="btn"
             type="submit"
             disabled={loading}
-            style={{ background: ACCENT, color: "#fff", fontSize: 14, fontWeight: 700, padding: 13, borderRadius: 10 }}
+            style={{ background: ACCENT, color: "var(--on-ink)", fontSize: 14, fontWeight: 700, padding: 13, borderRadius: "var(--radius-sm)" }}
           >
             {loading ? t("twofa.verifying") : t("twofa.confirm")}
           </button>
@@ -165,7 +165,7 @@ export default function LoginPage() {
               setPendingToken(null);
               setCode("");
             }}
-            style={{ background: "transparent", color: "#686B75", fontSize: 13, fontWeight: 600, padding: 6 }}
+            style={{ background: "transparent", color: "var(--text-muted)", fontSize: 13, fontWeight: 600, padding: 6 }}
           >
             {t("twofa.back")}
           </button>
@@ -177,7 +177,7 @@ export default function LoginPage() {
   // Workspace Selection Screen
   if (workspaces && workspaces.length > 0) {
     return (
-      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#F7F7F5", padding: 24, position: "relative" }}>
+      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--surface-muted)", padding: 24, position: "relative" }}>
         {/* Top right language switch */}
         <div
           style={{
@@ -187,8 +187,8 @@ export default function LoginPage() {
             zIndex: 10,
             display: "flex",
             gap: 4,
-            background: "#F2F1EC",
-            borderRadius: 9,
+            background: "var(--surface-muted)",
+            borderRadius: "var(--radius-sm)",
             padding: 3,
           }}
         >
@@ -201,11 +201,11 @@ export default function LoginPage() {
                 fontSize: 11,
                 fontWeight: 700,
                 padding: "6px 10px",
-                borderRadius: 7,
+                borderRadius: "var(--radius-xs)",
                 border: "none",
                 cursor: "pointer",
-                background: lang === l ? "#fff" : "transparent",
-                color: lang === l ? "#181A1F" : "#686B75",
+                background: lang === l ? "var(--surface)" : "transparent",
+                color: lang === l ? "var(--text)" : "var(--text-muted)",
                 boxShadow: lang === l ? "0 1px 3px rgba(18,19,26,0.08)" : "none",
               }}
             >
@@ -218,8 +218,8 @@ export default function LoginPage() {
           style={{
             width: "100%",
             maxWidth: 480,
-            background: "#FFFFFF",
-            borderRadius: 20,
+            background: "var(--surface)",
+            borderRadius: "var(--radius-lg)",
             padding: "36px 32px",
             boxShadow: "0 12px 30px rgba(0,0,0,0.06)",
             display: "flex",
@@ -228,26 +228,26 @@ export default function LoginPage() {
           }}
         >
           <div>
-            <div style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "4px 10px", borderRadius: 8, background: "#EEF2FF", color: ACCENT, fontSize: 12, fontWeight: 700, marginBottom: 10 }}>
+            <div style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "4px 10px", borderRadius: "var(--radius-xs)", background: "var(--primary-soft)", color: ACCENT, fontSize: 12, fontWeight: 700, marginBottom: 10 }}>
               TalimCRM Workspace
             </div>
-            <h2 style={{ fontSize: 24, fontWeight: 800, color: "#111827", letterSpacing: "-0.02em" }}>
+            <h2 style={{ fontSize: 24, fontWeight: 800, color: "var(--text)", letterSpacing: "-0.02em" }}>
               {t("auth.chooseWorkspace")}
             </h2>
-            <p style={{ fontSize: 14, color: "#6B7280", marginTop: 4 }}>
+            <p style={{ fontSize: 14, color: "var(--text-muted)", marginTop: 4 }}>
               {t("auth.chooseWorkspaceSubtitle")}
             </p>
           </div>
 
           {error && (
-            <div role="alert" style={{ background: "#FEF2F2", border: "1px solid #FEE2E2", color: "#B91C1C", fontSize: 13.5, fontWeight: 600, padding: "10px 14px", borderRadius: 10 }}>
+            <div role="alert" style={{ background: "var(--danger-soft)", border: "1px solid var(--danger-border)", color: "var(--danger)", fontSize: 13.5, fontWeight: 600, padding: "10px 14px", borderRadius: "var(--radius-sm)" }}>
               {error}
             </div>
           )}
 
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {workspaces.map((ws) => {
-              const badgeColor = ROLE_BADGE_COLORS[ws.role] || { bg: "#F3F4F6", color: "#374151" };
+              const badgeColor = ROLE_BADGE_COLORS[ws.role] || { bg: "var(--surface-muted)", color: "var(--text-soft)" };
               const roleLabel = ROLE_LABELS[ws.role]?.[lang] || ws.role;
               const isSelected = selectingTenantId === ws.tenantId;
 
@@ -263,9 +263,9 @@ export default function LoginPage() {
                     alignItems: "center",
                     justifyContent: "space-between",
                     padding: "16px 18px",
-                    borderRadius: 14,
-                    border: isSelected ? `2px solid ${ACCENT}` : "1.5px solid #E5E7EB",
-                    background: isSelected ? "#F5F3FF" : "#FFFFFF",
+                    borderRadius: "var(--radius-lg)",
+                    border: isSelected ? `2px solid ${ACCENT}` : "1.5px solid var(--border)",
+                    background: isSelected ? "var(--violet-soft)" : "var(--surface)",
                     cursor: selectingTenantId ? "not-allowed" : "pointer",
                     textAlign: "left",
                     transition: "all 0.15s ease",
@@ -275,7 +275,7 @@ export default function LoginPage() {
                     if (!selectingTenantId) e.currentTarget.style.borderColor = ACCENT;
                   }}
                   onMouseLeave={(e) => {
-                    if (!selectingTenantId && !isSelected) e.currentTarget.style.borderColor = "#E5E7EB";
+                    if (!selectingTenantId && !isSelected) e.currentTarget.style.borderColor = "var(--border)";
                   }}
                 >
                   <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
@@ -283,9 +283,9 @@ export default function LoginPage() {
                       style={{
                         width: 42,
                         height: 42,
-                        borderRadius: 10,
-                        background: "linear-gradient(135deg, #4F46E5, #7C3AED)",
-                        color: "#fff",
+                        borderRadius: "var(--radius-sm)",
+                        background: "linear-gradient(135deg, var(--primary), var(--violet))",
+                        color: "var(--on-ink)",
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
@@ -297,10 +297,10 @@ export default function LoginPage() {
                       {ws.name.slice(0, 2).toUpperCase()}
                     </div>
                     <div>
-                      <div style={{ fontSize: 15, fontWeight: 700, color: "#111827" }}>
+                      <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text)" }}>
                         {ws.name}
                       </div>
-                      <div style={{ fontSize: 12.5, color: "#6B7280", marginTop: 2 }}>
+                      <div style={{ fontSize: 12.5, color: "var(--text-muted)", marginTop: 2 }}>
                         {centerHost(ws.subdomain)}
                       </div>
                     </div>
@@ -312,7 +312,7 @@ export default function LoginPage() {
                         fontSize: 12,
                         fontWeight: 700,
                         padding: "4px 10px",
-                        borderRadius: 100,
+                        borderRadius: "var(--radius-pill)",
                         background: badgeColor.bg,
                         color: badgeColor.color,
                       }}
@@ -324,7 +324,7 @@ export default function LoginPage() {
                         <circle cx="12" cy="12" r="10" stroke={ACCENT} strokeWidth="4" strokeDasharray="30 60" />
                       </svg>
                     ) : (
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text-faint)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <polyline points="9 18 15 12 9 6" />
                       </svg>
                     )}
@@ -344,7 +344,7 @@ export default function LoginPage() {
               style={{
                 background: "transparent",
                 border: "none",
-                color: "#6B7280",
+                color: "var(--text-muted)",
                 fontSize: 13.5,
                 fontWeight: 600,
                 cursor: "pointer",
@@ -360,7 +360,7 @@ export default function LoginPage() {
 
   // Standard Login Screen
   return (
-    <div style={{ minHeight: "100vh", display: "flex", background: "#F7F7F5", position: "relative" }}>
+    <div style={{ minHeight: "100vh", display: "flex", background: "var(--surface-muted)", position: "relative" }}>
       {/* Top right language switch */}
       <div
         style={{
@@ -370,8 +370,8 @@ export default function LoginPage() {
           zIndex: 10,
           display: "flex",
           gap: 4,
-          background: "#F2F1EC",
-          borderRadius: 9,
+          background: "var(--surface-muted)",
+          borderRadius: "var(--radius-sm)",
           padding: 3,
         }}
       >
@@ -384,11 +384,11 @@ export default function LoginPage() {
               fontSize: 11,
               fontWeight: 700,
               padding: "6px 10px",
-              borderRadius: 7,
+              borderRadius: "var(--radius-xs)",
               border: "none",
               cursor: "pointer",
-              background: lang === l ? "#fff" : "transparent",
-              color: lang === l ? "#181A1F" : "#686B75",
+              background: lang === l ? "var(--surface)" : "transparent",
+              color: lang === l ? "var(--text)" : "var(--text-muted)",
               boxShadow: lang === l ? "0 1px 3px rgba(18,19,26,0.08)" : "none",
             }}
           >
@@ -417,8 +417,8 @@ export default function LoginPage() {
             style={{
               width: 36,
               height: 36,
-              borderRadius: 10,
-              background: "linear-gradient(135deg, #6366F1, #4F46E5)",
+              borderRadius: "var(--radius-sm)",
+              background: "linear-gradient(135deg, var(--primary), var(--primary))",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -430,7 +430,7 @@ export default function LoginPage() {
               height="20"
               viewBox="0 0 24 24"
               fill="none"
-              stroke="#FFFFFF"
+              stroke="var(--surface)"
               strokeWidth="2.2"
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -439,21 +439,21 @@ export default function LoginPage() {
               <path d="M6 12v5c0 1.5 2.7 3 6 3s6-1.5 6-3v-5" />
             </svg>
           </div>
-          <span style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 800, fontSize: 21, color: "#fff", letterSpacing: "-0.02em" }}>
+          <span style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 21, color: "var(--on-ink)", letterSpacing: "-0.02em" }}>
             TalimCRM
           </span>
         </div>
 
         <div style={{ position: "relative", zIndex: 2, display: "flex", flexDirection: "column", gap: 20, maxWidth: 440 }}>
-          <h1 style={{ fontSize: 36, lineHeight: 1.25, fontWeight: 800, color: "#fff", letterSpacing: "-0.025em" }}>
+          <h1 style={{ fontSize: 36, lineHeight: 1.25, fontWeight: 800, color: "var(--on-ink)", letterSpacing: "-0.025em" }}>
             {t("auth.welcomeHero")}
           </h1>
-          <p style={{ fontSize: 15.5, lineHeight: 1.65, color: "#C4C2E0" }}>
+          <p style={{ fontSize: 15.5, lineHeight: 1.65, color: "var(--primary-border)" }}>
             {t("auth.welcomeHeroSubtitle")}
           </p>
         </div>
 
-        <div style={{ position: "relative", zIndex: 2, fontSize: 13, color: "#8E8CA8" }}>
+        <div style={{ position: "relative", zIndex: 2, fontSize: 13, color: "var(--text-faint)" }}>
           TalimCRM &copy; {new Date().getFullYear()} — {t("auth.allRightsReserved")}
         </div>
 
@@ -472,41 +472,41 @@ export default function LoginPage() {
       </div>
 
       {/* RIGHT: login form */}
-      <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", background: "#FFFFFF", padding: "32px 24px" }}>
+      <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", background: "var(--surface)", padding: "32px 24px" }}>
         <form onSubmit={onSubmit} style={{ width: "100%", maxWidth: 390, display: "flex", flexDirection: "column", gap: 24 }}>
           {/* Header */}
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {hostCenter && (
-              <div style={{ display: "inline-flex", alignSelf: "flex-start", alignItems: "center", gap: 8, background: "#EEF0FF", color: ACCENT, fontWeight: 800, fontSize: 13.5, padding: "7px 12px", borderRadius: 100 }}>
+              <div style={{ display: "inline-flex", alignSelf: "flex-start", alignItems: "center", gap: 8, background: "var(--primary-soft)", color: ACCENT, fontWeight: 800, fontSize: 13.5, padding: "7px 12px", borderRadius: "var(--radius-pill)" }}>
                 🏫 {hostCenter.name ?? hostCenter.subdomain}
               </div>
             )}
-            <h2 style={{ fontSize: 28, fontWeight: 800, color: "#111827", letterSpacing: "-0.03em" }}>
+            <h2 style={{ fontSize: 28, fontWeight: 800, color: "var(--text)", letterSpacing: "-0.03em" }}>
               {t("auth.login")}
             </h2>
-            <p style={{ fontSize: 14.5, color: "#6B7280" }}>
+            <p style={{ fontSize: 14.5, color: "var(--text-muted)" }}>
               {hostCenter ? t("auth.loginCenterSubtitle").replace("{name}", hostCenter.name ?? hostCenter.subdomain) : t("auth.loginSubtitle")}
             </p>
             {!hostCenter && lastCenterLink && (
-              <a href={lastCenterLink.url} style={{ alignSelf: "flex-start", fontSize: 13, fontWeight: 700, color: ACCENT, background: "#EEF0FF", padding: "7px 12px", borderRadius: 100, textDecoration: "none" }}>
+              <a href={lastCenterLink.url} style={{ alignSelf: "flex-start", fontSize: 13, fontWeight: 700, color: ACCENT, background: "var(--primary-soft)", padding: "7px 12px", borderRadius: "var(--radius-pill)", textDecoration: "none" }}>
                 🏫 {t("auth.lastCenter").replace("{name}", lastCenterLink.sub)} →
               </a>
             )}
             {hostCenter && (
-              <a href={`${mainSiteUrl()}/login?main=1`} style={{ fontSize: 12.5, color: "#6B7280", textDecoration: "underline" }}>{t("auth.otherCenter")}</a>
+              <a href={`${mainSiteUrl()}/login?main=1`} style={{ fontSize: 12.5, color: "var(--text-muted)", textDecoration: "underline" }}>{t("auth.otherCenter")}</a>
             )}
           </div>
 
           {error && (
             <div role="alert"
               style={{
-                background: "#FEF2F2",
-                border: "1px solid #FEE2E2",
-                color: "#B91C1C",
+                background: "var(--danger-soft)",
+                border: "1px solid var(--danger-border)",
+                color: "var(--danger)",
                 fontSize: 13.5,
                 fontWeight: 600,
                 padding: "12px 16px",
-                borderRadius: 12,
+                borderRadius: "var(--radius-md)",
               }}
             >
               {error}
@@ -521,7 +521,7 @@ export default function LoginPage() {
                   display: "block",
                   fontSize: 13,
                   fontWeight: 600,
-                  color: "#374151",
+                  color: "var(--text-soft)",
                   marginBottom: 6,
                 }}
               >
@@ -539,8 +539,8 @@ export default function LoginPage() {
                   height: 46,
                   padding: "0 14px",
                   fontSize: 14.5,
-                  borderRadius: 10,
-                  border: "1.5px solid #E5E7EB",
+                  borderRadius: "var(--radius-sm)",
+                  border: "1.5px solid var(--border)",
                   outline: "none",
                   boxSizing: "border-box",
                 }}
@@ -550,7 +550,7 @@ export default function LoginPage() {
             {/* Field: Password */}
             <div>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
-                <label style={{ fontSize: 13, fontWeight: 600, color: "#374151" }}>
+                <label style={{ fontSize: 13, fontWeight: 600, color: "var(--text-soft)" }}>
                   {t("auth.password")}
                 </label>
                 <Link
@@ -574,8 +574,8 @@ export default function LoginPage() {
                   height: 46,
                   padding: "0 14px",
                   fontSize: 14.5,
-                  borderRadius: 10,
-                  border: "1.5px solid #E5E7EB",
+                  borderRadius: "var(--radius-sm)",
+                  border: "1.5px solid var(--border)",
                   outline: "none",
                   boxSizing: "border-box",
                 }}
@@ -591,11 +591,11 @@ export default function LoginPage() {
             style={{
               width: "100%",
               height: 48,
-              background: loading ? "#9CA3AF" : ACCENT,
-              color: "#FFFFFF",
+              background: loading ? "var(--text-faint)" : ACCENT,
+              color: "var(--on-ink)",
               fontSize: 15,
               fontWeight: 700,
-              borderRadius: 11,
+              borderRadius: "var(--radius-sm)",
               border: "none",
               cursor: loading ? "not-allowed" : "pointer",
               boxShadow: "0 4px 14px rgba(79, 70, 229, 0.3)",
@@ -621,10 +621,10 @@ export default function LoginPage() {
           <div
             style={{
               paddingTop: 14,
-              borderTop: "1px solid #F3F4F6",
+              borderTop: "1px solid var(--border)",
               textAlign: "center",
               fontSize: 13.5,
-              color: "#6B7280",
+              color: "var(--text-muted)",
             }}
           >
             {t("auth.noAccount")}{" "}

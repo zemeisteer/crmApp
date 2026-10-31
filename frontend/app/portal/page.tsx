@@ -39,7 +39,7 @@ import {
   ApiError,
 } from "@/lib/api";
 
-const ACCENT = "#4F46E5";
+const ACCENT = "var(--primary)";
 
 type PortalTab = "home" | "schedule" | "attendance" | "homework" | "ai" | "practice" | "exams" | "payments" | "notifications" | "chat";
 const NAV: Array<{ id: PortalTab; icon: string; label: TranslationKey; short: TranslationKey; bottom: boolean }> = [
@@ -55,28 +55,28 @@ const NAV: Array<{ id: PortalTab; icon: string; label: TranslationKey; short: Tr
   { id: "notifications", icon: "🔔", label: "ptn.notifications", short: "ptn.notifications", bottom: false },
 ];
 const PORTAL_CSS = `
-  .ptl-side{width:236px;flex:0 0 236px;background:#12131A;display:flex;flex-direction:column;padding:20px 14px 14px;box-sizing:border-box;height:100vh;position:sticky;top:0;align-self:flex-start;}
+  .ptl-side{width:236px;flex:0 0 236px;background:var(--ink);display:flex;flex-direction:column;padding:20px 14px 14px;box-sizing:border-box;height:100vh;position:sticky;top:0;align-self:flex-start;}
   .ptl-side-nav{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:2px;margin-bottom:10px;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,0.12) transparent;}
-  .ptl-side-item{display:flex;align-items:center;gap:10px;width:100%;padding:10px 12px;border:none;border-radius:9px;background:transparent;color:#C7C9D1;font-size:14px;font-weight:600;font-family:inherit;text-align:left;cursor:pointer;white-space:nowrap;}
+  .ptl-side-item{display:flex;align-items:center;gap:10px;width:100%;padding:10px 12px;border:none;border-radius:9px;background:transparent;color:var(--text-faint);font-size:14px;font-weight:600;font-family:inherit;text-align:left;cursor:pointer;white-space:nowrap;}
   .ptl-side-item:hover{background:rgba(255,255,255,0.06);}
-  .ptl-side-item.on{background:#4F46E5;color:#fff;}
-  .ptl-count{background:#EF4444;color:#fff;font-size:10.5px;font-weight:800;padding:1px 6px;border-radius:100px;line-height:1.5;}
-  .ptl-ai-badge{font-size:9.5px;font-weight:800;background:linear-gradient(135deg,#8B7CF6,#4F46E5);color:#fff;padding:2px 6px;border-radius:5px;}
+  .ptl-side-item.on{background:var(--accent);color:var(--on-ink);}
+  .ptl-count{background:var(--danger);color:var(--on-ink);font-size:10.5px;font-weight:800;padding:1px 6px;border-radius:100px;line-height:1.5;}
+  .ptl-ai-badge{font-size:9.5px;font-weight:800;background:linear-gradient(135deg,var(--violet),var(--primary));color:var(--on-ink);padding:2px 6px;border-radius:5px;}
   .ptl-head{display:none;}
-  .ptl-bell{position:relative;display:inline-flex;align-items:center;gap:4px;height:32px;padding:0 8px;border-radius:9px;border:1px solid #E2E8F0;background:#F8FAFC;color:#475569;cursor:pointer;}
+  .ptl-bell{position:relative;display:inline-flex;align-items:center;gap:4px;height:32px;padding:0 8px;border-radius:9px;border:1px solid var(--border);background:var(--surface-muted);color:var(--text-muted);cursor:pointer;}
   .ptl-bell .ptl-count{position:absolute;top:-6px;right:-6px;}
   .ptl-bottom{display:none;}
   .ptl-kids{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:14px;}
-  .ptl-kids button{border:1px solid #EAE8E2;background:#fff;color:#4A4E58;border-radius:100px;padding:7px 14px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;}
-  .ptl-kids button.on{background:#4F46E5;border-color:#4F46E5;color:#fff;}
-  .ptl-kids button.add{border-style:dashed;color:#4F46E5;}
-  .ptl-parent-badge{font-size:12px;font-weight:800;color:#9D174D;background:#FDF2F8;border-radius:100px;padding:6px 10px;margin-right:2px;}
-  .ptl-add-child{background:linear-gradient(135deg,#0F172A,#1E1B4B);color:#fff;border-radius:18px;padding:18px;margin-bottom:14px;}
-  .ptl-ai-cta{width:100%;display:flex;align-items:center;gap:12px;margin-bottom:14px;padding:14px 16px;border:none;border-radius:16px;cursor:pointer;color:#fff;background:linear-gradient(135deg,#4F46E5,#7C3AED);box-shadow:0 14px 30px -18px rgba(79,70,229,0.9);font-family:inherit;}
+  .ptl-kids button{border:1px solid var(--border);background:var(--surface);color:var(--text-soft);border-radius:100px;padding:7px 14px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;}
+  .ptl-kids button.on{background:var(--primary);border-color:var(--primary);color:var(--on-ink);}
+  .ptl-kids button.add{border-style:dashed;color:var(--primary);}
+  .ptl-parent-badge{font-size:12px;font-weight:800;color:var(--pink);background:var(--pink-soft);border-radius:100px;padding:6px 10px;margin-right:2px;}
+  .ptl-add-child{background:linear-gradient(135deg,var(--ink),#1E1B4B);color:var(--on-ink);border-radius:18px;padding:18px;margin-bottom:14px;}
+  .ptl-ai-cta{width:100%;display:flex;align-items:center;gap:12px;margin-bottom:14px;padding:14px 16px;border:none;border-radius:16px;cursor:pointer;color:var(--on-ink);background:linear-gradient(135deg,var(--primary),var(--violet));box-shadow:0 14px 30px -18px rgba(79,70,229,0.9);font-family:inherit;}
   @media (max-width:760px){
     .ptl-side{display:none;}
-    .ptl-head{display:flex;align-items:center;justify-content:space-between;gap:10px;position:sticky;top:0;z-index:30;background:#fff;border-bottom:1px solid #E2E8F0;padding:10px 14px;}
-    .ptl-bottom{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:40;background:rgba(255,255,255,0.97);backdrop-filter:blur(8px);border-top:1px solid #EAE8E2;padding:0 4px env(safe-area-inset-bottom);box-shadow:0 -6px 20px rgba(18,19,26,0.06);}
+    .ptl-head{display:flex;align-items:center;justify-content:space-between;gap:10px;position:sticky;top:0;z-index:30;background:var(--surface);border-bottom:1px solid var(--border);padding:10px 14px;}
+    .ptl-bottom{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:40;background:rgba(255,255,255,0.97);backdrop-filter:blur(8px);border-top:1px solid var(--border);padding:0 4px env(safe-area-inset-bottom);box-shadow:0 -6px 20px rgba(18,19,26,0.06);}
     .ptl-main{padding-bottom:96px!important;}
   }
 `;
@@ -99,7 +99,7 @@ const ICONS: Record<PortalTab | "logout" | "logo", React.ReactNode> = {
   notifications: svg(<><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.73 21a2 2 0 0 1-3.46 0" /></>),
   logout: svg(<><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><path d="M16 17l5-5-5-5" /><path d="M21 12H9" /></>),
   logo: (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--surface)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
       <path d="M22 10 12 5 2 10l10 5 10-5Z" />
       <path d="M6 12v5c0 1.5 2.7 3 6 3s6-1.5 6-3v-5" />
     </svg>
@@ -119,10 +119,10 @@ function LangSwitch({ lang, setLang, dark, full }: { lang: Lang; setLang: (l: La
           type="button"
           onClick={() => setLang(l)}
           style={{
-            flex: full ? 1 : undefined, fontSize: 11, fontWeight: 700, padding: "5px 8px", borderRadius: 7, cursor: "pointer",
+            flex: full ? 1 : undefined, fontSize: 11, fontWeight: 700, padding: "5px 8px", borderRadius: "var(--radius-xs)", cursor: "pointer",
             border: "none",
-            background: lang === l ? ACCENT : dark ? "rgba(255,255,255,0.08)" : "#F1F5F9",
-            color: lang === l ? "#fff" : dark ? "#9A9CA5" : "#64748B",
+            background: lang === l ? ACCENT : dark ? "rgba(255,255,255,0.08)" : "var(--surface-muted)",
+            color: lang === l ? "var(--on-ink)" : dark ? "var(--text-faint)" : "var(--text-muted)",
           }}
         >
           {l}
@@ -361,13 +361,13 @@ export default function StudentPortalPage() {
       <div
         style={{
           minHeight: "100vh",
-          background: "linear-gradient(135deg, #0F172A 0%, #1E1B4B 100%)",
+          background: "linear-gradient(135deg, var(--ink) 0%, #1E1B4B 100%)",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
           padding: 20,
           fontFamily: "'Inter', sans-serif",
-          color: "#fff",
+          color: "var(--on-ink)",
         }}
       >
         <div
@@ -377,7 +377,7 @@ export default function StudentPortalPage() {
             background: "rgba(30, 41, 59, 0.75)",
             backdropFilter: "blur(16px)",
             border: "1px solid rgba(255, 255, 255, 0.12)",
-            borderRadius: 24,
+            borderRadius: "var(--radius-lg)",
             padding: "32px 24px",
             boxShadow: "0 20px 40px rgba(0,0,0,0.4)",
           }}
@@ -387,8 +387,8 @@ export default function StudentPortalPage() {
               style={{
                 width: 56,
                 height: 56,
-                borderRadius: 16,
-                background: "linear-gradient(135deg, #6366F1 0%, #4F46E5 100%)",
+                borderRadius: "var(--radius-lg)",
+                background: "linear-gradient(135deg, var(--primary) 0%, var(--primary) 100%)",
                 display: "inline-flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -400,11 +400,11 @@ export default function StudentPortalPage() {
               🎓
             </div>
             <div style={{ display: "flex", justifyContent: "center", marginBottom: 10 }}><LangSwitch lang={lang} setLang={setLang} dark /></div>
-            {hostCenter?.name && <div style={{ fontSize: 13, fontWeight: 700, color: "#A5B4FC", marginBottom: 4 }}>{hostCenter.name}</div>}
+            {hostCenter?.name && <div style={{ fontSize: 13, fontWeight: 700, color: "var(--primary-border)", marginBottom: 4 }}>{hostCenter.name}</div>}
             <h1 style={{ fontSize: 22, fontWeight: 800, margin: "0 0 6px 0" }}>
               {t("ptl.cabinet")}
             </h1>
-            <p style={{ fontSize: 13, color: "#94A3B8", margin: 0 }}>
+            <p style={{ fontSize: 13, color: "var(--text-faint)", margin: 0 }}>
               {t("ptl.subtitle")}
             </p>
           </div>
@@ -414,11 +414,11 @@ export default function StudentPortalPage() {
               style={{
                 background: "rgba(239, 68, 68, 0.15)",
                 border: "1px solid rgba(239, 68, 68, 0.3)",
-                color: "#FCA5A5",
+                color: "var(--danger-border)",
                 fontSize: 13,
                 fontWeight: 600,
                 padding: "10px 14px",
-                borderRadius: 12,
+                borderRadius: "var(--radius-md)",
                 marginBottom: 16,
               }}
             >
@@ -440,7 +440,7 @@ export default function StudentPortalPage() {
               borderTop: "1px solid rgba(255, 255, 255, 0.1)",
               textAlign: "center",
               fontSize: 12,
-              color: "#94A3B8",
+              color: "var(--text-faint)",
             }}
           >
             {t("ptl.telegramHint")}
@@ -458,12 +458,12 @@ export default function StudentPortalPage() {
       <div
         style={{
           minHeight: "100vh",
-          background: "#F8FAFC",
+          background: "var(--surface-muted)",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
           fontFamily: "'Inter', sans-serif",
-          color: "#5B6577",
+          color: "var(--text-muted)",
           fontSize: 14,
         }}
       >
@@ -479,8 +479,8 @@ export default function StudentPortalPage() {
     <div
       style={{
         minHeight: "100vh",
-        background: "#F7F7F5",
-        color: "#181A1F",
+        background: "var(--surface-muted)",
+        color: "var(--text)",
         fontFamily: "'Inter', sans-serif",
         display: "flex",
       }}
@@ -491,15 +491,15 @@ export default function StudentPortalPage() {
         <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 6px 20px" }}>
           {me?.tenant?.logoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={fileUrl(me.tenant.logoUrl) || ""} alt="" style={{ width: 30, height: 30, borderRadius: 8, objectFit: "cover", flexShrink: 0, background: "#fff" }} />
+            <img src={fileUrl(me.tenant.logoUrl) || ""} alt="" style={{ width: 30, height: 30, borderRadius: "var(--radius-xs)", objectFit: "cover", flexShrink: 0, background: "var(--surface)" }} />
           ) : (
-            <div style={{ width: 30, height: 30, borderRadius: 8, background: ACCENT, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{ICONS.logo}</div>
+            <div style={{ width: 30, height: 30, borderRadius: "var(--radius-xs)", background: ACCENT, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{ICONS.logo}</div>
           )}
-          <span style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 800, fontSize: 16, color: "#fff", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={me?.tenant?.name}>
+          <span style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 16, color: "var(--on-ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={me?.tenant?.name}>
             {me?.tenant?.name || t("ptl.center")}
           </span>
         </div>
-        <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", color: "#9A9DA8", padding: "0 10px 8px" }}>{t("ptl.cabinet")}</div>
+        <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--text-faint)", padding: "0 10px 8px" }}>{t("ptl.cabinet")}</div>
         <nav className="ptl-side-nav" aria-label="menu">
           {nav.map((tab) => {
             const on = activeTab === tab.id;
@@ -520,12 +520,12 @@ export default function StudentPortalPage() {
           {t("ptl.logout")}
         </button>
         <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 8px 0", marginTop: 6, borderTop: "1px solid rgba(255,255,255,0.08)" }}>
-          <div style={{ width: 30, height: 30, borderRadius: "50%", background: ACCENT, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 12, flexShrink: 0 }}>
+          <div style={{ width: 30, height: 30, borderRadius: "50%", background: ACCENT, color: "var(--on-ink)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 12, flexShrink: 0 }}>
             {initials(me?.fullName)}
           </div>
           <div style={{ minWidth: 0 }}>
-            <div style={{ fontSize: 13, fontWeight: 600, color: "#fff", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{me?.fullName || t("ptl.student")}</div>
-            <div style={{ fontSize: 11, color: "#9A9DA8" }}>{isParent ? t("ptp.parentView") : t("ptl.student")}</div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: "var(--on-ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{me?.fullName || t("ptl.student")}</div>
+            <div style={{ fontSize: 11, color: "var(--text-faint)" }}>{isParent ? t("ptp.parentView") : t("ptl.student")}</div>
           </div>
         </div>
       </aside>
@@ -534,10 +534,10 @@ export default function StudentPortalPage() {
       {/* Phone header: center, messages, language, sign out */}
       <header className="ptl-head">
         <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0, flex: 1 }}>
-          <div style={{ flexShrink: 0, width: 36, height: 36, borderRadius: 11, background: "#EEF2FF", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>🎓</div>
+          <div style={{ flexShrink: 0, width: 36, height: 36, borderRadius: "var(--radius-sm)", background: "var(--primary-soft)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>🎓</div>
           <div style={{ minWidth: 0 }}>
-            <div style={{ fontSize: 14, fontWeight: 800, color: "#1E293B", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{me?.tenant?.name || t("ptl.center")}</div>
-            <div style={{ fontSize: 11.5, color: "#5B6577", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{me?.fullName || t("ptl.student")}</div>
+            <div style={{ fontSize: 14, fontWeight: 800, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{me?.tenant?.name || t("ptl.center")}</div>
+            <div style={{ fontSize: 11.5, color: "var(--text-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{me?.fullName || t("ptl.student")}</div>
           </div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
@@ -557,7 +557,7 @@ export default function StudentPortalPage() {
         {nav.filter((x) => x.bottom).map((tab) => {
           const on = activeTab === tab.id;
           return (
-            <button key={tab.id} type="button" onClick={() => go(tab.id)} aria-current={on ? "page" : undefined} style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 3, padding: "8px 2px 6px", border: "none", background: "transparent", color: on ? ACCENT : "#686B75", cursor: "pointer" }}>
+            <button key={tab.id} type="button" onClick={() => go(tab.id)} aria-current={on ? "page" : undefined} style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 3, padding: "8px 2px 6px", border: "none", background: "transparent", color: on ? ACCENT : "var(--text-muted)", cursor: "pointer" }}>
               <span aria-hidden style={{ fontSize: 19, lineHeight: 1, filter: on ? "none" : "grayscale(1)", opacity: on ? 1 : 0.75 }}>{tab.icon}</span>
               <span style={{ fontSize: 10.5, fontWeight: on ? 800 : 600, maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t(tab.short)}</span>
               <span style={{ width: 18, height: 3, borderRadius: 3, background: on ? ACCENT : "transparent" }} />
@@ -583,9 +583,9 @@ export default function StudentPortalPage() {
         {/* TAB: HOME                                                                 */}
         {/* ========================================================================= */}
         {loadError && (
-          <div style={{ background: "#FFFBEB", border: "1px solid #FDE68A", color: "#92400E", borderRadius: 12, padding: "10px 14px", marginBottom: 14, display: "flex", gap: 10, alignItems: "center", justifyContent: "space-between", fontSize: 13.5 }}>
+          <div style={{ background: "var(--warning-soft)", border: "1px solid var(--warning-border)", color: "var(--warning)", borderRadius: "var(--radius-md)", padding: "10px 14px", marginBottom: 14, display: "flex", gap: 10, alignItems: "center", justifyContent: "space-between", fontSize: 13.5 }}>
             <span>⚠️ {t("ptl.loadError")}</span>
-            <button type="button" onClick={() => setReloadKey((k) => k + 1)} style={{ background: "#D97706", color: "#fff", border: "none", borderRadius: 9, padding: "7px 12px", fontWeight: 700, cursor: "pointer" }}>↻ {t("ptl.retry")}</button>
+            <button type="button" onClick={() => setReloadKey((k) => k + 1)} style={{ background: "var(--warning)", color: "var(--on-ink)", border: "none", borderRadius: "var(--radius-sm)", padding: "7px 12px", fontWeight: 700, cursor: "pointer" }}>↻ {t("ptl.retry")}</button>
           </div>
         )}
         {(isParent || sessions.length > 1) && (
@@ -603,10 +603,10 @@ export default function StudentPortalPage() {
           <div className="ptl-add-child">
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, gap: 10 }}>
               <div>
-                <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 800, fontSize: 16 }}>{t("ptp.addChild")}</div>
-                <div style={{ fontSize: 12.5, color: "#5B6577", marginTop: 2 }}>{t("ptp.addChildHint")}</div>
+                <div style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 16 }}>{t("ptp.addChild")}</div>
+                <div style={{ fontSize: 12.5, color: "var(--text-muted)", marginTop: 2 }}>{t("ptp.addChildHint")}</div>
               </div>
-              <button type="button" onClick={() => setAddingChild(false)} aria-label={t("common.cancel")} style={{ background: "rgba(255,255,255,0.1)", border: "none", color: "#fff", borderRadius: 8, width: 32, height: 32, cursor: "pointer", fontSize: 16 }}>✕</button>
+              <button type="button" onClick={() => setAddingChild(false)} aria-label={t("common.cancel")} style={{ background: "rgba(255,255,255,0.1)", border: "none", color: "var(--on-ink)", borderRadius: "var(--radius-xs)", width: 32, height: 32, cursor: "pointer", fontSize: 16 }}>✕</button>
             </div>
             <PortalLogin subdomain={hostCenter?.subdomain} onLoggedIn={(list, activeId) => activate(list, activeId)} />
           </div>
@@ -615,7 +615,7 @@ export default function StudentPortalPage() {
           <button type="button" onClick={() => go("ai")} className="ptl-ai-cta">
             <span style={{ fontSize: 26 }} aria-hidden>🤖</span>
             <span style={{ flex: 1, minWidth: 0, textAlign: "left" }}>
-              <span style={{ display: "block", fontFamily: "'Manrope', sans-serif", fontWeight: 800, fontSize: 15.5 }}>{t("tutor.ctaTitle")}</span>
+              <span style={{ display: "block", fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 15.5 }}>{t("tutor.ctaTitle")}</span>
               <span style={{ display: "block", fontSize: 13, opacity: 0.85, marginTop: 2 }}>{t("tutor.ctaText")}</span>
             </span>
             <span aria-hidden style={{ fontSize: 18 }}>→</span>
@@ -658,7 +658,7 @@ export default function StudentPortalPage() {
             {/* Certificates */}
             {exams?.certificates && exams.certificates.length > 0 && (
               <div>
-                <div style={{ fontSize: 14, fontWeight: 700, color: "#334155", marginBottom: 10 }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-soft)", marginBottom: 10 }}>
                   {t("ptl.certs")}
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -666,9 +666,9 @@ export default function StudentPortalPage() {
                     <div
                       key={c.id}
                       style={{
-                        background: "linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%)",
-                        border: "1px solid #FCD34D",
-                        borderRadius: 16,
+                        background: "linear-gradient(135deg, var(--warning-soft) 0%, var(--warning-border) 100%)",
+                        border: "1px solid var(--warning-border)",
+                        borderRadius: "var(--radius-lg)",
                         padding: 16,
                         display: "flex",
                         justifyContent: "space-between",
@@ -676,10 +676,10 @@ export default function StudentPortalPage() {
                       }}
                     >
                       <div>
-                        <div style={{ fontSize: 14, fontWeight: 800, color: "#78350F" }}>
+                        <div style={{ fontSize: 14, fontWeight: 800, color: "var(--warning)" }}>
                           {c.title}
                         </div>
-                        <div style={{ fontSize: 12, color: "#92400E", marginTop: 2 }}>
+                        <div style={{ fontSize: 12, color: "var(--warning)", marginTop: 2 }}>
                           Kod: {c.code} {c.grade ? `• Daraja: ${c.grade}` : ""}
                         </div>
                       </div>
@@ -688,13 +688,13 @@ export default function StudentPortalPage() {
                         target="_blank"
                         rel="noreferrer"
                         style={{
-                          background: "#B45309",
-                          color: "#fff",
+                          background: "var(--warning)",
+                          color: "var(--on-ink)",
                           textDecoration: "none",
                           fontSize: 12,
                           fontWeight: 700,
                           padding: "6px 12px",
-                          borderRadius: 8,
+                          borderRadius: "var(--radius-xs)",
                         }}
                       >
                         {t("ptl.verify")}
@@ -707,18 +707,18 @@ export default function StudentPortalPage() {
 
             {/* Exam Results */}
             <div>
-              <div style={{ fontSize: 14, fontWeight: 700, color: "#334155", marginBottom: 10 }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-soft)", marginBottom: 10 }}>
                 {t("ptl.examResults")}
               </div>
               {exams?.results.length === 0 && exams?.attempts.length === 0 ? (
                 <div
                   style={{
-                    background: "#fff",
-                    border: "1px solid #E2E8F0",
-                    borderRadius: 16,
+                    background: "var(--surface)",
+                    border: "1px solid var(--border)",
+                    borderRadius: "var(--radius-lg)",
                     padding: 32,
                     textAlign: "center",
-                    color: "#5B6577",
+                    color: "var(--text-muted)",
                   }}
                 >
                   {t("ptl.noResults")}
@@ -729,9 +729,9 @@ export default function StudentPortalPage() {
                     <div
                       key={r.id}
                       style={{
-                        background: "#fff",
-                        border: "1px solid #E2E8F0",
-                        borderRadius: 14,
+                        background: "var(--surface)",
+                        border: "1px solid var(--border)",
+                        borderRadius: "var(--radius-lg)",
                         padding: 16,
                         display: "flex",
                         justifyContent: "space-between",
@@ -743,7 +743,7 @@ export default function StudentPortalPage() {
                           {r.examTitle || t("ptl.exam")}
                         </div>
                         {r.note && (
-                          <div style={{ fontSize: 12, color: "#5B6577", marginTop: 2 }}>
+                          <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>
                             {r.note}
                           </div>
                         )}

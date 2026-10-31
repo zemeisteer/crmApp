@@ -9,7 +9,7 @@ import Sidebar, { canOpenPath, isPlatformMode, PLATFORM_HOME } from "./Sidebar";
 import TwoFactorGate from "./TwoFactorGate";
 import { formatDate } from "@/lib/format-date";
 
-const ACCENT = "#4F46E5";
+const ACCENT = "var(--primary)";
 
 function TrialBanner() {
   const { tenant, user } = useAuth();
@@ -19,7 +19,7 @@ function TrialBanner() {
   // Suspended for non-payment: paying lifts it at once.
   if (tenant.status === "SUSPENDED" && tenant.billing?.suspendedForNonPayment) {
     return (
-      <div role="status" style={{ background: "#FDEBEC", color: "#B23A47", padding: "10px 24px", fontSize: 13, fontWeight: 600, textAlign: "center" }}>
+      <div role="status" style={{ background: "var(--danger-soft)", color: "var(--danger)", padding: "10px 24px", fontSize: 13, fontWeight: 600, textAlign: "center" }}>
         {t("billing.suspended")}{" "}
         <Link href="/pricing" style={{ textDecoration: "underline" }}>
           {t("billing.payNow")}
@@ -31,7 +31,7 @@ function TrialBanner() {
   // The paid period ran out: the center still works until the grace date.
   if (tenant.status === "PAST_DUE") {
     return (
-      <div role="status" style={{ background: "#FFF7E6", color: "#A15C00", padding: "10px 24px", fontSize: 13, fontWeight: 600, textAlign: "center" }}>
+      <div role="status" style={{ background: "var(--warning-soft)", color: "var(--warning)", padding: "10px 24px", fontSize: 13, fontWeight: 600, textAlign: "center" }}>
         {t("billing.pastDue").replace("{date}", tenant.billing?.graceUntil ? formatDate(tenant.billing.graceUntil, lang) : "")}{" "}
         <Link href="/pricing" style={{ textDecoration: "underline" }}>
           {t("billing.payNow")}
@@ -42,7 +42,7 @@ function TrialBanner() {
 
   if (tenant.status === "SUSPENDED") {
     return (
-      <div style={{ background: "#FDEBEC", color: "#B23A47", padding: "10px 24px", fontSize: 13, fontWeight: 600, textAlign: "center" }}>
+      <div style={{ background: "var(--danger-soft)", color: "var(--danger)", padding: "10px 24px", fontSize: 13, fontWeight: 600, textAlign: "center" }}>
         {t("shell.accountSuspended")}{" "}
         <Link href="/settings" style={{ textDecoration: "underline" }}>
           {t("shell.activatePlan")}
@@ -58,7 +58,7 @@ function TrialBanner() {
   // The trial ended: everything can be looked at, nothing changed, until the lock date.
   if (tenant.trial?.stage === "READ_ONLY") {
     return (
-      <div role="status" style={{ background: "#FDEBEC", color: "#B23A47", padding: "10px 24px", fontSize: 13, fontWeight: 600, textAlign: "center" }}>
+      <div role="status" style={{ background: "var(--danger-soft)", color: "var(--danger)", padding: "10px 24px", fontSize: 13, fontWeight: 600, textAlign: "center" }}>
         {t("trial.readOnly").replace("{date}", tenant.trial.lockAt ? formatDate(tenant.trial.lockAt, lang) : "")}{" "}
         <Link href="/pricing" style={{ textDecoration: "underline" }}>
           {t("shell.choosePlan")}
@@ -74,8 +74,8 @@ function TrialBanner() {
       return (
         <div
           style={{
-            background: expired ? "#FDEBEC" : "#FFF7E6",
-            color: expired ? "#B23A47" : "#A15C00",
+            background: expired ? "var(--danger-soft)" : "var(--warning-soft)",
+            color: expired ? "var(--danger)" : "var(--warning)",
             padding: "10px 24px",
             fontSize: 13,
             fontWeight: 600,
@@ -98,15 +98,15 @@ function TrialLocked({ purgeAt }: { purgeAt: string | null }) {
   const { t, lang } = useLanguage();
   return (
     <div style={{ flex: 1, display: "grid", placeItems: "center", padding: 24 }}>
-      <div role="alert" style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 28, maxWidth: 480, width: "100%", display: "flex", flexDirection: "column", gap: 12, textAlign: "center" }}>
+      <div role="alert" style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 28, maxWidth: 480, width: "100%", display: "flex", flexDirection: "column", gap: 12, textAlign: "center" }}>
         <h1 style={{ fontSize: 19, fontWeight: 800, margin: 0 }}>{t("trial.lockedTitle")}</h1>
-        <p style={{ fontSize: 13.5, color: "#4A4E58", lineHeight: 1.6, margin: 0 }}>{t("trial.lockedText")}</p>
+        <p style={{ fontSize: 13.5, color: "var(--text-soft)", lineHeight: 1.6, margin: 0 }}>{t("trial.lockedText")}</p>
         {purgeAt && (
-          <p style={{ fontSize: 13, color: "#B23A47", fontWeight: 600, lineHeight: 1.6, margin: 0 }}>
+          <p style={{ fontSize: 13, color: "var(--danger)", fontWeight: 600, lineHeight: 1.6, margin: 0 }}>
             {t("trial.purgeOn").replace("{date}", formatDate(purgeAt, lang))}
           </p>
         )}
-        <Link href="/pricing" style={{ background: ACCENT, color: "#fff", fontWeight: 700, fontSize: 14, padding: "12px 18px", borderRadius: 10, textDecoration: "none", marginTop: 6 }}>
+        <Link href="/pricing" style={{ background: ACCENT, color: "var(--on-ink)", fontWeight: 700, fontSize: 14, padding: "12px 18px", borderRadius: "var(--radius-sm)", textDecoration: "none", marginTop: 6 }}>
           {t("shell.choosePlan")}
         </Link>
       </div>
@@ -141,8 +141,8 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
 
   if (loading) {
     return (
-      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#F7F7F5" }}>
-        <div style={{ color: "#686B75", fontSize: 14 }}>{t("common.loading")}</div>
+      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--surface-muted)" }}>
+        <div style={{ color: "var(--text-muted)", fontSize: 14 }}>{t("common.loading")}</div>
       </div>
     );
   }
@@ -150,7 +150,7 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
   if (!user) return null;
 
   return (
-    <div style={{ display: "flex", background: "#F7F7F5", minHeight: "100vh" }}>
+    <div style={{ display: "flex", background: "var(--surface-muted)", minHeight: "100vh" }}>
       {/* Keyboard users jump past the ~17 menu links straight to the page. */}
       <a href="#main-content" className="skip-link">{t("shell.skipToContent")}</a>
       <Sidebar open={menuOpen} onClose={() => setMenuOpen(false)} />
@@ -164,10 +164,10 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
             top: 14,
             left: 14,
             zIndex: 40,
-            background: "#12131A",
-            color: "#fff",
+            background: "var(--ink)",
+            color: "var(--on-ink)",
             border: "none",
-            borderRadius: 8,
+            borderRadius: "var(--radius-xs)",
             width: 38,
             height: 38,
             alignItems: "center",
@@ -191,9 +191,9 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
           </div>
         ) : (
           <div role="alert" style={{ flex: 1, display: "grid", placeContent: "center", justifyItems: "center", gap: 10, padding: 24, textAlign: "center" }}>
-            <div style={{ fontFamily: "'Manrope', sans-serif", fontSize: 17, fontWeight: 800 }}>{t("shell.noAccessTitle")}</div>
-            <div style={{ fontSize: 13.5, color: "#686B75" }}>{t("shell.noAccessText")}</div>
-            <Link href="/dashboard" style={{ marginTop: 6, background: ACCENT, color: "#fff", fontWeight: 700, fontSize: 13.5, padding: "10px 18px", borderRadius: 10, textDecoration: "none" }}>
+            <div style={{ fontFamily: "var(--font-display)", fontSize: 17, fontWeight: 800 }}>{t("shell.noAccessTitle")}</div>
+            <div style={{ fontSize: 13.5, color: "var(--text-muted)" }}>{t("shell.noAccessText")}</div>
+            <Link href="/dashboard" style={{ marginTop: 6, background: ACCENT, color: "var(--on-ink)", fontWeight: 700, fontSize: 13.5, padding: "10px 18px", borderRadius: "var(--radius-sm)", textDecoration: "none" }}>
               {t("shell.noAccessBack")}
             </Link>
           </div>

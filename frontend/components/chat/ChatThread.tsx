@@ -278,47 +278,47 @@ export default function ChatThread({
 
   return (
     <section aria-labelledby={`${uid}-title`} style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0, minWidth: 0 }}>
-      <header style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 16px", borderBottom: "1px solid #EAE8E2", minWidth: 0 }}>
-        <button type="button" className="chat-back btn" onClick={onBack} aria-label={t("chat.back")} style={{ background: "#F2F1EC", color: "#181A1F", borderRadius: 9, width: 34, height: 34, alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 16 }}>
+      <header style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 16px", borderBottom: "1px solid var(--border)", minWidth: 0 }}>
+        <button type="button" className="chat-back btn" onClick={onBack} aria-label={t("chat.back")} style={{ background: "var(--surface-muted)", color: "var(--text)", borderRadius: "var(--radius-sm)", width: 34, height: 34, alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 16 }}>
           <span aria-hidden="true">←</span>
         </button>
         <div style={{ minWidth: 0, flex: 1 }}>
           <h2 id={`${uid}-title`} style={{ fontSize: 15.5, fontWeight: 800, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{status === "notFound" ? t("chat.notFoundTitle") : title}</h2>
-          {subtitle && status !== "notFound" && <div style={{ fontSize: 12, color: "#686B75", marginTop: 1 }}>{subtitle}</div>}
+          {subtitle && status !== "notFound" && <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 1 }}>{subtitle}</div>}
         </div>
       </header>
 
       {status === "notFound" ? (
         <div role="alert" style={{ flex: 1, display: "grid", placeContent: "center", justifyItems: "center", gap: 8, padding: 24, textAlign: "center" }}>
           <div style={{ fontSize: 15, fontWeight: 800 }}>{t("chat.notFoundTitle")}</div>
-          <div style={{ fontSize: 13.5, color: "#686B75", maxWidth: 360 }}>{t("chat.notFoundText")}</div>
-          <button type="button" className="btn" onClick={onBack} style={{ marginTop: 6, background: ACCENT, color: "#fff", fontWeight: 700, fontSize: 13.5, padding: "9px 16px", borderRadius: 10 }}>{t("chat.backToList")}</button>
+          <div style={{ fontSize: 13.5, color: "var(--text-muted)", maxWidth: 360 }}>{t("chat.notFoundText")}</div>
+          <button type="button" className="btn" onClick={onBack} style={{ marginTop: 6, background: ACCENT, color: "var(--on-ink)", fontWeight: 700, fontSize: 13.5, padding: "9px 16px", borderRadius: "var(--radius-sm)" }}>{t("chat.backToList")}</button>
         </div>
       ) : status === "error" ? (
-        <div role="alert" style={{ flex: 1, display: "grid", placeContent: "center", justifyItems: "center", gap: 10, padding: 24, textAlign: "center", color: "#B23A47", fontSize: 13.5, fontWeight: 600 }}>
+        <div role="alert" style={{ flex: 1, display: "grid", placeContent: "center", justifyItems: "center", gap: 10, padding: 24, textAlign: "center", color: "var(--danger)", fontSize: 13.5, fontWeight: 600 }}>
           {t("chat.loadError")}
           <button type="button" className="btn" onClick={() => {
               setStatus("loading");
               setReloadKey((k) => k + 1);
-            }} style={{ background: "#fff", color: "#181A1F", border: "1px solid #EAE8E2", fontWeight: 700, fontSize: 13, padding: "7px 14px", borderRadius: 9 }}>{t("chat.retryLoad")}</button>
+            }} style={{ background: "var(--surface)", color: "var(--text)", border: "1px solid var(--border)", fontWeight: 700, fontSize: 13, padding: "7px 14px", borderRadius: "var(--radius-sm)" }}>{t("chat.retryLoad")}</button>
         </div>
       ) : (
         <>
-          <div ref={scrollRef} onScroll={onScroll} style={{ flex: 1, minHeight: 0, overflowY: "auto", overflowX: "hidden", padding: "12px 16px", background: "#FAFAF8" }}>
+          <div ref={scrollRef} onScroll={onScroll} style={{ flex: 1, minHeight: 0, overflowY: "auto", overflowX: "hidden", padding: "12px 16px", background: "var(--surface-muted)" }}>
             {status === "loading" ? (
-              <div role="status" style={{ color: "#686B75", fontSize: 13, textAlign: "center", padding: 20 }}>{t("common.loading")}</div>
+              <div role="status" style={{ color: "var(--text-muted)", fontSize: 13, textAlign: "center", padding: 20 }}>{t("common.loading")}</div>
             ) : (
               <>
                 {hasMore && (
                   <div style={{ textAlign: "center", marginBottom: 10 }}>
-                    <button type="button" className="btn" onClick={loadOlder} disabled={loadingOlder} style={{ background: "#fff", color: ACCENT, border: "1px solid #C7D2FE", fontWeight: 700, fontSize: 12.5, padding: "6px 12px", borderRadius: 100 }}>
+                    <button type="button" className="btn" onClick={loadOlder} disabled={loadingOlder} style={{ background: "var(--surface)", color: ACCENT, border: "1px solid var(--primary-border)", fontWeight: 700, fontSize: 12.5, padding: "6px 12px", borderRadius: "var(--radius-pill)" }}>
                       {loadingOlder ? t("common.loading") : t("chat.loadOlder")}
                     </button>
-                    {olderError && <div role="alert" style={{ color: "#B23A47", fontSize: 12.5, marginTop: 6 }}>{t("chat.loadError")}</div>}
+                    {olderError && <div role="alert" style={{ color: "var(--danger)", fontSize: 12.5, marginTop: 6 }}>{t("chat.loadError")}</div>}
                   </div>
                 )}
                 {messages.length === 0 && visiblePending.length === 0 && (
-                  <div style={{ color: "#686B75", fontSize: 13.5, textAlign: "center", padding: "28px 12px" }}>{t("chat.emptyThread")}</div>
+                  <div style={{ color: "var(--text-muted)", fontSize: 13.5, textAlign: "center", padding: "28px 12px" }}>{t("chat.emptyThread")}</div>
                 )}
                 {/* New messages are announced politely; older pages and one's own sends are not repeated aloud. */}
                 <div role="log" aria-live="polite" aria-relevant="additions" aria-label={t("chat.messagesLabel")}>
@@ -343,7 +343,7 @@ export default function ChatThread({
           </div>
 
           {status === "ready" && !canWrite ? (
-            <div role="note" style={{ padding: "12px 16px", borderTop: "1px solid #EAE8E2", fontSize: 13, color: "#4A4E58", background: "#fff" }}>
+            <div role="note" style={{ padding: "12px 16px", borderTop: "1px solid var(--border)", fontSize: 13, color: "var(--text-soft)", background: "var(--surface)" }}>
               {conversation?.oversight ? t("chat.readOnlyOversight") : t("chat.readOnly")}
             </div>
           ) : (
@@ -352,7 +352,7 @@ export default function ChatThread({
                 e.preventDefault();
                 send();
               }}
-              style={{ borderTop: "1px solid #EAE8E2", padding: "10px 12px", background: "#fff", display: "flex", gap: 8, alignItems: "flex-end" }}
+              style={{ borderTop: "1px solid var(--border)", padding: "10px 12px", background: "var(--surface)", display: "flex", gap: 8, alignItems: "flex-end" }}
             >
               <div style={{ flex: 1, minWidth: 0 }}>
                 <label htmlFor={`${uid}-text`} style={srOnly}>{t("chat.composerLabel")}</label>
@@ -375,15 +375,15 @@ export default function ChatThread({
                   className="field-input"
                   style={{ resize: "none", padding: "9px 12px", fontSize: 14, lineHeight: 1.45, maxHeight: 160, display: "block" }}
                 />
-                <div style={{ display: "flex", justifyContent: "space-between", gap: 8, marginTop: 4, fontSize: 11.5, color: "#686B75" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 8, marginTop: 4, fontSize: 11.5, color: "var(--text-muted)" }}>
                   <span id={`${uid}-hint`} className="hide-sm">{t("chat.enterHint")}</span>
-                  <span id={`${uid}-count`} style={{ marginLeft: "auto", color: tooLong ? "#B23A47" : "#686B75", fontWeight: tooLong ? 700 : 500 }}>
+                  <span id={`${uid}-count`} style={{ marginLeft: "auto", color: tooLong ? "var(--danger)" : "var(--text-muted)", fontWeight: tooLong ? 700 : 500 }}>
                     {length}/{MAX_CHAT_BODY}
                     {tooLong && <span style={srOnly}> {t("chat.tooLong")}</span>}
                   </span>
                 </div>
               </div>
-              <button type="submit" className="btn" disabled={!checked.ok || status !== "ready"} style={{ background: ACCENT, color: "#fff", fontWeight: 700, fontSize: 14, padding: "10px 16px", borderRadius: 10, marginBottom: 20, flexShrink: 0 }}>
+              <button type="submit" className="btn" disabled={!checked.ok || status !== "ready"} style={{ background: ACCENT, color: "var(--on-ink)", fontWeight: 700, fontSize: 14, padding: "10px 16px", borderRadius: "var(--radius-sm)", marginBottom: 20, flexShrink: 0 }}>
                 {t("chat.send")}
               </button>
             </form>
@@ -399,21 +399,21 @@ function Bubble({ mine, name, time, body, failed }: { mine: boolean; name: strin
     <li style={{ display: "flex", flexDirection: "column", alignItems: mine ? "flex-end" : "flex-start", minWidth: 0 }}>
       <div
         style={{
-          maxWidth: "min(78%, 560px)", minWidth: 0, padding: "8px 12px", borderRadius: 14,
+          maxWidth: "min(78%, 560px)", minWidth: 0, padding: "8px 12px", borderRadius: "var(--radius-lg)",
           borderBottomRightRadius: mine ? 4 : 14, borderBottomLeftRadius: mine ? 14 : 4,
-          background: failed ? "#FDEBEC" : mine ? ACCENT : "#fff",
-          color: failed ? "#7F1D1D" : mine ? "#fff" : "#181A1F",
-          border: mine && !failed ? "none" : `1px solid ${failed ? "#F6CDD1" : "#EAE8E2"}`,
+          background: failed ? "var(--danger-soft)" : mine ? ACCENT : "var(--surface)",
+          color: failed ? "var(--danger)" : mine ? "var(--on-ink)" : "var(--text)",
+          border: mine && !failed ? "none" : `1px solid ${failed ? "var(--danger-border)" : "var(--border)"}`,
         }}
       >
-        <div style={{ fontSize: 11.5, fontWeight: 700, opacity: mine && !failed ? 0.9 : 1, color: mine ? undefined : "#4A4E58", marginBottom: 2, overflowWrap: "anywhere" }}>{name}</div>
+        <div style={{ fontSize: 11.5, fontWeight: 700, opacity: mine && !failed ? 0.9 : 1, color: mine ? undefined : "var(--text-soft)", marginBottom: 2, overflowWrap: "anywhere" }}>{name}</div>
         <div style={{ fontSize: 14, lineHeight: 1.45, whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{body}</div>
-        {time && <div style={{ fontSize: 11, marginTop: 3, textAlign: "right", color: mine && !failed ? "#E0E7FF" : "#686B75" }}>{time}</div>}
+        {time && <div style={{ fontSize: 11, marginTop: 3, textAlign: "right", color: mine && !failed ? "var(--primary-soft)" : "var(--text-muted)" }}>{time}</div>}
       </div>
       {failed && (
-        <div role="alert" style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 4, fontSize: 12, color: "#B23A47", flexWrap: "wrap", justifyContent: "flex-end" }}>
+        <div role="alert" style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 4, fontSize: 12, color: "var(--danger)", flexWrap: "wrap", justifyContent: "flex-end" }}>
           <span>{failed.error}</span>
-          <button type="button" className="btn" onClick={failed.retry} style={{ background: "#fff", color: "#B23A47", border: "1px solid #F6CDD1", fontWeight: 700, fontSize: 12, padding: "4px 10px", borderRadius: 8 }}>
+          <button type="button" className="btn" onClick={failed.retry} style={{ background: "var(--surface)", color: "var(--danger)", border: "1px solid var(--danger-border)", fontWeight: 700, fontSize: 12, padding: "4px 10px", borderRadius: "var(--radius-xs)" }}>
             {failed.retryLabel}
           </button>
         </div>

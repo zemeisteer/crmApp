@@ -26,7 +26,7 @@ import { PHONE_PATTERN, PHONE_TITLE, NAME_PATTERN, NAME_TITLE } from "@/lib/vali
 import { formatDate, formatDateTime, formatTime } from "@/lib/format-date";
 import { centerHost } from "@/lib/domain";
 
-const ACCENT = "#4F46E5";
+const ACCENT = "var(--primary)";
 // Same ids as onboarding (tenants.teachingCategories).
 const DIRECTION_OPTIONS: { id: string; key: TranslationKey; icon: string }[] = [
   { id: "languages", key: "onb.catLanguages", icon: "🌐" },
@@ -382,23 +382,23 @@ function SettingsContent() {
 
   return (
     <>
-      <div style={{ padding: "22px 32px", borderBottom: "1px solid #EAE8E2" }}>
+      <div style={{ padding: "22px 32px", borderBottom: "1px solid var(--border)" }}>
         <h1 style={{ fontSize: 22, fontWeight: 800 }}>{t("settings.title")}</h1>
-        <div style={{ fontSize: 13, color: "#686B75", marginTop: 2 }}>{t("settings.subtitle")}</div>
+        <div style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 2 }}>{t("settings.subtitle")}</div>
       </div>
 
       <div className="settings-layout" style={{ flex: 1, minHeight: 0, display: "flex", overflow: "hidden" }}>
-        <div className="settings-nav" style={{ width: 220, flexShrink: 0, borderRight: "1px solid #EAE8E2", padding: 18, display: "flex", flexDirection: "column", gap: 4, overflow: "auto" }}>
+        <div className="settings-nav" style={{ width: 220, flexShrink: 0, borderRight: "1px solid var(--border)", padding: 18, display: "flex", flexDirection: "column", gap: 4, overflow: "auto" }}>
           {TAB_DEFS.filter((td) => !ADMIN_ONLY_TABS.includes(td.key) || isAdminRole(user?.role)).map((td) => (
             <button
               key={td.key}
               onClick={() => setTab(td.key)}
               className="btn"
               style={{
-                display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 10, border: "none",
+                display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: "var(--radius-sm)", border: "none",
                 textAlign: "left", fontSize: 13.5, fontWeight: 600,
                 background: tab === td.key ? ACCENT : "transparent",
-                color: tab === td.key ? "#fff" : "#4A4E58",
+                color: tab === td.key ? "var(--on-ink)" : "var(--text-soft)",
               }}
             >
               {td.icon}
@@ -410,14 +410,14 @@ function SettingsContent() {
         <div style={{ flex: 1, minHeight: 0, padding: "26px 32px", overflow: "auto", boxSizing: "border-box" }}>
           {tab === "profile" && (
             <div style={{ display: "flex", flexDirection: "column", gap: 20, maxWidth: 640 }}>
-              <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 22 }}>
-                <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 700, fontSize: 15, marginBottom: 18 }}>{t("settings.centerInfo")}</div>
+              <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 22 }}>
+                <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 15, marginBottom: 18 }}>{t("settings.centerInfo")}</div>
                 <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 20 }}>
                   {tenant?.logoUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={fileUrl(tenant.logoUrl) || ""} alt="Logo" style={{ width: 56, height: 56, borderRadius: 14, objectFit: "cover", border: "1px solid #EAE8E2" }} />
+                    <img src={fileUrl(tenant.logoUrl) || ""} alt="Logo" style={{ width: 56, height: 56, borderRadius: "var(--radius-lg)", objectFit: "cover", border: "1px solid var(--border)" }} />
                   ) : (
-                    <div style={{ width: 56, height: 56, borderRadius: 14, background: accentColor, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontFamily: "'Manrope', sans-serif", fontWeight: 800, fontSize: 22 }}>
+                    <div style={{ width: 56, height: 56, borderRadius: "var(--radius-lg)", background: accentColor, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 22 }}>
                       {(tenant?.name || "?").slice(0, 1).toUpperCase()}
                     </div>
                   )}
@@ -427,66 +427,66 @@ function SettingsContent() {
                       className="btn"
                       onClick={() => logoInputRef.current?.click()}
                       disabled={logoUploading}
-                      style={{ background: "#F2F1EC", color: "#181A1F", border: "none", fontSize: 12.5, fontWeight: 700, padding: "8px 14px", borderRadius: 8 }}
+                      style={{ background: "var(--surface-muted)", color: "var(--text)", border: "none", fontSize: 12.5, fontWeight: 700, padding: "8px 14px", borderRadius: "var(--radius-xs)" }}
                     >
                       {logoUploading ? t("common.loading") : t("settings.changeLogo")}
                     </button>
-                    <div style={{ fontSize: 11, color: "#686B75", marginTop: 6 }}>{t("settings.logoHint")}</div>
+                    <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 6 }}>{t("settings.logoHint")}</div>
                     <input ref={logoInputRef} type="file" accept="image/png,image/jpeg,image/svg+xml" onChange={onLogoChange} style={{ display: "none" }} />
                   </div>
                 </div>
 
                 <form onSubmit={onSave} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                   {error && (
-                    <div role="alert" style={{ background: "#FDEBEC", color: "#B23A47", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: 10 }}>{error}</div>
+                    <div role="alert" style={{ background: "var(--danger-soft)", color: "var(--danger)", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: "var(--radius-sm)" }}>{error}</div>
                   )}
                   {saved && (
-                    <div style={{ background: "#E9F8EF", color: "#167A48", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: 10 }}>{t("common.saved")}</div>
+                    <div style={{ background: "var(--success-soft)", color: "var(--success)", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: "var(--radius-sm)" }}>{t("common.saved")}</div>
                   )}
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
                     <div>
-                      <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>{t("settings.centerName")}</div>
+                      <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-soft)", marginBottom: 6 }}>{t("settings.centerName")}</div>
                       <input className="field-input" aria-label={t("settings.centerName")} required value={name} onChange={(e) => setName(e.target.value)} />
                     </div>
                     <div>
-                      <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>{t("settings.subdomain")}</div>
+                      <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-soft)", marginBottom: 6 }}>{t("settings.subdomain")}</div>
                       <input className="field-input" aria-label={t("settings.subdomain")} value={tenant?.subdomain ? centerHost(tenant.subdomain) : ""} disabled style={{ opacity: 0.6 }} />
                     </div>
                   </div>
                   <div>
-                    <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>{t("settings.phones")}</div>
+                    <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-soft)", marginBottom: 6 }}>{t("settings.phones")}</div>
                     <TagListInput values={phones} onChange={setPhones} type="tel" placeholder="+998 90 123 45 67" pattern={PHONE_PATTERN} title={PHONE_TITLE} addLabel={t("settings.addPhone")} />
                   </div>
                   <div>
-                    <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>{t("settings.emails")}</div>
+                    <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-soft)", marginBottom: 6 }}>{t("settings.emails")}</div>
                     <TagListInput values={emails} onChange={setEmails} type="email" placeholder="info@markaz.uz" addLabel={t("settings.addEmail")} />
                   </div>
                   <div>
-                    <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>{t("settings.telegramUsernames")}</div>
+                    <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-soft)", marginBottom: 6 }}>{t("settings.telegramUsernames")}</div>
                     <TagListInput values={telegramUsernames} onChange={setTelegramUsernames} placeholder="markaz_bot" prefix="@" addLabel={t("settings.addTelegramUsername")} />
                   </div>
                   <div>
-                    <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>🤖 {t("settings.aiTutorLimit")}</div>
+                    <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-soft)", marginBottom: 6 }}>🤖 {t("settings.aiTutorLimit")}</div>
                     <input className="field-input" aria-label={t("settings.aiTutorLimit")} type="number" inputMode="numeric" min={0} max={200} value={aiLimit} onChange={(e) => setAiLimit(e.target.value)} style={{ maxWidth: 160 }} />
-                    <div style={{ fontSize: 12, color: "#686B75", marginTop: 5, lineHeight: 1.5 }}>{t("settings.aiTutorHint")}</div>
+                    <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 5, lineHeight: 1.5 }}>{t("settings.aiTutorHint")}</div>
                   </div>
                   <div>
-                    <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>{t("settings.loginEmail")}</div>
+                    <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-soft)", marginBottom: 6 }}>{t("settings.loginEmail")}</div>
                     <input className="field-input" aria-label={t("settings.loginEmail")} value={user?.email || ""} disabled style={{ opacity: 0.6 }} />
                   </div>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
                     <div>
-                      <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>{t("settings.interfaceLanguage")}</div>
+                      <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-soft)", marginBottom: 6 }}>{t("settings.interfaceLanguage")}</div>
                       <Select options={LANGUAGE_OPTIONS} value={language} onChange={(v) => setLanguage(v as "UZ" | "RU" | "EN")} />
                     </div>
                     <div>
-                      <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>{t("settings.currency")}</div>
+                      <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-soft)", marginBottom: 6 }}>{t("settings.currency")}</div>
                       <Select options={CURRENCY_OPTIONS} value={currency} onChange={(v) => setCurrency(v as "UZS" | "USD" | "RUB")} />
                     </div>
                   </div>
                   <div>
-                    <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>
-                      {t("settings.direction")} <span style={{ fontWeight: 500, color: "#686B75" }}>· {t("set.directionsHint")}</span>
+                    <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-soft)", marginBottom: 6 }}>
+                      {t("settings.direction")} <span style={{ fontWeight: 500, color: "var(--text-muted)" }}>· {t("set.directionsHint")}</span>
                     </div>
                     <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                       {DIRECTION_OPTIONS.map((d) => {
@@ -496,7 +496,7 @@ function SettingsContent() {
                             key={d.id}
                             type="button"
                             onClick={() => setDirections((cur) => (on ? cur.filter((x) => x !== d.id) : [...cur, d.id]))}
-                            style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 12px", borderRadius: 999, cursor: "pointer", fontSize: 13, fontWeight: 600, border: `1.5px solid ${on ? ACCENT : "#EAE8E2"}`, background: on ? "#EEF0FF" : "#fff", color: on ? ACCENT : "#4A4E58" }}
+                            style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 12px", borderRadius: "var(--radius-pill)", cursor: "pointer", fontSize: 13, fontWeight: 600, border: `1.5px solid ${on ? ACCENT : "var(--border)"}`, background: on ? "var(--primary-soft)" : "var(--surface)", color: on ? ACCENT : "var(--text-soft)" }}
                           >
                             <span>{d.icon}</span>
                             {t(d.key)}
@@ -510,16 +510,16 @@ function SettingsContent() {
                     className="btn"
                     type="submit"
                     disabled={saving}
-                    style={{ background: ACCENT, color: "#fff", fontSize: 14, fontWeight: 700, padding: 12, borderRadius: 10, marginTop: 6, alignSelf: "flex-end", minWidth: 160 }}
+                    style={{ background: ACCENT, color: "var(--on-ink)", fontSize: 14, fontWeight: 700, padding: 12, borderRadius: "var(--radius-sm)", marginTop: 6, alignSelf: "flex-end", minWidth: 160 }}
                   >
                     {saving ? t("common.saving") : t("settings.saveChanges")}
                   </button>
                 </form>
               </div>
 
-              <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 22 }}>
-                <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 700, fontSize: 15 }}>{t("settings.brandColor")}</div>
-                <div style={{ fontSize: 12, color: "#686B75", marginTop: 4, marginBottom: 16 }}>{t("settings.brandColorHint")}</div>
+              <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 22 }}>
+                <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 15 }}>{t("settings.brandColor")}</div>
+                <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 4, marginBottom: 16 }}>{t("settings.brandColorHint")}</div>
                 <div style={{ display: "flex", gap: 10 }}>
                   {BRAND_COLORS.map((c) => (
                     <button
@@ -533,7 +533,7 @@ function SettingsContent() {
                         await refreshMe();
                       }}
                       style={{
-                        width: 34, height: 34, borderRadius: 10, background: c, cursor: "pointer",
+                        width: 34, height: 34, borderRadius: "var(--radius-sm)", background: c, cursor: "pointer",
                         border: accentColor === c ? "2.5px solid #181A1F" : "2.5px solid transparent",
                         boxShadow: accentColor === c ? "0 0 0 2px #fff inset" : "none",
                       }}
@@ -548,7 +548,7 @@ function SettingsContent() {
                       await tenantsApi.updateMe({ accentColor: e.target.value });
                       await refreshMe();
                     }}
-                    style={{ width: 34, height: 34, border: "1px solid #EAE8E2", borderRadius: 10, padding: 2, cursor: "pointer" }}
+                    style={{ width: 34, height: 34, border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", padding: 2, cursor: "pointer" }}
                   />
                 </div>
               </div>
@@ -570,19 +570,19 @@ function SettingsContent() {
           )}
 
           {tab === "staff" && (
-            <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 22, maxWidth: 720 }}>
-              <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 700, fontSize: 15, marginBottom: 4 }}>{t("settings.staffTitle")}</div>
-              <div style={{ fontSize: 12.5, color: "#686B75", marginBottom: 16 }}>{t("settings.staffHint")}</div>
+            <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 22, maxWidth: 720 }}>
+              <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 15, marginBottom: 4 }}>{t("settings.staffTitle")}</div>
+              <div style={{ fontSize: 12.5, color: "var(--text-muted)", marginBottom: 16 }}>{t("settings.staffHint")}</div>
 
               <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 18 }}>
                 {staff.length === 0 ? (
-                  <div style={{ fontSize: 13, color: "#686B75" }}>{t("common.loading")}</div>
+                  <div style={{ fontSize: 13, color: "var(--text-muted)" }}>{t("common.loading")}</div>
                 ) : (
                   staff.map((s) => (
-                    <div key={s.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", border: "1px solid #EAE8E2", borderRadius: 10, padding: "10px 12px", gap: 10 }}>
+                    <div key={s.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", padding: "10px 12px", gap: 10 }}>
                       <div style={{ minWidth: 0 }}>
                         <div style={{ fontSize: 13.5, fontWeight: 600 }}>{s.fullName}</div>
-                        <div style={{ fontSize: 11.5, color: "#686B75" }}>{s.email}</div>
+                        <div style={{ fontSize: 11.5, color: "var(--text-muted)" }}>{s.email}</div>
                       </div>
                       <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
                         {accessCatalog && isConfigurableRole(accessCatalog, s.role) && (
@@ -591,13 +591,13 @@ function SettingsContent() {
                             className="btn"
                             onClick={() => setEditingAccessStaff(s)}
                             style={{
-                              background: s.access ? "#FEF3C7" : "#EEF2FF",
-                              color: s.access ? "#B45309" : ACCENT,
-                              border: `1px solid ${s.access ? "#FCD34D" : "#C7D2FE"}`,
+                              background: s.access ? "var(--warning-soft)" : "var(--primary-soft)",
+                              color: s.access ? "var(--warning)" : ACCENT,
+                              border: `1px solid ${s.access ? "var(--warning-border)" : "var(--primary-border)"}`,
                               fontSize: 11.5,
                               fontWeight: 700,
                               padding: "5px 10px",
-                              borderRadius: 8,
+                              borderRadius: "var(--radius-xs)",
                               cursor: "pointer",
                               whiteSpace: "nowrap",
                             }}
@@ -616,7 +616,7 @@ function SettingsContent() {
                           />
                         )}
                         {s.id !== user?.id && s.role !== "SUPERADMIN" && s.role !== "OWNER" && (
-                          <button className="btn" onClick={() => onRemoveStaff(s.id)} style={{ background: "transparent", color: "#B23A47", fontSize: 11.5, fontWeight: 600, padding: "4px 8px", borderRadius: 8 }}>
+                          <button className="btn" onClick={() => onRemoveStaff(s.id)} style={{ background: "transparent", color: "var(--danger)", fontSize: 11.5, fontWeight: 600, padding: "4px 8px", borderRadius: "var(--radius-xs)" }}>
                             {t("common.delete")}
                           </button>
                         )}
@@ -628,7 +628,7 @@ function SettingsContent() {
 
               <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 10 }}>{t("settings.newStaff")}</div>
               {staffError && (
-                <div style={{ background: "#FDEBEC", color: "#B23A47", fontSize: 12.5, fontWeight: 600, padding: "8px 12px", borderRadius: 8, marginBottom: 10 }}>{staffError}</div>
+                <div style={{ background: "var(--danger-soft)", color: "var(--danger)", fontSize: 12.5, fontWeight: 600, padding: "8px 12px", borderRadius: "var(--radius-xs)", marginBottom: 10 }}>{staffError}</div>
               )}
               <form onSubmit={onAddStaff} style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                 <input className="field-input" required placeholder={t("settings.fullName")} value={staffName} onChange={(e) => setStaffName(e.target.value)} pattern={NAME_PATTERN} title={NAME_TITLE} />
@@ -645,9 +645,9 @@ function SettingsContent() {
                 />
                 {accessCatalog && (
                   <details style={{ gridColumn: "1 / -1" }}>
-                    <summary style={{ cursor: "pointer", fontSize: 13, fontWeight: 700, color: "#181A1F", padding: "4px 0" }}>
+                    <summary style={{ cursor: "pointer", fontSize: 13, fontWeight: 700, color: "var(--text)", padding: "4px 0" }}>
                       🔑 {t("perm.whatCanDo")}
-                      {staffAccess ? <span style={{ color: "#B45309", fontWeight: 600 }}> · {t("perm.custom")}</span> : null}
+                      {staffAccess ? <span style={{ color: "var(--warning)", fontWeight: 600 }}> · {t("perm.custom")}</span> : null}
                     </summary>
                     <div style={{ marginTop: 10 }}>
                       <StaffAccessEditor catalog={accessCatalog} role={staffRole} value={staffAccess} onChange={setStaffAccess} />
@@ -658,7 +658,7 @@ function SettingsContent() {
                   className="btn"
                   type="submit"
                   disabled={savingStaff}
-                  style={{ gridColumn: "1 / -1", background: ACCENT, color: "#fff", border: "none", fontSize: 13.5, fontWeight: 700, padding: 11, borderRadius: 9 }}
+                  style={{ gridColumn: "1 / -1", background: ACCENT, color: "var(--on-ink)", border: "none", fontSize: 13.5, fontWeight: 700, padding: 11, borderRadius: "var(--radius-sm)" }}
                 >
                   {savingStaff ? t("settings.addingStaff") : t("settings.addStaffBtn")}
                 </button>
@@ -677,8 +677,8 @@ function SettingsContent() {
           {tab === "staff" && <AccessMatrixPanel />}
 
           {tab === "security" && (
-            <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 22, maxWidth: 640 }}>
-              <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 700, fontSize: 15, marginBottom: 14 }}>{t("settings.security")}</div>
+            <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 22, maxWidth: 640 }}>
+              <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 15, marginBottom: 14 }}>{t("settings.security")}</div>
 
               <div style={{ marginBottom: 18 }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
@@ -688,36 +688,36 @@ function SettingsContent() {
                   </span>
                 </div>
                 {twoFaError && (
-                  <div style={{ background: "#FDEBEC", color: "#B23A47", fontSize: 12.5, fontWeight: 600, padding: "8px 12px", borderRadius: 8, marginBottom: 8 }}>{twoFaError}</div>
+                  <div style={{ background: "var(--danger-soft)", color: "var(--danger)", fontSize: 12.5, fontWeight: 600, padding: "8px 12px", borderRadius: "var(--radius-xs)", marginBottom: 8 }}>{twoFaError}</div>
                 )}
                 {twoFaMsg && !twoFaQr && (
-                  <div style={{ background: "#E9F8EF", color: "#167A48", fontSize: 12.5, fontWeight: 600, padding: "8px 12px", borderRadius: 8, marginBottom: 8 }}>{twoFaMsg}</div>
+                  <div style={{ background: "var(--success-soft)", color: "var(--success)", fontSize: 12.5, fontWeight: 600, padding: "8px 12px", borderRadius: "var(--radius-xs)", marginBottom: 8 }}>{twoFaMsg}</div>
                 )}
                 {twoFaRecovery ? (
                   <RecoveryCodes codes={twoFaRecovery} onDone={() => setTwoFaRecovery(null)} />
                 ) : user?.twoFactorEnabled && !twoFaQr ? (
                   // Replacing the key or turning 2FA off: the password and the current code (or a recovery code).
                   <form onSubmit={onDisable2FA} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                    <div style={{ fontSize: 12, color: "#686B75" }}>{t("twofa.reauthHint")}</div>
+                    <div style={{ fontSize: 12, color: "var(--text-muted)" }}>{t("twofa.reauthHint")}</div>
                     <input className="field-input" type="password" autoComplete="current-password" placeholder={t("twofa.password")} value={twoFaPassword} onChange={(e) => setTwoFaPassword(e.target.value)} />
                     <input className="field-input" autoComplete="one-time-code" placeholder={t("twofa.currentOrRecovery")} value={twoFaCurrent} onChange={(e) => setTwoFaCurrent(e.target.value)} />
                     <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                      <button className="btn" type="button" disabled={twoFaBusy || !twoFaPassword || !twoFaCurrent.trim()} onClick={onStart2FA} style={{ background: "#F2F1EC", color: "#181A1F", border: "none", fontSize: 12.5, fontWeight: 700, padding: "8px 14px", borderRadius: 8 }}>
+                      <button className="btn" type="button" disabled={twoFaBusy || !twoFaPassword || !twoFaCurrent.trim()} onClick={onStart2FA} style={{ background: "var(--surface-muted)", color: "var(--text)", border: "none", fontSize: 12.5, fontWeight: 700, padding: "8px 14px", borderRadius: "var(--radius-xs)" }}>
                         {t("twofa.replaceKey")}
                       </button>
-                      <button className="btn" type="submit" disabled={twoFaBusy || !twoFaPassword || !twoFaCurrent.trim()} style={{ background: "#FDEBEC", color: "#B23A47", border: "none", fontSize: 12.5, fontWeight: 700, padding: "8px 14px", borderRadius: 8 }}>
+                      <button className="btn" type="submit" disabled={twoFaBusy || !twoFaPassword || !twoFaCurrent.trim()} style={{ background: "var(--danger-soft)", color: "var(--danger)", border: "none", fontSize: 12.5, fontWeight: 700, padding: "8px 14px", borderRadius: "var(--radius-xs)" }}>
                         {t("twofa.turnOff")}
                       </button>
                     </div>
                   </form>
                 ) : twoFaQr ? (
                   <form onSubmit={onConfirm2FA} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                    <div style={{ fontSize: 12, color: "#686B75" }}>{t("settings.scanQr")}</div>
+                    <div style={{ fontSize: 12, color: "var(--text-muted)" }}>{t("settings.scanQr")}</div>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={twoFaQr} alt="2FA QR" width={160} height={160} style={{ alignSelf: "center", border: "1px solid #EAE8E2", borderRadius: 8 }} />
+                    <img src={twoFaQr} alt="2FA QR" width={160} height={160} style={{ alignSelf: "center", border: "1px solid var(--border)", borderRadius: "var(--radius-xs)" }} />
                     <div style={{ display: "flex", gap: 8 }}>
                       <input className="field-input" placeholder="000000" value={twoFaCode} onChange={(e) => setTwoFaCode(e.target.value)} style={{ flex: 1, textAlign: "center" }} />
-                      <button className="btn" type="submit" disabled={twoFaBusy} style={{ background: ACCENT, color: "#fff", border: "none", fontSize: 12.5, fontWeight: 700, padding: "0 14px", borderRadius: 8 }}>
+                      <button className="btn" type="submit" disabled={twoFaBusy} style={{ background: ACCENT, color: "var(--on-ink)", border: "none", fontSize: 12.5, fontWeight: 700, padding: "0 14px", borderRadius: "var(--radius-xs)" }}>
                         {t("twofa.confirm")}
                       </button>
                     </div>
@@ -726,7 +726,7 @@ function SettingsContent() {
                   <button
                     className="btn"
                     onClick={onStart2FA}
-                    style={{ background: "#F2F1EC", color: "#181A1F", border: "none", fontSize: 12.5, fontWeight: 700, padding: "8px 14px", borderRadius: 8 }}
+                    style={{ background: "var(--surface-muted)", color: "var(--text)", border: "none", fontSize: 12.5, fontWeight: 700, padding: "8px 14px", borderRadius: "var(--radius-xs)" }}
                   >
                     {t("settings.enable2fa")}
                   </button>
@@ -737,12 +737,12 @@ function SettingsContent() {
                 <div style={{ fontSize: 13.5, fontWeight: 600, marginBottom: 8 }}>{t("settings.activeSessions")}</div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                   {sessions.map((s) => (
-                    <div key={s.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", border: "1px solid #EAE8E2", borderRadius: 10, padding: "8px 12px" }}>
+                    <div key={s.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", padding: "8px 12px" }}>
                       <div>
                         <div style={{ fontSize: 12.5, fontWeight: 600 }}>{s.userAgent || t("settings.unknownDevice")}</div>
-                        <div style={{ fontSize: 11, color: "#686B75" }}>{s.ip} · {formatDateTime(s.lastUsedAt, lang)}</div>
+                        <div style={{ fontSize: 11, color: "var(--text-muted)" }}>{s.ip} · {formatDateTime(s.lastUsedAt, lang)}</div>
                       </div>
-                      <button className="btn" onClick={() => onRevokeSession(s.id)} style={{ background: "transparent", color: "#B23A47", fontSize: 11.5, fontWeight: 600, padding: "4px 8px", borderRadius: 8 }}>
+                      <button className="btn" onClick={() => onRevokeSession(s.id)} style={{ background: "transparent", color: "var(--danger)", fontSize: 11.5, fontWeight: 600, padding: "4px 8px", borderRadius: "var(--radius-xs)" }}>
                         {t("settings.revoke")}
                       </button>
                     </div>
@@ -751,20 +751,20 @@ function SettingsContent() {
               </div>
 
               <div>
-                <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 700, fontSize: 14, marginBottom: 12 }}>{t("settings.webhooks")}</div>
+                <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 14, marginBottom: 12 }}>{t("settings.webhooks")}</div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 14 }}>
                   {webhooks.length === 0 ? (
-                    <div style={{ fontSize: 13, color: "#686B75" }}>{t("settings.noWebhooks")}</div>
+                    <div style={{ fontSize: 13, color: "var(--text-muted)" }}>{t("settings.noWebhooks")}</div>
                   ) : (
                     webhooks.map((w) => (
-                      <div key={w.id} style={{ border: "1px solid #EAE8E2", borderRadius: 10, padding: "8px 12px" }}>
+                      <div key={w.id} style={{ border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", padding: "8px 12px" }}>
                         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                           <div style={{ fontSize: 12.5, fontWeight: 600, wordBreak: "break-all" }}>{w.url}</div>
-                          <button className="btn" onClick={() => onRemoveWebhook(w.id)} style={{ background: "transparent", color: "#B23A47", fontSize: 11.5, fontWeight: 600, padding: "4px 8px", borderRadius: 8, flexShrink: 0 }}>
+                          <button className="btn" onClick={() => onRemoveWebhook(w.id)} style={{ background: "transparent", color: "var(--danger)", fontSize: 11.5, fontWeight: 600, padding: "4px 8px", borderRadius: "var(--radius-xs)", flexShrink: 0 }}>
                             {t("common.delete")}
                           </button>
                         </div>
-                        <div style={{ fontSize: 11, color: "#686B75", marginTop: 2 }}>
+                        <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 2 }}>
                           {t("settings.eventLabel")}: {w.event} · {t("settings.secretLabel")}: <code>{w.secret.slice(0, 12)}...</code>
                         </div>
                       </div>
@@ -784,7 +784,7 @@ function SettingsContent() {
                     onChange={setWebhookEvent}
                     style={{ flex: 1 }}
                   />
-                  <button className="btn" type="submit" disabled={savingWebhook} style={{ background: ACCENT, color: "#fff", border: "none", fontSize: 13, fontWeight: 700, padding: "0 16px", borderRadius: 9, whiteSpace: "nowrap" }}>
+                  <button className="btn" type="submit" disabled={savingWebhook} style={{ background: ACCENT, color: "var(--on-ink)", border: "none", fontSize: 13, fontWeight: 700, padding: "0 16px", borderRadius: "var(--radius-sm)", whiteSpace: "nowrap" }}>
                     {t("common.add")}
                   </button>
                 </form>
@@ -795,9 +795,9 @@ function SettingsContent() {
           {tab === "notifications" && <NotificationsSettingsTab />}
 
           {tab === "integrations" && (
-            <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 22, maxWidth: 640 }}>
-              <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 700, fontSize: 15, marginBottom: 4 }}>{t("settings.integrations")}</div>
-              <div style={{ fontSize: 12.5, color: "#686B75", marginBottom: 16 }}>{t("settings.integrationsHint")}</div>
+            <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 22, maxWidth: 640 }}>
+              <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 15, marginBottom: 4 }}>{t("settings.integrations")}</div>
+              <div style={{ fontSize: 12.5, color: "var(--text-muted)", marginBottom: 16 }}>{t("settings.integrationsHint")}</div>
               <div style={{ display: "flex", flexDirection: "column", gap: 10, fontSize: 13.5 }}>
                 <IntegrationRow
                   label={t("settings.telegramBotLabel")}
@@ -812,13 +812,13 @@ function SettingsContent() {
                 />
               </div>
               {telegramStatus?.configured && (
-                <div style={{ marginTop: 16, background: "#ECEBFB", borderRadius: 12, padding: "14px 18px", fontSize: 12.5, color: "#4A4E58", lineHeight: 1.6 }}>
+                <div style={{ marginTop: 16, background: "var(--primary-soft)", borderRadius: "var(--radius-md)", padding: "14px 18px", fontSize: 12.5, color: "var(--text-soft)", lineHeight: 1.6 }}>
                   {t("settings.telegramLinkHint")}
                 </div>
               )}
               {isAdminRole(user?.role) && (
                 <div style={{ marginTop: 22 }}>
-                  <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 700, fontSize: 15, marginBottom: 8 }}>{t("pacc.title")}</div>
+                  <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 15, marginBottom: 8 }}>{t("pacc.title")}</div>
                   <PaymentAccounts />
                 </div>
               )}
@@ -826,36 +826,36 @@ function SettingsContent() {
           )}
 
           {tab === "data" && (
-            <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 22, maxWidth: 640 }}>
-              <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 700, fontSize: 15, marginBottom: 14 }}>{t("settings.myData")}</div>
+            <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 22, maxWidth: 640 }}>
+              <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 15, marginBottom: 14 }}>{t("settings.myData")}</div>
               <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                 <button
                   className="btn"
                   onClick={onExportData}
-                  style={{ background: "#F2F1EC", color: "#181A1F", border: "none", fontSize: 13, fontWeight: 700, padding: "10px 16px", borderRadius: 9 }}
+                  style={{ background: "var(--surface-muted)", color: "var(--text)", border: "none", fontSize: 13, fontWeight: 700, padding: "10px 16px", borderRadius: "var(--radius-sm)" }}
                 >
                   {t("settings.exportJson")}
                 </button>
                 <button
                   className="btn"
                   onClick={() => setDeleteOpen(true)}
-                  style={{ background: "#FDEBEC", color: "#B23A47", border: "none", fontSize: 13, fontWeight: 700, padding: "10px 16px", borderRadius: 9 }}
+                  style={{ background: "var(--danger-soft)", color: "var(--danger)", border: "none", fontSize: 13, fontWeight: 700, padding: "10px 16px", borderRadius: "var(--radius-sm)" }}
                 >
                   {t("settings.deleteCenter")}
                 </button>
               </div>
               {deleteOpen && (
-                <form onSubmit={onDeleteMyTenant} style={{ marginTop: 14, display: "flex", flexDirection: "column", gap: 10, border: "1px solid #F6D2D6", background: "#FDEBEC", borderRadius: 10, padding: 14 }}>
-                  <div style={{ fontSize: 12.5, color: "#B23A47", lineHeight: 1.5 }}>
+                <form onSubmit={onDeleteMyTenant} style={{ marginTop: 14, display: "flex", flexDirection: "column", gap: 10, border: "1px solid var(--danger-border)", background: "var(--danger-soft)", borderRadius: "var(--radius-sm)", padding: 14 }}>
+                  <div style={{ fontSize: 12.5, color: "var(--danger)", lineHeight: 1.5 }}>
                     {t("settings.deleteWarning")}
                   </div>
-                  {gdprError && <div style={{ color: "#B23A47", fontSize: 12.5, fontWeight: 600 }}>{gdprError}</div>}
+                  {gdprError && <div style={{ color: "var(--danger)", fontSize: 12.5, fontWeight: 600 }}>{gdprError}</div>}
                   <input className="field-input" type="password" required placeholder={t("settings.yourPassword")} value={gdprPassword} onChange={(e) => setGdprPassword(e.target.value)} />
                   <div style={{ display: "flex", gap: 8 }}>
-                    <button className="btn" type="submit" disabled={gdprBusy} style={{ background: "#B23A47", color: "#fff", border: "none", fontSize: 13, fontWeight: 700, padding: "10px 16px", borderRadius: 9 }}>
+                    <button className="btn" type="submit" disabled={gdprBusy} style={{ background: "var(--danger)", color: "var(--on-ink)", border: "none", fontSize: 13, fontWeight: 700, padding: "10px 16px", borderRadius: "var(--radius-sm)" }}>
                       {gdprBusy ? t("settings.deleting") : t("settings.confirmDeleteYes")}
                     </button>
-                    <button type="button" className="btn" onClick={() => setDeleteOpen(false)} style={{ background: "transparent", color: "#4A4E58", fontSize: 13, fontWeight: 600, padding: "10px 16px", borderRadius: 9 }}>
+                    <button type="button" className="btn" onClick={() => setDeleteOpen(false)} style={{ background: "transparent", color: "var(--text-soft)", fontSize: 13, fontWeight: 600, padding: "10px 16px", borderRadius: "var(--radius-sm)" }}>
                       {t("common.cancel")}
                     </button>
                   </div>
@@ -871,10 +871,10 @@ function SettingsContent() {
 
 function IntegrationRow({ label, active, hint, activeLabel, inactiveLabel }: { label: string; active: boolean; hint: string; activeLabel: string; inactiveLabel: string }) {
   return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", border: "1px solid #EAE8E2", borderRadius: 10, padding: "10px 14px" }}>
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", padding: "10px 14px" }}>
       <div>
         <div style={{ fontWeight: 600 }}>{label}</div>
-        <div style={{ fontSize: 11.5, color: "#686B75", marginTop: 2 }}>{hint}</div>
+        <div style={{ fontSize: 11.5, color: "var(--text-muted)", marginTop: 2 }}>{hint}</div>
       </div>
       <span className={`badge ${active ? "badge-success" : "badge-neutral"}`}>{active ? activeLabel : inactiveLabel}</span>
     </div>
@@ -906,16 +906,16 @@ function StaffAccessModal({ staff, catalog, onClose, onSaved }: { staff: StaffMe
   return (
     <Modal open onClose={onClose} title={`${t("set.permissions")} — ${staff.fullName}`} width={760}>
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-        <div style={{ fontSize: 12.5, color: "#4A4E58", lineHeight: 1.5 }}>
+        <div style={{ fontSize: 12.5, color: "var(--text-soft)", lineHeight: 1.5 }}>
           {t("perm.intro").replace("{role}", ROLE_LABEL_KEYS[staff.role] ? t(ROLE_LABEL_KEYS[staff.role]) : staff.role)}
         </div>
         <StaffAccessEditor catalog={catalog} role={staff.role} value={value} onChange={setValue} disabled={saving} />
-        {error && <div role="alert" style={{ background: "#FDEBEC", color: "#B23A47", fontSize: 12.5, fontWeight: 600, padding: "8px 12px", borderRadius: 8 }}>{error}</div>}
+        {error && <div role="alert" style={{ background: "var(--danger-soft)", color: "var(--danger)", fontSize: 12.5, fontWeight: 600, padding: "8px 12px", borderRadius: "var(--radius-xs)" }}>{error}</div>}
         <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
-          <button type="button" className="btn" onClick={onClose} style={{ background: "#F2F1EC", color: "#4A4E58", border: "none", padding: "8px 16px", borderRadius: 8, fontSize: 13 }}>
+          <button type="button" className="btn" onClick={onClose} style={{ background: "var(--surface-muted)", color: "var(--text-soft)", border: "none", padding: "8px 16px", borderRadius: "var(--radius-xs)", fontSize: 13 }}>
             {t("common.cancel")}
           </button>
-          <button type="button" className="btn" disabled={saving} onClick={() => void handleSave()} style={{ background: ACCENT, color: "#fff", border: "none", padding: "8px 18px", borderRadius: 8, fontSize: 13, fontWeight: 700 }}>
+          <button type="button" className="btn" disabled={saving} onClick={() => void handleSave()} style={{ background: ACCENT, color: "var(--on-ink)", border: "none", padding: "8px 18px", borderRadius: "var(--radius-xs)", fontSize: 13, fontWeight: 700 }}>
             {saving ? t("common.saving") : t("perm.save")}
           </button>
         </div>
@@ -1011,42 +1011,42 @@ function NotificationsSettingsTab() {
   }
 
   if (loading) {
-    return <div style={{ color: "#686B75", fontSize: 13.5 }}>{t("common.loading")}</div>;
+    return <div style={{ color: "var(--text-muted)", fontSize: 13.5 }}>{t("common.loading")}</div>;
   }
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20, maxWidth: 840 }}>
       {/* Stat Cards */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 14 }}>
-        <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 14, padding: 16 }}>
-          <div style={{ fontSize: 12, color: "#686B75" }}>{t("ntf.total")}</div>
+        <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 16 }}>
+          <div style={{ fontSize: 12, color: "var(--text-muted)" }}>{t("ntf.total")}</div>
           <div style={{ fontSize: 22, fontWeight: 800, marginTop: 4 }}>{stats?.total || 0}</div>
         </div>
-        <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 14, padding: 16 }}>
-          <div style={{ fontSize: 12, color: "#686B75" }}>{t("ntf.smsOk")}</div>
-          <div style={{ fontSize: 22, fontWeight: 800, color: "#10B981", marginTop: 4 }}>{stats?.smsCount || 0}</div>
+        <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 16 }}>
+          <div style={{ fontSize: 12, color: "var(--text-muted)" }}>{t("ntf.smsOk")}</div>
+          <div style={{ fontSize: 22, fontWeight: 800, color: "var(--success)", marginTop: 4 }}>{stats?.smsCount || 0}</div>
         </div>
-        <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 14, padding: 16 }}>
-          <div style={{ fontSize: 12, color: "#686B75" }}>{t("ntf.telegram")}</div>
+        <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 16 }}>
+          <div style={{ fontSize: 12, color: "var(--text-muted)" }}>{t("ntf.telegram")}</div>
           <div style={{ fontSize: 22, fontWeight: 800, color: ACCENT, marginTop: 4 }}>{stats?.telegramCount || 0}</div>
         </div>
-        <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 14, padding: 16 }}>
-          <div style={{ fontSize: 12, color: "#686B75" }}>{t("ntf.rate")}</div>
-          <div style={{ fontSize: 22, fontWeight: 800, color: "#3B82F6", marginTop: 4 }}>{stats?.successRate || 100}%</div>
+        <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 16 }}>
+          <div style={{ fontSize: 12, color: "var(--text-muted)" }}>{t("ntf.rate")}</div>
+          <div style={{ fontSize: 22, fontWeight: 800, color: "var(--info)", marginTop: 4 }}>{stats?.successRate || 100}%</div>
         </div>
       </div>
 
       {/* Provider and Trigger Settings */}
-      <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 22 }}>
-        <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 700, fontSize: 15, marginBottom: 4 }}>
+      <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 22 }}>
+        <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 15, marginBottom: 4 }}>
           {t("ntf.smsTitle")}
         </div>
-        <div style={{ fontSize: 12.5, color: "#686B75", marginBottom: 16 }}>
+        <div style={{ fontSize: 12.5, color: "var(--text-muted)", marginBottom: 16 }}>
           {t("ntf.smsHint")}
         </div>
 
         {msg && (
-          <div style={{ background: "#E9F8EF", color: "#167A48", fontSize: 12.5, fontWeight: 600, padding: "8px 12px", borderRadius: 8, marginBottom: 14 }}>
+          <div style={{ background: "var(--success-soft)", color: "var(--success)", fontSize: 12.5, fontWeight: 600, padding: "8px 12px", borderRadius: "var(--radius-xs)", marginBottom: 14 }}>
             {msg}
           </div>
         )}
@@ -1056,7 +1056,7 @@ function NotificationsSettingsTab() {
             {/* SMS goes through the platform's account: the center sees whether
                 its plan includes SMS and switches it on or off, nothing more. */}
             {settings.sms && !settings.sms.includedInPlan ? (
-              <div role="note" style={{ background: "#F7F6F2", border: "1px solid #EAE8E2", borderRadius: 12, padding: "12px 14px", fontSize: 13, color: "#3A3D45", lineHeight: 1.55 }}>
+              <div role="note" style={{ background: "var(--surface-muted)", border: "1px solid var(--border)", borderRadius: "var(--radius-md)", padding: "12px 14px", fontSize: 13, color: "var(--text-soft)", lineHeight: 1.55 }}>
                 <b>{t("ntf.smsNotInPlan")}</b> {t("ntf.smsNotInPlanHint")}
               </div>
             ) : (
@@ -1070,18 +1070,18 @@ function NotificationsSettingsTab() {
                   />
                   {t("ntf.smsOn")}
                 </label>
-                <div style={{ fontSize: 12.5, color: settings.sms?.providerReady === false ? "#B45309" : "#686B75", lineHeight: 1.5 }}>
+                <div style={{ fontSize: 12.5, color: settings.sms?.providerReady === false ? "var(--warning)" : "var(--text-muted)", lineHeight: 1.5 }}>
                   {settings.sms?.providerReady === false ? t("ntf.smsProviderPending") : t("ntf.smsViaPlatform")}
                 </div>
                 {settings.sms?.budget && (
-                  <div data-testid="sms-budget" style={{ fontSize: 12.5, color: settings.sms.budget.used >= settings.sms.budget.limit ? "#B23A47" : "#4A4E58", fontWeight: 600 }}>
+                  <div data-testid="sms-budget" style={{ fontSize: 12.5, color: settings.sms.budget.used >= settings.sms.budget.limit ? "var(--danger)" : "var(--text-soft)", fontWeight: 600 }}>
                     {t("ntf.smsBudget").replace("{used}", String(settings.sms.budget.used)).replace("{limit}", String(settings.sms.budget.limit))}
                   </div>
                 )}
               </div>
             )}
 
-            <div style={{ borderTop: "1px solid #F1F5F9", paddingTop: 14, marginTop: 4 }}>
+            <div style={{ borderTop: "1px solid var(--border)", paddingTop: 14, marginTop: 4 }}>
               <div style={{ fontSize: 13.5, fontWeight: 700, marginBottom: 10 }}>{t("ntf.triggers")}</div>
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 <label style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13, cursor: "pointer" }}>
@@ -1114,10 +1114,10 @@ function NotificationsSettingsTab() {
               </div>
             </div>
 
-            <div style={{ background: "#F8F8FF", border: "1px solid #E0E7FF", borderRadius: 12, padding: 14, display: "grid", gap: 12 }}>
+            <div style={{ background: "var(--primary-soft)", border: "1px solid var(--primary-border)", borderRadius: "var(--radius-md)", padding: 14, display: "grid", gap: 12 }}>
               <div>
                 <div style={{ fontSize: 13.5, fontWeight: 800 }}>⏰ {t("rem.title")}</div>
-                <div style={{ fontSize: 12.5, color: "#6B6E78", marginTop: 2, lineHeight: 1.5 }}>{t("rem.hint")}</div>
+                <div style={{ fontSize: 12.5, color: "var(--text-muted)", marginTop: 2, lineHeight: 1.5 }}>{t("rem.hint")}</div>
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
                 <span style={{ fontSize: 13, fontWeight: 600, minWidth: 180 }}>💳 {t("rem.paymentDay")}</span>
@@ -1171,7 +1171,7 @@ function NotificationsSettingsTab() {
               type="submit"
               disabled={saving}
               className="btn"
-              style={{ background: ACCENT, color: "#fff", alignSelf: "flex-start", padding: "10px 22px", borderRadius: 9, fontSize: 13, fontWeight: 700, marginTop: 4 }}
+              style={{ background: ACCENT, color: "var(--on-ink)", alignSelf: "flex-start", padding: "10px 22px", borderRadius: "var(--radius-sm)", fontSize: 13, fontWeight: 700, marginTop: 4 }}
             >
               {saving ? t("common.saving") : t("ntf.saveSettings")}
             </button>
@@ -1180,11 +1180,11 @@ function NotificationsSettingsTab() {
       </div>
 
       {/* Test Sender Form */}
-      <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 22 }}>
-        <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 700, fontSize: 15, marginBottom: 4 }}>
+      <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 22 }}>
+        <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 15, marginBottom: 4 }}>
           {t("ntf.testTitle")}
         </div>
-        <div style={{ fontSize: 12.5, color: "#686B75", marginBottom: 14 }}>
+        <div style={{ fontSize: 12.5, color: "var(--text-muted)", marginBottom: 14 }}>
           {t("ntf.testHint")}
         </div>
         <form onSubmit={handleSendTest} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -1216,7 +1216,7 @@ function NotificationsSettingsTab() {
             type="submit"
             disabled={sendingTest}
             className="btn"
-            style={{ background: "#F1F5F9", color: "#1E293B", border: "1px solid #CBD5E1", alignSelf: "flex-start", padding: "8px 18px", borderRadius: 8, fontSize: 13, fontWeight: 700 }}
+            style={{ background: "var(--surface-muted)", color: "var(--text)", border: "1px solid var(--border-strong)", alignSelf: "flex-start", padding: "8px 18px", borderRadius: "var(--radius-xs)", fontSize: 13, fontWeight: 700 }}
           >
             {sendingTest ? t("pay.sending") : t("ntf.sendTest")}
           </button>
@@ -1224,9 +1224,9 @@ function NotificationsSettingsTab() {
       </div>
 
       {/* Recent Notification Logs */}
-      <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 22 }}>
+      <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 22 }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-          <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 700, fontSize: 15 }}>
+          <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 15 }}>
             {t("ntf.history")} ({logs.length})
           </div>
           <button
@@ -1240,12 +1240,12 @@ function NotificationsSettingsTab() {
         </div>
 
         {logs.length === 0 ? (
-          <div style={{ color: "#686B75", fontSize: 13 }}>{t("ntf.empty")}</div>
+          <div style={{ color: "var(--text-muted)", fontSize: 13 }}>{t("ntf.empty")}</div>
         ) : (
           <div style={{ overflowX: "auto" }}>
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12.5 }}>
               <thead>
-                <tr style={{ borderBottom: "1px solid #EAE8E2", color: "#64748B", textAlign: "left" }}>
+                <tr style={{ borderBottom: "1px solid var(--border)", color: "var(--text-muted)", textAlign: "left" }}>
                   <th style={{ padding: "8px 10px" }}>{t("ntf.date")}</th>
                   <th style={{ padding: "8px 10px" }}>{t("ntf.channel")}</th>
                   <th style={{ padding: "8px 10px" }}>{t("ntf.recipient")}</th>
@@ -1256,8 +1256,8 @@ function NotificationsSettingsTab() {
               </thead>
               <tbody>
                 {logs.map((log) => (
-                  <tr key={log.id} style={{ borderBottom: "1px solid #F1F5F9" }}>
-                    <td style={{ padding: "10px 10px", color: "#64748B", whiteSpace: "nowrap" }}>
+                  <tr key={log.id} style={{ borderBottom: "1px solid var(--border)" }}>
+                    <td style={{ padding: "10px 10px", color: "var(--text-muted)", whiteSpace: "nowrap" }}>
                       {formatTime(log.createdAt, lang)}{" "}
                       {formatDate(log.createdAt, lang, "numeric")}
                     </td>
@@ -1265,11 +1265,11 @@ function NotificationsSettingsTab() {
                       <span
                         style={{
                           padding: "2px 7px",
-                          borderRadius: 6,
+                          borderRadius: "var(--radius-xs)",
                           fontSize: 11,
                           fontWeight: 700,
-                          background: log.channel === "SMS" ? "#FEF3C7" : "#EEF2FF",
-                          color: log.channel === "SMS" ? "#B45309" : "#4338CA",
+                          background: log.channel === "SMS" ? "var(--warning-soft)" : "var(--primary-soft)",
+                          color: log.channel === "SMS" ? "var(--warning)" : "var(--primary)",
                         }}
                       >
                         {log.channel}
@@ -1278,24 +1278,24 @@ function NotificationsSettingsTab() {
                     <td style={{ padding: "10px 10px", fontWeight: 600 }}>
                       {log.student?.fullName || log.recipient}
                     </td>
-                    <td style={{ padding: "10px 10px", color: "#475569" }}>
+                    <td style={{ padding: "10px 10px", color: "var(--text-muted)" }}>
                       {log.event}
                     </td>
                     <td style={{ padding: "10px 10px" }}>
                       <span
                         style={{
                           padding: "2px 8px",
-                          borderRadius: 6,
+                          borderRadius: "var(--radius-xs)",
                           fontSize: 11,
                           fontWeight: 700,
-                          background: log.status === "SENT" ? "#DEF7EC" : "#FDE8E8",
-                          color: log.status === "SENT" ? "#03543F" : "#9B1C1C",
+                          background: log.status === "SENT" ? "var(--success-soft)" : "var(--danger-soft)",
+                          color: log.status === "SENT" ? "var(--success)" : "var(--danger)",
                         }}
                       >
                         {log.status === "SENT" ? t("ntf.sent") : t("ntf.failed")}
                       </span>
                     </td>
-                    <td style={{ padding: "10px 10px", color: "#64748B", maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    <td style={{ padding: "10px 10px", color: "var(--text-muted)", maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                       {log.content}
                     </td>
                   </tr>

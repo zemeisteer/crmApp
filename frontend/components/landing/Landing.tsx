@@ -11,11 +11,11 @@ import { plansApi, type Plan } from "@/lib/api";
 // Public home page — a port of the original talimcrm-demo design
 // (Downloads/talimcrm-demo/index.html), in three languages and phone-ready.
 
-const ACCENT = "#4F46E5";
+const ACCENT = "var(--primary)";
 const LANG_LABELS: Record<LandingLang, string> = { UZ: "O'zbekcha", RU: "Русский", EN: "English" };
 
 const CSS = `
-  .lp-root{--bg:#F7F7F5;--surface:#FFFFFF;--border:#EAE8E2;--text:#181A1F;--text-2:#4A4E58;--muted:#686B75;--chip:#F2F1EC;color:var(--text);background:var(--bg);font-family:'Inter',system-ui,sans-serif;min-height:100vh;display:flex;flex-direction:column;}
+  .lp-root{--bg:var(--surface-muted);--surface:var(--surface);--border:var(--border);--text:var(--text);--text-2:var(--text-soft);--muted:var(--text-muted);--chip:var(--surface-muted);color:var(--text);background:var(--bg);font-family:'Inter',system-ui,sans-serif;min-height:100vh;display:flex;flex-direction:column;}
   .lp-root h1,.lp-root h2,.lp-root h3{font-family:'Manrope',system-ui,sans-serif;margin:0;}
   .lp-root a{color:inherit;text-decoration:none;}
   .lp-btn{cursor:pointer;border:none;transition:opacity .15s ease,transform .15s ease;display:inline-flex;align-items:center;justify-content:center;}
@@ -65,7 +65,7 @@ const CSS = `
   }
 `;
 
-const card: CSSProperties = { background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12 };
+const card: CSSProperties = { background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-md)" };
 const label: CSSProperties = { fontSize: 13, fontWeight: 700, color: ACCENT, textTransform: "uppercase", letterSpacing: "0.04em" };
 
 function Icon({ d, color, size = 20 }: { d: ReactNode; color: string; size?: number }) {
@@ -77,7 +77,7 @@ function Icon({ d, color, size = 20 }: { d: ReactNode; color: string; size?: num
 }
 
 const Check = () => (
-  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#16794A" strokeWidth="2.6" strokeLinecap="round" style={{ flexShrink: 0, marginTop: 2 }}>
+  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--success)" strokeWidth="2.6" strokeLinecap="round" style={{ flexShrink: 0, marginTop: 2 }}>
     <path d="M20 6 9 17l-5-5" />
   </svg>
 );
@@ -186,10 +186,10 @@ export default function Landing() {
       <div style={{ position: "sticky", top: 0, zIndex: 10, width: "100%", background: "rgba(247,247,245,0.92)", backdropFilter: "blur(6px)", borderBottom: "1px solid var(--border)" }}>
         <div className="lp-wrap lp-header" style={{ padding: "18px 32px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
           <Link href="/" style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <div style={{ width: 32, height: 32, borderRadius: 9, background: ACCENT, display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 10 12 5 2 10l10 5 10-5Z" /><path d="M6 12v5c0 1.5 2.7 3 6 3s6-1.5 6-3v-5" /></svg>
+            <div style={{ width: 32, height: 32, borderRadius: "var(--radius-sm)", background: ACCENT, display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--surface)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 10 12 5 2 10l10 5 10-5Z" /><path d="M6 12v5c0 1.5 2.7 3 6 3s6-1.5 6-3v-5" /></svg>
             </div>
-            <span style={{ fontFamily: "'Manrope',sans-serif", fontWeight: 800, fontSize: 19, letterSpacing: "-0.02em" }}>TalimCRM</span>
+            <span style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 19, letterSpacing: "-0.02em" }}>TalimCRM</span>
           </Link>
           <nav className="lp-nav" aria-label={L.menu} style={{ display: "flex", alignItems: "center", gap: 28, fontSize: 14.5, fontWeight: 500, color: "var(--text-2)" }}>
             {navLinks.map(([href, label]) => (
@@ -198,16 +198,16 @@ export default function Landing() {
           </nav>
           <div className="lp-header-right" style={{ display: "flex", alignItems: "center", gap: 16 }}>
             <div ref={langRef} style={{ position: "relative" }}>
-              <button type="button" className="lp-btn" onClick={() => setLangOpen((o) => !o)} style={{ gap: 6, background: "var(--chip)", border: "1px solid var(--border)", color: "var(--text)", fontSize: 12.5, fontWeight: 700, padding: "8px 12px", borderRadius: 9 }}>
+              <button type="button" className="lp-btn" onClick={() => setLangOpen((o) => !o)} style={{ gap: 6, background: "var(--chip)", border: "1px solid var(--border)", color: "var(--text)", fontSize: 12.5, fontWeight: 700, padding: "8px 12px", borderRadius: "var(--radius-sm)" }}>
                 <Icon d={<><circle cx="12" cy="12" r="10" /><path d="M2 12h20M12 2a15 15 0 0 1 0 20M12 2a15 15 0 0 0 0 20" /></>} color="currentColor" size={14} />
                 <span className="lp-lang-label">{LANG_LABELS[(lang as LandingLang) in LANG_LABELS ? (lang as LandingLang) : "UZ"]}</span>
                 <span className="lp-lang-code">{lang}</span>
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" style={{ transition: "transform .2s ease", transform: langOpen ? "rotate(180deg)" : "none" }}><path d="M6 9l6 6 6-6" /></svg>
               </button>
               {langOpen && (
-                <div style={{ position: "absolute", top: "calc(100% + 6px)", right: 0, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, boxShadow: "0 12px 28px -12px rgba(18,19,26,0.25)", padding: 5, minWidth: 120, zIndex: 20 }}>
+                <div style={{ position: "absolute", top: "calc(100% + 6px)", right: 0, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", boxShadow: "0 12px 28px -12px rgba(18,19,26,0.25)", padding: 5, minWidth: 120, zIndex: 20 }}>
                   {(["UZ", "RU", "EN"] as const).map((l) => (
-                    <button key={l} type="button" className="lp-btn" onClick={() => { setLang(l); setLangOpen(false); }} style={{ display: "block", width: "100%", textAlign: "left", fontSize: 13, fontWeight: 600, padding: "8px 10px", borderRadius: 7, background: lang === l ? "#ECEBFB" : "transparent", color: lang === l ? ACCENT : "var(--text)" }}>
+                    <button key={l} type="button" className="lp-btn" onClick={() => { setLang(l); setLangOpen(false); }} style={{ display: "block", width: "100%", textAlign: "left", fontSize: 13, fontWeight: 600, padding: "8px 10px", borderRadius: "var(--radius-xs)", background: lang === l ? "var(--primary-soft)" : "transparent", color: lang === l ? ACCENT : "var(--text)" }}>
                       {LANG_LABELS[l]}
                     </button>
                   ))}
@@ -215,7 +215,7 @@ export default function Landing() {
               )}
             </div>
             <Link href="/login" className="lp-header-login" style={{ fontSize: 14.5, fontWeight: 600 }}>{L.login}</Link>
-            <Link href="/register" className="lp-btn lp-start" style={{ background: ACCENT, color: "#fff", fontSize: 14.5, fontWeight: 600, padding: "10px 18px", borderRadius: 9, whiteSpace: "nowrap" }}>{L.start}</Link>
+            <Link href="/register" className="lp-btn lp-start" style={{ background: ACCENT, color: "var(--on-ink)", fontSize: 14.5, fontWeight: 600, padding: "10px 18px", borderRadius: "var(--radius-sm)", whiteSpace: "nowrap" }}>{L.start}</Link>
             <button
               type="button"
               className="lp-btn lp-menu-btn"
@@ -223,7 +223,7 @@ export default function Landing() {
               aria-expanded={menuOpen}
               aria-controls="lp-mobile-menu"
               onClick={() => setMenuOpen((o) => !o)}
-              style={{ display: "none", alignItems: "center", justifyContent: "center", width: 40, height: 40, borderRadius: 9, background: "var(--chip)", border: "1px solid var(--border)", color: "var(--text)" }}
+              style={{ display: "none", alignItems: "center", justifyContent: "center", width: 40, height: 40, borderRadius: "var(--radius-sm)", background: "var(--chip)", border: "1px solid var(--border)", color: "var(--text)" }}
             >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
                 {menuOpen ? <path d="M6 6l12 12M18 6 6 18" /> : <path d="M4 7h16M4 12h16M4 17h16" />}
@@ -245,24 +245,24 @@ export default function Landing() {
       {/* HERO */}
       <div className="lp-wrap lp-hero">
         <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 22 }}>
-          <div style={{ display: "inline-flex", alignSelf: "flex-start", alignItems: "center", gap: 8, background: "#ECEBFB", color: ACCENT, fontSize: 13, fontWeight: 700, padding: "7px 14px", borderRadius: 100 }}>
+          <div style={{ display: "inline-flex", alignSelf: "flex-start", alignItems: "center", gap: 8, background: "var(--primary-soft)", color: ACCENT, fontSize: 13, fontWeight: 700, padding: "7px 14px", borderRadius: "var(--radius-pill)" }}>
             <span style={{ width: 6, height: 6, borderRadius: "50%", background: ACCENT }} />
             {L.badge}
           </div>
           <h1 style={{ fontSize: 52, lineHeight: 1.08, fontWeight: 800, letterSpacing: "-0.02em" }}>{L.heroTitle}</h1>
           <p style={{ fontSize: 17.5, lineHeight: 1.6, color: "var(--text-2)", maxWidth: 480, margin: 0 }}>{L.heroDesc}</p>
           <div className="lp-group" style={{ display: "flex", alignItems: "center", gap: 14, marginTop: 6, flexWrap: "wrap" }}>
-            <Link href="/register" className="lp-btn lp-reveal" style={{ background: ACCENT, color: "#fff", fontSize: 15.5, fontWeight: 700, padding: "14px 26px", borderRadius: 11 }}>{L.tryFree}</Link>
-            <Link href="/login" className="lp-btn lp-reveal" style={{ background: "var(--surface)", color: "var(--text)", border: "1px solid var(--border)", fontSize: 15.5, fontWeight: 600, padding: "14px 24px", borderRadius: 11 }}>{L.demo}</Link>
+            <Link href="/register" className="lp-btn lp-reveal" style={{ background: ACCENT, color: "var(--on-ink)", fontSize: 15.5, fontWeight: 700, padding: "14px 26px", borderRadius: "var(--radius-sm)" }}>{L.tryFree}</Link>
+            <Link href="/login" className="lp-btn lp-reveal" style={{ background: "var(--surface)", color: "var(--text)", border: "1px solid var(--border)", fontSize: 15.5, fontWeight: 600, padding: "14px 24px", borderRadius: "var(--radius-sm)" }}>{L.demo}</Link>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13.5, color: "var(--muted)", marginTop: 4 }}>
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#22C55E" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--success)" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
             {L.noCard}
           </div>
         </div>
 
         <div style={{ flex: 1.3, minWidth: 0 }}>
-          <Image src={`/landing/dashboard-${shot}.webp`} alt={L.heroShotAlt} width={1600} height={1000} priority unoptimized style={{ display: "block", width: "100%", height: "auto", borderRadius: 12, border: "1px solid var(--border)" }} />
+          <Image src={`/landing/dashboard-${shot}.webp`} alt={L.heroShotAlt} width={1600} height={1000} priority unoptimized style={{ display: "block", width: "100%", height: "auto", borderRadius: "var(--radius-md)", border: "1px solid var(--border)" }} />
         </div>
       </div>
 
@@ -279,7 +279,7 @@ export default function Landing() {
                 <div style={iconChip(38, 10)}>
                   <Icon d={whoIcons[i]} color={ACCENT} size={19} />
                 </div>
-                <div style={{ fontFamily: "'Manrope',sans-serif", fontWeight: 700, fontSize: 15.5 }}>{title}</div>
+                <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 15.5 }}>{title}</div>
                 <div style={{ fontSize: 13, lineHeight: 1.6, color: "var(--text-2)" }}>{desc}</div>
               </div>
             ))}
@@ -299,7 +299,7 @@ export default function Landing() {
               <div style={iconChip(40, 10)}>
                 <Icon d={featureIcons[i]} color={ACCENT} />
               </div>
-              <div style={{ fontFamily: "'Manrope',sans-serif", fontWeight: 700, fontSize: 15.5 }}>{title}</div>
+              <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 15.5 }}>{title}</div>
               <div style={{ fontSize: 13.5, lineHeight: 1.6, color: "var(--text-2)" }}>{desc}</div>
             </div>
           ))}
@@ -310,7 +310,7 @@ export default function Landing() {
       <div id="ai" className="lp-section" style={{ background: "var(--surface)", borderTop: "1px solid var(--border)" }}>
         <div className="lp-wrap" style={{ display: "flex", flexDirection: "column", gap: 48 }}>
           <div style={{ display: "flex", flexDirection: "column", gap: 12, maxWidth: 640 }}>
-            <span style={{ display: "inline-flex", alignSelf: "flex-start", background: "#ECEBFB", color: ACCENT, fontSize: 12, fontWeight: 800, padding: "6px 13px", borderRadius: 100, letterSpacing: "0.02em" }}>{L.aiNew}</span>
+            <span style={{ display: "inline-flex", alignSelf: "flex-start", background: "var(--primary-soft)", color: ACCENT, fontSize: 12, fontWeight: 800, padding: "6px 13px", borderRadius: "var(--radius-pill)", letterSpacing: "0.02em" }}>{L.aiNew}</span>
             <h2 style={{ fontSize: 34, fontWeight: 800, letterSpacing: "-0.02em" }}>{L.aiTitle}</h2>
             <p style={{ fontSize: 15.5, lineHeight: 1.7, color: "var(--text-2)", margin: 0 }}>{L.aiDesc}</p>
           </div>
@@ -320,7 +320,7 @@ export default function Landing() {
                 <div style={iconChip(40, 10)}>
                   <Icon d={aiIcons[i]} color={ACCENT} />
                 </div>
-                <div style={{ fontFamily: "'Manrope',sans-serif", fontWeight: 700, fontSize: 15.5 }}>{title}</div>
+                <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 15.5 }}>{title}</div>
                 <div style={{ fontSize: 13.5, lineHeight: 1.6, color: "var(--text-2)" }}>{desc}</div>
               </div>
             ))}
@@ -329,18 +329,18 @@ export default function Landing() {
       </div>
 
       {/* HOW IT WORKS */}
-      <div id="how" className="lp-section" style={{ background: "#12131A" }}>
+      <div id="how" className="lp-section" style={{ background: "var(--ink)" }}>
         <div className="lp-wrap" style={{ display: "flex", flexDirection: "column", gap: 56 }}>
           <div style={{ display: "flex", flexDirection: "column", gap: 12, maxWidth: 560 }}>
-            <span style={{ ...label, color: "#A9A6FF" }}>{L.howLabel}</span>
-            <h2 style={{ fontSize: 34, fontWeight: 800, letterSpacing: "-0.02em", color: "#fff" }}>{L.howTitle}</h2>
+            <span style={{ ...label, color: "var(--primary-border)" }}>{L.howLabel}</span>
+            <h2 style={{ fontSize: 34, fontWeight: 800, letterSpacing: "-0.02em", color: "var(--on-ink)" }}>{L.howTitle}</h2>
           </div>
           <div className="lp-grid3 lp-group" style={{ gap: 32 }}>
             {L.how.map(([title, desc], i) => (
               <div key={i} className="lp-reveal" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-                <div style={{ width: 44, height: 44, borderRadius: "50%", background: ACCENT, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Manrope',sans-serif", fontWeight: 800, fontSize: 17 }}>{i + 1}</div>
-                <div style={{ fontFamily: "'Manrope',sans-serif", fontWeight: 700, fontSize: 17, color: "#fff" }}>{title}</div>
-                <div style={{ fontSize: 14, lineHeight: 1.6, color: "#9A9CA6" }}>{desc}</div>
+                <div style={{ width: 44, height: 44, borderRadius: "50%", background: ACCENT, color: "var(--on-ink)", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 17 }}>{i + 1}</div>
+                <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 17, color: "var(--on-ink)" }}>{title}</div>
+                <div style={{ fontSize: 14, lineHeight: 1.6, color: "var(--text-faint)" }}>{desc}</div>
               </div>
             ))}
           </div>
@@ -350,7 +350,7 @@ export default function Landing() {
       {/* STUDENT PORTAL PREVIEW */}
       <div id="portal" className="lp-wrap lp-split lp-group">
         <div className="lp-reveal" style={{ flex: 1, display: "flex", justifyContent: "center" }}>
-          <Image src={`/landing/portal-${shot}.webp`} alt={L.portalShotAlt} width={780} height={600} unoptimized style={{ display: "block", width: "100%", maxWidth: 420, height: "auto", borderRadius: 16, border: "1px solid var(--border)" }} />
+          <Image src={`/landing/portal-${shot}.webp`} alt={L.portalShotAlt} width={780} height={600} unoptimized style={{ display: "block", width: "100%", maxWidth: 420, height: "auto", borderRadius: "var(--radius-lg)", border: "1px solid var(--border)" }} />
         </div>
         <div className="lp-reveal" style={{ flex: 1, display: "flex", flexDirection: "column", gap: 18 }}>
           <span style={label}>{L.portalLabel}</span>
@@ -372,7 +372,7 @@ export default function Landing() {
                 <div style={iconChip(44, 12)}>
                   <Icon d={whyIcons[i]} color={ACCENT} size={22} />
                 </div>
-                <div style={{ fontFamily: "'Manrope',sans-serif", fontWeight: 700, fontSize: 15.5 }}>{title}</div>
+                <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 15.5 }}>{title}</div>
                 <div style={{ fontSize: 13.5, lineHeight: 1.6, color: "var(--text-2)" }}>{desc}</div>
               </div>
             ))}
@@ -390,7 +390,7 @@ export default function Landing() {
           <div style={{ display: "flex", flexDirection: "column" }}>
             {L.faq.map(([q, a], i) => (
               <div key={i} style={{ padding: "22px 0", borderBottom: i < L.faq.length - 1 ? "1px solid var(--border)" : "none" }}>
-                <div style={{ fontFamily: "'Manrope',sans-serif", fontWeight: 700, fontSize: 15.5, marginBottom: 8 }}>{q}</div>
+                <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 15.5, marginBottom: 8 }}>{q}</div>
                 <div style={{ fontSize: 14, lineHeight: 1.7, color: "var(--text-2)" }}>{a}</div>
               </div>
             ))}
@@ -409,15 +409,15 @@ export default function Landing() {
             {cards.map(({ name, price, monthly, sub, items, highlight, cta }, i) => {
               const pro = highlight;
               return (
-                <div key={i} className="lp-reveal" style={{ border: pro ? `2px solid ${ACCENT}` : "1px solid var(--border)", borderRadius: 18, padding: 28, display: "flex", flexDirection: "column", gap: 18, position: "relative" }}>
-                  {pro && <div style={{ position: "absolute", top: -13, left: 28, background: ACCENT, color: "#fff", fontSize: 11.5, fontWeight: 700, padding: "5px 12px", borderRadius: 100 }}>{L.popular}</div>}
-                  <div style={{ fontFamily: "'Manrope',sans-serif", fontWeight: 700, fontSize: 17 }}>{name}</div>
+                <div key={i} className="lp-reveal" style={{ border: pro ? `2px solid ${ACCENT}` : "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 28, display: "flex", flexDirection: "column", gap: 18, position: "relative" }}>
+                  {pro && <div style={{ position: "absolute", top: -13, left: 28, background: ACCENT, color: "var(--on-ink)", fontSize: 11.5, fontWeight: 700, padding: "5px 12px", borderRadius: "var(--radius-pill)" }}>{L.popular}</div>}
+                  <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 17 }}>{name}</div>
                   <div>
-                    <span style={{ fontSize: 32, fontWeight: 800, fontFamily: "'Manrope',sans-serif" }}>{price}</span>
+                    <span style={{ fontSize: 32, fontWeight: 800, fontFamily: "var(--font-display)" }}>{price}</span>
                     {monthly && <span style={{ fontSize: 14, color: "var(--muted)" }}>{L.perMonth}</span>}
                   </div>
                   {sub && <div style={{ fontSize: 13, color: "var(--muted)" }}>{sub}</div>}
-                  <Link href="/register" className="lp-btn" style={{ background: pro ? ACCENT : "var(--chip)", color: pro ? "#fff" : "var(--text)", fontSize: 14.5, fontWeight: 700, padding: 12, borderRadius: 10, marginTop: 6 }}>
+                  <Link href="/register" className="lp-btn" style={{ background: pro ? ACCENT : "var(--chip)", color: pro ? "var(--on-ink)" : "var(--text)", fontSize: 14.5, fontWeight: 700, padding: 12, borderRadius: "var(--radius-sm)", marginTop: 6 }}>
                     {cta}
                   </Link>
                   <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 4 }}>
@@ -439,10 +439,10 @@ export default function Landing() {
       <div style={{ width: "100%", padding: "80px 16px", boxSizing: "border-box" }}>
         <div className="lp-cta lp-reveal">
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            <h2 style={{ fontSize: 28, fontWeight: 800, color: "#fff", letterSpacing: "-0.02em" }}>{L.ctaTitle}</h2>
-            <div style={{ fontSize: 15, color: "#E4E2FB" }}>{L.ctaDesc}</div>
+            <h2 style={{ fontSize: 28, fontWeight: 800, color: "var(--on-ink)", letterSpacing: "-0.02em" }}>{L.ctaTitle}</h2>
+            <div style={{ fontSize: 15, color: "var(--primary-soft)" }}>{L.ctaDesc}</div>
           </div>
-          <Link href="/register" className="lp-btn" style={{ background: "#fff", color: ACCENT, fontSize: 15.5, fontWeight: 700, padding: "14px 28px", borderRadius: 11, whiteSpace: "nowrap" }}>{L.register}</Link>
+          <Link href="/register" className="lp-btn" style={{ background: "var(--surface)", color: ACCENT, fontSize: 15.5, fontWeight: 700, padding: "14px 28px", borderRadius: "var(--radius-sm)", whiteSpace: "nowrap" }}>{L.register}</Link>
         </div>
       </div>
 

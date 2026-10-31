@@ -15,9 +15,9 @@ export default function LoadError({ message, onRetry, compact }: { message: stri
         alignItems: "center",
         flexWrap: "wrap",
         gap: 12,
-        background: "#FDEBEC",
-        border: "1px solid #F6CDD1",
-        color: "#B23A47",
+        background: "var(--danger-soft)",
+        border: "1px solid var(--danger-border)",
+        color: "var(--danger)",
         borderRadius: compact ? 10 : 14,
         padding: compact ? "8px 12px" : "14px 18px",
         fontSize: 13,
@@ -29,7 +29,7 @@ export default function LoadError({ message, onRetry, compact }: { message: stri
         type="button"
         className="btn"
         onClick={onRetry}
-        style={{ background: "#fff", color: "#181A1F", border: "1px solid #EAE8E2", fontSize: 12.5, fontWeight: 700, padding: "6px 12px", borderRadius: 8 }}
+        style={{ background: "var(--surface)", color: "var(--text)", border: "1px solid var(--border)", fontSize: 12.5, fontWeight: 700, padding: "6px 12px", borderRadius: "var(--radius-xs)" }}
       >
         {t("adm.retry")}
       </button>

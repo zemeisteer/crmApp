@@ -13,7 +13,7 @@ import { formatDate } from "@/lib/format-date";
 import { useLanguage } from "@/lib/i18n-context";
 import { planFeatureLines } from "@/lib/plans";
 
-const ACCENT = "#4F46E5";
+const ACCENT = "var(--primary)";
 
 function formatMoney(n: number) {
   return new Intl.NumberFormat("uz-UZ").format(n);
@@ -77,9 +77,9 @@ function TenantPricing() {
 
   return (
     <>
-      <div style={{ padding: "22px 32px", borderBottom: "1px solid #EAE8E2" }}>
+      <div style={{ padding: "22px 32px", borderBottom: "1px solid var(--border)" }}>
         <h1 style={{ fontSize: 22, fontWeight: 800 }}>{t("pricing.title")}</h1>
-        <div style={{ fontSize: 13, color: "#686B75", marginTop: 2 }}>
+        <div style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 2 }}>
           {t("pricing.currentPlan")}: <strong>{tenant?.plan}</strong> · {t("pricing.status")}: <strong>{tenant?.status}</strong>
           {tenant?.billing?.paidUntil && <> · <span data-testid="paid-until">{t("billing.paidUntil").replace("{date}", formatDate(tenant.billing.paidUntil, lang))}</span></>}
         </div>
@@ -87,7 +87,7 @@ function TenantPricing() {
 
       <div style={{ flex: 1, minHeight: 0, padding: "26px 32px", overflow: "auto", boxSizing: "border-box" }}>
         {loading ? (
-          <div style={{ color: "#686B75", fontSize: 14 }}>{t("common.loading")}</div>
+          <div style={{ color: "var(--text-muted)", fontSize: 14 }}>{t("common.loading")}</div>
         ) : (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 16, maxWidth: 960 }}>
             {plans.map((p) => {
@@ -96,9 +96,9 @@ function TenantPricing() {
                 <div
                   key={p.id}
                   style={{
-                    background: "#fff",
-                    border: p.popular ? `2px solid ${ACCENT}` : "1px solid #EAE8E2",
-                    borderRadius: 16,
+                    background: "var(--surface)",
+                    border: p.popular ? `2px solid ${ACCENT}` : "1px solid var(--border)",
+                    borderRadius: "var(--radius-lg)",
                     padding: 24,
                     display: "flex",
                     flexDirection: "column",
@@ -107,24 +107,24 @@ function TenantPricing() {
                   }}
                 >
                   {p.popular && (
-                    <span style={{ position: "absolute", top: -12, left: 24, background: ACCENT, color: "#fff", fontSize: 11, fontWeight: 700, padding: "4px 12px", borderRadius: 100 }}>
+                    <span style={{ position: "absolute", top: -12, left: 24, background: ACCENT, color: "var(--on-ink)", fontSize: 11, fontWeight: 700, padding: "4px 12px", borderRadius: "var(--radius-pill)" }}>
                       {t("pricing.mostPopular")}
                     </span>
                   )}
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                    <div style={{ fontSize: 17, fontWeight: 800, fontFamily: "'Manrope', sans-serif" }}>{p.name}</div>
+                    <div style={{ fontSize: 17, fontWeight: 800, fontFamily: "var(--font-display)" }}>{p.name}</div>
                     {isCurrent && <span className="badge badge-success">{t("pricing.currentPlanBadge")}</span>}
                   </div>
                   <div>
-                    <span style={{ fontSize: 28, fontWeight: 800, fontFamily: "'Manrope', sans-serif" }}>
+                    <span style={{ fontSize: 28, fontWeight: 800, fontFamily: "var(--font-display)" }}>
                       {p.price === 0 ? t("pricing.free") : formatMoney(p.price)}
                     </span>
-                    {p.price > 0 && <span style={{ fontSize: 13, color: "#686B75" }}> {t("pricing.perMonth")}</span>}
+                    {p.price > 0 && <span style={{ fontSize: 13, color: "var(--text-muted)" }}> {t("pricing.perMonth")}</span>}
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
                     {planFeatureLines(p, lang).map((f) => (
-                      <div key={f} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "#4A4E58" }}>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#16794A" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
+                      <div key={f} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "var(--text-soft)" }}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--success)" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
                           <path d="M20 6 9 17l-5-5" />
                         </svg>
                         {f}
@@ -135,17 +135,17 @@ function TenantPricing() {
                     <button
                       className="btn"
                       onClick={() => openPay(p.key)}
-                      style={{ background: "#fff", color: ACCENT, border: `1.5px solid ${ACCENT}`, fontSize: 13, fontWeight: 700, padding: "10px 16px", borderRadius: 9 }}
+                      style={{ background: "var(--surface)", color: ACCENT, border: `1.5px solid ${ACCENT}`, fontSize: 13, fontWeight: 700, padding: "10px 16px", borderRadius: "var(--radius-sm)" }}
                     >
                       {t("pcp.renew")}
                     </button>
                   ) : isCurrent ? null : p.price === 0 ? (
-                    <span style={{ fontSize: 12, color: "#686B75" }}>{t("pricing.autoOnSignup")}</span>
+                    <span style={{ fontSize: 12, color: "var(--text-muted)" }}>{t("pricing.autoOnSignup")}</span>
                   ) : (
                     <button
                       className="btn"
                       onClick={() => openPay(p.key)}
-                      style={{ background: ACCENT, color: "#fff", border: "none", fontSize: 13, fontWeight: 700, padding: "10px 16px", borderRadius: 9 }}
+                      style={{ background: ACCENT, color: "var(--on-ink)", border: "none", fontSize: 13, fontWeight: 700, padding: "10px 16px", borderRadius: "var(--radius-sm)" }}
                     >
                       {t("pricing.activate")}
                     </button>
@@ -156,12 +156,12 @@ function TenantPricing() {
           </div>
         )}
         {cardView && cardView.claims.length > 0 && (
-          <div style={{ marginTop: 22, maxWidth: 960, background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 18, display: "flex", flexDirection: "column", gap: 8 }} data-testid="platform-card-claims">
+          <div style={{ marginTop: 22, maxWidth: 960, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 18, display: "flex", flexDirection: "column", gap: 8 }} data-testid="platform-card-claims">
             <div style={{ fontWeight: 800, fontSize: 14 }}>💳 {t("pcp.mine")}</div>
             {cardView.claims.map((c) => (
-              <div key={c.id} style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", fontSize: 13, padding: "8px 10px", borderRadius: 10, background: "#F7F6F2" }}>
+              <div key={c.id} style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", fontSize: 13, padding: "8px 10px", borderRadius: "var(--radius-sm)", background: "var(--surface-muted)" }}>
                 <span>{c.forMonth} · {c.plan} · {formatMoney(c.amount)} · {formatDate(c.createdAt, lang)}</span>
-                <span style={{ fontWeight: 700, color: c.status === "CONFIRMED" ? "#16794A" : c.status === "REJECTED" ? "#B23A47" : "#B45309" }}>
+                <span style={{ fontWeight: 700, color: c.status === "CONFIRMED" ? "var(--success)" : c.status === "REJECTED" ? "var(--danger)" : "var(--warning)" }}>
                   {t(`ct.s.${c.status}` as TranslationKey)}{c.status === "REJECTED" && c.rejectReason ? `: ${c.rejectReason}` : ""}
                 </span>
               </div>
@@ -172,12 +172,12 @@ function TenantPricing() {
 
       <Modal open={payOpen} onClose={() => setPayOpen(false)} title={t("pricing.choosePaymentModal")}>
         {cardSent ? (
-          <div role="status" style={{ background: "#E9F8EF", color: "#167A48", fontSize: 13.5, fontWeight: 600, padding: "12px 14px", borderRadius: 10, lineHeight: 1.5 }}>
+          <div role="status" style={{ background: "var(--success-soft)", color: "var(--success)", fontSize: 13.5, fontWeight: 600, padding: "12px 14px", borderRadius: "var(--radius-sm)", lineHeight: 1.5 }}>
             ✓ {t("pcp.sent")}
           </div>
         ) : link ? (
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-            <div style={{ background: "#E9F8EF", color: "#167A48", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: 10 }}>
+            <div style={{ background: "var(--success-soft)", color: "var(--success)", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: "var(--radius-sm)" }}>
               {t("pricing.linkCreated")}
             </div>
             <a
@@ -185,7 +185,7 @@ function TenantPricing() {
               target="_blank"
               rel="noreferrer"
               className="btn"
-              style={{ background: ACCENT, color: "#fff", fontSize: 14, fontWeight: 700, padding: 12, borderRadius: 10, textAlign: "center" }}
+              style={{ background: ACCENT, color: "var(--on-ink)", fontSize: 14, fontWeight: 700, padding: 12, borderRadius: "var(--radius-sm)", textAlign: "center" }}
             >
               {t("pricing.goToPaymentPage")}
             </a>
@@ -193,10 +193,10 @@ function TenantPricing() {
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
             {error && (
-              <div role="alert" style={{ background: "#FDEBEC", color: "#B23A47", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: 10 }}>{error}</div>
+              <div role="alert" style={{ background: "var(--danger-soft)", color: "var(--danger)", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: "var(--radius-sm)" }}>{error}</div>
             )}
             <div>
-              <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>{t("pricing.paymentMethod")}</div>
+              <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-soft)", marginBottom: 6 }}>{t("pricing.paymentMethod")}</div>
               <Select
                 options={[
                   ...(cardView?.card ? [{ value: "CARD", label: `💳 ${t("pcp.method")}` }] : []),
@@ -225,7 +225,7 @@ function TenantPricing() {
               className="btn"
               onClick={onGenerate}
               disabled={genLoading}
-              style={{ background: ACCENT, color: "#fff", fontSize: 14, fontWeight: 700, padding: 12, borderRadius: 10 }}
+              style={{ background: ACCENT, color: "var(--on-ink)", fontSize: 14, fontWeight: 700, padding: 12, borderRadius: "var(--radius-sm)" }}
             >
               {genLoading ? t("pricing.generatingLink") : t("pricing.getLink")}
             </button>
@@ -442,17 +442,17 @@ function SuperadminPlans() {
 
   return (
     <>
-      <div style={{ padding: "22px 32px", borderBottom: "1px solid #EAE8E2", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+      <div style={{ padding: "22px 32px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div>
           <h1 style={{ fontSize: 22, fontWeight: 800 }}>{t("pricing.title")}</h1>
-          <div style={{ fontSize: 13, color: "#686B75", marginTop: 2 }}>
+          <div style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 2 }}>
             {t("pricing.superadminHint")}
           </div>
         </div>
         <button
           className="btn"
           onClick={openNew}
-          style={{ background: ACCENT, color: "#fff", border: "none", fontSize: 13.5, fontWeight: 700, padding: "10px 18px", borderRadius: 9 }}
+          style={{ background: ACCENT, color: "var(--on-ink)", border: "none", fontSize: 13.5, fontWeight: 700, padding: "10px 18px", borderRadius: "var(--radius-sm)" }}
         >
           {t("pricing.addPlan")}
         </button>
@@ -460,10 +460,10 @@ function SuperadminPlans() {
 
       <div style={{ flex: 1, minHeight: 0, padding: "26px 32px", overflow: "auto", boxSizing: "border-box" }}>
         {error && (
-          <div role="alert" style={{ background: "#FDEBEC", color: "#B23A47", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: 10, marginBottom: 16 }}>{error}</div>
+          <div role="alert" style={{ background: "var(--danger-soft)", color: "var(--danger)", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: "var(--radius-sm)", marginBottom: 16 }}>{error}</div>
         )}
         {loading ? (
-          <div style={{ color: "#686B75", fontSize: 14 }}>{t("common.loading")}</div>
+          <div style={{ color: "var(--text-muted)", fontSize: 14 }}>{t("common.loading")}</div>
         ) : (
           <>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16 }}>
@@ -472,47 +472,47 @@ function SuperadminPlans() {
                   data-testid={`plan-${p.key}`}
                   key={p.id}
                   style={{
-                    background: "#fff", border: `1.5px solid ${p.popular ? ACCENT : "#EAE8E2"}`, borderRadius: 16, padding: 24,
+                    background: "var(--surface)", border: `1.5px solid ${p.popular ? ACCENT : "var(--border)"}`, borderRadius: "var(--radius-lg)", padding: 24,
                     display: "flex", flexDirection: "column", gap: 14, position: "relative",
                   }}
                 >
                   {p.popular && (
                     <span
                       style={{
-                        position: "absolute", top: -12, left: 24, background: ACCENT, color: "#fff", fontSize: 11,
-                        fontWeight: 800, padding: "4px 12px", borderRadius: 100,
+                        position: "absolute", top: -12, left: 24, background: ACCENT, color: "var(--on-ink)", fontSize: 11,
+                        fontWeight: 800, padding: "4px 12px", borderRadius: "var(--radius-pill)",
                       }}
                     >
                       {t("pricing.mostPopular")}
                     </span>
                   )}
                   <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
-                    <div style={{ fontSize: 17, fontWeight: 800, fontFamily: "'Manrope', sans-serif" }}>{p.name}</div>
+                    <div style={{ fontSize: 17, fontWeight: 800, fontFamily: "var(--font-display)" }}>{p.name}</div>
                     <span className={`badge ${p.active ? "badge-success" : "badge-neutral"}`}>{p.active ? t("pricing.active") : t("pricing.hidden")}</span>
                     <span className={`badge ${p.smsIncluded === false ? "badge-neutral" : "badge-success"}`}>{p.smsIncluded === false ? t("pricing.noSms") : "SMS"}</span>
                   </div>
-                  <div style={{ fontSize: 26, fontWeight: 800, fontFamily: "'Manrope', sans-serif" }}>
+                  <div style={{ fontSize: 26, fontWeight: 800, fontFamily: "var(--font-display)" }}>
                     {p.price === 0 ? t("pricing.free") : formatMoney(p.price)}
-                    {p.price > 0 && <span style={{ fontSize: 12, color: "#686B75", fontWeight: 500 }}> {t("pricing.perMonth")}</span>}
+                    {p.price > 0 && <span style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 500 }}> {t("pricing.perMonth")}</span>}
                   </div>
                   <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 9 }}>
                     {planFeatureLines(p, lang).map((f) => (
-                      <li key={f} style={{ fontSize: 13, color: "#4A4E58", display: "flex", alignItems: "center", gap: 8 }}>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#16794A" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
+                      <li key={f} style={{ fontSize: 13, color: "var(--text-soft)", display: "flex", alignItems: "center", gap: 8 }}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--success)" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
                           <path d="M20 6 9 17l-5-5" />
                         </svg>
                         {f}
                       </li>
                     ))}
                   </ul>
-                  <div style={{ marginTop: "auto", paddingTop: 14, borderTop: "1px solid #F1F0EC", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
-                    <div style={{ fontSize: 12.5, color: "#686B75" }}>
-                      {t("pricing.onThisPlan")} <strong style={{ color: "#181A1F" }}>{p.tenantCount ?? 0} {t("pricing.centersUnit")}</strong>
+                  <div style={{ marginTop: "auto", paddingTop: 14, borderTop: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+                    <div style={{ fontSize: 12.5, color: "var(--text-muted)" }}>
+                      {t("pricing.onThisPlan")} <strong style={{ color: "var(--text)" }}>{p.tenantCount ?? 0} {t("pricing.centersUnit")}</strong>
                     </div>
                     <button
                       className="btn"
                       onClick={() => openEdit(p)}
-                      style={{ background: "#F2F1EC", color: "#181A1F", border: "none", fontSize: 12.5, fontWeight: 700, padding: "8px 14px", borderRadius: 8, flexShrink: 0 }}
+                      style={{ background: "var(--surface-muted)", color: "var(--text)", border: "none", fontSize: 12.5, fontWeight: 700, padding: "8px 14px", borderRadius: "var(--radius-xs)", flexShrink: 0 }}
                     >
                       {t("pricing.edit")}
                     </button>
@@ -521,11 +521,11 @@ function SuperadminPlans() {
               ))}
             </div>
 
-            <div style={{ marginTop: 20, background: "#ECEBFB", borderRadius: 12, padding: "14px 18px", display: "flex", gap: 10, alignItems: "flex-start" }}>
+            <div style={{ marginTop: 20, background: "var(--primary-soft)", borderRadius: "var(--radius-md)", padding: "14px 18px", display: "flex", gap: 10, alignItems: "flex-start" }}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={ACCENT} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 2 }}>
                 <circle cx="12" cy="12" r="10" /><path d="M12 16v-4M12 8h.01" />
               </svg>
-              <span style={{ fontSize: 12.5, color: "#4A4E58", lineHeight: 1.5 }}>
+              <span style={{ fontSize: 12.5, color: "var(--text-soft)", lineHeight: 1.5 }}>
                 {t("pricing.autoUpdateHint")}
               </span>
             </div>
@@ -537,20 +537,20 @@ function SuperadminPlans() {
         <form onSubmit={onSave} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           {!editing && (
             <div>
-              <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>{t("pricing.fieldKey")}</div>
+              <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-soft)", marginBottom: 6 }}>{t("pricing.fieldKey")}</div>
               <input className="field-input" required value={key} onChange={(e) => setKey(e.target.value.toUpperCase())} placeholder="GOLD" />
             </div>
           )}
           <div>
-            <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>{t("pricing.fieldName")}</div>
+            <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-soft)", marginBottom: 6 }}>{t("pricing.fieldName")}</div>
             <input className="field-input" required value={name} onChange={(e) => setName(e.target.value)} placeholder="Gold" />
           </div>
           <div>
-            <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>{t("pricing.fieldPrice")}</div>
+            <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-soft)", marginBottom: 6 }}>{t("pricing.fieldPrice")}</div>
             <input className="field-input" type="number" min={0} required value={price} onChange={(e) => setPrice(e.target.value)} placeholder="900000" />
           </div>
           <div>
-            <label htmlFor="plan-features" style={{ display: "block", fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>{t("pricing.fieldFeatures")}</label>
+            <label htmlFor="plan-features" style={{ display: "block", fontSize: 12.5, fontWeight: 600, color: "var(--text-soft)", marginBottom: 6 }}>{t("pricing.fieldFeatures")}</label>
             <textarea id="plan-features" className="field-input" rows={4} value={features} onChange={(e) => setUz(e.target.value)} placeholder={"Cheksiz o'quvchi\nAI tahlil"} style={{ resize: "vertical" }} />
             <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginTop: 8 }}>
               <button
@@ -558,24 +558,24 @@ function SuperadminPlans() {
                 className="btn"
                 onClick={onTranslate}
                 disabled={translating || saving}
-                style={{ background: "#EEF0FF", color: ACCENT, border: "1px solid #D9DBFA", fontSize: 12.5, fontWeight: 700, padding: "7px 12px", borderRadius: 9, cursor: translating ? "wait" : "pointer" }}
+                style={{ background: "var(--primary-soft)", color: ACCENT, border: "1px solid var(--primary-border)", fontSize: 12.5, fontWeight: 700, padding: "7px 12px", borderRadius: "var(--radius-sm)", cursor: translating ? "wait" : "pointer" }}
               >
                 {translating ? t("pr.translating") : t("pr.autoTranslate")}
               </button>
-              <span style={{ fontSize: 11.5, color: "#686B75", lineHeight: 1.5, flex: 1, minWidth: 180 }}>{t("pr.translateHint")}</span>
+              <span style={{ fontSize: 11.5, color: "var(--text-muted)", lineHeight: 1.5, flex: 1, minWidth: 180 }}>{t("pr.translateHint")}</span>
             </div>
             {translateNote && (
-              <div role={translateNote.error ? "alert" : "status"} style={{ fontSize: 12, fontWeight: 600, marginTop: 8, padding: "7px 10px", borderRadius: 8, background: translateNote.error ? "#FDEBEC" : "#E9F8EF", color: translateNote.error ? "#B23A47" : "#16794A" }}>
+              <div role={translateNote.error ? "alert" : "status"} style={{ fontSize: 12, fontWeight: 600, marginTop: 8, padding: "7px 10px", borderRadius: "var(--radius-xs)", background: translateNote.error ? "var(--danger-soft)" : "var(--success-soft)", color: translateNote.error ? "var(--danger)" : "var(--success)" }}>
                 {translateNote.text}
               </div>
             )}
           </div>
           <div>
-            <label htmlFor="plan-features-ru" style={{ display: "block", fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>{t("pricing.fieldFeaturesRu")}</label>
+            <label htmlFor="plan-features-ru" style={{ display: "block", fontSize: 12.5, fontWeight: 600, color: "var(--text-soft)", marginBottom: 6 }}>{t("pricing.fieldFeaturesRu")}</label>
             <textarea id="plan-features-ru" className="field-input" rows={4} value={featuresRu} onChange={(e) => typeRu(e.target.value)} placeholder={"Без ограничения учеников\nИИ-аналитика"} style={{ resize: "vertical" }} />
           </div>
           <div>
-            <label htmlFor="plan-features-en" style={{ display: "block", fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>{t("pricing.fieldFeaturesEn")}</label>
+            <label htmlFor="plan-features-en" style={{ display: "block", fontSize: 12.5, fontWeight: 600, color: "var(--text-soft)", marginBottom: 6 }}>{t("pricing.fieldFeaturesEn")}</label>
             <textarea id="plan-features-en" className="field-input" rows={4} value={featuresEn} onChange={(e) => typeEn(e.target.value)} placeholder={"Unlimited students\nAI analysis"} style={{ resize: "vertical" }} />
           </div>
           <div style={{ display: "flex", gap: 16 }}>
@@ -589,8 +589,8 @@ function SuperadminPlans() {
               <input type="checkbox" checked={smsIncluded} onChange={(e) => setSmsIncluded(e.target.checked)} /> {t("pricing.smsIncluded")}
             </label>
           </div>
-          <div style={{ fontSize: 12, color: "#686B75", marginTop: -4, lineHeight: 1.5 }}>{t("pricing.smsIncludedHint")}</div>
-          <fieldset style={{ border: "1px solid #EAE8E2", borderRadius: 12, padding: "12px 14px", display: "flex", flexDirection: "column", gap: 10 }}>
+          <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: -4, lineHeight: 1.5 }}>{t("pricing.smsIncludedHint")}</div>
+          <fieldset style={{ border: "1px solid var(--border)", borderRadius: "var(--radius-md)", padding: "12px 14px", display: "flex", flexDirection: "column", gap: 10 }}>
             <legend style={{ fontSize: 13, fontWeight: 700, padding: "0 6px" }}>{t("pricing.entTitle")}</legend>
             <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
               {PLAN_FEATURES.map((f) => (
@@ -601,7 +601,7 @@ function SuperadminPlans() {
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: 10 }}>
               {PLAN_LIMITS.map((l) => (
-                <label key={l} style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12.5, fontWeight: 600, color: "#4A4E58" }}>
+                <label key={l} style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12.5, fontWeight: 600, color: "var(--text-soft)" }}>
                   {t(`pricing.ent.${l}` as TranslationKey)}
                   <input
                     className="field-input"
@@ -615,13 +615,13 @@ function SuperadminPlans() {
                 </label>
               ))}
             </div>
-            <div style={{ fontSize: 12, color: "#686B75", lineHeight: 1.5 }}>{t("pricing.entHint")}</div>
+            <div style={{ fontSize: 12, color: "var(--text-muted)", lineHeight: 1.5 }}>{t("pricing.entHint")}</div>
           </fieldset>
           <button
             className="btn"
             type="submit"
             disabled={saving}
-            style={{ background: ACCENT, color: "#fff", fontSize: 14, fontWeight: 700, padding: 12, borderRadius: 10, marginTop: 6 }}
+            style={{ background: ACCENT, color: "var(--on-ink)", fontSize: 14, fontWeight: 700, padding: 12, borderRadius: "var(--radius-sm)", marginTop: 6 }}
           >
             {saving ? t("pricing.saving") : t("pricing.save")}
           </button>
@@ -630,7 +630,7 @@ function SuperadminPlans() {
               type="button"
               className="btn"
               onClick={() => onRemove(editing.id)}
-              style={{ background: "transparent", color: "#B23A47", fontSize: 12.5, fontWeight: 600, padding: 6 }}
+              style={{ background: "transparent", color: "var(--danger)", fontSize: 12.5, fontWeight: 600, padding: 6 }}
             >
               {t("pricing.deletePlan")}
             </button>

@@ -23,7 +23,7 @@ import PhoneInput from "@/components/PhoneInput";
 import CustomFieldInputs, { cfSubmitError, useCfDraft, useCustomFieldDefs } from "@/components/custom-fields/CustomFieldInputs";
 import { cfPayload, cfValidate } from "@/lib/custom-fields";
 
-const ACCENT = "#4F46E5";
+const ACCENT = "var(--primary)";
 
 function formatMoney(n: number) {
   return new Intl.NumberFormat("uz-UZ").format(n);
@@ -36,9 +36,9 @@ const ATTENDANCE_LABEL_KEYS: Record<AttendanceStatus, TranslationKey> = {
 };
 
 const ATTENDANCE_COLOR: Record<AttendanceStatus, string> = {
-  PRESENT: "#16794A",
-  LATE: "#B4531A",
-  ABSENT: "#B23A47",
+  PRESENT: "var(--success)",
+  LATE: "var(--warning)",
+  ABSENT: "var(--danger)",
 };
 
 const DAY_SHORT: Record<string, TranslationKey> = {
@@ -194,13 +194,13 @@ function GroupDetailContent() {
   }, [group, attendance, attendanceDate, topics, lessonPick, roster, rosterFailed]);
 
   if (loading) {
-    return <div style={{ padding: 32, color: "#686B75", fontSize: 14 }}>{t("common.loading")}</div>;
+    return <div style={{ padding: 32, color: "var(--text-muted)", fontSize: 14 }}>{t("common.loading")}</div>;
   }
 
   if (notFound || !group) {
     return (
       <div style={{ padding: 32 }}>
-        <div style={{ color: "#686B75", fontSize: 14, background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 32, textAlign: "center" }}>
+        <div style={{ color: "var(--text-muted)", fontSize: 14, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 32, textAlign: "center" }}>
           {t("groupDetail.notFound")}{" "}
           <Link href="/groups" style={{ color: ACCENT, fontWeight: 600 }}>
             {t("groupDetail.back")}
@@ -323,8 +323,8 @@ function GroupDetailContent() {
 
   return (
     <>
-      <div style={{ padding: "22px 32px", borderBottom: "1px solid #EAE8E2" }}>
-        <Link href="/groups" style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 600, color: "#686B75", marginBottom: 10 }}>
+      <div style={{ padding: "22px 32px", borderBottom: "1px solid var(--border)" }}>
+        <Link href="/groups" style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 600, color: "var(--text-muted)", marginBottom: 10 }}>
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
             <path d="M15 18l-6-6 6-6" />
           </svg>
@@ -338,14 +338,14 @@ function GroupDetailContent() {
                 const max = group.maxStudents || 0;
                 const b =
                   group.status && group.status !== "ACTIVE"
-                    ? { text: group.status === "PLANNED" ? t("grp.stPlanned") : group.status === "COMPLETED" ? t("grp.stCompleted") : t("grp.stArchived"), color: "#686B75", bg: "#F2F1EC" }
+                    ? { text: group.status === "PLANNED" ? t("grp.stPlanned") : group.status === "COMPLETED" ? t("grp.stCompleted") : t("grp.stArchived"), color: "var(--text-muted)", bg: "var(--surface-muted)" }
                     : max > 0 && enrollments.length >= max
-                      ? { text: t("grp.stFull"), color: "#167A48", bg: "#E9F8EF" }
-                      : { text: t("grp.activeGroup"), color: "#167A48", bg: "#E9F8EF" };
-                return <span style={{ fontSize: 12, fontWeight: 700, color: b.color, background: b.bg, padding: "4px 10px", borderRadius: 100, fontFamily: "'Inter', sans-serif" }}>{b.text}</span>;
+                      ? { text: t("grp.stFull"), color: "var(--success)", bg: "var(--success-soft)" }
+                      : { text: t("grp.activeGroup"), color: "var(--success)", bg: "var(--success-soft)" };
+                return <span style={{ fontSize: 12, fontWeight: 700, color: b.color, background: b.bg, padding: "4px 10px", borderRadius: "var(--radius-pill)", fontFamily: "'Inter', sans-serif" }}>{b.text}</span>;
               })()}
             </h1>
-            <div style={{ fontSize: 13, color: "#686B75", marginTop: 2 }}>
+            <div style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 2 }}>
               {[
                 group.teacher?.fullName,
                 group.subject,
@@ -363,7 +363,7 @@ function GroupDetailContent() {
               <button
                 className="btn"
                 onClick={onDeleteGroup}
-                style={{ background: "#FDEBEC", color: "#B23A47", border: "none", fontSize: 13, fontWeight: 700, padding: "9px 16px", borderRadius: 9 }}
+                style={{ background: "var(--danger-soft)", color: "var(--danger)", border: "none", fontSize: 13, fontWeight: 700, padding: "9px 16px", borderRadius: "var(--radius-sm)" }}
               >
                 {t("groupDetail.deleteGroup")}
               </button>
@@ -374,37 +374,37 @@ function GroupDetailContent() {
 
       <div style={{ flex: 1, minHeight: 0, padding: "26px 32px", display: "flex", flexDirection: "column", gap: 20, overflow: "auto", boxSizing: "border-box" }}>
         <div style={{ display: "grid", gridTemplateColumns: `repeat(${seesPay && dues ? 5 : 3}, minmax(0,1fr))`, gap: 16 }}>
-          <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 14, padding: 18 }}>
-            <div style={{ fontSize: 12, color: "#686B75" }}>{t("groupDetail.statStudents")}</div>
-            <div style={{ fontSize: 24, fontWeight: 800, fontFamily: "'Manrope', sans-serif", marginTop: 4 }}>
+          <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 18 }}>
+            <div style={{ fontSize: 12, color: "var(--text-muted)" }}>{t("groupDetail.statStudents")}</div>
+            <div style={{ fontSize: 24, fontWeight: 800, fontFamily: "var(--font-display)", marginTop: 4 }}>
               {enrollments.length} / {group.maxStudents}
             </div>
           </div>
-          <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 14, padding: 18 }}>
-            <div style={{ fontSize: 12, color: "#686B75" }}>{t("groupDetail.statAvgAttendance")}</div>
-            <div style={{ fontSize: 24, fontWeight: 800, fontFamily: "'Manrope', sans-serif", marginTop: 4 }}>
+          <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 18 }}>
+            <div style={{ fontSize: 12, color: "var(--text-muted)" }}>{t("groupDetail.statAvgAttendance")}</div>
+            <div style={{ fontSize: 24, fontWeight: 800, fontFamily: "var(--font-display)", marginTop: 4 }}>
               {groupAveragePercent === null ? "—" : `${groupAveragePercent}%`}
             </div>
           </div>
-          <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 14, padding: 18 }}>
-            <div style={{ fontSize: 12, color: "#686B75" }}>{t("groupDetail.statMonthlyPrice")}</div>
-            <div style={{ fontSize: 24, fontWeight: 800, fontFamily: "'Manrope', sans-serif", marginTop: 4 }}>
+          <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 18 }}>
+            <div style={{ fontSize: 12, color: "var(--text-muted)" }}>{t("groupDetail.statMonthlyPrice")}</div>
+            <div style={{ fontSize: 24, fontWeight: 800, fontFamily: "var(--font-display)", marginTop: 4 }}>
               {group.monthlyPrice ? `${formatMoney(group.monthlyPrice)} ${t("common.sumUnit")}` : "—"}
             </div>
           </div>
           {seesPay && dues && (
             <>
-              <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 14, padding: 18 }}>
-                <div style={{ fontSize: 12, color: "#686B75" }}>{t("groupDetail.statMonthRevenue")}</div>
-                <div style={{ fontSize: 24, fontWeight: 800, fontFamily: "'Manrope', sans-serif", marginTop: 4 }}>
+              <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 18 }}>
+                <div style={{ fontSize: 12, color: "var(--text-muted)" }}>{t("groupDetail.statMonthRevenue")}</div>
+                <div style={{ fontSize: 24, fontWeight: 800, fontFamily: "var(--font-display)", marginTop: 4 }}>
                   {/* What these students paid for the month, at most this group's price each. */}
                   {formatMoney(enrollments.reduce((sum, e) => sum + Math.min(dues.get(e.student.id)?.paidAmount ?? 0, group.monthlyPrice || 0), 0))}{" "}
                   {t("common.sumUnit")}
                 </div>
               </div>
-              <div style={{ background: "#FDEBEC", border: "1px solid #F6D2D6", borderRadius: 14, padding: 18 }}>
-                <div style={{ fontSize: 12, color: "#B23A47" }}>{t("groupDetail.statMonthDebtors")}</div>
-                <div style={{ fontSize: 24, fontWeight: 800, fontFamily: "'Manrope', sans-serif", marginTop: 4, color: "#B23A47" }}>
+              <div style={{ background: "var(--danger-soft)", border: "1px solid var(--danger-border)", borderRadius: "var(--radius-lg)", padding: 18 }}>
+                <div style={{ fontSize: 12, color: "var(--danger)" }}>{t("groupDetail.statMonthDebtors")}</div>
+                <div style={{ fontSize: 24, fontWeight: 800, fontFamily: "var(--font-display)", marginTop: 4, color: "var(--danger)" }}>
                   {enrollments.filter((e) => { const st = paymentStatusFor(e.student.id); return st === "UNPAID" || st === "PARTIAL"; }).length}
                 </div>
               </div>
@@ -414,22 +414,22 @@ function GroupDetailContent() {
 
         <GroupInfoCard group={group} students={enrollments.length} lessonsHeld={new Set(attendance.map((a) => `${a.date}|${a.scheduleId ?? ""}`)).size} />
 
-        <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 20 }}>
+        <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 20 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-            <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 700, fontSize: 15 }}>{t("groupDetail.markAttendance")}</div>
+            <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 15 }}>{t("groupDetail.markAttendance")}</div>
             <DatePicker value={attendanceDate} onChange={setAttendanceDate} style={{ width: 170 }} />
           </div>
           {/* Which lesson of that day: asked only when there are several. */}
           {dayLessonsError ? (
-            <div role="alert" style={{ marginBottom: 12, padding: "9px 12px", borderRadius: 10, background: "#FDEBEC", color: "#B23A47", fontSize: 13, fontWeight: 600, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+            <div role="alert" style={{ marginBottom: 12, padding: "9px 12px", borderRadius: "var(--radius-sm)", background: "var(--danger-soft)", color: "var(--danger)", fontSize: 13, fontWeight: 600, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
               {t("groupDetail.attLessonsError")}
-              <button type="button" className="btn" onClick={() => setLessonNonce((n) => n + 1)} style={{ background: "#fff", border: "1px solid #F5C2C2", borderRadius: 8, padding: "5px 10px", fontSize: 12.5, fontWeight: 700 }}>{t("err.retry")}</button>
+              <button type="button" className="btn" onClick={() => setLessonNonce((n) => n + 1)} style={{ background: "var(--surface)", border: "1px solid var(--danger-border)", borderRadius: "var(--radius-xs)", padding: "5px 10px", fontSize: 12.5, fontWeight: 700 }}>{t("err.retry")}</button>
             </div>
           ) : dayLessons === null ? (
-            <div style={{ marginBottom: 12, fontSize: 12.5, color: "#686B75" }}>{t("common.loading")}</div>
+            <div style={{ marginBottom: 12, fontSize: 12.5, color: "var(--text-muted)" }}>{t("common.loading")}</div>
           ) : dayLessons.length > 1 ? (
             <div role="group" aria-label={t("groupDetail.attLesson")} style={{ marginBottom: 12 }}>
-              <span style={{ display: "block", fontSize: 12.5, fontWeight: 700, color: "#4A4E58", marginBottom: 6 }}>{t("groupDetail.attLesson")}</span>
+              <span style={{ display: "block", fontSize: 12.5, fontWeight: 700, color: "var(--text-soft)", marginBottom: 6 }}>{t("groupDetail.attLesson")}</span>
               <Select
                 ariaLabel={t("groupDetail.attLesson")}
                 sheetOnPhone
@@ -440,28 +440,28 @@ function GroupDetailContent() {
               />
             </div>
           ) : dayLessons.length === 0 ? (
-            <div style={{ marginBottom: 12, fontSize: 12.5, color: "#686B75" }}>{t("groupDetail.attNoLesson")}</div>
+            <div style={{ marginBottom: 12, fontSize: 12.5, color: "var(--text-muted)" }}>{t("groupDetail.attNoLesson")}</div>
           ) : null}
           {dayLessons?.find((l) => l.scheduleId === lessonPick)?.cancelled && (
-            <div role="status" style={{ marginBottom: 12, padding: "9px 12px", borderRadius: 10, background: "#FFF7E6", border: "1px solid #F5DDA8", color: "#8A5A00", fontSize: 13, fontWeight: 600 }}>{t("groupDetail.attLessonCancelled")}</div>
+            <div role="status" style={{ marginBottom: 12, padding: "9px 12px", borderRadius: "var(--radius-sm)", background: "var(--warning-soft)", border: "1px solid var(--warning-border)", color: "var(--warning)", fontSize: 13, fontWeight: 600 }}>{t("groupDetail.attLessonCancelled")}</div>
           )}
           {unbound.length > 0 && (
-            <div role="note" aria-label={t("groupDetail.attUnboundTitle")} style={{ marginBottom: 12, padding: "9px 12px", borderRadius: 10, background: "#F2F1EC", color: "#4A4E58", fontSize: 12.5, lineHeight: 1.5 }}>
+            <div role="note" aria-label={t("groupDetail.attUnboundTitle")} style={{ marginBottom: 12, padding: "9px 12px", borderRadius: "var(--radius-sm)", background: "var(--surface-muted)", color: "var(--text-soft)", fontSize: 12.5, lineHeight: 1.5 }}>
               <b>{t("groupDetail.attUnboundTitle")}</b> {t("groupDetail.attUnboundText")}
               <div style={{ marginTop: 4 }}>
                 {unbound.slice(0, 8).map((d) => (
-                  <button key={d.date} type="button" className="btn" onClick={() => setAttendanceDate(d.date)} style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 8, padding: "3px 8px", fontSize: 12, fontWeight: 700, margin: "2px 6px 2px 0" }}>
+                  <button key={d.date} type="button" className="btn" onClick={() => setAttendanceDate(d.date)} style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-xs)", padding: "3px 8px", fontSize: 12, fontWeight: 700, margin: "2px 6px 2px 0" }}>
                     {d.date} · {d.reason === "SEVERAL" ? t("groupDetail.attUnboundSeveral") : t("groupDetail.attUnboundNone")}
                   </button>
                 ))}
               </div>
             </div>
           )}
-          {markError && <div role="alert" style={{ marginBottom: 12, padding: "9px 12px", borderRadius: 10, background: "#FDEBEC", color: "#B23A47", fontSize: 13, fontWeight: 600 }}>{markError}</div>}
+          {markError && <div role="alert" style={{ marginBottom: 12, padding: "9px 12px", borderRadius: "var(--radius-sm)", background: "var(--danger-soft)", color: "var(--danger)", fontSize: 13, fontWeight: 600 }}>{markError}</div>}
           {markList === null ? (
-            <div style={{ color: "#686B75", fontSize: 13.5 }}>{t("common.loading")}</div>
+            <div style={{ color: "var(--text-muted)", fontSize: 13.5 }}>{t("common.loading")}</div>
           ) : markList.length === 0 ? (
-            <div style={{ color: "#686B75", fontSize: 13.5 }}>{t("groupDetail.noStudentsForAttendance")}</div>
+            <div style={{ color: "var(--text-muted)", fontSize: 13.5 }}>{t("groupDetail.noStudentsForAttendance")}</div>
           ) : (
             <>
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -471,12 +471,12 @@ function GroupDetailContent() {
                   return (
                     <div
                       key={m.studentId}
-                      style={{ display: "flex", alignItems: "center", justifyContent: "space-between", border: "1px solid #EAE8E2", borderRadius: 10, padding: "8px 12px" }}
+                      style={{ display: "flex", alignItems: "center", justifyContent: "space-between", border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", padding: "8px 12px" }}
                     >
                       <span style={{ minWidth: 0 }}>
                         <span style={{ fontSize: 13.5, fontWeight: 600 }}>{e.student.fullName}</span>
                         {/* Was in the group at this lesson, and is not any more. */}
-                        {!m.current && <span style={{ display: "block", fontSize: 11.5, color: "#8A5A00" }}>{t("groupDetail.attLeftSince")}</span>}
+                        {!m.current && <span style={{ display: "block", fontSize: 11.5, color: "var(--warning)" }}>{t("groupDetail.attLeftSince")}</span>}
                       </span>
                       <div style={{ display: "flex", gap: 6 }}>
                         {(["PRESENT", "LATE", "ABSENT"] as AttendanceStatus[]).map((s) => (
@@ -489,10 +489,10 @@ function GroupDetailContent() {
                               fontSize: 12,
                               fontWeight: 700,
                               padding: "6px 12px",
-                              borderRadius: 7,
-                              border: `1px solid ${status === s ? ATTENDANCE_COLOR[s] : "#EAE8E2"}`,
+                              borderRadius: "var(--radius-xs)",
+                              border: `1px solid ${status === s ? ATTENDANCE_COLOR[s] : "var(--border)"}`,
                               background: status === s ? ATTENDANCE_COLOR[s] : "transparent",
-                              color: status === s ? "#fff" : "#4A4E58",
+                              color: status === s ? "var(--on-ink)" : "var(--text-soft)",
                             }}
                           >
                             {t(ATTENDANCE_LABEL_KEYS[s])}
@@ -504,7 +504,7 @@ function GroupDetailContent() {
                 })}
               </div>
               <label style={{ display: "block", marginTop: 14 }}>
-                <span style={{ display: "block", fontSize: 12.5, fontWeight: 700, color: "#4A4E58", marginBottom: 6 }}>📖 {t("groupDetail.lessonTopic")}</span>
+                <span style={{ display: "block", fontSize: 12.5, fontWeight: 700, color: "var(--text-soft)", marginBottom: 6 }}>📖 {t("groupDetail.lessonTopic")}</span>
                 <textarea
                   className="field-input"
                   value={topic}
@@ -519,7 +519,7 @@ function GroupDetailContent() {
                 className="btn"
                 onClick={onSaveAttendance}
                 disabled={markSaving || dayLessons === null || markList === null || !!dayLessons.find((l) => l.scheduleId === lessonPick)?.cancelled}
-                style={{ background: ACCENT, color: "#fff", border: "none", fontSize: 13, fontWeight: 700, padding: "10px 16px", borderRadius: 9, marginTop: 14 }}
+                style={{ background: ACCENT, color: "var(--on-ink)", border: "none", fontSize: 13, fontWeight: 700, padding: "10px 16px", borderRadius: "var(--radius-sm)", marginTop: 14 }}
               >
                 {markSaving ? t("groupDetail.savingAttendance") : t("groupDetail.saveAttendance")}
               </button>
@@ -531,9 +531,9 @@ function GroupDetailContent() {
 
         {can(user, "lessons.cancel") && <GroupLessonCancellations groupId={id} />}
 
-        <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, overflow: "hidden" }}>
+        <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", overflow: "hidden" }}>
           <div style={{ padding: "16px 20px 4px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 700, fontSize: 15 }}>{t("groupDetail.statStudents")}</div>
+            <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 15 }}>{t("groupDetail.statStudents")}</div>
             {can(user, "students.edit") && (
               <button
                 className="btn"
@@ -541,14 +541,14 @@ function GroupDetailContent() {
                   setEnrollMode(availableStudents.length > 0 ? "existing" : "new");
                   setEnrollOpen(true);
                 }}
-                style={{ background: ACCENT, color: "#fff", border: "none", fontSize: 12.5, fontWeight: 700, padding: "8px 14px", borderRadius: 8 }}
+                style={{ background: ACCENT, color: "var(--on-ink)", border: "none", fontSize: 12.5, fontWeight: 700, padding: "8px 14px", borderRadius: "var(--radius-xs)" }}
               >
                 {t("groupDetail.addStudent")}
               </button>
             )}
           </div>
           {enrollments.length === 0 ? (
-            <div style={{ color: "#686B75", fontSize: 14, padding: "24px 20px" }}>{t("groupDetail.noStudentsYet")}</div>
+            <div style={{ color: "var(--text-muted)", fontSize: 14, padding: "24px 20px" }}>{t("groupDetail.noStudentsYet")}</div>
           ) : (
             <table>
               <thead>
@@ -573,21 +573,21 @@ function GroupDetailContent() {
                           if (st === "PAID") return <span className="badge badge-success">{t("groupDetail.paid")}</span>;
                           if (st === "PARTIAL") return <span className="badge badge-warning">{t("groupDetail.partial")}</span>;
                           if (st === "UNPAID") return <span className="badge badge-danger">{t("groupDetail.debtor")}</span>;
-                          return <span style={{ color: "#686B75" }}>—</span>;
+                          return <span style={{ color: "var(--text-muted)" }}>—</span>;
                         })()}
                       </td>
                     )}
                     <td style={{ textAlign: "right", display: "flex", gap: 8, justifyContent: "flex-end" }}>
                       <Link
                         href={`/students/${e.student.id}`}
-                        style={{ fontWeight: 600, fontSize: 12.5, color: ACCENT, border: `1px solid ${ACCENT}`, padding: "6px 12px", borderRadius: 8 }}
+                        style={{ fontWeight: 600, fontSize: 12.5, color: ACCENT, border: `1px solid ${ACCENT}`, padding: "6px 12px", borderRadius: "var(--radius-xs)" }}
                       >
                         {t("common.viewProfile")}
                       </Link>
                       {can(user, "students.edit") && <button
                         className="btn"
                         onClick={() => onUnenroll(e.student.id)}
-                        style={{ background: "transparent", color: "#B23A47", fontSize: 12.5, fontWeight: 600, padding: "6px 8px", borderRadius: 8 }}
+                        style={{ background: "transparent", color: "var(--danger)", fontSize: 12.5, fontWeight: 600, padding: "6px 8px", borderRadius: "var(--radius-xs)" }}
                       >
                         {t("groupDetail.remove")}
                       </button>}
@@ -612,7 +612,7 @@ function GroupDetailContent() {
         title={t("groupDetail.modalTitle")}
         width={520}
       >
-        <div style={{ display: "flex", background: "#F2F1EC", borderRadius: 10, padding: 4, marginBottom: 18 }}>
+        <div style={{ display: "flex", background: "var(--surface-muted)", borderRadius: "var(--radius-sm)", padding: 4, marginBottom: 18 }}>
           <button
             type="button"
             onClick={() => setEnrollMode("existing")}
@@ -622,12 +622,12 @@ function GroupDetailContent() {
               fontSize: 12.5,
               fontWeight: 700,
               padding: "8px 12px",
-              borderRadius: 8,
+              borderRadius: "var(--radius-xs)",
               cursor: availableStudents.length === 0 ? "not-allowed" : "pointer",
               border: "none",
               opacity: availableStudents.length === 0 ? 0.45 : 1,
-              background: enrollMode === "existing" ? "#fff" : "transparent",
-              color: enrollMode === "existing" ? "#181A1F" : "#686B75",
+              background: enrollMode === "existing" ? "var(--surface)" : "transparent",
+              color: enrollMode === "existing" ? "var(--text)" : "var(--text-muted)",
               boxShadow: enrollMode === "existing" ? "0 1px 3px rgba(18,19,26,0.08)" : "none",
               transition: "all 0.15s ease",
             }}
@@ -642,11 +642,11 @@ function GroupDetailContent() {
               fontSize: 12.5,
               fontWeight: 700,
               padding: "8px 12px",
-              borderRadius: 8,
+              borderRadius: "var(--radius-xs)",
               cursor: "pointer",
               border: "none",
-              background: enrollMode === "new" ? "#fff" : "transparent",
-              color: enrollMode === "new" ? "#181A1F" : "#686B75",
+              background: enrollMode === "new" ? "var(--surface)" : "transparent",
+              color: enrollMode === "new" ? "var(--text)" : "var(--text-muted)",
               boxShadow: enrollMode === "new" ? "0 1px 3px rgba(18,19,26,0.08)" : "none",
               transition: "all 0.15s ease",
             }}
@@ -657,7 +657,7 @@ function GroupDetailContent() {
 
         <form onSubmit={onEnroll} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           {enrollError && (
-            <div role="alert" style={{ background: "#FDEBEC", color: "#B23A47", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: 10 }}>{enrollError}</div>
+            <div role="alert" style={{ background: "var(--danger-soft)", color: "var(--danger)", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: "var(--radius-sm)" }}>{enrollError}</div>
           )}
 
           {enrollMode === "existing" ? (
@@ -671,7 +671,7 @@ function GroupDetailContent() {
                   />
                 </Field>
                 {availableStudents.length === 0 && (
-                  <div style={{ marginTop: 14, fontSize: 13, color: "#686B75", textAlign: "center", lineHeight: 1.5 }}>
+                  <div style={{ marginTop: 14, fontSize: 13, color: "var(--text-muted)", textAlign: "center", lineHeight: 1.5 }}>
                     {t("grp.allEnrolled")}
                   </div>
                 )}
@@ -680,14 +680,14 @@ function GroupDetailContent() {
                 className="btn"
                 type="submit"
                 disabled={saving || !enrollStudentId}
-                style={{ background: ACCENT, color: "#fff", fontSize: 14, fontWeight: 700, padding: "12px 16px", borderRadius: 10, marginTop: 16 }}
+                style={{ background: ACCENT, color: "var(--on-ink)", fontSize: 14, fontWeight: 700, padding: "12px 16px", borderRadius: "var(--radius-sm)", marginTop: 16 }}
               >
                 {saving ? t("groupDetail.savingAttendance") : t("common.add")}
               </button>
             </div>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-              <div style={{ background: "#F8FAFC", border: "1px solid #E2E8F0", padding: "10px 14px", borderRadius: 10, fontSize: 12.5, color: "#475569", display: "flex", alignItems: "center", gap: 8 }}>
+              <div style={{ background: "var(--surface-muted)", border: "1px solid var(--border)", padding: "10px 14px", borderRadius: "var(--radius-sm)", fontSize: 12.5, color: "var(--text-muted)", display: "flex", alignItems: "center", gap: 8 }}>
                 <span style={{ fontWeight: 700, color: ACCENT }}>{t("grp.group")}</span>
                 <span>{group.name} ({group.subject})</span>
               </div>
@@ -742,14 +742,14 @@ function GroupDetailContent() {
                 </Field>
               </div>
 
-              {cfDefs.error && <div role="alert" style={{ fontSize: 12.5, fontWeight: 600, color: "#B45309" }}>{t("cf.defsError")}</div>}
+              {cfDefs.error && <div role="alert" style={{ fontSize: 12.5, fontWeight: 600, color: "var(--warning)" }}>{t("cf.defsError")}</div>}
               <CustomFieldInputs defs={cfDefs.defs ?? []} values={cf.draft} errors={cf.errors} onChange={cf.change} idPrefix="group-new-student-cf" title={t("cf.section")} />
 
               <button
                 className="btn"
                 type="submit"
                 disabled={saving}
-                style={{ background: ACCENT, color: "#fff", fontSize: 14, fontWeight: 700, padding: "12px 16px", borderRadius: 10, marginTop: 4 }}
+                style={{ background: ACCENT, color: "var(--on-ink)", fontSize: 14, fontWeight: 700, padding: "12px 16px", borderRadius: "var(--radius-sm)", marginTop: 4 }}
               >
                 {saving ? t("students.adding") : t("grp.addNew")}
               </button>
@@ -764,7 +764,7 @@ function GroupDetailContent() {
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div role="group" aria-label={label}>
-      <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>{label}</div>
+      <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-soft)", marginBottom: 6 }}>{label}</div>
       {children}
     </div>
   );

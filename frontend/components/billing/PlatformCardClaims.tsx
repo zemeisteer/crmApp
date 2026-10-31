@@ -8,7 +8,7 @@ import { useLanguage } from "@/lib/i18n-context";
 import type { TranslationKey } from "@/lib/i18n";
 import { formatDateTime } from "@/lib/format-date";
 
-const ACCENT = "#4F46E5";
+const ACCENT = "var(--primary)";
 const PAGE_SIZE = 20;
 const money = (n: number) => new Intl.NumberFormat("uz-UZ").format(n);
 type Filter = "PENDING" | "CONFIRMED" | "REJECTED";
@@ -94,12 +94,12 @@ export default function PlatformCardClaims({ onPendingChange }: { onPendingChang
   }, [filter, page, onPendingChange, t]);
   useEffect(() => load(), [load]);
 
-  const chip = (active: boolean): React.CSSProperties => ({ background: active ? ACCENT : "#fff", color: active ? "#fff" : "#4A4E58", border: `1px solid ${active ? ACCENT : "#EAE8E2"}`, borderRadius: 100, padding: "7px 14px", fontSize: 13, fontWeight: 700 });
+  const chip = (active: boolean): React.CSSProperties => ({ background: active ? ACCENT : "var(--surface)", color: active ? "var(--on-ink)" : "var(--text-soft)", border: `1px solid ${active ? ACCENT : "var(--border)"}`, borderRadius: "var(--radius-pill)", padding: "7px 14px", fontSize: 13, fontWeight: 700 });
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }} data-testid="platform-card-claims-admin">
-      <div style={{ fontSize: 13, color: "#686B75", lineHeight: 1.55, maxWidth: 760 }}>{t("pcp.adminHint")}</div>
-      {data && !data.card && <div role="note" style={{ fontSize: 13, color: "#B45309", background: "#FFF7E6", borderRadius: 10, padding: "10px 14px" }}>{t("pcp.noCard")}</div>}
+      <div style={{ fontSize: 13, color: "var(--text-muted)", lineHeight: 1.55, maxWidth: 760 }}>{t("pcp.adminHint")}</div>
+      {data && !data.card && <div role="note" style={{ fontSize: 13, color: "var(--warning)", background: "var(--warning-soft)", borderRadius: "var(--radius-sm)", padding: "10px 14px" }}>{t("pcp.noCard")}</div>}
       <div role="tablist" aria-label={t("pcp.adminTab")} style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
         {(["PENDING", "CONFIRMED", "REJECTED"] as const).map((f) => (
           <button
@@ -119,21 +119,21 @@ export default function PlatformCardClaims({ onPendingChange }: { onPendingChang
           </button>
         ))}
       </div>
-      {notice && <div role="status" style={{ color: "#16794A", background: "#E9F8EF", borderRadius: 10, padding: "10px 14px", fontSize: 13, fontWeight: 600 }}>{notice}</div>}
+      {notice && <div role="status" style={{ color: "var(--success)", background: "var(--success-soft)", borderRadius: "var(--radius-sm)", padding: "10px 14px", fontSize: 13, fontWeight: 600 }}>{notice}</div>}
       {error && (
-        <div role="alert" style={{ color: "#B23A47", background: "#FDEBEC", borderRadius: 10, padding: "10px 14px", fontSize: 13, display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+        <div role="alert" style={{ color: "var(--danger)", background: "var(--danger-soft)", borderRadius: "var(--radius-sm)", padding: "10px 14px", fontSize: 13, display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
           {error}
-          <button type="button" className="btn" onClick={load} style={{ background: "#fff", color: "#B23A47", border: "1px solid #F3C6CB", borderRadius: 8, padding: "5px 10px", fontSize: 12.5, fontWeight: 700 }}>{t("pcp.retry")}</button>
+          <button type="button" className="btn" onClick={load} style={{ background: "var(--surface)", color: "var(--danger)", border: "1px solid var(--danger-border)", borderRadius: "var(--radius-xs)", padding: "5px 10px", fontSize: 12.5, fontWeight: 700 }}>{t("pcp.retry")}</button>
         </div>
       )}
-      {loading && !data && <div style={{ color: "#686B75", fontSize: 13 }}>{t("common.loading")}</div>}
+      {loading && !data && <div style={{ color: "var(--text-muted)", fontSize: 13 }}>{t("common.loading")}</div>}
       {data && data.items.length === 0 && (
-        <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 24, textAlign: "center", color: "#686B75", fontSize: 14 }}>
+        <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 24, textAlign: "center", color: "var(--text-muted)", fontSize: 14 }}>
           {filter === "PENDING" ? t("cc.nonePending") : t("cc.none")}
         </div>
       )}
       {data && data.items.length > 0 && (
-        <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, overflowX: "auto", opacity: loading ? 0.6 : 1 }} aria-busy={loading}>
+        <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", overflowX: "auto", opacity: loading ? 0.6 : 1 }} aria-busy={loading}>
           <table className="adm-table" style={{ minWidth: 640 }}>
             <thead>
               <tr>
@@ -150,17 +150,17 @@ export default function PlatformCardClaims({ onPendingChange }: { onPendingChang
                 <tr key={c.id} data-testid="platform-card-claim">
                   <td>
                     <div style={{ fontWeight: 700 }}>{c.centerName}</div>
-                    <div style={{ fontSize: 11.5, color: "#686B75" }}>{c.subdomain}</div>
+                    <div style={{ fontSize: 11.5, color: "var(--text-muted)" }}>{c.subdomain}</div>
                   </td>
                   <td>{c.plan}</td>
                   <td>{c.forMonth}</td>
                   <td style={{ textAlign: "right", fontWeight: 700 }}>{money(c.amount)}</td>
-                  <td style={{ fontSize: 12.5, color: "#686B75" }}>
+                  <td style={{ fontSize: 12.5, color: "var(--text-muted)" }}>
                     {formatDateTime(c.createdAt, lang)}
-                    {c.status !== "PENDING" && <div style={{ fontWeight: 700, color: c.status === "CONFIRMED" ? "#16794A" : "#B23A47" }}>{t(`cc.f.${c.status}`)}{c.reviewedBy ? ` · ${c.reviewedBy}` : ""}</div>}
+                    {c.status !== "PENDING" && <div style={{ fontWeight: 700, color: c.status === "CONFIRMED" ? "var(--success)" : "var(--danger)" }}>{t(`cc.f.${c.status}`)}{c.reviewedBy ? ` · ${c.reviewedBy}` : ""}</div>}
                   </td>
                   <td style={{ textAlign: "right" }}>
-                    <button type="button" className="btn" onClick={() => { setNotice(null); setOpen(c); }} style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 9, padding: "7px 12px", fontSize: 12.5, fontWeight: 700 }}>
+                    <button type="button" className="btn" onClick={() => { setNotice(null); setOpen(c); }} style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", padding: "7px 12px", fontSize: 12.5, fontWeight: 700 }}>
                       {c.status === "PENDING" ? t("pcp.check") : t("pcp.view")}
                     </button>
                   </td>
@@ -213,39 +213,39 @@ function ClaimModal({ claim, onClose, onDone }: { claim: PlatformCardClaim; onCl
   return (
     <Modal open onClose={onClose} title={`💳 ${claim.centerName}`} width={620}>
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }} data-testid="platform-card-claim-modal">
-        <div style={{ fontSize: 13, color: "#4A4E58", lineHeight: 1.6 }}>
+        <div style={{ fontSize: 13, color: "var(--text-soft)", lineHeight: 1.6 }}>
           {claim.plan} · {t("cc.month")}: <b>{claim.forMonth}</b> · <b>{money(claim.amount)} {t("common.sumUnit")}</b> · {formatDateTime(claim.createdAt, lang)}
         </div>
-        {claim.note && <div style={{ fontSize: 13, background: "#F8F8FF", borderRadius: 8, padding: "8px 12px" }}>💬 {claim.note}</div>}
-        <div style={{ background: "#F7F6F2", borderRadius: 12, padding: 8, display: "grid", placeItems: "center", minHeight: 160 }} aria-busy={receipt.state === "loading"}>
+        {claim.note && <div style={{ fontSize: 13, background: "var(--primary-soft)", borderRadius: "var(--radius-xs)", padding: "8px 12px" }}>💬 {claim.note}</div>}
+        <div style={{ background: "var(--surface-muted)", borderRadius: "var(--radius-md)", padding: 8, display: "grid", placeItems: "center", minHeight: 160 }} aria-busy={receipt.state === "loading"}>
           {receipt.state === "loading" ? (
-            <span style={{ color: "#686B75", fontSize: 13 }}>{t("pcp.loadingReceipt")}</span>
+            <span style={{ color: "var(--text-muted)", fontSize: 13 }}>{t("pcp.loadingReceipt")}</span>
           ) : receipt.state === "error" ? (
-            <div role="alert" style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "center", textAlign: "center", color: "#B23A47", fontSize: 13 }}>
+            <div role="alert" style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "center", textAlign: "center", color: "var(--danger)", fontSize: 13 }}>
               {t(receipt.status === 422 ? "pcp.err.broken" : errorKey(receipt.status))}
-              <button type="button" className="btn" onClick={retry} style={{ background: "#fff", color: "#B23A47", border: "1px solid #F3C6CB", borderRadius: 8, padding: "6px 12px", fontSize: 12.5, fontWeight: 700 }}>{t("pcp.retry")}</button>
+              <button type="button" className="btn" onClick={retry} style={{ background: "var(--surface)", color: "var(--danger)", border: "1px solid var(--danger-border)", borderRadius: "var(--radius-xs)", padding: "6px 12px", fontSize: 12.5, fontWeight: 700 }}>{t("pcp.retry")}</button>
             </div>
           ) : receipt.pdf ? (
             <a href={receipt.src} target="_blank" rel="noreferrer" style={{ fontWeight: 700, color: ACCENT }}>📄 {t("cc.openPdf")}</a>
           ) : broken ? (
-            <div role="alert" style={{ color: "#B23A47", fontSize: 13, textAlign: "center" }}>
+            <div role="alert" style={{ color: "var(--danger)", fontSize: 13, textAlign: "center" }}>
               {t("pcp.err.broken")} <a href={receipt.src} download style={{ color: ACCENT, fontWeight: 700 }}>{t("pcp.download")}</a>
             </div>
           ) : (
             <a href={receipt.src} target="_blank" rel="noreferrer" title={t("cc.openFull")}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={receipt.src} alt={t("cc.receipt")} onError={() => setBroken(true)} style={{ maxWidth: "100%", maxHeight: 420, borderRadius: 8, display: "block" }} />
+              <img src={receipt.src} alt={t("cc.receipt")} onError={() => setBroken(true)} style={{ maxWidth: "100%", maxHeight: 420, borderRadius: "var(--radius-xs)", display: "block" }} />
             </a>
           )}
         </div>
-        {claim.status === "REJECTED" && claim.rejectReason && <div style={{ fontSize: 13, color: "#B23A47" }}>{t("cc.f.REJECTED")}: {claim.rejectReason}</div>}
+        {claim.status === "REJECTED" && claim.rejectReason && <div style={{ fontSize: 13, color: "var(--danger)" }}>{t("cc.f.REJECTED")}: {claim.rejectReason}</div>}
         {pending && rejecting && (
-          <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12.5, fontWeight: 600, color: "#4A4E58" }}>
+          <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12.5, fontWeight: 600, color: "var(--text-soft)" }}>
             {t("cc.reason")}
             <textarea className="field-input" rows={2} maxLength={300} value={reason} onChange={(e) => setReason(e.target.value)} placeholder={t("cc.reasonHint")} autoFocus />
           </label>
         )}
-        {error && <div role="alert" style={{ color: "#B23A47", fontSize: 13, fontWeight: 600 }}>{error}</div>}
+        {error && <div role="alert" style={{ color: "var(--danger)", fontSize: 13, fontWeight: 600 }}>{error}</div>}
         {pending && (
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             {!rejecting ? (
@@ -255,20 +255,20 @@ function ClaimModal({ claim, onClose, onDone }: { claim: PlatformCardClaim; onCl
                   className="btn"
                   disabled={busy}
                   onClick={() => window.confirm(t("pcp.confirmQ").replace("{center}", claim.centerName)) && void run(() => platformApi.confirmCardClaim(claim.id), t("pcp.doneConfirm").replace("{center}", claim.centerName))}
-                  style={{ background: "#16794A", color: "#fff", border: "none", fontSize: 13.5, fontWeight: 700, padding: "10px 18px", borderRadius: 9 }}
+                  style={{ background: "var(--success)", color: "var(--on-ink)", border: "none", fontSize: 13.5, fontWeight: 700, padding: "10px 18px", borderRadius: "var(--radius-sm)" }}
                 >
                   {busy ? t("common.saving") : `✓ ${t("pcp.confirm")}`}
                 </button>
-                <button type="button" className="btn" disabled={busy} onClick={() => setRejecting(true)} style={{ background: "#FDEBEC", color: "#B23A47", border: "none", fontSize: 13.5, fontWeight: 700, padding: "10px 18px", borderRadius: 9 }}>
+                <button type="button" className="btn" disabled={busy} onClick={() => setRejecting(true)} style={{ background: "var(--danger-soft)", color: "var(--danger)", border: "none", fontSize: 13.5, fontWeight: 700, padding: "10px 18px", borderRadius: "var(--radius-sm)" }}>
                   ✕ {t("cc.reject")}
                 </button>
               </>
             ) : (
               <>
-                <button type="button" className="btn" disabled={busy || !reason.trim()} onClick={() => run(() => platformApi.rejectCardClaim(claim.id, reason.trim()), t("pcp.doneReject").replace("{center}", claim.centerName))} style={{ background: "#B23A47", color: "#fff", border: "none", fontSize: 13.5, fontWeight: 700, padding: "10px 18px", borderRadius: 9 }}>
+                <button type="button" className="btn" disabled={busy || !reason.trim()} onClick={() => run(() => platformApi.rejectCardClaim(claim.id, reason.trim()), t("pcp.doneReject").replace("{center}", claim.centerName))} style={{ background: "var(--danger)", color: "var(--on-ink)", border: "none", fontSize: 13.5, fontWeight: 700, padding: "10px 18px", borderRadius: "var(--radius-sm)" }}>
                   {busy ? t("common.saving") : t("cc.rejectSend")}
                 </button>
-                <button type="button" className="btn" onClick={() => setRejecting(false)} style={{ background: "transparent", color: "#4A4E58", fontSize: 13, fontWeight: 600, padding: "10px 16px", borderRadius: 9 }}>
+                <button type="button" className="btn" onClick={() => setRejecting(false)} style={{ background: "transparent", color: "var(--text-soft)", fontSize: 13, fontWeight: 600, padding: "10px 16px", borderRadius: "var(--radius-sm)" }}>
                   {t("common.cancel")}
                 </button>
               </>

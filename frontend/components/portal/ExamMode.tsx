@@ -15,9 +15,9 @@ import { useFileUrls } from "@/lib/files";
 type Text = Record<string, string>;
 type PQ = PortalMockAttempt["test"]["content"]["reading"]["passages"][number]["questions"][number];
 const REVIEW_MS = 2 * 60_000;
-export const INK = "#111827";
-export const LINE = "#D1D5DB";
-export const BLUE = "#1D4ED8";
+export const INK = "var(--text)";
+export const LINE = "var(--border-strong)";
+export const BLUE = "var(--info)";
 
 export const mmss = (ms: number) => {
   const s = Math.max(0, Math.ceil(ms / 1000));
@@ -58,9 +58,9 @@ export interface ExamProps {
 }
 
 export const EXAM_CSS = `
-.exm-root{position:fixed;inset:0;z-index:200;background:#fff;display:flex;flex-direction:column}
-.exm-head{display:flex;align-items:center;gap:12px;padding:8px 16px;border-bottom:1px solid #D1D5DB;background:#F9FAFB}
-.exm-title{font-size:13px;color:#374151;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+.exm-root{position:fixed;inset:0;z-index:200;background:var(--surface);display:flex;flex-direction:column}
+.exm-head{display:flex;align-items:center;gap:12px;padding:8px 16px;border-bottom:1px solid var(--border-strong);background:var(--surface-muted)}
+.exm-title{font-size:13px;color:var(--text-soft);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
 .exm-split{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
 .exm-split>*{min-height:0;height:100%}
 .exm-panes{display:none}
@@ -68,9 +68,9 @@ export const EXAM_CSS = `
   .exm-split{grid-template-columns:minmax(0,1fr)}
   .exm-split[data-pane="text"]>.exm-q,.exm-split[data-pane="q"]>.exm-text{display:none}
   .exm-split>.exm-q{border-left:none!important}
-  .exm-panes{display:flex;gap:4px;padding:6px 10px;border-bottom:1px solid #D1D5DB;background:#fff}
-  .exm-panes button{flex:1;border:1px solid #D1D5DB;background:#fff;border-radius:6px;padding:8px;font-weight:700;font-size:14px;cursor:pointer;color:#111827}
-  .exm-panes button[aria-selected="true"]{background:#1D4ED8;border-color:#1D4ED8;color:#fff}
+  .exm-panes{display:flex;gap:4px;padding:6px 10px;border-bottom:1px solid var(--border-strong);background:var(--surface)}
+  .exm-panes button{flex:1;border:1px solid var(--border-strong);background:var(--surface);border-radius:6px;padding:8px;font-weight:700;font-size:14px;cursor:pointer;color:var(--text)}
+  .exm-panes button[aria-selected="true"]{background:var(--info);border-color:var(--info);color:var(--on-ink)}
 }
 @media(max-width:640px){
   .exm-head{gap:8px;padding:6px 10px}
@@ -146,7 +146,7 @@ export default function ExamMode(props: ExamProps) {
   );
 }
 
-export const smallBtn: React.CSSProperties = { border: `1px solid ${LINE}`, background: "#fff", borderRadius: 6, padding: "5px 8px", fontSize: 13, fontWeight: 700, cursor: "pointer", color: INK };
+export const smallBtn: React.CSSProperties = { border: `1px solid ${LINE}`, background: "var(--surface)", borderRadius: "var(--radius-xs)", padding: "5px 8px", fontSize: 13, fontWeight: 700, cursor: "pointer", color: INK };
 
 // Full screen while a section runs, like the test centre's computer. Enter
 // only from a click (browsers allow it only then); leave on unmount.
@@ -188,15 +188,15 @@ export function ExamHeader({ brand, title, left, leftPrefix, saveState, extra, o
   const save = saveState ?? "idle";
   return (
     <header className="exm-head">
-      <div className="exm-logo" style={{ fontWeight: 900, letterSpacing: 1, color: "#B91C1C", fontSize: 18, whiteSpace: "nowrap", maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis" }}>{brand}</div>
+      <div className="exm-logo" style={{ fontWeight: 900, letterSpacing: 1, color: "var(--danger)", fontSize: 18, whiteSpace: "nowrap", maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis" }}>{brand}</div>
       <div className="exm-title">{title}</div>
       {left !== null && (
-        <div style={{ fontWeight: 800, fontSize: 15, whiteSpace: "nowrap", color: left < 5 * 60_000 ? "#B91C1C" : INK, marginLeft: "auto" }} aria-live="polite">
+        <div style={{ fontWeight: 800, fontSize: 15, whiteSpace: "nowrap", color: left < 5 * 60_000 ? "var(--danger)" : INK, marginLeft: "auto" }} aria-live="polite">
           {leftPrefix ? <span className="exm-hide-sm">{leftPrefix} </span> : ""}⏱ {mmss(left)}<span className="exm-hide-sm"> {t("exm.left")}</span>
         </div>
       )}
       {save !== "idle" && (
-        <span title={t("pmk.saved")} style={{ fontSize: 12, whiteSpace: "nowrap", color: save === "error" ? "#B91C1C" : "#6B7280" }}>
+        <span title={t("pmk.saved")} style={{ fontSize: 12, whiteSpace: "nowrap", color: save === "error" ? "var(--danger)" : "var(--text-muted)" }}>
           {save === "saving" ? "⏳" : save === "error" ? "⚠" : "✓"}<span className="exm-hide-sm"> {save === "saving" ? t("pmk.saving") : save === "error" ? t("exm.saveError") : t("pmk.saved")}</span>
         </span>
       )}
@@ -231,13 +231,13 @@ function Instructions({ section, attempt, onStart, resuming }: { section: MockSe
   const time = section === "speaking" ? "11–14" : String(c[section].durationMin);
   return (
     <div style={{ flex: 1, overflowY: "auto", display: "flex", justifyContent: "center", padding: "32px 16px" }}>
-      <div style={{ maxWidth: 680, width: "100%", border: `1px solid ${LINE}`, borderRadius: 8, padding: 28 }}>
+      <div style={{ maxWidth: 680, width: "100%", border: `1px solid ${LINE}`, borderRadius: "var(--radius-xs)", padding: 28 }}>
         <div style={{ fontSize: 22, fontWeight: 800, marginBottom: 4 }}>IELTS {section[0].toUpperCase() + section.slice(1)}</div>
-        <div style={{ color: "#4B5563", marginBottom: 18 }}>{t("exm.time")}: {time} {t("exm.minutes")}</div>
+        <div style={{ color: "var(--text-soft)", marginBottom: 18 }}>{t("exm.time")}: {time} {t("exm.minutes")}</div>
         <div style={{ fontWeight: 800, marginBottom: 8 }}>{t("exm.instructions")}</div>
         <ul style={{ margin: 0, paddingLeft: 20, lineHeight: 1.7 }}>{lines[section].map((l, i) => <li key={i}>{l}</li>)}</ul>
-        {resuming && <div style={{ marginTop: 16, padding: 12, background: "#FEF3C7", borderRadius: 6, fontSize: 14 }}>⚠️ {t("exm.resume")}</div>}
-        <button type="button" onClick={onStart} style={{ marginTop: 24, background: BLUE, color: "#fff", border: "none", borderRadius: 6, padding: "12px 26px", fontSize: 16, fontWeight: 700, cursor: "pointer" }}>
+        {resuming && <div style={{ marginTop: 16, padding: 12, background: "var(--warning-soft)", borderRadius: "var(--radius-xs)", fontSize: 14 }}>⚠️ {t("exm.resume")}</div>}
+        <button type="button" onClick={onStart} style={{ marginTop: 24, background: BLUE, color: "var(--on-ink)", border: "none", borderRadius: "var(--radius-xs)", padding: "12px 26px", fontSize: 16, fontWeight: 700, cursor: "pointer" }}>
           {resuming ? t("exm.continue") : t("exm.start")} ▶
         </button>
       </div>
@@ -258,7 +258,7 @@ function GapLine({ q, value, onChange }: { q: PQ; value: string; onChange: (v: s
       aria-label={`Question ${q.no}`}
       autoComplete="off"
       spellCheck={false}
-      style={{ width: Math.max(130, Math.min(260, value.length * 10 + 40)), padding: "4px 8px", border: `1px solid ${value ? BLUE : "#6B7280"}`, borderRadius: 3, fontSize: "inherit", fontFamily: "inherit", textAlign: value ? "left" : "center", margin: "0 4px" }}
+      style={{ width: Math.max(130, Math.min(260, value.length * 10 + 40)), padding: "4px 8px", border: `1px solid ${value ? BLUE : "var(--text-muted)"}`, borderRadius: 3, fontSize: "inherit", fontFamily: "inherit", textAlign: value ? "left" : "center", margin: "0 4px" }}
     />
   );
   if (parts.length < 2) {
@@ -288,7 +288,7 @@ export function QuestionBlock({ q, prev, value, onAnswer, flagged, onFlag, secti
       {showSection && <div style={{ fontWeight: 800, marginTop: 18, marginBottom: 4 }}>{q.section}</div>}
       {showInstr && <div style={{ fontStyle: "italic", marginBottom: 10, whiteSpace: "pre-wrap" }}>{q.instruction}</div>}
       {q.passage && q.passage !== prev?.passage && (
-        <div style={{ border: `1px solid ${LINE}`, background: "#F9FAFB", padding: "12px 14px", margin: "6px 0 10px", whiteSpace: "pre-wrap", lineHeight: 1.65 }}>{q.passage}</div>
+        <div style={{ border: `1px solid ${LINE}`, background: "var(--surface-muted)", padding: "12px 14px", margin: "6px 0 10px", whiteSpace: "pre-wrap", lineHeight: 1.65 }}>{q.passage}</div>
       )}
       {showBox && (
         <div style={{ border: `1px solid ${INK}`, padding: "10px 14px", margin: "6px 0 10px", maxWidth: 560 }}>
@@ -300,9 +300,9 @@ export function QuestionBlock({ q, prev, value, onAnswer, flagged, onFlag, secti
           ))}
         </div>
       )}
-      <div style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "8px 0", borderLeft: flagged ? "3px solid #F59E0B" : "3px solid transparent", paddingLeft: 8 }}>
+      <div style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "8px 0", borderLeft: flagged ? "3px solid var(--warning)" : "3px solid transparent", paddingLeft: 8 }}>
         <button type="button" onClick={onFlag} title="Review" aria-pressed={flagged}
-          style={{ minWidth: 34, height: 28, border: `1px solid ${flagged ? "#F59E0B" : LINE}`, background: flagged ? "#FEF3C7" : "#fff", borderRadius: 4, fontWeight: 800, cursor: "pointer", fontSize: 13, flexShrink: 0 }}>
+          style={{ minWidth: 34, height: 28, border: `1px solid ${flagged ? "var(--warning)" : LINE}`, background: flagged ? "var(--warning-soft)" : "var(--surface)", borderRadius: 4, fontWeight: 800, cursor: "pointer", fontSize: 13, flexShrink: 0 }}>
           {numLabel(q)}{flagged ? " ⚑" : ""}
         </button>
         <div style={{ flex: 1, minWidth: 0 }}>
@@ -344,22 +344,22 @@ export function NavBar({ groups, current, onPart, onJump, answers, flags, sectio
     setTimeout(() => document.getElementById(`q-${sectionKey}-${id}`)?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
   };
   return (
-    <nav style={{ borderTop: `1px solid ${LINE}`, background: "#F9FAFB", padding: "6px 10px", display: "flex", alignItems: "center", gap: 10, overflowX: "auto" }}>
+    <nav style={{ borderTop: `1px solid ${LINE}`, background: "var(--surface-muted)", padding: "6px 10px", display: "flex", alignItems: "center", gap: 10, overflowX: "auto" }}>
       <button type="button" disabled={current === 0} onClick={() => onPart(current - 1)} style={{ ...smallBtn, opacity: current === 0 ? 0.4 : 1 }} aria-label="previous part">◀</button>
       {groups.map((g, gi) => {
         const answered = g.questions.reduce((n, q) => n + answeredMarks(q, answers[q.id]), 0);
         const total = g.questions.reduce((n, q) => n + q.span, 0);
         return (
-          <div key={gi} style={{ display: "flex", alignItems: "center", gap: 4, padding: "2px 6px", borderRadius: 6, background: gi === current ? "#DBEAFE" : "transparent", flexShrink: 0 }}>
+          <div key={gi} style={{ display: "flex", alignItems: "center", gap: 4, padding: "2px 6px", borderRadius: "var(--radius-xs)", background: gi === current ? "var(--info-soft)" : "transparent", flexShrink: 0 }}>
             <button type="button" onClick={() => onPart(gi)} style={{ border: "none", background: "none", fontWeight: 800, cursor: "pointer", fontSize: 13, color: INK, whiteSpace: "nowrap" }}>
-              {g.label} <span style={{ fontWeight: 500, color: "#4B5563" }}>{answered}/{total}</span>
+              {g.label} <span style={{ fontWeight: 500, color: "var(--text-soft)" }}>{answered}/{total}</span>
             </button>
             {gi === current && g.questions.map((q) => {
               const done = answeredMarks(q, answers[q.id]) >= q.span;
               const flag = flags.has(q.id);
               return (
                 <button key={q.id} type="button" onClick={() => jump(gi, q.id)} title={flag ? "Review" : undefined}
-                  style={{ minWidth: 28, height: 26, padding: "0 4px", borderRadius: 4, fontSize: 12, fontWeight: 700, cursor: "pointer", border: `1px solid ${flag ? "#F59E0B" : done ? BLUE : "#9CA3AF"}`, background: flag ? "#FEF3C7" : done ? BLUE : "#fff", color: done && !flag ? "#fff" : INK }}>
+                  style={{ minWidth: 28, height: 26, padding: "0 4px", borderRadius: 4, fontSize: 12, fontWeight: 700, cursor: "pointer", border: `1px solid ${flag ? "var(--warning)" : done ? BLUE : "var(--text-faint)"}`, background: flag ? "var(--warning-soft)" : done ? BLUE : "var(--surface)", color: done && !flag ? "var(--on-ink)" : INK }}>
                   {numLabel(q)}
                 </button>
               );
@@ -368,7 +368,7 @@ export function NavBar({ groups, current, onPart, onJump, answers, flags, sectio
         );
       })}
       <button type="button" disabled={current === groups.length - 1} onClick={() => onPart(current + 1)} style={{ ...smallBtn, opacity: current === groups.length - 1 ? 0.4 : 1 }} aria-label="next part">▶</button>
-      <button type="button" onClick={onSubmit} style={{ marginLeft: "auto", background: "#15803D", color: "#fff", border: "none", borderRadius: 6, padding: "8px 16px", fontWeight: 800, cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0 }}>✓ {submitLabel}</button>
+      <button type="button" onClick={onSubmit} style={{ marginLeft: "auto", background: "var(--success)", color: "var(--on-ink)", border: "none", borderRadius: "var(--radius-xs)", padding: "8px 16px", fontWeight: 800, cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0 }}>✓ {submitLabel}</button>
     </nav>
   );
 }
@@ -411,16 +411,16 @@ function ListeningExam(props: ExamProps & { volume: number; onAudioDone: () => v
 
   return (
     <>
-      <div style={{ padding: "8px 16px", borderBottom: `1px solid ${LINE}`, background: "#EFF6FF", fontSize: 14 }}>
+      <div style={{ padding: "8px 16px", borderBottom: `1px solid ${LINE}`, background: "var(--info-soft)", fontSize: 14 }}>
         <b>{L.parts[part]?.title}</b>
         {L.parts[part]?.questions.length ? ` — ${t("exm.questions")} ${L.parts[part].questions[0].no}–${L.parts[part].questions.at(-1)!.no + L.parts[part].questions.at(-1)!.span - 1}` : ""}
-        <span style={{ marginLeft: 12, color: "#1E40AF" }}>{status}</span>
+        <span style={{ marginLeft: 12, color: "var(--info)" }}>{status}</span>
         {progress && (
           <span style={{ display: "inline-flex", alignItems: "center", gap: 8, marginLeft: 12, verticalAlign: "middle" }}>
-            <span style={{ width: 140, height: 6, borderRadius: 6, background: "#BFDBFE", overflow: "hidden", display: "inline-block" }}>
+            <span style={{ width: 140, height: 6, borderRadius: "var(--radius-xs)", background: "var(--info-border)", overflow: "hidden", display: "inline-block" }}>
               <span style={{ display: "block", height: "100%", width: `${Math.min(100, (progress.at / progress.total) * 100)}%`, background: BLUE }} />
             </span>
-            <span style={{ fontSize: 12.5, color: "#1E40AF", fontVariantNumeric: "tabular-nums" }}>{mmss(progress.at * 1000)} / {mmss(progress.total * 1000)}</span>
+            <span style={{ fontSize: 12.5, color: "var(--info)", fontVariantNumeric: "tabular-nums" }}>{mmss(progress.at * 1000)} / {mmss(progress.total * 1000)}</span>
           </span>
         )}
       </div>
@@ -557,7 +557,7 @@ function ReadingExam(props: ExamProps) {
   const [pane, setPane] = useState<"text" | "q">("text");
   return (
     <>
-      <div style={{ padding: "8px 16px", borderBottom: `1px solid ${LINE}`, background: "#EFF6FF", fontSize: 14 }}>
+      <div style={{ padding: "8px 16px", borderBottom: `1px solid ${LINE}`, background: "var(--info-soft)", fontSize: 14 }}>
         <b>Part {part + 1}</b>
         {p?.questions.length ? ` — ${t("exm.readTheText")} ${p.questions[0].no}–${p.questions.at(-1)!.no + p.questions.at(-1)!.span - 1}` : ""}
       </div>
@@ -596,7 +596,7 @@ export function Passage({ title, text, imagePath }: { title: string; text: strin
     const r = range.current;
     if (!r) return;
     const mark = document.createElement("mark");
-    mark.style.background = "#FDE68A";
+    mark.style.background = "var(--warning-border)";
     mark.style.cursor = "pointer";
     mark.dataset.hl = "1";
     try {
@@ -627,7 +627,7 @@ export function Passage({ title, text, imagePath }: { title: string; text: strin
       </div>
       {menu && (
         <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={highlight}
-          style={{ position: "fixed", left: menu.x, top: menu.y, transform: "translate(-50%, -100%)", zIndex: 300, background: INK, color: "#fff", border: "none", borderRadius: 6, padding: "6px 10px", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
+          style={{ position: "fixed", left: menu.x, top: menu.y, transform: "translate(-50%, -100%)", zIndex: 300, background: INK, color: "var(--on-ink)", border: "none", borderRadius: "var(--radius-xs)", padding: "6px 10px", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
           🖍 {t("exm.highlight")}
         </button>
       )}
@@ -648,7 +648,7 @@ function WritingExam(props: ExamProps) {
   const [pane, setPane] = useState<"text" | "q">("text");
   return (
     <>
-      <div style={{ padding: "8px 16px", borderBottom: `1px solid ${LINE}`, background: "#EFF6FF", fontSize: 14 }}>
+      <div style={{ padding: "8px 16px", borderBottom: `1px solid ${LINE}`, background: "var(--info-soft)", fontSize: 14 }}>
         <b>{tk?.title}</b> — {t("exm.writeAtLeast").replace("{n}", String(tk?.minWords ?? 0))}
       </div>
       <PaneTabs pane={pane} onPane={setPane} textLabel={`📄 ${t("exm.paneTask")}`} qLabel={`✍️ ${t("exm.paneAnswer")} (${words})`} />
@@ -661,17 +661,17 @@ function WritingExam(props: ExamProps) {
         </section>
         <main className="exm-q" style={{ display: "flex", flexDirection: "column", padding: 16, borderLeft: `1px solid ${LINE}`, minHeight: 320 }}>
           <textarea value={text} onChange={(e) => onAnswer(String(task), e.target.value)} spellCheck={false} autoCorrect="off" autoCapitalize="off"
-            style={{ flex: 1, minHeight: 280, width: "100%", boxSizing: "border-box", border: `1px solid #9CA3AF`, borderRadius: 4, padding: 12, fontSize: "inherit", fontFamily: "inherit", lineHeight: 1.7, resize: "none" }} />
-          <div style={{ marginTop: 6, fontSize: 14, fontWeight: 700, color: words >= (tk?.minWords ?? 0) ? "#15803D" : "#B45309" }}>{t("exm.wordCount")}: {words}</div>
+            style={{ flex: 1, minHeight: 280, width: "100%", boxSizing: "border-box", border: `1px solid var(--text-faint)`, borderRadius: 4, padding: 12, fontSize: "inherit", fontFamily: "inherit", lineHeight: 1.7, resize: "none" }} />
+          <div style={{ marginTop: 6, fontSize: 14, fontWeight: 700, color: words >= (tk?.minWords ?? 0) ? "var(--success)" : "var(--warning)" }}>{t("exm.wordCount")}: {words}</div>
         </main>
       </div>
-      <nav style={{ borderTop: `1px solid ${LINE}`, background: "#F9FAFB", padding: "6px 10px", display: "flex", gap: 8, alignItems: "center" }}>
+      <nav style={{ borderTop: `1px solid ${LINE}`, background: "var(--surface-muted)", padding: "6px 10px", display: "flex", gap: 8, alignItems: "center" }}>
         {W.tasks.map((x, i) => (
-          <button key={i} type="button" onClick={() => { setTask(i); setPane("text"); }} style={{ ...smallBtn, background: i === task ? "#DBEAFE" : "#fff", padding: "6px 14px" }}>
+          <button key={i} type="button" onClick={() => { setTask(i); setPane("text"); }} style={{ ...smallBtn, background: i === task ? "var(--info-soft)" : "var(--surface)", padding: "6px 14px" }}>
             {x.title} <span style={{ fontWeight: 500 }}>({wordsOf(answers[String(i)] ?? "")})</span>
           </button>
         ))}
-        <button type="button" onClick={() => { if (confirm(t("exm.confirm"))) props.onSubmit(false); }} style={{ marginLeft: "auto", background: "#15803D", color: "#fff", border: "none", borderRadius: 6, padding: "8px 16px", fontWeight: 800, cursor: "pointer" }}>✓ {t("exm.submit")}</button>
+        <button type="button" onClick={() => { if (confirm(t("exm.confirm"))) props.onSubmit(false); }} style={{ marginLeft: "auto", background: "var(--success)", color: "var(--on-ink)", border: "none", borderRadius: "var(--radius-xs)", padding: "8px 16px", fontWeight: 800, cursor: "pointer" }}>✓ {t("exm.submit")}</button>
       </nav>
     </>
   );
@@ -848,7 +848,7 @@ function SpeakingExam(props: ExamProps) {
   const partNo = item ? item.pi + 1 : S.parts.length;
   return (
     <>
-      <div style={{ padding: "8px 16px", borderBottom: `1px solid ${LINE}`, background: "#EFF6FF", fontSize: 14 }}>
+      <div style={{ padding: "8px 16px", borderBottom: `1px solid ${LINE}`, background: "var(--info-soft)", fontSize: 14 }}>
         <b>{item ? item.part.title : "Speaking"}</b>
         {item && ` — ${t("exm.question")} ${pos + 1}/${queue.length}`}
       </div>
@@ -858,52 +858,52 @@ function SpeakingExam(props: ExamProps) {
             <>
               <div style={{ fontSize: 42 }}>🎤</div>
               <div style={{ fontSize: 20, fontWeight: 800 }}>{t("exm.speakingDone")}</div>
-              <button type="button" onClick={() => props.onSubmit(false)} style={{ background: "#15803D", color: "#fff", border: "none", borderRadius: 6, padding: "12px 24px", fontWeight: 800, fontSize: 16, cursor: "pointer" }}>✓ {t("exm.submit")}</button>
+              <button type="button" onClick={() => props.onSubmit(false)} style={{ background: "var(--success)", color: "var(--on-ink)", border: "none", borderRadius: "var(--radius-xs)", padding: "12px 24px", fontWeight: 800, fontSize: 16, cursor: "pointer" }}>✓ {t("exm.submit")}</button>
             </>
           ) : item ? (
             <>
-              <div style={{ fontSize: 13, color: "#6B7280" }}>Part {partNo}</div>
-              <div style={{ border: item.prep > 0 ? `2px solid ${INK}` : "none", borderRadius: 6, padding: item.prep > 0 ? 20 : 0, fontSize: item.prep > 0 ? "1.05em" : "1.35em", fontWeight: item.prep > 0 ? 500 : 700, whiteSpace: "pre-wrap", textAlign: item.prep > 0 ? "left" : "center", lineHeight: 1.6 }}>
+              <div style={{ fontSize: 13, color: "var(--text-muted)" }}>Part {partNo}</div>
+              <div style={{ border: item.prep > 0 ? `2px solid ${INK}` : "none", borderRadius: "var(--radius-xs)", padding: item.prep > 0 ? 20 : 0, fontSize: item.prep > 0 ? "1.05em" : "1.35em", fontWeight: item.prep > 0 ? 500 : 700, whiteSpace: "pre-wrap", textAlign: item.prep > 0 ? "left" : "center", lineHeight: 1.6 }}>
                 {item.q}
               </div>
-              {phase === "ask" && <div style={{ color: "#1E40AF", fontWeight: 700 }}>🗣 {t("exm.examinerAsks")}</div>}
+              {phase === "ask" && <div style={{ color: "var(--info)", fontWeight: 700 }}>🗣 {t("exm.examinerAsks")}</div>}
               {phase === "prep" && (
                 <>
-                  <div style={{ fontWeight: 800, color: "#B45309", fontSize: 18 }}>🧠 {t("pmk.prepTime")}: {count}s</div>
+                  <div style={{ fontWeight: 800, color: "var(--warning)", fontSize: 18 }}>🧠 {t("pmk.prepTime")}: {count}s</div>
                   <textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder={t("exm.notes")} rows={5} style={{ width: "100%", maxWidth: 520, border: `1px solid ${LINE}`, borderRadius: 4, padding: 10, fontFamily: "inherit" }} />
                   <button type="button" onClick={() => { stopTick(); void say("Please start speaking now.").then(record); }} style={smallBtn}>{t("pmk.startNow")}</button>
                 </>
               )}
               {phase === "rec" && (
                 <>
-                  <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 20, fontWeight: 800, color: "#B91C1C" }}>
-                    <span style={{ width: 14, height: 14, borderRadius: "50%", background: "#DC2626", animation: "exmPulse 1s infinite" }} /> REC {count}s
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 20, fontWeight: 800, color: "var(--danger)" }}>
+                    <span style={{ width: 14, height: 14, borderRadius: "50%", background: "var(--danger)", animation: "exmPulse 1s infinite" }} /> REC {count}s
                   </div>
                   <style>{`@keyframes exmPulse{0%,100%{opacity:1}50%{opacity:.3}}`}</style>
-                  {live && <div style={{ fontStyle: "italic", color: "#374151" }}>{live}</div>}
-                  <button type="button" onClick={() => { stopTick(); if (rec.current?.state === "recording") rec.current.stop(); }} style={{ background: INK, color: "#fff", border: "none", borderRadius: 6, padding: "10px 20px", fontWeight: 700, cursor: "pointer" }}>
+                  {live && <div style={{ fontStyle: "italic", color: "var(--text-soft)" }}>{live}</div>}
+                  <button type="button" onClick={() => { stopTick(); if (rec.current?.state === "recording") rec.current.stop(); }} style={{ background: INK, color: "var(--on-ink)", border: "none", borderRadius: "var(--radius-xs)", padding: "10px 20px", fontWeight: 700, cursor: "pointer" }}>
                     {t("exm.finishAnswer")} ▶
                   </button>
                 </>
               )}
               {phase === "type" && (
                 <>
-                  <div style={{ fontSize: 13.5, color: "#92400E", background: "#FEF3C7", borderRadius: 6, padding: "6px 10px" }}>⌨️ {t("exm.typeAnswer")} · {count}s</div>
+                  <div style={{ fontSize: 13.5, color: "var(--warning)", background: "var(--warning-soft)", borderRadius: "var(--radius-xs)", padding: "6px 10px" }}>⌨️ {t("exm.typeAnswer")} · {count}s</div>
                   <textarea
                     autoFocus
                     value={typedText}
                     onChange={(e) => { typedRef.current = e.target.value; setTypedText(e.target.value); }}
                     placeholder={t("exm.typePh")}
                     rows={6}
-                    style={{ width: "100%", maxWidth: 620, border: `1px solid #9CA3AF`, borderRadius: 4, padding: 10, fontFamily: "inherit", fontSize: "inherit", lineHeight: 1.6 }}
+                    style={{ width: "100%", maxWidth: 620, border: `1px solid var(--text-faint)`, borderRadius: 4, padding: 10, fontFamily: "inherit", fontSize: "inherit", lineHeight: 1.6 }}
                   />
                   <div style={{ display: "flex", gap: 8 }}>
-                    <button type="button" onClick={() => void saveTyped()} style={{ background: INK, color: "#fff", border: "none", borderRadius: 6, padding: "10px 20px", fontWeight: 700, cursor: "pointer" }}>{t("exm.saveNext")} ▶</button>
+                    <button type="button" onClick={() => void saveTyped()} style={{ background: INK, color: "var(--on-ink)", border: "none", borderRadius: "var(--radius-xs)", padding: "10px 20px", fontWeight: 700, cursor: "pointer" }}>{t("exm.saveNext")} ▶</button>
                   </div>
                 </>
               )}
-              {phase === "save" && <div style={{ color: "#1E40AF", fontWeight: 700 }}>⏫ {t("pmk.uploading")}</div>}
-              {error && <div role="alert" style={{ color: "#B91C1C" }}>{error}</div>}
+              {phase === "save" && <div style={{ color: "var(--info)", fontWeight: 700 }}>⏫ {t("pmk.uploading")}</div>}
+              {error && <div role="alert" style={{ color: "var(--danger)" }}>{error}</div>}
             </>
           ) : null}
         </div>

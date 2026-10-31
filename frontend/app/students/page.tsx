@@ -24,7 +24,7 @@ import PhoneInput from "@/components/PhoneInput";
 import CustomFieldInputs, { cfSubmitError, useCfDraft, useCustomFieldDefs } from "@/components/custom-fields/CustomFieldInputs";
 import { cfPayload, cfValidate } from "@/lib/custom-fields";
 
-const ACCENT = "#4F46E5";
+const ACCENT = "var(--primary)";
 // Rows per page; the server pages (GET /students?page&pageSize).
 const PAGE_SIZE = 20;
 
@@ -224,10 +224,10 @@ function StudentsContent() {
 
   return (
     <>
-      <div style={{ padding: "22px 32px", borderBottom: "1px solid #EAE8E2", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
+      <div style={{ padding: "22px 32px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
         <div>
           <h1 style={{ fontSize: 22, fontWeight: 800 }}>{t("students.title")}</h1>
-          <Link href="/students/trash" style={{ fontSize: 12, color: "#686B75", fontWeight: 600 }}>
+          <Link href="/students/trash" style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 600 }}>
             {t("nav.trash")}
           </Link>
         </div>
@@ -235,7 +235,7 @@ function StudentsContent() {
           <button
             className="btn"
             onClick={() => exportApi.studentsXlsx()}
-            style={{ background: "#F2F1EC", color: "#181A1F", border: "none", fontSize: 12.5, fontWeight: 700, padding: "9px 14px", borderRadius: 9 }}
+            style={{ background: "var(--surface-muted)", color: "var(--text)", border: "none", fontSize: 12.5, fontWeight: 700, padding: "9px 14px", borderRadius: "var(--radius-sm)" }}
           >
             {t("students.exportExcel")}
           </button>
@@ -243,7 +243,7 @@ function StudentsContent() {
             <button
               className="btn"
               onClick={() => setImportOpen(true)}
-              style={{ background: "#F2F1EC", color: "#181A1F", border: "none", fontSize: 12.5, fontWeight: 700, padding: "9px 14px", borderRadius: 9 }}
+              style={{ background: "var(--surface-muted)", color: "var(--text)", border: "none", fontSize: 12.5, fontWeight: 700, padding: "9px 14px", borderRadius: "var(--radius-sm)" }}
             >
               {t("students.importExcel")}
             </button>
@@ -253,14 +253,14 @@ function StudentsContent() {
             className="btn"
             type="button"
             onClick={() => setPlacementOpen(true)}
-            style={{ background: "#F5F3FF", color: "#6D28D9", border: "1px solid #DDD6FE", fontSize: 13.5, fontWeight: 700, padding: "10px 16px", borderRadius: 9 }}
+            style={{ background: "var(--violet-soft)", color: "var(--violet)", border: "1px solid var(--primary-border)", fontSize: 13.5, fontWeight: 700, padding: "10px 16px", borderRadius: "var(--radius-sm)" }}
           >
             🧭 {t("placement.button")}
           </button>
           <button
             className="btn"
             onClick={() => setModalOpen(true)}
-            style={{ background: ACCENT, color: "#fff", border: "none", fontSize: 13.5, fontWeight: 700, padding: "10px 18px", borderRadius: 9 }}
+            style={{ background: ACCENT, color: "var(--on-ink)", border: "none", fontSize: 13.5, fontWeight: 700, padding: "10px 18px", borderRadius: "var(--radius-sm)" }}
           >
             {t("students.newStudent")}
           </button>
@@ -306,15 +306,15 @@ function StudentsContent() {
         ) : allCount === null || !pageData ? (
           <ListSkeleton />
         ) : allCount === 0 ? (
-          <div style={{ color: "#686B75", fontSize: 14, background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 32, textAlign: "center" }}>
+          <div style={{ color: "var(--text-muted)", fontSize: 14, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 32, textAlign: "center" }}>
             {t("students.noStudentsYet")}
           </div>
         ) : pageData.total === 0 ? (
-          <div style={{ color: "#686B75", fontSize: 14, background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 32, textAlign: "center" }}>
+          <div style={{ color: "var(--text-muted)", fontSize: 14, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 32, textAlign: "center" }}>
             {t("students.noSearchResults")}
           </div>
         ) : (
-          <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, overflow: "hidden", opacity: listLoading ? 0.6 : 1 }} aria-busy={listLoading}>
+          <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", overflow: "hidden", opacity: listLoading ? 0.6 : 1 }} aria-busy={listLoading}>
             <div style={{ overflowX: "auto" }}>
             <table>
               <thead>
@@ -336,7 +336,7 @@ function StudentsContent() {
                     <td>
                       {(() => {
                         const r = summaryById.get(s.id)?.attendanceRate ?? null;
-                        return r === null ? <span style={{ color: "#686B75" }}>—</span> : <span style={{ fontWeight: 700, color: r >= 85 ? "#16794A" : r >= 70 ? "#D97706" : "#B23A47" }}>{r}%</span>;
+                        return r === null ? <span style={{ color: "var(--text-muted)" }}>—</span> : <span style={{ fontWeight: 700, color: r >= 85 ? "var(--success)" : r >= 70 ? "var(--warning)" : "var(--danger)" }}>{r}%</span>;
                       })()}
                     </td>
                     <td>{s.phone || "—"}</td>
@@ -345,14 +345,14 @@ function StudentsContent() {
                       <td>
                         {(() => {
                           const st = summaryById.get(s.id)?.payment ?? null;
-                          if (!st || st === "NONE") return <span style={{ color: "#686B75" }}>—</span>;
+                          if (!st || st === "NONE") return <span style={{ color: "var(--text-muted)" }}>—</span>;
                           const map = {
-                            PAID: { text: t("stu.payPaid"), color: "#167A48", bg: "#E9F8EF" },
-                            DEBT: { text: t("stu.payDebt"), color: "#B23A47", bg: "#FDEBEC" },
-                            PENDING: { text: t("stu.payPending"), color: "#B45309", bg: "#FEF3C7" },
+                            PAID: { text: t("stu.payPaid"), color: "var(--success)", bg: "var(--success-soft)" },
+                            DEBT: { text: t("stu.payDebt"), color: "var(--danger)", bg: "var(--danger-soft)" },
+                            PENDING: { text: t("stu.payPending"), color: "var(--warning)", bg: "var(--warning-soft)" },
                           } as const;
                           const b = map[st];
-                          return <span style={{ fontSize: 12, fontWeight: 700, color: b.color, background: b.bg, padding: "4px 10px", borderRadius: 100 }}>{b.text}</span>;
+                          return <span style={{ fontSize: 12, fontWeight: 700, color: b.color, background: b.bg, padding: "4px 10px", borderRadius: "var(--radius-pill)" }}>{b.text}</span>;
                         })()}
                       </td>
                     )}
@@ -360,7 +360,7 @@ function StudentsContent() {
                       <Link
                         href={`/students/${s.id}`}
                         className="btn"
-                        style={{ display: "inline-block", background: "#F2F1EC", color: "#181A1F", fontSize: 12, fontWeight: 700, padding: "7px 14px", borderRadius: 8 }}
+                        style={{ display: "inline-block", background: "var(--surface-muted)", color: "var(--text)", fontSize: 12, fontWeight: 700, padding: "7px 14px", borderRadius: "var(--radius-xs)" }}
                       >
                         {t("common.viewProfile")}
                       </Link>
@@ -388,7 +388,7 @@ function StudentsContent() {
       <Modal open={modalOpen} onClose={() => { setModalOpen(false); resetForm(); }} title={t("students.modalTitle")}>
         <form onSubmit={onSubmit} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           {error && (
-            <div role="alert" style={{ background: "#FDEBEC", color: "#B23A47", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: 10 }}>{error}</div>
+            <div role="alert" style={{ background: "var(--danger-soft)", color: "var(--danger)", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: "var(--radius-sm)" }}>{error}</div>
           )}
           <Field label={t("students.fieldFullName")}>
             <input
@@ -429,15 +429,15 @@ function StudentsContent() {
               placeholder={t("students.selectGroups")}
               summary={(n) => `${n} ${t("students.groupsSelected")}`}
             />
-            <div style={{ fontSize: 12, color: "#686B75", marginTop: 6 }}>{t("students.multiDirectionHint")}</div>
+            <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 6 }}>{t("students.multiDirectionHint")}</div>
             {selectedGroups.length > 0 && (
-              <div style={{ marginTop: 8, border: "1px solid #EAE8E2", borderRadius: 10, overflow: "hidden" }}>
+              <div style={{ marginTop: 8, border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", overflow: "hidden" }}>
                 {Array.from(new Set(selectedGroups.map((g) => g.subject))).map((subj) => (
-                  <div key={subj} style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "8px 12px", borderBottom: "1px solid #F2F1EC" }}>
-                    <div style={{ minWidth: 96, fontSize: 12, fontWeight: 700, color: "#4A4E58", paddingTop: 3 }}>{subj}</div>
+                  <div key={subj} style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "8px 12px", borderBottom: "1px solid var(--border)" }}>
+                    <div style={{ minWidth: 96, fontSize: 12, fontWeight: 700, color: "var(--text-soft)", paddingTop: 3 }}>{subj}</div>
                     <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                       {selectedGroups.filter((g) => g.subject === subj).map((g) => (
-                        <span key={g.id} style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "#EEF0FF", color: ACCENT, fontSize: 12, fontWeight: 700, padding: "3px 10px", borderRadius: 999 }}>
+                        <span key={g.id} style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "var(--primary-soft)", color: ACCENT, fontSize: 12, fontWeight: 700, padding: "3px 10px", borderRadius: "var(--radius-pill)" }}>
                           {g.name}{g.startTime ? <span style={{ fontWeight: 500, opacity: 0.8 }}>{g.startTime}</span> : null}
                           <button type="button" onClick={() => setGroupIds((ids) => ids.filter((id) => id !== g.id))} style={{ background: "none", border: "none", color: ACCENT, cursor: "pointer", fontWeight: 800, padding: 0 }} aria-label={t("common.clear")}>✕</button>
                         </span>
@@ -448,19 +448,19 @@ function StudentsContent() {
               </div>
             )}
             {timeClashes.length > 0 && (
-              <div role="alert" style={{ marginTop: 8, background: "#FDEBEC", color: "#B23A47", fontSize: 12.5, fontWeight: 600, padding: "8px 12px", borderRadius: 10, lineHeight: 1.5 }}>
+              <div role="alert" style={{ marginTop: 8, background: "var(--danger-soft)", color: "var(--danger)", fontSize: 12.5, fontWeight: 600, padding: "8px 12px", borderRadius: "var(--radius-sm)", lineHeight: 1.5 }}>
                 {t("students.timeClash")}
                 {timeClashes.map((c) => <div key={c}>• {c}</div>)}
               </div>
             )}
           </Field>
-          {cfDefs.error && <div role="alert" style={{ fontSize: 12.5, fontWeight: 600, color: "#B45309" }}>{t("cf.defsError")}</div>}
+          {cfDefs.error && <div role="alert" style={{ fontSize: 12.5, fontWeight: 600, color: "var(--warning)" }}>{t("cf.defsError")}</div>}
           <CustomFieldInputs defs={cfDefs.defs ?? []} values={cf.draft} errors={cf.errors} onChange={cf.change} idPrefix="new-student-cf" title={t("cf.section")} />
           <button
             className="btn"
             type="submit"
             disabled={saving || timeClashes.length > 0}
-            style={{ background: ACCENT, color: "#fff", fontSize: 14, fontWeight: 700, padding: 12, borderRadius: 10, marginTop: 6, opacity: timeClashes.length > 0 ? 0.6 : 1 }}
+            style={{ background: ACCENT, color: "var(--on-ink)", fontSize: 14, fontWeight: 700, padding: 12, borderRadius: "var(--radius-sm)", marginTop: 6, opacity: timeClashes.length > 0 ? 0.6 : 1 }}
           >
             {saving ? t("students.adding") : t("students.addStudent")}
           </button>
@@ -473,7 +473,7 @@ function StudentsContent() {
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div role="group" aria-label={label}>
-      <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>{label}</div>
+      <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-soft)", marginBottom: 6 }}>{label}</div>
       {children}
     </div>
   );

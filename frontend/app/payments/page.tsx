@@ -48,7 +48,7 @@ import { can } from "@/lib/access";
 import { MONTH_KEYS, MONTH_SHORT_KEYS, type TranslationKey } from "@/lib/i18n";
 import { formatDate } from "@/lib/format-date";
 
-const ACCENT = "#4F46E5";
+const ACCENT = "var(--primary)";
 // Rows per page of the payment history; the server pages (GET /payments?page&pageSize).
 const PAGE_SIZE = 20;
 // The server's largest page, for fetching a chart's payments in few requests.
@@ -117,13 +117,13 @@ const STATUS_CLASS: Record<string, string> = {
 };
 
 const EXPENSE_CATEGORIES: { value: ExpenseCategory; labelKey: TranslationKey; color: string }[] = [
-  { value: "RENT", labelKey: "payments.expenses.catRent", color: "#6366F1" },
-  { value: "UTILITIES", labelKey: "payments.expenses.catUtilities", color: "#0EA5E9" },
-  { value: "SALARY", labelKey: "payments.expenses.catSalary", color: "#10B981" },
-  { value: "MARKETING", labelKey: "payments.expenses.catMarketing", color: "#F59E0B" },
-  { value: "SUPPLIES", labelKey: "payments.expenses.catSupplies", color: "#8B5CF6" },
-  { value: "TAX", labelKey: "payments.expenses.catTax", color: "#EC4899" },
-  { value: "OTHER", labelKey: "payments.expenses.catOther", color: "#64748B" },
+  { value: "RENT", labelKey: "payments.expenses.catRent", color: "var(--primary)" },
+  { value: "UTILITIES", labelKey: "payments.expenses.catUtilities", color: "var(--info)" },
+  { value: "SALARY", labelKey: "payments.expenses.catSalary", color: "var(--success)" },
+  { value: "MARKETING", labelKey: "payments.expenses.catMarketing", color: "var(--warning)" },
+  { value: "SUPPLIES", labelKey: "payments.expenses.catSupplies", color: "var(--violet)" },
+  { value: "TAX", labelKey: "payments.expenses.catTax", color: "var(--pink)" },
+  { value: "OTHER", labelKey: "payments.expenses.catOther", color: "var(--text-muted)" },
 ];
 
 type TabType = "history" | "debtors" | "invoices" | "expenses" | "cash" | "cards";
@@ -229,7 +229,7 @@ function StudentPicker({
         placeholder={t("payments.picker.searchPlaceholder")}
       />
       {selected && !open && (
-        <div style={{ fontSize: 12, color: "#686B75", marginTop: 6 }}>
+        <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 6 }}>
           {t("payments.picker.groups")}:{" "}
           {selected.enrollments?.map((e) => (e.group.subject ? `${e.group.name} (${e.group.subject})` : e.group.name)).join(", ") || "—"}
         </div>
@@ -243,9 +243,9 @@ function StudentPicker({
             top: "calc(100% + 4px)",
             left: 0,
             right: 0,
-            background: "#fff",
-            border: "1px solid #EAE8E2",
-            borderRadius: 10,
+            background: "var(--surface)",
+            border: "1px solid var(--border)",
+            borderRadius: "var(--radius-sm)",
             boxShadow: "0 8px 24px rgba(18,19,26,0.12)",
             zIndex: 20,
             maxHeight: 260,
@@ -253,11 +253,11 @@ function StudentPicker({
           }}
         >
           {failed ? (
-            <div role="alert" style={{ padding: 12, fontSize: 12.5, color: "#B23A47" }}>{t("common.errorGeneric")}</div>
+            <div role="alert" style={{ padding: 12, fontSize: 12.5, color: "var(--danger)" }}>{t("common.errorGeneric")}</div>
           ) : !current ? (
-            <div role="status" style={{ padding: 12, fontSize: 12.5, color: "#686B75" }}>{t("common.loading")}</div>
+            <div role="status" style={{ padding: 12, fontSize: 12.5, color: "var(--text-muted)" }}>{t("common.loading")}</div>
           ) : current.items.length === 0 ? (
-            <div style={{ padding: 12, fontSize: 12.5, color: "#686B75" }}>
+            <div style={{ padding: 12, fontSize: 12.5, color: "var(--text-muted)" }}>
               {t("payments.picker.notFound")}
             </div>
           ) : (
@@ -291,12 +291,12 @@ function StudentPicker({
                   }}
                 >
                   <div style={{ fontSize: 13, fontWeight: 600 }}>{s.fullName}</div>
-                  <div style={{ fontSize: 11.5, color: "#686B75" }}>
+                  <div style={{ fontSize: 11.5, color: "var(--text-muted)" }}>
                     {s.enrollments?.map((e) => e.group.name).join(", ") || t("payments.picker.noGroup")}
                   </div>
                 </button>
               ))}
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, padding: "8px 12px", borderTop: "1px solid #F2F1EC", fontSize: 11.5, color: "#686B75" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, padding: "8px 12px", borderTop: "1px solid var(--border)", fontSize: 11.5, color: "var(--text-muted)" }}>
                 <span>{t("payments.picker.shown").replace("{n}", String(current.items.length)).replace("{total}", String(current.total))}</span>
                 {current.items.length < current.total && (
                   <button type="button" disabled={more} onMouseDown={(e) => { e.preventDefault(); showMore(); }} style={{ border: "none", background: "transparent", color: ACCENT, fontWeight: 700, fontSize: 12, cursor: more ? "wait" : "pointer", padding: 0 }}>
@@ -349,19 +349,19 @@ function PaymentReceiptModal({
         <div
           id="printable-receipt"
           style={{
-            background: "#FAFAF9",
-            border: "1px dashed #CBD5E1",
-            borderRadius: 12,
+            background: "var(--surface-muted)",
+            border: "1px dashed var(--border-strong)",
+            borderRadius: "var(--radius-md)",
             padding: 24,
             fontFamily: "'Inter', sans-serif",
-            color: "#1E293B",
+            color: "var(--text)",
           }}
         >
           {/* Header */}
           <div
             style={{
               textAlign: "center",
-              borderBottom: "2px solid #E2E8F0",
+              borderBottom: "2px solid var(--border)",
               paddingBottom: 14,
               marginBottom: 16,
             }}
@@ -370,7 +370,7 @@ function PaymentReceiptModal({
               {tenantName || t("pay.centerFallback")}
             </div>
             {(tenantAddress || tenantPhone) && (
-              <div style={{ fontSize: 11, color: "#64748B", marginTop: 4 }}>
+              <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 4 }}>
                 {tenantAddress ? `${tenantAddress}` : ""}
                 {tenantAddress && tenantPhone ? " | " : ""}
                 {tenantPhone ? `Tel: ${tenantPhone}` : ""}
@@ -379,12 +379,12 @@ function PaymentReceiptModal({
             <div
               style={{
                 display: "inline-block",
-                background: "#EEF2FF",
+                background: "var(--primary-soft)",
                 color: ACCENT,
                 fontSize: 12,
                 fontWeight: 700,
                 padding: "3px 10px",
-                borderRadius: 6,
+                borderRadius: "var(--radius-xs)",
                 marginTop: 8,
               }}
             >
@@ -395,29 +395,29 @@ function PaymentReceiptModal({
           {/* Details Table */}
           <div style={{ display: "flex", flexDirection: "column", gap: 10, fontSize: 13 }}>
             <div style={{ display: "flex", justifyContent: "space-between" }}>
-              <span style={{ color: "#64748B" }}>{t("payments.receipt.payer")}:</span>
+              <span style={{ color: "var(--text-muted)" }}>{t("payments.receipt.payer")}:</span>
               <span style={{ fontWeight: 700 }}>{student?.fullName || payment.studentId}</span>
             </div>
             {student?.phone && (
               <div style={{ display: "flex", justifyContent: "space-between" }}>
-                <span style={{ color: "#64748B" }}>{t("pay.phone")}</span>
+                <span style={{ color: "var(--text-muted)" }}>{t("pay.phone")}</span>
                 <span>{student.phone}</span>
               </div>
             )}
             <div style={{ display: "flex", justifyContent: "space-between" }}>
-              <span style={{ color: "#64748B" }}>{t("payments.receipt.groups")}:</span>
+              <span style={{ color: "var(--text-muted)" }}>{t("payments.receipt.groups")}:</span>
               <span style={{ fontWeight: 600 }}>{groupsList}</span>
             </div>
             <div style={{ display: "flex", justifyContent: "space-between" }}>
-              <span style={{ color: "#64748B" }}>{t("payments.receipt.forMonth")}:</span>
+              <span style={{ color: "var(--text-muted)" }}>{t("payments.receipt.forMonth")}:</span>
               <span style={{ fontWeight: 700 }}>{payment.forMonth}</span>
             </div>
             <div style={{ display: "flex", justifyContent: "space-between" }}>
-              <span style={{ color: "#64748B" }}>{t("payments.receipt.date")}:</span>
+              <span style={{ color: "var(--text-muted)" }}>{t("payments.receipt.date")}:</span>
               <span>{dateFormatted}</span>
             </div>
             <div style={{ display: "flex", justifyContent: "space-between" }}>
-              <span style={{ color: "#64748B" }}>{t("payments.receipt.method")}:</span>
+              <span style={{ color: "var(--text-muted)" }}>{t("payments.receipt.method")}:</span>
               <span style={{ fontWeight: 600 }}>
                 {payment.method ? t(METHOD_LABEL_KEYS[payment.method] || "payment.methodCash") : "—"}
               </span>
@@ -425,19 +425,19 @@ function PaymentReceiptModal({
 
             {payment.discount > 0 && (
               <>
-                <div style={{ display: "flex", justifyContent: "space-between", borderTop: "1px dashed #CBD5E1", paddingTop: 12, marginTop: 6 }}>
-                  <span style={{ color: "#64748B" }}>{t("pay.price")}:</span>
+                <div style={{ display: "flex", justifyContent: "space-between", borderTop: "1px dashed var(--border-strong)", paddingTop: 12, marginTop: 6 }}>
+                  <span style={{ color: "var(--text-muted)" }}>{t("pay.price")}:</span>
                   <span style={{ fontWeight: 600 }}>{formatMoney(payment.amount + payment.discount)} {t("common.sumUnit")}</span>
                 </div>
                 <div style={{ display: "flex", justifyContent: "space-between" }}>
-                  <span style={{ color: "#64748B" }}>{t("pay.discount")}:</span>
-                  <span style={{ fontWeight: 700, color: "#10B981" }}>− {formatMoney(payment.discount)} {t("common.sumUnit")}</span>
+                  <span style={{ color: "var(--text-muted)" }}>{t("pay.discount")}:</span>
+                  <span style={{ fontWeight: 700, color: "var(--success)" }}>− {formatMoney(payment.discount)} {t("common.sumUnit")}</span>
                 </div>
               </>
             )}
             <div
               style={{
-                borderTop: "1px dashed #CBD5E1",
+                borderTop: "1px dashed var(--border-strong)",
                 paddingTop: 12,
                 marginTop: 6,
                 display: "flex",
@@ -446,12 +446,12 @@ function PaymentReceiptModal({
               }}
             >
               <span style={{ fontSize: 14, fontWeight: 700 }}>{t("payments.receipt.amount")}:</span>
-              <span style={{ fontSize: 20, fontWeight: 900, color: "#10B981" }}>
+              <span style={{ fontSize: 20, fontWeight: 900, color: "var(--success)" }}>
                 {formatMoney(payment.amount)} {t("common.sumUnit")}
               </span>
             </div>
 
-            <div style={{ fontSize: 12, fontStyle: "italic", color: "#475569", marginTop: -2 }}>
+            <div style={{ fontSize: 12, fontStyle: "italic", color: "var(--text-muted)", marginTop: -2 }}>
               <span style={{ fontWeight: 600 }}>{t("payments.receipt.amountWords")}:</span> {amountWords}
             </div>
 
@@ -460,7 +460,7 @@ function PaymentReceiptModal({
           {/* Footer & Signature lines */}
           <div
             style={{
-              borderTop: "1px solid #E2E8F0",
+              borderTop: "1px solid var(--border)",
               marginTop: 20,
               paddingTop: 14,
               display: "flex",
@@ -469,22 +469,22 @@ function PaymentReceiptModal({
             }}
           >
             <div>
-              <div style={{ fontSize: 11, color: "#64748B" }}>{t("payments.receipt.cashier")}</div>
+              <div style={{ fontSize: 11, color: "var(--text-muted)" }}>{t("payments.receipt.cashier")}</div>
               <div style={{ fontSize: 12, fontWeight: 600, marginTop: 4 }}>
                 {cashierName || "Administrator"}
               </div>
             </div>
             <div style={{ textAlign: "right" }}>
-              <div style={{ fontSize: 11, color: "#64748B" }}>{t("payments.receipt.signature")}</div>
+              <div style={{ fontSize: 11, color: "var(--text-muted)" }}>{t("payments.receipt.signature")}</div>
               <div
                 style={{
                   width: 130,
-                  borderBottom: "1px solid #94A3B8",
+                  borderBottom: "1px solid var(--text-faint)",
                   marginTop: 18,
                   marginBottom: 2,
                 }}
               />
-              <div style={{ fontSize: 10, color: "#94A3B8" }}>{t("pay.stampSign")}</div>
+              <div style={{ fontSize: 10, color: "var(--text-faint)" }}>{t("pay.stampSign")}</div>
             </div>
           </div>
 
@@ -493,7 +493,7 @@ function PaymentReceiptModal({
               marginTop: 16,
               textAlign: "center",
               fontSize: 11,
-              color: "#94A3B8",
+              color: "var(--text-faint)",
             }}
           >
             {t("payments.receipt.thankYou")}
@@ -507,12 +507,12 @@ function PaymentReceiptModal({
             className="btn"
             onClick={onClose}
             style={{
-              background: "#F1F5F9",
-              color: "#475569",
+              background: "var(--surface-muted)",
+              color: "var(--text-muted)",
               fontSize: 13.5,
               fontWeight: 600,
               padding: "10px 18px",
-              borderRadius: 9,
+              borderRadius: "var(--radius-sm)",
             }}
           >
             {t("common.close")}
@@ -523,11 +523,11 @@ function PaymentReceiptModal({
             onClick={handlePrint}
             style={{
               background: ACCENT,
-              color: "#fff",
+              color: "var(--on-ink)",
               fontSize: 13.5,
               fontWeight: 700,
               padding: "10px 20px",
-              borderRadius: 9,
+              borderRadius: "var(--radius-sm)",
               display: "flex",
               alignItems: "center",
               gap: 8,
@@ -1139,7 +1139,7 @@ function PaymentsContent() {
       <div
         style={{
           padding: "20px 32px",
-          borderBottom: "1px solid #EAE8E2",
+          borderBottom: "1px solid var(--border)",
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
@@ -1154,8 +1154,8 @@ function PaymentsContent() {
           <div
             style={{
               display: "flex",
-              background: "#F2F1EC",
-              borderRadius: 10,
+              background: "var(--surface-muted)",
+              borderRadius: "var(--radius-sm)",
               padding: 3,
               maxWidth: "100%",
               overflowX: "auto",
@@ -1168,11 +1168,11 @@ function PaymentsContent() {
                 fontSize: 13,
                 fontWeight: 700,
                 padding: "7px 16px",
-                borderRadius: 8,
+                borderRadius: "var(--radius-xs)",
                 cursor: "pointer",
                 border: "none",
-                background: activeTab === "history" ? "#fff" : "transparent",
-                color: activeTab === "history" ? "#181A1F" : "#686B75",
+                background: activeTab === "history" ? "var(--surface)" : "transparent",
+                color: activeTab === "history" ? "var(--text)" : "var(--text-muted)",
                 boxShadow: activeTab === "history" ? "0 1px 3px rgba(18,19,26,0.08)" : "none",
                 transition: "all 0.15s ease",
               }}
@@ -1185,11 +1185,11 @@ function PaymentsContent() {
                 fontSize: 13,
                 fontWeight: 700,
                 padding: "7px 16px",
-                borderRadius: 8,
+                borderRadius: "var(--radius-xs)",
                 cursor: "pointer",
                 border: "none",
-                background: activeTab === "debtors" ? "#fff" : "transparent",
-                color: activeTab === "debtors" ? "#181A1F" : "#686B75",
+                background: activeTab === "debtors" ? "var(--surface)" : "transparent",
+                color: activeTab === "debtors" ? "var(--text)" : "var(--text-muted)",
                 boxShadow: activeTab === "debtors" ? "0 1px 3px rgba(18,19,26,0.08)" : "none",
                 display: "flex",
                 alignItems: "center",
@@ -1201,12 +1201,12 @@ function PaymentsContent() {
               {debtorsData && debtorsData.debtorCount > 0 && (
                 <span
                   style={{
-                    background: "#EF4444",
-                    color: "#fff",
+                    background: "var(--danger)",
+                    color: "var(--on-ink)",
                     fontSize: 10.5,
                     fontWeight: 800,
                     padding: "1px 6px",
-                    borderRadius: 999,
+                    borderRadius: "var(--radius-pill)",
                   }}
                 >
                   {debtorsData.debtorCount}
@@ -1220,11 +1220,11 @@ function PaymentsContent() {
                 fontSize: 13,
                 fontWeight: 700,
                 padding: "7px 16px",
-                borderRadius: 8,
+                borderRadius: "var(--radius-xs)",
                 cursor: "pointer",
                 border: "none",
-                background: activeTab === "invoices" ? "#fff" : "transparent",
-                color: activeTab === "invoices" ? "#181A1F" : "#686B75",
+                background: activeTab === "invoices" ? "var(--surface)" : "transparent",
+                color: activeTab === "invoices" ? "var(--text)" : "var(--text-muted)",
                 boxShadow: activeTab === "invoices" ? "0 1px 3px rgba(18,19,26,0.08)" : "none",
                 transition: "all 0.15s ease",
               }}
@@ -1239,11 +1239,11 @@ function PaymentsContent() {
                 fontSize: 13,
                 fontWeight: 700,
                 padding: "7px 16px",
-                borderRadius: 8,
+                borderRadius: "var(--radius-xs)",
                 cursor: "pointer",
                 border: "none",
-                background: activeTab === "expenses" ? "#fff" : "transparent",
-                color: activeTab === "expenses" ? "#181A1F" : "#686B75",
+                background: activeTab === "expenses" ? "var(--surface)" : "transparent",
+                color: activeTab === "expenses" ? "var(--text)" : "var(--text-muted)",
                 boxShadow: activeTab === "expenses" ? "0 1px 3px rgba(18,19,26,0.08)" : "none",
                 transition: "all 0.15s ease",
               }}
@@ -1258,11 +1258,11 @@ function PaymentsContent() {
                 fontSize: 13,
                 fontWeight: 700,
                 padding: "7px 16px",
-                borderRadius: 8,
+                borderRadius: "var(--radius-xs)",
                 cursor: "pointer",
                 border: "none",
-                background: activeTab === "cash" ? "#fff" : "transparent",
-                color: activeTab === "cash" ? "#181A1F" : "#686B75",
+                background: activeTab === "cash" ? "var(--surface)" : "transparent",
+                color: activeTab === "cash" ? "var(--text)" : "var(--text-muted)",
                 boxShadow: activeTab === "cash" ? "0 1px 3px rgba(18,19,26,0.08)" : "none",
                 transition: "all 0.15s ease",
               }}
@@ -1278,18 +1278,18 @@ function PaymentsContent() {
                 fontSize: 13,
                 fontWeight: 700,
                 padding: "7px 16px",
-                borderRadius: 8,
+                borderRadius: "var(--radius-xs)",
                 cursor: "pointer",
                 border: "none",
-                background: activeTab === "cards" ? "#fff" : "transparent",
-                color: activeTab === "cards" ? "#181A1F" : "#686B75",
+                background: activeTab === "cards" ? "var(--surface)" : "transparent",
+                color: activeTab === "cards" ? "var(--text)" : "var(--text-muted)",
                 boxShadow: activeTab === "cards" ? "0 1px 3px rgba(18,19,26,0.08)" : "none",
                 transition: "all 0.15s ease",
               }}
             >
               💳 {t("cc.tab")}
               {cardPending > 0 && (
-                <span style={{ marginLeft: 6, background: "#DC2626", color: "#fff", borderRadius: 100, fontSize: 11, padding: "1px 7px" }}>{cardPending}</span>
+                <span style={{ marginLeft: 6, background: "var(--danger)", color: "var(--on-ink)", borderRadius: "var(--radius-pill)", fontSize: 11, padding: "1px 7px" }}>{cardPending}</span>
               )}
             </button>
             )}
@@ -1300,7 +1300,7 @@ function PaymentsContent() {
         <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
           {(activeTab === "debtors" || activeTab === "expenses" || activeTab === "invoices") && (
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <span style={{ fontSize: 12, color: "#686B75", fontWeight: 600 }}>{t("pay.month")}</span>
+              <span style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 600 }}>{t("pay.month")}</span>
               <MonthPicker value={selectedMonth} onChange={setSelectedMonth} />
             </div>
           )}
@@ -1324,12 +1324,12 @@ function PaymentsContent() {
               disabled={generatingInvoices}
               style={{
                 background: ACCENT,
-                color: "#fff",
+                color: "var(--on-ink)",
                 border: "none",
                 fontSize: 13,
                 fontWeight: 700,
                 padding: "8px 16px",
-                borderRadius: 9,
+                borderRadius: "var(--radius-sm)",
                 display: "flex",
                 alignItems: "center",
                 gap: 6,
@@ -1348,13 +1348,13 @@ function PaymentsContent() {
                 className="btn"
                 onClick={() => exportApi.paymentsXlsx()}
                 style={{
-                  background: "#F2F1EC",
-                  color: "#181A1F",
+                  background: "var(--surface-muted)",
+                  color: "var(--text)",
                   border: "none",
                   fontSize: 13,
                   fontWeight: 700,
                   padding: "9px 16px",
-                  borderRadius: 9,
+                  borderRadius: "var(--radius-sm)",
                 }}
               >
                 {t("payments.exportExcel")}
@@ -1370,12 +1370,12 @@ function PaymentsContent() {
                 disabled={studentsTotal === 0}
                 style={{
                   background: ACCENT,
-                  color: "#fff",
+                  color: "var(--on-ink)",
                   border: "none",
                   fontSize: 13.5,
                   fontWeight: 700,
                   padding: "9px 18px",
-                  borderRadius: 9,
+                  borderRadius: "var(--radius-sm)",
                 }}
               >
                 {t("payments.newPayment")}
@@ -1393,12 +1393,12 @@ function PaymentsContent() {
               }}
               style={{
                 background: ACCENT,
-                color: "#fff",
+                color: "var(--on-ink)",
                 border: "none",
                 fontSize: 13.5,
                 fontWeight: 700,
                 padding: "9px 18px",
-                borderRadius: 9,
+                borderRadius: "var(--radius-sm)",
               }}
             >
               {t("payments.expenses.newExpense")}
@@ -1429,18 +1429,18 @@ function PaymentsContent() {
             <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0,1fr))", gap: 16 }}>
               <div
                 style={{
-                  background: "#fff",
-                  border: "1px solid #EAE8E2",
-                  borderRadius: 14,
+                  background: "var(--surface)",
+                  border: "1px solid var(--border)",
+                  borderRadius: "var(--radius-lg)",
                   padding: 18,
                 }}
               >
-                <div style={{ fontSize: 12, color: "#686B75" }}>{t("payments.statMonthRevenue")}</div>
+                <div style={{ fontSize: 12, color: "var(--text-muted)" }}>{t("payments.statMonthRevenue")}</div>
                 <div
                   style={{
                     fontSize: 24,
                     fontWeight: 800,
-                    fontFamily: "'Manrope', sans-serif",
+                    fontFamily: "var(--font-display)",
                     marginTop: 4,
                   }}
                 >
@@ -1449,18 +1449,18 @@ function PaymentsContent() {
               </div>
               <div
                 style={{
-                  background: "#fff",
-                  border: "1px solid #EAE8E2",
-                  borderRadius: 14,
+                  background: "var(--surface)",
+                  border: "1px solid var(--border)",
+                  borderRadius: "var(--radius-lg)",
                   padding: 18,
                 }}
               >
-                <div style={{ fontSize: 12, color: "#686B75" }}>{t("payments.statPending")}</div>
+                <div style={{ fontSize: 12, color: "var(--text-muted)" }}>{t("payments.statPending")}</div>
                 <div
                   style={{
                     fontSize: 24,
                     fontWeight: 800,
-                    fontFamily: "'Manrope', sans-serif",
+                    fontFamily: "var(--font-display)",
                     marginTop: 4,
                   }}
                 >
@@ -1469,22 +1469,22 @@ function PaymentsContent() {
               </div>
               <div
                 style={{
-                  background: failedCount > 0 ? "#FDEBEC" : "#fff",
-                  border: `1px solid ${failedCount > 0 ? "#F6D2D6" : "#EAE8E2"}`,
-                  borderRadius: 14,
+                  background: failedCount > 0 ? "var(--danger-soft)" : "var(--surface)",
+                  border: `1px solid ${failedCount > 0 ? "var(--danger-border)" : "var(--border)"}`,
+                  borderRadius: "var(--radius-lg)",
                   padding: 18,
                 }}
               >
-                <div style={{ fontSize: 12, color: failedCount > 0 ? "#B23A47" : "#686B75" }}>
+                <div style={{ fontSize: 12, color: failedCount > 0 ? "var(--danger)" : "var(--text-muted)" }}>
                   {t("dashboard.statDebtors")}
                 </div>
                 <div
                   style={{
                     fontSize: 24,
                     fontWeight: 800,
-                    fontFamily: "'Manrope', sans-serif",
+                    fontFamily: "var(--font-display)",
                     marginTop: 4,
-                    color: failedCount > 0 ? "#B23A47" : "#181A1F",
+                    color: failedCount > 0 ? "var(--danger)" : "var(--text)",
                   }}
                 >
                   {failedCount} {t("payments.countUnit")}
@@ -1497,11 +1497,11 @@ function PaymentsContent() {
             ) : allCount === 0 ? (
               <div
                 style={{
-                  color: "#686B75",
+                  color: "var(--text-muted)",
                   fontSize: 14,
-                  background: "#fff",
-                  border: "1px solid #EAE8E2",
-                  borderRadius: 16,
+                  background: "var(--surface)",
+                  border: "1px solid var(--border)",
+                  borderRadius: "var(--radius-lg)",
                   padding: 32,
                   textAlign: "center",
                 }}
@@ -1512,9 +1512,9 @@ function PaymentsContent() {
               <>
                 <div
                   style={{
-                    background: "#fff",
-                    border: "1px solid #EAE8E2",
-                    borderRadius: 16,
+                    background: "var(--surface)",
+                    border: "1px solid var(--border)",
+                    borderRadius: "var(--radius-lg)",
                     padding: 20,
                   }}
                 >
@@ -1530,14 +1530,14 @@ function PaymentsContent() {
                   >
                     <div
                       style={{
-                        fontFamily: "'Manrope', sans-serif",
+                        fontFamily: "var(--font-display)",
                         fontWeight: 700,
                         fontSize: 15,
                       }}
                     >
                       {t("payments.revenueDynamics")}
                     </div>
-                    <div style={{ display: "flex", background: "#F2F1EC", borderRadius: 9, padding: 3 }}>
+                    <div style={{ display: "flex", background: "var(--surface-muted)", borderRadius: "var(--radius-sm)", padding: 3 }}>
                       {(
                         [
                           ["day", t("payments.periodDay")],
@@ -1554,11 +1554,11 @@ function PaymentsContent() {
                             fontSize: 12,
                             fontWeight: 700,
                             padding: "6px 12px",
-                            borderRadius: 7,
+                            borderRadius: "var(--radius-xs)",
                             cursor: "pointer",
                             border: "none",
-                            background: period === p ? "#fff" : "transparent",
-                            color: period === p ? "#181A1F" : "#686B75",
+                            background: period === p ? "var(--surface)" : "transparent",
+                            color: period === p ? "var(--text)" : "var(--text-muted)",
                             boxShadow: period === p ? "0 1px 3px rgba(18,19,26,0.08)" : "none",
                           }}
                         >
@@ -1570,7 +1570,7 @@ function PaymentsContent() {
                   {chartData ? (
                     <BarChart data={chartData} color={ACCENT} height={190} defaultActiveIdx={chartData.length - 1} formatValue={(v) => new Intl.NumberFormat("uz-UZ").format(v)} unit={t("common.sumUnit")} />
                   ) : (
-                    <div style={{ height: 190, display: "flex", alignItems: "center", justifyContent: "center", color: "#686B75", fontSize: 13 }}>
+                    <div style={{ height: 190, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-muted)", fontSize: 13 }}>
                       {chartFailed || (period === "month" && revenue === null) ? t("adm.loadError") : t("common.loading")}
                     </div>
                   )}
@@ -1634,11 +1634,11 @@ function PaymentsContent() {
                 ) : pageData.total === 0 ? (
                   <div
                     style={{
-                      color: "#686B75",
+                      color: "var(--text-muted)",
                       fontSize: 14,
-                      background: "#fff",
-                      border: "1px solid #EAE8E2",
-                      borderRadius: 16,
+                      background: "var(--surface)",
+                      border: "1px solid var(--border)",
+                      borderRadius: "var(--radius-lg)",
                       padding: 32,
                       textAlign: "center",
                     }}
@@ -1648,9 +1648,9 @@ function PaymentsContent() {
                 ) : (
                   <div
                     style={{
-                      background: "#fff",
-                      border: "1px solid #EAE8E2",
-                      borderRadius: 16,
+                      background: "var(--surface)",
+                      border: "1px solid var(--border)",
+                      borderRadius: "var(--radius-lg)",
                       overflow: "hidden",
                       opacity: listLoading ? 0.6 : 1,
                     }}
@@ -1681,7 +1681,7 @@ function PaymentsContent() {
                             <td style={{ fontWeight: 700 }}>
                               {formatMoney(p.amount)} {t("common.sumUnit")}
                               {p.discount > 0 && (
-                                <span style={{ fontSize: 11, color: "#167A48", fontWeight: 600 }}>
+                                <span style={{ fontSize: 11, color: "var(--success)", fontWeight: 600 }}>
                                   {" "}
                                   (-{formatMoney(p.discount)})
                                 </span>
@@ -1702,11 +1702,11 @@ function PaymentsContent() {
                                 type="button"
                                 onClick={() => setReceiptPayment(p)}
                                 style={{
-                                  background: "#EEF2FF",
+                                  background: "var(--primary-soft)",
                                   color: ACCENT,
                                   border: "none",
                                   padding: "6px 12px",
-                                  borderRadius: 7,
+                                  borderRadius: "var(--radius-xs)",
                                   fontSize: 12,
                                   fontWeight: 700,
                                   cursor: "pointer",
@@ -1744,20 +1744,20 @@ function PaymentsContent() {
             <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0,1fr))", gap: 16 }}>
               <div
                 style={{
-                  background: "#fff",
-                  border: "1px solid #EAE8E2",
-                  borderRadius: 14,
+                  background: "var(--surface)",
+                  border: "1px solid var(--border)",
+                  borderRadius: "var(--radius-lg)",
                   padding: 18,
                 }}
               >
-                <div style={{ fontSize: 12, color: "#686B75" }}>
+                <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
                   {t("payments.debtors.totalExpected")}
                 </div>
                 <div
                   style={{
                     fontSize: 22,
                     fontWeight: 800,
-                    fontFamily: "'Manrope', sans-serif",
+                    fontFamily: "var(--font-display)",
                     marginTop: 4,
                   }}
                 >
@@ -1767,22 +1767,22 @@ function PaymentsContent() {
 
               <div
                 style={{
-                  background: "#fff",
-                  border: "1px solid #EAE8E2",
-                  borderRadius: 14,
+                  background: "var(--surface)",
+                  border: "1px solid var(--border)",
+                  borderRadius: "var(--radius-lg)",
                   padding: 18,
                 }}
               >
-                <div style={{ fontSize: 12, color: "#686B75" }}>
+                <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
                   {t("payments.debtors.totalPaid")}
                 </div>
                 <div
                   style={{
                     fontSize: 22,
                     fontWeight: 800,
-                    fontFamily: "'Manrope', sans-serif",
+                    fontFamily: "var(--font-display)",
                     marginTop: 4,
-                    color: "#10B981",
+                    color: "var(--success)",
                   }}
                 >
                   {formatMoney(debtorsData?.totalPaid || 0)} {t("common.sumUnit")}
@@ -1791,16 +1791,16 @@ function PaymentsContent() {
 
               <div
                 style={{
-                  background: (debtorsData?.totalDebt || 0) > 0 ? "#FEF2F2" : "#fff",
-                  border: `1px solid ${(debtorsData?.totalDebt || 0) > 0 ? "#FCA5A5" : "#EAE8E2"}`,
-                  borderRadius: 14,
+                  background: (debtorsData?.totalDebt || 0) > 0 ? "var(--danger-soft)" : "var(--surface)",
+                  border: `1px solid ${(debtorsData?.totalDebt || 0) > 0 ? "var(--danger-border)" : "var(--border)"}`,
+                  borderRadius: "var(--radius-lg)",
                   padding: 18,
                 }}
               >
                 <div
                   style={{
                     fontSize: 12,
-                    color: (debtorsData?.totalDebt || 0) > 0 ? "#B91C1C" : "#686B75",
+                    color: (debtorsData?.totalDebt || 0) > 0 ? "var(--danger)" : "var(--text-muted)",
                   }}
                 >
                   {t("payments.debtors.totalDebt")}
@@ -1809,9 +1809,9 @@ function PaymentsContent() {
                   style={{
                     fontSize: 22,
                     fontWeight: 800,
-                    fontFamily: "'Manrope', sans-serif",
+                    fontFamily: "var(--font-display)",
                     marginTop: 4,
-                    color: (debtorsData?.totalDebt || 0) > 0 ? "#DC2626" : "#181A1F",
+                    color: (debtorsData?.totalDebt || 0) > 0 ? "var(--danger)" : "var(--text)",
                   }}
                 >
                   {formatMoney(debtorsData?.totalDebt || 0)} {t("common.sumUnit")}
@@ -1820,22 +1820,22 @@ function PaymentsContent() {
 
               <div
                 style={{
-                  background: "#fff",
-                  border: "1px solid #EAE8E2",
-                  borderRadius: 14,
+                  background: "var(--surface)",
+                  border: "1px solid var(--border)",
+                  borderRadius: "var(--radius-lg)",
                   padding: 18,
                 }}
               >
-                <div style={{ fontSize: 12, color: "#686B75" }}>
+                <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
                   {t("payments.debtors.debtorCount")}
                 </div>
                 <div
                   style={{
                     fontSize: 22,
                     fontWeight: 800,
-                    fontFamily: "'Manrope', sans-serif",
+                    fontFamily: "var(--font-display)",
                     marginTop: 4,
-                    color: (debtorsData?.debtorCount || 0) > 0 ? "#DC2626" : "#10B981",
+                    color: (debtorsData?.debtorCount || 0) > 0 ? "var(--danger)" : "var(--success)",
                   }}
                 >
                   {debtorsData?.debtorCount || 0} {t("payments.countUnit")}
@@ -1845,16 +1845,16 @@ function PaymentsContent() {
 
             {/* Estimates at a price nobody recorded for that month: kept apart from the debt. */}
             {debtorsData && (debtorsData.unverifiedCount || 0) > 0 && (
-              <div style={{ background: "#FFFBEB", border: "1px solid #FDE68A", borderRadius: 12, padding: "14px 16px", display: "grid", gap: 10 }}>
-                <div style={{ fontWeight: 800, fontSize: 14, color: "#92400E" }}>{t("pay.unverified.title")}</div>
-                <div style={{ fontSize: 13, color: "#78350F", lineHeight: 1.5 }}>
+              <div style={{ background: "var(--warning-soft)", border: "1px solid var(--warning-border)", borderRadius: "var(--radius-md)", padding: "14px 16px", display: "grid", gap: 10 }}>
+                <div style={{ fontWeight: 800, fontSize: 14, color: "var(--warning)" }}>{t("pay.unverified.title")}</div>
+                <div style={{ fontSize: 13, color: "var(--warning)", lineHeight: 1.5 }}>
                   {t("pay.unverified.body").replace("{count}", String(debtorsData.unverifiedCount)).replace("{amount}", formatMoney(debtorsData.totalUnverifiedDebt || 0))}
                 </div>
                 {canConfirmPrice ? (
                   (debtorsData.unverifiedGroups || []).map((g) => (
                     <div key={g.id} style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
                       <div style={{ fontSize: 13, fontWeight: 700, minWidth: 160 }}>
-                        {g.name} <span style={{ fontWeight: 500, color: "#92400E" }}>({t("pay.unverified.now").replace("{price}", formatMoney(g.assumedPrice))})</span>
+                        {g.name} <span style={{ fontWeight: 500, color: "var(--warning)" }}>({t("pay.unverified.now").replace("{price}", formatMoney(g.assumedPrice))})</span>
                       </div>
                       <input
                         className="field-input"
@@ -1870,14 +1870,14 @@ function PaymentsContent() {
                         type="button"
                         disabled={confirmingGroup === g.id || !(confirmPrices[g.id] ?? "").trim()}
                         onClick={() => onConfirmPrice(g.id)}
-                        style={{ background: ACCENT, color: "#fff", border: "none", borderRadius: 8, padding: "8px 14px", fontSize: 13, fontWeight: 700, cursor: "pointer", opacity: confirmingGroup === g.id || !(confirmPrices[g.id] ?? "").trim() ? 0.6 : 1 }}
+                        style={{ background: ACCENT, color: "var(--on-ink)", border: "none", borderRadius: "var(--radius-xs)", padding: "8px 14px", fontSize: 13, fontWeight: 700, cursor: "pointer", opacity: confirmingGroup === g.id || !(confirmPrices[g.id] ?? "").trim() ? 0.6 : 1 }}
                       >
                         {t("pay.unverified.confirm")}
                       </button>
                     </div>
                   ))
                 ) : (
-                  <div style={{ fontSize: 12.5, color: "#92400E" }}>{t("pay.unverified.noRight")}</div>
+                  <div style={{ fontSize: 12.5, color: "var(--warning)" }}>{t("pay.unverified.noRight")}</div>
                 )}
               </div>
             )}
@@ -1917,13 +1917,13 @@ function PaymentsContent() {
                 onClick={() => setRemindersOpen(true)}
                 style={{
                   marginLeft: "auto",
-                  background: "#FEE2E2",
-                  color: "#B91C1C",
-                  border: "1px solid #FCA5A5",
+                  background: "var(--danger-soft)",
+                  color: "var(--danger)",
+                  border: "1px solid var(--danger-border)",
                   fontSize: 13,
                   fontWeight: 700,
                   padding: "8px 16px",
-                  borderRadius: 10,
+                  borderRadius: "var(--radius-sm)",
                   display: "flex",
                   alignItems: "center",
                   gap: 8,
@@ -1942,12 +1942,12 @@ function PaymentsContent() {
             ) : filteredDebtors.length === 0 ? (
               <div
                 style={{
-                  color: "#10B981",
+                  color: "var(--success)",
                   fontSize: 14,
                   fontWeight: 600,
-                  background: "#F0FDF4",
-                  border: "1px solid #BBF7D0",
-                  borderRadius: 16,
+                  background: "var(--success-soft)",
+                  border: "1px solid var(--success-border)",
+                  borderRadius: "var(--radius-lg)",
                   padding: 36,
                   textAlign: "center",
                 }}
@@ -1957,9 +1957,9 @@ function PaymentsContent() {
             ) : (
               <div
                 style={{
-                  background: "#fff",
-                  border: "1px solid #EAE8E2",
-                  borderRadius: 16,
+                  background: "var(--surface)",
+                  border: "1px solid var(--border)",
+                  borderRadius: "var(--radius-lg)",
                   overflow: "hidden",
                 }}
               >
@@ -1983,24 +1983,24 @@ function PaymentsContent() {
                             {d.studentName}
                             {/* The debt is that month's even if the student has since stopped. */}
                             {d.studentStatus && d.studentStatus !== "ACTIVE" && (
-                              <span style={{ marginLeft: 6, fontSize: 11, fontWeight: 600, color: "#686B75" }}>({t(`stStatus.${d.studentStatus}`)})</span>
+                              <span style={{ marginLeft: 6, fontSize: 11, fontWeight: 600, color: "var(--text-muted)" }}>({t(`stStatus.${d.studentStatus}`)})</span>
                             )}
                           </div>
                           {d.phone && (
-                            <div style={{ fontSize: 11.5, color: "#686B75" }}>{d.phone}</div>
+                            <div style={{ fontSize: 11.5, color: "var(--text-muted)" }}>{d.phone}</div>
                           )}
                         </td>
                         <td>
                           {d.groups.length === 0 ? (
-                            <span style={{ color: "#686B75", fontSize: 12 }}>—</span>
+                            <span style={{ color: "var(--text-muted)", fontSize: 12 }}>—</span>
                           ) : (
                             <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
                               {d.groups.map((g) => (
                                 <span
                                   key={g.id}
                                   style={{
-                                    background: "#F1F5F9",
-                                    color: "#334155",
+                                    background: "var(--surface-muted)",
+                                    color: "var(--text-soft)",
                                     fontSize: 11,
                                     fontWeight: 600,
                                     padding: "2px 6px",
@@ -2016,19 +2016,19 @@ function PaymentsContent() {
                         <td style={{ fontWeight: 600 }}>
                           {formatMoney(d.expectedAmount)} {t("common.sumUnit")}
                         </td>
-                        <td style={{ fontWeight: 600, color: d.paidAmount > 0 ? "#10B981" : "#686B75" }}>
+                        <td style={{ fontWeight: 600, color: d.paidAmount > 0 ? "var(--success)" : "var(--text-muted)" }}>
                           {formatMoney(d.paidAmount)} {t("common.sumUnit")}
                         </td>
                         <td style={{ fontWeight: 800 }}>
                           {d.debtAmount > 0 ? (
-                            <span style={{ color: "#DC2626" }}>
+                            <span style={{ color: "var(--danger)" }}>
                               {formatMoney(d.debtAmount)} {t("common.sumUnit")}
                             </span>
                           ) : (
-                            <span style={{ color: d.status === "UNVERIFIED" ? "#686B75" : "#10B981" }}>0 {t("common.sumUnit")}</span>
+                            <span style={{ color: d.status === "UNVERIFIED" ? "var(--text-muted)" : "var(--success)" }}>0 {t("common.sumUnit")}</span>
                           )}
                           {(d.unverifiedDebt || 0) > 0 && (
-                            <div style={{ fontSize: 11.5, fontWeight: 600, color: "#B45309" }}>
+                            <div style={{ fontSize: 11.5, fontWeight: 600, color: "var(--warning)" }}>
                               ≈ {formatMoney(d.unverifiedDebt || 0)} {t("common.sumUnit")} ({t("pay.unverified.estimate")})
                             </div>
                           )}
@@ -2042,12 +2042,12 @@ function PaymentsContent() {
                           {d.status === "PARTIAL" && (
                             <span
                               style={{
-                                background: "#FEF3C7",
-                                color: "#B45309",
+                                background: "var(--warning-soft)",
+                                color: "var(--warning)",
                                 fontSize: 11,
                                 fontWeight: 700,
                                 padding: "3px 8px",
-                                borderRadius: 6,
+                                borderRadius: "var(--radius-xs)",
                               }}
                             >
                               {t("payments.debtors.statusPartial")}
@@ -2059,7 +2059,7 @@ function PaymentsContent() {
                             </span>
                           )}
                           {d.status === "UNVERIFIED" && (
-                            <span style={{ background: "#FEF3C7", color: "#92400E", fontSize: 11, fontWeight: 700, padding: "3px 8px", borderRadius: 6 }}>
+                            <span style={{ background: "var(--warning-soft)", color: "var(--warning)", fontSize: 11, fontWeight: 700, padding: "3px 8px", borderRadius: "var(--radius-xs)" }}>
                               {t("pay.unverified.status")}
                             </span>
                           )}
@@ -2071,11 +2071,11 @@ function PaymentsContent() {
                                 type="button"
                                 onClick={() => openLinkModal(d)}
                                 style={{
-                                  background: "#EEF0FF",
+                                  background: "var(--primary-soft)",
                                   color: ACCENT,
-                                  border: "1px solid #C7D2FE",
+                                  border: "1px solid var(--primary-border)",
                                   padding: "6px 10px",
-                                  borderRadius: 7,
+                                  borderRadius: "var(--radius-xs)",
                                   fontSize: 12,
                                   fontWeight: 700,
                                   cursor: "pointer",
@@ -2088,11 +2088,11 @@ function PaymentsContent() {
                                 type="button"
                                 onClick={() => handleOpenPayForDebtor(d)}
                                 style={{
-                                  background: "#10B981",
-                                  color: "#fff",
+                                  background: "var(--success)",
+                                  color: "var(--on-ink)",
                                   border: "none",
                                   padding: "6px 12px",
-                                  borderRadius: 7,
+                                  borderRadius: "var(--radius-xs)",
                                   fontSize: 12,
                                   fontWeight: 700,
                                   cursor: "pointer",
@@ -2117,33 +2117,33 @@ function PaymentsContent() {
         {/* ========================================================================= */}
         {activeTab === "invoices" && (
           <>
-            <details style={{ background: "#F7F6FF", border: "1px solid #DDD6FE", borderRadius: 12, padding: "10px 14px", fontSize: 13, color: "#4A4E58" }}>
-              <summary style={{ cursor: "pointer", fontWeight: 700, color: "#5B21B6" }}>ℹ️ {t("pay.invHelpTitle")}</summary>
+            <details style={{ background: "var(--primary-soft)", border: "1px solid var(--primary-border)", borderRadius: "var(--radius-md)", padding: "10px 14px", fontSize: 13, color: "var(--text-soft)" }}>
+              <summary style={{ cursor: "pointer", fontWeight: 700, color: "var(--violet)" }}>ℹ️ {t("pay.invHelpTitle")}</summary>
               <div style={{ marginTop: 8, lineHeight: 1.6 }}>{t("pay.invHelp")}</div>
             </details>
             {/* Top Invoices Cards */}
             <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0,1fr))", gap: 16 }}>
-              <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 14, padding: 18 }}>
-                <div style={{ fontSize: 12, color: "#686B75" }}>{t("pay.invTotal")}</div>
-                <div style={{ fontSize: 22, fontWeight: 800, fontFamily: "'Manrope', sans-serif", marginTop: 4 }}>
+              <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 18 }}>
+                <div style={{ fontSize: 12, color: "var(--text-muted)" }}>{t("pay.invTotal")}</div>
+                <div style={{ fontSize: 22, fontWeight: 800, fontFamily: "var(--font-display)", marginTop: 4 }}>
                   {formatMoney(invoices.reduce((s, inv) => s + inv.amount, 0))} {t("common.sumUnit")}
                 </div>
               </div>
-              <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 14, padding: 18 }}>
-                <div style={{ fontSize: 12, color: "#686B75" }}>{t("pay.invPaid")}</div>
-                <div style={{ fontSize: 22, fontWeight: 800, fontFamily: "'Manrope', sans-serif", marginTop: 4, color: "#10B981" }}>
+              <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 18 }}>
+                <div style={{ fontSize: 12, color: "var(--text-muted)" }}>{t("pay.invPaid")}</div>
+                <div style={{ fontSize: 22, fontWeight: 800, fontFamily: "var(--font-display)", marginTop: 4, color: "var(--success)" }}>
                   {formatMoney(invoices.reduce((s, inv) => s + inv.amountPaid, 0))} {t("common.sumUnit")}
                 </div>
               </div>
-              <div style={{ background: invoices.some((i) => i.remainingAmount > 0) ? "#FEF2F2" : "#fff", border: `1px solid ${invoices.some((i) => i.remainingAmount > 0) ? "#FCA5A5" : "#EAE8E2"}`, borderRadius: 14, padding: 18 }}>
-                <div style={{ fontSize: 12, color: invoices.some((i) => i.remainingAmount > 0) ? "#B91C1C" : "#686B75" }}>{t("pay.invRemaining")}</div>
-                <div style={{ fontSize: 22, fontWeight: 800, fontFamily: "'Manrope', sans-serif", marginTop: 4, color: "#DC2626" }}>
+              <div style={{ background: invoices.some((i) => i.remainingAmount > 0) ? "var(--danger-soft)" : "var(--surface)", border: `1px solid ${invoices.some((i) => i.remainingAmount > 0) ? "var(--danger-border)" : "var(--border)"}`, borderRadius: "var(--radius-lg)", padding: 18 }}>
+                <div style={{ fontSize: 12, color: invoices.some((i) => i.remainingAmount > 0) ? "var(--danger)" : "var(--text-muted)" }}>{t("pay.invRemaining")}</div>
+                <div style={{ fontSize: 22, fontWeight: 800, fontFamily: "var(--font-display)", marginTop: 4, color: "var(--danger)" }}>
                   {formatMoney(invoices.reduce((s, inv) => s + (inv.status !== "CANCELLED" ? inv.remainingAmount : 0), 0))} {t("common.sumUnit")}
                 </div>
               </div>
-              <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 14, padding: 18 }}>
-                <div style={{ fontSize: 12, color: "#686B75" }}>{t("pay.invOverdue")}</div>
-                <div style={{ fontSize: 22, fontWeight: 800, fontFamily: "'Manrope', sans-serif", marginTop: 4, color: "#F59E0B" }}>
+              <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 18 }}>
+                <div style={{ fontSize: 12, color: "var(--text-muted)" }}>{t("pay.invOverdue")}</div>
+                <div style={{ fontSize: 22, fontWeight: 800, fontFamily: "var(--font-display)", marginTop: 4, color: "var(--warning)" }}>
                   {invoices.filter((i) => i.status === "OVERDUE").length} ta
                 </div>
               </div>
@@ -2176,11 +2176,11 @@ function PaymentsContent() {
 
             {/* Invoices Table */}
             {filteredInvoices.length === 0 ? (
-              <div style={{ color: "#686B75", fontSize: 14, background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 32, textAlign: "center" }}>
+              <div style={{ color: "var(--text-muted)", fontSize: 14, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 32, textAlign: "center" }}>
                 {t("pay.noInvoices")}
               </div>
             ) : (
-              <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, overflowX: "auto" }}>
+              <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", overflowX: "auto" }}>
                 <table>
                   <thead>
                     <tr>
@@ -2202,10 +2202,10 @@ function PaymentsContent() {
                         <td>{inv.enrollment?.group?.name || inv.description || "—"}</td>
                         <td>{inv.forMonth}</td>
                         <td style={{ fontWeight: 700 }}>{formatMoney(inv.amount)} {t("common.sumUnit")}</td>
-                        <td style={{ fontWeight: 600, color: inv.amountPaid > 0 ? "#10B981" : "#686B75" }}>
+                        <td style={{ fontWeight: 600, color: inv.amountPaid > 0 ? "var(--success)" : "var(--text-muted)" }}>
                           {formatMoney(inv.amountPaid)} {t("common.sumUnit")}
                         </td>
-                        <td style={{ fontWeight: 800, color: inv.remainingAmount > 0 ? "#DC2626" : "#686B75" }}>
+                        <td style={{ fontWeight: 800, color: inv.remainingAmount > 0 ? "var(--danger)" : "var(--text-muted)" }}>
                           {formatMoney(inv.remainingAmount)} {t("common.sumUnit")}
                         </td>
                         <td>{formatDate(inv.dueDate, lang, "dayMonth")}</td>
@@ -2224,7 +2224,7 @@ function PaymentsContent() {
                                 setForMonth(inv.forMonth);
                                 setModalOpen(true);
                               }}
-                              style={{ background: "#10B981", color: "#fff", border: "none", padding: "6px 12px", borderRadius: 7, fontSize: 12, fontWeight: 700, cursor: "pointer" }}
+                              style={{ background: "var(--success)", color: "var(--on-ink)", border: "none", padding: "6px 12px", borderRadius: "var(--radius-xs)", fontSize: 12, fontWeight: 700, cursor: "pointer" }}
                             >
                               {t("pay.pay")}
                             </button>
@@ -2253,22 +2253,22 @@ function PaymentsContent() {
             <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0,1fr))", gap: 16 }}>
               <div
                 style={{
-                  background: "#fff",
-                  border: "1px solid #EAE8E2",
-                  borderRadius: 14,
+                  background: "var(--surface)",
+                  border: "1px solid var(--border)",
+                  borderRadius: "var(--radius-lg)",
                   padding: 18,
                 }}
               >
-                <div style={{ fontSize: 12, color: "#686B75" }}>
+                <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
                   {t("payments.expenses.totalRevenue")}
                 </div>
                 <div
                   style={{
                     fontSize: 22,
                     fontWeight: 800,
-                    fontFamily: "'Manrope', sans-serif",
+                    fontFamily: "var(--font-display)",
                     marginTop: 4,
-                    color: "#10B981",
+                    color: "var(--success)",
                   }}
                 >
                   +{formatMoney(financeSummary?.totalRevenue || 0)} {t("common.sumUnit")}
@@ -2277,27 +2277,27 @@ function PaymentsContent() {
 
               <div
                 style={{
-                  background: "#fff",
-                  border: "1px solid #EAE8E2",
-                  borderRadius: 14,
+                  background: "var(--surface)",
+                  border: "1px solid var(--border)",
+                  borderRadius: "var(--radius-lg)",
                   padding: 18,
                 }}
               >
-                <div style={{ fontSize: 12, color: "#686B75" }}>
+                <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
                   {t("payments.expenses.totalExpenses")}
                 </div>
                 <div
                   style={{
                     fontSize: 22,
                     fontWeight: 800,
-                    fontFamily: "'Manrope', sans-serif",
+                    fontFamily: "var(--font-display)",
                     marginTop: 4,
-                    color: "#EF4444",
+                    color: "var(--danger)",
                   }}
                 >
                   -{formatMoney(financeSummary?.totalExpenses || 0)} {t("common.sumUnit")}
                 </div>
-                <div style={{ fontSize: 11, color: "#686B75", marginTop: 4 }}>
+                <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 4 }}>
                   {t("pay.fsCenter")}: {formatMoney(financeSummary?.totalCenterExpenses || 0)} | {t("pay.fsSalaries")}:{" "}
                   {formatMoney(financeSummary?.totalSalaries || 0)}
                 </div>
@@ -2306,16 +2306,16 @@ function PaymentsContent() {
               <div
                 style={{
                   background:
-                    (financeSummary?.netProfit || 0) >= 0 ? "#F0FDF4" : "#FEF2F2",
-                  border: `1px solid ${(financeSummary?.netProfit || 0) >= 0 ? "#BBF7D0" : "#FCA5A5"}`,
-                  borderRadius: 14,
+                    (financeSummary?.netProfit || 0) >= 0 ? "var(--success-soft)" : "var(--danger-soft)",
+                  border: `1px solid ${(financeSummary?.netProfit || 0) >= 0 ? "var(--success-border)" : "var(--danger-border)"}`,
+                  borderRadius: "var(--radius-lg)",
                   padding: 18,
                 }}
               >
                 <div
                   style={{
                     fontSize: 12,
-                    color: (financeSummary?.netProfit || 0) >= 0 ? "#166534" : "#991B1B",
+                    color: (financeSummary?.netProfit || 0) >= 0 ? "var(--success)" : "var(--danger)",
                     fontWeight: 700,
                   }}
                 >
@@ -2325,9 +2325,9 @@ function PaymentsContent() {
                   style={{
                     fontSize: 22,
                     fontWeight: 900,
-                    fontFamily: "'Manrope', sans-serif",
+                    fontFamily: "var(--font-display)",
                     marginTop: 4,
-                    color: (financeSummary?.netProfit || 0) >= 0 ? "#15803D" : "#DC2626",
+                    color: (financeSummary?.netProfit || 0) >= 0 ? "var(--success)" : "var(--danger)",
                   }}
                 >
                   {(financeSummary?.netProfit || 0) >= 0 ? "+" : ""}
@@ -2337,27 +2337,27 @@ function PaymentsContent() {
 
               <div
                 style={{
-                  background: "#fff",
-                  border: "1px solid #EAE8E2",
-                  borderRadius: 14,
+                  background: "var(--surface)",
+                  border: "1px solid var(--border)",
+                  borderRadius: "var(--radius-lg)",
                   padding: 18,
                 }}
               >
-                <div style={{ fontSize: 12, color: "#686B75" }}>
+                <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
                   {t("payments.debtors.collectionRate")}
                 </div>
                 <div
                   style={{
                     fontSize: 22,
                     fontWeight: 800,
-                    fontFamily: "'Manrope', sans-serif",
+                    fontFamily: "var(--font-display)",
                     marginTop: 4,
                     color: ACCENT,
                   }}
                 >
                   {financeSummary?.collectionRate ?? 100}%
                 </div>
-                <div style={{ fontSize: 11, color: "#686B75", marginTop: 4 }}>
+                <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 4 }}>
                   {t("pay.fsDebt")}: {formatMoney(financeSummary?.totalOutstandingDebt || 0)}
                 </div>
               </div>
@@ -2367,9 +2367,9 @@ function PaymentsContent() {
             {financeSummary && Object.keys(financeSummary.expensesByCategory).length > 0 && (
               <div
                 style={{
-                  background: "#fff",
-                  border: "1px solid #EAE8E2",
-                  borderRadius: 14,
+                  background: "var(--surface)",
+                  border: "1px solid var(--border)",
+                  borderRadius: "var(--radius-lg)",
                   padding: "14px 18px",
                   display: "flex",
                   flexWrap: "wrap",
@@ -2377,7 +2377,7 @@ function PaymentsContent() {
                   gap: 10,
                 }}
               >
-                <span style={{ fontSize: 12, fontWeight: 700, color: "#475569" }}>
+                <span style={{ fontSize: 12, fontWeight: 700, color: "var(--text-muted)" }}>
                   {t("pay.expenseSplit")}
                 </span>
                 {EXPENSE_CATEGORIES.map((cat) => {
@@ -2387,13 +2387,13 @@ function PaymentsContent() {
                     <span
                       key={cat.value}
                       style={{
-                        background: `${cat.color}15`,
+                        background: `color-mix(in srgb, ${cat.color} 8%, transparent)`,
                         color: cat.color,
-                        border: `1px solid ${cat.color}30`,
+                        border: `1px solid color-mix(in srgb, ${cat.color} 19%, transparent)`,
                         fontSize: 12,
                         fontWeight: 700,
                         padding: "3px 10px",
-                        borderRadius: 8,
+                        borderRadius: "var(--radius-xs)",
                       }}
                     >
                       {t(cat.labelKey)}: {formatMoney(amt)} {t("common.sumUnit")}
@@ -2425,11 +2425,11 @@ function PaymentsContent() {
             ) : filteredExpenses.length === 0 ? (
               <div
                 style={{
-                  color: "#686B75",
+                  color: "var(--text-muted)",
                   fontSize: 14,
-                  background: "#fff",
-                  border: "1px solid #EAE8E2",
-                  borderRadius: 16,
+                  background: "var(--surface)",
+                  border: "1px solid var(--border)",
+                  borderRadius: "var(--radius-lg)",
                   padding: 36,
                   textAlign: "center",
                 }}
@@ -2439,9 +2439,9 @@ function PaymentsContent() {
             ) : (
               <div
                 style={{
-                  background: "#fff",
-                  border: "1px solid #EAE8E2",
-                  borderRadius: 16,
+                  background: "var(--surface)",
+                  border: "1px solid var(--border)",
+                  borderRadius: "var(--radius-lg)",
                   overflow: "hidden",
                 }}
               >
@@ -2466,28 +2466,28 @@ function PaymentsContent() {
                           <td>
                             <div style={{ fontWeight: 700 }}>{exp.title}</div>
                             {exp.notes && (
-                              <div style={{ fontSize: 11.5, color: "#686B75" }}>{exp.notes}</div>
+                              <div style={{ fontSize: 11.5, color: "var(--text-muted)" }}>{exp.notes}</div>
                             )}
                           </td>
                           <td>
                             <span
                               style={{
-                                background: `${catInfo?.color || "#64748B"}15`,
-                                color: catInfo?.color || "#64748B",
+                                background: `color-mix(in srgb, ${catInfo?.color || "var(--text-muted)"} 8%, transparent)`,
+                                color: catInfo?.color || "var(--text-muted)",
                                 fontSize: 11,
                                 fontWeight: 700,
                                 padding: "3px 8px",
-                                borderRadius: 6,
+                                borderRadius: "var(--radius-xs)",
                               }}
                             >
                               {catInfo ? t(catInfo.labelKey) : exp.category}
                             </span>
                           </td>
                           <td>{exp.branch?.name || "—"}</td>
-                          <td style={{ fontWeight: 800, color: "#DC2626" }}>
+                          <td style={{ fontWeight: 800, color: "var(--danger)" }}>
                             -{formatMoney(exp.amount)} {t("common.sumUnit")}
                           </td>
-                          <td style={{ fontSize: 12, color: "#64748B" }}>
+                          <td style={{ fontSize: 12, color: "var(--text-muted)" }}>
                             {exp.recordedBy?.fullName || "—"}
                           </td>
                           <td style={{ textAlign: "right" }}>
@@ -2495,11 +2495,11 @@ function PaymentsContent() {
                               type="button"
                               onClick={() => handleDeleteExpense(exp.id)}
                               style={{
-                                background: "#FEE2E2",
-                                color: "#DC2626",
+                                background: "var(--danger-soft)",
+                                color: "var(--danger)",
                                 border: "none",
                                 padding: "5px 10px",
-                                borderRadius: 6,
+                                borderRadius: "var(--radius-xs)",
                                 fontSize: 11.5,
                                 fontWeight: 600,
                                 cursor: "pointer",
@@ -2534,12 +2534,12 @@ function PaymentsContent() {
           {error && (
             <div role="alert"
               style={{
-                background: "#FDEBEC",
-                color: "#B23A47",
+                background: "var(--danger-soft)",
+                color: "var(--danger)",
                 fontSize: 13,
                 fontWeight: 600,
                 padding: "10px 14px",
-                borderRadius: 10,
+                borderRadius: "var(--radius-sm)",
               }}
             >
               {error}
@@ -2576,11 +2576,11 @@ function PaymentsContent() {
             />
           </Field>
           {Number(discount) > 0 && Number(amount) > 0 && (
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: Number(discount) > Number(amount) ? "#FDEBEC" : "#ECFDF5", borderRadius: 10, padding: "10px 14px", fontSize: 13.5 }}>
-              <span style={{ color: "#4A4E58" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: Number(discount) > Number(amount) ? "var(--danger-soft)" : "var(--success-soft)", borderRadius: "var(--radius-sm)", padding: "10px 14px", fontSize: 13.5 }}>
+              <span style={{ color: "var(--text-soft)" }}>
                 {formatMoney(Number(amount))} − {formatMoney(Number(discount))} =
               </span>
-              <span style={{ fontWeight: 800, color: Number(discount) > Number(amount) ? "#B23A47" : "#047857" }}>
+              <span style={{ fontWeight: 800, color: Number(discount) > Number(amount) ? "var(--danger)" : "var(--success)" }}>
                 {t("pay.toPay")}: {formatMoney(Math.max(0, Number(amount) - Number(discount)))} {t("common.sumUnit")}
               </span>
             </div>
@@ -2611,11 +2611,11 @@ function PaymentsContent() {
             disabled={saving}
             style={{
               background: ACCENT,
-              color: "#fff",
+              color: "var(--on-ink)",
               fontSize: 14,
               fontWeight: 700,
               padding: 12,
-              borderRadius: 10,
+              borderRadius: "var(--radius-sm)",
               marginTop: 6,
             }}
           >
@@ -2639,12 +2639,12 @@ function PaymentsContent() {
           {error && (
             <div role="alert"
               style={{
-                background: "#FDEBEC",
-                color: "#B23A47",
+                background: "var(--danger-soft)",
+                color: "var(--danger)",
                 fontSize: 13,
                 fontWeight: 600,
                 padding: "10px 14px",
-                borderRadius: 10,
+                borderRadius: "var(--radius-sm)",
               }}
             >
               {error}
@@ -2731,11 +2731,11 @@ function PaymentsContent() {
             disabled={saving}
             style={{
               background: ACCENT,
-              color: "#fff",
+              color: "var(--on-ink)",
               fontSize: 14,
               fontWeight: 700,
               padding: 12,
-              borderRadius: 10,
+              borderRadius: "var(--radius-sm)",
               marginTop: 6,
             }}
           >
@@ -2765,13 +2765,13 @@ function PaymentsContent() {
         title={t("pay.onlineLinkTitle")}
       >
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-          <div style={{ background: "#F8F8F6", borderRadius: 10, padding: 12, border: "1px solid #EAE8E2" }}>
-            <div style={{ fontSize: 14, fontWeight: 700, color: "#181A1F" }}>{linkDebtor?.studentName}</div>
-            <div style={{ fontSize: 13, color: "#DC2626", fontWeight: 700, marginTop: 2 }}>
+          <div style={{ background: "var(--surface-muted)", borderRadius: "var(--radius-sm)", padding: 12, border: "1px solid var(--border)" }}>
+            <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text)" }}>{linkDebtor?.studentName}</div>
+            <div style={{ fontSize: 13, color: "var(--danger)", fontWeight: 700, marginTop: 2 }}>
               Qarzdorlik: {formatMoney(linkDebtor?.debtAmount || 0)} so'm ({debtorsData?.forMonth})
             </div>
             {linkDebtor?.phone && (
-              <div style={{ fontSize: 12, color: "#686B75", marginTop: 2 }}>Telefon: {linkDebtor.phone}</div>
+              <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>Telefon: {linkDebtor.phone}</div>
             )}
           </div>
 
@@ -2784,11 +2784,11 @@ function PaymentsContent() {
               style={{
                 flex: 1,
                 background: "#0073FF",
-                color: "#fff",
+                color: "var(--on-ink)",
                 fontWeight: 700,
                 fontSize: 13,
                 padding: "10px 14px",
-                borderRadius: 8,
+                borderRadius: "var(--radius-xs)",
                 border: "none",
               }}
             >
@@ -2802,11 +2802,11 @@ function PaymentsContent() {
               style={{
                 flex: 1,
                 background: "#18AC98",
-                color: "#fff",
+                color: "var(--on-ink)",
                 fontWeight: 700,
                 fontSize: 13,
                 padding: "10px 14px",
-                borderRadius: 8,
+                borderRadius: "var(--radius-xs)",
                 border: "none",
               }}
             >
@@ -2817,23 +2817,23 @@ function PaymentsContent() {
           {generatedLink && (
             <div
               style={{
-                background: "#F0FDF4",
-                border: "1px solid #BBF7D0",
-                borderRadius: 10,
+                background: "var(--success-soft)",
+                border: "1px solid var(--success-border)",
+                borderRadius: "var(--radius-sm)",
                 padding: 14,
                 display: "flex",
                 flexDirection: "column",
                 gap: 10,
               }}
             >
-              <div style={{ fontSize: 12, fontWeight: 700, color: "#15803D" }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: "var(--success)" }}>
                 ✅ {generatedLink.provider} to&apos;lov havolasi tayyor:
               </div>
               <input
                 className="field-input"
                 readOnly
                 value={generatedLink.url}
-                style={{ fontSize: 12, background: "#fff" }}
+                style={{ fontSize: 12, background: "var(--surface)" }}
               />
               <div style={{ display: "flex", gap: 8 }}>
                 <button
@@ -2845,11 +2845,11 @@ function PaymentsContent() {
                   }}
                   style={{
                     flex: 1,
-                    background: copySuccess ? "#15803D" : "#fff",
-                    color: copySuccess ? "#fff" : "#181A1F",
-                    border: "1px solid #CBD5E1",
+                    background: copySuccess ? "var(--success)" : "var(--surface)",
+                    color: copySuccess ? "var(--on-ink)" : "var(--text)",
+                    border: "1px solid var(--border-strong)",
                     padding: "8px 12px",
-                    borderRadius: 7,
+                    borderRadius: "var(--radius-xs)",
                     fontWeight: 700,
                     fontSize: 12,
                     cursor: "pointer",
@@ -2865,10 +2865,10 @@ function PaymentsContent() {
                     style={{
                       flex: 1,
                       background: ACCENT,
-                      color: "#fff",
+                      color: "var(--on-ink)",
                       border: "none",
                       padding: "8px 12px",
-                      borderRadius: 7,
+                      borderRadius: "var(--radius-xs)",
                       fontWeight: 700,
                       fontSize: 12,
                       cursor: "pointer",
@@ -2889,7 +2889,7 @@ function PaymentsContent() {
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div role="group" aria-label={label}>
-      <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>{label}</div>
+      <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-soft)", marginBottom: 6 }}>{label}</div>
       {children}
     </div>
   );

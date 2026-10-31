@@ -21,7 +21,7 @@ import { matchesSubject } from "@/lib/subject";
 import { useCenterDirections } from "@/lib/use-center-directions";
 import PhoneInput from "@/components/PhoneInput";
 
-const ACCENT = "#4F46E5";
+const ACCENT = "var(--primary)";
 
 
 function formatMoney(n: number) {
@@ -203,11 +203,11 @@ function TeachersContent() {
 
   return (
     <>
-      <div style={{ padding: "22px 32px", borderBottom: "1px solid #EAE8E2", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+      <div style={{ padding: "22px 32px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div>
           <h1 style={{ fontSize: 22, fontWeight: 800 }}>{tr("teachers.title")}</h1>
           {can(user, "teachers.delete") && (
-            <Link href="/teachers/trash" style={{ fontSize: 12, color: "#686B75", fontWeight: 600 }}>
+            <Link href="/teachers/trash" style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 600 }}>
               {tr("nav.trash")}
             </Link>
           )}
@@ -217,13 +217,13 @@ function TeachersContent() {
             type="button"
             className="btn"
             onClick={() => setAttendanceOpen(true)}
-            style={{ background: "#fff", color: "#181A1F", border: "1px solid #EAE8E2", fontSize: 13.5, fontWeight: 700, padding: "10px 16px", borderRadius: 9, marginRight: 8 }}
+            style={{ background: "var(--surface)", color: "var(--text)", border: "1px solid var(--border)", fontSize: 13.5, fontWeight: 700, padding: "10px 16px", borderRadius: "var(--radius-sm)", marginRight: 8 }}
           >
             {tr("tatt.button")}
           </button>
         )}
         {canImport && (
-          <button type="button" className="btn" onClick={() => setImportOpen(true)} style={{ background: "#fff", color: "#181A1F", border: "1px solid #EAE8E2", fontSize: 13.5, fontWeight: 700, padding: "10px 16px", borderRadius: 9, marginRight: 8 }}>
+          <button type="button" className="btn" onClick={() => setImportOpen(true)} style={{ background: "var(--surface)", color: "var(--text)", border: "1px solid var(--border)", fontSize: 13.5, fontWeight: 700, padding: "10px 16px", borderRadius: "var(--radius-sm)", marginRight: 8 }}>
             {tr("imp.button")}
           </button>
         )}
@@ -231,7 +231,7 @@ function TeachersContent() {
           <button
             className="btn"
             onClick={() => setModalOpen(true)}
-            style={{ background: ACCENT, color: "#fff", border: "none", fontSize: 13.5, fontWeight: 700, padding: "10px 18px", borderRadius: 9 }}
+            style={{ background: ACCENT, color: "var(--on-ink)", border: "none", fontSize: 13.5, fontWeight: 700, padding: "10px 18px", borderRadius: "var(--radius-sm)" }}
           >
             {tr("teachers.newTeacher")}
           </button>
@@ -243,22 +243,22 @@ function TeachersContent() {
         {!loading && teachers.length > 0 && (
           <>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0,1fr))", gap: 16, marginBottom: 16 }}>
-              <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 14, padding: 18 }}>
-                <div style={{ fontSize: 12, color: "#686B75" }}>{tr("teachers.statTotal")}</div>
-                <div style={{ fontSize: 24, fontWeight: 800, fontFamily: "'Manrope', sans-serif", marginTop: 4 }}>{teachers.length}</div>
+              <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 18 }}>
+                <div style={{ fontSize: 12, color: "var(--text-muted)" }}>{tr("teachers.statTotal")}</div>
+                <div style={{ fontSize: 24, fontWeight: 800, fontFamily: "var(--font-display)", marginTop: 4 }}>{teachers.length}</div>
               </div>
-              <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 14, padding: 18 }}>
-                <div style={{ fontSize: 12, color: "#686B75" }}>{tr("teachers.statActiveGroups")}</div>
-                <div style={{ fontSize: 24, fontWeight: 800, fontFamily: "'Manrope', sans-serif", marginTop: 4 }}>{activeGroupsCount}</div>
+              <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 18 }}>
+                <div style={{ fontSize: 12, color: "var(--text-muted)" }}>{tr("teachers.statActiveGroups")}</div>
+                <div style={{ fontSize: 24, fontWeight: 800, fontFamily: "var(--font-display)", marginTop: 4 }}>{activeGroupsCount}</div>
               </div>
-              <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 14, padding: 18 }}>
-                <div style={{ fontSize: 12, color: "#686B75" }}>{tr("teachers.statMonthSalary")}</div>
-                <div style={{ fontSize: 24, fontWeight: 800, fontFamily: "'Manrope', sans-serif", marginTop: 4 }}>{totalMonthSalary === null ? "—" : `${formatMoney(totalMonthSalary)} ${tr("common.sumUnit")}`}</div>
+              <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 18 }}>
+                <div style={{ fontSize: 12, color: "var(--text-muted)" }}>{tr("teachers.statMonthSalary")}</div>
+                <div style={{ fontSize: 24, fontWeight: 800, fontFamily: "var(--font-display)", marginTop: 4 }}>{totalMonthSalary === null ? "—" : `${formatMoney(totalMonthSalary)} ${tr("common.sumUnit")}`}</div>
               </div>
             </div>
 
             {user?.role !== "SUPERADMIN" && (
-              <div style={{ background: "#ECEBFB", color: "#4A4E58", fontSize: 12.5, fontWeight: 500, padding: "14px 18px", borderRadius: 12, marginBottom: 16, display: "flex", gap: 10, alignItems: "flex-start", lineHeight: 1.5 }}>
+              <div style={{ background: "var(--primary-soft)", color: "var(--text-soft)", fontSize: 12.5, fontWeight: 500, padding: "14px 18px", borderRadius: "var(--radius-md)", marginBottom: 16, display: "flex", gap: 10, alignItems: "flex-start", lineHeight: 1.5 }}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={ACCENT} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 2 }}>
                   <rect x="3" y="11" width="18" height="10" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" />
                 </svg>
@@ -288,17 +288,17 @@ function TeachersContent() {
         {loadError !== null ? (
           <LoadError message={loadError || tr("adm.loadError")} onRetry={load} />
         ) : loading ? (
-          <div style={{ color: "#686B75", fontSize: 14 }}>{tr("common.loading")}</div>
+          <div style={{ color: "var(--text-muted)", fontSize: 14 }}>{tr("common.loading")}</div>
         ) : teachers.length === 0 ? (
-          <div style={{ color: "#686B75", fontSize: 14, background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 32, textAlign: "center" }}>
+          <div style={{ color: "var(--text-muted)", fontSize: 14, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 32, textAlign: "center" }}>
             {tr("teachers.noTeachersYet")}
           </div>
         ) : filtered.length === 0 ? (
-          <div style={{ color: "#686B75", fontSize: 14, background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 32, textAlign: "center" }}>
+          <div style={{ color: "var(--text-muted)", fontSize: 14, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 32, textAlign: "center" }}>
             {tr("teachers.noSearchResults")}
           </div>
         ) : (
-          <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, overflowX: "auto" }}>
+          <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", overflowX: "auto" }}>
             <table>
               <thead>
                 <tr>
@@ -317,7 +317,7 @@ function TeachersContent() {
                     <td style={{ display: "flex", alignItems: "center", gap: 10, fontWeight: 600 }}>
                       <div
                         style={{
-                          width: 30, height: 30, borderRadius: "50%", background: "#ECEBFB", display: "flex",
+                          width: 30, height: 30, borderRadius: "50%", background: "var(--primary-soft)", display: "flex",
                           alignItems: "center", justifyContent: "center", fontWeight: 700, color: ACCENT, fontSize: 12,
                         }}
                       >
@@ -336,7 +336,7 @@ function TeachersContent() {
                       <Link
                         href={`/teachers/${t.id}`}
                         className="btn"
-                        style={{ display: "inline-block", background: "#fff", color: ACCENT, border: `1px solid ${ACCENT}`, fontSize: 12, fontWeight: 700, padding: "7px 14px", borderRadius: 8 }}
+                        style={{ display: "inline-block", background: "var(--surface)", color: ACCENT, border: `1px solid ${ACCENT}`, fontSize: 12, fontWeight: 700, padding: "7px 14px", borderRadius: "var(--radius-xs)" }}
                       >
                         {tr("common.viewProfile")}
                       </Link>
@@ -353,7 +353,7 @@ function TeachersContent() {
       <Modal open={modalOpen} onClose={() => { setModalOpen(false); resetForm(); }} title={tr("teachers.modalTitle")}>
         <form onSubmit={onSubmit} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           {error && (
-            <div role="alert" style={{ background: "#FDEBEC", color: "#B23A47", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: 10 }}>{error}</div>
+            <div role="alert" style={{ background: "var(--danger-soft)", color: "var(--danger)", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: "var(--radius-sm)" }}>{error}</div>
           )}
           <Field label={tr("teachers.fieldFullName")}>
             <input
@@ -381,11 +381,11 @@ function TeachersContent() {
                       fontSize: 12,
                       fontWeight: 600,
                       padding: "5px 10px",
-                      borderRadius: 8,
+                      borderRadius: "var(--radius-xs)",
                       cursor: "pointer",
-                      border: `1px solid ${active ? ACCENT : "#EAE8E2"}`,
-                      background: active ? "#EEF0FF" : "#fff",
-                      color: active ? ACCENT : "#4A4E58",
+                      border: `1px solid ${active ? ACCENT : "var(--border)"}`,
+                      background: active ? "var(--primary-soft)" : "var(--surface)",
+                      color: active ? ACCENT : "var(--text-soft)",
                       transition: "all 0.15s ease",
                     }}
                   >
@@ -419,7 +419,7 @@ function TeachersContent() {
                     setCustomDirection("");
                   }
                 }}
-                style={{ background: "#F2F1EC", color: "#181A1F", fontSize: 12, fontWeight: 700, padding: "0 14px", borderRadius: 8, whiteSpace: "nowrap" }}
+                style={{ background: "var(--surface-muted)", color: "var(--text)", fontSize: 12, fontWeight: 700, padding: "0 14px", borderRadius: "var(--radius-xs)", whiteSpace: "nowrap" }}
               >
                 {tr("tch.add")}
               </button>
@@ -500,7 +500,7 @@ function TeachersContent() {
             className="btn"
             type="submit"
             disabled={saving}
-            style={{ background: ACCENT, color: "#fff", fontSize: 14, fontWeight: 700, padding: 12, borderRadius: 10, marginTop: 6 }}
+            style={{ background: ACCENT, color: "var(--on-ink)", fontSize: 14, fontWeight: 700, padding: 12, borderRadius: "var(--radius-sm)", marginTop: 6 }}
           >
             {saving ? tr("teachers.adding") : tr("teachers.addTeacher")}
           </button>
@@ -514,7 +514,7 @@ function TeachersContent() {
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div role="group" aria-label={label}>
-      <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>{label}</div>
+      <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-soft)", marginBottom: 6 }}>{label}</div>
       {children}
     </div>
   );

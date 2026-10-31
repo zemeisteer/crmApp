@@ -4,10 +4,10 @@ import { useLanguage } from "@/lib/i18n-context";
 import type { PublicQuestion } from "@/lib/tests";
 import Select from "@/components/Select";
 
-const ACCENT = "#4F46E5";
+const ACCENT = "var(--primary)";
 // Exam look (computer-delivered IELTS): plain radio lists, square boxes.
-const EXAM_INK = "#111827";
-const EXAM_BLUE = "#1D4ED8";
+const EXAM_INK = "var(--text)";
+const EXAM_BLUE = "var(--info)";
 
 // One question as a student answers it. The answer is always a string:
 // option id for choices, text for written types, JSON {leftIndex: right}
@@ -60,7 +60,7 @@ export default function QuestionInput({ q, value, onChange, disabled, exam, exam
             return (
               <label
                 key={o.id}
-                style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "7px 10px", borderRadius: 4, cursor: disabled ? "default" : "pointer", background: picked ? "#EFF6FF" : "transparent", border: `1px solid ${picked ? "#BFDBFE" : "transparent"}`, color: EXAM_INK, lineHeight: 1.45 }}
+                style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "7px 10px", borderRadius: 4, cursor: disabled ? "default" : "pointer", background: picked ? "var(--info-soft)" : "transparent", border: `1px solid ${picked ? "var(--info-border)" : "transparent"}`, color: EXAM_INK, lineHeight: 1.45 }}
               >
                 <input
                   type="radio"
@@ -99,18 +99,18 @@ export default function QuestionInput({ q, value, onChange, disabled, exam, exam
                 fontSize: 14.5,
                 lineHeight: 1.35,
                 padding: "10px 12px",
-                borderRadius: 12,
+                borderRadius: "var(--radius-md)",
                 cursor: disabled ? "default" : "pointer",
-                border: `1.5px solid ${picked ? ACCENT : "#E2E8F0"}`,
-                background: picked ? "#EEF0FF" : "#fff",
-                color: "#0F172A",
+                border: `1.5px solid ${picked ? ACCENT : "var(--border)"}`,
+                background: picked ? "var(--primary-soft)" : "var(--surface)",
+                color: "var(--text)",
                 fontWeight: picked ? 700 : 500,
                 boxShadow: picked ? "0 0 0 3px rgba(79,70,229,0.12)" : "none",
                 transition: "border-color .15s, background .15s",
               }}
             >
               {mcq && (
-                <span style={{ width: 28, height: 28, flexShrink: 0, borderRadius: "50%", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 800, background: picked ? ACCENT : "#F1F5F9", color: picked ? "#fff" : "#64748B" }}>
+                <span style={{ width: 28, height: 28, flexShrink: 0, borderRadius: "50%", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 800, background: picked ? ACCENT : "var(--surface-muted)", color: picked ? "var(--on-ink)" : "var(--text-muted)" }}>
                   {o.id}
                 </span>
               )}
@@ -132,15 +132,15 @@ export default function QuestionInput({ q, value, onChange, disabled, exam, exam
     };
     return (
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-        <div style={{ fontSize: 12.5, color: "#64748B", fontWeight: 600 }}>{t("qi.chooseN").replace("{n}", String(pick))} · {chosen.length}/{pick}</div>
+        <div style={{ fontSize: 12.5, color: "var(--text-muted)", fontWeight: 600 }}>{t("qi.chooseN").replace("{n}", String(pick))} · {chosen.length}/{pick}</div>
         {(q.options ?? []).map((o) => {
           const on = chosen.includes(o.id);
           const full = !on && chosen.length >= pick;
           return (
             <button key={o.id} type="button" disabled={disabled || full} onClick={() => toggle(o.id)} aria-pressed={on}
-              style={{ display: "flex", alignItems: "center", gap: 10, textAlign: "left", minHeight: 46, fontSize: 14.5, padding: "9px 12px", borderRadius: 12, cursor: disabled || full ? "default" : "pointer", border: `1.5px solid ${on ? ACCENT : "#E2E8F0"}`, background: on ? "#EEF0FF" : "#fff", color: "#0F172A", opacity: full ? 0.55 : 1 }}>
-              <span style={{ width: 24, height: 24, flexShrink: 0, borderRadius: 6, border: `2px solid ${on ? ACCENT : "#CBD5E1"}`, background: on ? ACCENT : "#fff", color: "#fff", fontSize: 14, fontWeight: 800, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>{on ? "✓" : ""}</span>
-              <b style={{ color: "#64748B", width: 18 }}>{o.id}</b>
+              style={{ display: "flex", alignItems: "center", gap: 10, textAlign: "left", minHeight: 46, fontSize: 14.5, padding: "9px 12px", borderRadius: "var(--radius-md)", cursor: disabled || full ? "default" : "pointer", border: `1.5px solid ${on ? ACCENT : "var(--border)"}`, background: on ? "var(--primary-soft)" : "var(--surface)", color: "var(--text)", opacity: full ? 0.55 : 1 }}>
+              <span style={{ width: 24, height: 24, flexShrink: 0, borderRadius: "var(--radius-xs)", border: `2px solid ${on ? ACCENT : "var(--border-strong)"}`, background: on ? ACCENT : "var(--surface)", color: "var(--on-ink)", fontSize: 14, fontWeight: 800, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>{on ? "✓" : ""}</span>
+              <b style={{ color: "var(--text-muted)", width: 18 }}>{o.id}</b>
               <span style={{ minWidth: 0, overflowWrap: "anywhere" }}>{o.text}</span>
             </button>
           );
@@ -208,13 +208,13 @@ export default function QuestionInput({ q, value, onChange, disabled, exam, exam
         {(q.left ?? []).map((l, i) => {
           const chosen = map[String(i)] ?? "";
           return (
-            <div key={i} style={{ border: `1.5px solid ${chosen ? ACCENT : "#E2E8F0"}`, borderRadius: 12, padding: 10, background: chosen ? "#FAFAFF" : "#fff" }}>
+            <div key={i} style={{ border: `1.5px solid ${chosen ? ACCENT : "var(--border)"}`, borderRadius: "var(--radius-md)", padding: 10, background: chosen ? "var(--primary-soft)" : "var(--surface)" }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 8 }}>
                 <span style={{ fontSize: 14.5, fontWeight: 700 }}>
                   <span style={{ color: ACCENT, marginRight: 6 }}>{i + 1})</span>
                   {l}
                 </span>
-                <span style={{ fontSize: 12.5, fontWeight: 700, color: chosen ? ACCENT : "#94A3B8", whiteSpace: "nowrap" }}>{chosen ? `→ ${chosen}` : t("qt.pick")}</span>
+                <span style={{ fontSize: 12.5, fontWeight: 700, color: chosen ? ACCENT : "var(--text-faint)", whiteSpace: "nowrap" }}>{chosen ? `→ ${chosen}` : t("qt.pick")}</span>
               </div>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                 {(q.right ?? []).map((r) => {
@@ -231,11 +231,11 @@ export default function QuestionInput({ q, value, onChange, disabled, exam, exam
                         fontSize: 13.5,
                         fontWeight: on ? 700 : 500,
                         padding: "8px 12px",
-                        borderRadius: 100,
+                        borderRadius: "var(--radius-pill)",
                         cursor: disabled ? "default" : "pointer",
-                        border: `1.5px solid ${on ? ACCENT : "#E2E8F0"}`,
-                        background: on ? ACCENT : "#fff",
-                        color: on ? "#fff" : elsewhere ? "#94A3B8" : "#0F172A",
+                        border: `1.5px solid ${on ? ACCENT : "var(--border)"}`,
+                        background: on ? ACCENT : "var(--surface)",
+                        color: on ? "var(--on-ink)" : elsewhere ? "var(--text-faint)" : "var(--text)",
                         textAlign: "left",
                         overflowWrap: "anywhere",
                       }}
@@ -277,9 +277,9 @@ export default function QuestionInput({ q, value, onChange, disabled, exam, exam
             </button>
           ))}
         </div>
-        <div style={{ minHeight: 44, display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center", padding: 8, borderRadius: 10, border: "1.5px dashed #CBD5E1", background: "#FAFAF8" }}>
+        <div style={{ minHeight: 44, display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center", padding: 8, borderRadius: "var(--radius-sm)", border: "1.5px dashed var(--border-strong)", background: "var(--surface-muted)" }}>
           {used.length === 0 ? (
-            <span style={{ fontSize: 13, color: "#94A3B8" }}>{t("qt.tapWords")}</span>
+            <span style={{ fontSize: 13, color: "var(--text-faint)" }}>{t("qt.tapWords")}</span>
           ) : (
             used.map((w, i) => (
               <button key={`${w}-${i}`} type="button" disabled={disabled} onClick={() => onChange(used.filter((_, j) => j !== i).join(" "))} style={chip(true)} title={t("common.clear")}>
@@ -302,9 +302,9 @@ export default function QuestionInput({ q, value, onChange, disabled, exam, exam
           onChange={(e) => onChange(e.target.value)}
           rows={7}
           placeholder={t("qt.essayPh")}
-          style={{ width: "100%", boxSizing: "border-box", padding: "11px 12px", borderRadius: 10, border: "1.5px solid #E2E8F0", fontSize: 14, resize: "vertical", fontFamily: "inherit" }}
+          style={{ width: "100%", boxSizing: "border-box", padding: "11px 12px", borderRadius: "var(--radius-sm)", border: "1.5px solid var(--border)", fontSize: 14, resize: "vertical", fontFamily: "inherit" }}
         />
-        <div style={{ fontSize: 12, color: "#94A3B8", textAlign: "right" }}>{words} {t("qt.words")}</div>
+        <div style={{ fontSize: 12, color: "var(--text-faint)", textAlign: "right" }}>{words} {t("qt.words")}</div>
       </div>
     );
   }
@@ -315,7 +315,7 @@ export default function QuestionInput({ q, value, onChange, disabled, exam, exam
       disabled={disabled}
       onChange={(e) => onChange(e.target.value)}
       placeholder={t("ex.typeAnswer")}
-      style={{ width: "100%", boxSizing: "border-box", padding: "11px 12px", borderRadius: 10, border: "1.5px solid #E2E8F0", fontSize: 14 }}
+      style={{ width: "100%", boxSizing: "border-box", padding: "11px 12px", borderRadius: "var(--radius-sm)", border: "1.5px solid var(--border)", fontSize: 14 }}
     />
   );
 }
@@ -324,9 +324,9 @@ const chip = (placed: boolean): React.CSSProperties => ({
   fontSize: 14,
   fontWeight: 600,
   padding: "7px 12px",
-  borderRadius: 8,
+  borderRadius: "var(--radius-xs)",
   cursor: "pointer",
-  border: `1.5px solid ${placed ? ACCENT : "#E2E8F0"}`,
-  background: placed ? "#EEF0FF" : "#fff",
-  color: placed ? ACCENT : "#0F172A",
+  border: `1.5px solid ${placed ? ACCENT : "var(--border)"}`,
+  background: placed ? "var(--primary-soft)" : "var(--surface)",
+  color: placed ? ACCENT : "var(--text)",
 });

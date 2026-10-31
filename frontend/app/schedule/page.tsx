@@ -33,7 +33,7 @@ import { centerEventsApi, type CenterEvent } from "@/lib/api";
 import { EventCard, EventFormModal, eventPlace, KIND_STYLE, kindKey } from "@/components/schedule/CenterEvents";
 import { formatDate } from "@/lib/format-date";
 
-const ACCENT = "#4F46E5";
+const ACCENT = "var(--primary)";
 const MOVE_DAYS = [1, 2, 3, 4, 5, 6, 7];
 
 const DAYS_OF_WEEK = [
@@ -446,8 +446,8 @@ export default function SchedulePage() {
         {/* Header */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16, marginBottom: 24, flexWrap: "wrap" }}>
         <div>
-          <h1 style={{ fontSize: 24, fontWeight: 800, color: "#111827", margin: "0 0 6px" }}>{t("schedule.title")}</h1>
-          <p style={{ color: "#6B7280", margin: 0, fontSize: 13.5 }}>{t("schedule.subtitle")}</p>
+          <h1 style={{ fontSize: 24, fontWeight: 800, color: "var(--text)", margin: "0 0 6px" }}>{t("schedule.title")}</h1>
+          <p style={{ color: "var(--text-muted)", margin: 0, fontSize: 13.5 }}>{t("schedule.subtitle")}</p>
         </div>
         <div style={{ display: "flex", gap: 10 }}>
           {can(user, "rooms.manage") && (
@@ -459,10 +459,10 @@ export default function SchedulePage() {
                 alignItems: "center",
                 gap: 8,
                 padding: "9px 15px",
-                background: "#F3F4F6",
-                color: "#374151",
-                border: "1px solid #E5E7EB",
-                borderRadius: 8,
+                background: "var(--surface-muted)",
+                color: "var(--text-soft)",
+                border: "1px solid var(--border)",
+                borderRadius: "var(--radius-xs)",
                 fontSize: 13.5,
                 fontWeight: 600,
                 cursor: "pointer",
@@ -485,10 +485,10 @@ export default function SchedulePage() {
                 alignItems: "center",
                 gap: 8,
                 padding: "9px 15px",
-                background: "#F3F4F6",
-                color: "#374151",
-                border: "1px solid #E5E7EB",
-                borderRadius: 8,
+                background: "var(--surface-muted)",
+                color: "var(--text-soft)",
+                border: "1px solid var(--border)",
+                borderRadius: "var(--radius-xs)",
                 fontSize: 13.5,
                 fontWeight: 600,
                 cursor: "pointer",
@@ -507,9 +507,9 @@ export default function SchedulePage() {
               gap: 8,
               padding: "9px 18px",
               background: ACCENT,
-              color: "#fff",
+              color: "var(--on-ink)",
               border: "none",
-              borderRadius: 8,
+              borderRadius: "var(--radius-xs)",
               fontSize: 13.5,
               fontWeight: 600,
               cursor: "pointer",
@@ -527,9 +527,9 @@ export default function SchedulePage() {
       {/* Filters */}
       <div
         style={{
-          background: "#fff",
-          border: "1px solid #E5E7EB",
-          borderRadius: 12,
+          background: "var(--surface)",
+          border: "1px solid var(--border)",
+          borderRadius: "var(--radius-md)",
           padding: "14px 18px",
           display: "grid",
           gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
@@ -566,7 +566,7 @@ export default function SchedulePage() {
       </div>
 
       {canEdit && !loading && loadError === null && schedules.length > 0 && (
-        <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12.5, color: "#686B75", margin: "-10px 0 14px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12.5, color: "var(--text-muted)", margin: "-10px 0 14px" }}>
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <path d="M5 9l-3 3 3 3M9 5l3-3 3 3M15 19l-3 3-3-3M19 9l3 3-3 3M2 12h20M12 2v20" />
           </svg>
@@ -578,7 +578,7 @@ export default function SchedulePage() {
       {loadError !== null ? (
         <LoadError message={loadError || t("adm.loadError")} onRetry={loadData} />
       ) : loading ? (
-        <div style={{ textAlign: "center", padding: "60px 0", color: "#6B7280" }}>{t("common.loading")}</div>
+        <div style={{ textAlign: "center", padding: "60px 0", color: "var(--text-muted)" }}>{t("common.loading")}</div>
       ) : (
         <div
           style={{
@@ -615,9 +615,9 @@ export default function SchedulePage() {
                 }}
                 style={{
                   transition: "background 0.12s ease",
-                  background: dropDay === day ? "#EEF0FF" : isToday ? "#FAF5FF" : "#F9FAFB",
-                  border: dropDay === day ? `2px dashed ${ACCENT}` : isToday ? "2px solid #A855F7" : "1px solid #E5E7EB",
-                  borderRadius: 12,
+                  background: dropDay === day ? "var(--primary-soft)" : isToday ? "var(--violet-soft)" : "var(--surface-muted)",
+                  border: dropDay === day ? `2px dashed ${ACCENT}` : isToday ? "2px solid var(--violet)" : "1px solid var(--border)",
+                  borderRadius: "var(--radius-md)",
                   display: "flex",
                   flexDirection: "column",
                   minHeight: 480,
@@ -628,9 +628,9 @@ export default function SchedulePage() {
                 <div
                   style={{
                     padding: "12px 14px",
-                    background: isToday ? "#7E22CE" : "#FFFFFF",
-                    color: isToday ? "#fff" : "#111827",
-                    borderBottom: isToday ? "none" : "1px solid #E5E7EB",
+                    background: isToday ? "var(--violet)" : "var(--surface)",
+                    color: isToday ? "var(--on-ink)" : "var(--text)",
+                    borderBottom: isToday ? "none" : "1px solid var(--border)",
                     display: "flex",
                     justifyContent: "space-between",
                     alignItems: "center",
@@ -644,12 +644,12 @@ export default function SchedulePage() {
                     onClick={(e) => setQuickAdd({ day, anchor: (e.currentTarget.parentElement ?? e.currentTarget).getBoundingClientRect() })}
                     aria-label={`${t(labelKey)}: ${t("schedule.addLesson")}`}
                     style={{
-                      background: isToday ? "rgba(255,255,255,0.2)" : "#F3F4F6",
-                      color: isToday ? "#fff" : "#4B5563",
+                      background: isToday ? "rgba(255,255,255,0.2)" : "var(--surface-muted)",
+                      color: isToday ? "var(--on-ink)" : "var(--text-soft)",
                       border: "none",
                       width: 24,
                       height: 24,
-                      borderRadius: 6,
+                      borderRadius: "var(--radius-xs)",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
@@ -673,7 +673,7 @@ export default function SchedulePage() {
                       style={{
                         margin: "auto",
                         textAlign: "center",
-                        color: "#686B75",
+                        color: "var(--text-muted)",
                         fontSize: 12,
                         padding: "20px 8px",
                       }}
@@ -698,9 +698,9 @@ export default function SchedulePage() {
                           style={{
                             cursor: canEdit ? (dragId === item.id ? "grabbing" : "grab") : "default",
                             opacity: dragId === item.id || movingId === item.id ? 0.45 : 1,
-                            background: "#FFFFFF",
-                            border: "1px solid #E5E7EB",
-                            borderRadius: 10,
+                            background: "var(--surface)",
+                            border: "1px solid var(--border)",
+                            borderRadius: "var(--radius-sm)",
                             padding: "10px 12px",
                             boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
                             display: "flex",
@@ -716,8 +716,8 @@ export default function SchedulePage() {
                               style={{
                                 fontSize: 11.5,
                                 fontWeight: 700,
-                                color: "#4F46E5",
-                                background: "#EEF2FF",
+                                color: "var(--primary)",
+                                background: "var(--primary-soft)",
                                 padding: "2px 6px",
                                 borderRadius: 4,
                               }}
@@ -731,7 +731,7 @@ export default function SchedulePage() {
                                   data-testid="schedule-move"
                                   className="sched-act"
                                   onClick={() => setMoveItem(item)}
-                                  style={{ background: "transparent", border: "none", cursor: "pointer", color: "#686B75", padding: 2 }}
+                                  style={{ background: "transparent", border: "none", cursor: "pointer", color: "var(--text-muted)", padding: 2 }}
                                   title={t("sch.move.button")}
                                   aria-label={`${t("sch.move.button")}: ${item.group?.name ?? ""} ${item.startTime}`}
                                 >
@@ -747,7 +747,7 @@ export default function SchedulePage() {
                                   background: "transparent",
                                   border: "none",
                                   cursor: "pointer",
-                                  color: "#686B75",
+                                  color: "var(--text-muted)",
                                   padding: 2,
                                 }}
                                 title={t("common.edit")}
@@ -764,7 +764,7 @@ export default function SchedulePage() {
                                     background: "transparent",
                                     border: "none",
                                     cursor: "pointer",
-                                    color: "#EF4444",
+                                    color: "var(--danger)",
                                     padding: 2,
                                   }}
                                   title={t("common.delete")}
@@ -778,12 +778,12 @@ export default function SchedulePage() {
                           </div>
 
                           {/* Group Name */}
-                          <div style={{ fontWeight: 700, fontSize: 13.5, color: "#111827" }}>
+                          <div style={{ fontWeight: 700, fontSize: 13.5, color: "var(--text)" }}>
                             {item.group?.name || "Guruh"}
                           </div>
 
                           {/* Room & Teacher */}
-                          <div style={{ display: "flex", flexDirection: "column", gap: 3, fontSize: 12, color: "#6B7280" }}>
+                          <div style={{ display: "flex", flexDirection: "column", gap: 3, fontSize: 12, color: "var(--text-muted)" }}>
                             {item.room && (
                               <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
                                 <span
@@ -794,7 +794,7 @@ export default function SchedulePage() {
                                     background: roomColorBadge,
                                   }}
                                 />
-                                <span style={{ fontWeight: 600, color: "#374151" }}>{item.room.name}</span>
+                                <span style={{ fontWeight: 600, color: "var(--text-soft)" }}>{item.room.name}</span>
                               </div>
                             )}
 
@@ -810,7 +810,7 @@ export default function SchedulePage() {
 
                           {/* Topic or Meeting link */}
                           {item.topic && (
-                            <div style={{ fontSize: 11, color: "#4B5563", background: "#F3F4F6", padding: "3px 6px", borderRadius: 4 }}>
+                            <div style={{ fontSize: 11, color: "var(--text-soft)", background: "var(--surface-muted)", padding: "3px 6px", borderRadius: 4 }}>
                               📌 {item.topic}
                             </div>
                           )}
@@ -822,7 +822,7 @@ export default function SchedulePage() {
                               rel="noreferrer"
                               style={{
                                 fontSize: 11,
-                                color: "#2563EB",
+                                color: "var(--info)",
                                 textDecoration: "none",
                                 display: "inline-flex",
                                 alignItems: "center",
@@ -841,26 +841,26 @@ export default function SchedulePage() {
                     })
                   )}
                   {dragId && dragDay !== day && (
-                    <div style={{ border: `1.5px dashed ${dropDay === day ? ACCENT : "#C9C6F5"}`, borderRadius: 10, padding: "12px 8px", textAlign: "center", fontSize: 12, fontWeight: 700, color: ACCENT, background: dropDay === day ? "#fff" : "transparent", pointerEvents: "none" }}>
+                    <div style={{ border: `1.5px dashed ${dropDay === day ? ACCENT : "var(--primary-border)"}`, borderRadius: "var(--radius-sm)", padding: "12px 8px", textAlign: "center", fontSize: 12, fontWeight: 700, color: ACCENT, background: dropDay === day ? "var(--surface)" : "transparent", pointerEvents: "none" }}>
                       {t("sch.move.dropHere")}
                     </div>
                   )}
                   {(makeupsByDay[day] ?? []).length > 0 && (
                     <div aria-label={t("schedule.makeupsThisWeek")} style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 4 }}>
-                      <div style={{ fontSize: 11, fontWeight: 700, color: "#686B75", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
                         {t("schedule.makeupsThisWeek")}
                       </div>
                       {makeupsByDay[day].map((m) => (
                         <div
                           key={m.id}
                           data-testid="schedule-makeup"
-                          style={{ background: "#FFFFFF", border: "1px dashed #8B84E8", borderRadius: 10, padding: "8px 10px", fontSize: 12, color: "#181A1F" }}
+                          style={{ background: "var(--surface)", border: "1px dashed var(--primary-border)", borderRadius: "var(--radius-sm)", padding: "8px 10px", fontSize: 12, color: "var(--text)" }}
                         >
                           <div style={{ fontWeight: 700 }}>
                             {m.startTime}–{m.endTime} · {t("schedule.makeupBadge")}
                           </div>
                           <div>{m.student.fullName}</div>
-                          <div style={{ color: "#686B75" }}>
+                          <div style={{ color: "var(--text-muted)" }}>
                             {m.date}
                             {m.groupName ? ` · ${m.groupName}` : ""}
                           </div>
@@ -876,25 +876,25 @@ export default function SchedulePage() {
       )}
 
       {/* Coming events */}
-      <section aria-labelledby="upcoming-events" style={{ marginTop: 24, background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, padding: "16px 18px" }}>
+      <section aria-labelledby="upcoming-events" style={{ marginTop: 24, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-md)", padding: "16px 18px" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 10 }}>
           <h2 id="upcoming-events" style={{ fontSize: 16, fontWeight: 800, margin: 0 }}>{t("ev.upcoming")}</h2>
-          <span style={{ fontSize: 12.5, color: "#686B75" }}>{t("ev.upcomingHint")}</span>
+          <span style={{ fontSize: 12.5, color: "var(--text-muted)" }}>{t("ev.upcomingHint")}</span>
         </div>
         {eventsError && (
-          <div role="alert" style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", background: "#FDEBEC", color: "#B23A47", fontSize: 13, fontWeight: 600, padding: "10px 12px", borderRadius: 10, marginBottom: 10 }}>
+          <div role="alert" style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", background: "var(--danger-soft)", color: "var(--danger)", fontSize: 13, fontWeight: 600, padding: "10px 12px", borderRadius: "var(--radius-sm)", marginBottom: 10 }}>
             <span style={{ flex: 1, minWidth: 180 }}>
               {events === null ? t("ev.loadFailed") : t("ev.refreshFailed")} {eventsError}
             </span>
-            <button type="button" onClick={() => { setEventsLoading(true); setEventsVersion((v) => v + 1); }} disabled={eventsLoading} style={{ background: "#fff", color: "#B23A47", border: "1px solid #F3C4C9", fontSize: 12.5, fontWeight: 700, padding: "6px 12px", borderRadius: 8, cursor: eventsLoading ? "wait" : "pointer" }}>
+            <button type="button" onClick={() => { setEventsLoading(true); setEventsVersion((v) => v + 1); }} disabled={eventsLoading} style={{ background: "var(--surface)", color: "var(--danger)", border: "1px solid var(--danger-border)", fontSize: 12.5, fontWeight: 700, padding: "6px 12px", borderRadius: "var(--radius-xs)", cursor: eventsLoading ? "wait" : "pointer" }}>
               {eventsLoading ? t("common.loading") : t("ev.retry")}
             </button>
           </div>
         )}
         {events === null ? (
-          !eventsError && <div role="status" style={{ fontSize: 13, color: "#686B75" }}>{t("common.loading")}</div>
+          !eventsError && <div role="status" style={{ fontSize: 13, color: "var(--text-muted)" }}>{t("common.loading")}</div>
         ) : upcomingEvents.length === 0 ? (
-          <div style={{ fontSize: 13, color: "#686B75" }}>{canManageEvents ? t("ev.noneManage") : t("ev.none")}</div>
+          <div style={{ fontSize: 13, color: "var(--text-muted)" }}>{canManageEvents ? t("ev.noneManage") : t("ev.none")}</div>
         ) : (
           <div style={{ display: "grid", gap: 8 }}>
             {upcomingEvents.map((ev) => {
@@ -904,17 +904,17 @@ export default function SchedulePage() {
                   key={ev.id}
                   type="button"
                   onClick={() => setEventForm({ event: ev, date: ev.date })}
-                  style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", textAlign: "left", background: "#FAFAF8", border: "1px solid #EEECE6", borderLeft: `4px solid ${s.color}`, borderRadius: 10, padding: "10px 12px", cursor: "pointer", font: "inherit" }}
+                  style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", textAlign: "left", background: "var(--surface-muted)", border: "1px solid var(--border)", borderLeft: `4px solid ${s.color}`, borderRadius: "var(--radius-sm)", padding: "10px 12px", cursor: "pointer", font: "inherit" }}
                 >
                   <span style={{ fontWeight: 700, fontSize: 13, minWidth: 150 }}>
                     {formatDate(`${ev.date}T12:00:00`, lang, "dayMonth")} · {ev.startTime}
                     {ev.endTime ? `–${ev.endTime}` : ""}
                   </span>
-                  <span style={{ fontSize: 11.5, fontWeight: 700, color: s.color, background: s.bg, borderRadius: 999, padding: "3px 9px" }}>
+                  <span style={{ fontSize: 11.5, fontWeight: 700, color: s.color, background: s.bg, borderRadius: "var(--radius-pill)", padding: "3px 9px" }}>
                     {s.icon} {t(kindKey(ev.kind))}
                   </span>
-                  <span style={{ fontWeight: 700, fontSize: 13.5, color: "#111827", flex: 1, minWidth: 160 }}>{ev.title}</span>
-                  <span style={{ fontSize: 12.5, color: "#4B5563" }}>{eventPlace(ev, t)}</span>
+                  <span style={{ fontWeight: 700, fontSize: 13.5, color: "var(--text)", flex: 1, minWidth: 160 }}>{ev.title}</span>
+                  <span style={{ fontSize: 12.5, color: "var(--text-soft)" }}>{eventPlace(ev, t)}</span>
                 </button>
               );
             })}
@@ -979,19 +979,19 @@ export default function SchedulePage() {
         <div className="modal-backdrop" onClick={() => setMoveBlocked(null)}>
           <div className="modal-content" role="alertdialog" aria-labelledby="move-blocked-title" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 460 }}>
             <h2 id="move-blocked-title" style={{ fontSize: 17, fontWeight: 800, margin: "0 0 6px" }}>{t("sch.move.blockedTitle")}</h2>
-            <p style={{ fontSize: 13, color: "#686B75", margin: "0 0 14px", lineHeight: 1.55 }}>
-              <b style={{ color: "#181A1F" }}>{moveBlocked.item.group?.name}</b> · {moveBlocked.item.startTime}–{moveBlocked.item.endTime} → <b style={{ color: "#181A1F" }}>{dayLabel(moveBlocked.day)}</b>. {t("sch.move.blockedText")}
+            <p style={{ fontSize: 13, color: "var(--text-muted)", margin: "0 0 14px", lineHeight: 1.55 }}>
+              <b style={{ color: "var(--text)" }}>{moveBlocked.item.group?.name}</b> · {moveBlocked.item.startTime}–{moveBlocked.item.endTime} → <b style={{ color: "var(--text)" }}>{dayLabel(moveBlocked.day)}</b>. {t("sch.move.blockedText")}
             </p>
             <div style={{ display: "grid", gap: 8, marginBottom: 16 }}>
               {moveBlocked.conflicts.map((c, i) => (
-                <div key={i} style={{ display: "flex", gap: 10, alignItems: "flex-start", background: "#FEF2F2", border: "1px solid #F5B5B5", borderRadius: 10, padding: "9px 12px" }}>
-                  <span style={{ fontSize: 11, fontWeight: 800, color: "#fff", background: "#B91C1C", borderRadius: 6, padding: "2px 7px", whiteSpace: "nowrap", marginTop: 1 }}>{t(`sch.move.type.${c.type}`)}</span>
-                  <span style={{ fontSize: 12.5, color: "#7F1D1D", lineHeight: 1.5 }}>{c.message}</span>
+                <div key={i} style={{ display: "flex", gap: 10, alignItems: "flex-start", background: "var(--danger-soft)", border: "1px solid var(--danger-border)", borderRadius: "var(--radius-sm)", padding: "9px 12px" }}>
+                  <span style={{ fontSize: 11, fontWeight: 800, color: "var(--on-ink)", background: "var(--danger)", borderRadius: "var(--radius-xs)", padding: "2px 7px", whiteSpace: "nowrap", marginTop: 1 }}>{t(`sch.move.type.${c.type}`)}</span>
+                  <span style={{ fontSize: 12.5, color: "var(--danger)", lineHeight: 1.5 }}>{c.message}</span>
                 </div>
               ))}
             </div>
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, flexWrap: "wrap" }}>
-              <button type="button" onClick={() => setMoveBlocked(null)} style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 8, padding: "9px 16px", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>{t("common.cancel")}</button>
+              <button type="button" onClick={() => setMoveBlocked(null)} style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-xs)", padding: "9px 16px", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>{t("common.cancel")}</button>
               <button
                 type="button"
                 onClick={() => {
@@ -999,7 +999,7 @@ export default function SchedulePage() {
                   setMoveBlocked(null);
                   openEditModal({ ...item, dayOfWeek: day });
                 }}
-                style={{ background: ACCENT, color: "#fff", border: "none", borderRadius: 8, padding: "9px 16px", fontSize: 13, fontWeight: 700, cursor: "pointer" }}
+                style={{ background: ACCENT, color: "var(--on-ink)", border: "none", borderRadius: "var(--radius-xs)", padding: "9px 16px", fontSize: 13, fontWeight: 700, cursor: "pointer" }}
               >
                 {t("sch.move.pickTime")}
               </button>
@@ -1009,10 +1009,10 @@ export default function SchedulePage() {
       )}
 
       {notice && (
-        <div role="status" style={{ position: "fixed", left: "50%", bottom: 24, transform: "translateX(-50%)", zIndex: 70, background: notice.error ? "#B91C1C" : "#181A1F", color: "#fff", borderRadius: 12, padding: "11px 16px", fontSize: 13, fontWeight: 600, display: "flex", alignItems: "center", gap: 14, boxShadow: "0 12px 34px rgba(18,19,26,0.3)", maxWidth: "calc(100vw - 32px)" }}>
+        <div role="status" style={{ position: "fixed", left: "50%", bottom: 24, transform: "translateX(-50%)", zIndex: 70, background: notice.error ? "var(--danger)" : "var(--ink)", color: "var(--on-ink)", borderRadius: "var(--radius-md)", padding: "11px 16px", fontSize: 13, fontWeight: 600, display: "flex", alignItems: "center", gap: 14, boxShadow: "0 12px 34px rgba(18,19,26,0.3)", maxWidth: "calc(100vw - 32px)" }}>
           <span>{notice.error ? "" : "✓ "}{notice.text}</span>
           {notice.undo && (
-            <button type="button" onClick={() => { const undo = notice.undo!; setNotice(null); undo(); }} style={{ background: "rgba(255,255,255,0.16)", color: "#fff", border: "none", borderRadius: 8, padding: "5px 11px", fontSize: 12.5, fontWeight: 700, cursor: "pointer" }}>
+            <button type="button" onClick={() => { const undo = notice.undo!; setNotice(null); undo(); }} style={{ background: "rgba(255,255,255,0.16)", color: "var(--on-ink)", border: "none", borderRadius: "var(--radius-xs)", padding: "5px 11px", fontSize: 12.5, fontWeight: 700, cursor: "pointer" }}>
               {t("sch.move.undo")}
             </button>
           )}
@@ -1089,10 +1089,10 @@ export default function SchedulePage() {
                         padding: "8px 0",
                         fontSize: 12,
                         fontWeight: 700,
-                        borderRadius: 6,
-                        border: dayOfWeek === day ? "none" : "1px solid #E5E7EB",
-                        background: dayOfWeek === day ? ACCENT : "#F9FAFB",
-                        color: dayOfWeek === day ? "#fff" : "#4B5563",
+                        borderRadius: "var(--radius-xs)",
+                        border: dayOfWeek === day ? "none" : "1px solid var(--border)",
+                        background: dayOfWeek === day ? ACCENT : "var(--surface-muted)",
+                        color: dayOfWeek === day ? "var(--on-ink)" : "var(--text-soft)",
                         cursor: "pointer",
                       }}
                     >
@@ -1155,27 +1155,27 @@ export default function SchedulePage() {
               {conflicts.length > 0 && (
                 <div
                   style={{
-                    background: "#FEF2F2",
-                    border: "1px solid #F87171",
-                    borderRadius: 8,
+                    background: "var(--danger-soft)",
+                    border: "1px solid var(--danger)",
+                    borderRadius: "var(--radius-xs)",
                     padding: "12px 14px",
                     display: "flex",
                     flexDirection: "column",
                     gap: 8,
                   }}
                 >
-                  <div style={{ display: "flex", alignItems: "center", gap: 6, color: "#DC2626", fontWeight: 700, fontSize: 13 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, color: "var(--danger)", fontWeight: 700, fontSize: 13 }}>
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" />
                     </svg>
                     {t("schedule.conflictWarning")}
                   </div>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12, color: "#991B1B" }}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12, color: "var(--danger)" }}>
                     {conflicts.map((c, idx) => (
                       <div key={idx}>• {c.message}</div>
                     ))}
                   </div>
-                  <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12.5, color: "#7F1D1D", fontWeight: 600, cursor: "pointer", marginTop: 4 }}>
+                  <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12.5, color: "var(--danger)", fontWeight: 600, cursor: "pointer", marginTop: 4 }}>
                     <input
                       type="checkbox"
                       checked={allowCollision}
@@ -1187,7 +1187,7 @@ export default function SchedulePage() {
               )}
 
               {formError && (
-                <div role="alert" style={{ color: "#DC2626", fontSize: 13, fontWeight: 600, background: "#FEE2E2", padding: "8px 12px", borderRadius: 6 }}>
+                <div role="alert" style={{ color: "var(--danger)", fontSize: 13, fontWeight: 600, background: "var(--danger-soft)", padding: "8px 12px", borderRadius: "var(--radius-xs)" }}>
                   {formError}
                 </div>
               )}
@@ -1198,7 +1198,7 @@ export default function SchedulePage() {
                   type="button"
                   onClick={() => setShowAddModal(false)}
                   className="btn"
-                  style={{ padding: "8px 16px", background: "#F3F4F6", color: "#4B5563", border: "none", borderRadius: 8 }}
+                  style={{ padding: "8px 16px", background: "var(--surface-muted)", color: "var(--text-soft)", border: "none", borderRadius: "var(--radius-xs)" }}
                 >
                   {t("common.cancel")}
                 </button>
@@ -1208,10 +1208,10 @@ export default function SchedulePage() {
                   className="btn"
                   style={{
                     padding: "8px 20px",
-                    background: conflicts.length > 0 && !allowCollision ? "#9CA3AF" : ACCENT,
-                    color: "#fff",
+                    background: conflicts.length > 0 && !allowCollision ? "var(--text-faint)" : ACCENT,
+                    color: "var(--on-ink)",
                     border: "none",
-                    borderRadius: 8,
+                    borderRadius: "var(--radius-xs)",
                     fontWeight: 700,
                     cursor: conflicts.length > 0 && !allowCollision ? "not-allowed" : "pointer",
                   }}

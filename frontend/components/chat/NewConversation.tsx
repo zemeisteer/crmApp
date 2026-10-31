@@ -70,9 +70,9 @@ export default function NewConversation({
     }
   }
 
-  const row: React.CSSProperties = { display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", borderRadius: 10, border: "1px solid #EAE8E2", background: "#fff", minWidth: 0 };
-  const action: React.CSSProperties = { background: ACCENT, color: "#fff", fontWeight: 700, fontSize: 12.5, padding: "6px 10px", borderRadius: 8, flexShrink: 0 };
-  const heading: React.CSSProperties = { fontSize: 11.5, fontWeight: 800, color: "#4A4E58", textTransform: "uppercase", letterSpacing: "0.04em", margin: "10px 0 6px" };
+  const row: React.CSSProperties = { display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", borderRadius: "var(--radius-sm)", border: "1px solid var(--border)", background: "var(--surface)", minWidth: 0 };
+  const action: React.CSSProperties = { background: ACCENT, color: "var(--on-ink)", fontWeight: 700, fontSize: 12.5, padding: "6px 10px", borderRadius: "var(--radius-xs)", flexShrink: 0 };
+  const heading: React.CSSProperties = { fontSize: 11.5, fontWeight: 800, color: "var(--text-soft)", textTransform: "uppercase", letterSpacing: "0.04em", margin: "10px 0 6px" };
   // Staff who answer the center's inbox or teach search their students.
   const searchable = !cabinet && (teacher || contacts?.center === true);
   const students = needsMore ? [] : contacts?.students ?? [];
@@ -81,25 +81,25 @@ export default function NewConversation({
   const nothing = contacts && !loading && !(cabinet && contacts.center) && students.length === 0 && groups.length === 0 && teachers.length === 0 && !(searchable && needsMore);
 
   return (
-    <div role="region" aria-labelledby={`${uid}-h`} style={{ padding: "12px 12px 14px", borderBottom: "1px solid #EAE8E2", background: "#F7F7F5", overflowY: "auto", maxHeight: "60%", minWidth: 0 }}>
+    <div role="region" aria-labelledby={`${uid}-h`} style={{ padding: "12px 12px 14px", borderBottom: "1px solid var(--border)", background: "var(--surface-muted)", overflowY: "auto", maxHeight: "60%", minWidth: 0 }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
         <h3 id={`${uid}-h`} style={{ fontSize: 14, fontWeight: 800 }}>{t("chat.newTitle")}</h3>
-        <button type="button" className="btn" onClick={onClose} aria-label={t("chat.closeNew")} style={{ background: "transparent", color: "#4A4E58", fontSize: 16, width: 30, height: 30, borderRadius: 8 }}>
+        <button type="button" className="btn" onClick={onClose} aria-label={t("chat.closeNew")} style={{ background: "transparent", color: "var(--text-soft)", fontSize: 16, width: 30, height: 30, borderRadius: "var(--radius-xs)" }}>
           <span aria-hidden="true">✕</span>
         </button>
       </div>
 
       {searchable && (
         <div style={{ marginTop: 8 }}>
-          <label htmlFor={`${uid}-q`} style={{ display: "block", fontSize: 12.5, fontWeight: 700, color: "#4A4E58", marginBottom: 4 }}>{t("chat.searchStudent")}</label>
+          <label htmlFor={`${uid}-q`} style={{ display: "block", fontSize: 12.5, fontWeight: 700, color: "var(--text-soft)", marginBottom: 4 }}>{t("chat.searchStudent")}</label>
           <input id={`${uid}-q`} type="search" value={q} onChange={(e) => setQ(e.target.value)} className="field-input" autoComplete="off" placeholder={t("chat.searchPlaceholder")} style={{ padding: "9px 12px", fontSize: 14 }} />
-          {needsMore && <div style={{ fontSize: 12, color: "#686B75", marginTop: 4 }}>{t("chat.searchHint")}</div>}
+          {needsMore && <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 4 }}>{t("chat.searchHint")}</div>}
         </div>
       )}
 
-      {loadFailed && <div role="alert" style={{ color: "#B23A47", fontSize: 12.5, fontWeight: 600, marginTop: 8 }}>{t("chat.contactsError")}</div>}
-      {error && <div role="alert" style={{ color: "#B23A47", fontSize: 12.5, fontWeight: 600, marginTop: 8 }}>{error}</div>}
-      {loading && !contacts && <div role="status" style={{ color: "#686B75", fontSize: 13, marginTop: 8 }}>{t("common.loading")}</div>}
+      {loadFailed && <div role="alert" style={{ color: "var(--danger)", fontSize: 12.5, fontWeight: 600, marginTop: 8 }}>{t("chat.contactsError")}</div>}
+      {error && <div role="alert" style={{ color: "var(--danger)", fontSize: 12.5, fontWeight: 600, marginTop: 8 }}>{error}</div>}
+      {loading && !contacts && <div role="status" style={{ color: "var(--text-muted)", fontSize: 13, marginTop: 8 }}>{t("common.loading")}</div>}
 
       {cabinet && contacts?.center && (
         <>
@@ -145,7 +145,7 @@ export default function NewConversation({
                   <button
                     type="button"
                     className="btn"
-                    style={teacher ? { ...action, background: "#fff", color: ACCENT, border: `1px solid ${ACCENT}` } : action}
+                    style={teacher ? { ...action, background: "var(--surface)", color: ACCENT, border: `1px solid ${ACCENT}` } : action}
                     disabled={opening !== null}
                     onClick={() => open(`c:${s.id}`, { kind: "STUDENT_CENTER", studentId: s.id })}
                     aria-label={`${teacher ? t("chat.writeAsCenter") : t("chat.write")}: ${s.name}`}
@@ -175,7 +175,7 @@ export default function NewConversation({
         </>
       )}
 
-      {nothing && <div style={{ color: "#686B75", fontSize: 13, marginTop: 10 }}>{searchable && term ? t("chat.noMatches") : t("chat.noContacts")}</div>}
+      {nothing && <div style={{ color: "var(--text-muted)", fontSize: 13, marginTop: 10 }}>{searchable && term ? t("chat.noMatches") : t("chat.noContacts")}</div>}
     </div>
   );
 }

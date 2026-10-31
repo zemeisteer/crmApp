@@ -10,18 +10,18 @@ import { useLanguage } from "@/lib/i18n-context";
 import type { TranslationKey } from "@/lib/i18n";
 import { monthLabel, money, STATUS_COLORS, STATUS_LABEL_KEYS } from "@/lib/platform";
 
-const ACCENT = "#4F46E5";
-const card: React.CSSProperties = { background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 20 };
-const cardTitle: React.CSSProperties = { fontSize: 13, fontWeight: 700, color: "#686B75", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 12 };
+const ACCENT = "var(--primary)";
+const card: React.CSSProperties = { background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 20 };
+const cardTitle: React.CSSProperties = { fontSize: 13, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 12 };
 
 function Row({ href, title, sub, right, tone }: { href: string; title: string; sub?: string; right: string; tone?: "danger" | "warn" }) {
   return (
-    <Link href={href} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "9px 12px", borderRadius: 10, background: "#FAF9F6", textDecoration: "none", color: "inherit" }}>
+    <Link href={href} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "9px 12px", borderRadius: "var(--radius-sm)", background: "var(--surface-muted)", textDecoration: "none", color: "inherit" }}>
       <span style={{ minWidth: 0 }}>
-        <span style={{ display: "block", fontSize: 13.5, fontWeight: 700, color: "#181A1F", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{title}</span>
-        {sub && <span style={{ display: "block", fontSize: 11.5, color: "#686B75" }}>{sub}</span>}
+        <span style={{ display: "block", fontSize: 13.5, fontWeight: 700, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{title}</span>
+        {sub && <span style={{ display: "block", fontSize: 11.5, color: "var(--text-muted)" }}>{sub}</span>}
       </span>
-      <span style={{ fontSize: 12.5, fontWeight: 700, whiteSpace: "nowrap", color: tone === "danger" ? "#B23A47" : tone === "warn" ? "#8A5A00" : "#181A1F" }}>{right}</span>
+      <span style={{ fontSize: 12.5, fontWeight: 700, whiteSpace: "nowrap", color: tone === "danger" ? "var(--danger)" : tone === "warn" ? "var(--warning)" : "var(--text)" }}>{right}</span>
     </Link>
   );
 }
@@ -43,14 +43,14 @@ function OverviewContent() {
 
   return (
     <>
-      <div style={{ padding: "22px 32px", borderBottom: "1px solid #EAE8E2", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+      <div style={{ padding: "22px 32px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
         <div>
           <h1 style={{ fontSize: 22, fontWeight: 800 }}>{t("pf.dash.title")}</h1>
-          <div style={{ fontSize: 13, color: "#686B75", marginTop: 2 }}>{t("pf.dash.subtitle")}{data ? ` · ${monthLabel(data.month, lang)}` : ""}</div>
+          <div style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 2 }}>{t("pf.dash.subtitle")}{data ? ` · ${monthLabel(data.month, lang)}` : ""}</div>
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <Link href="/admin" className="btn" style={{ background: "#fff", color: "#181A1F", border: "1px solid #EAE8E2", fontSize: 13.5, fontWeight: 700, padding: "10px 16px", borderRadius: 9, textDecoration: "none" }}>{t("nav.centers")}</Link>
-          <Link href="/admin/subscriptions" className="btn" style={{ background: ACCENT, color: "#fff", fontSize: 13.5, fontWeight: 700, padding: "10px 16px", borderRadius: 9, textDecoration: "none" }}>{t("nav.subscriptions")}</Link>
+          <Link href="/admin" className="btn" style={{ background: "var(--surface)", color: "var(--text)", border: "1px solid var(--border)", fontSize: 13.5, fontWeight: 700, padding: "10px 16px", borderRadius: "var(--radius-sm)", textDecoration: "none" }}>{t("nav.centers")}</Link>
+          <Link href="/admin/subscriptions" className="btn" style={{ background: ACCENT, color: "var(--on-ink)", fontSize: 13.5, fontWeight: 700, padding: "10px 16px", borderRadius: "var(--radius-sm)", textDecoration: "none" }}>{t("nav.subscriptions")}</Link>
         </div>
       </div>
 
@@ -58,7 +58,7 @@ function OverviewContent() {
         {error !== null ? (
           <LoadError message={error || t("adm.loadError")} onRetry={load} />
         ) : !data ? (
-          <div style={{ color: "#686B75", fontSize: 14 }}>{t("common.loading")}</div>
+          <div style={{ color: "var(--text-muted)", fontSize: 14 }}>{t("common.loading")}</div>
         ) : (
           <>
             <div className="adm-stats">
@@ -68,10 +68,10 @@ function OverviewContent() {
                 { label: t("pf.dash.mrr"), value: sum(data.mrr), sub: t("pf.dash.mrrHint") },
                 { label: t("pf.dash.paidThisMonth"), value: sum(data.paidThisMonth), sub: n("pf.dash.payments", data.paymentsThisMonth), accent: true },
               ].map((c) => (
-                <div key={c.label} style={{ ...card, padding: 18, background: c.accent ? "#EEF0FF" : "#fff", borderColor: c.accent ? "#D9DBFA" : "#EAE8E2" }}>
-                  <div style={{ fontSize: 12, color: "#686B75" }}>{c.label}</div>
-                  <div style={{ fontSize: 22, fontWeight: 800, fontFamily: "'Manrope', sans-serif", marginTop: 4, color: c.accent ? ACCENT : "#181A1F" }}>{c.value}</div>
-                  <div style={{ fontSize: 11.5, color: "#686B75", marginTop: 2 }}>{c.sub}</div>
+                <div key={c.label} style={{ ...card, padding: 18, background: c.accent ? "var(--primary-soft)" : "var(--surface)", borderColor: c.accent ? "var(--primary-border)" : "var(--border)" }}>
+                  <div style={{ fontSize: 12, color: "var(--text-muted)" }}>{c.label}</div>
+                  <div style={{ fontSize: 22, fontWeight: 800, fontFamily: "var(--font-display)", marginTop: 4, color: c.accent ? ACCENT : "var(--text)" }}>{c.value}</div>
+                  <div style={{ fontSize: 11.5, color: "var(--text-muted)", marginTop: 2 }}>{c.sub}</div>
                 </div>
               ))}
             </div>
@@ -85,7 +85,7 @@ function OverviewContent() {
                 <div style={cardTitle}>{t("pf.dash.revenue")}</div>
                 <BarChart
                   data={data.revenue.map((s) => ({ label: monthLabel(s.month, lang, "short"), title: monthLabel(s.month, lang), value: s.amount, isCurrent: s.month === data.month }))}
-                  color="#16794A"
+                  color="var(--success)"
                   formatValue={(v) => sum(v)}
                   emptyText={t("pf.dash.noRevenue")}
                 />
@@ -101,11 +101,11 @@ function OverviewContent() {
                     return (
                       <Link key={p.key} href={`/admin/subscriptions?plan=${encodeURIComponent(p.key)}`} style={{ textDecoration: "none", color: "inherit" }}>
                         <div style={{ display: "flex", justifyContent: "space-between", gap: 10, fontSize: 13 }}>
-                          <span style={{ fontWeight: 700 }}>{p.name} <span style={{ fontWeight: 500, color: "#686B75" }}>· {p.price > 0 ? sum(p.price) : t("pf.dash.free")}</span></span>
-                          <span style={{ color: "#686B75" }}>{n("pf.dash.planCenters", money(p.centers))} · {n("pf.dash.planActive", money(p.activeCenters))}</span>
+                          <span style={{ fontWeight: 700 }}>{p.name} <span style={{ fontWeight: 500, color: "var(--text-muted)" }}>· {p.price > 0 ? sum(p.price) : t("pf.dash.free")}</span></span>
+                          <span style={{ color: "var(--text-muted)" }}>{n("pf.dash.planCenters", money(p.centers))} · {n("pf.dash.planActive", money(p.activeCenters))}</span>
                         </div>
-                        <div style={{ height: 6, borderRadius: 100, background: "#F2F1EC", marginTop: 6 }}>
-                          <div style={{ height: 6, borderRadius: 100, background: ACCENT, width: `${Math.max(share, p.centers > 0 ? 2 : 0)}%` }} />
+                        <div style={{ height: 6, borderRadius: "var(--radius-pill)", background: "var(--surface-muted)", marginTop: 6 }}>
+                          <div style={{ height: 6, borderRadius: "var(--radius-pill)", background: ACCENT, width: `${Math.max(share, p.centers > 0 ? 2 : 0)}%` }} />
                         </div>
                       </Link>
                     );
@@ -116,14 +116,14 @@ function OverviewContent() {
                 <div style={cardTitle}>{t("pf.dash.byStatus")}</div>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 10 }}>
                   {(Object.keys(STATUS_LABEL_KEYS) as TenantStatus[]).map((s) => (
-                    <Link key={s} href={`/admin/subscriptions?status=${s}`} style={{ textDecoration: "none", borderRadius: 12, padding: "12px 14px", background: STATUS_COLORS[s].bg, color: STATUS_COLORS[s].fg }}>
+                    <Link key={s} href={`/admin/subscriptions?status=${s}`} style={{ textDecoration: "none", borderRadius: "var(--radius-md)", padding: "12px 14px", background: STATUS_COLORS[s].bg, color: STATUS_COLORS[s].fg }}>
                       <div style={{ fontSize: 12, fontWeight: 700 }}>{t(STATUS_LABEL_KEYS[s])}</div>
-                      <div style={{ fontSize: 22, fontWeight: 800, fontFamily: "'Manrope', sans-serif" }}>{money(data.centers.byStatus[s] ?? 0)}</div>
+                      <div style={{ fontSize: 22, fontWeight: 800, fontFamily: "var(--font-display)" }}>{money(data.centers.byStatus[s] ?? 0)}</div>
                     </Link>
                   ))}
                 </div>
-                <div style={{ fontSize: 12.5, color: "#686B75", marginTop: 12 }}>
-                  {t("pf.dash.students")}: <b style={{ color: "#181A1F" }}>{money(data.students)}</b> · {n("pf.dash.users", money(data.users))}
+                <div style={{ fontSize: 12.5, color: "var(--text-muted)", marginTop: 12 }}>
+                  {t("pf.dash.students")}: <b style={{ color: "var(--text)" }}>{money(data.students)}</b> · {n("pf.dash.users", money(data.users))}
                 </div>
               </div>
             </div>
@@ -132,10 +132,10 @@ function OverviewContent() {
               <div style={card}>
                 <div style={{ ...cardTitle, display: "flex", justifyContent: "space-between" }}>
                   <span>{t("pf.dash.trialsEnding")}</span>
-                  <span style={{ color: data.trialsEnding.count ? "#8A5A00" : "#686B75" }}>{money(data.trialsEnding.count)}</span>
+                  <span style={{ color: data.trialsEnding.count ? "var(--warning)" : "var(--text-muted)" }}>{money(data.trialsEnding.count)}</span>
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  {data.trialsEnding.items.length === 0 && <div style={{ fontSize: 13, color: "#686B75" }}>{t("pf.dash.none")}</div>}
+                  {data.trialsEnding.items.length === 0 && <div style={{ fontSize: 13, color: "var(--text-muted)" }}>{t("pf.dash.none")}</div>}
                   {data.trialsEnding.items.map((x) => (
                     <Row key={x.id} href={subLink(x.subdomain)} title={x.name} sub={x.subdomain} right={x.daysLeft === 0 ? t("pf.dash.today") : n("pf.dash.daysLeft", x.daysLeft)} tone="warn" />
                   ))}
@@ -144,10 +144,10 @@ function OverviewContent() {
               <div style={card}>
                 <div style={{ ...cardTitle, display: "flex", justifyContent: "space-between" }}>
                   <span>{t("pf.dash.unpaid")}</span>
-                  <span style={{ color: data.unpaid.count ? "#B23A47" : "#686B75" }}>{money(data.unpaid.count)}{data.unpaid.count ? ` · ${t("pf.dash.unpaidSum").replace("{sum}", sum(data.unpaid.amount))}` : ""}</span>
+                  <span style={{ color: data.unpaid.count ? "var(--danger)" : "var(--text-muted)" }}>{money(data.unpaid.count)}{data.unpaid.count ? ` · ${t("pf.dash.unpaidSum").replace("{sum}", sum(data.unpaid.amount))}` : ""}</span>
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  {data.unpaid.items.length === 0 && <div style={{ fontSize: 13, color: "#686B75" }}>{t("pf.dash.none")}</div>}
+                  {data.unpaid.items.length === 0 && <div style={{ fontSize: 13, color: "var(--text-muted)" }}>{t("pf.dash.none")}</div>}
                   {data.unpaid.items.map((x) => (
                     <Row key={x.id} href={subLink(x.subdomain)} title={x.name} sub={x.lastPaidMonth ? t("pf.dash.lastPaid").replace("{month}", monthLabel(x.lastPaidMonth, lang)) : t("pf.dash.neverPaid")} right={sum(x.price)} tone="danger" />
                   ))}
@@ -159,7 +159,7 @@ function OverviewContent() {
               <div style={card}>
                 <div style={cardTitle}>{t("pf.dash.recent")}</div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  {data.recentPayments.length === 0 && <div style={{ fontSize: 13, color: "#686B75" }}>{t("pf.dash.noRevenue")}</div>}
+                  {data.recentPayments.length === 0 && <div style={{ fontSize: 13, color: "var(--text-muted)" }}>{t("pf.dash.noRevenue")}</div>}
                   {data.recentPayments.map((x) => (
                     <Row key={x.id} href={subLink(x.name)} title={x.name} sub={`${monthLabel(x.forMonth, lang)} · ${x.plan} · ${x.provider ?? t("pf.dash.manual")}`} right={sum(x.amount)} />
                   ))}
@@ -171,7 +171,7 @@ function OverviewContent() {
                   <Link href="/admin/subscriptions?status=TRIAL" style={{ color: ACCENT, textTransform: "none", letterSpacing: 0 }}>{t("pf.dash.all")} ({money(data.trialsExpired.count)})</Link>
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  {data.trialsExpired.items.length === 0 && <div style={{ fontSize: 13, color: "#686B75" }}>{t("pf.dash.none")}</div>}
+                  {data.trialsExpired.items.length === 0 && <div style={{ fontSize: 13, color: "var(--text-muted)" }}>{t("pf.dash.none")}</div>}
                   {data.trialsExpired.items.map((x) => (
                     <Row key={x.id} href={subLink(x.subdomain)} title={x.name} sub={x.subdomain} right={n("pf.dash.daysAgo", -x.daysLeft)} tone="danger" />
                   ))}

@@ -76,7 +76,7 @@ export default function MissedTab({ canManage, onIssued }: { canManage: boolean;
       <div style={{ ...card, display: "flex", flexDirection: "column", gap: 12 }}>
         <div style={muted}>{t("mk.missedHint")}</div>
         <DateRange from={from} to={to} onChange={(f, tt) => { setFrom(f); setTo(tt); }} t={t} />
-        <label style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 600, color: "#4A4E58", cursor: "pointer" }}>
+        <label style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 600, color: "var(--text-soft)", cursor: "pointer" }}>
           <input type="checkbox" checked={onlyOpen} onChange={(e) => setOnlyOpen(e.target.checked)} />
           {t("mk.onlyWithoutCredit")}
         </label>
@@ -96,12 +96,12 @@ export default function MissedTab({ canManage, onIssued }: { canManage: boolean;
             return (
               <li key={keyOf(r)} style={{ ...card, padding: "12px 14px", display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
                 <div style={{ flex: "1 1 220px", minWidth: 0 }}>
-                  <Link href={`/students/${r.studentId}`} style={{ fontSize: 14, fontWeight: 700, color: "#181A1F", overflowWrap: "anywhere" }}>{r.studentName}</Link>
+                  <Link href={`/students/${r.studentId}`} style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", overflowWrap: "anywhere" }}>{r.studentName}</Link>
                   <div style={{ ...muted, marginTop: 3, overflowWrap: "anywhere" }}>
                     {r.groupName} · {dayLabel(r.date, lang, t)}
                   </div>
                 </div>
-                <Badge text={t(REASON_KEYS[r.reason])} color={r.reason === "ABSENT" ? "#B23A47" : "#A15C00"} bg={r.reason === "ABSENT" ? "#FDEBEC" : "#FFF7E6"} />
+                <Badge text={t(REASON_KEYS[r.reason])} color={r.reason === "ABSENT" ? "var(--danger)" : "var(--warning)"} bg={r.reason === "ABSENT" ? "var(--danger-soft)" : "var(--warning-soft)"} />
                 {st ? (
                   <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
                     <span style={muted}>{t("mk.credit")}:</span>
@@ -130,17 +130,17 @@ export default function MissedTab({ canManage, onIssued }: { canManage: boolean;
         {issuing && (
           <form onSubmit={issue} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
             {formError && <Notice tone="error">{formError}</Notice>}
-            <div style={{ background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: 10, padding: "10px 14px", fontSize: 13, lineHeight: 1.6 }}>
+            <div style={{ background: "var(--surface-muted)", border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", padding: "10px 14px", fontSize: 13, lineHeight: 1.6 }}>
               <div style={{ fontWeight: 700 }}>{issuing.studentName}</div>
               <div>{issuing.groupName} · {dayLabel(issuing.date, lang, t)}</div>
-              <div style={{ color: "#686B75" }}>{t(REASON_KEYS[issuing.reason])}</div>
+              <div style={{ color: "var(--text-muted)" }}>{t(REASON_KEYS[issuing.reason])}</div>
             </div>
-            <div style={{ fontSize: 12.5, color: "#686B75", lineHeight: 1.5 }}>{t("mk.issueExplain")}</div>
+            <div style={{ fontSize: 12.5, color: "var(--text-muted)", lineHeight: 1.5 }}>{t("mk.issueExplain")}</div>
             <label>
               <span style={lbl}>{t("mk.noteOptional")}</span>
               <textarea className="field-input" value={note} onChange={(e) => setNote(e.target.value)} maxLength={500} rows={2} style={{ width: "100%", resize: "vertical", fontFamily: "inherit" }} />
             </label>
-            <button type="submit" className="btn" disabled={busy} style={{ ...primaryBtn, background: ACCENT, fontSize: 14, padding: "11px 16px", borderRadius: 10 }}>
+            <button type="submit" className="btn" disabled={busy} style={{ ...primaryBtn, background: ACCENT, fontSize: 14, padding: "11px 16px", borderRadius: "var(--radius-sm)" }}>
               {busy ? t("common.saving") : t("mk.issueConfirm")}
             </button>
           </form>

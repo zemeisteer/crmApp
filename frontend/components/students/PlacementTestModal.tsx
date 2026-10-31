@@ -23,7 +23,7 @@ import QuestionList from "@/components/tests/QuestionView";
 import QuestionEditor, { emptyQuestion } from "@/components/tests/QuestionEditor";
 import PlacementAttemptModal from "@/components/students/PlacementAttemptModal";
 
-const ACCENT = "#4F46E5";
+const ACCENT = "var(--primary)";
 type Level = "" | "BEGINNER" | "INTERMEDIATE" | "ADVANCED";
 type Created = PlacementTestSummary & { questions: PlacementQuestion[] };
 type Draft = TestQuestion & { include: boolean };
@@ -213,7 +213,7 @@ export default function PlacementTestModal({ groups, onClose, audience = "STUDEN
     <button
       type="button"
       onClick={() => setTab(key)}
-      style={{ flex: 1, padding: "8px 12px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 13, fontWeight: 700, background: tab === key ? "#fff" : "transparent", color: tab === key ? "#181A1F" : "#686B75", boxShadow: tab === key ? "0 1px 3px rgba(18,19,26,0.08)" : "none" }}
+      style={{ flex: 1, padding: "8px 12px", borderRadius: "var(--radius-xs)", border: "none", cursor: "pointer", fontSize: 13, fontWeight: 700, background: tab === key ? "var(--surface)" : "transparent", color: tab === key ? "var(--text)" : "var(--text-muted)", boxShadow: tab === key ? "0 1px 3px rgba(18,19,26,0.08)" : "none" }}
     >
       {label}
     </button>
@@ -223,21 +223,21 @@ export default function PlacementTestModal({ groups, onClose, audience = "STUDEN
 
   return (
     <Modal open onClose={onClose} title={`🧭 ${t(audience === "CANDIDATE" ? "hire.testsTitle" : "placement.title")}`} width={820}>
-      <div style={{ display: "flex", gap: 4, background: "#F2F1EC", padding: 4, borderRadius: 10, marginBottom: 16 }}>
+      <div style={{ display: "flex", gap: 4, background: "var(--surface-muted)", padding: 4, borderRadius: "var(--radius-sm)", marginBottom: 16 }}>
         {tabBtn("new", t("placement.tabNew"))}
         {tabBtn("list", t("placement.tabList"))}
       </div>
 
       {tab === "new" && !created && !drafts && (
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          <div style={{ fontSize: 13, color: "#4A4E58", lineHeight: 1.5 }}>{t("placement.introLink")}</div>
+          <div style={{ fontSize: 13, color: "var(--text-soft)", lineHeight: 1.5 }}>{t("placement.introLink")}</div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             {(["ai", "pdf", "manual"] as const).map((s) => (
               <button
                 key={s}
                 type="button"
                 onClick={() => setSource(s)}
-                style={{ flex: 1, minWidth: 140, padding: "10px 12px", borderRadius: 10, cursor: "pointer", fontSize: 13, fontWeight: 700, border: `1.5px solid ${source === s ? ACCENT : "#EAE8E2"}`, background: source === s ? "#EEF0FF" : "#fff", color: source === s ? ACCENT : "#4A4E58" }}
+                style={{ flex: 1, minWidth: 140, padding: "10px 12px", borderRadius: "var(--radius-sm)", cursor: "pointer", fontSize: 13, fontWeight: 700, border: `1.5px solid ${source === s ? ACCENT : "var(--border)"}`, background: source === s ? "var(--primary-soft)" : "var(--surface)", color: source === s ? ACCENT : "var(--text-soft)" }}
               >
                 {sourceLabel[s]}
               </button>
@@ -280,9 +280,9 @@ export default function PlacementTestModal({ groups, onClose, audience = "STUDEN
               </>
             )}
           </div>
-          {source === "ai" && <div style={{ fontSize: 12, color: "#686B75" }}>{t("placement.mixedHint")}</div>}
-          {source === "pdf" && <div style={{ fontSize: 12, color: "#686B75" }}>{t("placement.pdfHint")}</div>}
-          {source === "manual" && <div style={{ fontSize: 12, color: "#686B75" }}>{t("placement.manualHint")}</div>}
+          {source === "ai" && <div style={{ fontSize: 12, color: "var(--text-muted)" }}>{t("placement.mixedHint")}</div>}
+          {source === "pdf" && <div style={{ fontSize: 12, color: "var(--text-muted)" }}>{t("placement.pdfHint")}</div>}
+          {source === "manual" && <div style={{ fontSize: 12, color: "var(--text-muted)" }}>{t("placement.manualHint")}</div>}
           {error && <div role="alert" style={alertStyle}>{error}</div>}
           <input ref={fileRef} type="file" accept="application/pdf" style={{ display: "none" }} onChange={(e) => onPdf(e.target.files?.[0])} />
           <button
@@ -290,7 +290,7 @@ export default function PlacementTestModal({ groups, onClose, audience = "STUDEN
             className="btn"
             disabled={busy || !subject}
             onClick={() => (source === "ai" ? generate() : source === "pdf" ? fileRef.current?.click() : startManual())}
-            style={{ background: "linear-gradient(135deg, #7C3AED, #4F46E5)", color: "#fff", border: "none", fontSize: 14, fontWeight: 700, padding: 12, borderRadius: 10, opacity: !subject ? 0.6 : 1 }}
+            style={{ background: "linear-gradient(135deg, var(--violet), var(--primary))", color: "var(--on-ink)", border: "none", fontSize: 14, fontWeight: 700, padding: 12, borderRadius: "var(--radius-sm)", opacity: !subject ? 0.6 : 1 }}
           >
             {busy
               ? source === "pdf"
@@ -312,20 +312,20 @@ export default function PlacementTestModal({ groups, onClose, audience = "STUDEN
               <div style={lbl}>{t("placement.testTitle")}</div>
               <input className="field-input" value={title} onChange={(e) => setTitle(e.target.value)} placeholder={subject ? `${subject} — ${t("placement.title")}` : ""} />
             </div>
-            <div style={{ fontSize: 12.5, color: "#4A4E58", alignSelf: "flex-end", paddingBottom: 8 }}>
+            <div style={{ fontSize: 12.5, color: "var(--text-soft)", alignSelf: "flex-end", paddingBottom: 8 }}>
               {t("pdfq.found")}: <b>{drafts.length}</b> · {t("pdfq.selected")}: <b>{chosen.length}</b> · {t("pdfq.pts")}: <b>{chosen.reduce((s, q) => s + q.points, 0)}</b>
             </div>
           </div>
-          {missing > 0 && <div style={{ ...alertStyle, background: "#FFFBEB", color: "#92400E" }}>{t("pdfq.missing")} ({missing})</div>}
+          {missing > 0 && <div style={{ ...alertStyle, background: "var(--warning-soft)", color: "var(--warning)" }}>{t("pdfq.missing")} ({missing})</div>}
           {error && <div role="alert" style={alertStyle}>{error}</div>}
           <div style={{ maxHeight: 480, overflowY: "auto", paddingRight: 4 }}>
             <QuestionList
               questions={drafts}
               itemStyle={(q, i) => {
                 const noAnswer = drafts[i].include && !hasAnswer(q);
-                return { opacity: drafts[i].include ? 1 : 0.5, borderColor: editing === i ? ACCENT : noAnswer ? "#FCD34D" : "#E2E8F0", background: noAnswer && editing !== i ? "#FFFBEB" : "#fff" };
+                return { opacity: drafts[i].include ? 1 : 0.5, borderColor: editing === i ? ACCENT : noAnswer ? "var(--warning-border)" : "var(--border)", background: noAnswer && editing !== i ? "var(--warning-soft)" : "var(--surface)" };
               }}
-              meta={(q) => <span style={{ fontSize: 11, color: "#94A3B8" }}> · {levelName(q.level ?? 1)}</span>}
+              meta={(q) => <span style={{ fontSize: 11, color: "var(--text-faint)" }}> · {levelName(q.level ?? 1)}</span>}
               renderItem={(q, i) => (editing === i ? <QuestionEditor value={q} showLevel onChange={(nq) => updateDraft(i, nq)} /> : null)}
               aside={(_q, i) => (
                 <div style={{ display: "flex", flexDirection: "column", gap: 6, alignItems: "center" }}>
@@ -362,11 +362,11 @@ export default function PlacementTestModal({ groups, onClose, audience = "STUDEN
 
       {tab === "new" && created && (
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-          <div style={{ borderRadius: 14, padding: 16, background: "linear-gradient(135deg, #EEF0FF, #F5F3FF)", border: "1px solid #DDD6FE" }}>
+          <div style={{ borderRadius: "var(--radius-lg)", padding: 16, background: "linear-gradient(135deg, var(--primary-soft), var(--violet-soft))", border: "1px solid var(--primary-border)" }}>
             <div style={{ fontSize: 14, fontWeight: 800, marginBottom: 4 }}>✅ {t("placement.readyTitle")}</div>
-            <div style={{ fontSize: 12.5, color: "#4A4E58", marginBottom: 10 }}>{t("placement.readyHint")}</div>
+            <div style={{ fontSize: 12.5, color: "var(--text-soft)", marginBottom: 10 }}>{t("placement.readyHint")}</div>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              <input readOnly value={linkOf(created.token)} className="field-input" style={{ flex: 1, minWidth: 220, height: 38, fontSize: 13, background: "#fff" }} onFocus={(e) => e.target.select()} />
+              <input readOnly value={linkOf(created.token)} className="field-input" style={{ flex: 1, minWidth: 220, height: 38, fontSize: 13, background: "var(--surface)" }} onFocus={(e) => e.target.select()} />
               <button type="button" className="btn" onClick={() => copy(linkOf(created.token))} style={primary}>{copied ? `✓ ${t("placement.copied")}` : t("placement.copyLink")}</button>
               <a className="btn" href={telegramOf(created, created.questions.length)} target="_blank" rel="noreferrer" style={{ ...ghost, textDecoration: "none" }}>
                 ✈️ Telegram
@@ -374,7 +374,7 @@ export default function PlacementTestModal({ groups, onClose, audience = "STUDEN
             </div>
           </div>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
-            <div style={{ fontSize: 13, color: "#4A4E58" }}>
+            <div style={{ fontSize: 13, color: "var(--text-soft)" }}>
               <b>{created.title}</b> · {created.questions.length} {t("placement.questions")} · {created.questions.reduce((s, q) => s + q.points, 0)} {t("pdfq.pts")}
             </div>
             <div style={{ display: "flex", gap: 8 }}>
@@ -382,9 +382,9 @@ export default function PlacementTestModal({ groups, onClose, audience = "STUDEN
               <button type="button" className="btn" onClick={resetNew} style={ghost}>+ {t("placement.newTest")}</button>
             </div>
           </div>
-          <div style={{ fontSize: 12, color: "#686B75" }}>{t("placement.teacherView")}</div>
+          <div style={{ fontSize: 12, color: "var(--text-muted)" }}>{t("placement.teacherView")}</div>
           <div style={{ maxHeight: 400, overflowY: "auto", paddingRight: 4 }}>
-            <QuestionList questions={created.questions} meta={(q) => <span style={{ fontSize: 11, color: "#94A3B8" }}> · {levelName(q.level ?? 1, created.subject)}</span>} />
+            <QuestionList questions={created.questions} meta={(q) => <span style={{ fontSize: 11, color: "var(--text-faint)" }}> · {levelName(q.level ?? 1, created.subject)}</span>} />
           </div>
         </div>
       )}
@@ -392,27 +392,27 @@ export default function PlacementTestModal({ groups, onClose, audience = "STUDEN
       {tab === "list" && (
         <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: 540, overflowY: "auto" }}>
           {tests === null ? (
-            <div style={{ fontSize: 13, color: "#686B75" }}>{t("common.loading")}</div>
+            <div style={{ fontSize: 13, color: "var(--text-muted)" }}>{t("common.loading")}</div>
           ) : tests.length === 0 ? (
-            <div style={{ fontSize: 13, color: "#686B75" }}>{t("placement.noTests")}</div>
+            <div style={{ fontSize: 13, color: "var(--text-muted)" }}>{t("placement.noTests")}</div>
           ) : (
             tests.map((x) => (
-              <div key={x.id} style={{ border: "1px solid #EAE8E2", borderRadius: 12, overflow: "hidden" }}>
+              <div key={x.id} style={{ border: "1px solid var(--border)", borderRadius: "var(--radius-md)", overflow: "hidden" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px", flexWrap: "wrap" }}>
                   <button type="button" onClick={() => toggleOpen(x.id)} style={{ flex: 1, minWidth: 200, textAlign: "left", background: "none", border: "none", cursor: "pointer", padding: 0 }}>
-                    <div style={{ fontSize: 13.5, fontWeight: 700, color: "#181A1F" }}>
+                    <div style={{ fontSize: 13.5, fontWeight: 700, color: "var(--text)" }}>
                       {openTest === x.id ? "▾" : "▸"} {x.title}
                       {(x.pending ?? 0) > 0 && (
-                        <span style={{ marginLeft: 8, fontSize: 11, fontWeight: 700, color: "#92400E", background: "#FEF3C7", padding: "2px 8px", borderRadius: 999 }}>
+                        <span style={{ marginLeft: 8, fontSize: 11, fontWeight: 700, color: "var(--warning)", background: "var(--warning-soft)", padding: "2px 8px", borderRadius: "var(--radius-pill)" }}>
                           ⏳ {x.pending} {t("placement.toReview")}
                         </span>
                       )}
                     </div>
-                    <div style={{ fontSize: 12, color: "#686B75" }}>
+                    <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
                       {x.subject} · {x.questionCount} {t("placement.questions")} · {formatDateTime(x.createdAt, lang)}
                     </div>
                   </button>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: ACCENT, background: "#EEF0FF", padding: "3px 10px", borderRadius: 999 }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: ACCENT, background: "var(--primary-soft)", padding: "3px 10px", borderRadius: "var(--radius-pill)" }}>
                     {x.attempts ?? 0} {t("placement.results")}
                   </span>
                   <button type="button" className="btn" onClick={() => rename(x)} style={{ ...ghost, padding: "6px 10px" }} title={t("placement.rename")}>
@@ -426,16 +426,16 @@ export default function PlacementTestModal({ groups, onClose, audience = "STUDEN
                       ✈️ Telegram
                     </a>
                   )}
-                  <button type="button" className="btn" onClick={() => toggleActive(x)} style={{ ...ghost, padding: "6px 10px", color: x.active ? "#B23A47" : "#16794A" }}>
+                  <button type="button" className="btn" onClick={() => toggleActive(x)} style={{ ...ghost, padding: "6px 10px", color: x.active ? "var(--danger)" : "var(--success)" }}>
                     {x.active ? t("placement.close") : t("placement.reopen")}
                   </button>
                 </div>
                 {openTest === x.id && (
-                  <div style={{ borderTop: "1px solid #F2F1EC", padding: "8px 12px 12px", overflowX: "auto" }}>
+                  <div style={{ borderTop: "1px solid var(--border)", padding: "8px 12px 12px", overflowX: "auto" }}>
                     {!attempts[x.id] ? (
-                      <div style={{ fontSize: 12.5, color: "#686B75" }}>{t("common.loading")}</div>
+                      <div style={{ fontSize: 12.5, color: "var(--text-muted)" }}>{t("common.loading")}</div>
                     ) : attempts[x.id].length === 0 ? (
-                      <div style={{ fontSize: 12.5, color: "#686B75" }}>{t("placement.noResults")}</div>
+                      <div style={{ fontSize: 12.5, color: "var(--text-muted)" }}>{t("placement.noResults")}</div>
                     ) : (
                       <table className="table" style={{ margin: 0 }}>
                         <thead>
@@ -453,8 +453,8 @@ export default function PlacementTestModal({ groups, onClose, audience = "STUDEN
                             <tr key={a.id}>
                               <td style={{ fontWeight: 600 }}>{a.fullName}</td>
                               <td>{a.phone || "—"}</td>
-                              <td style={{ textAlign: "right", fontWeight: 800, whiteSpace: "nowrap", color: a.percent >= 80 ? "#16794A" : a.percent >= 50 ? "#D97706" : "#B23A47" }}>
-                                {a.percent}% <span style={{ fontWeight: 500, color: "#686B75" }}>({a.correct}/{a.total})</span>
+                              <td style={{ textAlign: "right", fontWeight: 800, whiteSpace: "nowrap", color: a.percent >= 80 ? "var(--success)" : a.percent >= 50 ? "var(--warning)" : "var(--danger)" }}>
+                                {a.percent}% <span style={{ fontWeight: 500, color: "var(--text-muted)" }}>({a.correct}/{a.total})</span>
                               </td>
                               <td>{a.reviewStatus === "PENDING" ? "—" : levelName(a.suggestedLevel, x.subject)}</td>
                               <td style={{ whiteSpace: "nowrap" }}>{formatDateTime(a.createdAt, lang)}</td>
@@ -463,7 +463,7 @@ export default function PlacementTestModal({ groups, onClose, audience = "STUDEN
                                   type="button"
                                   className="btn"
                                   onClick={() => setReview({ test: x, attemptId: a.id })}
-                                  style={{ ...ghost, padding: "4px 10px", whiteSpace: "nowrap", ...(a.reviewStatus === "PENDING" ? { background: "#FEF3C7", borderColor: "#FCD34D", color: "#92400E" } : {}) }}
+                                  style={{ ...ghost, padding: "4px 10px", whiteSpace: "nowrap", ...(a.reviewStatus === "PENDING" ? { background: "var(--warning-soft)", borderColor: "var(--warning-border)", color: "var(--warning)" } : {}) }}
                                 >
                                   {a.reviewStatus === "PENDING" ? `⏳ ${t("review.check")}` : t("placement.details")}
                                 </button>
@@ -478,7 +478,7 @@ export default function PlacementTestModal({ groups, onClose, audience = "STUDEN
               </div>
             ))
           )}
-          {copied && <div style={{ fontSize: 12, color: "#167A48", fontWeight: 700 }}>✓ {t("placement.copied")}</div>}
+          {copied && <div style={{ fontSize: 12, color: "var(--success)", fontWeight: 700 }}>✓ {t("placement.copied")}</div>}
         </div>
       )}
       {review && (
@@ -491,14 +491,14 @@ export default function PlacementTestModal({ groups, onClose, audience = "STUDEN
 const iconBtn = (on: boolean): React.CSSProperties => ({
   width: 28,
   height: 28,
-  borderRadius: 7,
-  border: `1px solid ${on ? ACCENT : "#E2E8F0"}`,
-  background: on ? "#EEF0FF" : "#fff",
-  color: on ? ACCENT : "#64748B",
+  borderRadius: "var(--radius-xs)",
+  border: `1px solid ${on ? ACCENT : "var(--border)"}`,
+  background: on ? "var(--primary-soft)" : "var(--surface)",
+  color: on ? ACCENT : "var(--text-muted)",
   cursor: "pointer",
   fontSize: 13,
 });
-const lbl: React.CSSProperties = { fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 };
-const ghost: React.CSSProperties = { background: "#fff", border: "1px solid #EAE8E2", color: "#181A1F", fontSize: 12.5, fontWeight: 700, padding: "8px 12px", borderRadius: 8, cursor: "pointer" };
-const primary: React.CSSProperties = { background: ACCENT, color: "#fff", border: "none", fontSize: 13, fontWeight: 700, padding: "8px 14px", borderRadius: 8, cursor: "pointer" };
-const alertStyle: React.CSSProperties = { background: "#FDEBEC", color: "#B23A47", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: 10 };
+const lbl: React.CSSProperties = { fontSize: 12.5, fontWeight: 600, color: "var(--text-soft)", marginBottom: 6 };
+const ghost: React.CSSProperties = { background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text)", fontSize: 12.5, fontWeight: 700, padding: "8px 12px", borderRadius: "var(--radius-xs)", cursor: "pointer" };
+const primary: React.CSSProperties = { background: ACCENT, color: "var(--on-ink)", border: "none", fontSize: 13, fontWeight: 700, padding: "8px 14px", borderRadius: "var(--radius-xs)", cursor: "pointer" };
+const alertStyle: React.CSSProperties = { background: "var(--danger-soft)", color: "var(--danger)", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: "var(--radius-sm)" };

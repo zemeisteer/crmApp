@@ -6,7 +6,7 @@ import { useLanguage } from "@/lib/i18n-context";
 import { isAnswered } from "@/lib/tests";
 import TestPaper from "@/components/tests/TestPaper";
 
-const ACCENT = "#4F46E5";
+const ACCENT = "var(--primary)";
 type Running = Awaited<ReturnType<typeof portalApi.startExam>>;
 
 // Exams of the student's groups that they can take on their own device
@@ -65,12 +65,12 @@ export default function PortalExams({ onFinished, readOnly = false }: { onFinish
     const answered = running.questions.filter((q) => isAnswered(q, answers[q.id])).length;
     return (
       <div style={card}>
-        <div style={{ position: "sticky", top: 0, background: "#fff", paddingBottom: 10, zIndex: 1 }}>
+        <div style={{ position: "sticky", top: 0, background: "var(--surface)", paddingBottom: 10, zIndex: 1 }}>
           <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 800, fontSize: 15 }}>
             <span>{running.exam.title}</span>
             <span style={{ color: ACCENT }}>{answered}/{running.questions.length}</span>
           </div>
-          <div style={{ height: 6, background: "#F1F5F9", borderRadius: 4, marginTop: 8, overflow: "hidden" }}>
+          <div style={{ height: 6, background: "var(--surface-muted)", borderRadius: 4, marginTop: 8, overflow: "hidden" }}>
             <div style={{ width: `${(answered / running.questions.length) * 100}%`, height: "100%", background: ACCENT }} />
           </div>
         </div>
@@ -96,7 +96,7 @@ export default function PortalExams({ onFinished, readOnly = false }: { onFinish
     <div style={card}>
       <div style={{ fontWeight: 800, fontSize: 15, marginBottom: 10 }}>📝 {t("pex.title")}</div>
       {result && (
-        <div style={{ marginBottom: 12, padding: 14, borderRadius: 12, background: result.passed ? "#ECFDF5" : "#FFF7ED", border: `1px solid ${result.passed ? "#A7F3D0" : "#FED7AA"}` }}>
+        <div style={{ marginBottom: 12, padding: 14, borderRadius: "var(--radius-md)", background: result.passed ? "var(--success-soft)" : "var(--warning-soft)", border: `1px solid ${result.passed ? "var(--success-border)" : "var(--warning-border)"}` }}>
           <div style={{ fontWeight: 800, fontSize: 15 }}>{result.pending ? `⏳ ${t("pex.pending")}` : result.passed ? t("ex.passed") : t("ex.recorded")}</div>
           <div style={{ fontSize: 13.5, marginTop: 4 }}>
             {t("ex.correctAnswers")} <b>{result.earnedPoints} / {result.totalPoints}</b> · {result.score}/{result.maxScore}
@@ -105,23 +105,23 @@ export default function PortalExams({ onFinished, readOnly = false }: { onFinish
       )}
       {error && <div role="alert" style={alertStyle}>{error}</div>}
       {list === null ? (
-        <div style={{ fontSize: 13, color: "#5B6577" }}>{t("common.loading")}</div>
+        <div style={{ fontSize: 13, color: "var(--text-muted)" }}>{t("common.loading")}</div>
       ) : list.length === 0 ? (
-        <div style={{ fontSize: 13, color: "#5B6577" }}>{t("pex.none")}</div>
+        <div style={{ fontSize: 13, color: "var(--text-muted)" }}>{t("pex.none")}</div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {list.map((e) => (
-            <div key={e.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 12, border: "1px solid #E2E8F0", flexWrap: "wrap" }}>
+            <div key={e.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: "var(--radius-md)", border: "1px solid var(--border)", flexWrap: "wrap" }}>
               <div style={{ flex: 1, minWidth: 180 }}>
                 <div style={{ fontWeight: 700, fontSize: 14 }}>{e.title}</div>
-                <div style={{ fontSize: 12, color: "#5B6577" }}>
+                <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
                   {e.groupName ? `${e.groupName} · ` : ""}{e.questionCount} {t("placement.questions")}
                 </div>
               </div>
               {e.taken ? (
-                <span style={{ fontSize: 13, fontWeight: 700, color: "#15803D" }}>✓ {e.score}/{e.maxScore}</span>
+                <span style={{ fontSize: 13, fontWeight: 700, color: "var(--success)" }}>✓ {e.score}/{e.maxScore}</span>
               ) : (
-                readOnly ? <span style={{ fontSize: 12.5, color: "#686B75" }}>{t("ptp.studentTakes")}</span> : <button type="button" onClick={() => start(e.id)} disabled={busy} style={primary}>{t("pex.start")} →</button>
+                readOnly ? <span style={{ fontSize: 12.5, color: "var(--text-muted)" }}>{t("ptp.studentTakes")}</span> : <button type="button" onClick={() => start(e.id)} disabled={busy} style={primary}>{t("pex.start")} →</button>
               )}
             </div>
           ))}
@@ -131,7 +131,7 @@ export default function PortalExams({ onFinished, readOnly = false }: { onFinish
   );
 }
 
-const card: React.CSSProperties = { background: "#fff", borderRadius: 16, border: "1px solid #E2E8F0", padding: 18, marginBottom: 16 };
-const primary: React.CSSProperties = { background: ACCENT, color: "#fff", border: "none", fontSize: 13.5, fontWeight: 700, padding: "10px 16px", borderRadius: 10, cursor: "pointer" };
-const ghost: React.CSSProperties = { background: "#F1F5F9", color: "#334155", border: "none", fontSize: 13.5, fontWeight: 700, padding: "10px 16px", borderRadius: 10, cursor: "pointer" };
-const alertStyle: React.CSSProperties = { background: "#FDEBEC", color: "#B23A47", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: 10, marginTop: 10 };
+const card: React.CSSProperties = { background: "var(--surface)", borderRadius: "var(--radius-lg)", border: "1px solid var(--border)", padding: 18, marginBottom: 16 };
+const primary: React.CSSProperties = { background: ACCENT, color: "var(--on-ink)", border: "none", fontSize: 13.5, fontWeight: 700, padding: "10px 16px", borderRadius: "var(--radius-sm)", cursor: "pointer" };
+const ghost: React.CSSProperties = { background: "var(--surface-muted)", color: "var(--text-soft)", border: "none", fontSize: 13.5, fontWeight: 700, padding: "10px 16px", borderRadius: "var(--radius-sm)", cursor: "pointer" };
+const alertStyle: React.CSSProperties = { background: "var(--danger-soft)", color: "var(--danger)", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: "var(--radius-sm)", marginTop: 10 };

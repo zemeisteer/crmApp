@@ -7,7 +7,7 @@ import { invitationsApi, Role, ApiError } from "@/lib/api";
 import { useLanguage } from "@/lib/i18n-context";
 import type { TranslationKey } from "@/lib/i18n";
 
-const ACCENT = "#4F46E5";
+const ACCENT = "var(--primary)";
 
 const ROLE_LABELS: Record<string, TranslationKey> = {
   OWNER: "role.owner",
@@ -108,12 +108,12 @@ export default function InviteAcceptPage({
 
   if (loading) {
     return (
-      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#F7F7F5" }}>
+      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--surface-muted)" }}>
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14 }}>
           <svg className="animate-spin" width="32" height="32" viewBox="0 0 24 24" fill="none">
             <circle cx="12" cy="12" r="10" stroke={ACCENT} strokeWidth="4" strokeDasharray="30 60" />
           </svg>
-          <div style={{ fontSize: 14, fontWeight: 600, color: "#6B7280" }}>
+          <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-muted)" }}>
             {t("inv.checking")}
           </div>
         </div>
@@ -123,13 +123,13 @@ export default function InviteAcceptPage({
 
   if (error && !inviteData) {
     return (
-      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#F7F7F5", padding: 24 }}>
+      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--surface-muted)", padding: 24 }}>
         <div
           style={{
             maxWidth: 420,
             width: "100%",
-            background: "#FFFFFF",
-            borderRadius: 20,
+            background: "var(--surface)",
+            borderRadius: "var(--radius-lg)",
             padding: "36px 30px",
             boxShadow: "0 10px 30px rgba(0,0,0,0.05)",
             textAlign: "center",
@@ -139,10 +139,10 @@ export default function InviteAcceptPage({
           }}
         >
           <div style={{ fontSize: 42 }}>⚠️</div>
-          <h2 style={{ fontSize: 22, fontWeight: 800, color: "#111827" }}>
+          <h2 style={{ fontSize: 22, fontWeight: 800, color: "var(--text)" }}>
             {t("inv.invalid")}
           </h2>
-          <p style={{ fontSize: 14.5, color: "#6B7280", lineHeight: 1.5 }}>
+          <p style={{ fontSize: 14.5, color: "var(--text-muted)", lineHeight: 1.5 }}>
             {error}
           </p>
           <Link
@@ -150,11 +150,11 @@ export default function InviteAcceptPage({
             style={{
               display: "inline-block",
               background: ACCENT,
-              color: "#FFFFFF",
+              color: "var(--on-ink)",
               fontSize: 14.5,
               fontWeight: 700,
               padding: "12px 20px",
-              borderRadius: 10,
+              borderRadius: "var(--radius-sm)",
               textDecoration: "none",
               marginTop: 6,
             }}
@@ -167,13 +167,13 @@ export default function InviteAcceptPage({
   }
 
   return (
-    <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#F7F7F5", padding: 24 }}>
+    <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--surface-muted)", padding: 24 }}>
       <div
         style={{
           maxWidth: 480,
           width: "100%",
-          background: "#FFFFFF",
-          borderRadius: 22,
+          background: "var(--surface)",
+          borderRadius: "var(--radius-lg)",
           padding: "38px 32px",
           boxShadow: "0 14px 34px rgba(0,0,0,0.06)",
           display: "flex",
@@ -187,9 +187,9 @@ export default function InviteAcceptPage({
             style={{
               width: 52,
               height: 52,
-              borderRadius: 14,
-              background: "linear-gradient(135deg, #4F46E5, #7C3AED)",
-              color: "#fff",
+              borderRadius: "var(--radius-lg)",
+              background: "linear-gradient(135deg, var(--primary), var(--violet))",
+              color: "var(--on-ink)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -201,15 +201,15 @@ export default function InviteAcceptPage({
             {inviteData?.tenantName?.slice(0, 2).toUpperCase() || "CR"}
           </div>
 
-          <span style={{ fontSize: 12, fontWeight: 700, color: ACCENT, background: "#EEF2FF", padding: "4px 12px", borderRadius: 100, marginTop: 4 }}>
+          <span style={{ fontSize: 12, fontWeight: 700, color: ACCENT, background: "var(--primary-soft)", padding: "4px 12px", borderRadius: "var(--radius-pill)", marginTop: 4 }}>
             {roleLabel(inviteData?.role)}
           </span>
 
-          <h2 style={{ fontSize: 24, fontWeight: 800, color: "#111827", letterSpacing: "-0.02em", marginTop: 4 }}>
+          <h2 style={{ fontSize: 24, fontWeight: 800, color: "var(--text)", letterSpacing: "-0.02em", marginTop: 4 }}>
             {inviteData?.tenantName}
           </h2>
 
-          <p style={{ fontSize: 14, color: "#6B7280" }}>
+          <p style={{ fontSize: 14, color: "var(--text-muted)" }}>
             {t("inv.invitedAs1")} <strong>{roleLabel(inviteData?.role)}</strong> {t("inv.invitedAs2")}
           </p>
         </div>
@@ -217,13 +217,13 @@ export default function InviteAcceptPage({
         {error && (
           <div role="alert"
             style={{
-              background: "#FEF2F2",
-              border: "1px solid #FEE2E2",
-              color: "#B91C1C",
+              background: "var(--danger-soft)",
+              border: "1px solid var(--danger-border)",
+              color: "var(--danger)",
               fontSize: 13.5,
               fontWeight: 600,
               padding: "12px 16px",
-              borderRadius: 12,
+              borderRadius: "var(--radius-md)",
             }}
           >
             {error}
@@ -235,19 +235,19 @@ export default function InviteAcceptPage({
             /* Active user join flow */
             <div
               style={{
-                background: "#F8FAFC",
-                border: "1px solid #E2E8F0",
-                borderRadius: 14,
+                background: "var(--surface-muted)",
+                border: "1px solid var(--border)",
+                borderRadius: "var(--radius-lg)",
                 padding: "18px 20px",
                 display: "flex",
                 flexDirection: "column",
                 gap: 8,
               }}
             >
-              <div style={{ fontSize: 14.5, fontWeight: 700, color: "#1E293B" }}>
+              <div style={{ fontSize: 14.5, fontWeight: 700, color: "var(--text)" }}>
                 {t("inv.welcome")}, {activeUser.fullName || activeUser.email}!
               </div>
-              <div style={{ fontSize: 13, color: "#64748B", lineHeight: 1.5 }}>
+              <div style={{ fontSize: 13, color: "var(--text-muted)", lineHeight: 1.5 }}>
                 {t("inv.loggedInAs")} ({activeUser.email})
               </div>
             </div>
@@ -255,7 +255,7 @@ export default function InviteAcceptPage({
             /* New user registration flow */
             <>
               <div>
-                <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 6 }}>
+                <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "var(--text-soft)", marginBottom: 6 }}>
                   {t("inv.fullName")}
                 </label>
                 <input
@@ -267,8 +267,8 @@ export default function InviteAcceptPage({
                     width: "100%",
                     height: 44,
                     padding: "0 14px",
-                    borderRadius: 10,
-                    border: "1.5px solid #E5E7EB",
+                    borderRadius: "var(--radius-sm)",
+                    border: "1.5px solid var(--border)",
                     fontSize: 14.5,
                     boxSizing: "border-box",
                   }}
@@ -276,7 +276,7 @@ export default function InviteAcceptPage({
               </div>
 
               <div>
-                <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 6 }}>
+                <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "var(--text-soft)", marginBottom: 6 }}>
                   {t("inv.newPw")}
                 </label>
                 <input
@@ -290,8 +290,8 @@ export default function InviteAcceptPage({
                     width: "100%",
                     height: 44,
                     padding: "0 14px",
-                    borderRadius: 10,
-                    border: "1.5px solid #E5E7EB",
+                    borderRadius: "var(--radius-sm)",
+                    border: "1.5px solid var(--border)",
                     fontSize: 14.5,
                     boxSizing: "border-box",
                   }}
@@ -299,7 +299,7 @@ export default function InviteAcceptPage({
               </div>
 
               <div>
-                <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 6 }}>
+                <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "var(--text-soft)", marginBottom: 6 }}>
                   {t("inv.confirmPw")}
                 </label>
                 <input
@@ -313,8 +313,8 @@ export default function InviteAcceptPage({
                     width: "100%",
                     height: 44,
                     padding: "0 14px",
-                    borderRadius: 10,
-                    border: "1.5px solid #E5E7EB",
+                    borderRadius: "var(--radius-sm)",
+                    border: "1.5px solid var(--border)",
                     fontSize: 14.5,
                     boxSizing: "border-box",
                   }}
@@ -329,11 +329,11 @@ export default function InviteAcceptPage({
             style={{
               width: "100%",
               height: 48,
-              background: submitting ? "#9CA3AF" : ACCENT,
-              color: "#FFFFFF",
+              background: submitting ? "var(--text-faint)" : ACCENT,
+              color: "var(--on-ink)",
               fontSize: 15,
               fontWeight: 700,
-              borderRadius: 11,
+              borderRadius: "var(--radius-sm)",
               border: "none",
               cursor: submitting ? "not-allowed" : "pointer",
               boxShadow: "0 4px 14px rgba(79, 70, 229, 0.3)",
@@ -357,7 +357,7 @@ export default function InviteAcceptPage({
           </button>
         </form>
 
-        <div style={{ textAlign: "center", fontSize: 13, color: "#9CA3AF" }}>
+        <div style={{ textAlign: "center", fontSize: 13, color: "var(--text-faint)" }}>
           TalimCRM &copy; {new Date().getFullYear()} — {t("inv.footer")}
         </div>
       </div>

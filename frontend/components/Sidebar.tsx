@@ -11,7 +11,8 @@ import type { Role, WorkspaceItem } from "@/lib/api";
 import { centerHost } from "@/lib/domain";
 import { useChatUnread, useChatUnreadRefresh } from "@/lib/chat-unread";
 
-const ACCENT = "#4F46E5";
+// On the dark menu the active item and the logo use the brand accent.
+const ACCENT = "var(--accent)";
 
 interface NavItem {
   href: string;
@@ -510,7 +511,7 @@ export default function Sidebar({ open, onClose }: { open?: boolean; onClose?: (
         style={{
           width: 236,
           flex: "0 0 236px",
-          background: "#12131A",
+          background: "var(--ink)",
           display: "flex",
           flexDirection: "column",
           padding: "20px 14px",
@@ -524,16 +525,16 @@ export default function Sidebar({ open, onClose }: { open?: boolean; onClose?: (
         {/* The center's own logo and name once set in Settings. */}
         {tenant?.logoUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={fileUrl(tenant.logoUrl) || ""} alt="" style={{ width: 30, height: 30, borderRadius: 8, objectFit: "cover", flexShrink: 0, background: "#fff" }} />
+          <img src={fileUrl(tenant.logoUrl) || ""} alt="" style={{ width: 30, height: 30, borderRadius: "var(--radius-xs)", objectFit: "cover", flexShrink: 0, background: "var(--surface)" }} />
         ) : (
-          <div style={{ width: 30, height: 30, borderRadius: 8, background: ACCENT, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+          <div style={{ width: 30, height: 30, borderRadius: "var(--radius-xs)", background: ACCENT, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--surface)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M22 10 12 5 2 10l10 5 10-5Z" />
               <path d="M6 12v5c0 1.5 2.7 3 6 3s6-1.5 6-3v-5" />
             </svg>
           </div>
         )}
-        <span style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 800, fontSize: 16.5, color: "#fff", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={tenant?.name ?? "TalimCRM"}>
+        <span style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 16.5, color: "var(--on-ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={tenant?.name ?? "TalimCRM"}>
           {tenant?.name ?? "TalimCRM"}
         </span>
       </Link>
@@ -563,7 +564,7 @@ export default function Sidebar({ open, onClose }: { open?: boolean; onClose?: (
         {isPlatformMode(user?.role, !!tenant) && PLATFORM_ITEMS.map((item) => {
           const active = pathname === item.href || (!item.exact && pathname.startsWith(item.href + "/"));
           return (
-            <Link key={item.href} href={item.href} data-active={active} className="nav-item" style={active ? { background: ACCENT, color: "#fff" } : { color: "#C7C9D1" }}>
+            <Link key={item.href} href={item.href} data-active={active} className="nav-item" style={active ? { background: ACCENT, color: "var(--on-ink)" } : { color: "var(--text-faint)" }}>
               {item.icon}
               {t(item.labelKey)}
             </Link>
@@ -578,14 +579,14 @@ export default function Sidebar({ open, onClose }: { open?: boolean; onClose?: (
               href={item.href}
               data-active={active}
               className="nav-item"
-              style={active ? { background: ACCENT, color: "#fff" } : { color: "#C7C9D1" }}
+              style={active ? { background: ACCENT, color: "var(--on-ink)" } : { color: "var(--text-faint)" }}
             >
               {item.icon}
               {t(item.labelKey)}
               {item.href === "/messages" && chatUnread !== null && chatUnread > 0 && (
                 <span
                   data-testid="chat-unread-badge"
-                  style={{ marginLeft: "auto", fontSize: 11, fontWeight: 800, background: "#DC2626", color: "#fff", padding: "1px 7px", borderRadius: 100, lineHeight: 1.6 }}
+                  style={{ marginLeft: "auto", fontSize: 11, fontWeight: 800, background: "var(--danger)", color: "var(--on-ink)", padding: "1px 7px", borderRadius: "var(--radius-pill)", lineHeight: 1.6 }}
                 >
                   <span aria-hidden="true">{chatUnread > 99 ? "99+" : chatUnread}</span>
                   <span style={{ position: "absolute", width: 1, height: 1, overflow: "hidden", clip: "rect(0 0 0 0)", whiteSpace: "nowrap" }}>{t("chat.unreadN").replace("{n}", String(chatUnread))}</span>
@@ -597,8 +598,8 @@ export default function Sidebar({ open, onClose }: { open?: boolean; onClose?: (
                     marginLeft: "auto",
                     fontSize: 9.5,
                     fontWeight: 800,
-                    background: "linear-gradient(135deg,#8B7CF6,#4F46E5)",
-                    color: "#fff",
+                    background: "linear-gradient(135deg,var(--violet),var(--primary))",
+                    color: "var(--on-ink)",
                     padding: "2px 6px",
                     borderRadius: 5,
                     letterSpacing: "0.02em",
@@ -617,8 +618,8 @@ export default function Sidebar({ open, onClose }: { open?: boolean; onClose?: (
             className="nav-item"
             style={
               pathname === SUPERADMIN_ITEM.href || pathname.startsWith(SUPERADMIN_ITEM.href + "/")
-                ? { background: ACCENT, color: "#fff" }
-                : { color: "#C7C9D1" }
+                ? { background: ACCENT, color: "var(--on-ink)" }
+                : { color: "var(--text-faint)" }
             }
           >
             {SUPERADMIN_ITEM.icon}
@@ -634,9 +635,9 @@ export default function Sidebar({ open, onClose }: { open?: boolean; onClose?: (
             onClick={() => setLang(l)}
             className="btn"
             style={{
-              flex: 1, fontSize: 11, fontWeight: 700, padding: "6px 0", borderRadius: 7, border: "none",
+              flex: 1, fontSize: 11, fontWeight: 700, padding: "6px 0", borderRadius: "var(--radius-xs)", border: "none",
               background: lang === l ? ACCENT : "rgba(255,255,255,0.06)",
-              color: lang === l ? "#fff" : "#9A9CA6",
+              color: lang === l ? "var(--on-ink)" : "var(--text-faint)",
             }}
           >
             {l}
@@ -646,7 +647,7 @@ export default function Sidebar({ open, onClose }: { open?: boolean; onClose?: (
 
       {otherCenters.length > 0 && (
         <div role="group" aria-label={t("nav.otherCenters")} style={{ marginBottom: 6 }}>
-          <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "#9A9CA6", padding: "0 8px 4px" }}>{t("nav.otherCenters")}</div>
+          <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--text-faint)", padding: "0 8px 4px" }}>{t("nav.otherCenters")}</div>
           <div style={{ maxHeight: 96, overflowY: "auto" }}>
             {otherCenters.map((w) => (
               <button
@@ -656,7 +657,7 @@ export default function Sidebar({ open, onClose }: { open?: boolean; onClose?: (
                 disabled={switching !== null}
                 className="nav-item btn"
                 title={centerHost(w.subdomain)}
-                style={{ color: "#C7C9D1", background: "transparent", width: "100%", textAlign: "left", fontSize: 12.5, opacity: switching && switching !== w.tenantId ? 0.5 : 1 }}
+                style={{ color: "var(--text-faint)", background: "transparent", width: "100%", textAlign: "left", fontSize: 12.5, opacity: switching && switching !== w.tenantId ? 0.5 : 1 }}
               >
                 <span aria-hidden="true">⇄</span>
                 <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{switching === w.tenantId ? t("common.loading") : w.name}</span>
@@ -669,7 +670,7 @@ export default function Sidebar({ open, onClose }: { open?: boolean; onClose?: (
       <button
         onClick={logout}
         className="nav-item btn"
-        style={{ color: "#C7C9D1", background: "transparent", width: "100%", textAlign: "left", marginBottom: 6 }}
+        style={{ color: "var(--text-faint)", background: "transparent", width: "100%", textAlign: "left", marginBottom: 6 }}
       >
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
@@ -689,8 +690,8 @@ export default function Sidebar({ open, onClose }: { open?: boolean; onClose?: (
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            color: "#fff",
-            fontFamily: "'Manrope', sans-serif",
+            color: "var(--on-ink)",
+            fontFamily: "var(--font-display)",
             fontWeight: 700,
             fontSize: 12,
           }}
@@ -698,8 +699,8 @@ export default function Sidebar({ open, onClose }: { open?: boolean; onClose?: (
           {initials}
         </div>
         <div>
-          <div style={{ fontSize: 13, fontWeight: 600, color: "#fff" }}>{user?.fullName ?? "..."}</div>
-          <div style={{ fontSize: 11, color: "#9A9CA6" }}>{tenant?.subdomain ? centerHost(tenant.subdomain) : ""}</div>
+          <div style={{ fontSize: 13, fontWeight: 600, color: "var(--on-ink)" }}>{user?.fullName ?? "..."}</div>
+          <div style={{ fontSize: 11, color: "var(--text-faint)" }}>{tenant?.subdomain ? centerHost(tenant.subdomain) : ""}</div>
         </div>
       </div>
       </div>

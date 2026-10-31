@@ -16,7 +16,7 @@ import { MONTH_KEYS, MONTH_SHORT_KEYS, type TranslationKey } from "@/lib/i18n";
 import { formatDate } from "@/lib/format-date";
 import FirstSteps from "@/components/FirstSteps";
 
-const ACCENT = "#4F46E5";
+const ACCENT = "var(--primary)";
 const WEEKDAY_SHORT_KEYS: TranslationKey[] = [
   "weekday.short.sunday", "weekday.short.monday", "weekday.short.tuesday", "weekday.short.wednesday",
   "weekday.short.thursday", "weekday.short.friday", "weekday.short.saturday",
@@ -42,9 +42,9 @@ function ProgressBar({ label, value, max, color, suffix }: { label: string; valu
     <div>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
         <span style={{ fontSize: 13, fontWeight: 600 }}>{label}</span>
-        <span style={{ fontSize: 12.5, fontWeight: 700, color: "#4A4E58" }}>{suffix ?? `${value}/${max}`}</span>
+        <span style={{ fontSize: 12.5, fontWeight: 700, color: "var(--text-soft)" }}>{suffix ?? `${value}/${max}`}</span>
       </div>
-      <div style={{ height: 7, background: "#F1F0EC", borderRadius: 5, overflow: "hidden" }}>
+      <div style={{ height: 7, background: "var(--surface-muted)", borderRadius: 5, overflow: "hidden" }}>
         <div style={{ width: `${pct}%`, height: "100%", background: color, borderRadius: 5 }} />
       </div>
     </div>
@@ -53,15 +53,15 @@ function ProgressBar({ label, value, max, color, suffix }: { label: string; valu
 
 function PeriodPills({ value, onChange, options }: { value: string; onChange: (v: string) => void; options: { key: string; label: string }[] }) {
   return (
-    <div style={{ display: "flex", background: "#F2F1EC", borderRadius: 9, padding: 3 }}>
+    <div style={{ display: "flex", background: "var(--surface-muted)", borderRadius: "var(--radius-sm)", padding: 3 }}>
       {options.map((o) => (
         <button
           key={o.key}
           onClick={() => onChange(o.key)}
           style={{
-            fontSize: 11.5, fontWeight: 700, padding: "6px 11px", borderRadius: 7, cursor: "pointer", border: "none",
-            background: value === o.key ? "#fff" : "transparent",
-            color: value === o.key ? "#181A1F" : "#686B75",
+            fontSize: 11.5, fontWeight: 700, padding: "6px 11px", borderRadius: "var(--radius-xs)", cursor: "pointer", border: "none",
+            background: value === o.key ? "var(--surface)" : "transparent",
+            color: value === o.key ? "var(--text)" : "var(--text-muted)",
             boxShadow: value === o.key ? "0 1px 3px rgba(18,19,26,0.08)" : "none",
           }}
         >
@@ -152,10 +152,10 @@ function DashboardContent() {
 
   return (
     <>
-      <div style={{ padding: "22px 32px", borderBottom: "1px solid #EAE8E2", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+      <div style={{ padding: "22px 32px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div>
           <h1 style={{ fontSize: 22, fontWeight: 800 }}>{t("dashboard.welcome")}, {user?.fullName?.split(" ")[0] ?? "boss"}</h1>
-          <div style={{ fontSize: 13, color: "#686B75", marginTop: 2 }}>
+          <div style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 2 }}>
             {today} · {tenant?.name}
           </div>
         </div>
@@ -176,25 +176,25 @@ function DashboardContent() {
             {(counts?.activeGroups ?? 0) > 0 && (
               <div
                 style={{
-                  background: "linear-gradient(135deg,#0F0B29,#1B1440)", borderRadius: 16, padding: "18px 24px",
+                  background: "linear-gradient(135deg,#0F0B29,#1B1440)", borderRadius: "var(--radius-lg)", padding: "18px 24px",
                   display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, flexWrap: "wrap",
                 }}
               >
                 <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-                  <div style={{ width: 34, height: 34, borderRadius: 9, background: "rgba(139,124,246,0.25)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#B7B0E8" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <div style={{ width: 34, height: 34, borderRadius: "var(--radius-sm)", background: "rgba(139,124,246,0.25)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--primary-border)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8L12 3Z" />
                     </svg>
                   </div>
                   <div>
-                    <div style={{ fontSize: 13.5, fontWeight: 700, color: "#fff" }}>
+                    <div style={{ fontSize: 13.5, fontWeight: 700, color: "var(--on-ink)" }}>
                       {insights === null
                         ? t("dashboard.aiInsight")
                         : urgent.length > 0
                           ? t("dash.aiCount").replace("{n}", String(urgent.length))
                           : t("dash.aiAllGood")}
                     </div>
-                    <div style={{ fontSize: 12.5, color: "#B7B0E8", marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>
+                    <div style={{ fontSize: 12.5, color: "var(--primary-border)", marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>
                       {insights === null
                         ? t("dashboard.aiInsightDefault")
                         : urgent.length > 0
@@ -206,7 +206,7 @@ function DashboardContent() {
                 <Link
                   href="/ai-insights"
                   className="btn"
-                  style={{ display: "inline-block", flexShrink: 0, background: "rgba(255,255,255,0.1)", color: "#fff", fontSize: 12.5, fontWeight: 700, padding: "9px 16px", borderRadius: 9, border: "1px solid rgba(255,255,255,0.15)" }}
+                  style={{ display: "inline-block", flexShrink: 0, background: "rgba(255,255,255,0.1)", color: "var(--on-ink)", fontSize: 12.5, fontWeight: 700, padding: "9px 16px", borderRadius: "var(--radius-sm)", border: "1px solid rgba(255,255,255,0.15)" }}
                 >
                   {t("dashboard.viewAll")}
                 </Link>
@@ -236,9 +236,9 @@ function DashboardContent() {
             </div>
 
             <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: 16 }}>
-              <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 20 }}>
+              <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 20 }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-                  <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 700, fontSize: 15 }}>{t("dashboard.attendanceActivity")}</div>
+                  <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 15 }}>{t("dashboard.attendanceActivity")}</div>
                   <PeriodPills
                     value={activityPeriod}
                     onChange={(v) => setActivityPeriod(v as typeof activityPeriod)}
@@ -247,9 +247,9 @@ function DashboardContent() {
                 </div>
                 <BarChart data={chartData} defaultActiveIdx={defaultActiveIdx} unit={t("dashboard.marksUnit")} emptyText={activityPeriod === "day" ? (chartData.length === 0 ? t("dashboard.noLessonsToday") : undefined) : t("dashboard.noMarksYet")} />
               </div>
-              <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 20, display: "flex", flexDirection: "column" }}>
+              <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 20, display: "flex", flexDirection: "column" }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-                  <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 700, fontSize: 15 }}>{t("dashboard.lessonAttendance")}</div>
+                  <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 15 }}>{t("dashboard.lessonAttendance")}</div>
                   <PeriodPills
                     value={attendancePeriod}
                     onChange={(v) => setAttendancePeriod(v as typeof attendancePeriod)}
@@ -263,10 +263,10 @@ function DashboardContent() {
             </div>
 
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-              <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 20 }}>
-                <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 700, fontSize: 15, marginBottom: 16 }}>{t("dashboard.groupFillRate")}</div>
+              <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 20 }}>
+                <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 15, marginBottom: 16 }}>{t("dashboard.groupFillRate")}</div>
                 {(data?.groupFill.length ?? 0) === 0 ? (
-                  <div style={{ fontSize: 13, color: "#686B75" }}>{t("dashboard.noGroupsYet")}</div>
+                  <div style={{ fontSize: 13, color: "var(--text-muted)" }}>{t("dashboard.noGroupsYet")}</div>
                 ) : (
                   <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                     {data!.groupFill.map((g) => (
@@ -275,44 +275,44 @@ function DashboardContent() {
                         label={g.name}
                         value={g.students}
                         max={g.maxStudents || 1}
-                        color={g.students >= g.maxStudents ? "#16794A" : ACCENT}
+                        color={g.students >= g.maxStudents ? "var(--success)" : ACCENT}
                       />
                     ))}
                   </div>
                 )}
               </div>
-              {finance && <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 20 }}>
-                <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 700, fontSize: 15, marginBottom: 16 }}>{t("dashboard.paymentStatusThisMonth")}</div>
+              {finance && <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 20 }}>
+                <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 15, marginBottom: 16 }}>{t("dashboard.paymentStatusThisMonth")}</div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-                  <ProgressBar label={t("dashboard.paid")} value={paymentStatus.paid} max={100} color="#16794A" suffix={`${paymentStatus.paid}%`} />
-                  <ProgressBar label={t("dashboard.pending")} value={paymentStatus.pending} max={100} color="#686B75" suffix={`${paymentStatus.pending}%`} />
-                  <ProgressBar label={t("dashboard.overdue")} value={paymentStatus.failed} max={100} color="#B23A47" suffix={`${paymentStatus.failed}%`} />
+                  <ProgressBar label={t("dashboard.paid")} value={paymentStatus.paid} max={100} color="var(--success)" suffix={`${paymentStatus.paid}%`} />
+                  <ProgressBar label={t("dashboard.pending")} value={paymentStatus.pending} max={100} color="var(--text-muted)" suffix={`${paymentStatus.pending}%`} />
+                  <ProgressBar label={t("dashboard.overdue")} value={paymentStatus.failed} max={100} color="var(--danger)" suffix={`${paymentStatus.failed}%`} />
                 </div>
               </div>}
             </div>
             <div style={{ display: "grid", gridTemplateColumns: finance ? "1fr 1fr" : "1fr", gap: 16 }}>
               {finance && (
-                <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 20 }}>
+                <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 20 }}>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-                    <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 700, fontSize: 15 }}>{t("dash.debtorsList")}</div>
+                    <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 15 }}>{t("dash.debtorsList")}</div>
                     <Link href="/payments" style={{ fontSize: 12, color: ACCENT, fontWeight: 600, textDecoration: "none" }}>{t("dashboard.viewAll")}</Link>
                   </div>
                   {finance.topDebtors.length === 0 ? (
-                    <div style={{ fontSize: 13, color: "#167A48", fontWeight: 600 }}>✓ {t("dash.noDebtors")}</div>
+                    <div style={{ fontSize: 13, color: "var(--success)", fontWeight: 600 }}>✓ {t("dash.noDebtors")}</div>
                   ) : (
                     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                       {finance.topDebtors.map((d) => (
-                        <Link key={d.studentId} href={`/students/${d.studentId}`} style={{ display: "flex", alignItems: "center", gap: 12, textDecoration: "none", color: "#181A1F" }}>
-                          <div style={{ width: 36, height: 36, borderRadius: 10, background: "#FDEBEC", color: "#B23A47", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 12.5, flexShrink: 0 }}>
+                        <Link key={d.studentId} href={`/students/${d.studentId}`} style={{ display: "flex", alignItems: "center", gap: 12, textDecoration: "none", color: "var(--text)" }}>
+                          <div style={{ width: 36, height: 36, borderRadius: "var(--radius-sm)", background: "var(--danger-soft)", color: "var(--danger)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 12.5, flexShrink: 0 }}>
                             {initials(d.fullName)}
                           </div>
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ fontSize: 13.5, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{d.fullName}</div>
-                            <div style={{ fontSize: 12, color: "#686B75", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{d.groups.join(", ") || "—"}</div>
+                            <div style={{ fontSize: 12, color: "var(--text-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{d.groups.join(", ") || "—"}</div>
                           </div>
                           <div style={{ textAlign: "right", flexShrink: 0 }}>
                             <div style={{ fontSize: 13.5, fontWeight: 700 }}>{formatMoney(d.debt)} {t("common.sumUnit")}</div>
-                            <div style={{ fontSize: 11.5, fontWeight: 600, color: "#B23A47" }}>
+                            <div style={{ fontSize: 11.5, fontWeight: 600, color: "var(--danger)" }}>
                               {d.overdueDays !== null ? t("dash.daysLate").replace("{n}", String(d.overdueDays)) : t("dash.unpaidThisMonth")}
                             </div>
                           </div>
@@ -322,35 +322,35 @@ function DashboardContent() {
                   )}
                 </div>
               )}
-              <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 20 }}>
+              <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 20 }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-                  <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 700, fontSize: 15 }}>{t("dashboard.todaysLessonsList")}</div>
+                  <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 15 }}>{t("dashboard.todaysLessonsList")}</div>
                   <Link href="/schedule" style={{ fontSize: 12, color: ACCENT, fontWeight: 600, textDecoration: "none" }}>{t("dashboard.openTimetable")} →</Link>
                 </div>
                 {(data?.todaysLessons.length ?? 0) === 0 ? (
-                  <div style={{ fontSize: 13, color: "#686B75" }}>{t("dashboard.noLessonsToday")}</div>
+                  <div style={{ fontSize: 13, color: "var(--text-muted)" }}>{t("dashboard.noLessonsToday")}</div>
                 ) : (
                   <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                     {data!.todaysLessons.map((l, i) => {
-                      const palette = [["#ECEBFB", ACCENT], ["#FFF1E8", "#B4531A"], ["#E9F8EF", "#16794A"], ["#FDEBEC", "#E15361"]][i % 4];
+                      const palette = [["var(--primary-soft)", ACCENT], ["var(--accent-soft)", "var(--warning)"], ["var(--success-soft)", "var(--success)"], ["var(--danger-soft)", "var(--danger)"]][i % 4];
                       const badge =
                         l.status === "DONE"
-                          ? { text: `${t("dash.lessonDone")}${l.marked ? ` · ${l.present}/${l.marked}` : ""}`, color: "#167A48", bg: "#E9F8EF" }
+                          ? { text: `${t("dash.lessonDone")}${l.marked ? ` · ${l.present}/${l.marked}` : ""}`, color: "var(--success)", bg: "var(--success-soft)" }
                           : l.status === "UNMARKED"
-                            ? { text: t("dash.lessonUnmarked"), color: "#B45309", bg: "#FEF3C7" }
-                            : { text: t("dash.lessonPlanned"), color: "#686B75", bg: "#F2F1EC" };
+                            ? { text: t("dash.lessonUnmarked"), color: "var(--warning)", bg: "var(--warning-soft)" }
+                            : { text: t("dash.lessonPlanned"), color: "var(--text-muted)", bg: "var(--surface-muted)" };
                       return (
-                        <Link key={l.id} href={`/groups/${l.id}`} style={{ display: "flex", alignItems: "center", gap: 12, textDecoration: "none", color: "#181A1F" }}>
-                          <div style={{ width: 36, height: 36, borderRadius: 10, background: palette[0], color: palette[1], display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 12.5, flexShrink: 0 }}>
+                        <Link key={l.id} href={`/groups/${l.id}`} style={{ display: "flex", alignItems: "center", gap: 12, textDecoration: "none", color: "var(--text)" }}>
+                          <div style={{ width: 36, height: 36, borderRadius: "var(--radius-sm)", background: palette[0], color: palette[1], display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 12.5, flexShrink: 0 }}>
                             {initials(l.name)}
                           </div>
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ fontSize: 13.5, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l.name}</div>
-                            <div style={{ fontSize: 12, color: "#686B75", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            <div style={{ fontSize: 12, color: "var(--text-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                               {[l.startTime ?? "—", l.teacherName, `${l.students} ${t("dash.studentsShort")}`].filter(Boolean).join(" · ")}
                             </div>
                           </div>
-                          <span style={{ fontSize: 11.5, fontWeight: 700, color: badge.color, background: badge.bg, padding: "4px 10px", borderRadius: 100, whiteSpace: "nowrap", flexShrink: 0 }}>{badge.text}</span>
+                          <span style={{ fontSize: 11.5, fontWeight: 700, color: badge.color, background: badge.bg, padding: "4px 10px", borderRadius: "var(--radius-pill)", whiteSpace: "nowrap", flexShrink: 0 }}>{badge.text}</span>
                         </Link>
                       );
                     })}
@@ -359,14 +359,14 @@ function DashboardContent() {
               </div>
             </div>
             {finance && (
-              <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 20 }}>
+              <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 20 }}>
                 <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 8, flexWrap: "wrap", gap: 8 }}>
-                  <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 700, fontSize: 15 }}>{t("dashboard.revenueByMonth")}</div>
-                  <div style={{ fontSize: 12, color: "#686B75" }}>
-                    {t("dashboard.yearTotal")}: <strong style={{ color: "#167A48" }}>{formatMoney(finance.revenueByMonth.reduce((s, m) => s + m.amount, 0))} {t("common.sumUnit")}</strong>
+                  <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 15 }}>{t("dashboard.revenueByMonth")}</div>
+                  <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
+                    {t("dashboard.yearTotal")}: <strong style={{ color: "var(--success)" }}>{formatMoney(finance.revenueByMonth.reduce((s, m) => s + m.amount, 0))} {t("common.sumUnit")}</strong>
                   </div>
                 </div>
-                <BarChart data={revenueData} color="#16794A" formatValue={(v) => formatMoney(v)} unit={t("common.sumUnit")} emptyText={t("dashboard.noPaymentsYet")} />
+                <BarChart data={revenueData} color="var(--success)" formatValue={(v) => formatMoney(v)} unit={t("common.sumUnit")} emptyText={t("dashboard.noPaymentsYet")} />
               </div>
             )}
             </>
@@ -383,14 +383,14 @@ function StatCard({ label, value, danger, title }: { label: string; value: strin
     <div
       title={title}
       style={{
-        background: danger ? "#FDEBEC" : "#fff",
-        border: `1px solid ${danger ? "#F6D2D6" : "#EAE8E2"}`,
-        borderRadius: 14,
+        background: danger ? "var(--danger-soft)" : "var(--surface)",
+        border: `1px solid ${danger ? "var(--danger-border)" : "var(--border)"}`,
+        borderRadius: "var(--radius-lg)",
         padding: 18,
       }}
     >
-      <div style={{ fontSize: 12, color: danger ? "#B23A47" : "#686B75" }}>{label}</div>
-      <div style={{ fontSize: 24, fontWeight: 800, fontFamily: "'Manrope', sans-serif", marginTop: 4, color: danger ? "#B23A47" : "#181A1F" }}>
+      <div style={{ fontSize: 12, color: danger ? "var(--danger)" : "var(--text-muted)" }}>{label}</div>
+      <div style={{ fontSize: 24, fontWeight: 800, fontFamily: "var(--font-display)", marginTop: 4, color: danger ? "var(--danger)" : "var(--text)" }}>
         {value}
       </div>
     </div>

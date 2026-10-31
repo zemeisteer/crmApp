@@ -28,7 +28,7 @@ import {
 import { useLanguage } from "@/lib/i18n-context";
 import { PrivateLink } from "@/components/PrivateFile";
 
-const ACCENT = "#4F46E5";
+const ACCENT = "var(--primary)";
 
 function ExamsContent() {
   const { t } = useLanguage();
@@ -426,17 +426,17 @@ function ExamsContent() {
 
   return (
     <>
-      <div style={{ padding: "24px 32px", borderBottom: "1px solid #EAE8E2", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
+      <div style={{ padding: "24px 32px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
         <div>
           <h1 style={{ fontSize: 24, fontWeight: 800 }}>{t("exams.title")}</h1>
-          <p style={{ fontSize: 13, color: "#686B75", marginTop: 2 }}>
+          <p style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 2 }}>
             {t("ex.subtitle")}
           </p>
         </div>
         <button
           className="btn"
           onClick={() => { resetForm(); setModalOpen(true); }}
-          style={{ background: ACCENT, color: "#fff", fontSize: 13.5, fontWeight: 700, padding: "10px 18px", borderRadius: 10 }}
+          style={{ background: ACCENT, color: "var(--on-ink)", fontSize: 13.5, fontWeight: 700, padding: "10px 18px", borderRadius: "var(--radius-sm)" }}
         >
           {t("exams.newExam")}
         </button>
@@ -446,24 +446,24 @@ function ExamsContent() {
         {loadError !== null ? (
           <LoadError message={loadError || t("adm.loadError")} onRetry={load} />
         ) : loading ? (
-          <div style={{ color: "#686B75", fontSize: 14 }}>{t("common.loading")}</div>
+          <div style={{ color: "var(--text-muted)", fontSize: 14 }}>{t("common.loading")}</div>
         ) : (
           <>
             {/* KPI Performance Charts */}
             {groupStats.length > 0 && (
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
-                <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 22 }}>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: "#686B75", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 12 }}>
+                <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 22 }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 12 }}>
                     {t("exams.avgScore")}
                   </div>
                   <BarChart
                     data={groupStats.map((g) => ({ label: g.name, value: g.avgPct }))}
-                    color="#4F46E5"
+                    color="var(--primary)"
                     formatValue={(v) => `${v}%`}
                   />
                 </div>
-                <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 22 }}>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: "#686B75", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 12 }}>
+                <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 22 }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 12 }}>
                     {t("exams.resultsByGroup")}
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -471,11 +471,11 @@ function ExamsContent() {
                       <div
                         key={g.id}
                         onClick={() => setGroupDetail({ id: g.id, name: g.name })}
-                        style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 12px", borderRadius: 10, background: "#FAF9F6", cursor: "pointer" }}
+                        style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 12px", borderRadius: "var(--radius-sm)", background: "var(--surface-muted)", cursor: "pointer" }}
                       >
                         <span style={{ fontSize: 13.5, fontWeight: 600 }}>{g.name}</span>
                         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                          <span style={{ fontSize: 12, color: "#686B75" }}>{g.examCount} {t("exams.examCountUnit")}</span>
+                          <span style={{ fontSize: 12, color: "var(--text-muted)" }}>{g.examCount} {t("exams.examCountUnit")}</span>
                           <span style={{ fontSize: 13, fontWeight: 800, color: ACCENT }}>{g.avgPct}%</span>
                         </div>
                       </div>
@@ -501,27 +501,27 @@ function ExamsContent() {
 
             {/* Exam cards list */}
             {filteredExams.length === 0 ? (
-              <div style={{ color: "#686B75", fontSize: 14 }}>{t("exams.noneForGroup")}</div>
+              <div style={{ color: "var(--text-muted)", fontSize: 14 }}>{t("exams.noneForGroup")}</div>
             ) : (
               <>
                 <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                   {pagedExams.map((ex) => (
-                    <div key={ex.id} style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 20 }}>
+                    <div key={ex.id} style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 20 }}>
                       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
                         <div>
                           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                            <span style={{ fontSize: 16, fontWeight: 800, fontFamily: "'Manrope', sans-serif" }}>{ex.title}</span>
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                            <span style={{ fontSize: 16, fontWeight: 800, fontFamily: "var(--font-display)" }}>{ex.title}</span>
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-primary-soft text-primary border border-primary-border">
                               {ex.questions?.length || 0} {t("placement.questions")}
                             </span>
                           </div>
-                          <div style={{ fontSize: 12.5, color: "#686B75", marginTop: 4 }}>
+                          <div style={{ fontSize: 12.5, color: "var(--text-muted)", marginTop: 4 }}>
                             {ex.group?.name || t("homework.groupFallback")} · {t("exams.maxScoreLabel")}: {ex.maxScore}
                             {ex.passingScore != null && ` · ${t("exams.passingScoreLabel")}: ${ex.passingScore}`}
                             {ex.durationMinutes != null && ` · ⏱ ${ex.durationMinutes} ${t("exams.minutesUnit")}`}
                             {" · "}{(ex.results || []).length} {t("exams.gradedCount")}
                           </div>
-                          {ex.description && <div style={{ fontSize: 13, color: "#4A4E58", marginTop: 8, maxWidth: 600 }}>{ex.description}</div>}
+                          {ex.description && <div style={{ fontSize: 13, color: "var(--text-soft)", marginTop: 8, maxWidth: 600 }}>{ex.description}</div>}
                           {ex.materialPath && (
                             <PrivateLink name={ex.materialPath} style={{ fontSize: 12, color: ACCENT, fontWeight: 700, marginTop: 6, display: "inline-block" }}>
                               📎 {ex.materialName || t("exams.material")}
@@ -535,7 +535,7 @@ function ExamsContent() {
                           <button
                             className="btn cursor-pointer"
                             onClick={() => openQuestionManager(ex)}
-                            style={{ background: "#EEF2FF", color: "#4F46E5", border: "1px solid #C7D2FE", fontSize: 12, fontWeight: 700, padding: "6px 12px", borderRadius: 8 }}
+                            style={{ background: "var(--primary-soft)", color: "var(--primary)", border: "1px solid var(--primary-border)", fontSize: 12, fontWeight: 700, padding: "6px 12px", borderRadius: "var(--radius-xs)" }}
                           >
                             📝 {t("ex.bank")} ({ex.questions?.length || 0})
                           </button>
@@ -544,7 +544,7 @@ function ExamsContent() {
                           <button
                             className="btn cursor-pointer"
                             onClick={() => openTestSimulator(ex)}
-                            style={{ background: "#ECFDF5", color: "#059669", border: "1px solid #A7F3D0", fontSize: 12, fontWeight: 700, padding: "6px 12px", borderRadius: 8 }}
+                            style={{ background: "var(--success-soft)", color: "var(--success)", border: "1px solid var(--success-border)", fontSize: 12, fontWeight: 700, padding: "6px 12px", borderRadius: "var(--radius-xs)" }}
                           >
                             {t("ex.takeTest")}
                           </button>
@@ -554,7 +554,7 @@ function ExamsContent() {
                             <button
                               className="btn cursor-pointer"
                               onClick={() => setAttemptsExam(ex)}
-                              style={{ background: "#FFFBEB", color: "#92400E", border: "1px solid #FDE68A", fontSize: 12, fontWeight: 700, padding: "6px 12px", borderRadius: 8 }}
+                              style={{ background: "var(--warning-soft)", color: "var(--warning)", border: "1px solid var(--warning-border)", fontSize: 12, fontWeight: 700, padding: "6px 12px", borderRadius: "var(--radius-xs)" }}
                             >
                               📋 {t("review.attemptsBtn")} ({(ex.attempts ?? []).length})
                               {(ex.attempts ?? []).some((a) => a.reviewStatus === "PENDING") && ` · ⏳ ${(ex.attempts ?? []).filter((a) => a.reviewStatus === "PENDING").length}`}
@@ -565,7 +565,7 @@ function ExamsContent() {
                           <button
                             className="btn cursor-pointer"
                             onClick={() => openGrading(ex)}
-                            style={{ background: "#F2F1EC", color: "#181A1F", border: "none", fontSize: 12, fontWeight: 700, padding: "6px 12px", borderRadius: 8 }}
+                            style={{ background: "var(--surface-muted)", color: "var(--text)", border: "none", fontSize: 12, fontWeight: 700, padding: "6px 12px", borderRadius: "var(--radius-xs)" }}
                           >
                             {t("exams.grade")}
                           </button>
@@ -574,7 +574,7 @@ function ExamsContent() {
                           <button
                             className="btn cursor-pointer"
                             onClick={() => onDelete(ex.id)}
-                            style={{ background: "#FDEBEC", color: "#B23A47", border: "none", fontSize: 12, fontWeight: 700, padding: "6px 12px", borderRadius: 8 }}
+                            style={{ background: "var(--danger-soft)", color: "var(--danger)", border: "none", fontSize: 12, fontWeight: 700, padding: "6px 12px", borderRadius: "var(--radius-xs)" }}
                           >
                             {t("exams.delete")}
                           </button>
@@ -583,7 +583,7 @@ function ExamsContent() {
 
                       {/* Graded results preview pills */}
                       {(ex.results || []).length > 0 && (
-                        <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px solid #F1F0EC", display: "flex", flexWrap: "wrap", gap: 8 }}>
+                        <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px solid var(--border)", display: "flex", flexWrap: "wrap", gap: 8 }}>
                           {ex.results!.map((r) => (
                             <span key={r.id} className="badge badge-neutral" style={{ fontSize: 12 }}>
                               {r.student.fullName}: <strong>{r.score}/{ex.maxScore}</strong>
@@ -606,10 +606,10 @@ function ExamsContent() {
       <Modal open={modalOpen} onClose={() => { setModalOpen(false); resetForm(); }} title={t("exams.modalTitle")}>
         <form onSubmit={onCreate} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           {error && (
-            <div role="alert" style={{ background: "#FDEBEC", color: "#B23A47", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: 10 }}>{error}</div>
+            <div role="alert" style={{ background: "var(--danger-soft)", color: "var(--danger)", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: "var(--radius-sm)" }}>{error}</div>
           )}
           <div>
-            <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>{t("exams.fieldDirection")}</div>
+            <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-soft)", marginBottom: 6 }}>{t("exams.fieldDirection")}</div>
             <Select
               options={[{ value: "", label: t("homework.allDirections") }, ...subjects.map((s) => ({ value: s, label: s }))]}
               value={direction}
@@ -618,7 +618,7 @@ function ExamsContent() {
           </div>
           <div>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
-              <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58" }}>{t("exams.fieldGroups")}</div>
+              <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-soft)" }}>{t("exams.fieldGroups")}</div>
               <button type="button" onClick={selectWholeDirection} style={{ fontSize: 11.5, fontWeight: 700, color: ACCENT, background: "none", border: "none", cursor: "pointer" }}>
                 {t("exams.selectWholeDirection")}
               </button>
@@ -631,12 +631,12 @@ function ExamsContent() {
             />
           </div>
           <div>
-            <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>{t("exams.fieldTitle")}</div>
+            <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-soft)", marginBottom: 6 }}>{t("exams.fieldTitle")}</div>
             <input className="field-input" required value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Midterm Exam: Grammar & Reading" />
           </div>
           <div>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
-              <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58" }}>{t("exams.fieldDescription")}</div>
+              <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-soft)" }}>{t("exams.fieldDescription")}</div>
               <button type="button" onClick={onAiAssist} disabled={aiLoading} style={{ fontSize: 11.5, fontWeight: 700, color: ACCENT, background: "none", border: "none", cursor: "pointer" }}>
                 {aiLoading ? t("exams.aiWriting") : t("exams.aiWriteBtn")}
               </button>
@@ -652,27 +652,27 @@ function ExamsContent() {
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
             <div>
-              <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>{t("exams.fieldMaxScore")}</div>
+              <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-soft)", marginBottom: 6 }}>{t("exams.fieldMaxScore")}</div>
               <input className="field-input" type="number" min={1} value={maxScore} onChange={(e) => setMaxScore(e.target.value)} />
             </div>
             <div>
-              <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>{t("exams.fieldPassingScore")}</div>
+              <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-soft)", marginBottom: 6 }}>{t("exams.fieldPassingScore")}</div>
               <input className="field-input" type="number" min={0} value={passingScore} onChange={(e) => setPassingScore(e.target.value)} placeholder="60" />
             </div>
             <div>
-              <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>{t("exams.fieldDuration")}</div>
+              <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-soft)", marginBottom: 6 }}>{t("exams.fieldDuration")}</div>
               <input className="field-input" type="number" min={1} value={durationMinutes} onChange={(e) => setDurationMinutes(e.target.value)} placeholder="45" />
             </div>
           </div>
           <div>
-            <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>{t("exams.fieldMaterial")}</div>
+            <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-soft)", marginBottom: 6 }}>{t("exams.fieldMaterial")}</div>
             <input className="field-input" type="file" accept="application/pdf" onChange={(e) => setMaterial(e.target.files?.[0] ?? null)} />
           </div>
           <button
             className="btn cursor-pointer"
             type="submit"
             disabled={saving}
-            style={{ background: ACCENT, color: "#fff", fontSize: 14, fontWeight: 700, padding: 12, borderRadius: 10, marginTop: 6 }}
+            style={{ background: ACCENT, color: "var(--on-ink)", fontSize: 14, fontWeight: 700, padding: 12, borderRadius: "var(--radius-sm)", marginTop: 6 }}
           >
             {saving ? t("exams.creating") : t("exams.create")}
           </button>
@@ -684,9 +684,9 @@ function ExamsContent() {
         {gradeExam && (
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {gradeLoading ? (
-              <div style={{ color: "#686B75", fontSize: 13.5 }}>{t("common.loading")}</div>
+              <div style={{ color: "var(--text-muted)", fontSize: 13.5 }}>{t("common.loading")}</div>
             ) : gradeStudents.length === 0 ? (
-              <div style={{ color: "#686B75", fontSize: 13.5 }}>{t("exams.noGradeStudents")}</div>
+              <div style={{ color: "var(--text-muted)", fontSize: 13.5 }}>{t("exams.noGradeStudents")}</div>
             ) : (
               gradeStudents.map((s) => (
                 <div key={s.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
@@ -708,7 +708,7 @@ function ExamsContent() {
               className="btn cursor-pointer"
               onClick={onSaveGrades}
               disabled={gradeSaving || gradeStudents.length === 0}
-              style={{ background: ACCENT, color: "#fff", border: "none", fontSize: 14, fontWeight: 700, padding: 12, borderRadius: 10, marginTop: 6 }}
+              style={{ background: ACCENT, color: "var(--on-ink)", border: "none", fontSize: 14, fontWeight: 700, padding: 12, borderRadius: "var(--radius-sm)", marginTop: 6 }}
             >
               {gradeSaving ? t("exams.creating") : t("exams.saveGrades")}
             </button>
@@ -719,18 +719,18 @@ function ExamsContent() {
       {/* Group Detail Analytics Modal */}
       <Modal open={!!groupDetail} onClose={() => setGroupDetail(null)} title={groupDetail ? `${t("exams.resultsTitlePrefix")} — ${groupDetail.name}` : t("exams.resultsTitlePrefix")}>
         {groupDetailStudents.length === 0 ? (
-          <div style={{ color: "#686B75", fontSize: 13.5 }}>{t("exams.noGradedStudentsYet")}</div>
+          <div style={{ color: "var(--text-muted)", fontSize: 13.5 }}>{t("exams.noGradedStudentsYet")}</div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             {groupDetailStudents.map((s) => {
-              const barColor = s.avgPct >= 80 ? "#16794A" : s.avgPct >= 60 ? "#B4531A" : "#B23A47";
+              const barColor = s.avgPct >= 80 ? "var(--success)" : s.avgPct >= 60 ? "var(--warning)" : "var(--danger)";
               return (
-                <div key={s.fullName} style={{ border: "1px solid #EAE8E2", borderRadius: 12, padding: 14 }}>
+                <div key={s.fullName} style={{ border: "1px solid var(--border)", borderRadius: "var(--radius-md)", padding: 14 }}>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
                     <div style={{ fontSize: 13.5, fontWeight: 700 }}>{s.fullName}</div>
                     <span style={{ fontSize: 12, fontWeight: 800, color: barColor }}>{s.avgPct}%</span>
                   </div>
-                  <div style={{ height: 6, background: "#F1F0EC", borderRadius: 5, overflow: "hidden", marginBottom: 10 }}>
+                  <div style={{ height: 6, background: "var(--surface-muted)", borderRadius: 5, overflow: "hidden", marginBottom: 10 }}>
                     <div style={{ width: `${s.avgPct}%`, height: "100%", background: barColor, borderRadius: 5 }} />
                   </div>
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
@@ -740,9 +740,9 @@ function ExamsContent() {
                         <span
                           key={i}
                           style={{
-                            fontSize: 11.5, fontWeight: 700, padding: "4px 10px", borderRadius: 100,
-                            background: passed === true ? "#E9F8EF" : passed === false ? "#FDEBEC" : "#F2F1EC",
-                            color: passed === true ? "#16794A" : passed === false ? "#B23A47" : "#4A4E58",
+                            fontSize: 11.5, fontWeight: 700, padding: "4px 10px", borderRadius: "var(--radius-pill)",
+                            background: passed === true ? "var(--success-soft)" : passed === false ? "var(--danger-soft)" : "var(--surface-muted)",
+                            color: passed === true ? "var(--success)" : passed === false ? "var(--danger)" : "var(--text-soft)",
                           }}
                         >
                           {sc.title}: {sc.score}/{sc.maxScore}
@@ -769,18 +769,18 @@ function ExamsContent() {
         {questionsExam && (
           <div className="space-y-4">
             {questionError && (
-              <div className="p-3 rounded-xl bg-rose-50 text-rose-700 text-xs font-medium border border-rose-200">
+              <div className="p-3 rounded-xl bg-danger-soft text-danger text-xs font-medium border border-danger-border">
                 {questionError}
               </div>
             )}
 
             {/* Action Bar */}
-            <div className="flex items-center justify-between gap-3 p-3 rounded-xl bg-slate-50 border border-slate-200 flex-wrap">
+            <div className="flex items-center justify-between gap-3 p-3 rounded-xl bg-surface-muted border border-line flex-wrap">
               <div>
-                <span className="text-xs font-bold text-slate-800">
+                <span className="text-xs font-bold text-fg">
                   {t("ex.totalQ")}: {examQuestionsList.length}
                 </span>
-                <span className="text-[11px] text-slate-500 block">
+                <span className="text-[11px] text-muted block">
                   {t("ex.totalPoints")}: {examQuestionsList.reduce((sum, q) => sum + (q.points || 1), 0)}
                 </span>
               </div>
@@ -795,13 +795,13 @@ function ExamsContent() {
                 />
                 <button
                   onClick={() => { setShowAiForm(!showAiForm); setNewQ(null); }}
-                  className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer shadow-sm"
+                  className="px-3 py-1.5 rounded-lg bg-primary hover:bg-primary text-white text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer shadow-sm"
                 >
                   {t("ex.aiGenerate")}
                 </button>
                 <button
                   onClick={() => { setNewQ(newQ ? null : emptyQuestion("MCQ")); setShowAiForm(false); }}
-                  className="px-3 py-1.5 rounded-lg bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-semibold transition cursor-pointer"
+                  className="px-3 py-1.5 rounded-lg bg-surface border border-line-strong hover:bg-surface-muted text-soft text-xs font-semibold transition cursor-pointer"
                 >
                   {newQ ? t("ex.cancelX") : t("ex.addQ")}
                 </button>
@@ -810,35 +810,35 @@ function ExamsContent() {
 
             {/* AI generation options */}
             {showAiForm && (
-              <div className="p-4 rounded-xl border border-violet-200 bg-violet-50/50 space-y-3">
-                <div className="text-xs font-bold text-violet-950">{t("ex.aiTitle")}</div>
+              <div className="p-4 rounded-xl border border-violet-border bg-violet-soft/50 space-y-3">
+                <div className="text-xs font-bold text-violet">{t("ex.aiTitle")}</div>
                 <div className="grid grid-cols-1 sm:grid-cols-[120px_1fr] gap-3">
                   <div>
-                    <label className="block text-xs font-medium text-slate-700 mb-1">{t("ex.aiCount")}</label>
-                    <select value={aiCount} onChange={(e) => setAiCount(e.target.value)} className="w-full bg-white border border-slate-300 rounded-lg p-2 text-xs">
+                    <label className="block text-xs font-medium text-soft mb-1">{t("ex.aiCount")}</label>
+                    <select value={aiCount} onChange={(e) => setAiCount(e.target.value)} className="w-full bg-surface border border-line-strong rounded-lg p-2 text-xs">
                       {["5", "10", "15", "20", "25", "30"].map((n) => (
                         <option key={n} value={n}>{n}</option>
                       ))}
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-slate-700 mb-1">{t("ex.aiRequest")}</label>
+                    <label className="block text-xs font-medium text-soft mb-1">{t("ex.aiRequest")}</label>
                     <textarea
                       rows={2}
                       value={aiRequest}
                       onChange={(e) => setAiRequest(e.target.value)}
                       placeholder={t("ex.aiRequestPh")}
-                      className="w-full bg-white border border-slate-300 rounded-lg p-2 text-xs"
+                      className="w-full bg-surface border border-line-strong rounded-lg p-2 text-xs"
                     />
                   </div>
                 </div>
                 <div className="flex items-center justify-between gap-3 flex-wrap">
-                  <span className="text-[11px] text-slate-500">{t("ex.aiHint")}</span>
+                  <span className="text-[11px] text-muted">{t("ex.aiHint")}</span>
                   <button
                     type="button"
                     onClick={handleAiGenerateQuestions}
                     disabled={aiGeneratingQuestions}
-                    className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-xs font-bold cursor-pointer"
+                    className="px-4 py-2 rounded-lg bg-primary hover:bg-primary disabled:opacity-50 text-white text-xs font-bold cursor-pointer"
                   >
                     {aiGeneratingQuestions ? t("ex.aiGenerating") : `${t("ex.aiCreate")} (${aiCount})`}
                   </button>
@@ -848,24 +848,24 @@ function ExamsContent() {
 
             {/* Add Question Inline Form */}
             {newQ && (
-              <form onSubmit={handleAddQuestion} className="p-4 rounded-xl border border-indigo-100 bg-indigo-50/40 space-y-3">
-                <h4 className="text-xs font-bold text-indigo-950 uppercase tracking-wide">{t("ex.newQ")}</h4>
+              <form onSubmit={handleAddQuestion} className="p-4 rounded-xl border border-primary-soft bg-primary-soft/40 space-y-3">
+                <h4 className="text-xs font-bold text-fg uppercase tracking-wide">{t("ex.newQ")}</h4>
                 <QuestionEditor value={newQ} onChange={setNewQ} />
                 <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1">{t("ex.explanation")}</label>
+                  <label className="block text-xs font-medium text-soft mb-1">{t("ex.explanation")}</label>
                   <input
                     type="text"
                     placeholder={t("ex.explanationPh")}
                     value={newQ.explanation ?? ""}
                     onChange={(e) => setNewQ({ ...newQ, explanation: e.target.value })}
-                    className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 focus:outline-none focus:border-indigo-500"
+                    className="w-full bg-surface border border-line-strong rounded-lg px-2.5 py-1.5 text-xs text-fg focus:outline-none focus:border-primary"
                   />
                 </div>
                 <div className="flex justify-end gap-2 pt-2">
                   <button
                     type="submit"
                     disabled={savingQuestion || !newQReady}
-                    className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-xs font-bold transition cursor-pointer"
+                    className="px-4 py-2 rounded-lg bg-primary hover:bg-primary disabled:opacity-50 text-white text-xs font-bold transition cursor-pointer"
                   >
                     {savingQuestion ? t("common.saving") : t("ex.saveQ")}
                   </button>
@@ -875,11 +875,11 @@ function ExamsContent() {
 
             {/* Questions List */}
             {loadingQuestions ? (
-              <div className="py-12 text-center text-xs text-slate-500">{t("ex.loadingQ")}</div>
+              <div className="py-12 text-center text-xs text-muted">{t("ex.loadingQ")}</div>
             ) : examQuestionsList.length === 0 ? (
-              <div className="p-8 text-center rounded-xl bg-slate-50 border border-slate-200">
-                <p className="text-xs text-slate-600">{t("ex.emptyQ")}</p>
-                <p className="text-[11px] text-slate-400 mt-1">
+              <div className="p-8 text-center rounded-xl bg-surface-muted border border-line">
+                <p className="text-xs text-soft">{t("ex.emptyQ")}</p>
+                <p className="text-[11px] text-faint mt-1">
                   {t("ex.emptyQHint")}
                 </p>
               </div>
@@ -887,12 +887,12 @@ function ExamsContent() {
               <div className="max-h-[460px] overflow-y-auto pr-1">
                 <QuestionList
                   questions={examQuestionsList}
-                  meta={(q) => (q.explanation ? <span className="block text-[11px] text-slate-500 italic font-normal mt-1">💡 {q.explanation}</span> : null)}
+                  meta={(q) => (q.explanation ? <span className="block text-[11px] text-muted italic font-normal mt-1">💡 {q.explanation}</span> : null)}
                   aside={(q) => (
                     <button
                       onClick={() => q.id && handleDeleteQuestion(q.id)}
                       title={t("ex.deleteQ")}
-                      className="p-1 rounded text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer"
+                      className="p-1 rounded text-faint hover:text-danger hover:bg-danger-soft transition cursor-pointer"
                     >
                       🗑
                     </button>
@@ -917,8 +917,8 @@ function ExamsContent() {
           <div className="space-y-4">
             {/* STEP 1: SELECT STUDENT */}
             {simulatorStep === "SELECT" && (
-              <div className="p-4 rounded-xl border border-slate-200 bg-white space-y-4 text-center">
-                <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-200 flex items-center justify-center mx-auto">
+              <div className="p-4 rounded-xl border border-line bg-surface space-y-4 text-center">
+                <div className="w-12 h-12 rounded-2xl bg-success-soft text-success border border-success-border flex items-center justify-center mx-auto">
                   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <circle cx="12" cy="12" r="10" />
                     <polyline points="12 6 12 12 14 14" />
@@ -926,22 +926,22 @@ function ExamsContent() {
                 </div>
 
                 <div>
-                  <h3 className="text-base font-bold text-slate-900">{simulatorExam.title}</h3>
-                  <p className="text-xs text-slate-500 mt-1">
+                  <h3 className="text-base font-bold text-fg">{simulatorExam.title}</h3>
+                  <p className="text-xs text-muted mt-1">
                     Guruh: <strong>{simulatorExam.group?.name || "Guruh"}</strong> · Max ball: {simulatorExam.maxScore} · 
                     Vaqt: {simulatorExam.durationMinutes || 30} daqiqa
                   </p>
                 </div>
 
                 <div className="max-w-xs mx-auto text-left">
-                  <label className="block text-xs font-medium text-slate-700 mb-1">{t("ex.pickStudent")}</label>
+                  <label className="block text-xs font-medium text-soft mb-1">{t("ex.pickStudent")}</label>
                   {simulatorStudents.length === 0 ? (
-                    <p className="text-xs text-rose-500">{t("ex.noStudents")}</p>
+                    <p className="text-xs text-danger">{t("ex.noStudents")}</p>
                   ) : (
                     <select
                       value={simulatorStudentId}
                       onChange={(e) => setSimulatorStudentId(e.target.value)}
-                      className="w-full bg-white border border-slate-300 rounded-lg p-2 text-xs text-slate-800 focus:outline-none focus:border-indigo-500"
+                      className="w-full bg-surface border border-line-strong rounded-lg p-2 text-xs text-fg focus:outline-none focus:border-primary"
                     >
                       {simulatorStudents.map((s) => (
                         <option key={s.id} value={s.id}>{s.fullName}</option>
@@ -953,7 +953,7 @@ function ExamsContent() {
                 <button
                   onClick={startTestAttempt}
                   disabled={simulatorStudents.length === 0}
-                  className="px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-xs font-bold transition shadow-sm cursor-pointer"
+                  className="px-6 py-2.5 rounded-xl bg-success hover:bg-success disabled:opacity-50 text-white text-xs font-bold transition shadow-sm cursor-pointer"
                 >
                   {t("ex.startTest")}
                 </button>
@@ -964,14 +964,14 @@ function ExamsContent() {
             {simulatorStep === "TESTING" && simulatorQuestions.length > 0 && (
               <div className="space-y-4">
                 {/* Header with timer and navigation */}
-                <div className="flex items-center justify-between p-3 rounded-xl bg-slate-900 text-white">
+                <div className="flex items-center justify-between p-3 rounded-xl bg-ink text-white">
                   <div>
                     <span className="text-xs font-medium text-slate-300 block">Savol {currentQIdx + 1} / {simulatorQuestions.length}</span>
-                    <span className="text-[11px] text-slate-400">Ball: {simulatorQuestions[currentQIdx].points}</span>
+                    <span className="text-[11px] text-faint">Ball: {simulatorQuestions[currentQIdx].points}</span>
                   </div>
 
                   <div className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold font-mono ${
-                    simulatorTimer < 300 ? "bg-rose-500/20 text-rose-300 border border-rose-500/30" : "bg-slate-800 text-slate-200"
+                    simulatorTimer < 300 ? "bg-danger/20 text-danger border border-danger/30" : "bg-ink text-slate-200"
                   }`}>
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                       <circle cx="12" cy="12" r="10" />
@@ -992,10 +992,10 @@ function ExamsContent() {
                         onClick={() => setCurrentQIdx(idx)}
                         className={`w-7 h-7 rounded-lg text-xs font-bold transition cursor-pointer flex items-center justify-center shrink-0 ${
                           isCurrent
-                            ? "bg-indigo-600 text-white ring-2 ring-indigo-300"
+                            ? "bg-primary text-white ring-2 ring-primary-border"
                             : answered
-                            ? "bg-emerald-100 text-emerald-800 border border-emerald-300"
-                            : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                            ? "bg-success-soft text-success border border-success-border"
+                            : "bg-surface-muted text-soft hover:bg-line"
                         }`}
                       >
                         {idx + 1}
@@ -1005,14 +1005,14 @@ function ExamsContent() {
                 </div>
 
                 {/* Question (with its section, instruction and passage) */}
-                <div className="p-4 rounded-xl border border-slate-200 bg-white shadow-xs space-y-4">
+                <div className="p-4 rounded-xl border border-line bg-surface shadow-xs space-y-4">
                   <GroupHeader
                     section={simulatorQuestions[currentQIdx].section ?? null}
                     instruction={simulatorQuestions[currentQIdx].instruction ?? null}
                     passage={simulatorQuestions[currentQIdx].passage ?? null}
                     first
                   />
-                  <h4 className="text-sm font-semibold text-slate-900 leading-relaxed whitespace-pre-wrap">
+                  <h4 className="text-sm font-semibold text-fg leading-relaxed whitespace-pre-wrap">
                     {simulatorQuestions[currentQIdx].prompt}
                   </h4>
                   <QuestionInput
@@ -1029,7 +1029,7 @@ function ExamsContent() {
                     type="button"
                     disabled={currentQIdx === 0}
                     onClick={() => setCurrentQIdx((prev) => prev - 1)}
-                    className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 disabled:opacity-40 text-slate-700 text-xs font-medium cursor-pointer"
+                    className="px-4 py-2 rounded-xl bg-surface-muted hover:bg-line disabled:opacity-40 text-soft text-xs font-medium cursor-pointer"
                   >
                     {t("ex.prev")}
                   </button>
@@ -1039,7 +1039,7 @@ function ExamsContent() {
                       <button
                         type="button"
                         onClick={() => setCurrentQIdx((prev) => prev + 1)}
-                        className="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold cursor-pointer"
+                        className="px-5 py-2 rounded-xl bg-primary hover:bg-primary text-white text-xs font-semibold cursor-pointer"
                       >
                         {t("ex.next")}
                       </button>
@@ -1048,7 +1048,7 @@ function ExamsContent() {
                         type="button"
                         disabled={submittingAttempt}
                         onClick={submitTestAttempt}
-                        className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-xs font-bold cursor-pointer shadow-sm"
+                        className="px-5 py-2 rounded-xl bg-success hover:bg-success disabled:opacity-50 text-white text-xs font-bold cursor-pointer shadow-sm"
                       >
                         {submittingAttempt ? t("pt.submitting") : `${t("pt.finish")} ✓`}
                       </button>
@@ -1063,34 +1063,34 @@ function ExamsContent() {
               <div className="space-y-5">
                 <div className={`p-6 rounded-2xl text-center border ${
                   simulatorResult.passed
-                    ? "bg-gradient-to-b from-emerald-50 to-white border-emerald-200"
-                    : "bg-gradient-to-b from-amber-50 to-white border-amber-200"
+                    ? "bg-gradient-to-b from-success-soft to-surface border-success-border"
+                    : "bg-gradient-to-b from-warning-soft to-surface border-warning-border"
                 }`}>
                   <div className={`w-20 h-20 rounded-full mx-auto flex items-center justify-center font-extrabold text-2xl border-4 ${
                     simulatorResult.passed
-                      ? "bg-emerald-50 border-emerald-500 text-emerald-700"
-                      : "bg-amber-50 border-amber-500 text-amber-700"
+                      ? "bg-success-soft border-success text-success"
+                      : "bg-warning-soft border-warning text-warning"
                   }`}>
                     {simulatorResult.percentage}%
                   </div>
 
-                  <h3 className="text-base font-bold text-slate-900 mt-3">
+                  <h3 className="text-base font-bold text-fg mt-3">
                     {simulatorResult.pending ? `⏳ ${t("pex.pending")}` : simulatorResult.passed ? t("ex.passed") : t("ex.recorded")}
                   </h3>
 
-                  <div className="flex items-center justify-center gap-4 text-xs mt-2 text-slate-600 font-medium">
-                    <span>To&apos;plangan ball: <strong className="text-slate-900 font-bold">{simulatorResult.score} / {simulatorResult.maxScore}</strong></span>
-                    <span>{t("ex.correctAnswers")} <strong className="text-slate-900 font-bold">{simulatorResult.earnedPoints} / {simulatorResult.totalPoints}</strong></span>
+                  <div className="flex items-center justify-center gap-4 text-xs mt-2 text-soft font-medium">
+                    <span>To&apos;plangan ball: <strong className="text-fg font-bold">{simulatorResult.score} / {simulatorResult.maxScore}</strong></span>
+                    <span>{t("ex.correctAnswers")} <strong className="text-fg font-bold">{simulatorResult.earnedPoints} / {simulatorResult.totalPoints}</strong></span>
                   </div>
 
-                  <p className="text-[11px] text-slate-500 mt-2">
+                  <p className="text-[11px] text-muted mt-2">
                     {t("ex.savedNote")}
                   </p>
                 </div>
 
                 {/* Question by question, with grading of written answers */}
                 <div className="space-y-2">
-                  <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wide">
+                  <h4 className="text-xs font-bold text-fg uppercase tracking-wide">
                     {t("ex.review")}
                   </h4>
                   <div className="max-h-[420px] overflow-y-auto pr-1">
@@ -1101,7 +1101,7 @@ function ExamsContent() {
                 <div className="flex justify-end pt-2">
                   <button
                     onClick={() => setSimulatorExam(null)}
-                    className="px-5 py-2 rounded-xl bg-slate-900 text-white text-xs font-semibold hover:bg-slate-800 cursor-pointer"
+                    className="px-5 py-2 rounded-xl bg-ink text-white text-xs font-semibold hover:bg-ink cursor-pointer"
                   >
                     {t("common.close")}
                   </button>

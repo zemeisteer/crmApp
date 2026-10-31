@@ -7,7 +7,7 @@ import type { Lang } from "@/lib/i18n";
 import { useAuth } from "@/lib/auth-context";
 import { centerTimeToIso, centerTimeZone, centerWallClock } from "@/lib/center-time";
 
-export const ACCENT = "#4F46E5";
+export const ACCENT = "var(--primary)";
 
 export const LEAD_STATUSES: LeadStatus[] = ["NEW", "CONTACTED", "TRIAL_BOOKED", "TRIAL_ATTENDED", "QUALIFIED", "ENROLLED", "LOST"];
 export const OPEN_STATUSES: LeadStatus[] = ["NEW", "CONTACTED", "TRIAL_BOOKED", "TRIAL_ATTENDED", "QUALIFIED"];
@@ -27,21 +27,21 @@ export const SIMPLE_MOVES: Partial<Record<LeadStatus, LeadStatus[]>> = {
 };
 
 export const STATUS_STYLE: Record<LeadStatus, { color: string; bg: string; border: string }> = {
-  NEW: { color: "#4F46E5", bg: "#EEF0FF", border: "#C7D2FE" },
-  CONTACTED: { color: "#0284C7", bg: "#E0F2FE", border: "#BAE6FD" },
-  TRIAL_BOOKED: { color: "#B45309", bg: "#FEF3C7", border: "#FDE68A" },
-  TRIAL_ATTENDED: { color: "#92400E", bg: "#FEF3C7", border: "#FCD34D" },
-  QUALIFIED: { color: "#0F766E", bg: "#CCFBF1", border: "#99F6E4" },
-  ENROLLED: { color: "#15803D", bg: "#DCFCE7", border: "#BBF7D0" },
-  LOST: { color: "#B91C1C", bg: "#FEE2E2", border: "#FECACA" },
+  NEW: { color: "var(--primary)", bg: "var(--primary-soft)", border: "var(--primary-border)" },
+  CONTACTED: { color: "var(--info)", bg: "var(--info-soft)", border: "var(--info-border)" },
+  TRIAL_BOOKED: { color: "var(--warning)", bg: "var(--warning-soft)", border: "var(--warning-border)" },
+  TRIAL_ATTENDED: { color: "var(--warning)", bg: "var(--warning-soft)", border: "var(--warning-border)" },
+  QUALIFIED: { color: "var(--teal)", bg: "var(--teal-soft)", border: "var(--teal-soft)" },
+  ENROLLED: { color: "var(--success)", bg: "var(--success-soft)", border: "var(--success-border)" },
+  LOST: { color: "var(--danger)", bg: "var(--danger-soft)", border: "var(--danger-border)" },
 };
 
 export const TRIAL_STYLE: Record<LeadTrialStatus, { color: string; bg: string }> = {
-  BOOKED: { color: "#B45309", bg: "#FEF3C7" },
-  ATTENDED: { color: "#15803D", bg: "#DCFCE7" },
-  MISSED: { color: "#B91C1C", bg: "#FEE2E2" },
-  CANCELLED: { color: "#6B7280", bg: "#F3F4F6" },
-  RESCHEDULED: { color: "#6B7280", bg: "#F3F4F6" },
+  BOOKED: { color: "var(--warning)", bg: "var(--warning-soft)" },
+  ATTENDED: { color: "var(--success)", bg: "var(--success-soft)" },
+  MISSED: { color: "var(--danger)", bg: "var(--danger-soft)" },
+  CANCELLED: { color: "var(--text-muted)", bg: "var(--surface-muted)" },
+  RESCHEDULED: { color: "var(--text-muted)", bg: "var(--surface-muted)" },
 };
 
 export const statusKey = (s: LeadStatus) => `adm.status.${s}` as TranslationKey;
@@ -57,7 +57,7 @@ export function StatusBadge({ status, label }: { status: LeadStatus; label: stri
         display: "inline-flex",
         alignItems: "center",
         padding: "3px 10px",
-        borderRadius: 999,
+        borderRadius: "var(--radius-pill)",
         fontSize: 11.5,
         fontWeight: 700,
         color: st.color,
@@ -94,7 +94,7 @@ export function formatDate(iso: string | null | undefined, lang: Lang, tz: strin
 export function CenterTimeNote({ tz, text }: { tz: string; text: string }) {
   const browser = Intl.DateTimeFormat().resolvedOptions().timeZone;
   if (browser === tz) return null;
-  return <div style={{ fontSize: 11.5, color: "#686B75", marginTop: 4 }}>{text.replace("{tz}", tz)}</div>;
+  return <div style={{ fontSize: 11.5, color: "var(--text-muted)", marginTop: 4 }}>{text.replace("{tz}", tz)}</div>;
 }
 
 // DatePicker (YYYY-MM-DD) + TimePicker (HH:MM), on the center's clock -> the
@@ -113,9 +113,9 @@ export function telHref(phone: string) {
 }
 
 export const card: React.CSSProperties = {
-  background: "#fff",
-  border: "1px solid #EAE8E2",
-  borderRadius: 14,
+  background: "var(--surface)",
+  border: "1px solid var(--border)",
+  borderRadius: "var(--radius-lg)",
   padding: 18,
 };
 
@@ -123,32 +123,32 @@ export const label: React.CSSProperties = {
   display: "block",
   fontSize: 12,
   fontWeight: 600,
-  color: "#5B5F6A",
+  color: "var(--text-muted)",
   marginBottom: 6,
 };
 
 export const primaryBtn: React.CSSProperties = {
   background: ACCENT,
-  color: "#fff",
+  color: "var(--on-ink)",
   border: "none",
   fontSize: 13,
   fontWeight: 700,
   padding: "9px 16px",
-  borderRadius: 9,
+  borderRadius: "var(--radius-sm)",
 };
 
 export const ghostBtn: React.CSSProperties = {
-  background: "#fff",
-  color: "#181A1F",
-  border: "1px solid #EAE8E2",
+  background: "var(--surface)",
+  color: "var(--text)",
+  border: "1px solid var(--border)",
   fontSize: 13,
   fontWeight: 600,
   padding: "8px 14px",
-  borderRadius: 9,
+  borderRadius: "var(--radius-sm)",
 };
 
 export const dangerBtn: React.CSSProperties = {
   ...ghostBtn,
-  color: "#B91C1C",
-  border: "1px solid #FECACA",
+  color: "var(--danger)",
+  border: "1px solid var(--danger-border)",
 };

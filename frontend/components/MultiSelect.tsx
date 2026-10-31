@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useLanguage } from "@/lib/i18n-context";
 import { usePopoverPlacement, useEscapeToClose } from "@/lib/use-popover";
 
-const ACCENT = "#4F46E5";
+const ACCENT = "var(--primary)";
 
 export interface MultiSelectOption {
   value: string;
@@ -84,7 +84,7 @@ export default function MultiSelect({
       >
         <div style={{ display: "flex", flexWrap: "wrap", gap: 5, flex: 1 }}>
           {selectedLabels.length === 0 ? (
-            <span style={{ color: "#686B75" }}>{effectivePlaceholder}</span>
+            <span style={{ color: "var(--text-muted)" }}>{effectivePlaceholder}</span>
           ) : summary ? (
             <span style={{ fontWeight: 600 }}>{summary(selectedLabels.length)}</span>
           ) : (
@@ -92,12 +92,12 @@ export default function MultiSelect({
               <span
                 key={l}
                 style={{
-                  background: "#EEF0FF",
+                  background: "var(--primary-soft)",
                   color: ACCENT,
                   fontSize: 11.5,
                   fontWeight: 700,
                   padding: "3px 9px",
-                  borderRadius: 100,
+                  borderRadius: "var(--radius-pill)",
                   display: "inline-flex",
                   alignItems: "center",
                   gap: 4,
@@ -115,7 +115,7 @@ export default function MultiSelect({
           fill="none"
           style={{ flexShrink: 0, transform: open ? "rotate(180deg)" : "none", transition: "transform 0.18s ease" }}
         >
-          <path d="M1 1.5L6 6.5L11 1.5" stroke={open ? ACCENT : "#686B75"} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M1 1.5L6 6.5L11 1.5" stroke={open ? ACCENT : "var(--text-muted)"} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       </button>
 
@@ -128,9 +128,9 @@ export default function MultiSelect({
             minWidth: "100%",
             maxWidth: 360,
             zIndex: 100,
-            background: "#fff",
-            border: "1px solid #EAE8E2",
-            borderRadius: 12,
+            background: "var(--surface)",
+            border: "1px solid var(--border)",
+            borderRadius: "var(--radius-md)",
             maxHeight: 320,
             overflowY: "auto",
             padding: 5,
@@ -152,7 +152,7 @@ export default function MultiSelect({
             />
           )}
           {visible.length === 0 ? (
-            <div style={{ padding: "10px 12px", fontSize: 12.5, color: "#686B75", textAlign: "center" }}>
+            <div style={{ padding: "10px 12px", fontSize: 12.5, color: "var(--text-muted)", textAlign: "center" }}>
               {t("picker.noOptions")}
             </div>
           ) : (
@@ -162,7 +162,7 @@ export default function MultiSelect({
               return (
                 <div key={o.value}>
                 {heading && (
-                  <div style={{ padding: "8px 10px 4px", fontSize: 11, fontWeight: 800, color: "#686B75", textTransform: "uppercase", letterSpacing: 0.4 }}>
+                  <div style={{ padding: "8px 10px 4px", fontSize: 11, fontWeight: 800, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: 0.4 }}>
                     {heading}
                   </div>
                 )}
@@ -172,16 +172,16 @@ export default function MultiSelect({
                     alignItems: "center",
                     gap: 9,
                     padding: "8px 10px",
-                    borderRadius: 8,
+                    borderRadius: "var(--radius-xs)",
                     cursor: "pointer",
                     fontSize: 13,
                     fontWeight: isChecked ? 600 : 500,
-                    background: isChecked ? "#EEF0FF" : "transparent",
-                    color: isChecked ? ACCENT : "#181A1F",
+                    background: isChecked ? "var(--primary-soft)" : "transparent",
+                    color: isChecked ? ACCENT : "var(--text)",
                     transition: "background 0.12s ease",
                   }}
                   onMouseEnter={(e) => {
-                    if (!isChecked) e.currentTarget.style.background = "#F7F6FF";
+                    if (!isChecked) e.currentTarget.style.background = "var(--primary-soft)";
                   }}
                   onMouseLeave={(e) => {
                     if (!isChecked) e.currentTarget.style.background = "transparent";

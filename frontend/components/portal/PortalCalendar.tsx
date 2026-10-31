@@ -16,13 +16,13 @@ export default function PortalCalendar({ parentAccount = false }: { parentAccoun
   return (
     <div style={{ marginTop: 14, display: "flex", flexDirection: "column", gap: 14, minWidth: 0 }}>
       {parentAccount && (
-        <section aria-labelledby="ptl-parent-cal-title" style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 20, minWidth: 0 }}>
-          <h2 id="ptl-parent-cal-title" style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 700, fontSize: 16, margin: 0 }}>{t("ptl.parentCal.title")}</h2>
-          <p style={{ fontSize: 13, color: "#4A4E58", lineHeight: 1.6, margin: "8px 0 12px" }}>{t("ptl.parentCal.hint")}</p>
+        <section aria-labelledby="ptl-parent-cal-title" style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 20, minWidth: 0 }}>
+          <h2 id="ptl-parent-cal-title" style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 16, margin: 0 }}>{t("ptl.parentCal.title")}</h2>
+          <p style={{ fontSize: 13, color: "var(--text-soft)", lineHeight: 1.6, margin: "8px 0 12px" }}>{t("ptl.parentCal.hint")}</p>
           <Link
             href="/calendar"
             className="btn"
-            style={{ display: "inline-block", background: "#4F46E5", color: "#fff", fontSize: 13, fontWeight: 700, padding: "9px 14px", borderRadius: 9, textDecoration: "none", maxWidth: "100%", overflowWrap: "anywhere" }}
+            style={{ display: "inline-block", background: "var(--primary)", color: "var(--on-ink)", fontSize: 13, fontWeight: 700, padding: "9px 14px", borderRadius: "var(--radius-sm)", textDecoration: "none", maxWidth: "100%", overflowWrap: "anywhere" }}
           >
             {t("ptl.parentCal.open")}
           </Link>

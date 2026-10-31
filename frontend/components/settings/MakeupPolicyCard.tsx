@@ -5,7 +5,7 @@ import { ApiError, tenantsApi } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { useLanguage } from "@/lib/i18n-context";
 
-const ACCENT = "#4F46E5";
+const ACCENT = "var(--primary)";
 
 /**
  * Settings > Profile: how long a make-up credit can be used. Applies to
@@ -49,14 +49,14 @@ export default function MakeupPolicyCard() {
     }
   }
 
-  const radio: React.CSSProperties = { display: "flex", alignItems: "center", gap: 8, fontSize: 13.5, fontWeight: 600, color: "#181A1F", cursor: "pointer" };
+  const radio: React.CSSProperties = { display: "flex", alignItems: "center", gap: 8, fontSize: 13.5, fontWeight: 600, color: "var(--text)", cursor: "pointer" };
   return (
-    <section aria-labelledby="makeup-policy-title" style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 22 }}>
-      <h2 id="makeup-policy-title" style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 700, fontSize: 15 }}>{t("mk.policyTitle")}</h2>
-      <div style={{ fontSize: 12, color: "#686B75", marginTop: 4, marginBottom: 14, lineHeight: 1.5 }}>{t("mk.policyHint")}</div>
+    <section aria-labelledby="makeup-policy-title" style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 22 }}>
+      <h2 id="makeup-policy-title" style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 15 }}>{t("mk.policyTitle")}</h2>
+      <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 4, marginBottom: 14, lineHeight: 1.5 }}>{t("mk.policyHint")}</div>
       <form onSubmit={save} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-        {error && <div role="alert" style={{ background: "#FDEBEC", color: "#B23A47", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: 10 }}>{error}</div>}
-        {saved && <div role="status" style={{ background: "#E9F8EF", color: "#167A48", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: 10 }}>{t("common.saved")}</div>}
+        {error && <div role="alert" style={{ background: "var(--danger-soft)", color: "var(--danger)", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: "var(--radius-sm)" }}>{error}</div>}
+        {saved && <div role="status" style={{ background: "var(--success-soft)", color: "var(--success)", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: "var(--radius-sm)" }}>{t("common.saved")}</div>}
         <fieldset style={{ border: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 10 }}>
           <legend style={{ position: "absolute", width: 1, height: 1, overflow: "hidden", clip: "rect(0 0 0 0)" }}>{t("mk.policyTitle")}</legend>
           <label style={radio}>
@@ -80,14 +80,14 @@ export default function MakeupPolicyCard() {
               onChange={(e) => { setDays(e.target.value); setSaved(false); }}
               style={{ width: 96, opacity: expires ? 1 : 0.5 }}
             />
-            <span style={{ fontSize: 13.5, color: "#4A4E58" }}>{t("mk.policyDaysUnit")}</span>
+            <span style={{ fontSize: 13.5, color: "var(--text-soft)" }}>{t("mk.policyDaysUnit")}</span>
           </div>
         </fieldset>
         <button
           type="submit"
           className="btn"
           disabled={saving}
-          style={{ background: ACCENT, color: "#fff", fontSize: 13.5, fontWeight: 700, padding: "10px 16px", borderRadius: 10, alignSelf: "flex-start", border: "none" }}
+          style={{ background: ACCENT, color: "var(--on-ink)", fontSize: 13.5, fontWeight: 700, padding: "10px 16px", borderRadius: "var(--radius-sm)", alignSelf: "flex-start", border: "none" }}
         >
           {saving ? t("common.saving") : t("common.save")}
         </button>

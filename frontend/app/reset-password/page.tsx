@@ -6,7 +6,7 @@ import Link from "next/link";
 import { authApi, ApiError } from "@/lib/api";
 import { useLanguage } from "@/lib/i18n-context";
 
-const ACCENT = "#4F46E5";
+const ACCENT = "var(--primary)";
 
 function ResetPasswordForm() {
   const { t } = useLanguage();
@@ -41,7 +41,7 @@ function ResetPasswordForm() {
 
   if (!token) {
     return (
-      <div style={{ color: "#B23A47", fontSize: 13.5 }}>
+      <div style={{ color: "var(--danger)", fontSize: 13.5 }}>
         {t("resetPw.linkIncorrect")}{" "}
         <Link href="/forgot-password" style={{ color: ACCENT, fontWeight: 600 }}>
           {t("resetPw.requestAgain")}
@@ -54,30 +54,30 @@ function ResetPasswordForm() {
     <form onSubmit={onSubmit} style={{ display: "flex", flexDirection: "column", gap: 18 }}>
       <div>
         <h1 style={{ fontSize: 20, fontWeight: 800 }}>{t("resetPw.newPasswordTitle")}</h1>
-        <p style={{ fontSize: 13, color: "#686B75", marginTop: 4 }}>{t("resetPw.newPasswordHint")}</p>
+        <p style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 4 }}>{t("resetPw.newPasswordHint")}</p>
       </div>
       {error && (
-        <div role="alert" style={{ background: "#FDEBEC", color: "#B23A47", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: 10 }}>{error}</div>
+        <div role="alert" style={{ background: "var(--danger-soft)", color: "var(--danger)", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: "var(--radius-sm)" }}>{error}</div>
       )}
       {message ? (
-        <div style={{ background: "#E9F8EF", color: "#167A48", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: 10 }}>
+        <div style={{ background: "var(--success-soft)", color: "var(--success)", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: "var(--radius-sm)" }}>
           {message} {t("resetPw.redirecting")}
         </div>
       ) : (
         <>
           <div>
-            <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>{t("resetPw.newPassword")}</div>
+            <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-soft)", marginBottom: 6 }}>{t("resetPw.newPassword")}</div>
             <input className="field-input" type="password" required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} placeholder={t("admin.minChars")} />
           </div>
           <div>
-            <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>{t("resetPw.repeatPassword")}</div>
+            <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-soft)", marginBottom: 6 }}>{t("resetPw.repeatPassword")}</div>
             <input className="field-input" type="password" required minLength={6} value={confirm} onChange={(e) => setConfirm(e.target.value)} />
           </div>
           <button
             className="btn"
             type="submit"
             disabled={loading}
-            style={{ background: ACCENT, color: "#fff", fontSize: 14, fontWeight: 700, padding: 12, borderRadius: 10 }}
+            style={{ background: ACCENT, color: "var(--on-ink)", fontSize: 14, fontWeight: 700, padding: 12, borderRadius: "var(--radius-sm)" }}
           >
             {loading ? t("resetPw.saving") : t("resetPw.updatePassword")}
           </button>
@@ -90,9 +90,9 @@ function ResetPasswordForm() {
 export default function ResetPasswordPage() {
   const { t } = useLanguage();
   return (
-    <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#F7F7F5" }}>
-      <div style={{ width: 380, background: "#fff", borderRadius: 16, padding: 32 }}>
-        <Suspense fallback={<div style={{ color: "#686B75", fontSize: 14 }}>{t("common.loading")}</div>}>
+    <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--surface-muted)" }}>
+      <div style={{ width: 380, background: "var(--surface)", borderRadius: "var(--radius-lg)", padding: 32 }}>
+        <Suspense fallback={<div style={{ color: "var(--text-muted)", fontSize: 14 }}>{t("common.loading")}</div>}>
           <ResetPasswordForm />
         </Suspense>
       </div>

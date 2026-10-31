@@ -1,6 +1,6 @@
 "use client";
 
-const ACCENT = "#4F46E5";
+const ACCENT = "var(--primary)";
 
 export default function TagListInput({
   values,
@@ -43,8 +43,8 @@ export default function TagListInput({
       {rows.map((v, i) => (
         <div key={i} style={{ display: "flex", gap: 6, alignItems: "center" }}>
           {prefix && (
-            <div style={{ display: "flex", alignItems: "center", border: "1px solid #EAE8E2", borderRadius: 10, overflow: "hidden", flex: 1 }}>
-              <span style={{ padding: "12px 10px 12px 14px", background: "#F7F7F5", color: "#686B75", fontSize: 13.5, borderRight: "1px solid #EAE8E2" }}>{prefix}</span>
+            <div style={{ display: "flex", alignItems: "center", border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", overflow: "hidden", flex: 1 }}>
+              <span style={{ padding: "12px 10px 12px 14px", background: "var(--surface-muted)", color: "var(--text-muted)", fontSize: 13.5, borderRight: "1px solid var(--border)" }}>{prefix}</span>
               <input
                 className="field-input"
                 style={{ border: "none", borderRadius: 0 }}
@@ -73,7 +73,7 @@ export default function TagListInput({
             <button
               type="button"
               onClick={() => removeAt(i)}
-              style={{ background: "#FDEBEC", color: "#B23A47", border: "none", borderRadius: 8, width: 36, height: 40, flexShrink: 0, cursor: "pointer", fontSize: 16, fontWeight: 700 }}
+              style={{ background: "var(--danger-soft)", color: "var(--danger)", border: "none", borderRadius: "var(--radius-xs)", width: 36, height: 40, flexShrink: 0, cursor: "pointer", fontSize: 16, fontWeight: 700 }}
             >
               ×
             </button>

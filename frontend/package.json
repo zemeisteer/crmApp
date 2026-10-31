@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "node --test lib/*.test.ts"
+    "test": "node --test lib/*.test.ts",
+    "check:colors": "node ../scripts/redesign/check-no-raw-colors.mjs"
   },
   "dependencies": {
     "next": "16.4.2",

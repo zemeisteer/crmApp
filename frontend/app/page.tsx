@@ -17,8 +17,8 @@ export default function Home() {
 
   if (loading || user) {
     return (
-      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#F7F7F5" }}>
-        <div suppressHydrationWarning style={{ color: "#686B75", fontSize: 14 }}>{t("common.loading")}</div>
+      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--surface-muted)" }}>
+        <div suppressHydrationWarning style={{ color: "var(--text-muted)", fontSize: 14 }}>{t("common.loading")}</div>
       </div>
     );
   }

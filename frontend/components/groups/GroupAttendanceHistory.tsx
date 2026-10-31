@@ -7,10 +7,10 @@ import { useCenterClock } from "@/lib/use-center-clock";
 import { MONTH_KEYS } from "@/lib/i18n";
 
 const MARK: Record<string, { sym: string; bg: string; fg: string }> = {
-  PRESENT: { sym: "✓", bg: "#E8F7EF", fg: "#16794A" },
-  LATE: { sym: "⏱", bg: "#FEF3E2", fg: "#D97706" },
-  ABSENT: { sym: "✗", bg: "#FDEBEC", fg: "#B23A47" },
-  EXCUSED: { sym: "E", bg: "#EEF0FF", fg: "#4F46E5" },
+  PRESENT: { sym: "✓", bg: "var(--success-soft)", fg: "var(--success)" },
+  LATE: { sym: "⏱", bg: "var(--warning-soft)", fg: "var(--warning)" },
+  ABSENT: { sym: "✗", bg: "var(--danger-soft)", fg: "var(--danger)" },
+  EXCUSED: { sym: "E", bg: "var(--primary-soft)", fg: "var(--primary)" },
 };
 
 // Past attendance of the group by month: students down, lesson dates across,
@@ -35,9 +35,9 @@ export default function GroupAttendanceHistory({ students, records }: { students
   };
 
   return (
-    <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 20 }}>
+    <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 20 }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap", marginBottom: 14 }}>
-        <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 700, fontSize: 15 }}>{t("att.history")}</div>
+        <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 15 }}>{t("att.history")}</div>
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
           <button type="button" disabled={idx <= 0} onClick={() => setMonth(months[idx - 1])} style={navBtn(idx <= 0)}>‹</button>
           <span style={{ fontSize: 13, fontWeight: 700, minWidth: 120, textAlign: "center" }}>{monthLabel}</span>
@@ -46,16 +46,16 @@ export default function GroupAttendanceHistory({ students, records }: { students
       </div>
 
       {dates.length === 0 ? (
-        <div style={{ fontSize: 13, color: "#686B75" }}>{t("att.noHistory")}</div>
+        <div style={{ fontSize: 13, color: "var(--text-muted)" }}>{t("att.noHistory")}</div>
       ) : (
         <>
-          <div style={{ overflowX: "auto", border: "1px solid #F2F1EC", borderRadius: 12 }}>
+          <div style={{ overflowX: "auto", border: "1px solid var(--border)", borderRadius: "var(--radius-md)" }}>
             <table style={{ borderCollapse: "collapse", width: "100%", fontSize: 12.5 }}>
               <thead>
-                <tr style={{ background: "#FAFAF8" }}>
-                  <th style={{ ...cell, textAlign: "left", position: "sticky", left: 0, background: "#FAFAF8", minWidth: 150 }}>{t("groupExams.student")}</th>
+                <tr style={{ background: "var(--surface-muted)" }}>
+                  <th style={{ ...cell, textAlign: "left", position: "sticky", left: 0, background: "var(--surface-muted)", minWidth: 150 }}>{t("groupExams.student")}</th>
                   {dates.map((d) => (
-                    <th key={d} style={{ ...cell, color: "#686B75", fontWeight: 700 }}>{Number(d.slice(8))}</th>
+                    <th key={d} style={{ ...cell, color: "var(--text-muted)", fontWeight: 700 }}>{Number(d.slice(8))}</th>
                   ))}
                   <th style={{ ...cell, textAlign: "right" }}>%</th>
                 </tr>
@@ -64,29 +64,29 @@ export default function GroupAttendanceHistory({ students, records }: { students
                 {students.map((s) => {
                   const r = rate(s.id);
                   return (
-                    <tr key={s.id} style={{ borderTop: "1px solid #F2F1EC" }}>
-                      <td style={{ ...cell, textAlign: "left", fontWeight: 600, position: "sticky", left: 0, background: "#fff", whiteSpace: "nowrap" }}>{s.fullName}</td>
+                    <tr key={s.id} style={{ borderTop: "1px solid var(--border)" }}>
+                      <td style={{ ...cell, textAlign: "left", fontWeight: 600, position: "sticky", left: 0, background: "var(--surface)", whiteSpace: "nowrap" }}>{s.fullName}</td>
                       {dates.map((d) => {
                         const m = byKey.get(`${s.id}|${d}`);
                         const style = m ? MARK[m] : null;
                         return (
                           <td key={d} style={cell}>
                             {style ? (
-                              <span style={{ display: "inline-flex", width: 24, height: 24, alignItems: "center", justifyContent: "center", borderRadius: 7, background: style.bg, color: style.fg, fontWeight: 800 }}>{style.sym}</span>
+                              <span style={{ display: "inline-flex", width: 24, height: 24, alignItems: "center", justifyContent: "center", borderRadius: "var(--radius-xs)", background: style.bg, color: style.fg, fontWeight: 800 }}>{style.sym}</span>
                             ) : (
-                              <span style={{ color: "#D4D4D8" }}>·</span>
+                              <span style={{ color: "var(--text-faint)" }}>·</span>
                             )}
                           </td>
                         );
                       })}
-                      <td style={{ ...cell, textAlign: "right", fontWeight: 800, color: r === null ? "#686B75" : r >= 80 ? "#16794A" : r >= 60 ? "#D97706" : "#B23A47" }}>{r === null ? "—" : `${r}%`}</td>
+                      <td style={{ ...cell, textAlign: "right", fontWeight: 800, color: r === null ? "var(--text-muted)" : r >= 80 ? "var(--success)" : r >= 60 ? "var(--warning)" : "var(--danger)" }}>{r === null ? "—" : `${r}%`}</td>
                     </tr>
                   );
                 })}
               </tbody>
             </table>
           </div>
-          <div style={{ display: "flex", gap: 14, flexWrap: "wrap", marginTop: 10, fontSize: 12, color: "#686B75" }}>
+          <div style={{ display: "flex", gap: 14, flexWrap: "wrap", marginTop: 10, fontSize: 12, color: "var(--text-muted)" }}>
             {(["PRESENT", "LATE", "ABSENT"] as const).map((k) => (
               <span key={k} style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
                 <span style={{ display: "inline-flex", width: 18, height: 18, alignItems: "center", justifyContent: "center", borderRadius: 5, background: MARK[k].bg, color: MARK[k].fg, fontWeight: 800, fontSize: 11 }}>{MARK[k].sym}</span>
@@ -102,4 +102,4 @@ export default function GroupAttendanceHistory({ students, records }: { students
 }
 
 const cell: React.CSSProperties = { padding: "7px 6px", textAlign: "center" };
-const navBtn = (disabled: boolean): React.CSSProperties => ({ width: 30, height: 30, borderRadius: 8, border: "1px solid #EAE8E2", background: "#fff", cursor: disabled ? "default" : "pointer", opacity: disabled ? 0.4 : 1, fontSize: 16, fontWeight: 800 });
+const navBtn = (disabled: boolean): React.CSSProperties => ({ width: 30, height: 30, borderRadius: "var(--radius-xs)", border: "1px solid var(--border)", background: "var(--surface)", cursor: disabled ? "default" : "pointer", opacity: disabled ? 0.4 : 1, fontSize: 16, fontWeight: 800 });

@@ -3,7 +3,7 @@
 import { useLanguage } from "@/lib/i18n-context";
 import { fill, pageCount, pageRange } from "@/lib/list-paging";
 
-const ACCENT = "#4F46E5";
+const ACCENT = "var(--primary)";
 
 /**
  * Page controls for a list the server pages: "21–25 of 25", the current
@@ -33,23 +33,23 @@ export default function ListPager({
   const pages = pageCount(total, pageSize);
   const { from, to } = pageRange(page, pageSize, total, shown);
   const btn = (disabled: boolean): React.CSSProperties => ({
-    background: disabled ? "#F7F6F2" : "#F2F1EC",
-    color: disabled ? "#A3A6AE" : "#181A1F",
+    background: disabled ? "var(--surface-muted)" : "var(--surface-muted)",
+    color: disabled ? "var(--text-faint)" : "var(--text)",
     border: "none",
     fontSize: 12.5,
     fontWeight: 700,
     padding: "8px 12px",
-    borderRadius: 8,
+    borderRadius: "var(--radius-xs)",
     cursor: disabled ? "default" : "pointer",
     whiteSpace: "nowrap",
   });
   return (
     <nav
       aria-label={label}
-      style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10, padding: "12px 16px", borderTop: "1px solid #F2F1EC" }}
+      style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10, padding: "12px 16px", borderTop: "1px solid var(--border)" }}
     >
-      <div role="status" aria-live="polite" style={{ fontSize: 12.5, color: "#686B75", minWidth: 0 }}>
-        <span data-testid="pager-range" style={{ fontWeight: 700, color: "#181A1F" }}>{fill(t("pager.range"), { from, to, total })}</span>
+      <div role="status" aria-live="polite" style={{ fontSize: 12.5, color: "var(--text-muted)", minWidth: 0 }}>
+        <span data-testid="pager-range" style={{ fontWeight: 700, color: "var(--text)" }}>{fill(t("pager.range"), { from, to, total })}</span>
         {pages > 1 && (
           <>
             {" · "}
@@ -75,7 +75,7 @@ export default function ListPager({
             aria-label={t("pager.nextPage")}
             disabled={busy || page >= pages}
             onClick={() => onChange(page + 1)}
-            style={{ ...btn(busy || page >= pages), ...(busy || page >= pages ? {} : { background: ACCENT, color: "#fff" }) }}
+            style={{ ...btn(busy || page >= pages), ...(busy || page >= pages ? {} : { background: ACCENT, color: "var(--on-ink)" }) }}
           >
             {t("pager.next")} ›
           </button>

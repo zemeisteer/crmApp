@@ -6,9 +6,9 @@ import { useLanguage } from "@/lib/i18n-context";
 import { MONTH_KEYS, MONTH_SHORT_KEYS, type TranslationKey } from "@/lib/i18n";
 import BarChart from "@/components/BarChart";
 
-const ACCENT = "#4F46E5";
-const card: React.CSSProperties = { background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 20 };
-const title: React.CSSProperties = { fontFamily: "'Manrope', sans-serif", fontWeight: 700, fontSize: 15, marginBottom: 14 };
+const ACCENT = "var(--primary)";
+const card: React.CSSProperties = { background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 20 };
+const title: React.CSSProperties = { fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 15, marginBottom: 14 };
 
 const METHOD_KEYS: Record<string, TranslationKey> = {
   CASH: "payment.methodCash",
@@ -25,9 +25,9 @@ const pctText = (v: number | null | undefined) => (v === null || v === undefined
 function Stat({ label, value, sub, danger }: { label: string; value: string; sub?: string; danger?: boolean }) {
   return (
     <div style={{ ...card, padding: 16 }}>
-      <div style={{ fontSize: 12, color: "#686B75" }}>{label}</div>
-      <div style={{ fontSize: 22, fontWeight: 800, marginTop: 4, color: danger ? "#B91C1C" : "#181A1F" }}>{value}</div>
-      {sub && <div style={{ fontSize: 11.5, color: "#686B75", marginTop: 4 }}>{sub}</div>}
+      <div style={{ fontSize: 12, color: "var(--text-muted)" }}>{label}</div>
+      <div style={{ fontSize: 22, fontWeight: 800, marginTop: 4, color: danger ? "var(--danger)" : "var(--text)" }}>{value}</div>
+      {sub && <div style={{ fontSize: 11.5, color: "var(--text-muted)", marginTop: 4 }}>{sub}</div>}
     </div>
   );
 }
@@ -35,7 +35,7 @@ function Stat({ label, value, sub, danger }: { label: string; value: string; sub
 function Bar({ value, max, color = ACCENT }: { value: number; max: number; color?: string }) {
   const w = max > 0 ? Math.min(100, Math.round((value / max) * 100)) : 0;
   return (
-    <div style={{ height: 7, background: "#F1F0EC", borderRadius: 5, overflow: "hidden" }}>
+    <div style={{ height: 7, background: "var(--surface-muted)", borderRadius: 5, overflow: "hidden" }}>
       <div style={{ width: `${w}%`, height: "100%", background: color, borderRadius: 5 }} />
     </div>
   );
@@ -67,9 +67,9 @@ export default function ReportsOverview({
 
         <section style={{ ...card, padding: 0, overflow: "hidden" }}>
           <div style={{ ...title, padding: "16px 20px 0" }}>{t("rep.atRiskTitle")}</div>
-          <p style={{ fontSize: 12, color: "#686B75", padding: "0 20px" }}>{t("rep.atRiskHint")}</p>
+          <p style={{ fontSize: 12, color: "var(--text-muted)", padding: "0 20px" }}>{t("rep.atRiskHint")}</p>
           {atRisk.length === 0 ? (
-            <div style={{ padding: 28, textAlign: "center", color: "#15803D", background: "#F0FDF4" }}>{t("rep.noRisk")}</div>
+            <div style={{ padding: 28, textAlign: "center", color: "var(--success)", background: "var(--success-soft)" }}>{t("rep.noRisk")}</div>
           ) : (
             <div style={{ overflowX: "auto" }}>
               <table className="adm-table">
@@ -87,25 +87,25 @@ export default function ReportsOverview({
                     <tr key={s.studentId}>
                       <td>
                         <div style={{ fontWeight: 700 }}>{s.fullName}</div>
-                        <div style={{ fontSize: 11.5, color: "#686B75" }}>{s.phone || "—"}</div>
+                        <div style={{ fontSize: 11.5, color: "var(--text-muted)" }}>{s.phone || "—"}</div>
                       </td>
                       <td>
-                        <span style={{ fontSize: 11, fontWeight: 800, padding: "3px 8px", borderRadius: 6, background: s.risk === "HIGH" ? "#FEE2E2" : "#FEF3C7", color: s.risk === "HIGH" ? "#B91C1C" : "#B45309" }}>
+                        <span style={{ fontSize: 11, fontWeight: 800, padding: "3px 8px", borderRadius: "var(--radius-xs)", background: s.risk === "HIGH" ? "var(--danger-soft)" : "var(--warning-soft)", color: s.risk === "HIGH" ? "var(--danger)" : "var(--warning)" }}>
                           {s.risk === "HIGH" ? t("rep.riskHigh") : t("rep.riskMedium")}
                         </span>
                       </td>
                       <td>{pctText(s.attendanceRate)}</td>
-                      <td style={{ color: s.overdueAmount > 0 ? "#B91C1C" : undefined, fontWeight: s.overdueAmount > 0 ? 700 : 400 }}>
+                      <td style={{ color: s.overdueAmount > 0 ? "var(--danger)" : undefined, fontWeight: s.overdueAmount > 0 ? 700 : 400 }}>
                         {s.overdueAmount > 0 ? `${money(s.overdueAmount)} ${sum}` : "—"}
                       </td>
                       <td style={{ textAlign: "right", whiteSpace: "nowrap" }}>
                         {s.phone && (
                           <button type="button" className="btn" onClick={() => onSms({ id: s.studentId, fullName: s.fullName, phone: s.phone })}
-                            style={{ background: "#EEF0FF", color: ACCENT, border: "1px solid #C7D2FE", padding: "5px 10px", borderRadius: 7, fontSize: 12, fontWeight: 700, marginRight: 6 }}>
+                            style={{ background: "var(--primary-soft)", color: ACCENT, border: "1px solid var(--primary-border)", padding: "5px 10px", borderRadius: "var(--radius-xs)", fontSize: 12, fontWeight: 700, marginRight: 6 }}>
                             SMS
                           </button>
                         )}
-                        <Link href={`/students/${s.studentId}`} style={{ fontSize: 12, fontWeight: 700, color: "#181A1F" }}>{t("common.viewProfile")} →</Link>
+                        <Link href={`/students/${s.studentId}`} style={{ fontSize: 12, fontWeight: 700, color: "var(--text)" }}>{t("common.viewProfile")} →</Link>
                       </td>
                     </tr>
                   ))}
@@ -118,7 +118,7 @@ export default function ReportsOverview({
         <section style={card}>
           <div style={title}>{t("rep.occupancyTitle")}</div>
           {byOccupancy.length === 0 ? (
-            <div style={{ fontSize: 13, color: "#686B75" }}>{t("reports.noGroups")}</div>
+            <div style={{ fontSize: 13, color: "var(--text-muted)" }}>{t("reports.noGroups")}</div>
           ) : (
             <div style={{ display: "grid", gap: 12 }}>
               {byOccupancy.map((g) => (
@@ -127,7 +127,7 @@ export default function ReportsOverview({
                     <span>{g.name}</span>
                     <span>{g.students}/{g.maxStudents} · {pctText(g.occupancy)}</span>
                   </div>
-                  <Bar value={g.students} max={g.maxStudents} color={(g.occupancy ?? 0) < 40 ? "#D97706" : ACCENT} />
+                  <Bar value={g.students} max={g.maxStudents} color={(g.occupancy ?? 0) < 40 ? "var(--warning)" : ACCENT} />
                 </div>
               ))}
             </div>
@@ -186,15 +186,15 @@ export default function ReportsOverview({
                   ? [[t("rep.expenses"), `${money((finance.expenses ?? 0))} ${sum}`], [t("rep.netProfit"), `${money(finance.netProfit)} ${sum}`]]
                   : []),
               ].map(([k, v]) => (
-                <div key={k} style={{ display: "flex", justifyContent: "space-between", gap: 12, borderBottom: "1px solid #F2F1EC", paddingBottom: 6 }}>
-                  <span style={{ color: "#686B75" }}>{k}</span>
+                <div key={k} style={{ display: "flex", justifyContent: "space-between", gap: 12, borderBottom: "1px solid var(--border)", paddingBottom: 6 }}>
+                  <span style={{ color: "var(--text-muted)" }}>{k}</span>
                   <span style={{ fontWeight: 700 }}>{v}</span>
                 </div>
               ))}
             </div>
             <div style={{ ...title, marginTop: 18 }}>{t("reports.paymentMethodsTitle")}</div>
             {methods.length === 0 ? (
-              <div style={{ fontSize: 13, color: "#686B75" }}>{t("reports.noData")}</div>
+              <div style={{ fontSize: 13, color: "var(--text-muted)" }}>{t("reports.noData")}</div>
             ) : (
               <div style={{ display: "grid", gap: 10 }}>
                 {methods.map(([k, v]) => (
@@ -214,7 +214,7 @@ export default function ReportsOverview({
             <div style={title}>{t("rep.studentStatus")}</div>
             {Object.entries(students.byStatus).map(([k, v]) => (
               <div key={k} style={{ display: "flex", justifyContent: "space-between", fontSize: 13, padding: "5px 0" }}>
-                <span style={{ color: "#686B75" }}>{k}</span>
+                <span style={{ color: "var(--text-muted)" }}>{k}</span>
                 <strong>{v}</strong>
               </div>
             ))}
@@ -225,7 +225,7 @@ export default function ReportsOverview({
       <section style={{ ...card, padding: 0, overflow: "hidden" }}>
         <div style={{ ...title, padding: "16px 20px 0" }}>{t("rep.groupsTitle")}</div>
         {groups.items.length === 0 ? (
-          <div style={{ color: "#686B75", fontSize: 13.5, padding: "8px 20px 20px" }}>{t("reports.noGroups")}</div>
+          <div style={{ color: "var(--text-muted)", fontSize: 13.5, padding: "8px 20px 20px" }}>{t("reports.noGroups")}</div>
         ) : (
           <div style={{ overflowX: "auto" }}>
             <table className="adm-table">
@@ -242,7 +242,7 @@ export default function ReportsOverview({
               <tbody>
                 {groups.items.map((g) => (
                   <tr key={g.id}>
-                    <td style={{ fontWeight: 600 }}><Link href={`/groups/${g.id}`} style={{ color: "#181A1F" }}>{g.name}</Link></td>
+                    <td style={{ fontWeight: 600 }}><Link href={`/groups/${g.id}`} style={{ color: "var(--text)" }}>{g.name}</Link></td>
                     <td>{g.teacherName ?? "—"}</td>
                     <td>{g.students}/{g.maxStudents}</td>
                     <td>{pctText(g.occupancy)}</td>
@@ -268,7 +268,7 @@ export default function ReportsOverview({
         </section>
       )}
 
-      <p style={{ fontSize: 11.5, color: "#686B75" }}>
+      <p style={{ fontSize: 11.5, color: "var(--text-muted)" }}>
         {t("rep.footnote")} {report.month} · {report.timezone}
       </p>
     </div>

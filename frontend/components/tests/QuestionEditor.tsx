@@ -6,7 +6,7 @@ import { TF_OPTIONS, TFNG_OPTIONS, type QuestionType, type TestQuestion } from "
 import TypePicker from "./TypePicker";
 import Select from "@/components/Select";
 
-const ACCENT = "#4F46E5";
+const ACCENT = "var(--primary)";
 
 export const emptyQuestion = (type: QuestionType = "MCQ"): TestQuestion => ({
   type,
@@ -81,7 +81,7 @@ export default function QuestionEditor({ value: q, onChange, showLevel, excludeT
         {showContext ? "▾" : "▸"} {t("qe.context")}
       </button>
       {showContext && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 8, padding: 10, borderRadius: 10, background: "#F8FAFC", border: "1px solid #E2E8F0" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, padding: 10, borderRadius: "var(--radius-sm)", background: "var(--surface-muted)", border: "1px solid var(--border)" }}>
           <input className="field-input" value={q.section ?? ""} onChange={(e) => set({ section: e.target.value })} placeholder={t("qe.sectionPh")} />
           <input className="field-input" value={q.instruction ?? ""} onChange={(e) => set({ instruction: e.target.value })} placeholder={t("qe.instructionPh")} />
           <textarea className="field-input" value={q.passage ?? ""} onChange={(e) => set({ passage: e.target.value })} placeholder={t("qe.passagePh")} rows={3} style={{ height: "auto", resize: "vertical" }} />
@@ -122,7 +122,7 @@ function AnswerFields({ q, set }: { q: TestQuestion; set: (p: Partial<TestQuesti
             const on = multi ? picked.has(o.id) : q.correctAnswer === o.id;
             return (
               <div key={i} style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                <button type="button" title={t("qe.markCorrect")} onClick={() => (multi ? toggle(o.id) : set({ correctAnswer: o.id }))} style={{ width: 34, height: 34, flexShrink: 0, borderRadius: 8, cursor: "pointer", fontWeight: 800, border: `1.5px solid ${on ? "#16A34A" : "#E2E8F0"}`, background: on ? "#DCFCE7" : "#fff", color: on ? "#15803D" : "#64748B" }}>
+                <button type="button" title={t("qe.markCorrect")} onClick={() => (multi ? toggle(o.id) : set({ correctAnswer: o.id }))} style={{ width: 34, height: 34, flexShrink: 0, borderRadius: "var(--radius-xs)", cursor: "pointer", fontWeight: 800, border: `1.5px solid ${on ? "var(--success)" : "var(--border)"}`, background: on ? "var(--success-soft)" : "var(--surface)", color: on ? "var(--success)" : "var(--text-muted)" }}>
                   {on ? "✓" : o.id}
                 </button>
                 <input className="field-input" value={o.text} onChange={(e) => set({ options: options.map((x, j) => (j === i ? { ...x, text: e.target.value } : x)) })} placeholder={`${t("qe.option")} ${o.id}`} style={{ height: 36 }} />
@@ -167,7 +167,7 @@ function AnswerFields({ q, set }: { q: TestQuestion; set: (p: Partial<TestQuesti
           {(q.options ?? []).map((o) => {
             const on = q.correctAnswer === o.id;
             return (
-              <button key={o.id} type="button" onClick={() => set({ correctAnswer: o.id })} style={{ flex: 1, padding: "9px 10px", borderRadius: 9, cursor: "pointer", fontWeight: 700, fontSize: 13, border: `1.5px solid ${on ? "#16A34A" : "#E2E8F0"}`, background: on ? "#DCFCE7" : "#fff", color: on ? "#15803D" : "#334155" }}>
+              <button key={o.id} type="button" onClick={() => set({ correctAnswer: o.id })} style={{ flex: 1, padding: "9px 10px", borderRadius: "var(--radius-sm)", cursor: "pointer", fontWeight: 700, fontSize: 13, border: `1.5px solid ${on ? "var(--success)" : "var(--border)"}`, background: on ? "var(--success-soft)" : "var(--surface)", color: on ? "var(--success)" : "var(--text-soft)" }}>
                 {on && "✓ "}
                 {labels[o.id] ?? o.text}
               </button>
@@ -187,7 +187,7 @@ function AnswerFields({ q, set }: { q: TestQuestion; set: (p: Partial<TestQuesti
           {pairs.map((p, i) => (
             <div key={i} style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) auto minmax(0,1fr) auto", gap: 6, alignItems: "center" }}>
               <input className="field-input" value={p.left} onChange={(e) => set({ pairs: pairs.map((x, j) => (j === i ? { ...x, left: e.target.value } : x)) })} placeholder={`${i + 1}`} style={{ height: 36 }} />
-              <span style={{ color: "#94A3B8" }}>→</span>
+              <span style={{ color: "var(--text-faint)" }}>→</span>
               <input className="field-input" value={p.right} onChange={(e) => set({ pairs: pairs.map((x, j) => (j === i ? { ...x, right: e.target.value } : x)) })} placeholder={t("qe.pairRight")} style={{ height: 36 }} />
               {pairs.length > 2 ? (
                 <button type="button" onClick={() => set({ pairs: pairs.filter((_, j) => j !== i) })} style={xBtn}>✕</button>
@@ -241,12 +241,12 @@ function AnswerFields({ q, set }: { q: TestQuestion; set: (p: Partial<TestQuesti
       <div>
         <div style={lbl}>{t("qe.answer")}</div>
         <input className="field-input" value={q.correctAnswer} onChange={(e) => set({ correctAnswer: e.target.value })} placeholder={q.type === "WORD_ORDER" ? "She has lived here since 2020" : t("qe.answerPh")} />
-        <div style={{ fontSize: 11.5, color: "#64748B", marginTop: 4 }}>{t("qe.answerHint")}</div>
+        <div style={{ fontSize: 11.5, color: "var(--text-muted)", marginTop: 4 }}>{t("qe.answerHint")}</div>
       </div>
     </div>
   );
 }
 
-const lbl: React.CSSProperties = { fontSize: 12, fontWeight: 700, color: "#475569", marginBottom: 5 };
-const xBtn: React.CSSProperties = { width: 30, height: 30, flexShrink: 0, borderRadius: 8, border: "1px solid #E2E8F0", background: "#fff", color: "#94A3B8", cursor: "pointer" };
-const addBtn: React.CSSProperties = { marginTop: 6, background: "none", border: "1px dashed #CBD5E1", borderRadius: 8, padding: "6px 12px", fontSize: 12.5, fontWeight: 700, color: ACCENT, cursor: "pointer" };
+const lbl: React.CSSProperties = { fontSize: 12, fontWeight: 700, color: "var(--text-muted)", marginBottom: 5 };
+const xBtn: React.CSSProperties = { width: 30, height: 30, flexShrink: 0, borderRadius: "var(--radius-xs)", border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text-faint)", cursor: "pointer" };
+const addBtn: React.CSSProperties = { marginTop: 6, background: "none", border: "1px dashed var(--border-strong)", borderRadius: "var(--radius-xs)", padding: "6px 12px", fontSize: 12.5, fontWeight: 700, color: ACCENT, cursor: "pointer" };

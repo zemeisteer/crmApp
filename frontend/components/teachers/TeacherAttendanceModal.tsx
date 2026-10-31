@@ -8,11 +8,11 @@ import { ApiError, teacherAttendanceApi, type Teacher, type TeacherLesson, type 
 import { useLanguage } from "@/lib/i18n-context";
 import { useCenterClock } from "@/lib/use-center-clock";
 
-const ACCENT = "#4F46E5";
+const ACCENT = "var(--primary)";
 const STATES: Array<{ key: TeacherMark; label: "ptl.present" | "ptl.late" | "ptl.absent"; color: string }> = [
-  { key: "PRESENT", label: "ptl.present", color: "#167A48" },
-  { key: "LATE", label: "ptl.late", color: "#D97706" },
-  { key: "ABSENT", label: "ptl.absent", color: "#B23A47" },
+  { key: "PRESENT", label: "ptl.present", color: "var(--success)" },
+  { key: "LATE", label: "ptl.late", color: "var(--warning)" },
+  { key: "ABSENT", label: "ptl.absent", color: "var(--danger)" },
 ];
 
 type Draft = { status: TeacherMark | null; substituteTeacherId: string; note: string };
@@ -90,13 +90,13 @@ export default function TeacherAttendanceModal({ teachers, onClose }: { teachers
           <button type="button" onClick={allPresent} style={ghost}>✓ {t("tatt.allPresent")}</button>
         )}
       </div>
-      <div style={{ fontSize: 12.5, color: "#686B75", marginBottom: 12 }}>{t("tatt.hint")}</div>
-      {error && <div role="alert" style={{ background: "#FDEBEC", color: "#B23A47", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: 10, marginBottom: 10 }}>{error}</div>}
+      <div style={{ fontSize: 12.5, color: "var(--text-muted)", marginBottom: 12 }}>{t("tatt.hint")}</div>
+      {error && <div role="alert" style={{ background: "var(--danger-soft)", color: "var(--danger)", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: "var(--radius-sm)", marginBottom: 10 }}>{error}</div>}
 
       {lessons === null ? (
-        <div style={{ fontSize: 13, color: "#686B75" }}>{t("common.loading")}</div>
+        <div style={{ fontSize: 13, color: "var(--text-muted)" }}>{t("common.loading")}</div>
       ) : lessons.length === 0 ? (
-        <div style={{ fontSize: 13, color: "#686B75", border: "1px dashed #EAE8E2", borderRadius: 12, padding: 20, textAlign: "center" }}>{t("tatt.noLessons")}</div>
+        <div style={{ fontSize: 13, color: "var(--text-muted)", border: "1px dashed var(--border)", borderRadius: "var(--radius-md)", padding: 20, textAlign: "center" }}>{t("tatt.noLessons")}</div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: 460, overflowY: "auto" }}>
           {lessons.map((l) => {
@@ -104,15 +104,15 @@ export default function TeacherAttendanceModal({ teachers, onClose }: { teachers
             const d = drafts[k] ?? { status: null, substituteTeacherId: "", note: "" };
             const markable = !!l.teacherId && !l.cancelled;
             return (
-              <div key={k} role="group" aria-label={`${l.groupName} ${l.startTime}–${l.endTime}`} style={{ border: "1px solid #EAE8E2", borderRadius: 12, padding: 12, opacity: l.cancelled ? 0.6 : 1 }}>
+              <div key={k} role="group" aria-label={`${l.groupName} ${l.startTime}–${l.endTime}`} style={{ border: "1px solid var(--border)", borderRadius: "var(--radius-md)", padding: 12, opacity: l.cancelled ? 0.6 : 1 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-                  <span style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 800, color: ACCENT, minWidth: 92 }}>{l.startTime}–{l.endTime}</span>
+                  <span style={{ fontFamily: "var(--font-display)", fontWeight: 800, color: ACCENT, minWidth: 92 }}>{l.startTime}–{l.endTime}</span>
                   <div style={{ flex: 1, minWidth: 160 }}>
                     <div style={{ fontWeight: 700, fontSize: 13.5 }}>{l.groupName}</div>
-                    <div style={{ fontSize: 12, color: "#686B75" }}>{l.teacherName ?? t("tatt.noTeacher")}</div>
-                    {l.cancelled && <div style={{ fontSize: 12, fontWeight: 700, color: "#B23A47" }}>{t("tatt.cancelled")}</div>}
+                    <div style={{ fontSize: 12, color: "var(--text-muted)" }}>{l.teacherName ?? t("tatt.noTeacher")}</div>
+                    {l.cancelled && <div style={{ fontSize: 12, fontWeight: 700, color: "var(--danger)" }}>{t("tatt.cancelled")}</div>}
                     {l.dayStatus && !d.status && (
-                      <div style={{ fontSize: 12, color: "#8A5A00" }}>{t("tatt.dayMark").replace("{status}", t(STATES.find((s) => s.key === l.dayStatus)!.label))}</div>
+                      <div style={{ fontSize: 12, color: "var(--warning)" }}>{t("tatt.dayMark").replace("{status}", t(STATES.find((s) => s.key === l.dayStatus)!.label))}</div>
                     )}
                   </div>
                   <div style={{ display: "flex", gap: 6 }}>
@@ -125,7 +125,7 @@ export default function TeacherAttendanceModal({ teachers, onClose }: { teachers
                           disabled={!markable}
                           aria-pressed={on}
                           onClick={() => update(k, { status: s.key })}
-                          style={{ fontSize: 12.5, fontWeight: 700, padding: "7px 12px", borderRadius: 8, cursor: markable ? "pointer" : "not-allowed", border: `1px solid ${on ? s.color : "#EAE8E2"}`, background: on ? s.color : "#fff", color: on ? "#fff" : "#4A4E58" }}
+                          style={{ fontSize: 12.5, fontWeight: 700, padding: "7px 12px", borderRadius: "var(--radius-xs)", cursor: markable ? "pointer" : "not-allowed", border: `1px solid ${on ? s.color : "var(--border)"}`, background: on ? s.color : "var(--on-ink)", color: on ? "var(--on-ink)" : "var(--text-soft)" }}
                         >
                           {t(s.label)}
                         </button>
@@ -151,8 +151,8 @@ export default function TeacherAttendanceModal({ teachers, onClose }: { teachers
 
       {lessons && lessons.length > 0 && (
         <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 10, marginTop: 14 }}>
-          {saved && <span style={{ fontSize: 13, fontWeight: 700, color: "#167A48" }}>✓ {t("common.saved")}</span>}
-          <button type="button" onClick={save} disabled={saving} style={{ background: ACCENT, color: "#fff", border: "none", fontSize: 13.5, fontWeight: 700, padding: "10px 18px", borderRadius: 9, cursor: "pointer", opacity: saving ? 0.7 : 1 }}>
+          {saved && <span style={{ fontSize: 13, fontWeight: 700, color: "var(--success)" }}>✓ {t("common.saved")}</span>}
+          <button type="button" onClick={save} disabled={saving} style={{ background: ACCENT, color: "var(--on-ink)", border: "none", fontSize: 13.5, fontWeight: 700, padding: "10px 18px", borderRadius: "var(--radius-sm)", cursor: "pointer", opacity: saving ? 0.7 : 1 }}>
             {saving ? t("common.saving") : t("common.save")}
           </button>
         </div>
@@ -161,4 +161,4 @@ export default function TeacherAttendanceModal({ teachers, onClose }: { teachers
   );
 }
 
-const ghost: React.CSSProperties = { background: "#fff", border: "1px solid #EAE8E2", color: "#181A1F", fontSize: 12.5, fontWeight: 700, padding: "8px 12px", borderRadius: 8, cursor: "pointer" };
+const ghost: React.CSSProperties = { background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text)", fontSize: 12.5, fontWeight: 700, padding: "8px 12px", borderRadius: "var(--radius-xs)", cursor: "pointer" };

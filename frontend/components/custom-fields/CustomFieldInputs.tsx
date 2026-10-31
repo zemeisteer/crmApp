@@ -9,7 +9,7 @@ import { useLanguage } from "@/lib/i18n-context";
 import { dict, type TranslationKey } from "@/lib/i18n";
 import { activeDefs, cfServerErrors, CF_LONG_TEXT_MAX, CF_TEXT_MAX, type CfDraft, type CfDraftValue, type CfErrors } from "@/lib/custom-fields";
 
-const ACCENT = "#4F46E5";
+const ACCENT = "var(--primary)";
 
 /** The center's field definitions of one kind; `defs` is null while loading. */
 export function useCustomFieldDefs(entityType: CustomFieldEntity, opts: { includeArchived?: boolean; enabled?: boolean } = {}) {
@@ -69,10 +69,10 @@ export function cfErrorText(t: (k: TranslationKey) => string, code: string): str
   return key in dict ? t(key as TranslationKey) : t("cf.err.INVALID");
 }
 
-const labelStyle: React.CSSProperties = { display: "flex", alignItems: "center", flexWrap: "wrap", gap: 6, fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 };
+const labelStyle: React.CSSProperties = { display: "flex", alignItems: "center", flexWrap: "wrap", gap: 6, fontSize: 12.5, fontWeight: 600, color: "var(--text-soft)", marginBottom: 6 };
 const srOnly: React.CSSProperties = { position: "absolute", width: 1, height: 1, padding: 0, margin: -1, overflow: "hidden", clip: "rect(0 0 0 0)", whiteSpace: "nowrap", border: 0 };
-const errStyle: React.CSSProperties = { marginTop: 5, fontSize: 12, fontWeight: 600, color: "#B91C1C" };
-const errBorder: React.CSSProperties = { borderColor: "#DC2626", boxShadow: "0 0 0 3px rgba(220,38,38,0.12)" };
+const errStyle: React.CSSProperties = { marginTop: 5, fontSize: 12, fontWeight: 600, color: "var(--danger)" };
+const errBorder: React.CSSProperties = { borderColor: "var(--danger)", boxShadow: "0 0 0 3px rgba(220,38,38,0.12)" };
 
 /**
  * Inputs for the active fields of `defs`, in their order. Values are form
@@ -107,7 +107,7 @@ export default function CustomFieldInputs({
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14, minWidth: 0 }}>
-      {title && <div style={{ fontSize: 13.5, fontWeight: 800, color: "#181A1F", paddingTop: 14, borderTop: "1px solid #EAE8E2", marginTop: 2 }}>{title}</div>}
+      {title && <div style={{ fontSize: 13.5, fontWeight: 800, color: "var(--text)", paddingTop: 14, borderTop: "1px solid var(--border)", marginTop: 2 }}>{title}</div>}
       {list.map((def) => {
         const id = `${idPrefix}-${def.id}`;
         const labelId = `${id}-label`;
@@ -138,7 +138,7 @@ export default function CustomFieldInputs({
             input = <input {...common} className="field-input" style={error ? errBorder : undefined} inputMode="decimal" value={str} onChange={(e) => onChange(def.id, e.target.value)} />;
             break;
           case "DATE":
-            input = <DatePicker value={str} onChange={(v) => onChange(def.id, v)} style={error ? { borderRadius: 10, ...errBorder } : undefined} />;
+            input = <DatePicker value={str} onChange={(v) => onChange(def.id, v)} style={error ? { borderRadius: "var(--radius-sm)", ...errBorder } : undefined} />;
             break;
           case "BOOLEAN": {
             const choices: Array<{ v: boolean | null; label: string }> = [
@@ -155,8 +155,8 @@ export default function CustomFieldInputs({
                       key={String(c.v)}
                       style={{
                         display: "inline-flex", alignItems: "center", gap: 7, cursor: "pointer", fontSize: 13.5, fontWeight: on ? 700 : 500,
-                        padding: "9px 14px", borderRadius: 10, border: `1px solid ${on ? ACCENT : error ? "#DC2626" : "#EAE8E2"}`,
-                        background: on ? "#EEF0FF" : "#fff", color: on ? ACCENT : "#181A1F",
+                        padding: "9px 14px", borderRadius: "var(--radius-sm)", border: `1px solid ${on ? ACCENT : error ? "var(--danger)" : "var(--border)"}`,
+                        background: on ? "var(--primary-soft)" : "var(--surface)", color: on ? ACCENT : "var(--text)",
                       }}
                     >
                       <input type="radio" name={id} checked={on} onChange={() => onChange(def.id, c.v)} style={{ accentColor: ACCENT, margin: 0 }} />
@@ -177,7 +177,7 @@ export default function CustomFieldInputs({
                 onChange={(v) => onChange(def.id, v)}
                 ariaLabel={`${def.label}: ${selected ? selected.label : t("cf.notSelected")}`}
                 placeholder={t("cf.notSelected")}
-                style={error ? { borderRadius: 10, ...errBorder } : undefined}
+                style={error ? { borderRadius: "var(--radius-sm)", ...errBorder } : undefined}
                 options={[
                   { value: "", label: t("cf.notSelected") },
                   ...opts.map((o) => ({ value: o.id, label: o.archived ? `${o.label} ${t("cf.archivedSuffix")}` : o.label })),
@@ -195,7 +195,7 @@ export default function CustomFieldInputs({
                 onChange={(v) => onChange(def.id, v)}
                 ariaLabel={def.label}
                 placeholder={t("cf.notSelected")}
-                style={error ? { borderRadius: 10, ...errBorder } : undefined}
+                style={error ? { borderRadius: "var(--radius-sm)", ...errBorder } : undefined}
                 options={opts.map((o) => ({ value: o.id, label: o.archived ? `${o.label} ${t("cf.archivedSuffix")}` : o.label }))}
               />
             );
@@ -207,15 +207,15 @@ export default function CustomFieldInputs({
             <LabelTag id={labelId} {...(native ? { htmlFor: id } : {})} style={labelStyle}>
               <span>
                 {def.label}
-                {def.required && <span aria-hidden style={{ color: "#B91C1C" }}> *</span>}
+                {def.required && <span aria-hidden style={{ color: "var(--danger)" }}> *</span>}
                 {def.required && <span style={srOnly}> ({t("cf.requiredSr")})</span>}
               </span>
               {carried?.has(def.id) && (
-                <span style={{ fontSize: 11, fontWeight: 700, color: "#0F766E", background: "#CCFBF1", padding: "2px 8px", borderRadius: 999 }}>{t("cf.carried")}</span>
+                <span style={{ fontSize: 11, fontWeight: 700, color: "var(--teal)", background: "var(--teal-soft)", padding: "2px 8px", borderRadius: "var(--radius-pill)" }}>{t("cf.carried")}</span>
               )}
             </LabelTag>
             {input}
-            {note && <div id={noteId} style={{ marginTop: 5, fontSize: 12, color: "#B45309" }}>{note}</div>}
+            {note && <div id={noteId} style={{ marginTop: 5, fontSize: 12, color: "var(--warning)" }}>{note}</div>}
             {error && <div id={errId} role="alert" style={errStyle}>{cfErrorText(t, error)}</div>}
           </div>
         );

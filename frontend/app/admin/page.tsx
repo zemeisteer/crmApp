@@ -16,8 +16,8 @@ import { centerHost } from "@/lib/domain";
 import { STATUS_COLORS } from "@/lib/platform";
 
 // A status and a plan read at a glance: the same colours as the other platform pages.
-const TRIAL_ENDED_TONE = { bg: "#F2F1EC", fg: "#4A4E58" };
-const PLAN_TONES = [{ bg: "#F2F1EC", fg: "#4A4E58" }, { bg: "#E6F4FF", fg: "#0B5CAD" }, { bg: "#F1EBFF", fg: "#5B21B6" }, { bg: "#E6F7F4", fg: "#0F766E" }];
+const TRIAL_ENDED_TONE = { bg: "var(--surface-muted)", fg: "var(--text-soft)" };
+const PLAN_TONES = [{ bg: "var(--surface-muted)", fg: "var(--text-soft)" }, { bg: "var(--info-soft)", fg: "var(--info)" }, { bg: "var(--violet-soft)", fg: "var(--violet)" }, { bg: "var(--teal-soft)", fg: "var(--teal)" }];
 /** Free plans grey, then by price: blue, purple, teal. */
 function planTone(plans: Array<{ key: string; price?: number }>, key: string) {
   const paid = plans.filter((p) => (p.price ?? 0) > 0).sort((a, b) => (a.price ?? 0) - (b.price ?? 0));
@@ -25,7 +25,7 @@ function planTone(plans: Array<{ key: string; price?: number }>, key: string) {
   return i < 0 ? PLAN_TONES[0] : PLAN_TONES[1 + (i % (PLAN_TONES.length - 1))];
 }
 
-const ACCENT = "#4F46E5";
+const ACCENT = "var(--primary)";
 
 const STATUS_LABEL_KEYS: Record<string, TranslationKey> = {
   TRIAL: "admin.statusTrial",
@@ -154,7 +154,7 @@ function AdminContent() {
   if (user && user.role !== "SUPERADMIN") {
     return (
       <div style={{ padding: 32 }}>
-        <div style={{ color: "#686B75", fontSize: 14, background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 32, textAlign: "center" }}>
+        <div style={{ color: "var(--text-muted)", fontSize: 14, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 32, textAlign: "center" }}>
           {t("admin.superadminOnly")}
         </div>
       </div>
@@ -163,19 +163,19 @@ function AdminContent() {
 
   return (
     <>
-      <div style={{ padding: "22px 32px", borderBottom: "1px solid #EAE8E2", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+      <div style={{ padding: "22px 32px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div>
           <h1 style={{ fontSize: 22, fontWeight: 800 }}>{t("admin.title")}</h1>
-          <div style={{ fontSize: 13, color: "#686B75", marginTop: 2 }}>{t("admin.subtitle")}</div>
+          <div style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 2 }}>{t("admin.subtitle")}</div>
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-        <Link href="/pricing" className="btn" style={{ background: "#fff", color: "#181A1F", border: "1px solid #EAE8E2", fontSize: 13.5, fontWeight: 700, padding: "10px 16px", borderRadius: 9 }}>
+        <Link href="/pricing" className="btn" style={{ background: "var(--surface)", color: "var(--text)", border: "1px solid var(--border)", fontSize: 13.5, fontWeight: 700, padding: "10px 16px", borderRadius: "var(--radius-sm)" }}>
           {t("nav.pricing")}
         </Link>
         <button
           className="btn"
           onClick={() => setCreateOpen(true)}
-          style={{ background: ACCENT, color: "#fff", border: "none", fontSize: 13.5, fontWeight: 700, padding: "10px 18px", borderRadius: 9 }}
+          style={{ background: ACCENT, color: "var(--on-ink)", border: "none", fontSize: 13.5, fontWeight: 700, padding: "10px 18px", borderRadius: "var(--radius-sm)" }}
         >
           {t("admin.newCenter")}
         </button>
@@ -184,7 +184,7 @@ function AdminContent() {
 
       <div style={{ flex: 1, minHeight: 0, padding: "26px 32px", overflow: "auto", boxSizing: "border-box" }}>
         {error && (
-          <div role="alert" style={{ background: "#FDEBEC", color: "#B23A47", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: 10, marginBottom: 16 }}>
+          <div role="alert" style={{ background: "var(--danger-soft)", color: "var(--danger)", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: "var(--radius-sm)", marginBottom: 16 }}>
             {error}
           </div>
         )}
@@ -196,10 +196,10 @@ function AdminContent() {
               { label: t("sa.students"), value: money(overview.totals.students) },
               { label: t("sa.revenue"), value: `${money(overview.totals.monthRevenue)} ${t("common.sumUnit")}`, sub: t("sa.revenueHint") },
             ].map((c) => (
-              <div key={c.label} style={{ background: c.danger ? "#FDEBEC" : "#fff", border: `1px solid ${c.danger ? "#F6D2D6" : "#EAE8E2"}`, borderRadius: 14, padding: 18 }}>
-                <div style={{ fontSize: 12, color: c.danger ? "#B23A47" : "#686B75" }}>{c.label}</div>
-                <div style={{ fontSize: 22, fontWeight: 800, fontFamily: "'Manrope', sans-serif", marginTop: 4, color: c.danger ? "#B23A47" : "#181A1F" }}>{c.value}</div>
-                {c.sub && <div style={{ fontSize: 11.5, color: "#686B75", marginTop: 2 }}>{c.sub}</div>}
+              <div key={c.label} style={{ background: c.danger ? "var(--danger-soft)" : "var(--surface)", border: `1px solid ${c.danger ? "var(--danger-border)" : "var(--border)"}`, borderRadius: "var(--radius-lg)", padding: 18 }}>
+                <div style={{ fontSize: 12, color: c.danger ? "var(--danger)" : "var(--text-muted)" }}>{c.label}</div>
+                <div style={{ fontSize: 22, fontWeight: 800, fontFamily: "var(--font-display)", marginTop: 4, color: c.danger ? "var(--danger)" : "var(--text)" }}>{c.value}</div>
+                {c.sub && <div style={{ fontSize: 11.5, color: "var(--text-muted)", marginTop: 2 }}>{c.sub}</div>}
               </div>
             ))}
           </div>
@@ -217,13 +217,13 @@ function AdminContent() {
         </div>
 
         {loading ? (
-          <div style={{ color: "#686B75", fontSize: 14 }}>{t("common.loading")}</div>
+          <div style={{ color: "var(--text-muted)", fontSize: 14 }}>{t("common.loading")}</div>
         ) : tenants.length === 0 ? (
-          <div style={{ color: "#686B75", fontSize: 14, background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 32, textAlign: "center" }}>
+          <div style={{ color: "var(--text-muted)", fontSize: 14, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 32, textAlign: "center" }}>
             {t("admin.noCentersYet")}
           </div>
         ) : (
-          <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, overflow: "hidden" }}>
+          <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", overflow: "hidden" }}>
             <div style={{ overflowX: "auto" }}>
             <table style={{ minWidth: 980 }}>
               <thead>
@@ -244,12 +244,12 @@ function AdminContent() {
                     <tr key={tn.id}>
                       <td>
                         <div style={{ fontWeight: 700 }}>{tn.name}</div>
-                        <div style={{ fontSize: 12, color: "#686B75", wordBreak: "break-all" }}>{centerHost(tn.subdomain)}</div>
-                        {tn.owner && <div style={{ fontSize: 12, color: "#4A4E58" }}>{tn.owner.fullName} · {tn.owner.email}</div>}
+                        <div style={{ fontSize: 12, color: "var(--text-muted)", wordBreak: "break-all" }}>{centerHost(tn.subdomain)}</div>
+                        {tn.owner && <div style={{ fontSize: 12, color: "var(--text-soft)" }}>{tn.owner.fullName} · {tn.owner.email}</div>}
                       </td>
                       <td style={{ fontSize: 12.5, whiteSpace: "nowrap" }}>
                         <div><b>{tn.students}</b> {t("sa.studentsShort")}</div>
-                        <div style={{ color: "#686B75" }}>{tn.groups} {t("sa.groupsShort")} · {tn.teachers} {t("sa.teachersShort")}</div>
+                        <div style={{ color: "var(--text-muted)" }}>{tn.groups} {t("sa.groupsShort")} · {tn.teachers} {t("sa.teachersShort")}</div>
                       </td>
                       <td style={{ fontWeight: 700, whiteSpace: "nowrap" }}>{tn.monthRevenue ? `${money(tn.monthRevenue)} ${t("common.sumUnit")}` : "—"}</td>
                       <td>
@@ -274,20 +274,20 @@ function AdminContent() {
                           style={{ minWidth: 150 }}
                         />
                         {left !== null && (
-                          <div style={{ fontSize: 11.5, marginTop: 4, fontWeight: 600, color: left <= 3 ? "#B23A47" : "#686B75" }}>
+                          <div style={{ fontSize: 11.5, marginTop: 4, fontWeight: 600, color: left <= 3 ? "var(--danger)" : "var(--text-muted)" }}>
                             {left > 0 ? t("sa.trialLeft").replace("{n}", String(left)) : t("sa.trialEnded")}
                           </div>
                         )}
                       </td>
-                      <td style={{ fontSize: 12.5, color: "#4A4E58", whiteSpace: "nowrap" }}>
+                      <td style={{ fontSize: 12.5, color: "var(--text-soft)", whiteSpace: "nowrap" }}>
                         <div>{tn.lastActivityAt ? formatDate(tn.lastActivityAt, lang, "short") : "—"}</div>
-                        <div style={{ fontSize: 11.5, color: "#686B75" }}>{t("sa.since")} {formatDate(tn.createdAt, lang, "short")}</div>
+                        <div style={{ fontSize: 11.5, color: "var(--text-muted)" }}>{t("sa.since")} {formatDate(tn.createdAt, lang, "short")}</div>
                       </td>
                       <td style={{ textAlign: "right", whiteSpace: "nowrap" }}>
-                        <button className="btn" onClick={() => onOpen(tn.id)} disabled={savingId === tn.id} style={{ background: "#EEF0FF", color: ACCENT, border: "none", fontSize: 12, fontWeight: 700, padding: "6px 10px", borderRadius: 8, marginRight: 4 }}>
+                        <button className="btn" onClick={() => onOpen(tn.id)} disabled={savingId === tn.id} style={{ background: "var(--primary-soft)", color: ACCENT, border: "none", fontSize: 12, fontWeight: 700, padding: "6px 10px", borderRadius: "var(--radius-xs)", marginRight: 4 }}>
                           👁 {t("sa.open")}
                         </button>
-                        <button className="btn" onClick={() => onDelete(tn.id, tn.name)} disabled={savingId === tn.id} style={{ background: "transparent", color: "#B23A47", fontSize: 12, fontWeight: 600, padding: "4px 8px", borderRadius: 8 }}>
+                        <button className="btn" onClick={() => onDelete(tn.id, tn.name)} disabled={savingId === tn.id} style={{ background: "transparent", color: "var(--danger)", fontSize: 12, fontWeight: 600, padding: "4px 8px", borderRadius: "var(--radius-xs)" }}>
                           {t("admin.delete")}
                         </button>
                       </td>
@@ -305,7 +305,7 @@ function AdminContent() {
       <Modal open={createOpen} onClose={() => { setCreateOpen(false); resetCreateForm(); }} title={t("admin.modalTitle")}>
         <form onSubmit={onCreate} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           {createError && (
-            <div style={{ background: "#FDEBEC", color: "#B23A47", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: 10 }}>{createError}</div>
+            <div style={{ background: "var(--danger-soft)", color: "var(--danger)", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: "var(--radius-sm)" }}>{createError}</div>
           )}
           <Field label={t("admin.fieldCenterName")}>
             <input className="field-input" required value={name} onChange={(e) => setName(e.target.value)} placeholder="Ilm Markazi" />
@@ -326,7 +326,7 @@ function AdminContent() {
             className="btn"
             type="submit"
             disabled={creating}
-            style={{ background: ACCENT, color: "#fff", fontSize: 14, fontWeight: 700, padding: 12, borderRadius: 10, marginTop: 6 }}
+            style={{ background: ACCENT, color: "var(--on-ink)", fontSize: 14, fontWeight: 700, padding: 12, borderRadius: "var(--radius-sm)", marginTop: 6 }}
           >
             {creating ? t("admin.creating") : t("admin.createCenter")}
           </button>
@@ -339,7 +339,7 @@ function AdminContent() {
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div role="group" aria-label={label}>
-      <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>{label}</div>
+      <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-soft)", marginBottom: 6 }}>{label}</div>
       {children}
     </div>
   );

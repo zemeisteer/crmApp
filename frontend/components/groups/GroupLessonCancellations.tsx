@@ -10,7 +10,7 @@ import { useCenterClock } from "@/lib/use-center-clock";
 import { addDays } from "@/lib/makeups";
 import { Notice, dayLabel, errorText, lbl } from "@/components/makeups/shared";
 
-const ACCENT = "#4F46E5";
+const ACCENT = "var(--primary)";
 // Upcoming lessons offered for cancelling, and how far back cancelled days are listed.
 const AHEAD_DAYS = 60;
 const BACK_DAYS = 59;
@@ -100,41 +100,41 @@ export default function GroupLessonCancellations({ groupId }: { groupId: string 
   }
 
   return (
-    <section aria-labelledby="group-cancel-title" style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 20, minWidth: 0 }}>
+    <section aria-labelledby="group-cancel-title" style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 20, minWidth: 0 }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap", marginBottom: 10 }}>
-        <h2 id="group-cancel-title" style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 700, fontSize: 15 }}>{t("mk.lc.cancelledLessons")}</h2>
+        <h2 id="group-cancel-title" style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 15 }}>{t("mk.lc.cancelledLessons")}</h2>
         <button
           type="button"
           className="btn"
           disabled={lessons === null}
           onClick={() => { setOpen(true); setFormError(null); setMessage(null); }}
-          style={{ background: "#FFF7E6", color: "#A15C00", border: "none", fontSize: 12.5, fontWeight: 700, padding: "8px 14px", borderRadius: 8 }}
+          style={{ background: "var(--warning-soft)", color: "var(--warning)", border: "none", fontSize: 12.5, fontWeight: 700, padding: "8px 14px", borderRadius: "var(--radius-xs)" }}
         >
           {t("mk.lc.cancelLesson")}
         </button>
       </div>
-      <div style={{ fontSize: 12.5, color: "#686B75", lineHeight: 1.5, marginBottom: 12 }}>{t("mk.lc.cancelHint")}</div>
+      <div style={{ fontSize: 12.5, color: "var(--text-muted)", lineHeight: 1.5, marginBottom: 12 }}>{t("mk.lc.cancelHint")}</div>
       {message && <div style={{ marginBottom: 12 }}><Notice tone={message.tone}>{message.text}</Notice></div>}
       {loadError ? (
         <LoadError compact message={t("mk.loadError")} onRetry={reload} />
       ) : cancelled === null ? (
-        <div role="status" style={{ fontSize: 13, color: "#686B75" }}>{t("common.loading")}</div>
+        <div role="status" style={{ fontSize: 13, color: "var(--text-muted)" }}>{t("common.loading")}</div>
       ) : cancelled.length === 0 ? (
-        <div style={{ fontSize: 13, color: "#686B75" }}>{t("mk.lc.noCancelled")}</div>
+        <div style={{ fontSize: 13, color: "var(--text-muted)" }}>{t("mk.lc.noCancelled")}</div>
       ) : (
         <ul aria-label={t("mk.lc.cancelledLessons")} style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 8 }}>
           {cancelled.map((c) => (
-            <li key={c.id} style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", border: "1px solid #EAE8E2", borderRadius: 10, padding: "8px 12px" }}>
+            <li key={c.id} style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", padding: "8px 12px" }}>
               <div style={{ flex: "1 1 180px", minWidth: 0 }}>
-                <div style={{ fontSize: 13.5, fontWeight: 700, color: c.date < today ? "#686B75" : "#181A1F" }}>{dayLabel(c.date, lang, t)}</div>
-                {c.reason && <div style={{ fontSize: 12.5, color: "#686B75", overflowWrap: "anywhere" }}>{c.reason}</div>}
+                <div style={{ fontSize: 13.5, fontWeight: 700, color: c.date < today ? "var(--text-muted)" : "var(--text)" }}>{dayLabel(c.date, lang, t)}</div>
+                {c.reason && <div style={{ fontSize: 12.5, color: "var(--text-muted)", overflowWrap: "anywhere" }}>{c.reason}</div>}
               </div>
               <button
                 type="button"
                 className="btn"
                 onClick={() => restore(c)}
                 aria-label={`${t("mk.lc.restore")}: ${dayLabel(c.date, lang, t)}`}
-                style={{ background: "#fff", border: "1px solid #EAE8E2", color: "#181A1F", fontSize: 12.5, fontWeight: 700, padding: "6px 12px", borderRadius: 8 }}
+                style={{ background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text)", fontSize: 12.5, fontWeight: 700, padding: "6px 12px", borderRadius: "var(--radius-xs)" }}
               >
                 {t("mk.lc.restore")}
               </button>
@@ -166,12 +166,12 @@ export default function GroupLessonCancellations({ groupId }: { groupId: string 
             <span style={lbl}>{t("mk.lc.reasonOptional")}</span>
             <input className="field-input" value={reason} onChange={(e) => setReason(e.target.value)} maxLength={300} placeholder={t("mk.lc.reasonPh")} style={{ width: "100%" }} />
           </label>
-          <div style={{ fontSize: 12.5, color: "#686B75", lineHeight: 1.5 }}>{t("mk.lc.cancelEffect")}</div>
+          <div style={{ fontSize: 12.5, color: "var(--text-muted)", lineHeight: 1.5 }}>{t("mk.lc.cancelEffect")}</div>
           <button
             type="submit"
             className="btn"
             disabled={busy || upcoming.length === 0}
-            style={{ background: ACCENT, color: "#fff", border: "none", fontSize: 14, fontWeight: 700, padding: "11px 16px", borderRadius: 10 }}
+            style={{ background: ACCENT, color: "var(--on-ink)", border: "none", fontSize: 14, fontWeight: 700, padding: "11px 16px", borderRadius: "var(--radius-sm)" }}
           >
             {busy ? t("common.saving") : t("mk.lc.cancelConfirm")}
           </button>

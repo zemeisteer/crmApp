@@ -7,7 +7,7 @@ import { formatDateTime } from "@/lib/format-date";
 import { useAuth } from "@/lib/auth-context";
 import { centerPortalUrl } from "@/lib/domain";
 
-const ACCENT = "#4F46E5";
+const ACCENT = "var(--primary)";
 
 // Issues the PIN a student/parent uses (with their phone) to sign in to the
 // portal. The PIN is shown once; issuing again replaces it.
@@ -41,43 +41,43 @@ export default function StudentPortalPin({ studentId, hasPhone }: { studentId: s
   }
 
   return (
-    <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 18 }}>
+    <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 18 }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
-        <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 700, fontSize: 15 }}>{t("spin.title")}</div>
+        <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 15 }}>{t("spin.title")}</div>
         {status && (
-          <span style={{ fontSize: 12, fontWeight: 700, padding: "3px 10px", borderRadius: 999, background: status.hasPin ? "#E8F7EF" : "#F2F1EC", color: status.hasPin ? "#16794A" : "#686B75" }}>
+          <span style={{ fontSize: 12, fontWeight: 700, padding: "3px 10px", borderRadius: "var(--radius-pill)", background: status.hasPin ? "var(--success-soft)" : "var(--surface-muted)", color: status.hasPin ? "var(--success)" : "var(--text-muted)" }}>
             {status.hasPin ? `✓ ${t("spin.has")}${status.updatedAt ? ` · ${formatDateTime(status.updatedAt, lang)}` : ""}` : t("spin.none")}
           </span>
         )}
       </div>
-      <div style={{ fontSize: 12.5, color: "#4A4E58", margin: "8px 0 12px", lineHeight: 1.5 }}>{t("spin.intro")}</div>
+      <div style={{ fontSize: 12.5, color: "var(--text-soft)", margin: "8px 0 12px", lineHeight: 1.5 }}>{t("spin.intro")}</div>
       {portalUrl && (
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12, padding: "8px 10px", borderRadius: 10, background: "#F7F6F2", fontSize: 12.5, flexWrap: "wrap" }}>
-          <span style={{ color: "#686B75" }}>{t("spin.portalLink")}:</span>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12, padding: "8px 10px", borderRadius: "var(--radius-sm)", background: "var(--surface-muted)", fontSize: 12.5, flexWrap: "wrap" }}>
+          <span style={{ color: "var(--text-muted)" }}>{t("spin.portalLink")}:</span>
           <a href={portalUrl} target="_blank" rel="noreferrer" style={{ color: ACCENT, fontWeight: 700, wordBreak: "break-all" }}>{portalUrl.replace(/^https?:\/\//, "")}</a>
           <button
             type="button"
             onClick={() => navigator.clipboard?.writeText(portalUrl).then(() => { setCopied(true); setTimeout(() => setCopied(false), 1500); }).catch(() => undefined)}
-            style={{ marginLeft: "auto", background: "none", border: "1px solid #EAE8E2", borderRadius: 7, padding: "3px 9px", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
+            style={{ marginLeft: "auto", background: "none", border: "1px solid var(--border)", borderRadius: "var(--radius-xs)", padding: "3px 9px", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
           >
             {copied ? "✓" : t("placement.copyLink")}
           </button>
         </div>
       )}
-      {!hasPhone && <div style={{ fontSize: 12.5, color: "#B45309", background: "#FFFBEB", padding: "8px 10px", borderRadius: 8, marginBottom: 10 }}>{t("spin.noPhone")}</div>}
+      {!hasPhone && <div style={{ fontSize: 12.5, color: "var(--warning)", background: "var(--warning-soft)", padding: "8px 10px", borderRadius: "var(--radius-xs)", marginBottom: 10 }}>{t("spin.noPhone")}</div>}
       {pin && (
-        <div style={{ marginBottom: 12, padding: 14, borderRadius: 12, background: "#EEF0FF", border: "1px solid #D7D3F8" }}>
-          <div style={{ fontSize: 12.5, color: "#4A4E58", marginBottom: 6 }}>{t("spin.newPin")}</div>
+        <div style={{ marginBottom: 12, padding: 14, borderRadius: "var(--radius-md)", background: "var(--primary-soft)", border: "1px solid var(--primary-border)" }}>
+          <div style={{ fontSize: 12.5, color: "var(--text-soft)", marginBottom: 6 }}>{t("spin.newPin")}</div>
           <div style={{ fontFamily: "'Manrope', monospace", fontWeight: 800, fontSize: 30, letterSpacing: 8, color: ACCENT }}>{pin}</div>
         </div>
       )}
-      {error && <div role="alert" style={{ fontSize: 12.5, color: "#B23A47", marginBottom: 10 }}>{error}</div>}
+      {error && <div role="alert" style={{ fontSize: 12.5, color: "var(--danger)", marginBottom: 10 }}>{error}</div>}
       <button
         type="button"
         onClick={issue}
         disabled={busy}
         className="btn"
-        style={{ background: ACCENT, color: "#fff", border: "none", fontSize: 13, fontWeight: 700, padding: "9px 16px", borderRadius: 9, cursor: "pointer", opacity: busy ? 0.7 : 1 }}
+        style={{ background: ACCENT, color: "var(--on-ink)", border: "none", fontSize: 13, fontWeight: 700, padding: "9px 16px", borderRadius: "var(--radius-sm)", cursor: "pointer", opacity: busy ? 0.7 : 1 }}
       >
         🔐 {status?.hasPin ? t("spin.reissue") : t("spin.issue")}
       </button>

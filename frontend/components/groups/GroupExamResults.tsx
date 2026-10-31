@@ -6,7 +6,7 @@ import { examsApi, type Exam, type Student } from "@/lib/api";
 import { useLanguage } from "@/lib/i18n-context";
 import { formatDate } from "@/lib/format-date";
 
-const ACCENT = "#4F46E5";
+const ACCENT = "var(--primary)";
 const MAX_COLUMNS = 6;
 
 type Cell = { score: number; max: number; passed: boolean } | null;
@@ -55,12 +55,12 @@ export default function GroupExamResults({ groupId, students }: { groupId: strin
     };
   }, [grid, exams]);
 
-  const pctColor = (p: number | null) => (p === null ? "#686B75" : p >= 80 ? "#16794A" : p >= 60 ? "#D97706" : "#B23A47");
+  const pctColor = (p: number | null) => (p === null ? "var(--text-muted)" : p >= 80 ? "var(--success)" : p >= 60 ? "var(--warning)" : "var(--danger)");
 
   return (
-    <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, overflow: "hidden" }}>
+    <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", overflow: "hidden" }}>
       <div style={{ padding: "16px 20px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-        <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 700, fontSize: 15 }}>{t("groupExams.title")}</div>
+        <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 15 }}>{t("groupExams.title")}</div>
         <Link href="/exams" style={{ fontSize: 12.5, fontWeight: 700, color: ACCENT, textDecoration: "none" }}>
           {t("groupExams.manage")} →
         </Link>
@@ -68,23 +68,23 @@ export default function GroupExamResults({ groupId, students }: { groupId: strin
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0,1fr))", gap: 10, padding: "0 20px 16px" }}>
         {[
-          { label: t("groupExams.count"), value: String(summary.exams), color: "#181A1F" },
+          { label: t("groupExams.count"), value: String(summary.exams), color: "var(--text)" },
           { label: t("groupExams.avg"), value: summary.avg === null ? "—" : `${summary.avg}%`, color: pctColor(summary.avg) },
           { label: t("groupExams.passRate"), value: summary.passRate === null ? "—" : `${summary.passRate}%`, color: pctColor(summary.passRate) },
         ].map((c) => (
-          <div key={c.label} style={{ background: "#F7F6F2", borderRadius: 12, padding: "10px 14px" }}>
-            <div style={{ fontSize: 11.5, color: "#686B75", fontWeight: 600 }}>{c.label}</div>
-            <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 800, fontSize: 20, color: c.color }}>{c.value}</div>
+          <div key={c.label} style={{ background: "var(--surface-muted)", borderRadius: "var(--radius-md)", padding: "10px 14px" }}>
+            <div style={{ fontSize: 11.5, color: "var(--text-muted)", fontWeight: 600 }}>{c.label}</div>
+            <div style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 20, color: c.color }}>{c.value}</div>
           </div>
         ))}
       </div>
 
       {exams === null ? (
-        <div style={{ padding: "0 20px 20px", fontSize: 13, color: "#686B75" }}>…</div>
+        <div style={{ padding: "0 20px 20px", fontSize: 13, color: "var(--text-muted)" }}>…</div>
       ) : columns.length === 0 ? (
-        <div style={{ padding: "0 20px 20px", fontSize: 13, color: "#686B75" }}>{t("groupExams.empty")}</div>
+        <div style={{ padding: "0 20px 20px", fontSize: 13, color: "var(--text-muted)" }}>{t("groupExams.empty")}</div>
       ) : students.length === 0 ? (
-        <div style={{ padding: "0 20px 20px", fontSize: 13, color: "#686B75" }}>{t("groupExams.noStudents")}</div>
+        <div style={{ padding: "0 20px 20px", fontSize: 13, color: "var(--text-muted)" }}>{t("groupExams.noStudents")}</div>
       ) : (
         <div style={{ overflowX: "auto" }}>
           <table className="table" style={{ minWidth: 520 }}>
@@ -94,7 +94,7 @@ export default function GroupExamResults({ groupId, students }: { groupId: strin
                 {columns.map((e) => (
                   <th key={e.id} style={{ textAlign: "center", width: 130 }} title={e.title}>
                     <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 130, margin: "0 auto" }}>{e.title}</div>
-                    <div style={{ fontSize: 10.5, color: "#A0A3AB", fontWeight: 500 }}>
+                    <div style={{ fontSize: 10.5, color: "var(--text-faint)", fontWeight: 500 }}>
                       {[e.examDate ? formatDate(e.examDate, lang, "dayMonth") : null, `${t("groupExams.outOf")} ${e.maxScore}`].filter(Boolean).join(" · ")}
                     </div>
                   </th>
@@ -106,16 +106,16 @@ export default function GroupExamResults({ groupId, students }: { groupId: strin
               {grid.map(({ student, cells, avg }) => (
                 <tr key={student.id}>
                   <td style={{ fontWeight: 600 }}>
-                    <Link href={`/students/${student.id}`} style={{ color: "#181A1F", textDecoration: "none" }}>{student.fullName}</Link>
+                    <Link href={`/students/${student.id}`} style={{ color: "var(--text)", textDecoration: "none" }}>{student.fullName}</Link>
                   </td>
                   {cells.map((c, i) => (
                     <td key={columns[i].id} style={{ textAlign: "center" }}>
                       {c ? (
-                        <span style={{ display: "inline-block", minWidth: 44, padding: "3px 8px", borderRadius: 7, fontSize: 12.5, fontWeight: 700, background: c.passed ? "#E8F7EF" : "#FDEBEC", color: c.passed ? "#16794A" : "#B23A47" }}>
+                        <span style={{ display: "inline-block", minWidth: 44, padding: "3px 8px", borderRadius: "var(--radius-xs)", fontSize: 12.5, fontWeight: 700, background: c.passed ? "var(--success-soft)" : "var(--danger-soft)", color: c.passed ? "var(--success)" : "var(--danger)" }}>
                           {c.score}
                         </span>
                       ) : (
-                        <span style={{ color: "#C4C6CC" }}>—</span>
+                        <span style={{ color: "var(--text-faint)" }}>—</span>
                       )}
                     </td>
                   ))}

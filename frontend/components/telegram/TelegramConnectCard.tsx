@@ -25,7 +25,7 @@ export default function TelegramConnectCard() {
   // Only admins can fix a missing bot, so only they see that note.
   if (!state.configured) {
     return user?.role === "ADMIN" || user?.role === "OWNER" ? (
-      <div style={{ fontSize: 12, color: "#686B75" }}>📨 {t("tg.title")}: {t("tg.notConfigured")}</div>
+      <div style={{ fontSize: 12, color: "var(--text-muted)" }}>📨 {t("tg.title")}: {t("tg.notConfigured")}</div>
     ) : null;
   }
 
@@ -50,23 +50,23 @@ export default function TelegramConnectCard() {
     }
   }
 
-  const btn: React.CSSProperties = { border: "1px solid #C7D2FE", background: "#EEF0FF", color: "#4F46E5", fontWeight: 700, fontSize: 12, padding: "6px 12px", borderRadius: 8, cursor: "pointer" };
+  const btn: React.CSSProperties = { border: "1px solid var(--primary-border)", background: "var(--primary-soft)", color: "var(--primary)", fontWeight: 700, fontSize: 12, padding: "6px 12px", borderRadius: "var(--radius-xs)", cursor: "pointer" };
 
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", background: "#fff", border: "1px solid #EAE8E2", borderRadius: 12, padding: "10px 14px", fontSize: 13 }}>
+    <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-md)", padding: "10px 14px", fontSize: 13 }}>
       <span style={{ fontWeight: 700 }}>✈️ {t("tg.title")}</span>
-      <span style={{ color: state.linked ? "#15803D" : "#5B5F6A", flex: 1, minWidth: 200 }}>
+      <span style={{ color: state.linked ? "var(--success)" : "var(--text-muted)", flex: 1, minWidth: 200 }}>
         {state.linked ? t("tg.linkedText") : waiting ? t("tg.openHint") : t("tg.unlinkedText")}
       </span>
       {state.linked ? (
-        <button type="button" className="btn" style={{ ...btn, background: "#fff", color: "#B91C1C", borderColor: "#FECACA" }} disabled={busy} onClick={disconnect}>
+        <button type="button" className="btn" style={{ ...btn, background: "var(--surface)", color: "var(--danger)", borderColor: "var(--danger-border)" }} disabled={busy} onClick={disconnect}>
           {t("tg.disconnect")}
         </button>
       ) : (
         <>
           <button type="button" className="btn" style={btn} disabled={busy} onClick={connect}>{t("tg.connect")}</button>
           {waiting && (
-            <button type="button" className="btn" style={{ ...btn, background: "#fff" }} onClick={() => refresh().then(() => setWaiting(false))}>
+            <button type="button" className="btn" style={{ ...btn, background: "var(--surface)" }} onClick={() => refresh().then(() => setWaiting(false))}>
               {t("tg.check")}
             </button>
           )}

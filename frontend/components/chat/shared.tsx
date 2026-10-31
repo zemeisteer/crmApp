@@ -4,7 +4,7 @@ import type { ChatConversation, ChatKind } from "@/lib/api";
 import type { Lang, TranslationKey } from "@/lib/i18n";
 import { formatDateTime, formatTime } from "@/lib/format-date";
 
-export const CHAT_ACCENT = "#4F46E5";
+export const CHAT_ACCENT = "var(--primary)";
 
 /** Hidden on screen, read by screen readers. */
 export const srOnly: React.CSSProperties = { position: "absolute", width: 1, height: 1, padding: 0, margin: -1, overflow: "hidden", clip: "rect(0 0 0 0)", whiteSpace: "nowrap", border: 0 };
@@ -40,7 +40,7 @@ export function messageTime(iso: string, lang: Lang, now = new Date()) {
 export function UnreadBadge({ count, label }: { count: number; label: string }) {
   if (count <= 0) return null;
   return (
-    <span style={{ background: "#DC2626", color: "#fff", fontSize: 11, fontWeight: 800, padding: "1px 7px", borderRadius: 100, lineHeight: 1.6, flexShrink: 0 }}>
+    <span style={{ background: "var(--danger)", color: "var(--on-ink)", fontSize: 11, fontWeight: 800, padding: "1px 7px", borderRadius: "var(--radius-pill)", lineHeight: 1.6, flexShrink: 0 }}>
       <span aria-hidden="true">{count > 99 ? "99+" : count}</span>
       <span style={srOnly}>{label.replace("{n}", String(count))}</span>
     </span>

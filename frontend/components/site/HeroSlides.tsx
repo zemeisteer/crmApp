@@ -66,9 +66,9 @@ export default function HeroSlides({ slides, accent }: { slides: Slide[]; accent
     <div
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
-      style={{ position: "relative", borderRadius: 22, overflow: "hidden", background: "#fff", border: "1px solid #EAE8E2", boxShadow: "0 30px 60px -28px rgba(18,19,26,0.35)" }}
+      style={{ position: "relative", borderRadius: "var(--radius-lg)", overflow: "hidden", background: "var(--surface)", border: "1px solid var(--border)", boxShadow: "0 30px 60px -28px rgba(18,19,26,0.35)" }}
     >
-      <div key={i} className="ps-slide" style={{ aspectRatio: "4 / 3", background: photo ? "#111" : `linear-gradient(160deg, color-mix(in srgb, ${accent} 10%, white), #fff)` }}>
+      <div key={i} className="ps-slide" style={{ aspectRatio: "4 / 3", background: photo ? "var(--ink)" : `linear-gradient(160deg, color-mix(in srgb, ${accent} 10%, white), var(--surface))` }}>
         {photo ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -83,8 +83,8 @@ export default function HeroSlides({ slides, accent }: { slides: Slide[]; accent
       </div>
       <div style={{ padding: "16px 18px 18px", display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 12 }}>
         <div style={{ minWidth: 0 }}>
-          <div style={{ fontFamily: "'Manrope',sans-serif", fontWeight: 800, fontSize: 16.5 }}>{s.title}</div>
-          <div style={{ fontSize: 13.5, color: "#4A4E58", marginTop: 3, lineHeight: 1.5 }}>{s.text}</div>
+          <div style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 16.5 }}>{s.title}</div>
+          <div style={{ fontSize: 13.5, color: "var(--text-soft)", marginTop: 3, lineHeight: 1.5 }}>{s.text}</div>
         </div>
         {slides.length > 1 && (
           <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
@@ -101,7 +101,7 @@ export default function HeroSlides({ slides, accent }: { slides: Slide[]; accent
               type="button"
               aria-label={`${j + 1}`}
               onClick={() => setI(j)}
-              style={{ width: j === i ? 22 : 8, height: 8, borderRadius: 100, border: "none", padding: 0, cursor: "pointer", background: j === i ? accent : "rgba(18,19,26,0.18)", transition: "all .3s" }}
+              style={{ width: j === i ? 22 : 8, height: 8, borderRadius: "var(--radius-pill)", border: "none", padding: 0, cursor: "pointer", background: j === i ? accent : "rgba(18,19,26,0.18)", transition: "all .3s" }}
             />
           ))}
         </div>
@@ -110,4 +110,4 @@ export default function HeroSlides({ slides, accent }: { slides: Slide[]; accent
   );
 }
 
-const arrow: React.CSSProperties = { width: 36, height: 36, borderRadius: "50%", border: "1px solid #EAE8E2", background: "#fff", cursor: "pointer", fontSize: 20, lineHeight: 1, color: "#181A1F" };
+const arrow: React.CSSProperties = { width: 36, height: 36, borderRadius: "50%", border: "1px solid var(--border)", background: "var(--surface)", cursor: "pointer", fontSize: 20, lineHeight: 1, color: "var(--text)" };
