@@ -7,9 +7,19 @@ import { useAuth } from "@/lib/auth-context";
 import { useLanguage } from "@/lib/i18n-context";
 import Sidebar, { canOpenPath, isPlatformMode, PLATFORM_HOME } from "./Sidebar";
 import TwoFactorGate from "./TwoFactorGate";
+import AppTopBar from "./AppTopBar";
 import { formatDate } from "@/lib/format-date";
 
 const ACCENT = "var(--primary)";
+
+/** A notice above the page (billing, trial): a rounded strip inside the frame. */
+function Notice({ tone, children, role }: { tone: "danger" | "warning"; children: ReactNode; role?: "status" }) {
+  return (
+    <div role={role} className={`app-notice app-notice-${tone}`}>
+      {children}
+    </div>
+  );
+}
 
 function TrialBanner() {
   const { tenant, user } = useAuth();
@@ -19,36 +29,36 @@ function TrialBanner() {
   // Suspended for non-payment: paying lifts it at once.
   if (tenant.status === "SUSPENDED" && tenant.billing?.suspendedForNonPayment) {
     return (
-      <div role="status" style={{ background: "var(--danger-soft)", color: "var(--danger)", padding: "10px 24px", fontSize: 13, fontWeight: 600, textAlign: "center" }}>
+      <Notice role="status" tone="danger">
         {t("billing.suspended")}{" "}
         <Link href="/pricing" style={{ textDecoration: "underline" }}>
           {t("billing.payNow")}
         </Link>
-      </div>
+      </Notice>
     );
   }
 
   // The paid period ran out: the center still works until the grace date.
   if (tenant.status === "PAST_DUE") {
     return (
-      <div role="status" style={{ background: "var(--warning-soft)", color: "var(--warning)", padding: "10px 24px", fontSize: 13, fontWeight: 600, textAlign: "center" }}>
+      <Notice role="status" tone="warning">
         {t("billing.pastDue").replace("{date}", tenant.billing?.graceUntil ? formatDate(tenant.billing.graceUntil, lang) : "")}{" "}
         <Link href="/pricing" style={{ textDecoration: "underline" }}>
           {t("billing.payNow")}
         </Link>
-      </div>
+      </Notice>
     );
   }
 
   if (tenant.status === "SUSPENDED") {
     return (
-      <div style={{ background: "var(--danger-soft)", color: "var(--danger)", padding: "10px 24px", fontSize: 13, fontWeight: 600, textAlign: "center" }}>
+      <Notice tone="danger">
         {t("shell.accountSuspended")}{" "}
         <Link href="/settings" style={{ textDecoration: "underline" }}>
           {t("shell.activatePlan")}
         </Link>
         .
-      </div>
+      </Notice>
     );
   }
 
@@ -58,12 +68,12 @@ function TrialBanner() {
   // The trial ended: everything can be looked at, nothing changed, until the lock date.
   if (tenant.trial?.stage === "READ_ONLY") {
     return (
-      <div role="status" style={{ background: "var(--danger-soft)", color: "var(--danger)", padding: "10px 24px", fontSize: 13, fontWeight: 600, textAlign: "center" }}>
+      <Notice role="status" tone="danger">
         {t("trial.readOnly").replace("{date}", tenant.trial.lockAt ? formatDate(tenant.trial.lockAt, lang) : "")}{" "}
         <Link href="/pricing" style={{ textDecoration: "underline" }}>
           {t("shell.choosePlan")}
         </Link>
-      </div>
+      </Notice>
     );
   }
 
@@ -72,21 +82,12 @@ function TrialBanner() {
     if (daysLeft <= 3) {
       const expired = daysLeft <= 0;
       return (
-        <div
-          style={{
-            background: expired ? "var(--danger-soft)" : "var(--warning-soft)",
-            color: expired ? "var(--danger)" : "var(--warning)",
-            padding: "10px 24px",
-            fontSize: 13,
-            fontWeight: 600,
-            textAlign: "center",
-          }}
-        >
+        <Notice tone={expired ? "danger" : "warning"}>
           {expired ? t("shell.trialExpired") : t("shell.trialEndsIn").replace("{n}", String(daysLeft))}{" "}
           <Link href="/settings" style={{ textDecoration: "underline" }}>
             {t("shell.choosePlan")}
           </Link>
-        </div>
+        </Notice>
       );
     }
   }
@@ -141,8 +142,8 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
 
   if (loading) {
     return (
-      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--surface-muted)" }}>
-        <div style={{ color: "var(--text-muted)", fontSize: 14 }}>{t("common.loading")}</div>
+      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div role="status" style={{ color: "var(--text-muted)", fontSize: 14 }}>{t("common.loading")}</div>
       </div>
     );
   }
@@ -150,55 +151,35 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
   if (!user) return null;
 
   return (
-    <div style={{ display: "flex", background: "var(--surface-muted)", minHeight: "100vh" }}>
-      {/* Keyboard users jump past the ~17 menu links straight to the page. */}
+    <div className={`app-shell${platformMode ? " theme-platform" : ""}`}>
+      {/* Keyboard users jump past the menu straight to the page. */}
       <a href="#main-content" className="skip-link">{t("shell.skipToContent")}</a>
-      <Sidebar open={menuOpen} onClose={() => setMenuOpen(false)} />
-      <main id="main-content" tabIndex={-1} className="dashboard-content" style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0, outline: "none" }}>
-        <button
-          className="mobile-menu-btn btn"
-          onClick={() => setMenuOpen(true)}
-          aria-label={t("shell.menuAriaLabel")}
-          style={{
-            position: "fixed",
-            top: 14,
-            left: 14,
-            zIndex: 40,
-            background: "var(--ink)",
-            color: "var(--on-ink)",
-            border: "none",
-            borderRadius: "var(--radius-xs)",
-            width: 38,
-            height: 38,
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M3 6h18M3 12h18M3 18h18" />
-          </svg>
-        </button>
-        <TrialBanner />
-        {user.role === "SUPERADMIN" && user.twoFactorRequired && !user.sessionTwoFactor ? (
-          // The platform pages open once two-step sign-in is on.
-          <TwoFactorGate />
-        ) : tenant?.trial?.stage === "LOCKED" && user.role !== "SUPERADMIN" && pathname !== "/pricing" ? (
-          <TrialLocked purgeAt={tenant.trial.purgeAt} />
-        ) : misplaced ? null : canOpenPath(pathname, user.role, !!tenant, user.access) ? (
-          // Keyed by the address: each page opened fades in.
-          <div key={pathname} className="page-enter" style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
-            {children}
-          </div>
-        ) : (
-          <div role="alert" style={{ flex: 1, display: "grid", placeContent: "center", justifyItems: "center", gap: 10, padding: 24, textAlign: "center" }}>
-            <div style={{ fontFamily: "var(--font-display)", fontSize: 17, fontWeight: 800 }}>{t("shell.noAccessTitle")}</div>
-            <div style={{ fontSize: 13.5, color: "var(--text-muted)" }}>{t("shell.noAccessText")}</div>
-            <Link href="/dashboard" style={{ marginTop: 6, background: ACCENT, color: "var(--on-ink)", fontWeight: 700, fontSize: 13.5, padding: "10px 18px", borderRadius: "var(--radius-sm)", textDecoration: "none" }}>
-              {t("shell.noAccessBack")}
-            </Link>
-          </div>
-        )}
-      </main>
+      <div className="app-frame">
+        <Sidebar open={menuOpen} onClose={() => setMenuOpen(false)} />
+        <main id="main-content" tabIndex={-1} className="dashboard-content">
+          <AppTopBar onMenu={() => setMenuOpen(true)} />
+          <TrialBanner />
+          {user.role === "SUPERADMIN" && user.twoFactorRequired && !user.sessionTwoFactor ? (
+            // The platform pages open once two-step sign-in is on.
+            <TwoFactorGate />
+          ) : tenant?.trial?.stage === "LOCKED" && user.role !== "SUPERADMIN" && pathname !== "/pricing" ? (
+            <TrialLocked purgeAt={tenant.trial.purgeAt} />
+          ) : misplaced ? null : canOpenPath(pathname, user.role, !!tenant, user.access) ? (
+            // Keyed by the address: each page opened fades in.
+            <div key={pathname} className="page-enter" style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
+              {children}
+            </div>
+          ) : (
+            <div role="alert" style={{ flex: 1, display: "grid", placeContent: "center", justifyItems: "center", gap: 10, padding: 24, textAlign: "center" }}>
+              <div style={{ fontFamily: "var(--font-display)", fontSize: 19, fontWeight: 600 }}>{t("shell.noAccessTitle")}</div>
+              <div style={{ fontSize: 13.5, color: "var(--text-muted)" }}>{t("shell.noAccessText")}</div>
+              <Link href="/dashboard" className="btn-primary" style={{ marginTop: 6 }}>
+                {t("shell.noAccessBack")}
+              </Link>
+            </div>
+          )}
+        </main>
+      </div>
     </div>
   );
 }

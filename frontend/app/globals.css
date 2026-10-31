@@ -423,7 +423,7 @@ button:focus-visible,
 }
 .btn-primary { background: var(--primary); color: var(--on-ink); }
 .btn-primary:hover { background: var(--primary-hover); opacity: 1; }
-.btn-accent { background: var(--accent); color: var(--on-color); }
+.btn-accent { background: var(--accent-strong); color: var(--on-color); }
 .btn-ghost { background: var(--surface); color: var(--text); border: 1px solid var(--border); }
 .btn-ghost:hover { background: var(--surface-muted); opacity: 1; }
 .btn-danger { background: var(--danger); color: var(--on-color); }
@@ -546,41 +546,6 @@ tbody tr:hover {
   background: var(--surface);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-pop);
-}
-
-@media (max-width: 768px) {
-  .sidebar {
-    position: fixed !important;
-    left: 0;
-    top: 0;
-    z-index: 60;
-    transform: translateX(-100%);
-    transition: transform 0.2s ease;
-  }
-
-  .sidebar.sidebar-open {
-    transform: translateX(0);
-  }
-
-  .sidebar-backdrop {
-    display: block;
-    position: fixed;
-    inset: 0;
-    background: rgba(22, 22, 29, 0.4);
-    backdrop-filter: blur(4px);
-    z-index: 50;
-  }
-
-  .mobile-menu-btn {
-    display: inline-flex;
-  }
-
-  .dashboard-content {
-    padding-left: 0 !important;
-    /* Room for the fixed menu button (top 14px + ~38px tall) so it never
-       covers page titles or back links. */
-    padding-top: 56px;
-  }
 }
 
 /* ---- Admissions CRM ---- */
@@ -1033,5 +998,461 @@ button,
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 14px;
+  }
+}
+
+/* ========================================================================= */
+/* App shell: canvas, floating frame, icon rail, top bar (DashboardShell,    */
+/* Sidebar, AppTopBar). The platform skin is a class on the shell.           */
+/* ========================================================================= */
+.app-shell {
+  min-height: 100vh;
+  padding: 14px;
+}
+.app-frame {
+  display: flex;
+  min-height: calc(100vh - 28px);
+  background: var(--frame);
+  border: 1px solid var(--frame-border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-frame);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+.dashboard-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  outline: none;
+}
+
+/* ---- The rail ---- */
+.rail {
+  --rail-w: 78px;
+  --rail-open: 248px;
+  position: sticky;
+  top: 14px;
+  height: calc(100vh - 28px);
+  width: var(--rail-w);
+  flex: 0 0 var(--rail-w);
+  z-index: 45;
+  transition: width 0.22s var(--ease-out), flex-basis 0.22s var(--ease-out);
+}
+.rail.rail-pinned {
+  width: var(--rail-open);
+  flex-basis: var(--rail-open);
+}
+.rail-panel {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: var(--rail-w);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 16px 16px 14px;
+  box-sizing: border-box;
+  border-radius: var(--radius-xl) 0 0 var(--radius-xl);
+  overflow: hidden;
+  transition: width 0.22s var(--ease-out), box-shadow 0.22s var(--ease-out), background-color 0.22s ease;
+}
+/* Opens with its labels on hover (after a short pause) or keyboard focus. */
+.rail:not(.rail-pinned) .rail-panel:hover,
+.rail:not(.rail-pinned) .rail-panel:focus-within,
+.rail-pinned .rail-panel {
+  width: var(--rail-open);
+}
+.rail:not(.rail-pinned) .rail-panel:hover,
+.rail:not(.rail-pinned) .rail-panel:focus-within {
+  background: var(--surface);
+  box-shadow: var(--shadow-pop);
+  border-radius: var(--radius-xl);
+  transition-delay: 0.12s;
+}
+.rail-logo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+  min-height: 46px;
+}
+.rail-logo-mark {
+  width: 46px;
+  height: 46px;
+  flex: 0 0 46px;
+  border-radius: var(--radius-md);
+  background: var(--ink);
+  color: var(--on-ink);
+  display: grid;
+  place-items: center;
+}
+.rail-brand {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 15.5px;
+}
+.rail-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  scrollbar-width: none;
+}
+.rail-scroll::-webkit-scrollbar {
+  display: none;
+}
+.rail-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.rail-heading {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  padding: 4px 4px 2px;
+  white-space: nowrap;
+  height: 20px;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+.rail-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0;
+  height: 44px;
+  min-height: 44px;
+  border-radius: var(--radius-pill);
+  color: var(--text-soft);
+  background: transparent;
+  width: 100%;
+  text-align: left;
+  font-size: 13.5px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.rail-icon {
+  width: 44px;
+  height: 44px;
+  flex: 0 0 44px;
+  border-radius: var(--radius-pill);
+  display: grid;
+  place-items: center;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-sizing: border-box;
+  transition: background-color var(--dur-fast) ease, color var(--dur-fast) ease, border-color var(--dur-fast) ease;
+}
+.rail-item:hover .rail-icon {
+  border-color: var(--border-strong);
+}
+.rail-item.on {
+  color: var(--text);
+  font-weight: 600;
+}
+.rail-item.on .rail-icon {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--on-ink);
+}
+.rail-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  min-width: 0;
+}
+.rail-panel:hover .rail-label,
+.rail-panel:focus-within .rail-label,
+.rail-pinned .rail-label,
+.rail-panel:hover .rail-heading,
+.rail-panel:focus-within .rail-heading,
+.rail-pinned .rail-heading {
+  opacity: 1;
+}
+/* Unread count: a dot on the icon while collapsed, a pill once open. */
+.rail-count {
+  position: absolute;
+  left: 30px;
+  top: 2px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: var(--radius-pill);
+  background: var(--danger);
+  color: var(--on-color);
+  font-size: 10.5px;
+  font-weight: 700;
+  display: grid;
+  place-items: center;
+  border: 2px solid var(--surface);
+  box-sizing: border-box;
+}
+.rail-tag {
+  margin-left: auto;
+  margin-right: 8px;
+  font-size: 9.5px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: var(--radius-xs);
+  background: var(--violet-soft);
+  color: var(--violet);
+  opacity: 0;
+}
+.rail-panel:hover .rail-tag,
+.rail-panel:focus-within .rail-tag,
+.rail-pinned .rail-tag {
+  opacity: 1;
+}
+.rail-foot {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--border);
+}
+.rail-centers {
+  padding-top: 6px;
+}
+
+/* ---- Top bar ---- */
+.app-topbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 24px 4px 8px;
+}
+.app-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 9px 16px;
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  font-weight: 700;
+  font-size: 14.5px;
+}
+.app-brand-spark {
+  color: var(--accent);
+}
+.app-brand-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 320px;
+}
+.app-brand-mode {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: var(--radius-pill);
+  background: var(--accent-strong);
+  color: var(--on-color);
+  white-space: nowrap;
+}
+.app-tools {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.app-round {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  flex: 0 0 40px;
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text-soft);
+  display: grid;
+  place-items: center;
+}
+.app-round:hover {
+  border-color: var(--border-strong);
+  color: var(--text);
+}
+.app-dot {
+  position: absolute;
+  top: 8px;
+  right: 9px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--danger);
+  border: 2px solid var(--surface);
+}
+.app-lang {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+.app-lang button {
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 11.5px;
+  font-weight: 700;
+  padding: 6px 9px;
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+}
+.app-lang button.on {
+  background: var(--ink);
+  color: var(--on-ink);
+}
+.app-avatar {
+  width: 40px;
+  height: 40px;
+  flex: 0 0 40px;
+  border-radius: 50%;
+  background: var(--accent-strong);
+  color: var(--on-color);
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+  font-size: 13.5px;
+}
+
+/* ---- Notices above the page ---- */
+.app-notice {
+  margin: 8px 24px 0 8px;
+  padding: 10px 16px;
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  font-weight: 600;
+  text-align: center;
+  border: 1px solid transparent;
+}
+.app-notice-danger {
+  background: var(--danger-soft);
+  color: var(--danger);
+  border-color: var(--danger-border);
+}
+.app-notice-warning {
+  background: var(--warning-soft);
+  color: var(--warning);
+  border-color: var(--warning-border);
+}
+
+/* Pages sit on the frame's glass: their outer padding lines up with the bar. */
+.dashboard-content > .page-enter {
+  padding-left: 0;
+}
+
+.mobile-menu-btn {
+  display: none;
+}
+.sidebar-backdrop {
+  display: none;
+}
+
+/* ---- Phones and small tablets: no frame, the menu is a drawer ---- */
+@media (max-width: 768px) {
+  .app-shell {
+    padding: 0;
+  }
+  .app-frame {
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    min-height: 100vh;
+    background: transparent;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+  .rail,
+  .rail.rail-pinned {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: auto;
+    flex: none;
+    height: 100%;
+    z-index: 60;
+    pointer-events: none;
+  }
+  .rail .rail-panel,
+  .rail.rail-pinned .rail-panel {
+    position: fixed;
+    inset: 0 auto 0 0;
+    width: min(300px, 84vw);
+    background: var(--surface);
+    border-radius: 0 var(--radius-xl) var(--radius-xl) 0;
+    box-shadow: var(--shadow-pop);
+    transform: translateX(-105%);
+    transition: transform 0.24s var(--ease-out);
+    pointer-events: auto;
+    padding-top: max(16px, env(safe-area-inset-top));
+    padding-bottom: max(14px, env(safe-area-inset-bottom));
+  }
+  .rail.sidebar-open .rail-panel {
+    transform: translateX(0);
+  }
+  .rail .rail-label,
+  .rail .rail-heading,
+  .rail .rail-tag {
+    opacity: 1;
+  }
+  .rail-pin {
+    display: none !important;
+  }
+  .sidebar-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(22, 22, 29, 0.4);
+    backdrop-filter: blur(4px);
+    z-index: 55;
+  }
+  .mobile-menu-btn {
+    display: grid;
+  }
+  .app-topbar {
+    position: sticky;
+    top: 0;
+    z-index: 40;
+    padding: 10px 12px;
+    padding-top: max(10px, env(safe-area-inset-top));
+    background: color-mix(in oklab, var(--canvas) 82%, transparent);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+  }
+  .app-brand {
+    padding: 8px 12px;
+    font-size: 13.5px;
+  }
+  .app-brand-name {
+    max-width: 38vw;
+  }
+  .app-brand-mode,
+  .app-avatar,
+  .app-settings {
+    display: none;
+  }
+  .app-notice {
+    margin: 4px 12px 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rail,
+  .rail-panel,
+  .rail-label,
+  .rail-heading {
+    transition: none !important;
   }
 }

@@ -11,8 +11,6 @@ import type { Role, WorkspaceItem } from "@/lib/api";
 import { centerHost } from "@/lib/domain";
 import { useChatUnread, useChatUnreadRefresh } from "@/lib/chat-unread";
 
-// On the dark menu the active item and the logo use the brand accent.
-const ACCENT = "var(--accent)";
 
 interface NavItem {
   href: string;
@@ -419,6 +417,38 @@ export function canOpenPath(pathname: string, role?: Role, hasCenter = true, acc
 }
 
 const NAV_SCROLL_KEY = "sidebar-scroll";
+const PIN_KEY = "talimcrm_rail_pinned";
+
+/** The menu's sections (presentation only; who sees an item is canSee's call). */
+const NAV_GROUPS: Array<{ id: "main" | "teaching" | "people" | "business"; label: TranslationKey }> = [
+  { id: "main", label: "nav.groupMain" },
+  { id: "teaching", label: "nav.groupTeaching" },
+  { id: "people", label: "nav.groupPeople" },
+  { id: "business", label: "nav.groupBusiness" },
+];
+const GROUP_OF: Record<string, (typeof NAV_GROUPS)[number]["id"]> = {
+  "/dashboard": "main",
+  "/leads": "main",
+  "/messages": "main",
+  "/calendar": "main",
+  "/announcements": "main",
+  "/groups": "teaching",
+  "/schedule": "teaching",
+  "/makeups": "teaching",
+  "/homework": "teaching",
+  "/ai-materials": "teaching",
+  "/exams": "teaching",
+  "/mock-tests": "teaching",
+  "/certificates": "teaching",
+  "/students": "people",
+  "/teachers": "people",
+  "/hiring": "people",
+  "/payments": "business",
+  "/reports": "business",
+  "/ai-insights": "business",
+  "/audit-log": "business",
+  "/settings": "business",
+};
 
 export default function Sidebar({ open, onClose }: { open?: boolean; onClose?: () => void }) {
   const pathname = usePathname();
@@ -488,221 +518,163 @@ export default function Sidebar({ open, onClose }: { open?: boolean; onClose?: (
       ro.disconnect();
     };
   }, [pathname]);
-  const { lang, setLang, t } = useLanguage();
+  const { t } = useLanguage();
+  // Collapsed to an icon rail (it opens with its labels on hover or keyboard
+  // focus) unless pinned open; the choice is remembered on this device.
+  const [pinned, setPinned] = useState(false);
+  useEffect(() => {
+    try {
+      setPinned(localStorage.getItem(PIN_KEY) === "1");
+    } catch {
+      // storage unavailable: collapsed
+    }
+  }, []);
+  function togglePin() {
+    setPinned((p) => {
+      try {
+        localStorage.setItem(PIN_KEY, p ? "0" : "1");
+      } catch {
+        // ignore
+      }
+      return !p;
+    });
+  }
   // Unread messages next to "Messages" (for whoever has that page).
   const chatKey = userId && tenantId ? `${userId}:${tenantId}` : null;
   const seesChat = !isPlatformMode(user?.role, !!tenant) && canOpenPath("/messages", user?.role, !!tenant, user?.access);
   useChatUnreadRefresh(chatKey, seesChat);
   const chatUnread = useChatUnread(chatKey);
-  const initials = user?.fullName
-    ? user.fullName
-        .split(" ")
-        .map((s) => s[0])
-        .slice(0, 2)
-        .join("")
-        .toUpperCase()
-    : "??";
+
+  const platform = isPlatformMode(user?.role, !!tenant);
+  const visible = platform ? [] : NAV_ITEMS.filter((item) => canSee(item, user?.role, user?.access) && (!item.feature || planAllows(tenant?.entitlements, item.feature)));
+  const groups = NAV_GROUPS.map((g) => ({ ...g, items: visible.filter((i) => (GROUP_OF[i.href] ?? "business") === g.id) })).filter((g) => g.items.length > 0);
+  const isActive = (href: string, exact?: boolean) => pathname === href || (!exact && pathname.startsWith(href + "/"));
+
+  const link = (href: string, label: string, icon: React.ReactNode, active: boolean, extra?: React.ReactNode) => (
+    <Link key={href} href={href} data-active={active} aria-current={active ? "page" : undefined} className={`nav-item rail-item${active ? " on" : ""}`}>
+      <span className="rail-icon" aria-hidden="true">{icon}</span>
+      <span className="rail-label">{label}</span>
+      {extra}
+    </Link>
+  );
 
   return (
     <>
       {open && <div className="sidebar-backdrop" onClick={onClose} />}
-      <div
-        className={`sidebar${open ? " sidebar-open" : ""}`}
-        style={{
-          width: 236,
-          flex: "0 0 236px",
-          background: "var(--ink)",
-          display: "flex",
-          flexDirection: "column",
-          padding: "20px 14px",
-          boxSizing: "border-box",
-          height: "100vh",
-          position: "sticky",
-          top: 0,
-        }}
-      >
-      <Link href="/dashboard" style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 6px 22px" }}>
-        {/* The center's own logo and name once set in Settings. */}
-        {tenant?.logoUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={fileUrl(tenant.logoUrl) || ""} alt="" style={{ width: 30, height: 30, borderRadius: "var(--radius-xs)", objectFit: "cover", flexShrink: 0, background: "var(--surface)" }} />
-        ) : (
-          <div style={{ width: 30, height: 30, borderRadius: "var(--radius-xs)", background: ACCENT, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--surface)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M22 10 12 5 2 10l10 5 10-5Z" />
-              <path d="M6 12v5c0 1.5 2.7 3 6 3s6-1.5 6-3v-5" />
-            </svg>
-          </div>
-        )}
-        <span style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 16.5, color: "var(--on-ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={tenant?.name ?? "TalimCRM"}>
-          {tenant?.name ?? "TalimCRM"}
-        </span>
-      </Link>
-
-      <div
-        ref={navRef}
-        className="sidebar-nav-scroll"
-        onScroll={(e) => {
-          try {
-            sessionStorage.setItem(NAV_SCROLL_KEY, String(e.currentTarget.scrollTop));
-          } catch {
-            // ignore
-          }
-        }}
-        style={{
-          flex: 1,
-          overflowY: "auto",
-          overflowX: "hidden",
-          minHeight: 0,
-          display: "flex",
-          flexDirection: "column",
-          gap: 2,
-          paddingRight: 4,
-          marginBottom: 10,
-        }}
-      >
-        {isPlatformMode(user?.role, !!tenant) && PLATFORM_ITEMS.map((item) => {
-          const active = pathname === item.href || (!item.exact && pathname.startsWith(item.href + "/"));
-          return (
-            <Link key={item.href} href={item.href} data-active={active} className="nav-item" style={active ? { background: ACCENT, color: "var(--on-ink)" } : { color: "var(--text-faint)" }}>
-              {item.icon}
-              {t(item.labelKey)}
-            </Link>
-          );
-        })}
-
-        {!isPlatformMode(user?.role, !!tenant) && NAV_ITEMS.filter((item) => canSee(item, user?.role, user?.access) && (!item.feature || planAllows(tenant?.entitlements, item.feature))).map((item) => {
-          const active = pathname === item.href || pathname.startsWith(item.href + "/");
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              data-active={active}
-              className="nav-item"
-              style={active ? { background: ACCENT, color: "var(--on-ink)" } : { color: "var(--text-faint)" }}
-            >
-              {item.icon}
-              {t(item.labelKey)}
-              {item.href === "/messages" && chatUnread !== null && chatUnread > 0 && (
-                <span
-                  data-testid="chat-unread-badge"
-                  style={{ marginLeft: "auto", fontSize: 11, fontWeight: 800, background: "var(--danger)", color: "var(--on-ink)", padding: "1px 7px", borderRadius: "var(--radius-pill)", lineHeight: 1.6 }}
-                >
-                  <span aria-hidden="true">{chatUnread > 99 ? "99+" : chatUnread}</span>
-                  <span style={{ position: "absolute", width: 1, height: 1, overflow: "hidden", clip: "rect(0 0 0 0)", whiteSpace: "nowrap" }}>{t("chat.unreadN").replace("{n}", String(chatUnread))}</span>
-                </span>
-              )}
-              {"badge" in item && item.badge && (
-                <span
-                  style={{
-                    marginLeft: "auto",
-                    fontSize: 9.5,
-                    fontWeight: 800,
-                    background: "linear-gradient(135deg,var(--violet),var(--primary))",
-                    color: "var(--on-ink)",
-                    padding: "2px 6px",
-                    borderRadius: 5,
-                    letterSpacing: "0.02em",
-                  }}
-                >
-                  {item.badge}
-                </span>
-              )}
-            </Link>
-          );
-        })}
-
-        {user?.role === "SUPERADMIN" && tenant && (
-          <Link
-            href={SUPERADMIN_ITEM.href}
-            className="nav-item"
-            style={
-              pathname === SUPERADMIN_ITEM.href || pathname.startsWith(SUPERADMIN_ITEM.href + "/")
-                ? { background: ACCENT, color: "var(--on-ink)" }
-                : { color: "var(--text-faint)" }
-            }
-          >
-            {SUPERADMIN_ITEM.icon}
-            {t(SUPERADMIN_ITEM.labelKey)}
+      <div className={`sidebar rail${pinned ? " rail-pinned" : ""}${open ? " sidebar-open" : ""}`}>
+        <nav className="rail-panel" aria-label={t("shell.menuAriaLabel")}>
+          <Link href={platform ? "/admin/overview" : "/dashboard"} className="rail-logo" title={platform ? "TalimCRM" : tenant?.name ?? "TalimCRM"}>
+            {/* The center's own logo once set in Settings. */}
+            {!platform && tenant?.logoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={fileUrl(tenant.logoUrl) || ""} alt="" style={{ width: 44, height: 44, borderRadius: "var(--radius-md)", objectFit: "cover", flexShrink: 0, background: "var(--surface)" }} />
+            ) : (
+              <span className="rail-logo-mark" aria-hidden="true">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M22 10 12 5 2 10l10 5 10-5Z" />
+                  <path d="M6 12v5c0 1.5 2.7 3 6 3s6-1.5 6-3v-5" />
+                </svg>
+              </span>
+            )}
+            <span className="rail-label rail-brand">{platform ? "TalimCRM" : tenant?.name ?? "TalimCRM"}</span>
           </Link>
-        )}
-      </div>
 
-      <div style={{ display: "flex", gap: 4, padding: "0 8px 10px" }}>
-        {(["UZ", "RU", "EN"] as const).map((l) => (
-          <button
-            key={l}
-            onClick={() => setLang(l)}
-            className="btn"
-            style={{
-              flex: 1, fontSize: 11, fontWeight: 700, padding: "6px 0", borderRadius: "var(--radius-xs)", border: "none",
-              background: lang === l ? ACCENT : "rgba(255,255,255,0.06)",
-              color: lang === l ? "var(--on-ink)" : "var(--text-faint)",
+          <div
+            ref={navRef}
+            className="sidebar-nav-scroll rail-scroll"
+            onScroll={(e) => {
+              try {
+                sessionStorage.setItem(NAV_SCROLL_KEY, String(e.currentTarget.scrollTop));
+              } catch {
+                // ignore
+              }
             }}
           >
-            {l}
-          </button>
-        ))}
-      </div>
+            {platform && (
+              <div className="rail-group">
+                <div className="rail-heading">{t("nav.groupPlatform")}</div>
+                {PLATFORM_ITEMS.map((item) => link(item.href, t(item.labelKey), item.icon, isActive(item.href, item.exact)))}
+              </div>
+            )}
 
-      {otherCenters.length > 0 && (
-        <div role="group" aria-label={t("nav.otherCenters")} style={{ marginBottom: 6 }}>
-          <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--text-faint)", padding: "0 8px 4px" }}>{t("nav.otherCenters")}</div>
-          <div style={{ maxHeight: 96, overflowY: "auto" }}>
-            {otherCenters.map((w) => (
-              <button
-                key={w.tenantId}
-                type="button"
-                onClick={() => switchTo(w.tenantId)}
-                disabled={switching !== null}
-                className="nav-item btn"
-                title={centerHost(w.subdomain)}
-                style={{ color: "var(--text-faint)", background: "transparent", width: "100%", textAlign: "left", fontSize: 12.5, opacity: switching && switching !== w.tenantId ? 0.5 : 1 }}
-              >
-                <span aria-hidden="true">⇄</span>
-                <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{switching === w.tenantId ? t("common.loading") : w.name}</span>
-              </button>
+            {groups.map((g) => (
+              <div key={g.id} className="rail-group">
+                <div className="rail-heading">{t(g.label)}</div>
+                {g.items.map((item) =>
+                  link(
+                    item.href,
+                    t(item.labelKey),
+                    item.icon,
+                    isActive(item.href),
+                    <>
+                      {item.href === "/messages" && chatUnread !== null && chatUnread > 0 && (
+                        <span data-testid="chat-unread-badge" className="rail-count">
+                          <span aria-hidden="true">{chatUnread > 99 ? "99+" : chatUnread}</span>
+                          <span className="sr-only">{t("chat.unreadN").replace("{n}", String(chatUnread))}</span>
+                        </span>
+                      )}
+                      {"badge" in item && item.badge && <span className="rail-tag">{item.badge}</span>}
+                    </>,
+                  ),
+                )}
+              </div>
             ))}
+
+            {user?.role === "SUPERADMIN" && tenant && (
+              <div className="rail-group">
+                <div className="rail-heading">{t("nav.groupPlatform")}</div>
+                {link(SUPERADMIN_ITEM.href, t(SUPERADMIN_ITEM.labelKey), SUPERADMIN_ITEM.icon, isActive(SUPERADMIN_ITEM.href))}
+              </div>
+            )}
           </div>
-        </div>
-      )}
 
-      <button
-        onClick={logout}
-        className="nav-item btn"
-        style={{ color: "var(--text-faint)", background: "transparent", width: "100%", textAlign: "left", marginBottom: 6 }}
-      >
-        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-          <path d="M16 17l5-5-5-5" />
-          <path d="M21 12H9" />
-        </svg>
-        {t("nav.logout")}
-      </button>
+          {otherCenters.length > 0 && (
+            <div role="group" aria-label={t("nav.otherCenters")} className="rail-group rail-centers">
+              <div className="rail-heading">{t("nav.otherCenters")}</div>
+              {otherCenters.map((w) => (
+                <button
+                  key={w.tenantId}
+                  type="button"
+                  onClick={() => switchTo(w.tenantId)}
+                  disabled={switching !== null}
+                  className="nav-item rail-item btn"
+                  title={centerHost(w.subdomain)}
+                  style={{ opacity: switching && switching !== w.tenantId ? 0.5 : 1 }}
+                >
+                  <span className="rail-icon" aria-hidden="true">⇄</span>
+                  <span className="rail-label">{switching === w.tenantId ? t("common.loading") : w.name}</span>
+                </button>
+              ))}
+            </div>
+          )}
 
-      <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 8px", borderTop: "1px solid rgba(255,255,255,0.08)" }}>
-        <div
-          style={{
-            width: 30,
-            height: 30,
-            borderRadius: "50%",
-            background: ACCENT,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            color: "var(--on-ink)",
-            fontFamily: "var(--font-display)",
-            fontWeight: 700,
-            fontSize: 12,
-          }}
-        >
-          {initials}
-        </div>
-        <div>
-          <div style={{ fontSize: 13, fontWeight: 600, color: "var(--on-ink)" }}>{user?.fullName ?? "..."}</div>
-          <div style={{ fontSize: 11, color: "var(--text-faint)" }}>{tenant?.subdomain ? centerHost(tenant.subdomain) : ""}</div>
-        </div>
-      </div>
+          <div className="rail-foot">
+            <button
+              type="button"
+              className="nav-item rail-item btn rail-pin"
+              onClick={togglePin}
+              aria-pressed={pinned}
+              title={pinned ? t("nav.unpinMenu") : t("nav.pinMenu")}
+            >
+              <span className="rail-icon" aria-hidden="true">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  {pinned ? <path d="M15 18l-6-6 6-6" /> : <path d="M9 18l6-6-6-6" />}
+                </svg>
+              </span>
+              <span className="rail-label">{pinned ? t("nav.unpinMenu") : t("nav.pinMenu")}</span>
+            </button>
+            <button onClick={logout} type="button" className="nav-item rail-item btn">
+              <span className="rail-icon" aria-hidden="true">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                  <path d="M16 17l5-5-5-5" />
+                  <path d="M21 12H9" />
+                </svg>
+              </span>
+              <span className="rail-label">{t("nav.logout")}</span>
+            </button>
+          </div>
+        </nav>
       </div>
     </>
   );

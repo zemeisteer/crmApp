@@ -59,7 +59,7 @@ const PORTAL_CSS = `
   .ptl-side-nav{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:2px;margin-bottom:10px;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,0.12) transparent;}
   .ptl-side-item{display:flex;align-items:center;gap:10px;width:100%;padding:10px 12px;border:none;border-radius:9px;background:transparent;color:var(--text-faint);font-size:14px;font-weight:600;font-family:inherit;text-align:left;cursor:pointer;white-space:nowrap;}
   .ptl-side-item:hover{background:rgba(255,255,255,0.06);}
-  .ptl-side-item.on{background:var(--accent);color:var(--on-ink);}
+  .ptl-side-item.on{background:var(--accent-strong);color:var(--on-ink);}
   .ptl-count{background:var(--danger);color:var(--on-ink);font-size:10.5px;font-weight:800;padding:1px 6px;border-radius:100px;line-height:1.5;}
   .ptl-ai-badge{font-size:9.5px;font-weight:800;background:linear-gradient(135deg,var(--violet),var(--primary));color:var(--on-ink);padding:2px 6px;border-radius:5px;}
   .ptl-head{display:none;}
