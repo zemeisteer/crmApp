@@ -66,11 +66,11 @@ export default function BarChart({
               display: "inline-flex",
               alignItems: "center",
               gap: 8,
-              background: "var(--primary-soft)",
+              background: `color-mix(in srgb, ${color} 9%, var(--surface))`,
               color,
-              border: "1px solid rgba(79, 70, 229, 0.25)",
-              borderRadius: "var(--radius-xs)",
-              padding: "4px 10px",
+              border: `1px solid color-mix(in srgb, ${color} 25%, transparent)`,
+              borderRadius: "var(--radius-pill)",
+              padding: "4px 12px",
               fontSize: 12,
               fontWeight: 700,
             }}
@@ -138,14 +138,16 @@ export default function BarChart({
                   {formatted}
                 </div>
                 <div
+                  className="grow-y"
                   style={{
-                    width: "70%",
-                    maxWidth: 40,
-                    minWidth: 18,
+                    ["--i" as string]: i,
+                    width: "62%",
+                    maxWidth: 34,
+                    minWidth: 14,
                     height: barHeight,
                     background: isSelected ? color : isHovered ? `color-mix(in srgb, ${color} 40%, transparent)` : `color-mix(in srgb, ${color} 14%, transparent)`,
-                    border: isSelected ? `2px solid ${color}` : "1px solid transparent",
-                    borderRadius: "var(--radius-xs)",
+                    border: "none",
+                    borderRadius: "var(--radius-pill)",
                     transition: "background 0.15s ease, transform 0.15s ease",
                     transform: isHovered || isSelected ? "scaleY(1.04)" : "scaleY(1)",
                     transformOrigin: "bottom",
@@ -194,7 +196,7 @@ export function DonutChart({
   return (
     <div style={{ position: "relative", width: size, height: size }}>
       <svg width={size} height={size} style={{ transform: "rotate(-90deg)" }}>
-        <circle cx={size / 2} cy={size / 2} r={r} stroke="var(--border)" strokeWidth={10} fill="none" />
+        <circle cx={size / 2} cy={size / 2} r={r} stroke="var(--surface-sunken)" strokeWidth={10} fill="none" />
         <circle
           cx={size / 2}
           cy={size / 2}
@@ -205,10 +207,12 @@ export function DonutChart({
           strokeDasharray={circumference}
           strokeDashoffset={offset}
           strokeLinecap="round"
+          className="donut-arc"
+          style={{ ["--from" as string]: circumference }}
         />
       </svg>
       <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
-        <div style={{ fontSize: 18, fontWeight: 800 }}>{Math.round(pct * 100)}%</div>
+        <div style={{ fontSize: size >= 140 ? 28 : 18, fontWeight: 600, letterSpacing: "-0.03em" }}>{Math.round(pct * 100)}%</div>
         {label && <div style={{ fontSize: 10, color: "var(--text-muted)" }}>{label}</div>}
       </div>
     </div>

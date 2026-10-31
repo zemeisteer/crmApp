@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
@@ -418,6 +418,22 @@ export function canOpenPath(pathname: string, role?: Role, hasCenter = true, acc
 
 const NAV_SCROLL_KEY = "sidebar-scroll";
 const PIN_KEY = "talimcrm_rail_pinned";
+const PIN_EVENT = "talimcrm-rail-pin";
+function readPin() {
+  try {
+    return localStorage.getItem(PIN_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+function subscribePin(onChange: () => void) {
+  window.addEventListener(PIN_EVENT, onChange);
+  window.addEventListener("storage", onChange);
+  return () => {
+    window.removeEventListener(PIN_EVENT, onChange);
+    window.removeEventListener("storage", onChange);
+  };
+}
 
 /** The menu's sections (presentation only; who sees an item is canSee's call). */
 const NAV_GROUPS: Array<{ id: "main" | "teaching" | "people" | "business"; label: TranslationKey }> = [
@@ -521,23 +537,14 @@ export default function Sidebar({ open, onClose }: { open?: boolean; onClose?: (
   const { t } = useLanguage();
   // Collapsed to an icon rail (it opens with its labels on hover or keyboard
   // focus) unless pinned open; the choice is remembered on this device.
-  const [pinned, setPinned] = useState(false);
-  useEffect(() => {
-    try {
-      setPinned(localStorage.getItem(PIN_KEY) === "1");
-    } catch {
-      // storage unavailable: collapsed
-    }
-  }, []);
+  const pinned = useSyncExternalStore(subscribePin, readPin, () => false);
   function togglePin() {
-    setPinned((p) => {
-      try {
-        localStorage.setItem(PIN_KEY, p ? "0" : "1");
-      } catch {
-        // ignore
-      }
-      return !p;
-    });
+    try {
+      localStorage.setItem(PIN_KEY, pinned ? "0" : "1");
+    } catch {
+      // storage unavailable: the choice lasts until the page closes
+    }
+    window.dispatchEvent(new Event(PIN_EVENT));
   }
   // Unread messages next to "Messages" (for whoever has that page).
   const chatKey = userId && tenantId ? `${userId}:${tenantId}` : null;

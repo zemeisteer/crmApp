@@ -1,7 +1,6 @@
 {
   "frontend/app/admin/integrations/page.tsx": 1,
   "frontend/app/admin/trials/page.tsx": 2,
-  "frontend/app/dashboard/page.tsx": 2,
   "frontend/app/homework/page.tsx": 2,
   "frontend/app/login/page.tsx": 3,
   "frontend/app/payments/page.tsx": 2,

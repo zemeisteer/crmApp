@@ -7,3 +7,4 @@ export { default as Badge, type BadgeTone } from "./Badge";
 export { default as EmptyState } from "./EmptyState";
 export { default as Section } from "./Section";
 export { default as ProgressBar } from "./ProgressBar";
+export { default as LineChart, type LinePoint } from "./LineChart";

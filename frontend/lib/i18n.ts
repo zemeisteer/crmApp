@@ -36,6 +36,10 @@ export const dict = {
   "nav.unpinMenu": { UZ: "Menyuni yig'ish", RU: "Свернуть меню", EN: "Collapse the menu" },
   "nav.language": { UZ: "Til", RU: "Язык", EN: "Language" },
   "nav.platformBadge": { UZ: "Platforma rejimi", RU: "Режим платформы", EN: "Platform mode" },
+  "dash.atGlance": { UZ: "Markaz bir qarashda", RU: "Центр в цифрах", EN: "The center at a glance" },
+  "dash.groupsHint": { UZ: "Guruhlar to'lishi", RU: "Заполненность групп", EN: "How full each group is" },
+  "dash.heroLessonsHint": { UZ: "bugun rejadagi darslar", RU: "занятий сегодня по плану", EN: "lessons planned today" },
+  "dash.heroRevenueHint": { UZ: "shu oy tushum, so'm", RU: "поступило в этом месяце, сум", EN: "received this month, UZS" },
   "nav.otherCenters": { UZ: "Boshqa markazlarim", RU: "Другие мои центры", EN: "My other centers" },
   "nav.trash": { UZ: "O'chirilganlar", RU: "Корзина", EN: "Trash" },
 
