@@ -10,7 +10,6 @@ import { can } from "@/lib/access";
 import { useLanguage } from "@/lib/i18n-context";
 import type { TranslationKey } from "@/lib/i18n";
 
-const ACCENT = "var(--primary)";
 type Tab = "missed" | "credits" | "roster";
 const TAB_LABELS: Record<Tab, TranslationKey> = { missed: "mk.tabMissed", credits: "mk.tabCredits", roster: "mk.tabRoster" };
 
