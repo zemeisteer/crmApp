@@ -71,8 +71,10 @@ describe('Make-up booking time: before the lesson, or a correction (e2e)', () =>
     // The clock moves on to 10:00:30 tomorrow (center time) before Save is pressed.
     const at = new Date(`${tomorrow}T10:00:30+05:00`).getTime();
     vi.spyOn(Date, 'now').mockReturnValue(at);
-    expect((await book(rec, credits[1], { mode: 'GROUP_LESSON', targetGroupId: host, date: tomorrow }).expect(409)).body.code).toBe('LESSON_STARTED');
-    expect((await book(rec, credits[1], { mode: 'SESSION', date: tomorrow, startTime: '10:00', endTime: '10:45', teacherId: tch }).expect(409)).body.code).toBe('LESSON_STARTED');
+    // Signed in at that moment: the token from today has expired by then (15 minutes, as in production).
+    const later = (await http().post('/api/auth/login').send({ email: `mbt-rec-${suffix}@test.uz`, password: 'password12345' })).body.accessToken as string;
+    expect((await book(later, credits[1], { mode: 'GROUP_LESSON', targetGroupId: host, date: tomorrow }).expect(409)).body.code).toBe('LESSON_STARTED');
+    expect((await book(later, credits[1], { mode: 'SESSION', date: tomorrow, startTime: '10:00', endTime: '10:45', teacherId: tch }).expect(409)).body.code).toBe('LESSON_STARTED');
     vi.restoreAllMocks();
     await book(rec, credits[1], { mode: 'SESSION', date: tomorrow, startTime: '15:00', endTime: '15:45', teacherId: tch }).expect(201);
   });
