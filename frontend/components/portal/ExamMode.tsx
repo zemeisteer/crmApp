@@ -70,7 +70,7 @@ export const EXAM_CSS = `
   .exm-split>.exm-q{border-left:none!important}
   .exm-panes{display:flex;gap:4px;padding:6px 10px;border-bottom:1px solid var(--border-strong);background:var(--surface)}
   .exm-panes button{flex:1;border:1px solid var(--border-strong);background:var(--surface);border-radius:6px;padding:8px;font-weight:700;font-size:14px;cursor:pointer;color:var(--text)}
-  .exm-panes button[aria-selected="true"]{background:var(--info);border-color:var(--info);color:var(--on-ink)}
+  .exm-panes button[aria-selected="true"]{background:var(--info);border-color:var(--info);color:var(--on-color)}
 }
 @media(max-width:640px){
   .exm-head{gap:8px;padding:6px 10px}

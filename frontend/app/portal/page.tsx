@@ -55,30 +55,42 @@ const NAV: Array<{ id: PortalTab; icon: string; label: TranslationKey; short: Tr
   { id: "notifications", icon: "🔔", label: "ptn.notifications", short: "ptn.notifications", bottom: false },
 ];
 const PORTAL_CSS = `
-  .ptl-side{width:236px;flex:0 0 236px;background:var(--ink);display:flex;flex-direction:column;padding:20px 14px 14px;box-sizing:border-box;height:100vh;position:sticky;top:0;align-self:flex-start;}
-  .ptl-side-nav{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:2px;margin-bottom:10px;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,0.12) transparent;}
-  .ptl-side-item{display:flex;align-items:center;gap:10px;width:100%;padding:10px 12px;border:none;border-radius:9px;background:transparent;color:var(--text-faint);font-size:14px;font-weight:600;font-family:inherit;text-align:left;cursor:pointer;white-space:nowrap;}
-  .ptl-side-item:hover{background:rgba(255,255,255,0.06);}
-  .ptl-side-item.on{background:var(--accent-strong);color:var(--on-ink);}
-  .ptl-count{background:var(--danger);color:var(--on-ink);font-size:10.5px;font-weight:800;padding:1px 6px;border-radius:100px;line-height:1.5;}
-  .ptl-ai-badge{font-size:9.5px;font-weight:800;background:linear-gradient(135deg,var(--violet),var(--primary));color:var(--on-ink);padding:2px 6px;border-radius:5px;}
+  .ptl-shell{min-height:100vh;color:var(--text);display:flex;gap:14px;padding:14px;box-sizing:border-box;}
+  .ptl-side{width:248px;flex:0 0 248px;background:var(--frame);border:1px solid var(--frame-border);border-radius:var(--radius-xl);box-shadow:var(--shadow-frame);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);display:flex;flex-direction:column;padding:18px 14px 14px;box-sizing:border-box;height:calc(100vh - 28px);position:sticky;top:14px;align-self:flex-start;}
+  .ptl-side-nav{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:4px;margin-bottom:10px;scrollbar-width:none;}
+  .ptl-side-item{display:flex;align-items:center;gap:12px;width:100%;min-height:44px;padding:0 6px 0 0;border:none;border-radius:var(--radius-pill);background:transparent;color:var(--text-soft);font-size:14px;font-weight:500;font-family:inherit;text-align:left;cursor:pointer;white-space:nowrap;}
+  .ptl-side-item .ptl-ico{width:40px;height:40px;flex:0 0 40px;border-radius:var(--radius-pill);display:grid;place-items:center;background:var(--surface);border:1px solid var(--border);box-sizing:border-box;}
+  .ptl-side-item:hover .ptl-ico{border-color:var(--border-strong);}
+  .ptl-side-item.on{color:var(--text);font-weight:600;}
+  .ptl-side-item.on .ptl-ico{background:var(--ink);border-color:var(--ink);color:var(--on-ink);}
+  .ptl-count{background:var(--danger);color:var(--on-color);font-size:10.5px;font-weight:700;padding:1px 6px;border-radius:var(--radius-pill);line-height:1.5;}
+  .ptl-ai-badge{font-size:9.5px;font-weight:700;background:var(--violet-soft);color:var(--violet);padding:2px 6px;border-radius:var(--radius-xs);}
   .ptl-head{display:none;}
-  .ptl-bell{position:relative;display:inline-flex;align-items:center;gap:4px;height:32px;padding:0 8px;border-radius:9px;border:1px solid var(--border);background:var(--surface-muted);color:var(--text-muted);cursor:pointer;}
-  .ptl-bell .ptl-count{position:absolute;top:-6px;right:-6px;}
+  .ptl-bell{position:relative;display:inline-grid;place-items:center;width:40px;height:40px;border-radius:var(--radius-pill);border:1px solid var(--border);background:var(--surface);color:var(--text-soft);cursor:pointer;}
+  .ptl-bell .ptl-count{position:absolute;top:-4px;right:-4px;}
   .ptl-bottom{display:none;}
+  .ptl-body{flex:1;min-width:0;display:flex;flex-direction:column;background:var(--frame);border:1px solid var(--frame-border);border-radius:var(--radius-xl);box-shadow:var(--shadow-frame);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);}
   .ptl-kids{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:14px;}
-  .ptl-kids button{border:1px solid var(--border);background:var(--surface);color:var(--text-soft);border-radius:100px;padding:7px 14px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;}
-  .ptl-kids button.on{background:var(--primary);border-color:var(--primary);color:var(--on-ink);}
-  .ptl-kids button.add{border-style:dashed;color:var(--primary);}
-  .ptl-parent-badge{font-size:12px;font-weight:800;color:var(--pink);background:var(--pink-soft);border-radius:100px;padding:6px 10px;margin-right:2px;}
-  .ptl-add-child{background:linear-gradient(135deg,var(--ink),#1E1B4B);color:var(--on-ink);border-radius:18px;padding:18px;margin-bottom:14px;}
-  .ptl-ai-cta{width:100%;display:flex;align-items:center;gap:12px;margin-bottom:14px;padding:14px 16px;border:none;border-radius:16px;cursor:pointer;color:var(--on-ink);background:linear-gradient(135deg,var(--primary),var(--violet));box-shadow:0 14px 30px -18px rgba(79,70,229,0.9);font-family:inherit;}
+  .ptl-kids button{border:1px solid var(--border);background:var(--surface);color:var(--text-soft);border-radius:var(--radius-pill);min-height:40px;padding:0 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;}
+  .ptl-kids button.on{background:var(--ink);border-color:var(--ink);color:var(--on-ink);}
+  .ptl-kids button.add{border-style:dashed;color:var(--text);}
+  .ptl-parent-badge{font-size:12px;font-weight:700;color:var(--pink);background:var(--pink-soft);border-radius:var(--radius-pill);padding:8px 12px;margin-right:2px;}
+  .ptl-add-child{background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:var(--radius-lg);padding:18px;margin-bottom:14px;box-shadow:var(--shadow-card);}
+  .ptl-ai-cta{width:100%;display:flex;align-items:center;gap:12px;margin-bottom:14px;padding:16px 18px;border:none;border-radius:var(--radius-lg);cursor:pointer;color:var(--on-color);background:linear-gradient(135deg,var(--violet),color-mix(in oklab,var(--violet) 70%,var(--ink)));box-shadow:var(--shadow-card);font-family:inherit;}
   @media (max-width:760px){
+    .ptl-shell{padding:0;gap:0;}
+    .ptl-body{background:transparent;border:none;border-radius:0;box-shadow:none;backdrop-filter:none;-webkit-backdrop-filter:none;}
     .ptl-side{display:none;}
-    .ptl-head{display:flex;align-items:center;justify-content:space-between;gap:10px;position:sticky;top:0;z-index:30;background:var(--surface);border-bottom:1px solid var(--border);padding:10px 14px;}
-    .ptl-bottom{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:40;background:rgba(255,255,255,0.97);backdrop-filter:blur(8px);border-top:1px solid var(--border);padding:0 4px env(safe-area-inset-bottom);box-shadow:0 -6px 20px rgba(18,19,26,0.06);}
-    .ptl-main{padding-bottom:96px!important;}
+    .ptl-head{display:flex;align-items:center;justify-content:space-between;gap:10px;position:sticky;top:0;z-index:30;background:color-mix(in oklab,var(--canvas) 82%,transparent);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);padding:10px 12px;padding-top:max(10px,env(safe-area-inset-top));}
+    .ptl-bottom{display:flex;gap:2px;position:fixed;left:10px;right:10px;bottom:max(10px,env(safe-area-inset-bottom));z-index:40;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-pill);padding:5px;box-shadow:var(--shadow-pop);overflow-x:auto;scrollbar-width:none;}
+    .ptl-bottom::-webkit-scrollbar{display:none;}
+    .ptl-bottom button{flex:1 0 auto;min-width:46px;min-height:48px;display:flex;align-items:center;justify-content:center;gap:6px;padding:0 10px;border:none;border-radius:var(--radius-pill);background:transparent;color:var(--text-muted);font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;}
+    .ptl-bottom button .ptl-bl{display:none;}
+    .ptl-bottom button.on{background:var(--ink);color:var(--on-ink);}
+    .ptl-bottom button.on .ptl-bl{display:inline;}
+    .ptl-main{padding-bottom:104px!important;}
   }
+  @media print{.ptl-shell{padding:0;}.ptl-body{background:var(--surface);border:none;box-shadow:none;}}
 `;
 
 const svg = (children: React.ReactNode) => (
@@ -99,7 +111,7 @@ const ICONS: Record<PortalTab | "logout" | "logo", React.ReactNode> = {
   notifications: svg(<><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.73 21a2 2 0 0 1-3.46 0" /></>),
   logout: svg(<><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><path d="M16 17l5-5-5-5" /><path d="M21 12H9" /></>),
   logo: (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--surface)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
       <path d="M22 10 12 5 2 10l10 5 10-5Z" />
       <path d="M6 12v5c0 1.5 2.7 3 6 3s6-1.5 6-3v-5" />
     </svg>
@@ -110,19 +122,20 @@ const initials = (name?: string | null) =>
   (name ?? "?").split(" ").filter(Boolean).map((w) => w[0]).slice(0, 2).join("").toUpperCase() || "?";
 
 // Portal users (students, parents) pick their own language here.
-function LangSwitch({ lang, setLang, dark, full }: { lang: Lang; setLang: (l: Lang) => void; dark?: boolean; full?: boolean }) {
+function LangSwitch({ lang, setLang, full }: { lang: Lang; setLang: (l: Lang) => void; full?: boolean }) {
   return (
-    <div style={{ display: full ? "flex" : "inline-flex", gap: 4 }}>
+    <div role="group" aria-label="Til / Язык / Language" style={{ display: full ? "flex" : "inline-flex", gap: 2, padding: 3, borderRadius: "var(--radius-pill)", background: "var(--surface)", border: "1px solid var(--border)" }}>
       {(["UZ", "RU", "EN"] as Lang[]).map((l) => (
         <button
           key={l}
           type="button"
           onClick={() => setLang(l)}
+          aria-pressed={lang === l}
           style={{
-            flex: full ? 1 : undefined, fontSize: 11, fontWeight: 700, padding: "5px 8px", borderRadius: "var(--radius-xs)", cursor: "pointer",
-            border: "none",
-            background: lang === l ? ACCENT : dark ? "rgba(255,255,255,0.08)" : "var(--surface-muted)",
-            color: lang === l ? "var(--on-ink)" : dark ? "var(--text-faint)" : "var(--text-muted)",
+            flex: full ? 1 : undefined, fontSize: 11.5, fontWeight: 700, minHeight: 32, padding: "0 9px", borderRadius: "var(--radius-pill)", cursor: "pointer",
+            border: "none", fontFamily: "inherit",
+            background: lang === l ? "var(--ink)" : "transparent",
+            color: lang === l ? "var(--on-ink)" : "var(--text-muted)",
           }}
         >
           {l}
@@ -361,25 +374,23 @@ export default function StudentPortalPage() {
       <div
         style={{
           minHeight: "100vh",
-          background: "linear-gradient(135deg, var(--ink) 0%, #1E1B4B 100%)",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          padding: 20,
-          fontFamily: "'Inter', sans-serif",
-          color: "var(--on-ink)",
+          padding: 16,
+          color: "var(--text)",
         }}
       >
         <div
+          className="rise-in"
           style={{
             width: "100%",
-            maxWidth: 400,
-            background: "rgba(30, 41, 59, 0.75)",
-            backdropFilter: "blur(16px)",
-            border: "1px solid rgba(255, 255, 255, 0.12)",
-            borderRadius: "var(--radius-lg)",
+            maxWidth: 420,
+            background: "var(--surface)",
+            border: "1px solid var(--card-border)",
+            borderRadius: "var(--radius-xl)",
             padding: "32px 24px",
-            boxShadow: "0 20px 40px rgba(0,0,0,0.4)",
+            boxShadow: "var(--shadow-frame)",
           }}
         >
           <div style={{ textAlign: "center", marginBottom: 24 }}>
@@ -388,23 +399,22 @@ export default function StudentPortalPage() {
                 width: 56,
                 height: 56,
                 borderRadius: "var(--radius-lg)",
-                background: "linear-gradient(135deg, var(--primary) 0%, var(--primary) 100%)",
+                background: "var(--ink)",
+                color: "var(--on-ink)",
                 display: "inline-flex",
                 alignItems: "center",
                 justifyContent: "center",
-                fontSize: 26,
-                boxShadow: "0 8px 16px rgba(79, 70, 229, 0.4)",
                 marginBottom: 12,
               }}
             >
-              🎓
+              {ICONS.logo}
             </div>
-            <div style={{ display: "flex", justifyContent: "center", marginBottom: 10 }}><LangSwitch lang={lang} setLang={setLang} dark /></div>
-            {hostCenter?.name && <div style={{ fontSize: 13, fontWeight: 700, color: "var(--primary-border)", marginBottom: 4 }}>{hostCenter.name}</div>}
-            <h1 style={{ fontSize: 22, fontWeight: 800, margin: "0 0 6px 0" }}>
+            <div style={{ display: "flex", justifyContent: "center", marginBottom: 12 }}><LangSwitch lang={lang} setLang={setLang} /></div>
+            {hostCenter?.name && <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-muted)", marginBottom: 4 }}>{hostCenter.name}</div>}
+            <h1 style={{ fontSize: 30, fontWeight: 600, letterSpacing: "-0.03em", margin: "0 0 6px 0" }}>
               {t("ptl.cabinet")}
             </h1>
-            <p style={{ fontSize: 13, color: "var(--text-faint)", margin: 0 }}>
+            <p style={{ fontSize: 13.5, color: "var(--text-muted)", margin: 0 }}>
               {t("ptl.subtitle")}
             </p>
           </div>
@@ -412,9 +422,9 @@ export default function StudentPortalPage() {
           {authError && (
             <div
               style={{
-                background: "rgba(239, 68, 68, 0.15)",
-                border: "1px solid rgba(239, 68, 68, 0.3)",
-                color: "var(--danger-border)",
+                background: "var(--danger-soft)",
+                border: "1px solid var(--danger-border)",
+                color: "var(--danger)",
                 fontSize: 13,
                 fontWeight: 600,
                 padding: "10px 14px",
@@ -437,10 +447,10 @@ export default function StudentPortalPage() {
             style={{
               marginTop: 20,
               paddingTop: 16,
-              borderTop: "1px solid rgba(255, 255, 255, 0.1)",
+              borderTop: "1px dashed var(--border)",
               textAlign: "center",
-              fontSize: 12,
-              color: "var(--text-faint)",
+              fontSize: 12.5,
+              color: "var(--text-muted)",
             }}
           >
             {t("ptl.telegramHint")}
@@ -476,15 +486,7 @@ export default function StudentPortalPage() {
   // Render Full Portal Interface
   // -------------------------------------------------------------
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        background: "var(--surface-muted)",
-        color: "var(--text)",
-        fontFamily: "'Inter', sans-serif",
-        display: "flex",
-      }}
-    >
+    <div className={`ptl-shell${isParent ? " ptl-parent" : ""}`}>
       <style>{PORTAL_CSS}</style>
       {/* Desktop: dark sidebar like the staff app. Phones: bottom bar. */}
       <aside className="ptl-side">
@@ -493,19 +495,19 @@ export default function StudentPortalPage() {
             // eslint-disable-next-line @next/next/no-img-element
             <img src={fileUrl(me.tenant.logoUrl) || ""} alt="" style={{ width: 30, height: 30, borderRadius: "var(--radius-xs)", objectFit: "cover", flexShrink: 0, background: "var(--surface)" }} />
           ) : (
-            <div style={{ width: 30, height: 30, borderRadius: "var(--radius-xs)", background: ACCENT, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{ICONS.logo}</div>
+            <div style={{ width: 40, height: 40, borderRadius: "var(--radius-md)", background: "var(--ink)", color: "var(--on-ink)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{ICONS.logo}</div>
           )}
-          <span style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 16, color: "var(--on-ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={me?.tenant?.name}>
+          <span style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 15.5, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={me?.tenant?.name}>
             {me?.tenant?.name || t("ptl.center")}
           </span>
         </div>
-        <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--text-faint)", padding: "0 10px 8px" }}>{t("ptl.cabinet")}</div>
+        <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--text-faint)", padding: "0 6px 8px" }}>{t("ptl.cabinet")}</div>
         <nav className="ptl-side-nav" aria-label="menu">
           {nav.map((tab) => {
             const on = activeTab === tab.id;
             return (
               <button key={tab.id} type="button" onClick={() => go(tab.id)} aria-current={on ? "page" : undefined} className={`ptl-side-item${on ? " on" : ""}`}>
-                {ICONS[tab.id]}
+                <span className="ptl-ico">{ICONS[tab.id]}</span>
                 <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis" }}>{t(tab.label)}</span>
                 {tab.id === "notifications" && notifCount > 0 && <span className="ptl-count">{notifCount}</span>}
                 {tab.id === "chat" && chatUnread > 0 && <span className="ptl-count" aria-label={t("chat.unreadN").replace("{n}", String(chatUnread))}>{chatUnread}</span>}
@@ -514,27 +516,27 @@ export default function StudentPortalPage() {
             );
           })}
         </nav>
-        <div style={{ padding: "0 4px 10px" }}><LangSwitch lang={lang} setLang={setLang} dark full /></div>
+        <div style={{ padding: "0 4px 10px" }}><LangSwitch lang={lang} setLang={setLang} full /></div>
         <button type="button" onClick={handleLogout} className="ptl-side-item">
-          {ICONS.logout}
+          <span className="ptl-ico">{ICONS.logout}</span>
           {t("ptl.logout")}
         </button>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 8px 0", marginTop: 6, borderTop: "1px solid rgba(255,255,255,0.08)" }}>
-          <div style={{ width: 30, height: 30, borderRadius: "50%", background: ACCENT, color: "var(--on-ink)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 12, flexShrink: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 4px 0", marginTop: 6, borderTop: "1px dashed var(--border)" }}>
+          <div style={{ width: 36, height: 36, borderRadius: "50%", background: isParent ? "var(--pink)" : "var(--accent-strong)", color: "var(--on-color)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 12.5, flexShrink: 0 }}>
             {initials(me?.fullName)}
           </div>
           <div style={{ minWidth: 0 }}>
-            <div style={{ fontSize: 13, fontWeight: 600, color: "var(--on-ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{me?.fullName || t("ptl.student")}</div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{me?.fullName || t("ptl.student")}</div>
             <div style={{ fontSize: 11, color: "var(--text-faint)" }}>{isParent ? t("ptp.parentView") : t("ptl.student")}</div>
           </div>
         </div>
       </aside>
 
-      <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
+      <div className="ptl-body">
       {/* Phone header: center, messages, language, sign out */}
       <header className="ptl-head">
         <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0, flex: 1 }}>
-          <div style={{ flexShrink: 0, width: 36, height: 36, borderRadius: "var(--radius-sm)", background: "var(--primary-soft)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>🎓</div>
+          <div style={{ flexShrink: 0, width: 40, height: 40, borderRadius: "var(--radius-md)", background: "var(--ink)", color: "var(--on-ink)", display: "flex", alignItems: "center", justifyContent: "center" }}>{ICONS.logo}</div>
           <div style={{ minWidth: 0 }}>
             <div style={{ fontSize: 14, fontWeight: 800, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{me?.tenant?.name || t("ptl.center")}</div>
             <div style={{ fontSize: 11.5, color: "var(--text-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{me?.fullName || t("ptl.student")}</div>
@@ -557,10 +559,9 @@ export default function StudentPortalPage() {
         {nav.filter((x) => x.bottom).map((tab) => {
           const on = activeTab === tab.id;
           return (
-            <button key={tab.id} type="button" onClick={() => go(tab.id)} aria-current={on ? "page" : undefined} style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 3, padding: "8px 2px 6px", border: "none", background: "transparent", color: on ? ACCENT : "var(--text-muted)", cursor: "pointer" }}>
-              <span aria-hidden style={{ fontSize: 19, lineHeight: 1, filter: on ? "none" : "grayscale(1)", opacity: on ? 1 : 0.75 }}>{tab.icon}</span>
-              <span style={{ fontSize: 10.5, fontWeight: on ? 800 : 600, maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t(tab.short)}</span>
-              <span style={{ width: 18, height: 3, borderRadius: 3, background: on ? ACCENT : "transparent" }} />
+            <button key={tab.id} type="button" onClick={() => go(tab.id)} aria-current={on ? "page" : undefined} aria-label={t(tab.short)} title={t(tab.short)} className={on ? "on" : undefined}>
+              <span aria-hidden="true" style={{ display: "grid" }}>{ICONS[tab.id]}</span>
+              <span className="ptl-bl" aria-hidden="true">{t(tab.short)}</span>
             </button>
           );
         })}
@@ -571,10 +572,10 @@ export default function StudentPortalPage() {
         key={activeTab}
         style={{
           flex: 1,
-          maxWidth: 1000,
+          maxWidth: 1040,
           width: "100%",
           margin: "0 auto",
-          padding: "20px 16px 40px 16px",
+          padding: "22px 18px 40px",
           boxSizing: "border-box",
         }}
         className="ptl-main page-enter"
@@ -606,16 +607,16 @@ export default function StudentPortalPage() {
                 <div style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 16 }}>{t("ptp.addChild")}</div>
                 <div style={{ fontSize: 12.5, color: "var(--text-muted)", marginTop: 2 }}>{t("ptp.addChildHint")}</div>
               </div>
-              <button type="button" onClick={() => setAddingChild(false)} aria-label={t("common.cancel")} style={{ background: "rgba(255,255,255,0.1)", border: "none", color: "var(--on-ink)", borderRadius: "var(--radius-xs)", width: 32, height: 32, cursor: "pointer", fontSize: 16 }}>✕</button>
+              <button type="button" onClick={() => setAddingChild(false)} aria-label={t("common.cancel")} className="ptl-bell">✕</button>
             </div>
             <PortalLogin subdomain={hostCenter?.subdomain} onLoggedIn={(list, activeId) => activate(list, activeId)} />
           </div>
         )}
         {activeTab === "home" && !isParent && (
           <button type="button" onClick={() => go("ai")} className="ptl-ai-cta">
-            <span style={{ fontSize: 26 }} aria-hidden>🤖</span>
+            <span aria-hidden style={{ width: 42, height: 42, borderRadius: "var(--radius-pill)", background: "rgba(255,255,255,0.18)", display: "grid", placeItems: "center", flexShrink: 0 }}>{ICONS.ai}</span>
             <span style={{ flex: 1, minWidth: 0, textAlign: "left" }}>
-              <span style={{ display: "block", fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 15.5 }}>{t("tutor.ctaTitle")}</span>
+              <span style={{ display: "block", fontFamily: "var(--font-display)", fontWeight: 600, fontSize: 15.5 }}>{t("tutor.ctaTitle")}</span>
               <span style={{ display: "block", fontSize: 13, opacity: 0.85, marginTop: 2 }}>{t("tutor.ctaText")}</span>
             </span>
             <span aria-hidden style={{ fontSize: 18 }}>→</span>
