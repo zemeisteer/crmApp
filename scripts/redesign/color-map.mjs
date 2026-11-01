@@ -14,7 +14,7 @@ export const COLOR_MAP = {
   ...group(['#181A1F', '#111827', '#0F172A', '#1E293B', '#1F2937', '#12131A', '#2A2D35', '#1F2128', '#111', '#333'], T('--text', { bg: '--ink', border: '--ink' })),
 
   // The old indigo brand: now the primary action color (ink by default).
-  ...group(['#4F46E5', '#6366F1', '#4338CA', '#3730A3', '#312E81'], T('--primary')),
+  ...group(['#4F46E5', '#6366F1', '#4338CA', '#3730A3', '#312E81', '#33357A'], T('--primary')),
   ...group(['#EEF0FF', '#EEF2FF', '#E0E7FF', '#F8F8FF', '#ECEBFB', '#F7F6FF', '#FAFAFF', '#F6F5FF', '#F5F6FF', '#FBFBFF', '#E4E2FB', '#E4E0FB', '#D9DBFA', '#E4E7F5'], T('--primary-soft', { border: '--primary-border' })),
   ...group(['#C7D2FE', '#DDD6FE', '#D7D3F8', '#A5B4FC', '#C4B5FD', '#D6D3FA', '#C9C6F5', '#B7B0E8', '#A9A6FF', '#C4C2E0', '#8B84E8'], T('--primary-border')),
 

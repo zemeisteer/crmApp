@@ -122,8 +122,24 @@
   --danger-text: var(--danger);
 }
 
-/* Dark counterparts (the .dark class on <html>). */
-.dark {
+/* Dark counterparts (the .dark class on <html>), also the base of the platform skin. */
+.dark,
+.theme-platform {
+  /* Tokens defined from others resolve where they are declared: redeclared
+     here so a nested theme (the platform shell) derives them from its values. */
+  --accent-2: color-mix(in oklab, var(--accent) 78%, #ffd2b8);
+  --accent-strong: color-mix(in oklab, var(--accent) 72%, #000000);
+  --accent-gradient: linear-gradient(160deg, var(--accent-2), var(--accent));
+  --primary: var(--ink);
+  --primary-hover: var(--ink-hover);
+  --focus-ring: 0 0 0 3px color-mix(in oklab, var(--accent) 35%, transparent);
+  --bg: var(--canvas);
+  --sidebar-bg: var(--ink);
+  --card-bg: var(--surface);
+  --success-bg: var(--success-soft);
+  --success-text: var(--success);
+  --danger-bg: var(--danger-soft);
+  --danger-text: var(--danger);
   --ink: #f2f1f7;
   --ink-hover: #ffffff;
   --on-ink: #16161d;
@@ -172,6 +188,21 @@
   --shadow-card: 0 2px 10px rgba(0, 0, 0, 0.3);
   --shadow-hover: 0 12px 28px rgba(0, 0, 0, 0.4);
   --accent-soft: color-mix(in oklab, var(--accent) 22%, #1b1b24);
+}
+
+/* The platform skin (superadmin outside a center): the dark set with its own
+   accent, on the shell only, so the platform never looks like a center's panel. */
+.theme-platform {
+  --accent: #8b7cf6;
+  --accent-2: #b3a8ff;
+  --accent-strong: #6d5ae6;
+  --accent-soft: color-mix(in oklab, #8b7cf6 22%, #1b1b24);
+  --accent-gradient: linear-gradient(160deg, #b3a8ff, #8b7cf6);
+  --focus-ring: 0 0 0 3px rgba(139, 124, 246, 0.4);
+  min-height: 100vh;
+  background: var(--canvas-gradient);
+  color: var(--text);
+  color-scheme: dark;
 }
 
 /* Tailwind 4 utilities on the same tokens: bg-surface, text-muted, border-line, bg-accent... */

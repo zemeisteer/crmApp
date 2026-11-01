@@ -58,7 +58,7 @@ function PurgePreview() {
         <div style={{ color: "var(--text-muted)", fontSize: 14 }}>{t("common.loading")}</div>
       ) : (
         <>
-          <div role="status" style={{ fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: "var(--radius-sm)", marginBottom: 12, background: data.purgeEnabled ? "var(--danger-soft)" : "var(--primary-soft)", color: data.purgeEnabled ? "var(--danger)" : "#33357A" }}>
+          <div role="status" style={{ fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: "var(--radius-sm)", marginBottom: 12, background: data.purgeEnabled ? "var(--danger-soft)" : "var(--primary-soft)", color: data.purgeEnabled ? "var(--danger)" : "var(--primary)" }}>
             {data.purgeEnabled ? t("pf.tr.purgeOn") : t("pf.tr.purgeOff")}
           </div>
           {data.report.length === 0 ? (
@@ -222,7 +222,7 @@ function RenewalPreview() {
         <div style={{ color: "var(--text-muted)", fontSize: 14 }}>{t("common.loading")}</div>
       ) : (
         <>
-          <div role="status" style={{ fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: "var(--radius-sm)", marginBottom: 12, background: data.enforce ? "var(--danger-soft)" : "var(--primary-soft)", color: data.enforce ? "var(--danger)" : "#33357A" }}>
+          <div role="status" style={{ fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: "var(--radius-sm)", marginBottom: 12, background: data.enforce ? "var(--danger-soft)" : "var(--primary-soft)", color: data.enforce ? "var(--danger)" : "var(--primary)" }}>
             {data.enforce ? t("pf.tr.enforceOn") : t("pf.tr.enforceOff")}
           </div>
           {data.report.length === 0 ? (
