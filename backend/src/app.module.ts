@@ -2,7 +2,8 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { UserThrottlerGuard } from './common/user-throttler.guard';
-import { APP_GUARD } from '@nestjs/core';
+import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+import { SessionCookieInterceptor } from './common/session-cookie';
 import { DbModule } from './db/db.module';
 import { LedgerModule } from './ledger/ledger.module';
 import { AuthCommonModule } from './common/auth-common.module';
@@ -127,6 +128,9 @@ import { NoticeOutboxModule } from './notice-outbox/notice-outbox.module';
     OnboardingModule,
     InvoicesModule,
   ],
-  providers: [{ provide: APP_GUARD, useClass: UserThrottlerGuard }],
+  providers: [
+    { provide: APP_GUARD, useClass: UserThrottlerGuard },
+    { provide: APP_INTERCEPTOR, useClass: SessionCookieInterceptor },
+  ],
 })
 export class AppModule {}

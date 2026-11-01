@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { api, centerDay, centerMonth, centerUrl, cleanUpStagingCenters, expectCenterDashboard, loginOnMainSite, money, newCenter } from './support';
+import { fetchViaApi, api, centerDay, centerMonth, centerUrl, cleanUpStagingCenters, expectCenterDashboard, loginOnMainSite, money, newCenter } from './support';
 
 // Tuition: taking a payment at the desk, safe against double clicks and
 // retries after a lost reply; closing the cash desk at the end of the day.
@@ -35,7 +35,7 @@ test('payment: a double click and a retry after a lost reply each record one pay
   await page.route('**/api/payments', async (route) => {
     if (route.request().method() === 'POST' && lost === 0) {
       lost++;
-      await route.fetch();
+      await fetchViaApi(route);
       await route.abort('failed');
       return;
     }

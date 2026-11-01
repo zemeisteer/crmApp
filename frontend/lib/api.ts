@@ -6,40 +6,57 @@ import { pageQuery, type PageOf } from "./list-paging";
 export type { PageOf } from "./list-paging";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api";
-const TOKEN_KEY = "talimcrm_token";
-const REFRESH_KEY = "talimcrm_refresh";
+// The staff access token lives in this page's memory, the refresh token in an
+// httpOnly cookie: a script on the page has nothing long-lived to steal. This
+// flag holds no secret; it only says a cookie should be there, so anonymous
+// pages make no refresh call.
+const SESSION_FLAG = "talimcrm_session";
+const OLD_TOKEN_KEYS = ["talimcrm_token", "talimcrm_refresh"];
+let accessToken: string | null = null;
 
 // Only real tokens are ever stored or read: a missing field in a response
 // must not become the string "undefined" in storage (it would then be sent
 // as a refresh token and sign the user out).
 const isToken = (v: unknown): v is string => typeof v === "string" && v.length > 20 && v !== "undefined" && v !== "null";
 
-function readToken(key: string): string | null {
-  if (typeof window === "undefined") return null;
-  const v = localStorage.getItem(key);
-  if (v !== null && !isToken(v)) {
-    localStorage.removeItem(key);
-    return null;
+if (typeof window !== "undefined") {
+  try {
+    OLD_TOKEN_KEYS.forEach((key) => localStorage.removeItem(key));
+  } catch {
+    // storage blocked: nothing was kept there either
   }
-  return v;
 }
 
 export function getToken(): string | null {
-  return readToken(TOKEN_KEY);
+  return accessToken;
 }
 
 export function setToken(token: string | null | undefined) {
-  if (typeof window === "undefined") return;
-  if (isToken(token)) localStorage.setItem(TOKEN_KEY, token);
+  if (typeof window === "undefined" || !isToken(token)) return;
+  accessToken = token;
+  localStorage.setItem(SESSION_FLAG, "1");
 }
 
-export function getRefreshToken(): string | null {
-  return readToken(REFRESH_KEY);
+export function hasSession(): boolean {
+  return typeof window !== "undefined" && localStorage.getItem(SESSION_FLAG) === "1";
 }
 
-export function setRefreshToken(token: string | null | undefined) {
-  if (typeof window === "undefined") return;
-  if (isToken(token)) localStorage.setItem(REFRESH_KEY, token);
+// Renewed a little early, so a token does not expire on its way to the server.
+const EXPIRY_MARGIN_MS = 30_000;
+function isFresh(token: string): boolean {
+  try {
+    const { exp } = JSON.parse(atob(token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")));
+    return typeof exp !== "number" || exp * 1000 - Date.now() > EXPIRY_MARGIN_MS;
+  } catch {
+    return true; // the server decides
+  }
+}
+
+/** The access token to send now, renewed first when it is missing or about to expire. */
+export async function freshToken(): Promise<string | null> {
+  if (accessToken && isFresh(accessToken)) return accessToken;
+  if (hasSession()) await tryRefresh();
+  return accessToken;
 }
 
 const PORTAL_TOKEN_KEY = "talimcrm_portal_token";
@@ -94,9 +111,9 @@ export function addPortalSessions(list: PortalSession[]): PortalSession[] {
 }
 
 export function clearToken() {
+  accessToken = null;
   if (typeof window === "undefined") return;
-  localStorage.removeItem(TOKEN_KEY);
-  localStorage.removeItem(REFRESH_KEY);
+  localStorage.removeItem(SESSION_FLAG);
 }
 
 export class ApiError extends Error {
@@ -113,23 +130,32 @@ export class ApiError extends Error {
 
 let refreshInFlight: Promise<boolean> | null = null;
 
-// Tries once to trade the stored refresh token for a new access token.
+const SESSION_TRANSPORT = { "X-Session-Transport": "cookie" };
+
+// Refresh tokens rotate: one tab at a time, or the second tab would present
+// the cookie the first has just replaced, and the session would look stolen.
+function oneTabAtATime<T>(run: () => Promise<T>): Promise<T> {
+  return typeof navigator !== "undefined" && navigator.locks
+    ? (navigator.locks.request("talimcrm_refresh", run) as Promise<T>)
+    : run();
+}
+
+// Tries once to trade the refresh cookie for a new access token.
 // Multiple 401s arriving at once share a single in-flight refresh call
 // instead of each firing their own.
 async function tryRefresh(): Promise<boolean> {
-  const refreshToken = getRefreshToken();
-  if (!refreshToken) return false;
+  if (!hasSession()) return false;
   if (!refreshInFlight) {
-    refreshInFlight = fetch(`${API_URL}/auth/refresh`, {
+    refreshInFlight = oneTabAtATime(() => fetch(`${API_URL}/auth/refresh`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ refreshToken }),
-    })
+      credentials: "include",
+      headers: { "Content-Type": "application/json", ...SESSION_TRANSPORT },
+      body: "{}",
+    }))
       .then(async (res) => {
         if (!res.ok) return false;
         const body = await res.json();
         setToken(body.accessToken);
-        setRefreshToken(body.refreshToken);
         return true;
       })
       .catch(() => false)
@@ -149,15 +175,22 @@ export function markLeavingForCenter() {
   leavingForCenter = true;
 }
 
+// Routes that start a session or need none: no renewal before them.
+const NO_SESSION_NEEDED = /^\/auth\/(login|register|refresh|2fa\/verify-login|forgot-password|reset-password|verify-email|handoff\/exchange)/;
+
 async function request<T>(
   path: string,
   options: RequestInit = {},
   _retried = false,
 ): Promise<T> {
   const isPortal = path.startsWith("/portal");
-  const token = isPortal ? getPortalToken() : getToken();
+  const callerToken = !!(options.headers as Record<string, string> | undefined)?.["Authorization"];
+  const opensSession = NO_SESSION_NEEDED.test(path);
+  const hadSession = !isPortal && !callerToken && !opensSession && hasSession();
+  const token = isPortal ? getPortalToken() : callerToken || opensSession ? getToken() : await freshToken();
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
+    ...(isPortal ? {} : SESSION_TRANSPORT),
     ...(options.headers as Record<string, string> | undefined),
   };
   // A caller may pass its own token (e.g. a staff token to a /portal door).
@@ -165,6 +198,7 @@ async function request<T>(
 
   const res = await fetch(`${API_URL}${path}`, {
     ...options,
+    ...(isPortal ? {} : { credentials: "include" as const }),
     headers,
   });
 
@@ -174,7 +208,7 @@ async function request<T>(
   // A 401 while we were sending a token: try a silent refresh once before
   // giving up and bouncing to login. A 401 with no token attached (e.g. a
   // failed login attempt itself) is just a normal error to surface.
-  if (res.status === 401 && token) {
+  if (res.status === 401 && (token || hadSession)) {
     if (isPortal) {
       clearPortalToken();
       throw new ApiError("Portal sessiyasi eskirgan", 401);
@@ -205,7 +239,7 @@ async function request<T>(
  * is an ApiError with status 0, so callers tell it apart from a refusal.
  */
 export async function authedFetch(path: string, init: RequestInit = {}, _retried = false): Promise<Response> {
-  const token = getToken();
+  const token = await freshToken();
   const headers: Record<string, string> = { ...(init.headers as Record<string, string> | undefined) };
   if (token) headers["Authorization"] = `Bearer ${token}`;
   let res: Response;
@@ -238,7 +272,7 @@ export async function fetchBlob(path: string, signal?: AbortSignal): Promise<Blo
 // Downloads a file (xlsx/pdf) as a Blob, using the same auth header as
 // request(), and triggers a browser save via a temporary <a download>.
 async function download(path: string, filename: string, body?: unknown) {
-  const token = getToken();
+  const token = await freshToken();
   const headers: Record<string, string> = {};
   if (token) headers["Authorization"] = `Bearer ${token}`;
   if (body !== undefined) headers["Content-Type"] = "application/json";
@@ -461,7 +495,7 @@ export interface User {
 
 export interface AuthResponse {
   accessToken: string;
-  refreshToken: string;
+  refreshToken?: string;
   user: User;
   tenant: Tenant;
   // The backend always sends this flag; only `true` means "let the user choose".
@@ -482,7 +516,7 @@ export type LoginResponse =
   | { twoFactorRequired: true; pendingToken: string }
   // Several centers: the backend already issued a session for the first one,
   // which authenticates the follow-up POST /auth/select-workspace.
-  | { requiresWorkspaceSelection: true; workspaces: WorkspaceItem[]; accessToken: string; refreshToken: string };
+  | { requiresWorkspaceSelection: true; workspaces: WorkspaceItem[]; accessToken: string; refreshToken?: string };
 
 export interface Session {
   id: string;
@@ -1492,7 +1526,7 @@ export const authApi = {
   selectWorkspace: (tenantId: string) =>
     request<AuthResponse>("/auth/select-workspace", {
       method: "POST",
-      body: JSON.stringify({ tenantId, refreshToken: getRefreshToken() ?? undefined }),
+      body: JSON.stringify({ tenantId }),
     }),
 
   verifyTwoFactorLogin: (pendingToken: string, code: string) =>
@@ -1506,10 +1540,7 @@ export const authApi = {
   confirmTwoFactor: (code: string) => request<{ message: string; recoveryCodes: string[] }>("/auth/2fa/confirm", { method: "POST", body: JSON.stringify({ code }) }),
   disableTwoFactor: (reauth: { password: string; code: string }) => request<{ message: string }>("/auth/2fa/disable", { method: "POST", body: JSON.stringify(reauth) }),
 
-  logout: () => {
-    const refreshToken = getRefreshToken();
-    return request<{ success: boolean }>("/auth/logout", { method: "POST", body: JSON.stringify({ refreshToken }) });
-  },
+  logout: () => request<{ success: boolean }>("/auth/logout", { method: "POST", body: "{}" }),
 
   sessions: () => request<Session[]>("/auth/sessions"),
   revokeSession: (id: string) => request<{ success: boolean }>(`/auth/sessions/${id}`, { method: "DELETE" }),
@@ -2267,7 +2298,7 @@ export const aiApi = {
 // ---- Homework ----
 
 async function uploadFile<T>(path: string, file: File): Promise<T> {
-  const token = getToken();
+  const token = await freshToken();
   const form = new FormData();
   form.append("file", file);
   const res = await fetch(`${API_URL}${path}`, {
@@ -2649,7 +2680,7 @@ export interface ImportReport {
 }
 
 async function importUpload<T>(kind: ImportKind, file: File, dryRun: boolean): Promise<T> {
-  const token = getToken();
+  const token = await freshToken();
   const form = new FormData();
   form.append("file", file);
   const res = await fetch(`${API_URL}/import/${kind}${dryRun ? "?dryRun=1" : ""}`, {
@@ -3681,7 +3712,7 @@ export const invitationsApi = {
   accept: (token: string, data: { fullName?: string; password?: string }) =>
     request<{
       accessToken: string;
-      refreshToken: string;
+      refreshToken?: string;
       user: User;
       tenant: { id: string; name: string; subdomain: string };
       redirectUrl: string;
@@ -3921,10 +3952,9 @@ export interface MockImport {
 
 // Multipart upload with a progress callback (books and recordings are big).
 function uploadWithProgress<T>(path: string, form: FormData, onProgress?: (pct: number) => void): Promise<T> {
-  return new Promise((resolve, reject) => {
+  return freshToken().then((token) => new Promise<T>((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     xhr.open("POST", `${API_URL}${path}`);
-    const token = getToken();
     if (token) xhr.setRequestHeader("Authorization", `Bearer ${token}`);
     xhr.upload.onprogress = (e) => { if (e.lengthComputable) onProgress?.(Math.round((e.loaded / e.total) * 100)); };
     xhr.onload = () => {
@@ -3935,7 +3965,7 @@ function uploadWithProgress<T>(path: string, form: FormData, onProgress?: (pct: 
     };
     xhr.onerror = () => reject(new ApiError("Tarmoq xatosi", 0));
     xhr.send(form);
-  });
+  }));
 }
 
 export const mockTestsApi = {
@@ -3956,7 +3986,7 @@ export const mockTestsApi = {
   uploadAsset: (id: string, file: File) => {
     const form = new FormData();
     form.append("file", file);
-    return postForm<{ path: string; name: string; type: string }>(`/mock-tests/${id}/asset`, form, getToken());
+    return freshToken().then((token) => postForm<{ path: string; name: string; type: string }>(`/mock-tests/${id}/asset`, form, token));
   },
   attempts: (id: string) => request<MockAttemptRow[]>(`/mock-tests/${id}/attempts`),
   attempt: (attemptId: string) => request<MockAttemptDetail>(`/mock-tests/attempts/${attemptId}`),
@@ -4322,7 +4352,7 @@ function makeChatClient(side: "staff" | "cabinet"): ChatClient {
       connectChatStream({
         ...opts,
         url: `${API_URL}${base}/stream`,
-        getToken: side === "staff" ? getToken : getPortalToken,
+        getToken: side === "staff" ? freshToken : getPortalToken,
         // Staff: an expired access token is renewed once, as request() does.
         refresh: side === "staff" ? tryRefresh : undefined,
       }),

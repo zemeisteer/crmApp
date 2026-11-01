@@ -71,7 +71,7 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-talimcrm}
       REDIS_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD must be defined}@redis:6379
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be defined}
-      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-15m}
       PORT: 4000
       FRONTEND_URL: ${FRONTEND_URL:-https://${DOMAIN}}
       # Main domain: centers live on <sub>.${DOMAIN}; also limits CORS.

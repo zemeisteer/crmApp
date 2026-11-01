@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { PASSWORD, api, authSlot, centerDay, centerUrl, cleanUpStagingCenters, expectCenterDashboard, loginOnMainSite, newCenter, run } from './support';
+import { sessionToken, PASSWORD, api, authSlot, centerDay, centerUrl, cleanUpStagingCenters, expectCenterDashboard, loginOnMainSite, newCenter, run } from './support';
 
 // Calendar sync: a staff member makes a subscription link (ICS) on the
 // Calendar page, copies it, a calendar app can read it; a new link turns the
@@ -180,7 +180,7 @@ test("a parent account's cabinet links to the parent's own calendar of all their
   expect(ics).toContain('BEGIN:VCALENDAR');
   expect(ics).toContain('Family Morning');
   expect(ics).toContain('Family Evening');
-  expect((await api('GET', '/calendar/feed', { token: (await page.evaluate(() => localStorage.getItem('talimcrm_token')))! })).scope).toBe('PARENT');
+  expect((await api('GET', '/calendar/feed', { token: await sessionToken(page) })).scope).toBe('PARENT');
 
   // The older child's own cabinet (phone and PIN, another browser): no parent calendar.
   const ctx = await browser.newContext();

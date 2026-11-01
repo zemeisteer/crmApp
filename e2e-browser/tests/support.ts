@@ -1,4 +1,4 @@
-import { expect, test, type Locator, type Page, type Request } from '@playwright/test';
+import { expect, test, type Locator, type Page, type Route, type Request } from '@playwright/test';
 import { randomBytes } from 'crypto';
 import { existsSync, readFileSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
@@ -16,13 +16,24 @@ export const TARGET = process.env.BROWSER_TARGET === 'staging' ? 'staging' : 'lo
 const ROOT = TARGET === 'staging' ? process.env.STAGING_ROOT! : 'localhost';
 export const WEB_PORT = Number(process.env.BROWSER_WEB_PORT || 3300);
 export const API = TARGET === 'staging' ? `https://${ROOT}/api` : `http://127.0.0.1:${process.env.BROWSER_API_PORT || 4300}/api`;
-// The pages call the API as http://localhost:<port>/api (the build's
-// NEXT_PUBLIC_API_URL); the tests themselves use 127.0.0.1. Either is the API.
+// The pages call the API under their own address (/api, as in production);
+// the tests themselves use 127.0.0.1. Either is the API.
 export function isApiUrl(url: string) {
   if (TARGET === 'staging') return url.startsWith(API);
   const u = new URL(url);
-  return (u.hostname === 'localhost' || u.hostname === '127.0.0.1') && u.port === new URL(API).port && u.pathname.startsWith('/api/');
+  return u.pathname.startsWith('/api/');
 }
+/** route.fetch() for a page's API call: the test runner cannot resolve <center>.localhost, so it goes to the API directly. */
+export const fetchViaApi = (route: Route) => {
+  const u = new URL(route.request().url());
+  return route.fetch({ url: TARGET === 'staging' ? u.href : `${new URL(API).origin}${u.pathname}${u.search}` });
+};
+/** An access token of the page's staff session (it holds its own in memory, out of reach by design). */
+export const sessionToken = (page: Page) =>
+  page.evaluate(async () => {
+    const res = await fetch('/api/auth/refresh', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json', 'X-Session-Transport': 'cookie' }, body: '{}' });
+    return (await res.json()).accessToken as string;
+  });
 export const centerUrl = (sub: string, path = '') =>
   TARGET === 'staging' ? `https://${sub}.${ROOT}${path}` : `http://${sub}.localhost:${WEB_PORT}${path}`;
 export const run = `${Date.now().toString(36)}${randomBytes(2).toString('hex')}`;

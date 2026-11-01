@@ -728,7 +728,8 @@ export class AuthService {
     return { accessToken, refreshToken: newRefreshToken };
   }
 
-  async logout(refreshToken: string) {
+  async logout(refreshToken: string | undefined) {
+    if (!refreshToken) return { success: true };
     const hash = hashToken(refreshToken);
     await this.db.delete(sessions).where(eq(sessions.refreshTokenHash, hash));
     return { success: true };

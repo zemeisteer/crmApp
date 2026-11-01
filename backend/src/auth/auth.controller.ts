@@ -1,5 +1,6 @@
 import { Body, Controller, Delete, Get, Headers, Param, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
+import { refreshTokenFromCookie } from '../common/session-cookie';
 import type { Request } from 'express';
 import { AuthService } from './auth.service';
 import { RegisterDto, SignupPhoneStartDto } from './dto/register.dto';
@@ -67,12 +68,12 @@ export class AuthController {
 
   @Post('refresh')
   refresh(@Body() dto: RefreshTokenDto, @Req() req: Request, @Headers('user-agent') ua?: string) {
-    return this.authService.refresh(dto.refreshToken, meta(req, ua));
+    return this.authService.refresh(dto.refreshToken ?? refreshTokenFromCookie(req) ?? '', meta(req, ua));
   }
 
   @Post('logout')
-  logout(@Body() dto: RefreshTokenDto) {
-    return this.authService.logout(dto.refreshToken);
+  logout(@Body() dto: RefreshTokenDto, @Req() req: Request) {
+    return this.authService.logout(dto.refreshToken ?? refreshTokenFromCookie(req));
   }
 
   @UseGuards(JwtAuthGuard)
@@ -135,7 +136,7 @@ export class AuthController {
     @Headers('user-agent') ua?: string,
   ) {
     // A new session starts with the caller's own 2FA state, never more.
-    return this.authService.selectWorkspace(userId, tenantId, meta(req, ua), refreshToken, await this.authService.sessionMfaAt(userId, sid));
+    return this.authService.selectWorkspace(userId, tenantId, meta(req, ua), refreshToken ?? refreshTokenFromCookie(req), await this.authService.sessionMfaAt(userId, sid));
   }
 
   @UseGuards(JwtAuthGuard)

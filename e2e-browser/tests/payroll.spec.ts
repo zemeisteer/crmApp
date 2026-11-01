@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { addStaff, api, apiLogin, centerMonth, centerUrl, cleanUpStagingCenters, money, expectCenterDashboard, loginOnMainSite, newCenter, run } from './support';
+import { fetchViaApi, addStaff, api, apiLogin, centerMonth, centerUrl, cleanUpStagingCenters, money, expectCenterDashboard, loginOnMainSite, newCenter, run } from './support';
 
 // Payroll: an accountant pays a teacher's month in two parts from
 // Reports -> Payroll. A double click and a retry after a lost reply each
@@ -34,7 +34,7 @@ test('an accountant pays a month in installments, once each, with one expense ea
   await page.route('**/api/salary-payments/disburse', async (route) => {
     if (lost === 0) {
       lost++;
-      await route.fetch();
+      await fetchViaApi(route);
       await route.abort('failed');
       return;
     }

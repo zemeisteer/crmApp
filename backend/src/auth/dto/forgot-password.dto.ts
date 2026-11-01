@@ -1,4 +1,4 @@
-import { IsEmail, IsString, MinLength, MaxLength } from 'class-validator';
+import { IsOptional, IsEmail, IsString, MinLength, MaxLength } from 'class-validator';
 
 export class ForgotPasswordDto {
   @IsEmail()
@@ -17,7 +17,9 @@ export class ResetPasswordDto {
 }
 
 export class RefreshTokenDto {
+  // The site sends it as a cookie (common/session-cookie.ts).
+  @IsOptional()
   @IsString()
   @MaxLength(2000)
-  refreshToken: string;
+  refreshToken?: string;
 }
