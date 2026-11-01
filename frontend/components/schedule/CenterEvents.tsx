@@ -67,7 +67,7 @@ export function EventCard({ ev, onOpen }: { ev: CenterEvent; onOpen?: () => void
     background: s.bg,
     border: `1px solid ${s.border}`,
     borderLeft: `4px solid ${s.color}`,
-    borderRadius: "var(--radius-sm)",
+    borderRadius: "var(--radius-pill)",
     padding: "8px 10px",
     cursor: onOpen ? "pointer" : "default",
     font: "inherit",
@@ -180,9 +180,9 @@ export function EventFormModal({
     borderRadius: "var(--radius-xs)",
     border: "none",
     cursor: readOnly ? "default" : "pointer",
-    background: on ? "var(--surface)" : "transparent",
-    color: on ? "var(--text)" : "var(--text-muted)",
-    boxShadow: on ? "0 1px 3px rgba(18,19,26,0.08)" : "none",
+    background: on ? "var(--ink)" : "transparent",
+    color: on ? "var(--on-ink)" : "var(--text-muted)",
+    boxShadow: "none",
   });
 
   return (
@@ -220,7 +220,7 @@ export function EventFormModal({
           </div>
           <div>
             <span style={label}>{t("ev.fieldFormat")}</span>
-            <div role="group" aria-label={t("ev.fieldFormat")} style={{ display: "flex", gap: 2, background: "var(--surface-muted)", borderRadius: "var(--radius-sm)", padding: 4 }}>
+            <div role="group" aria-label={t("ev.fieldFormat")} style={{ display: "flex", gap: 2, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-pill)", padding: 4 }}>
               <button type="button" aria-pressed={format === "OFFLINE"} onClick={() => setFormat("OFFLINE")} style={segBtn(format === "OFFLINE")}>
                 🏫 {t("ev.offline")}
               </button>

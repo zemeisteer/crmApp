@@ -165,9 +165,9 @@ export default function BookModal({ credit, onClose, onBooked }: { credit: Makeu
       aria-pressed={mode === m}
       onClick={() => { setMode(m); setError(null); }}
       style={{
-        flex: 1, fontSize: 12.5, fontWeight: 700, padding: "8px 10px", borderRadius: "var(--radius-xs)", cursor: "pointer", border: "none",
-        background: mode === m ? "var(--surface)" : "transparent", color: mode === m ? "var(--text)" : "var(--text-muted)",
-        boxShadow: mode === m ? "0 1px 3px rgba(18,19,26,0.08)" : "none",
+        flex: 1, fontSize: 12.5, fontWeight: 700, padding: "8px 10px", borderRadius: "var(--radius-pill)", cursor: "pointer", border: "none",
+        background: mode === m ? "var(--ink)" : "transparent", color: mode === m ? "var(--on-ink)" : "var(--text-muted)",
+        boxShadow: "none",
       }}
     >
       {label}
@@ -183,7 +183,7 @@ export default function BookModal({ credit, onClose, onBooked }: { credit: Makeu
           <div style={{ color: "var(--text-muted)" }}>{t("mk.missedOn")}: {credit.originGroup?.name ?? "—"} · {dayLabel(credit.originDate, lang, t)}</div>
         </div>
 
-        <div role="group" aria-label={t("mk.bookMode")} style={{ display: "flex", gap: 2, background: "var(--surface-muted)", borderRadius: "var(--radius-sm)", padding: 4 }}>
+        <div role="group" aria-label={t("mk.bookMode")} style={{ display: "flex", gap: 2, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-pill)", padding: 4 }}>
           {modeBtn("GROUP_LESSON", t("mk.modeGroup"))}
           {modeBtn("SESSION", t("mk.modeSession"))}
         </div>

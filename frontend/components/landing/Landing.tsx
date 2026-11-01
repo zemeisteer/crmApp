@@ -15,7 +15,7 @@ const ACCENT = "var(--primary)";
 const LANG_LABELS: Record<LandingLang, string> = { UZ: "O'zbekcha", RU: "Русский", EN: "English" };
 
 const CSS = `
-  .lp-root{--bg:var(--surface-muted);--surface:var(--surface);--border:var(--border);--text:var(--text);--text-2:var(--text-soft);--muted:var(--text-muted);--chip:var(--surface-muted);color:var(--text);background:var(--bg);font-family:'Inter',system-ui,sans-serif;min-height:100vh;display:flex;flex-direction:column;}
+  .lp-root{--bg:var(--surface-muted);--text-2:var(--text-soft);--muted:var(--text-muted);--chip:var(--surface-muted);color:var(--text);background:var(--bg);font-family:'Inter',system-ui,sans-serif;min-height:100vh;display:flex;flex-direction:column;}
   .lp-root h1,.lp-root h2,.lp-root h3{font-family:'Manrope',system-ui,sans-serif;margin:0;}
   .lp-root a{color:inherit;text-decoration:none;}
   .lp-btn{cursor:pointer;border:none;transition:opacity .15s ease,transform .15s ease;display:inline-flex;align-items:center;justify-content:center;}

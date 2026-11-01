@@ -213,7 +213,7 @@ export default function PlacementTestModal({ groups, onClose, audience = "STUDEN
     <button
       type="button"
       onClick={() => setTab(key)}
-      style={{ flex: 1, padding: "8px 12px", borderRadius: "var(--radius-xs)", border: "none", cursor: "pointer", fontSize: 13, fontWeight: 700, background: tab === key ? "var(--surface)" : "transparent", color: tab === key ? "var(--text)" : "var(--text-muted)", boxShadow: tab === key ? "0 1px 3px rgba(18,19,26,0.08)" : "none" }}
+      style={{ flex: 1, padding: "8px 12px", borderRadius: "var(--radius-pill)", border: "none", cursor: "pointer", fontSize: 13, fontWeight: 700, background: tab === key ? "var(--ink)" : "transparent", color: tab === key ? "var(--on-ink)" : "var(--text-muted)", boxShadow: "none" }}
     >
       {label}
     </button>

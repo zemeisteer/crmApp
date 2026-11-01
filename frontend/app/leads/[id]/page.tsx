@@ -251,7 +251,7 @@ function LeadProfile() {
         <Link href="/leads" style={{ color: ACCENT, fontWeight: 600, fontSize: 13 }}>← {t("adm.back")}</Link>
         <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
           <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-            <h1 style={{ fontSize: 22, fontWeight: 800 }}>{lead.fullName}</h1>
+            <h1 className="page-title">{lead.fullName}</h1>
             <StatusBadge status={lead.status} label={t(statusKey(lead.status))} />
           </div>
           <div className="adm-actions">

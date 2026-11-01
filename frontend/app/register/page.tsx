@@ -82,7 +82,7 @@ export default function RegisterPage() {
   }
 
   return (
-    <div style={{ minHeight: "100vh", display: "flex", background: "var(--surface-muted)", position: "relative" }}>
+    <div className="auth-shell" style={{ minHeight: "100vh", display: "flex", position: "relative" }}>
       {/* Top right language switch */}
       <div
         style={{
@@ -92,8 +92,9 @@ export default function RegisterPage() {
           zIndex: 10,
           display: "flex",
           gap: 4,
-          background: "var(--surface-muted)",
-          borderRadius: "var(--radius-sm)",
+          background: "var(--surface)",
+          border: "1px solid var(--border)",
+          borderRadius: "var(--radius-pill)",
           padding: 3,
         }}
       >
@@ -106,12 +107,12 @@ export default function RegisterPage() {
               fontSize: 11,
               fontWeight: 700,
               padding: "6px 10px",
-              borderRadius: "var(--radius-xs)",
+              borderRadius: "var(--radius-pill)",
               border: "none",
               cursor: "pointer",
-              background: lang === l ? "var(--surface)" : "transparent",
-              color: lang === l ? "var(--text)" : "var(--text-muted)",
-              boxShadow: lang === l ? "0 1px 3px rgba(18,19,26,0.08)" : "none",
+              background: lang === l ? "var(--ink)" : "transparent",
+              color: lang === l ? "var(--on-ink)" : "var(--text-muted)",
+              boxShadow: "none",
             }}
           >
             {l}
@@ -123,7 +124,8 @@ export default function RegisterPage() {
       <div
         style={{
           flex: 1.1,
-          background: "linear-gradient(135deg, #090514 0%, #161033 50%, #20154D 100%)",
+          background: "var(--accent-gradient)",
+          color: "var(--on-accent)",
           // display comes from the class: hidden on phones, flex from md up.
           flexDirection: "column",
           justifyContent: "space-between",
@@ -132,7 +134,7 @@ export default function RegisterPage() {
           position: "relative",
           overflow: "hidden",
         }}
-        className="hidden md:flex"
+        className="hidden md:flex auth-hero"
       >
         {/* Glow circles */}
         <div
@@ -169,11 +171,11 @@ export default function RegisterPage() {
               width: 36,
               height: 36,
               borderRadius: "var(--radius-sm)",
-              background: "linear-gradient(135deg, var(--primary), var(--primary))",
+              background: "var(--ink)", color: "var(--on-ink)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              boxShadow: "0 4px 12px rgba(79, 70, 229, 0.35)",
+              
             }}
           >
             <svg
@@ -181,7 +183,7 @@ export default function RegisterPage() {
               height="20"
               viewBox="0 0 24 24"
               fill="none"
-              stroke="var(--surface)"
+              stroke="currentColor"
               strokeWidth="2.2"
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -195,7 +197,7 @@ export default function RegisterPage() {
               fontFamily: "var(--font-display)",
               fontWeight: 800,
               fontSize: 21,
-              color: "var(--on-ink)",
+              color: "var(--on-accent)",
               letterSpacing: "-0.02em",
             }}
           >
@@ -223,7 +225,7 @@ export default function RegisterPage() {
               borderRadius: "var(--radius-pill)",
               background: "rgba(255, 255, 255, 0.08)",
               border: "1px solid rgba(255, 255, 255, 0.12)",
-              color: "var(--primary-border)",
+              color: "var(--on-accent)", opacity: 0.85,
               fontSize: 12.5,
               fontWeight: 600,
               backdropFilter: "blur(10px)",
@@ -239,14 +241,14 @@ export default function RegisterPage() {
               fontSize: 36,
               lineHeight: 1.25,
               fontWeight: 800,
-              color: "var(--on-ink)",
+              color: "var(--on-accent)",
               letterSpacing: "-0.025em",
             }}
           >
             {t("register.createCenterTitle")}
           </h1>
 
-          <p style={{ fontSize: 15.5, lineHeight: 1.65, color: "var(--primary-border)" }}>
+          <p style={{ fontSize: 15.5, lineHeight: 1.65, color: "var(--on-accent)", opacity: 0.85 }}>
             {t("register.createCenterSubtitle")}
           </p>
 
@@ -280,13 +282,14 @@ export default function RegisterPage() {
         </div>
 
         {/* Footer info */}
-        <div style={{ position: "relative", zIndex: 2, fontSize: 13, color: "var(--text-faint)" }}>
+        <div style={{ position: "relative", zIndex: 2, fontSize: 13, color: "var(--on-accent)", opacity: 0.75 }}>
           TalimCRM &copy; {new Date().getFullYear()} — {t("auth.allRightsReserved")}
         </div>
       </div>
 
       {/* RIGHT: Register form */}
       <div
+        className="auth-panel"
         style={{
           flex: 1,
           display: "flex",

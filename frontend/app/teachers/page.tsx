@@ -203,9 +203,9 @@ function TeachersContent() {
 
   return (
     <>
-      <div style={{ padding: "22px 32px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+      <div style={{ padding: "var(--page-head-pad)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div>
-          <h1 style={{ fontSize: 22, fontWeight: 800 }}>{tr("teachers.title")}</h1>
+          <h1 className="page-title">{tr("teachers.title")}</h1>
           {can(user, "teachers.delete") && (
             <Link href="/teachers/trash" style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 600 }}>
               {tr("nav.trash")}
@@ -239,7 +239,7 @@ function TeachersContent() {
         <ImportDialog kind="teachers" open={importOpen} onClose={() => setImportOpen(false)} onDone={load} />
       </div>
 
-      <div style={{ flex: 1, minHeight: 0, padding: "26px 32px", overflow: "auto", boxSizing: "border-box" }}>
+      <div style={{ flex: 1, minHeight: 0, padding: "var(--page-pad)", overflow: "auto", boxSizing: "border-box" }}>
         {!loading && teachers.length > 0 && (
           <>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0,1fr))", gap: 16, marginBottom: 16 }}>

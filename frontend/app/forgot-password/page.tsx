@@ -29,7 +29,7 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--surface-muted)" }}>
+    <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
       <form onSubmit={onSubmit} style={{ width: 380, background: "var(--surface)", borderRadius: "var(--radius-lg)", padding: 32, display: "flex", flexDirection: "column", gap: 18 }}>
         <div>
           <h1 style={{ fontSize: 20, fontWeight: 800 }}>{t("forgotPw.title")}</h1>

@@ -395,7 +395,7 @@ export default function OnboardingPage() {
 
   if (initialLoading) {
     return (
-      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--surface-muted)" }}>
+      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14 }}>
           <svg className="animate-spin" width="32" height="32" viewBox="0 0 24 24" fill="none">
             <circle cx="12" cy="12" r="10" stroke={ACCENT} strokeWidth="4" strokeDasharray="30 60" />
@@ -411,7 +411,7 @@ export default function OnboardingPage() {
   // Final Completion Screen
   if (isCompleted) {
     return (
-      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--surface-muted)", padding: 24 }}>
+      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
         <div
           style={{
             width: "100%",
@@ -525,7 +525,7 @@ export default function OnboardingPage() {
   }
 
   return (
-    <div style={{ minHeight: "100vh", background: "var(--surface-muted)", display: "flex", flexDirection: "column" }}>
+    <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
       {/* Top Bar with Center Name & Step indicator */}
       <header
         style={{

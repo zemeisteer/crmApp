@@ -43,9 +43,9 @@ function OverviewContent() {
 
   return (
     <>
-      <div style={{ padding: "22px 32px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+      <div style={{ padding: "var(--page-head-pad)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
         <div>
-          <h1 style={{ fontSize: 22, fontWeight: 800 }}>{t("pf.dash.title")}</h1>
+          <h1 className="page-title">{t("pf.dash.title")}</h1>
           <div style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 2 }}>{t("pf.dash.subtitle")}{data ? ` · ${monthLabel(data.month, lang)}` : ""}</div>
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -54,7 +54,7 @@ function OverviewContent() {
         </div>
       </div>
 
-      <div style={{ padding: "26px 32px", display: "flex", flexDirection: "column", gap: 16 }}>
+      <div style={{ padding: "var(--page-pad)", display: "flex", flexDirection: "column", gap: 16 }}>
         {error !== null ? (
           <LoadError message={error || t("adm.loadError")} onRetry={load} />
         ) : !data ? (

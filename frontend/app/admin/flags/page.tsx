@@ -123,11 +123,11 @@ function FlagsContent() {
 
   return (
     <>
-      <div style={{ padding: "22px 32px", borderBottom: "1px solid var(--border)" }}>
-        <h1 style={{ fontSize: 22, fontWeight: 800 }}>{t("nav.flags")}</h1>
+      <div style={{ padding: "var(--page-head-pad)" }}>
+        <h1 className="page-title">{t("nav.flags")}</h1>
         <div style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 2 }}>{t("pf.fl.subtitle")}</div>
       </div>
-      <div style={{ padding: "22px 32px", display: "flex", flexDirection: "column", gap: 14 }}>
+      <div style={{ padding: "var(--page-pad)", display: "flex", flexDirection: "column", gap: 14 }}>
         {error !== null ? (
           <LoadError message={error || t("adm.loadError")} onRetry={load} />
         ) : !flags ? (

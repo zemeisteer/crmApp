@@ -99,8 +99,8 @@ function AiInsightsContent() {
 
   return (
     <>
-      <div style={{ padding: "22px 32px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
-        <h1 style={{ fontSize: 22, fontWeight: 800, display: "flex", alignItems: "center", gap: 10 }}>
+      <div style={{ padding: "var(--page-head-pad)", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
+        <h1 className="page-title" style={{ display: "flex", alignItems: "center", gap: 10 }}>
           {t("aiInsights.title")}
           <span style={{ fontSize: 11, fontWeight: 800, background: "linear-gradient(135deg,var(--violet),var(--primary))", color: "var(--on-ink)", padding: "4px 10px", borderRadius: "var(--radius-pill)" }}>
             {t("aiInsights.autoBadge")}
@@ -121,13 +121,13 @@ function AiInsightsContent() {
       </div>
 
       {tab !== "insights" && (
-        <div style={{ flex: 1, minHeight: 0, padding: "20px 32px", overflow: "auto", boxSizing: "border-box", display: "flex", flexDirection: "column", gap: 14 }}>
+        <div style={{ flex: 1, minHeight: 0, padding: "var(--page-pad)", overflow: "auto", boxSizing: "border-box", display: "flex", flexDirection: "column", gap: 14 }}>
           <div style={{ fontSize: 13, color: "var(--text-muted)", lineHeight: 1.5, maxWidth: 760 }}>{t("sig.subtitle")}</div>
           {tab === "signals" ? <SignalsList /> : <MessagesReview />}
         </div>
       )}
 
-      <div style={{ flex: 1, minHeight: 0, padding: "26px 32px", overflow: "auto", boxSizing: "border-box", display: tab === "insights" ? "flex" : "none", flexDirection: "column", gap: 18 }}>
+      <div style={{ flex: 1, minHeight: 0, padding: "var(--page-pad)", overflow: "auto", boxSizing: "border-box", display: tab === "insights" ? "flex" : "none", flexDirection: "column", gap: 18 }}>
         {loading ? (
           <div style={{ color: "var(--text-muted)", fontSize: 14 }}>{t("common.loading")}</div>
         ) : (

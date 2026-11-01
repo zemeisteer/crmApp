@@ -101,7 +101,7 @@ function MockTestsContent() {
     <div className="adm-page" style={{ display: "grid", gap: 16 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 12, flexWrap: "wrap" }}>
         <div>
-          <h1 style={{ fontSize: 22, fontWeight: 800, margin: 0 }}>{t("mock.title")}</h1>
+          <h1 className="page-title" style={{ margin: 0 }}>{t("mock.title")}</h1>
           <p style={{ fontSize: 13, color: "var(--text-muted)", margin: "4px 0 0", maxWidth: 640 }}>{t("mock.intro")}</p>
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>

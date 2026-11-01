@@ -266,11 +266,11 @@ function TrialsContent() {
   const { t } = useLanguage();
   return (
     <>
-      <div style={{ padding: "22px 32px", borderBottom: "1px solid var(--border)" }}>
-        <h1 style={{ fontSize: 22, fontWeight: 800 }}>{t("nav.trials")}</h1>
+      <div style={{ padding: "var(--page-head-pad)" }}>
+        <h1 className="page-title">{t("nav.trials")}</h1>
         <div style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 2 }}>{t("pf.tr.subtitle")}</div>
       </div>
-      <div style={{ padding: "22px 32px", display: "flex", flexDirection: "column", gap: 18 }}>
+      <div style={{ padding: "var(--page-pad)", display: "flex", flexDirection: "column", gap: 18 }}>
         <RenewalPreview />
         <PurgePreview />
         <ReleaseClaim />

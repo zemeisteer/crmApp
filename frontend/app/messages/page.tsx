@@ -44,7 +44,7 @@ function MessagesContent() {
     <div className="chat-page">
       <style>{CSS}</style>
       <div style={{ padding: "18px 32px 12px" }}>
-        <h1 style={{ fontSize: 22, fontWeight: 800 }}>{t("chat.title")}</h1>
+        <h1 className="page-title">{t("chat.title")}</h1>
         <div style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 2, lineHeight: 1.5 }}>{t("chat.subtitle")}</div>
       </div>
       <div style={{ flex: 1, minHeight: 0, display: "flex", padding: "0px 32px 20px", boxSizing: "border-box" }}>

@@ -382,8 +382,8 @@ function SettingsContent() {
 
   return (
     <>
-      <div style={{ padding: "22px 32px", borderBottom: "1px solid var(--border)" }}>
-        <h1 style={{ fontSize: 22, fontWeight: 800 }}>{t("settings.title")}</h1>
+      <div style={{ padding: "var(--page-head-pad)" }}>
+        <h1 className="page-title">{t("settings.title")}</h1>
         <div style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 2 }}>{t("settings.subtitle")}</div>
       </div>
 
@@ -407,7 +407,7 @@ function SettingsContent() {
           ))}
         </div>
 
-        <div style={{ flex: 1, minHeight: 0, padding: "26px 32px", overflow: "auto", boxSizing: "border-box" }}>
+        <div style={{ flex: 1, minHeight: 0, padding: "var(--page-pad)", overflow: "auto", boxSizing: "border-box" }}>
           {tab === "profile" && (
             <div style={{ display: "flex", flexDirection: "column", gap: 20, maxWidth: 640 }}>
               <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 22 }}>

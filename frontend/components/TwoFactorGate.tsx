@@ -51,7 +51,7 @@ export default function TwoFactorGate() {
   return (
     <div style={{ flex: 1, display: "grid", placeItems: "center", padding: 24 }}>
       <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 28, maxWidth: 440, width: "100%", display: "flex", flexDirection: "column", gap: 14 }}>
-        <h1 style={{ fontSize: 19, fontWeight: 800, margin: 0 }}>{t("sa2fa.title")}</h1>
+        <h1 style={{ fontSize: 22, fontWeight: 600, letterSpacing: "-0.02em", margin: 0 }}>{t("sa2fa.title")}</h1>
         <p style={{ fontSize: 13.5, color: "var(--text-soft)", lineHeight: 1.6, margin: 0 }}>{user?.twoFactorEnabled && !recovery ? t("sa2fa.reloginText") : t("sa2fa.text")}</p>
         {recovery && <RecoveryCodes codes={recovery} onDone={() => void refreshMe()} />}
         {error && (

@@ -128,7 +128,7 @@ export default function LoginPage() {
   // 2FA screen
   if (pendingToken) {
     return (
-      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--surface-muted)" }}>
+      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
         <form onSubmit={onSubmitCode} style={{ width: 380, background: "var(--surface)", borderRadius: "var(--radius-lg)", padding: 32, display: "flex", flexDirection: "column", gap: 18, boxShadow: "0 10px 25px rgba(0,0,0,0.05)" }}>
           <div>
             <h2 style={{ fontSize: 20, fontWeight: 800 }}>{t("twofa.title")}</h2>
@@ -177,7 +177,7 @@ export default function LoginPage() {
   // Workspace Selection Screen
   if (workspaces && workspaces.length > 0) {
     return (
-      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--surface-muted)", padding: 24, position: "relative" }}>
+      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: 24, position: "relative" }}>
         {/* Top right language switch */}
         <div
           style={{
@@ -187,8 +187,9 @@ export default function LoginPage() {
             zIndex: 10,
             display: "flex",
             gap: 4,
-            background: "var(--surface-muted)",
-            borderRadius: "var(--radius-sm)",
+            background: "var(--surface)",
+            border: "1px solid var(--border)",
+            borderRadius: "var(--radius-pill)",
             padding: 3,
           }}
         >
@@ -201,12 +202,12 @@ export default function LoginPage() {
                 fontSize: 11,
                 fontWeight: 700,
                 padding: "6px 10px",
-                borderRadius: "var(--radius-xs)",
+                borderRadius: "var(--radius-pill)",
                 border: "none",
                 cursor: "pointer",
-                background: lang === l ? "var(--surface)" : "transparent",
-                color: lang === l ? "var(--text)" : "var(--text-muted)",
-                boxShadow: lang === l ? "0 1px 3px rgba(18,19,26,0.08)" : "none",
+                background: lang === l ? "var(--ink)" : "transparent",
+                color: lang === l ? "var(--on-ink)" : "var(--text-muted)",
+                boxShadow: "none",
               }}
             >
               {l}
@@ -360,7 +361,7 @@ export default function LoginPage() {
 
   // Standard Login Screen
   return (
-    <div style={{ minHeight: "100vh", display: "flex", background: "var(--surface-muted)", position: "relative" }}>
+    <div className="auth-shell" style={{ minHeight: "100vh", display: "flex", position: "relative" }}>
       {/* Top right language switch */}
       <div
         style={{
@@ -370,8 +371,9 @@ export default function LoginPage() {
           zIndex: 10,
           display: "flex",
           gap: 4,
-          background: "var(--surface-muted)",
-          borderRadius: "var(--radius-sm)",
+          background: "var(--surface)",
+          border: "1px solid var(--border)",
+          borderRadius: "var(--radius-pill)",
           padding: 3,
         }}
       >
@@ -384,12 +386,12 @@ export default function LoginPage() {
               fontSize: 11,
               fontWeight: 700,
               padding: "6px 10px",
-              borderRadius: "var(--radius-xs)",
+              borderRadius: "var(--radius-pill)",
               border: "none",
               cursor: "pointer",
-              background: lang === l ? "var(--surface)" : "transparent",
-              color: lang === l ? "var(--text)" : "var(--text-muted)",
-              boxShadow: lang === l ? "0 1px 3px rgba(18,19,26,0.08)" : "none",
+              background: lang === l ? "var(--ink)" : "transparent",
+              color: lang === l ? "var(--on-ink)" : "var(--text-muted)",
+              boxShadow: "none",
             }}
           >
             {l}
@@ -401,7 +403,8 @@ export default function LoginPage() {
       <div
         style={{
           flex: 1.1,
-          background: "linear-gradient(135deg, #090514 0%, #161033 50%, #20154D 100%)",
+          background: "var(--accent-gradient)",
+          color: "var(--on-accent)",
           // display comes from the class: hidden on phones, flex from md up.
           flexDirection: "column",
           justifyContent: "space-between",
@@ -410,7 +413,7 @@ export default function LoginPage() {
           position: "relative",
           overflow: "hidden",
         }}
-        className="hidden md:flex"
+        className="hidden md:flex auth-hero"
       >
         <div style={{ display: "flex", alignItems: "center", gap: 12, position: "relative", zIndex: 2 }}>
           <div
@@ -418,11 +421,11 @@ export default function LoginPage() {
               width: 36,
               height: 36,
               borderRadius: "var(--radius-sm)",
-              background: "linear-gradient(135deg, var(--primary), var(--primary))",
+              background: "var(--ink)", color: "var(--on-ink)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              boxShadow: "0 4px 12px rgba(79, 70, 229, 0.35)",
+              
             }}
           >
             <svg
@@ -430,7 +433,7 @@ export default function LoginPage() {
               height="20"
               viewBox="0 0 24 24"
               fill="none"
-              stroke="var(--surface)"
+              stroke="currentColor"
               strokeWidth="2.2"
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -439,21 +442,21 @@ export default function LoginPage() {
               <path d="M6 12v5c0 1.5 2.7 3 6 3s6-1.5 6-3v-5" />
             </svg>
           </div>
-          <span style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 21, color: "var(--on-ink)", letterSpacing: "-0.02em" }}>
+          <span style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 21, color: "var(--on-accent)", letterSpacing: "-0.02em" }}>
             TalimCRM
           </span>
         </div>
 
         <div style={{ position: "relative", zIndex: 2, display: "flex", flexDirection: "column", gap: 20, maxWidth: 440 }}>
-          <h1 style={{ fontSize: 36, lineHeight: 1.25, fontWeight: 800, color: "var(--on-ink)", letterSpacing: "-0.025em" }}>
+          <h1 style={{ fontSize: 36, lineHeight: 1.25, fontWeight: 600, color: "var(--on-accent)", letterSpacing: "-0.035em" }}>
             {t("auth.welcomeHero")}
           </h1>
-          <p style={{ fontSize: 15.5, lineHeight: 1.65, color: "var(--primary-border)" }}>
+          <p style={{ fontSize: 15.5, lineHeight: 1.65, color: "var(--on-accent)", opacity: 0.85 }}>
             {t("auth.welcomeHeroSubtitle")}
           </p>
         </div>
 
-        <div style={{ position: "relative", zIndex: 2, fontSize: 13, color: "var(--text-faint)" }}>
+        <div style={{ position: "relative", zIndex: 2, fontSize: 13, color: "var(--on-accent)", opacity: 0.75 }}>
           TalimCRM &copy; {new Date().getFullYear()} — {t("auth.allRightsReserved")}
         </div>
 
@@ -463,7 +466,7 @@ export default function LoginPage() {
             width: 460,
             height: 460,
             borderRadius: "50%",
-            background: "radial-gradient(circle, rgba(99,102,241,0.22), transparent 70%)",
+            background: "radial-gradient(circle, rgba(255,255,255,0.28), transparent 70%)",
             top: -120,
             right: -100,
             zIndex: 1,
@@ -472,7 +475,7 @@ export default function LoginPage() {
       </div>
 
       {/* RIGHT: login form */}
-      <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", background: "var(--surface)", padding: "32px 24px" }}>
+      <div className="auth-panel" style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", background: "var(--surface)", padding: "32px 24px" }}>
         <form onSubmit={onSubmit} style={{ width: "100%", maxWidth: 390, display: "flex", flexDirection: "column", gap: 24 }}>
           {/* Header */}
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>

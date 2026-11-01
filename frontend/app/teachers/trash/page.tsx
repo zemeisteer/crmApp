@@ -40,17 +40,17 @@ function TrashContent() {
 
   return (
     <>
-      <div style={{ padding: "22px 32px", borderBottom: "1px solid var(--border)" }}>
+      <div style={{ padding: "var(--page-head-pad)" }}>
         <Link href="/teachers" style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 600, color: "var(--text-muted)", marginBottom: 10 }}>
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
             <path d="M15 18l-6-6 6-6" />
           </svg>
           {tr("trash.backToTeachers")}
         </Link>
-        <h1 style={{ fontSize: 22, fontWeight: 800 }}>{tr("trash.teachersTitle")}</h1>
+        <h1 className="page-title">{tr("trash.teachersTitle")}</h1>
       </div>
 
-      <div style={{ flex: 1, minHeight: 0, padding: "26px 32px", overflow: "auto", boxSizing: "border-box" }}>
+      <div style={{ flex: 1, minHeight: 0, padding: "var(--page-pad)", overflow: "auto", boxSizing: "border-box" }}>
         {loading ? (
           <div style={{ color: "var(--text-muted)", fontSize: 14 }}>{tr("common.loading")}</div>
         ) : teachers.length === 0 ? (

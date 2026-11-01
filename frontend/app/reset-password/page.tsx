@@ -90,7 +90,7 @@ function ResetPasswordForm() {
 export default function ResetPasswordPage() {
   const { t } = useLanguage();
   return (
-    <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--surface-muted)" }}>
+    <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
       <div style={{ width: 380, background: "var(--surface)", borderRadius: "var(--radius-lg)", padding: 32 }}>
         <Suspense fallback={<div style={{ color: "var(--text-muted)", fontSize: 14 }}>{t("common.loading")}</div>}>
           <ResetPasswordForm />

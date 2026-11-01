@@ -74,9 +74,9 @@ function HiringContent() {
 
   return (
     <>
-      <div style={{ padding: "22px 32px", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16, flexWrap: "wrap" }}>
+      <div style={{ padding: "var(--page-head-pad)", display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16, flexWrap: "wrap" }}>
         <div>
-          <h1 style={{ fontSize: 22, fontWeight: 800 }}>{t("hire.title")}</h1>
+          <h1 className="page-title">{t("hire.title")}</h1>
           <div style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 2, lineHeight: 1.5, maxWidth: 640 }}>{t("hire.subtitle")}</div>
         </div>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
@@ -89,7 +89,7 @@ function HiringContent() {
         </div>
       </div>
 
-      <div style={{ padding: "20px 32px", display: "flex", flexDirection: "column", gap: 16 }}>
+      <div style={{ padding: "var(--page-pad)", display: "flex", flexDirection: "column", gap: 16 }}>
         <div role="tablist" aria-label={t("hire.title")} style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           {(["ALL", ...STAGES] as const).map((s) => {
             const active = stage === s;

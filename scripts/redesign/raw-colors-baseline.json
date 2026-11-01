@@ -1,8 +1,6 @@
 {
   "frontend/app/homework/page.tsx": 2,
-  "frontend/app/login/page.tsx": 3,
   "frontend/app/payments/page.tsx": 2,
-  "frontend/app/register/page.tsx": 3,
   "frontend/app/settings/page.tsx": 9,
   "frontend/app/students/[id]/page.tsx": 1,
   "frontend/components/MarkdownLite.tsx": 1,

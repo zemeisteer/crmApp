@@ -202,7 +202,7 @@ export function AnnouncementsContent() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-extrabold text-fg tracking-tight flex items-center gap-2.5">
+          <h1 className="page-title text-fg flex items-center gap-2.5">
             <span className="p-2 rounded-xl bg-primary-soft text-primary border border-primary-soft">
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="m3 11 18-5v12L3 14v-3z" />
@@ -557,7 +557,7 @@ export function AnnouncementsContent() {
 export default function AnnouncementsPage() {
   return (
     <DashboardShell>
-      <div style={{ padding: "24px 32px", width: "100%", maxWidth: 1400, margin: "0 auto", boxSizing: "border-box" }}>
+      <div style={{ padding: "var(--page-pad)", width: "100%", maxWidth: 1400, margin: "0 auto", boxSizing: "border-box" }}>
         <AnnouncementsContent />
       </div>
     </DashboardShell>

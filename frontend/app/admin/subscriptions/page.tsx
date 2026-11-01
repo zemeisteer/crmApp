@@ -71,8 +71,8 @@ function SubscriptionsContent() {
 
   return (
     <>
-      <div style={{ padding: "22px 32px", borderBottom: "1px solid var(--border)" }}>
-        <h1 style={{ fontSize: 22, fontWeight: 800 }}>{t("pf.sub.title")}</h1>
+      <div style={{ padding: "var(--page-head-pad)" }}>
+        <h1 className="page-title">{t("pf.sub.title")}</h1>
         <div style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 2 }}>{t("pf.sub.subtitle")}{data ? ` · ${monthLabel(data.month, lang)}` : ""}</div>
         <div role="tablist" style={{ display: "flex", gap: 8, marginTop: 14 }}>
           {(["list", "cards"] as const).map((v) => (
@@ -93,12 +93,12 @@ function SubscriptionsContent() {
       </div>
 
       {view === "cards" && (
-        <div style={{ padding: "22px 32px" }}>
+        <div style={{ padding: "var(--page-pad)" }}>
           <PlatformCardClaims onPendingChange={setCardPending} />
         </div>
       )}
 
-      <div style={{ padding: "22px 32px", display: view === "list" ? "flex" : "none", flexDirection: "column", gap: 16 }}>
+      <div style={{ padding: "var(--page-pad)", display: view === "list" ? "flex" : "none", flexDirection: "column", gap: 16 }}>
         <div className="adm-toolbar">
           <input className="field-input" placeholder={t("pf.sub.search")} value={search} onChange={(e) => setSearch(e.target.value)} style={{ width: 280 }} aria-label={t("pf.sub.search")} />
           <Select ariaLabel={t("pf.sub.colStatus")} value={status} onChange={(v) => { setStatus(v); setPage(1); }} options={[{ value: "", label: t("sa.allStatuses") }, ...STATUSES.map((s) => ({ value: s, label: t(STATUS_LABEL_KEYS[s]) }))]} style={{ width: 200 }} />

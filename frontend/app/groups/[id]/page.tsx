@@ -323,7 +323,7 @@ function GroupDetailContent() {
 
   return (
     <>
-      <div style={{ padding: "22px 32px", borderBottom: "1px solid var(--border)" }}>
+      <div style={{ padding: "var(--page-head-pad)" }}>
         <Link href="/groups" style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 600, color: "var(--text-muted)", marginBottom: 10 }}>
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
             <path d="M15 18l-6-6 6-6" />
@@ -332,7 +332,7 @@ function GroupDetailContent() {
         </Link>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div>
-            <h1 style={{ fontSize: 22, fontWeight: 800, display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+            <h1 className="page-title" style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
               {group.name}
               {(() => {
                 const max = group.maxStudents || 0;
@@ -372,7 +372,7 @@ function GroupDetailContent() {
         </div>
       </div>
 
-      <div style={{ flex: 1, minHeight: 0, padding: "26px 32px", display: "flex", flexDirection: "column", gap: 20, overflow: "auto", boxSizing: "border-box" }}>
+      <div style={{ flex: 1, minHeight: 0, padding: "var(--page-pad)", display: "flex", flexDirection: "column", gap: 20, overflow: "auto", boxSizing: "border-box" }}>
         <div style={{ display: "grid", gridTemplateColumns: `repeat(${seesPay && dues ? 5 : 3}, minmax(0,1fr))`, gap: 16 }}>
           <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 18 }}>
             <div style={{ fontSize: 12, color: "var(--text-muted)" }}>{t("groupDetail.statStudents")}</div>
@@ -612,7 +612,7 @@ function GroupDetailContent() {
         title={t("groupDetail.modalTitle")}
         width={520}
       >
-        <div style={{ display: "flex", background: "var(--surface-muted)", borderRadius: "var(--radius-sm)", padding: 4, marginBottom: 18 }}>
+        <div style={{ display: "flex", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-pill)", padding: 4, marginBottom: 18 }}>
           <button
             type="button"
             onClick={() => setEnrollMode("existing")}
@@ -622,13 +622,13 @@ function GroupDetailContent() {
               fontSize: 12.5,
               fontWeight: 700,
               padding: "8px 12px",
-              borderRadius: "var(--radius-xs)",
+              borderRadius: "var(--radius-pill)",
               cursor: availableStudents.length === 0 ? "not-allowed" : "pointer",
               border: "none",
               opacity: availableStudents.length === 0 ? 0.45 : 1,
-              background: enrollMode === "existing" ? "var(--surface)" : "transparent",
-              color: enrollMode === "existing" ? "var(--text)" : "var(--text-muted)",
-              boxShadow: enrollMode === "existing" ? "0 1px 3px rgba(18,19,26,0.08)" : "none",
+              background: enrollMode === "existing" ? "var(--ink)" : "transparent",
+              color: enrollMode === "existing" ? "var(--on-ink)" : "var(--text-muted)",
+              boxShadow: "none",
               transition: "all 0.15s ease",
             }}
           >
@@ -642,12 +642,12 @@ function GroupDetailContent() {
               fontSize: 12.5,
               fontWeight: 700,
               padding: "8px 12px",
-              borderRadius: "var(--radius-xs)",
+              borderRadius: "var(--radius-pill)",
               cursor: "pointer",
               border: "none",
-              background: enrollMode === "new" ? "var(--surface)" : "transparent",
-              color: enrollMode === "new" ? "var(--text)" : "var(--text-muted)",
-              boxShadow: enrollMode === "new" ? "0 1px 3px rgba(18,19,26,0.08)" : "none",
+              background: enrollMode === "new" ? "var(--ink)" : "transparent",
+              color: enrollMode === "new" ? "var(--on-ink)" : "var(--text-muted)",
+              boxShadow: "none",
               transition: "all 0.15s ease",
             }}
           >

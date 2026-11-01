@@ -224,9 +224,9 @@ function StudentsContent() {
 
   return (
     <>
-      <div style={{ padding: "22px 32px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
+      <div style={{ padding: "var(--page-head-pad)", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
         <div>
-          <h1 style={{ fontSize: 22, fontWeight: 800 }}>{t("students.title")}</h1>
+          <h1 className="page-title">{t("students.title")}</h1>
           <Link href="/students/trash" style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 600 }}>
             {t("nav.trash")}
           </Link>
@@ -267,7 +267,7 @@ function StudentsContent() {
         </div>
       </div>
 
-      <div style={{ flex: 1, minHeight: 0, padding: "26px 32px", overflow: "auto", boxSizing: "border-box" }}>
+      <div style={{ flex: 1, minHeight: 0, padding: "var(--page-pad)", overflow: "auto", boxSizing: "border-box" }}>
         {!!allCount && (
           <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap", alignItems: "center" }}>
             <input

@@ -105,7 +105,7 @@ export default function CustomFieldsManager() {
       className="btn"
       aria-pressed={entity === e}
       onClick={() => { setEntity(e); setActionError(null); }}
-      style={{ border: "none", fontSize: 13, fontWeight: 700, padding: "8px 14px", borderRadius: "var(--radius-xs)", background: entity === e ? "var(--surface)" : "transparent", color: entity === e ? "var(--text)" : "var(--text-muted)", boxShadow: entity === e ? "0 1px 3px rgba(18,19,26,0.08)" : "none" }}
+      style={{ border: "none", fontSize: 13, fontWeight: 700, padding: "8px 14px", borderRadius: "var(--radius-pill)", background: entity === e ? "var(--ink)" : "transparent", color: entity === e ? "var(--on-ink)" : "var(--text-muted)", boxShadow: "none" }}
     >
       {label}
     </button>

@@ -247,8 +247,7 @@ function ReportsContent() {
       {/* Header */}
       <div
         style={{
-          padding: "22px 32px",
-          borderBottom: "1px solid var(--border)",
+          padding: "var(--page-head-pad)",
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
@@ -257,7 +256,7 @@ function ReportsContent() {
         }}
       >
         <div>
-          <h1 style={{ fontSize: 22, fontWeight: 800 }}>{t("reports.title")}</h1>
+          <h1 className="page-title">{t("reports.title")}</h1>
           <p style={{ fontSize: 12.5, color: "var(--text-muted)", marginTop: 2 }}>
             {t("rep3.subtitle")}
           </p>
@@ -265,7 +264,7 @@ function ReportsContent() {
 
         {/* Tab switchers */}
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <div style={{ display: "flex", background: "var(--surface-muted)", borderRadius: "var(--radius-sm)", padding: 3, gap: 2, flexWrap: "wrap" }}>
+          <div style={{ display: "flex", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-pill)", padding: 3, gap: 2, flexWrap: "wrap" }}>
             <button
               type="button"
               onClick={() => setActiveTab("director")}
@@ -354,7 +353,7 @@ function ReportsContent() {
         </div>
       </div>
 
-      <div style={{ flex: 1, minHeight: 0, padding: "26px 32px", display: "flex", flexDirection: "column", gap: 20, overflow: "auto", boxSizing: "border-box" }}>
+      <div style={{ flex: 1, minHeight: 0, padding: "var(--page-pad)", display: "flex", flexDirection: "column", gap: 20, overflow: "auto", boxSizing: "border-box" }}>
         
         {/* ========================================================================= */}
         {/* TAB 1: OVERVIEW & GENERAL FINANCE                                         */}

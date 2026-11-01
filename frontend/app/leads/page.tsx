@@ -175,13 +175,13 @@ function LeadsContent() {
 
   return (
     <>
-      <div className="adm-page" style={{ borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+      <div className="adm-page adm-head" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
         <div>
-          <h1 style={{ fontSize: 22, fontWeight: 800 }}>{t("leads.title")}</h1>
+          <h1 className="page-title">{t("leads.title")}</h1>
           <p style={{ fontSize: 12.5, color: "var(--text-muted)", marginTop: 2 }}>{t("leads.subtitle")}</p>
         </div>
         <div className="adm-actions">
-          <div style={{ display: "flex", background: "var(--surface-muted)", borderRadius: "var(--radius-sm)", padding: 3, gap: 2 }}>
+          <div style={{ display: "flex", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-pill)", padding: 3, gap: 2 }}>
             {(["list", "pipeline"] as const).map((v) => (
               <button
                 key={v}

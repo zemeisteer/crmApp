@@ -93,14 +93,14 @@ function AuditLogContent() {
 
   return (
     <>
-      <div style={{ padding: "22px 32px", borderBottom: "1px solid var(--border)" }}>
-        <h1 style={{ fontSize: 22, fontWeight: 800 }}>{t("auditLog.title")}</h1>
+      <div style={{ padding: "var(--page-head-pad)" }}>
+        <h1 className="page-title">{t("auditLog.title")}</h1>
         <div style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 2, maxWidth: 640, lineHeight: 1.5 }}>
           {t("auditLog.subtitle")}
         </div>
       </div>
 
-      <div style={{ flex: 1, minHeight: 0, padding: "26px 32px", overflow: "auto", boxSizing: "border-box" }}>
+      <div style={{ flex: 1, minHeight: 0, padding: "var(--page-pad)", overflow: "auto", boxSizing: "border-box" }}>
         <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
           <input
             className="field-input"

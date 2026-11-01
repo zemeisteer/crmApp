@@ -100,7 +100,7 @@ function TrialLocked({ purgeAt }: { purgeAt: string | null }) {
   return (
     <div style={{ flex: 1, display: "grid", placeItems: "center", padding: 24 }}>
       <div role="alert" style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 28, maxWidth: 480, width: "100%", display: "flex", flexDirection: "column", gap: 12, textAlign: "center" }}>
-        <h1 style={{ fontSize: 19, fontWeight: 800, margin: 0 }}>{t("trial.lockedTitle")}</h1>
+        <h1 style={{ fontSize: 22, fontWeight: 600, letterSpacing: "-0.02em", margin: 0 }}>{t("trial.lockedTitle")}</h1>
         <p style={{ fontSize: 13.5, color: "var(--text-soft)", lineHeight: 1.6, margin: 0 }}>{t("trial.lockedText")}</p>
         {purgeAt && (
           <p style={{ fontSize: 13, color: "var(--danger)", fontWeight: 600, lineHeight: 1.6, margin: 0 }}>

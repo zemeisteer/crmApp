@@ -37,7 +37,7 @@ const MIN_TESTIMONIALS = 10;
 const SOCIAL_ICON: Record<string, string> = { instagram: "📸", telegram: "✈️", youtube: "▶️", facebook: "📘", tiktok: "🎵" };
 
 const CSS = `
-  .ps{--bg:var(--surface-muted);--surface:var(--surface);--border:var(--border);--text:var(--text);--text-2:var(--text-soft);--muted:var(--text-muted);--chip:var(--surface-muted);background:var(--bg);color:var(--text);min-height:100vh;font-family:'Inter',system-ui,sans-serif;}
+  .ps{--bg:var(--surface-muted);--text-2:var(--text-soft);--muted:var(--text-muted);--chip:var(--surface-muted);background:var(--bg);color:var(--text);min-height:100vh;font-family:'Inter',system-ui,sans-serif;}
   .ps h1,.ps h2,.ps h3{font-family:'Manrope',system-ui,sans-serif;margin:0;}
   .ps a{color:inherit;text-decoration:none;}
   .ps-wrap{max-width:1160px;margin:0 auto;padding:0 32px;box-sizing:border-box;}

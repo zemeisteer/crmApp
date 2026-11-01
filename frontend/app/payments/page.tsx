@@ -1138,8 +1138,7 @@ function PaymentsContent() {
       {/* Top Header */}
       <div
         style={{
-          padding: "20px 32px",
-          borderBottom: "1px solid var(--border)",
+          padding: "var(--page-head-pad)",
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
@@ -1148,15 +1147,17 @@ function PaymentsContent() {
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: "10px 20px", flexWrap: "wrap", minWidth: 0, maxWidth: "100%" }}>
-          <h1 style={{ fontSize: 22, fontWeight: 800, margin: 0 }}>{t("payments.title")}</h1>
+          <h1 className="page-title" style={{ margin: 0 }}>{t("payments.title")}</h1>
 
           {/* 3 Tabs (scroll sideways on a phone) */}
           <div
             style={{
               display: "flex",
-              background: "var(--surface-muted)",
-              borderRadius: "var(--radius-sm)",
-              padding: 3,
+              gap: 2,
+              background: "var(--surface)",
+              border: "1px solid var(--border)",
+              borderRadius: "var(--radius-pill)",
+              padding: 4,
               maxWidth: "100%",
               overflowX: "auto",
               whiteSpace: "nowrap",
@@ -1168,12 +1169,12 @@ function PaymentsContent() {
                 fontSize: 13,
                 fontWeight: 700,
                 padding: "7px 16px",
-                borderRadius: "var(--radius-xs)",
+                borderRadius: "var(--radius-pill)",
                 cursor: "pointer",
                 border: "none",
-                background: activeTab === "history" ? "var(--surface)" : "transparent",
-                color: activeTab === "history" ? "var(--text)" : "var(--text-muted)",
-                boxShadow: activeTab === "history" ? "0 1px 3px rgba(18,19,26,0.08)" : "none",
+                background: activeTab === "history" ? "var(--ink)" : "transparent",
+                color: activeTab === "history" ? "var(--on-ink)" : "var(--text-muted)",
+                boxShadow: "none",
                 transition: "all 0.15s ease",
               }}
             >
@@ -1185,12 +1186,12 @@ function PaymentsContent() {
                 fontSize: 13,
                 fontWeight: 700,
                 padding: "7px 16px",
-                borderRadius: "var(--radius-xs)",
+                borderRadius: "var(--radius-pill)",
                 cursor: "pointer",
                 border: "none",
-                background: activeTab === "debtors" ? "var(--surface)" : "transparent",
-                color: activeTab === "debtors" ? "var(--text)" : "var(--text-muted)",
-                boxShadow: activeTab === "debtors" ? "0 1px 3px rgba(18,19,26,0.08)" : "none",
+                background: activeTab === "debtors" ? "var(--ink)" : "transparent",
+                color: activeTab === "debtors" ? "var(--on-ink)" : "var(--text-muted)",
+                boxShadow: "none",
                 display: "flex",
                 alignItems: "center",
                 gap: 6,
@@ -1220,12 +1221,12 @@ function PaymentsContent() {
                 fontSize: 13,
                 fontWeight: 700,
                 padding: "7px 16px",
-                borderRadius: "var(--radius-xs)",
+                borderRadius: "var(--radius-pill)",
                 cursor: "pointer",
                 border: "none",
-                background: activeTab === "invoices" ? "var(--surface)" : "transparent",
-                color: activeTab === "invoices" ? "var(--text)" : "var(--text-muted)",
-                boxShadow: activeTab === "invoices" ? "0 1px 3px rgba(18,19,26,0.08)" : "none",
+                background: activeTab === "invoices" ? "var(--ink)" : "transparent",
+                color: activeTab === "invoices" ? "var(--on-ink)" : "var(--text-muted)",
+                boxShadow: "none",
                 transition: "all 0.15s ease",
               }}
             >
@@ -1239,12 +1240,12 @@ function PaymentsContent() {
                 fontSize: 13,
                 fontWeight: 700,
                 padding: "7px 16px",
-                borderRadius: "var(--radius-xs)",
+                borderRadius: "var(--radius-pill)",
                 cursor: "pointer",
                 border: "none",
-                background: activeTab === "expenses" ? "var(--surface)" : "transparent",
-                color: activeTab === "expenses" ? "var(--text)" : "var(--text-muted)",
-                boxShadow: activeTab === "expenses" ? "0 1px 3px rgba(18,19,26,0.08)" : "none",
+                background: activeTab === "expenses" ? "var(--ink)" : "transparent",
+                color: activeTab === "expenses" ? "var(--on-ink)" : "var(--text-muted)",
+                boxShadow: "none",
                 transition: "all 0.15s ease",
               }}
             >
@@ -1258,12 +1259,12 @@ function PaymentsContent() {
                 fontSize: 13,
                 fontWeight: 700,
                 padding: "7px 16px",
-                borderRadius: "var(--radius-xs)",
+                borderRadius: "var(--radius-pill)",
                 cursor: "pointer",
                 border: "none",
-                background: activeTab === "cash" ? "var(--surface)" : "transparent",
-                color: activeTab === "cash" ? "var(--text)" : "var(--text-muted)",
-                boxShadow: activeTab === "cash" ? "0 1px 3px rgba(18,19,26,0.08)" : "none",
+                background: activeTab === "cash" ? "var(--ink)" : "transparent",
+                color: activeTab === "cash" ? "var(--on-ink)" : "var(--text-muted)",
+                boxShadow: "none",
                 transition: "all 0.15s ease",
               }}
             >
@@ -1278,12 +1279,12 @@ function PaymentsContent() {
                 fontSize: 13,
                 fontWeight: 700,
                 padding: "7px 16px",
-                borderRadius: "var(--radius-xs)",
+                borderRadius: "var(--radius-pill)",
                 cursor: "pointer",
                 border: "none",
-                background: activeTab === "cards" ? "var(--surface)" : "transparent",
-                color: activeTab === "cards" ? "var(--text)" : "var(--text-muted)",
-                boxShadow: activeTab === "cards" ? "0 1px 3px rgba(18,19,26,0.08)" : "none",
+                background: activeTab === "cards" ? "var(--ink)" : "transparent",
+                color: activeTab === "cards" ? "var(--on-ink)" : "var(--text-muted)",
+                boxShadow: "none",
                 transition: "all 0.15s ease",
               }}
             >
@@ -1412,7 +1413,7 @@ function PaymentsContent() {
         style={{
           flex: 1,
           minHeight: 0,
-          padding: "24px 32px",
+          padding: "var(--page-pad)",
           display: "flex",
           flexDirection: "column",
           gap: 20,
@@ -1537,7 +1538,7 @@ function PaymentsContent() {
                     >
                       {t("payments.revenueDynamics")}
                     </div>
-                    <div style={{ display: "flex", background: "var(--surface-muted)", borderRadius: "var(--radius-sm)", padding: 3 }}>
+                    <div style={{ display: "flex", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-pill)", padding: 3 }}>
                       {(
                         [
                           ["day", t("payments.periodDay")],
@@ -1554,12 +1555,12 @@ function PaymentsContent() {
                             fontSize: 12,
                             fontWeight: 700,
                             padding: "6px 12px",
-                            borderRadius: "var(--radius-xs)",
+                            borderRadius: "var(--radius-pill)",
                             cursor: "pointer",
                             border: "none",
-                            background: period === p ? "var(--surface)" : "transparent",
-                            color: period === p ? "var(--text)" : "var(--text-muted)",
-                            boxShadow: period === p ? "0 1px 3px rgba(18,19,26,0.08)" : "none",
+                            background: period === p ? "var(--ink)" : "transparent",
+                            color: period === p ? "var(--on-ink)" : "var(--text-muted)",
+                            boxShadow: "none",
                           }}
                         >
                           {l}

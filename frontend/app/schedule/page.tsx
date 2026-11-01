@@ -435,7 +435,7 @@ export default function SchedulePage() {
     <DashboardShell>
       <div
         style={{
-          padding: "24px 32px",
+          padding: "var(--page-pad)",
           width: "100%",
           maxWidth: 1600,
           margin: "0 auto",
@@ -446,7 +446,7 @@ export default function SchedulePage() {
         {/* Header */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16, marginBottom: 24, flexWrap: "wrap" }}>
         <div>
-          <h1 style={{ fontSize: 24, fontWeight: 800, color: "var(--text)", margin: "0 0 6px" }}>{t("schedule.title")}</h1>
+          <h1 className="page-title" style={{ margin: "0 0 6px" }}>{t("schedule.title")}</h1>
           <p style={{ color: "var(--text-muted)", margin: 0, fontSize: 13.5 }}>{t("schedule.subtitle")}</p>
         </div>
         <div style={{ display: "flex", gap: 10 }}>

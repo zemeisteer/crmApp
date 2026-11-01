@@ -185,7 +185,7 @@ function CertificatesContent() {
         <div>
           <div className="flex items-center gap-2 mb-1">
             <span className="w-2.5 h-2.5 rounded-full bg-primary" />
-            <h1 className="text-xl sm:text-2xl font-extrabold text-fg tracking-tight">
+            <h1 className="page-title text-fg">
               {t("cert.title")}
             </h1>
           </div>
@@ -506,7 +506,7 @@ function CertificatesContent() {
 export default function CertificatesPage() {
   return (
     <DashboardShell>
-      <div style={{ padding: "24px 32px", width: "100%", maxWidth: 1400, margin: "0 auto", boxSizing: "border-box" }}>
+      <div style={{ padding: "var(--page-pad)", width: "100%", maxWidth: 1400, margin: "0 auto", boxSizing: "border-box" }}>
         <CertificatesContent />
       </div>
     </DashboardShell>

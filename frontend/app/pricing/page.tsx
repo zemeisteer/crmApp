@@ -77,15 +77,15 @@ function TenantPricing() {
 
   return (
     <>
-      <div style={{ padding: "22px 32px", borderBottom: "1px solid var(--border)" }}>
-        <h1 style={{ fontSize: 22, fontWeight: 800 }}>{t("pricing.title")}</h1>
+      <div style={{ padding: "var(--page-head-pad)" }}>
+        <h1 className="page-title">{t("pricing.title")}</h1>
         <div style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 2 }}>
           {t("pricing.currentPlan")}: <strong>{tenant?.plan}</strong> · {t("pricing.status")}: <strong>{tenant?.status}</strong>
           {tenant?.billing?.paidUntil && <> · <span data-testid="paid-until">{t("billing.paidUntil").replace("{date}", formatDate(tenant.billing.paidUntil, lang))}</span></>}
         </div>
       </div>
 
-      <div style={{ flex: 1, minHeight: 0, padding: "26px 32px", overflow: "auto", boxSizing: "border-box" }}>
+      <div style={{ flex: 1, minHeight: 0, padding: "var(--page-pad)", overflow: "auto", boxSizing: "border-box" }}>
         {loading ? (
           <div style={{ color: "var(--text-muted)", fontSize: 14 }}>{t("common.loading")}</div>
         ) : (
@@ -442,9 +442,9 @@ function SuperadminPlans() {
 
   return (
     <>
-      <div style={{ padding: "22px 32px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+      <div style={{ padding: "var(--page-head-pad)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div>
-          <h1 style={{ fontSize: 22, fontWeight: 800 }}>{t("pricing.title")}</h1>
+          <h1 className="page-title">{t("pricing.title")}</h1>
           <div style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 2 }}>
             {t("pricing.superadminHint")}
           </div>
@@ -458,7 +458,7 @@ function SuperadminPlans() {
         </button>
       </div>
 
-      <div style={{ flex: 1, minHeight: 0, padding: "26px 32px", overflow: "auto", boxSizing: "border-box" }}>
+      <div style={{ flex: 1, minHeight: 0, padding: "var(--page-pad)", overflow: "auto", boxSizing: "border-box" }}>
         {error && (
           <div role="alert" style={{ background: "var(--danger-soft)", color: "var(--danger)", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: "var(--radius-sm)", marginBottom: 16 }}>{error}</div>
         )}

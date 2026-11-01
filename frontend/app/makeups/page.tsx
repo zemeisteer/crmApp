@@ -36,8 +36,8 @@ function MakeupsContent() {
 
   return (
     <>
-      <div style={{ padding: "22px 32px", borderBottom: "1px solid var(--border)" }}>
-        <h1 style={{ fontSize: 22, fontWeight: 800 }}>{t("mk.title")}</h1>
+      <div style={{ padding: "var(--page-head-pad)" }}>
+        <h1 className="page-title">{t("mk.title")}</h1>
         <div style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 2, lineHeight: 1.5 }}>{t(seesCredits ? "mk.subtitle" : "mk.subtitleTeacher")}</div>
         {seesCredits && (
           // How the three tabs fit together, for someone who opens this page the first time.
@@ -52,7 +52,7 @@ function MakeupsContent() {
           </details>
         )}
       </div>
-      <div style={{ flex: 1, minHeight: 0, padding: "20px 32px", display: "flex", flexDirection: "column", gap: 16, overflow: "auto", boxSizing: "border-box" }}>
+      <div style={{ flex: 1, minHeight: 0, padding: "var(--page-pad)", display: "flex", flexDirection: "column", gap: 16, overflow: "auto", boxSizing: "border-box" }}>
         {tabs.length === 0 ? (
           <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 24, color: "var(--text-muted)", fontSize: 13.5 }}>{t("mk.noAccess")}</div>
         ) : (

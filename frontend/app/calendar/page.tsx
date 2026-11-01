@@ -30,11 +30,11 @@ function CalendarContent() {
 
   return (
     <>
-      <div style={{ padding: "22px 32px", borderBottom: "1px solid var(--border)" }}>
-        <h1 style={{ fontSize: 22, fontWeight: 800 }}>{t("cal.title")}</h1>
+      <div style={{ padding: "var(--page-head-pad)" }}>
+        <h1 className="page-title">{t("cal.title")}</h1>
         <div style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 2, lineHeight: 1.5 }}>{t("cal.subtitle")}</div>
       </div>
-      <div style={{ flex: 1, minHeight: 0, padding: "20px 32px", overflow: "auto", boxSizing: "border-box" }}>
+      <div style={{ flex: 1, minHeight: 0, padding: "var(--page-pad)", overflow: "auto", boxSizing: "border-box" }}>
         <div style={{ maxWidth: 760, display: "flex", flexDirection: "column", gap: 16, minWidth: 0 }}>
           {returned && (
             <div

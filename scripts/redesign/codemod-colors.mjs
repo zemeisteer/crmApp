@@ -71,6 +71,12 @@ for (const file of files) {
         return hex;
       }
       const token = entry[kindOf(line.slice(0, offset))] ?? entry.token;
+      // A local definition of the same variable (--surface:#fff) would become
+      // --surface:var(--surface), a cycle that invalidates it: leave it.
+      if (new RegExp(`${token}\\s*:\\s*$`).test(line.slice(0, offset))) {
+        (unknown[key] ??= new Set()).add(rel);
+        return hex;
+      }
       perToken[token] = (perToken[token] ?? 0) + 1;
       changed++;
       return `var(${token})`;

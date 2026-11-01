@@ -426,9 +426,9 @@ function ExamsContent() {
 
   return (
     <>
-      <div style={{ padding: "24px 32px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
+      <div style={{ padding: "var(--page-head-pad)", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
         <div>
-          <h1 style={{ fontSize: 24, fontWeight: 800 }}>{t("exams.title")}</h1>
+          <h1 className="page-title">{t("exams.title")}</h1>
           <p style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 2 }}>
             {t("ex.subtitle")}
           </p>
