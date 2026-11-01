@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode, useEffect, useRef } from "react";
+import { ReactNode, useEffect, useLayoutEffect, useRef } from "react";
 import { useLanguage } from "@/lib/i18n-context";
 
 // Open dialogs, oldest first: Escape closes only the one on top.
@@ -32,7 +32,9 @@ export default function Modal({
   useEffect(() => {
     closeRef.current = onClose;
   });
-  useEffect(() => {
+  // A layout effect: the key handler is in place before the dialog is first
+  // painted, so an Escape pressed the moment it appears is not lost.
+  useLayoutEffect(() => {
     if (!open) return;
     const me = {};
     openDialogs.push(me);
