@@ -50,9 +50,9 @@ export default function PortalMessages({
         )}
       </div>
 
-      <div style={{ display: "flex", gap: 4, background: "var(--surface-muted)", padding: 4, borderRadius: "var(--radius-md)", alignSelf: "flex-start" }}>
+      <div style={{ display: "flex", gap: 4, background: "var(--surface)", border: "1px solid var(--border)", padding: 4, borderRadius: "var(--radius-lg)", alignSelf: "flex-start" }}>
         {(["all", "unread"] as const).map((f) => (
-          <button key={f} type="button" onClick={() => setFilter(f)} style={{ border: "none", cursor: "pointer", padding: "7px 14px", borderRadius: "var(--radius-sm)", fontSize: 13, fontWeight: 700, background: filter === f ? "var(--surface)" : "transparent", color: filter === f ? "var(--text)" : "var(--text-muted)", boxShadow: filter === f ? "0 1px 3px rgba(0,0,0,0.08)" : "none", display: "inline-flex", gap: 6, alignItems: "center" }}>
+          <button key={f} type="button" onClick={() => setFilter(f)} style={{ border: "none", cursor: "pointer", padding: "7px 14px", borderRadius: "var(--radius-pill)", fontSize: 13, fontWeight: 700, background: filter === f ? "var(--ink)" : "transparent", color: filter === f ? "var(--on-ink)" : "var(--text-muted)", boxShadow: "none", display: "inline-flex", gap: 6, alignItems: "center" }}>
             {f === "all" ? t("common.all") : t("pms.unread")}
             {f === "all" ? <span style={{ color: "var(--text-muted)" }}>{announcements.length}</span> : unread > 0 && <span style={{ background: "var(--danger)", color: "var(--on-ink)", fontSize: 11, fontWeight: 800, padding: "1px 7px", borderRadius: "var(--radius-pill)" }}>{unread}</span>}
           </button>

@@ -60,7 +60,7 @@ export default function GroupTutorReport({ groupId }: { groupId: string }) {
           <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 15 }}>🤖 {t("tutorRep.title")}</div>
           <div style={{ fontSize: 12.5, color: "var(--text-muted)", marginTop: 2 }}>{t("tutorRep.hint")}</div>
         </div>
-        <div style={{ display: "flex", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-pill)", padding: 3 }}>
+        <div style={{ display: "flex", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 3 }}>
           {PERIODS.map((d) => (
             <button key={d} type="button" onClick={() => { setDays(d); setTopics(null); }} style={{ border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700, padding: "6px 10px", borderRadius: "var(--radius-xs)", background: days === d ? "var(--surface)" : "transparent", color: days === d ? "var(--text)" : "var(--text-muted)" }}>
               {t("tutorRep.days").replace("{n}", String(d))}

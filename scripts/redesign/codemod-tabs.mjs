@@ -10,7 +10,7 @@ import { fileURLToPath } from 'url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const dry = process.argv.includes('--dry');
-const SHADOW = /boxShadow: ([^,\n]+?) \? "0 1px 3px rgba\(18,19,26,0\.08\)" : "none"/;
+const SHADOW = /boxShadow: ([^,\n]+?) \? "0 1px 3px rgba\((?:18,19,26|0,0,0),0\.08\)" : "none"/;
 const files = [];
 const walk = (d) => {
   for (const e of fs.readdirSync(d, { withFileTypes: true })) {
@@ -36,14 +36,16 @@ for (const f of files) {
     const esc = cond.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     obj = obj
       .replace(new RegExp(`background: ${esc} \\? "var\\(--surface\\)"`), `background: ${cond} ? "var(--ink)"`)
-      .replace(new RegExp(`color: ${esc} \\? "var\\(--text\\)"`), `color: ${cond} ? "var(--on-ink)"`)
+      .replace(new RegExp(`color: ${esc} \\? (?:"var\\(--text\\)"|ACCENT)`), `color: ${cond} ? "var(--on-ink)"`)
       .replace(SHADOW, 'boxShadow: "none"')
       .replace(/borderRadius: "var\(--radius-(?:xs|sm)\)"/, 'borderRadius: "var(--radius-pill)"');
     s = s.slice(0, start) + obj + s.slice(end);
     tabs++;
   }
-  // Their tracks: a muted fill with small corners and 3-4px padding becomes a white pill with a hairline.
-  s = s.replace(/background: "var\(--surface-muted\)", borderRadius: "var\(--radius-(?:xs|sm)\)", padding: ([34])/g, (m, pad) => (tracks++, `background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-pill)", padding: ${pad}`));
+  // Their tracks: a muted fill with small corners and 3-4px padding becomes a
+  // white track with a hairline; --radius-lg reads as a pill on one row and
+  // stays a clean rounded box when the tabs wrap on a phone.
+  s = s.replace(/background: "var\(--surface-muted\)", borderRadius: "var\(--radius-(?:xs|sm)\)", padding: ([34])/g, (m, pad) => (tracks++, `background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: ${pad}`));
   if (s !== before && !dry) fs.writeFileSync(f, s);
 }
 console.log(`${dry ? 'dry-run' : 'write'}: ${tabs} tabs, ${tracks} tracks`);

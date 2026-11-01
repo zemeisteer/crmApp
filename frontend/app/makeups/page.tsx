@@ -58,7 +58,7 @@ function MakeupsContent() {
         ) : (
           <>
             {tabs.length > 1 && (
-              <div role="tablist" aria-label={t("mk.title")} style={{ display: "flex", gap: 4, background: "var(--surface-muted)", padding: 4, borderRadius: "var(--radius-md)", alignSelf: "flex-start", maxWidth: "100%", overflowX: "auto" }}>
+              <div role="tablist" aria-label={t("mk.title")} style={{ display: "flex", gap: 4, background: "var(--surface)", border: "1px solid var(--border)", padding: 4, borderRadius: "var(--radius-lg)", alignSelf: "flex-start", maxWidth: "100%", overflowX: "auto" }}>
                 {tabs.map((k, i) => (
                   <button
                     key={k}
@@ -71,9 +71,9 @@ function MakeupsContent() {
                     onClick={() => setChosen(k)}
                     onKeyDown={(e) => onTabKey(e, i)}
                     style={{
-                      border: "none", cursor: "pointer", padding: "8px 14px", borderRadius: "var(--radius-sm)", fontSize: 13, fontWeight: 700, whiteSpace: "nowrap",
-                      background: tab === k ? "var(--surface)" : "transparent", color: tab === k ? ACCENT : "var(--text-muted)",
-                      boxShadow: tab === k ? "0 1px 3px rgba(0,0,0,0.08)" : "none",
+                      border: "none", cursor: "pointer", padding: "8px 14px", borderRadius: "var(--radius-pill)", fontSize: 13, fontWeight: 700, whiteSpace: "nowrap",
+                      background: tab === k ? "var(--ink)" : "transparent", color: tab === k ? "var(--on-ink)" : "var(--text-muted)",
+                      boxShadow: "none",
                     }}
                   >
                     {t(TAB_LABELS[k])}

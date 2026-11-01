@@ -264,20 +264,20 @@ function ReportsContent() {
 
         {/* Tab switchers */}
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <div style={{ display: "flex", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-pill)", padding: 3, gap: 2, flexWrap: "wrap" }}>
+          <div style={{ display: "flex", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 3, gap: 2, flexWrap: "wrap" }}>
             <button
               type="button"
               onClick={() => setActiveTab("director")}
               style={{
                 border: "none",
-                background: activeTab === "director" ? "var(--surface)" : "transparent",
-                color: activeTab === "director" ? "var(--text)" : "var(--text-muted)",
+                background: activeTab === "director" ? "var(--ink)" : "transparent",
+                color: activeTab === "director" ? "var(--on-ink)" : "var(--text-muted)",
                 fontWeight: 700,
                 fontSize: 12.5,
                 padding: "6px 14px",
-                borderRadius: "var(--radius-xs)",
+                borderRadius: "var(--radius-pill)",
                 cursor: "pointer",
-                boxShadow: activeTab === "director" ? "0 1px 3px rgba(0,0,0,0.08)" : "none",
+                boxShadow: "none",
               }}
             >
               👔 {t("dir.tab")}
@@ -287,14 +287,14 @@ function ReportsContent() {
               onClick={() => setActiveTab("overview")}
               style={{
                 border: "none",
-                background: activeTab === "overview" ? "var(--surface)" : "transparent",
-                color: activeTab === "overview" ? "var(--text)" : "var(--text-muted)",
+                background: activeTab === "overview" ? "var(--ink)" : "transparent",
+                color: activeTab === "overview" ? "var(--on-ink)" : "var(--text-muted)",
                 fontWeight: 700,
                 fontSize: 12.5,
                 padding: "6px 14px",
-                borderRadius: "var(--radius-xs)",
+                borderRadius: "var(--radius-pill)",
                 cursor: "pointer",
-                boxShadow: activeTab === "overview" ? "0 1px 3px rgba(0,0,0,0.08)" : "none",
+                boxShadow: "none",
               }}
             >
               📊 {t("rep3.tabOverview")}
@@ -304,14 +304,14 @@ function ReportsContent() {
               onClick={() => setActiveTab("payroll")}
               style={{
                 border: "none",
-                background: activeTab === "payroll" ? "var(--surface)" : "transparent",
-                color: activeTab === "payroll" ? "var(--text)" : "var(--text-muted)",
+                background: activeTab === "payroll" ? "var(--ink)" : "transparent",
+                color: activeTab === "payroll" ? "var(--on-ink)" : "var(--text-muted)",
                 fontWeight: 700,
                 fontSize: 12.5,
                 padding: "6px 14px",
-                borderRadius: "var(--radius-xs)",
+                borderRadius: "var(--radius-pill)",
                 cursor: "pointer",
-                boxShadow: activeTab === "payroll" ? "0 1px 3px rgba(0,0,0,0.08)" : "none",
+                boxShadow: "none",
               }}
             >
               💼 {t("rep3.tabPayroll")}
@@ -321,14 +321,14 @@ function ReportsContent() {
               onClick={() => setActiveTab("retention")}
               style={{
                 border: "none",
-                background: activeTab === "retention" ? "var(--surface)" : "transparent",
-                color: activeTab === "retention" ? "var(--text)" : "var(--text-muted)",
+                background: activeTab === "retention" ? "var(--ink)" : "transparent",
+                color: activeTab === "retention" ? "var(--on-ink)" : "var(--text-muted)",
                 fontWeight: 700,
                 fontSize: 12.5,
                 padding: "6px 14px",
-                borderRadius: "var(--radius-xs)",
+                borderRadius: "var(--radius-pill)",
                 cursor: "pointer",
-                boxShadow: activeTab === "retention" ? "0 1px 3px rgba(0,0,0,0.08)" : "none",
+                boxShadow: "none",
               }}
             >
               🛡️ {t("rep3.tabRetention")} ({report?.atRisk.length ?? 0})

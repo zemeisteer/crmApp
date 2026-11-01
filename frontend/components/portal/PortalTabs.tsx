@@ -79,7 +79,7 @@ export function ScheduleTab({ schedule, tz = DEFAULT_CENTER_TIMEZONE }: { schedu
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
       <TabTitle title={t("ptl.schedule")} />
-      <div role="tablist" style={{ display: "flex", gap: 4, background: "var(--surface-muted)", padding: 4, borderRadius: "var(--radius-md)", alignSelf: "flex-start" }}>
+      <div role="tablist" style={{ display: "flex", gap: 4, background: "var(--surface)", border: "1px solid var(--border)", padding: 4, borderRadius: "var(--radius-lg)", alignSelf: "flex-start" }}>
         {(["week", "past"] as const).map((v) => (
           <button
             key={v}
@@ -87,7 +87,7 @@ export function ScheduleTab({ schedule, tz = DEFAULT_CENTER_TIMEZONE }: { schedu
             role="tab"
             aria-selected={view === v}
             onClick={() => setView(v)}
-            style={{ border: "none", cursor: "pointer", padding: "8px 14px", borderRadius: "var(--radius-sm)", fontSize: 13, fontWeight: 700, background: view === v ? "var(--surface)" : "transparent", color: view === v ? ACCENT : "var(--text-muted)", boxShadow: view === v ? "0 1px 3px rgba(0,0,0,0.08)" : "none" }}
+            style={{ border: "none", cursor: "pointer", padding: "8px 14px", borderRadius: "var(--radius-pill)", fontSize: 13, fontWeight: 700, background: view === v ? "var(--ink)" : "transparent", color: view === v ? "var(--on-ink)" : "var(--text-muted)", boxShadow: "none" }}
           >
             {v === "week" ? t("pls.week") : t("pls.past")}
           </button>
@@ -584,13 +584,13 @@ export function HomeworkTab({ homework, onSubmit, readOnly = false }: { homework
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
       <style>{HW_CSS}</style>
       <TabTitle title={t("ptl.homework")} />
-      <div style={{ display: "flex", gap: 6, background: "var(--border)", padding: 4, borderRadius: "var(--radius-md)", alignSelf: "flex-start", maxWidth: "100%", overflowX: "auto" }}>
+      <div style={{ display: "flex", gap: 4, background: "var(--surface)", border: "1px solid var(--border)", padding: 4, borderRadius: "var(--radius-lg)", alignSelf: "flex-start", maxWidth: "100%", overflowX: "auto" }}>
         {([
           ["all", t("common.all")],
           ["todo", t("pth.todo")],
           ["done", t("hws.stDone")],
         ] as const).map(([k, l]) => (
-          <button key={k} type="button" onClick={() => setFilter(k)} style={{ border: "none", cursor: "pointer", whiteSpace: "nowrap", fontSize: 13, fontWeight: 700, padding: "8px 14px", borderRadius: "var(--radius-sm)", background: filter === k ? "var(--surface)" : "transparent", color: filter === k ? "var(--text)" : "var(--text-muted)", boxShadow: filter === k ? "0 1px 3px rgba(0,0,0,0.08)" : "none" }}>
+          <button key={k} type="button" onClick={() => setFilter(k)} style={{ border: "none", cursor: "pointer", whiteSpace: "nowrap", fontSize: 13, fontWeight: 700, padding: "8px 14px", borderRadius: "var(--radius-pill)", background: filter === k ? "var(--ink)" : "transparent", color: filter === k ? "var(--on-ink)" : "var(--text-muted)", boxShadow: "none" }}>
             {l} <span style={{ color: "var(--text-muted)", fontWeight: 600 }}>{counts[k]}</span>
           </button>
         ))}

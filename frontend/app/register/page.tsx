@@ -94,7 +94,7 @@ export default function RegisterPage() {
           gap: 4,
           background: "var(--surface)",
           border: "1px solid var(--border)",
-          borderRadius: "var(--radius-pill)",
+          borderRadius: "var(--radius-lg)",
           padding: 3,
         }}
       >

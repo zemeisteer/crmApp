@@ -189,7 +189,7 @@ export default function LoginPage() {
             gap: 4,
             background: "var(--surface)",
             border: "1px solid var(--border)",
-            borderRadius: "var(--radius-pill)",
+            borderRadius: "var(--radius-lg)",
             padding: 3,
           }}
         >
@@ -373,7 +373,7 @@ export default function LoginPage() {
           gap: 4,
           background: "var(--surface)",
           border: "1px solid var(--border)",
-          borderRadius: "var(--radius-pill)",
+          borderRadius: "var(--radius-lg)",
           padding: 3,
         }}
       >

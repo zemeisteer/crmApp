@@ -612,7 +612,7 @@ function GroupDetailContent() {
         title={t("groupDetail.modalTitle")}
         width={520}
       >
-        <div style={{ display: "flex", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-pill)", padding: 4, marginBottom: 18 }}>
+        <div style={{ display: "flex", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 4, marginBottom: 18 }}>
           <button
             type="button"
             onClick={() => setEnrollMode("existing")}

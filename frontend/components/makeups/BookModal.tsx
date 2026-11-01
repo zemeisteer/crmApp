@@ -183,7 +183,7 @@ export default function BookModal({ credit, onClose, onBooked }: { credit: Makeu
           <div style={{ color: "var(--text-muted)" }}>{t("mk.missedOn")}: {credit.originGroup?.name ?? "—"} · {dayLabel(credit.originDate, lang, t)}</div>
         </div>
 
-        <div role="group" aria-label={t("mk.bookMode")} style={{ display: "flex", gap: 2, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-pill)", padding: 4 }}>
+        <div role="group" aria-label={t("mk.bookMode")} style={{ display: "flex", gap: 2, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 4 }}>
           {modeBtn("GROUP_LESSON", t("mk.modeGroup"))}
           {modeBtn("SESSION", t("mk.modeSession"))}
         </div>

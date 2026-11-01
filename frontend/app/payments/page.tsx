@@ -1156,7 +1156,7 @@ function PaymentsContent() {
               gap: 2,
               background: "var(--surface)",
               border: "1px solid var(--border)",
-              borderRadius: "var(--radius-pill)",
+              borderRadius: "var(--radius-lg)",
               padding: 4,
               maxWidth: "100%",
               overflowX: "auto",
@@ -1538,7 +1538,7 @@ function PaymentsContent() {
                     >
                       {t("payments.revenueDynamics")}
                     </div>
-                    <div style={{ display: "flex", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-pill)", padding: 3 }}>
+                    <div style={{ display: "flex", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 3 }}>
                       {(
                         [
                           ["day", t("payments.periodDay")],

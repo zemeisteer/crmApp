@@ -181,7 +181,7 @@ function LeadsContent() {
           <p style={{ fontSize: 12.5, color: "var(--text-muted)", marginTop: 2 }}>{t("leads.subtitle")}</p>
         </div>
         <div className="adm-actions">
-          <div style={{ display: "flex", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-pill)", padding: 3, gap: 2 }}>
+          <div style={{ display: "flex", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 3, gap: 2 }}>
             {(["list", "pipeline"] as const).map((v) => (
               <button
                 key={v}
