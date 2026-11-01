@@ -70,6 +70,8 @@ const backendEnv = {
   CLICK_MERCHANT_ID: '', CLICK_SERVICE_ID: '', CLICK_SECRET_KEY: '', PAYME_MERCHANT_ID: '', PAYME_KEY: '',
   // The platform's card (a test number): centers pay their subscription to it with a receipt.
   PLATFORM_CARD_NUMBER: '9860 0000 0000 0001', PLATFORM_CARD_HOLDER: 'TEST PLATFORMA',
+  // Seals what the panel saves on this disposable server.
+  SETTINGS_KEY: Buffer.alloc(32, 7).toString('base64'),
   ...googleEnv,
   SENTRY_DSN: '', REMINDER_SCAN_MS: '0', IMPORT_POLL_MS: '0', IMPORT_QUEUE: 'browser-tests',
 };

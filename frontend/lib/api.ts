@@ -2200,6 +2200,7 @@ export const billingApi = {
 /** The platform's card (when set) and this center's receipts sent for it. */
 export interface PlatformCardView {
   card: { number: string; holder: string } | null;
+  cards: Array<{ number: string; holder: string }>;
   /** The month a new payment would be for (the server decides it). */
   nextMonth: string;
   /** Every paid month of the subscription, and how it was paid. */
@@ -2216,6 +2217,7 @@ export interface PlatformCardClaim {
   amount: number;
   receiptFile: string;
   note: string | null;
+  cardNumber: string | null;
   status: "PENDING" | "CONFIRMED" | "REJECTED";
   rejectReason: string | null;
   reviewedBy: string | null;
@@ -2230,10 +2232,11 @@ export const platformBillingApi = {
    * key names this one send: a retry with it (after a timeout, a double
    * click) returns the same receipt instead of a second one.
    */
-  sendCardClaim: async (data: { plan: string; note?: string; file: File; idempotencyKey: string }) => {
+  sendCardClaim: async (data: { plan: string; note?: string; cardNumber?: string; file: File; idempotencyKey: string }) => {
     const form = new FormData();
     form.append("plan", data.plan);
     if (data.note) form.append("note", data.note);
+    if (data.cardNumber) form.append("cardNumber", data.cardNumber);
     form.append("file", data.file);
     const res = await authedFetch("/platform-billing/card", { method: "POST", headers: { "Idempotency-Key": data.idempotencyKey }, body: form });
     if (!res.ok) throw await apiErrorOf(res, "Yuborilmadi");
@@ -2513,6 +2516,8 @@ export interface PlatformIntegration {
   /** Read once at start-up: a change takes effect after the server restarts. */
   restart: boolean;
   detail: string | null;
+  /** Only on the subscription card integration: the cards centers can pay to. */
+  cards?: Array<{ number: string; holder: string }>;
   keys: PlatformIntegrationKey[];
 }
 

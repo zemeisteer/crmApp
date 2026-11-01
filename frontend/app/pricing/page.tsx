@@ -226,7 +226,7 @@ function TenantPricing() {
             </div>
             {provider === "CARD" && cardView?.card && selectedPlan ? (
               <PlatformCardPay
-                card={cardView.card}
+                cards={cardView.cards}
                 plan={selectedPlan}
                 planName={plans.find((x) => x.key === selectedPlan)?.name ?? selectedPlan}
                 amount={plans.find((x) => x.key === selectedPlan)?.price ?? 0}

@@ -1101,6 +1101,8 @@ export const platformPaymentClaims = pgTable('platform_payment_claims', {
   requestHash: text('request_hash'),
   // sha256 of the receipt file's bytes (not of its random stored name).
   receiptSha256: text('receipt_sha256'),
+  // The card the center says it paid to, as shown then: where the admin looks for the money.
+  cardNumber: text('card_number'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
 }, (t) => ({
   statusIdx: index('platform_payment_claims_status_idx').on(t.status, t.createdAt),

@@ -152,7 +152,10 @@ export default function PlatformCardClaims({ onPendingChange }: { onPendingChang
                     <div style={{ fontWeight: 700 }}>{c.centerName}</div>
                     <div style={{ fontSize: 11.5, color: "var(--text-muted)" }}>{c.subdomain}</div>
                   </td>
-                  <td>{c.plan}</td>
+                  <td>
+                    {c.plan}
+                    {c.cardNumber && <div style={{ fontSize: 11.5, color: "var(--text-muted)", fontFamily: "ui-monospace, monospace" }}>•••• {c.cardNumber.slice(-4)}</div>}
+                  </td>
                   <td>{c.forMonth}</td>
                   <td style={{ textAlign: "right", fontWeight: 700 }}>{money(c.amount)}</td>
                   <td style={{ fontSize: 12.5, color: "var(--text-muted)" }}>
@@ -215,6 +218,7 @@ function ClaimModal({ claim, onClose, onDone }: { claim: PlatformCardClaim; onCl
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }} data-testid="platform-card-claim-modal">
         <div style={{ fontSize: 13, color: "var(--text-soft)", lineHeight: 1.6 }}>
           {claim.plan} · {t("cc.month")}: <b>{claim.forMonth}</b> · <b>{money(claim.amount)} {t("common.sumUnit")}</b> · {formatDateTime(claim.createdAt, lang)}
+          {claim.cardNumber && <> · {t("ct.cardNumber")}: <b style={{ fontFamily: "ui-monospace, monospace" }} data-testid="claim-card">{claim.cardNumber}</b></>}
         </div>
         {claim.note && <div style={{ fontSize: 13, background: "var(--primary-soft)", borderRadius: "var(--radius-xs)", padding: "8px 12px" }}>💬 {claim.note}</div>}
         <div style={{ background: "var(--surface-muted)", borderRadius: "var(--radius-md)", padding: 8, display: "grid", placeItems: "center", minHeight: 160 }} aria-busy={receipt.state === "loading"}>
