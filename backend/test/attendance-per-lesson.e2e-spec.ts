@@ -9,12 +9,15 @@ import { AppModule } from '../src/app.module.js';
 import { configureApp } from '../src/app.setup.js';
 import { DB, Database } from '../src/db/db.module.js';
 import { attendance, makeupCredits, schedules } from '../src/db/schema.js';
+import { pinClockToMorning } from './pin-clock.js';
 
 // Attendance is kept per lesson: two lessons of a group on one day are
 // marked apart, a mark stays with its lesson, old marks are bound only when
 // it is clear which lesson they were for, and a make-up credit for an
 // absence is the credit of that lesson's absence.
 describe('Attendance per lesson, and the credits that rest on it (e2e)', () => {
+  pinClockToMorning();
+
   let app: NestExpressApplication;
   let db: Database;
   const suffix = Date.now();
@@ -259,8 +262,7 @@ describe('Attendance per lesson, and the credits that rest on it (e2e)', () => {
     await http().post('/api/schedule').set(bearer(owner)).send({ groupId: q, dayOfWeek: d, startTime: '12:00', endTime: '23:50' }).expect(201);
     const rows = (await http().get(`/api/schedule?groupId=${q}`).set(bearer(owner)).expect(200)).body as Array<{ id: string; startTime: string }>;
     const sq = await student('scan', [q]);
-    const hourNow = tashkent(0).getUTCHours();
-    const expected = rows.find((r) => (hourNow < 12 ? r.startTime === '00:10' : r.startTime === '12:00'))!.id;
+    const expected = rows.find((r) => r.startTime === '00:10')!.id;
     const scans = await Promise.all([0, 1, 2].map(() => http().post('/api/attendance/qr-checkin').set(bearer(owner)).send({ code: `TALIMCRM:STUDENT:${sq}`, groupId: q })));
     expect(scans.every((r) => r.status === 201)).toBe(true);
     const got = await marks(`groupId=${q}&date=${today}`);
@@ -270,8 +272,6 @@ describe('Attendance per lesson, and the credits that rest on it (e2e)', () => {
   it('back to back: a scan while one lesson is on and the next one opens marks the one on', async () => {
     const now = tashkent(0);
     const nowMin = now.getUTCHours() * 60 + now.getUTCMinutes();
-    // Needs 10 minutes before and 40 after within today.
-    if (nowMin < 10 || nowMin > 23 * 60 + 10) return;
     const hm = (m: number) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
     const today = dateOf(now);
     const d = dow(now);

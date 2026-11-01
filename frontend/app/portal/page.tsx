@@ -24,7 +24,7 @@ import {
   fileUrl,
   getPortalToken,
   setPortalToken,
-  getToken,
+  freshToken,
   getPortalSessions,
   addPortalSessions,
   type PortalSession,
@@ -228,16 +228,10 @@ export default function StudentPortalPage() {
       return;
     }
     // A parent signed in with their own account: open their children.
-    const staff = getToken();
-    if (staff) {
-      portalApi
-        .parentAccount(staff)
-        .then((res) => activate(res.sessions))
-        .catch(() => undefined)
-        .finally(() => setLoading(false));
-      return;
-    }
-    setLoading(false);
+    freshToken()
+      .then((staff) => (staff ? portalApi.parentAccount(staff).then((res) => activate(res.sessions)) : undefined))
+      .catch(() => undefined)
+      .finally(() => setLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

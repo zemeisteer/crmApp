@@ -1,3 +1,4 @@
+import { createHash } from 'crypto';
 import { BadRequestException, ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { and, count, desc, eq, inArray } from 'drizzle-orm';
 import { AuditService } from '../audit/audit.service';
@@ -8,9 +9,12 @@ import { CARD_CLAIM_KEY, PaymentsService } from '../payments/payments.service';
 import { LedgerTx } from '../payments/allocation';
 import { Notice, NoticeOutboxService } from '../notice-outbox/notice-outbox.service';
 import { MAX_MONEY } from '../common/money';
+import { isUniqueViolation } from '../common/db-errors';
 
 /** Pending receipts one student may have at a time (a guard against a stuck double-send). */
 export const MAX_PENDING_CLAIMS = 5;
+
+const KEY_RE = /^[A-Za-z0-9_-]{8,80}$/;
 
 const money = (n: number) => new Intl.NumberFormat('uz-UZ').format(n);
 const escape = (v: string) => v.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -76,15 +80,31 @@ export class CardPaymentsService {
     return { card: await this.card(tenantId), claims };
   }
 
+  /**
+   * The key names one send and its content (amount, month, invoice, note, the
+   * receipt file's own sha256):
+   *  - same key, same content: the same receipt back (`replay`), the caller
+   *    removes the duplicate upload, and the staff hear of it once;
+   *  - same key, other content: 409 KEY_REUSED.
+   */
   async submit(
     tenantId: string,
     studentId: string,
     sentBy: 'student' | 'parent',
-    dto: { amount: number; forMonth?: string; invoiceId?: string; note?: string; receiptFile: string },
-  ) {
+    dto: { amount: number; forMonth?: string; invoiceId?: string; note?: string; receiptFile: string; receiptSha256: string; idempotencyKey?: string },
+  ): Promise<{ claim: typeof paymentClaims.$inferSelect; replay: boolean }> {
     if (!(await this.card(tenantId))) throw new BadRequestException("Markaz karta orqali to'lovni yoqmagan");
     const amount = Math.round(Number(dto.amount));
     if (!Number.isFinite(amount) || amount < 1000 || amount > MAX_MONEY) throw new BadRequestException("To'lov summasini to'g'ri yozing (kamida 1 000 so'm)");
+    const key = dto.idempotencyKey?.trim() || null;
+    if (key && !KEY_RE.test(key)) throw new BadRequestException("Idempotency-Key noto'g'ri");
+    const note = dto.note?.trim().slice(0, 500) || null;
+    const requestHash = createHash('sha256').update(JSON.stringify([amount, dto.forMonth ?? null, dto.invoiceId ?? null, note, dto.receiptSha256])).digest('hex');
+    // Before the limit below: a retry of a receipt already made adds nothing.
+    if (key) {
+      const prior = await this.byKey(tenantId, studentId, key);
+      if (prior) return { claim: this.sameSend(prior, requestHash), replay: true };
+    }
     const [student] = await this.db
       .select({ id: students.id, fullName: students.fullName })
       .from(students)
@@ -109,17 +129,46 @@ export class CardPaymentsService {
     if (n >= MAX_PENDING_CLAIMS) throw new ConflictException("Avvalgi cheklaringiz hali tekshirilmagan. Markaz tasdiqlashini kuting.");
 
     // The receipt, its file reference and the staff's messages: one commit.
-    const claim = await this.db.transaction(async (tx) => {
-      const [row] = await tx
-        .insert(paymentClaims)
-        .values({ tenantId, studentId, invoiceId, amount, forMonth, receiptFile: dto.receiptFile, note: dto.note?.trim().slice(0, 500) || null, sentBy })
-        .returning();
-      await this.files.register(tenantId, dto.receiptFile, 'PAYMENT_RECEIPT', row.id, studentId, tx);
-      await this.outbox.enqueue(tx, await this.staffNotices(tx, tenantId, row.id, student.fullName, amount, forMonth, sentBy));
-      return row;
-    });
+    let claim: typeof paymentClaims.$inferSelect;
+    try {
+      claim = await this.db.transaction(async (tx) => {
+        const [row] = await tx
+          .insert(paymentClaims)
+          .values({ tenantId, studentId, invoiceId, amount, forMonth, receiptFile: dto.receiptFile, note, sentBy, idempotencyKey: key, requestHash })
+          .returning();
+        await this.files.register(tenantId, dto.receiptFile, 'PAYMENT_RECEIPT', row.id, studentId, tx);
+        await this.outbox.enqueue(tx, await this.staffNotices(tx, tenantId, row.id, student.fullName, amount, forMonth, sentBy));
+        return row;
+      });
+    } catch (err) {
+      // The same key that raced us: its receipt is committed by now.
+      if (key && isUniqueViolation(err, 'payment_claims_idem_idx')) {
+        const prior = await this.byKey(tenantId, studentId, key);
+        if (prior) return { claim: this.sameSend(prior, requestHash), replay: true };
+      }
+      throw err;
+    }
     void this.outbox.kick();
-    return claim;
+    return { claim, replay: false };
+  }
+
+  /** The receipt a key already made, if this send carries the same content. */
+  private sameSend(prior: typeof paymentClaims.$inferSelect, requestHash: string) {
+    if (prior.requestHash !== requestHash) {
+      throw new ConflictException({
+        code: 'KEY_REUSED',
+        message: "Bu yuborish kaliti boshqa chek bilan ishlatilgan. Yangi chek alohida yuboriladi: sahifani yangilab qayta yuboring.",
+      });
+    }
+    return prior;
+  }
+
+  private async byKey(tenantId: string, studentId: string, key: string) {
+    const [row] = await this.db
+      .select()
+      .from(paymentClaims)
+      .where(and(eq(paymentClaims.tenantId, tenantId), eq(paymentClaims.studentId, studentId), eq(paymentClaims.idempotencyKey, key)));
+    return row;
   }
 
   /** Owners, admins and accountants linked to the bot hear of a new receipt (one message each). */
@@ -171,7 +220,7 @@ export class CardPaymentsService {
     ]);
     return {
       pending: pending.n,
-      items: rows.map((r) => ({ ...r.claim, studentName: r.studentName, studentPhone: r.studentPhone, reviewedBy: r.reviewedBy })),
+      items: rows.map((r) => ({ ...r.claim, idempotencyKey: undefined, requestHash: undefined, studentName: r.studentName, studentPhone: r.studentPhone, reviewedBy: r.reviewedBy })),
     };
   }
 

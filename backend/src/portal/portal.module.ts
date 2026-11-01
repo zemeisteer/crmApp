@@ -25,7 +25,7 @@ import { CardPaymentsModule } from '../card-payments/card-payments.module';
       useFactory: (config: ConfigService) => ({
         secret: config.get<string>('JWT_SECRET'),
         signOptions: {
-          expiresIn: '30d',
+          expiresIn: '7d',
         },
       }),
     }),

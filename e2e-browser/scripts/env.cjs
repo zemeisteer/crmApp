@@ -53,6 +53,7 @@ const backendEnv = {
   // development: the CORS rules for http://localhost and *.localhost (the
   // production rules allow https only). Everything else is the production build.
   NODE_ENV: 'development',
+  JWT_EXPIRES_IN: '15m',
   // The free trial's guards are covered by the backend suite; here every
   // journey signs up its own center by the API, without a phone code.
   SIGNUP_PHONE_CHECK: 'off',

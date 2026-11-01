@@ -1,7 +1,7 @@
 import { Body, Controller, Get, Param, Post, Query, Res, UseGuards } from '@nestjs/common';
 import { SkipThrottle } from '@nestjs/throttler';
 import type { Response } from 'express';
-import { ArrayMaxSize, IsArray, IsString } from 'class-validator';
+import { ArrayMaxSize, IsArray, IsString, MaxLength } from 'class-validator';
 import { JwtAuthGuard } from '../common/jwt-auth.guard';
 import { RolesGuard } from '../common/roles.guard';
 import { CurrentUser } from '../common/current-user.decorator';
@@ -14,6 +14,7 @@ export class SignFilesDto {
   @IsArray()
   @ArrayMaxSize(100)
   @IsString({ each: true })
+  @MaxLength(2000, { each: true })
   names!: string[];
 }
 

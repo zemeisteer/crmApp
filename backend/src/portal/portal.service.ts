@@ -26,6 +26,7 @@ import {
   homework,
   homeworkCompletions,
   invoices,
+  paymentClaims,
   payments,
   schedules,
   studentGuardians,
@@ -44,7 +45,8 @@ import { ExamsService } from '../exams/exams.service';
 import { TelegramService } from '../telegram/telegram.service';
 import { normalizePhone } from '../leads/phone';
 import { createHash, randomInt } from 'crypto';
-import * as bcrypt from 'bcryptjs';
+import * as bcrypt from 'bcrypt';
+import { recordSignInFailure } from '../common/security-events';
 import { FilesService } from '../files/files.service';
 
 export type PortalViewer = 'student' | 'parent';
@@ -91,7 +93,7 @@ export class PortalService {
         ...(parentUserId ? { parentUserId } : {}),
       },
       {
-        expiresIn: '30d',
+        expiresIn: '7d',
       },
     );
   }
@@ -203,7 +205,7 @@ export class PortalService {
 
   // Step 2: check the Telegram code or the PIN. When the number belongs to
   // several students (siblings), the caller picks one from `choose`.
-  async verifyPhoneLogin(rawPhone: string, body: { code?: string; pin?: string; studentId?: string; subdomain?: string }) {
+  async verifyPhoneLogin(rawPhone: string, body: { ip?: string; code?: string; pin?: string; studentId?: string; subdomain?: string }) {
     const phone = normalizePhone(rawPhone);
     if (!phone) throw new BadRequestException("Telefon raqami noto'g'ri");
     const matched = await this.studentsByPhone(phone, body.subdomain);
@@ -217,6 +219,7 @@ export class PortalService {
       if (!row || row.attempts >= 5) throw new UnauthorizedException("Kod eskirgan. Yangi kod so'rang.");
       if (row.codeHash !== this.hashCode(phone, body.code.trim())) {
         await this.db.update(portalLoginCodes).set({ attempts: row.attempts + 1 }).where(eq(portalLoginCodes.id, row.id));
+        recordSignInFailure('cabinet', phone, body.ip);
         throw new UnauthorizedException("Kod noto'g'ri");
       }
       codeRowId = row.id;
@@ -227,7 +230,10 @@ export class PortalService {
         const hash = pins.get(s.id);
         if (hash && (await bcrypt.compare(body.pin.trim(), hash))) allowed.push(s);
       }
-      if (allowed.length === 0) throw new UnauthorizedException("PIN noto'g'ri");
+      if (allowed.length === 0) {
+        recordSignInFailure('cabinet', phone, body.ip);
+        throw new UnauthorizedException("PIN noto'g'ri");
+      }
     } else {
       throw new BadRequestException('Kod yoki PIN kiriting');
     }
@@ -650,11 +656,28 @@ export class PortalService {
     const me = ledger.students[0];
     const due = me ? ledger.due(me, currentMonth) : { expected: 0, discount: 0, paid: 0, debt: 0 };
 
-    const history = await this.db.query.payments.findMany({
+    const paid = await this.db.query.payments.findMany({
       where: and(eq(payments.studentId, studentId), eq(payments.tenantId, tenantId)),
       columns: { idempotencyKey: false, requestHash: false },
       orderBy: [desc(payments.paidAt), desc(payments.createdAt)],
     });
+    // Which of them were card receipts the center confirmed.
+    const viaCard = new Set(
+      paid.length
+        ? (await this.db
+            .select({ paymentId: paymentClaims.paymentId })
+            .from(paymentClaims)
+            .where(and(eq(paymentClaims.tenantId, tenantId), inArray(paymentClaims.paymentId, paid.map((p) => p.id))))).map((r) => r.paymentId)
+        : [],
+    );
+    // Card receipts not (yet) payments: the history shows them as being
+    // checked or rejected, so a paid screenshot never "disappears".
+    const openReceipts = await this.db
+      .select({ id: paymentClaims.id, amount: paymentClaims.amount, forMonth: paymentClaims.forMonth, status: paymentClaims.status, rejectReason: paymentClaims.rejectReason, createdAt: paymentClaims.createdAt })
+      .from(paymentClaims)
+      .where(and(eq(paymentClaims.tenantId, tenantId), eq(paymentClaims.studentId, studentId), inArray(paymentClaims.status, ['PENDING', 'REJECTED'])))
+      .orderBy(desc(paymentClaims.createdAt))
+      .limit(20);
 
     const expectedTuition = due.expected;
     const monthPaid = due.paid;
@@ -669,7 +692,8 @@ export class PortalService {
       monthDiscount: due.discount,
       debtAmount,
       status: effectiveExpected === 0 || debtAmount === 0 ? 'PAID' : monthPaid > 0 ? 'PARTIAL' : 'UNPAID',
-      history,
+      history: paid.map((p) => ({ ...p, viaCard: viaCard.has(p.id) })),
+      openReceipts,
       // Only configured providers get a "pay online" button.
       online: await this.billing.getConfig(tenantId).then((c) => ({ click: c.clickEnabled, payme: c.paymeEnabled })),
     };

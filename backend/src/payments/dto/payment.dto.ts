@@ -1,8 +1,9 @@
-import { IsIn, IsInt, IsISO8601, IsOptional, IsString, Length, Matches, Min, Max } from 'class-validator';
+import { IsIn, IsInt, IsISO8601, IsOptional, IsString, Length, Matches, Min, Max, MaxLength } from 'class-validator';
 import { MAX_MONEY } from '../../common/money';
 
 export class CreatePaymentDto {
   @IsString()
+  @MaxLength(2000)
   studentId: string;
 
   @IsInt()
@@ -29,6 +30,7 @@ export class CreatePaymentDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(2000)
   invoiceId?: string;
 
   @IsOptional()

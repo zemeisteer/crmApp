@@ -1,20 +1,24 @@
-import { IsArray, IsIn, IsNumber, IsOptional, IsString, ValidateNested } from 'class-validator';
+import { IsArray, IsIn, IsNumber, IsOptional, IsString, ValidateNested, MaxLength } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class CreateSubjectDto {
   @IsString()
+  @MaxLength(2000)
   name: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(2000)
   code?: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(50000)
   description?: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(2000)
   color?: string;
 
   @IsOptional()
@@ -25,18 +29,22 @@ export class CreateSubjectDto {
 export class UpdateSubjectDto {
   @IsOptional()
   @IsString()
+  @MaxLength(2000)
   name?: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(2000)
   code?: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(50000)
   description?: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(2000)
   color?: string;
 
   @IsOptional()
@@ -46,14 +54,17 @@ export class UpdateSubjectDto {
 
 export class CreateCourseDto {
   @IsString()
+  @MaxLength(2000)
   name: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(2000)
   subjectId?: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(50000)
   description?: string;
 
   @IsOptional()
@@ -62,6 +73,7 @@ export class CreateCourseDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(2000)
   price?: string;
 
   @IsOptional()
@@ -72,14 +84,17 @@ export class CreateCourseDto {
 export class UpdateCourseDto {
   @IsOptional()
   @IsString()
+  @MaxLength(2000)
   name?: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(2000)
   subjectId?: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(50000)
   description?: string;
 
   @IsOptional()
@@ -88,6 +103,7 @@ export class UpdateCourseDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(2000)
   price?: string;
 
   @IsOptional()
@@ -97,11 +113,13 @@ export class UpdateCourseDto {
 
 export class BulkSubjectItemDto {
   @IsString()
+  @MaxLength(2000)
   name: string;
 
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
+  @MaxLength(2000, { each: true })
   courses?: string[];
 }
 

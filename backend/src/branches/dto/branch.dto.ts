@@ -1,19 +1,23 @@
-import { IsOptional, IsString } from 'class-validator';
+import { IsOptional, IsString, MaxLength } from 'class-validator';
 
 export class CreateBranchDto {
   @IsString()
+  @MaxLength(2000)
   name: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(2000)
   address?: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(2000)
   phone?: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(2000)
   mapUrl?: string;
 }
 

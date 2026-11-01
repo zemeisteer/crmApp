@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { api, centerUrl, cleanUpStagingCenters, expectCenterDashboard, loginOnMainSite, newCenter, pickDate, pickTime, wallClock } from './support';
+import { fetchViaApi, api, centerUrl, cleanUpStagingCenters, expectCenterDashboard, loginOnMainSite, newCenter, pickDate, pickTime, wallClock } from './support';
 
 // Admissions: a lead's follow-up and trial lesson are typed on the center's
 // clock, whatever the browser's timezone; a new student survives a retry.
@@ -55,7 +55,7 @@ test('new student: a retry after a lost reply makes one student, with what was t
   await page.route('**/api/students', async (route) => {
     if (route.request().method() === 'POST' && lost === 0) {
       lost++;
-      await route.fetch();
+      await fetchViaApi(route);
       await route.abort('failed');
       return;
     }

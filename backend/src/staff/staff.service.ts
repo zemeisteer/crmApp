@@ -6,7 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { and, eq, or } from 'drizzle-orm';
-import * as bcrypt from 'bcryptjs';
+import { hashPassword } from '../common/password';
 import { DB, Database } from '../db/db.module';
 import { authHandoffCodes, organizationMemberships, sessions, users } from '../db/schema';
 import { AuditService } from '../audit/audit.service';
@@ -117,7 +117,7 @@ export class StaffService {
     }
 
     // New user creation
-    const passwordHash = await bcrypt.hash(dto.password, 10);
+    const passwordHash = await hashPassword(dto.password);
     const [newUser] = await this.db
       .insert(users)
       .values({

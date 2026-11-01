@@ -1,9 +1,10 @@
-import { IsArray, IsBoolean, IsIn, IsObject, IsOptional, IsString } from 'class-validator';
+import { IsArray, IsBoolean, IsIn, IsObject, IsOptional, IsString, MaxLength } from 'class-validator';
 
 export const LEFT_REASONS = ['PRICE', 'SCHEDULE', 'MOVED', 'RESULTS', 'TEACHER', 'GOAL_REACHED', 'OTHER'] as const;
 
 export class CreateStudentDto {
   @IsString()
+  @MaxLength(2000)
   fullName: string;
 
   @IsOptional() @IsIn(['MALE', 'FEMALE']) gender?: string;

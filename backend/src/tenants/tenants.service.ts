@@ -1,6 +1,7 @@
 import { BadRequestException, ConflictException, Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { and, asc, eq, inArray, isNotNull, isNull, ne, sql } from 'drizzle-orm';
-import * as bcrypt from 'bcryptjs';
+import * as bcrypt from 'bcrypt';
+import { hashPassword } from '../common/password';
 import { DB, Database } from '../db/db.module';
 import { tenants, users, groups, students, teachers, payments, attendance, branches, announcements, auditLogs, organizationMemberships, enrollments, placementTests, tenantDomains } from '../db/schema';
 import { normalizeSiteContent, parseSiteContent } from './site-content';
@@ -358,7 +359,7 @@ export class TenantsService {
       .values({ name: dto.name, subdomain: dto.subdomain, status: 'ACTIVE', plan: 'STARTER' })
       .returning();
 
-    const passwordHash = await bcrypt.hash(dto.adminPassword, 10);
+    const passwordHash = await hashPassword(dto.adminPassword);
     const [user] = await this.db
       .insert(users)
       .values({ tenantId: tenant.id, email: dto.adminEmail, passwordHash, fullName: dto.adminFullName, role: 'ADMIN', emailVerified: true })

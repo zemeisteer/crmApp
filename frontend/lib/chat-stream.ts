@@ -101,7 +101,7 @@ export type ChatStreamState = "connecting" | "open" | "waiting" | "stopped";
 export interface ChatStreamOptions {
   url: string;
   /** Read before every attempt: a refreshed token is picked up on reconnect. */
-  getToken: () => string | null;
+  getToken: () => string | null | Promise<string | null>;
   /** `ready` (also after every reconnect: catch up then) and `message` frames. */
   onEvent: (e: SseEvent) => void;
   /** The server ended it for good: not reconnected. */
@@ -170,7 +170,8 @@ export function connectChatStream(opts: ChatStreamOptions): ChatStreamHandle {
 
   async function connect(): Promise<void> {
     if (stopped) return;
-    const token = opts.getToken();
+    const token = await opts.getToken();
+    if (stopped) return;
     if (!token) return finish("unauthorized");
     const mine = new AbortController();
     ctl = mine;

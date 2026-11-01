@@ -11,6 +11,6 @@ execFileSync(process.platform === 'win32' ? 'npx.cmd' : 'npx', ['next', 'build']
   // A production build whatever the shell (or backend/.env, which env.cjs
   // loads) says: with NODE_ENV=development `next build` fails while
   // prerendering.
-  env: { ...process.env, NODE_ENV: 'production', NEXT_PUBLIC_API_URL: `http://localhost:${API_PORT}/api`, NEXT_DIST_DIR: DIST_DIR },
+  env: { ...process.env, NODE_ENV: 'production', NEXT_PUBLIC_API_URL: '/api', API_PROXY_TARGET: `http://127.0.0.1:${API_PORT}`, INTERNAL_API_URL: `http://127.0.0.1:${API_PORT}/api`, NEXT_DIST_DIR: DIST_DIR },
 });
 console.log(`built ${path.join(FRONTEND, DIST_DIR)}`);

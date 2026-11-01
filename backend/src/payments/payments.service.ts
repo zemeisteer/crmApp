@@ -1,10 +1,10 @@
 import { BadRequestException, ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { createHash } from 'crypto';
-import { and, count, eq, ilike, isNull, like, or, sql } from 'drizzle-orm';
+import { and, count, eq, ilike, inArray, isNull, like, or, sql } from 'drizzle-orm';
 import { DB, Database } from '../db/db.module';
 import { STUDENT_LIST_COLUMNS } from '../common/teacher-scope';
 import { containsPattern, enrolledInGroup, queryText } from '../common/list-filters';
-import { expenses, invoices, payments, salaryPayments, students } from '../db/schema';
+import { expenses, invoices, paymentClaims, payments, salaryPayments, students } from '../db/schema';
 import { LedgerService } from '../ledger/ledger.service';
 import { allocateToInvoices, LedgerTx, lockInvoice, lockOpenInvoices, lockStudentLedger } from './allocation';
 import { CreatePaymentDto } from './dto/payment.dto';
@@ -133,18 +133,39 @@ export class PaymentsService {
           )
         : undefined,
     );
-    const list = (limit?: number, offset?: number) => this.db.query.payments.findMany({
-      where,
-      columns: { idempotencyKey: false, requestHash: false },
-      with: { student: { columns: STUDENT_LIST_COLUMNS }, invoice: true, allocations: true },
-      orderBy: (p, { desc }) => [desc(p.paidAt), desc(p.id)],
-      ...(limit ? { limit, offset } : {}),
-    });
+    const list = async (limit?: number, offset?: number) =>
+      this.withCardReceipts(
+        tenantId,
+        await this.db.query.payments.findMany({
+          where,
+          columns: { idempotencyKey: false, requestHash: false },
+          with: { student: { columns: STUDENT_LIST_COLUMNS }, invoice: true, allocations: true },
+          orderBy: (p, { desc }) => [desc(p.paidAt), desc(p.id)],
+          ...(limit ? { limit, offset } : {}),
+        }),
+      );
     if (!q.page) return list();
     const pageSize = Math.min(Math.max(q.pageSize ?? 50, 1), 200);
     const page = Math.max(q.page, 1);
     const [{ total }] = await this.db.select({ total: count() }).from(payments).where(where);
     return { items: await list(pageSize, (page - 1) * pageSize), total: Number(total), page, pageSize };
+  }
+
+  /**
+   * Marks the payments that were made by confirming a card receipt (the
+   * student paid to the center's card and sent a screenshot): the history
+   * says so and links the receipt, instead of a plain "transfer".
+   */
+  async withCardReceipts<T extends { id: string }>(tenantId: string, rows: T[]): Promise<Array<T & { cardReceipt: { claimId: string; receiptFile: string } | null }>> {
+    const ids = rows.map((r) => r.id);
+    const claims = ids.length
+      ? await this.db
+          .select({ claimId: paymentClaims.id, receiptFile: paymentClaims.receiptFile, paymentId: paymentClaims.paymentId })
+          .from(paymentClaims)
+          .where(and(eq(paymentClaims.tenantId, tenantId), inArray(paymentClaims.paymentId, ids)))
+      : [];
+    const byPayment = new Map(claims.map((c) => [c.paymentId, { claimId: c.claimId, receiptFile: c.receiptFile }]));
+    return rows.map((r) => ({ ...r, cardReceipt: byPayment.get(r.id) ?? null }));
   }
 
   /** The whole list (internal callers). */

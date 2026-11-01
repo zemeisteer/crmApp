@@ -2,6 +2,7 @@ import { IsEmail, IsOptional, IsString, MaxLength, MinLength, Matches } from 'cl
 
 export class RegisterDto {
   @IsString()
+  @MaxLength(2000)
   @MinLength(2)
   centerName: string;
 
@@ -25,6 +26,7 @@ export class RegisterDto {
   password: string;
 
   @IsString()
+  @MaxLength(2000)
   @MinLength(2)
   fullName: string;
 

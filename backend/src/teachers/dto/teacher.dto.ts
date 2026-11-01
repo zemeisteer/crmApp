@@ -1,8 +1,9 @@
-import { IsEmail, IsInt, IsOptional, IsString, MinLength, Max } from 'class-validator';
+import { IsEmail, IsInt, IsOptional, IsString, MinLength, Max, MaxLength } from 'class-validator';
 import { MAX_MONEY } from '../../common/money';
 
 export class CreateTeacherDto {
   @IsString()
+  @MaxLength(2000)
   fullName: string;
 
   @IsOptional() @IsString() userId?: string;
@@ -33,6 +34,7 @@ export class TeacherAccountDto {
   email: string;
 
   @IsString()
+  @MaxLength(2000)
   @MinLength(6)
   password: string;
 }

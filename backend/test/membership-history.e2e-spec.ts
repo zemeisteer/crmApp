@@ -10,11 +10,14 @@ import { configureApp } from '../src/app.setup.js';
 import { CalendarEventsService } from '../src/calendar/calendar-events.service.js';
 import { DB, Database } from '../src/db/db.module.js';
 import { enrollmentPeriods, enrollments, lessonCancellations, schedules, students } from '../src/db/schema.js';
+import { pinClockToMorning } from './pin-clock.js';
 
 // Every stay of a student in a group is kept: joining, leaving, a break and
 // coming back, a pause, a move to another group. A lesson in a break is not
 // the student's - for attendance, credits and the calendar alike.
 describe('Membership history: stays in a group (e2e)', () => {
+  pinClockToMorning();
+
   let app: NestExpressApplication;
   let db: Database;
   const suffix = Date.now();

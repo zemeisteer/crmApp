@@ -7,26 +7,29 @@ import {
   IsString,
   Matches,
   Max,
-  Min,
-} from 'class-validator';
+  Min, MaxLength } from 'class-validator';
 
 const TIME_REGEX = /^([01]\d|2[0-3]):[0-5]\d$/;
 
 export class CreateScheduleDto {
   @IsString()
+  @MaxLength(2000)
   @IsNotEmpty()
   groupId: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(2000)
   teacherId?: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(2000)
   roomId?: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(2000)
   branchId?: string;
 
   @IsOptional()
@@ -37,6 +40,7 @@ export class CreateScheduleDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(2000)
   date?: string; // YYYY-MM-DD for one-time lesson
 
   @IsString()
@@ -53,6 +57,7 @@ export class CreateScheduleDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(2000)
   onlineMeetingUrl?: string;
 
   @IsOptional()
@@ -61,6 +66,7 @@ export class CreateScheduleDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(50000)
   topic?: string;
 
   @IsOptional()
@@ -71,18 +77,22 @@ export class CreateScheduleDto {
 export class UpdateScheduleDto {
   @IsOptional()
   @IsString()
+  @MaxLength(2000)
   groupId?: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(2000)
   teacherId?: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(2000)
   roomId?: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(2000)
   branchId?: string;
 
   @IsOptional()
@@ -93,6 +103,7 @@ export class UpdateScheduleDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(2000)
   date?: string;
 
   @IsOptional()
@@ -111,6 +122,7 @@ export class UpdateScheduleDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(2000)
   onlineMeetingUrl?: string;
 
   @IsOptional()
@@ -119,6 +131,7 @@ export class UpdateScheduleDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(50000)
   topic?: string;
 
   @IsOptional()
@@ -128,15 +141,18 @@ export class UpdateScheduleDto {
 
 export class CheckConflictDto {
   @IsString()
+  @MaxLength(2000)
   @IsNotEmpty()
   groupId: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(2000)
   teacherId?: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(2000)
   roomId?: string;
 
   @IsOptional()
@@ -147,6 +163,7 @@ export class CheckConflictDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(2000)
   date?: string;
 
   @IsString()
@@ -159,5 +176,6 @@ export class CheckConflictDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(2000)
   excludeScheduleId?: string;
 }

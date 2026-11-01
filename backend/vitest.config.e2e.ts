@@ -46,6 +46,8 @@ export default defineConfig({
       // test/trial-protection.e2e-spec.ts switches each one on for itself.
       SIGNUP_PHONE_CHECK: 'off',
       TRIAL_LIMITS: 'off',
+      // The suites sign up hundreds of accounts; the production cost is tested by a unit of its own.
+      BCRYPT_COST: '10',
       SUPERADMIN_2FA: 'off',
       TRIAL_PURGE: 'off',
       // Every suite asks for sign-up codes from one address (127.0.0.1); the

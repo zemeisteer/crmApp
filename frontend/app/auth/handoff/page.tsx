@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { authApi, setRefreshToken, setToken } from "@/lib/api";
+import { authApi, setToken } from "@/lib/api";
 import { safeNextPath } from "@/lib/domain";
 import { useLanguage } from "@/lib/i18n-context";
 
@@ -28,13 +28,12 @@ export default function AuthHandoffPage() {
     authApi
       .handoffExchange(code)
       .then((res) => {
-        // A session here needs both tokens; anything less is a failed handoff.
-        if (typeof res.accessToken !== "string" || typeof res.refreshToken !== "string") {
+        // The refresh token arrived as a cookie; no access token is a failed handoff.
+        if (typeof res.accessToken !== "string") {
           setFailed(true);
           return;
         }
         setToken(res.accessToken);
-        setRefreshToken(res.refreshToken);
         window.location.replace(next);
       })
       .catch(() => setFailed(true));

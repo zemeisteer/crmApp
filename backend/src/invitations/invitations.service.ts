@@ -8,7 +8,8 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import * as crypto from 'crypto';
-import * as bcrypt from 'bcryptjs';
+import * as bcrypt from 'bcrypt';
+import { hashPassword } from '../common/password';
 import { and, desc, eq, or } from 'drizzle-orm';
 import { DB, Database } from '../db/db.module';
 import {
@@ -211,7 +212,7 @@ export class InvitationsService {
     }
     const existing = user;
     // Hashed before the transaction: it is slow and needs no lock.
-    const passwordHash = existing ? null : await bcrypt.hash(dto.password!, 10);
+    const passwordHash = existing ? null : await hashPassword(dto.password!);
 
     // One transaction: the staff limit, the invitation marked used (once),
     // and the member added - all of it, or nothing.
