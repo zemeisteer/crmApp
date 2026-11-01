@@ -16,14 +16,14 @@
   --accent-strong: color-mix(in oklab, var(--accent) 72%, #000000);
   --accent-gradient: linear-gradient(160deg, var(--accent-2), var(--accent));
 
-  /* Ink: primary actions, active navigation, dark chips. */
-  --ink: #16161d;
-  --ink-hover: #2b2b36;
+  /* Ink: primary actions, active navigation, dark chips. A deep indigo, softer than black on white. */
+  --ink: #3d3a7c;
+  --ink-hover: #4d4a96;
   --on-ink: #ffffff;
   /* Text on a colored fill (status, strong accent): white in both themes. */
   --on-color: #ffffff;
   /* Text on the bright accent (hero cards): ink in both themes, AA on orange. */
-  --on-accent: #16161d;
+  --on-accent: #26244f;
   --primary: var(--ink);
   --primary-hover: var(--ink-hover);
   --primary-soft: #efedf8;
@@ -44,7 +44,7 @@
   --card-border: rgba(255, 255, 255, 0.9);
 
   /* Text. --text-muted keeps AA (4.5:1) on white and on --surface-muted. */
-  --text: #16161d;
+  --text: #26263a;
   --text-soft: #43454f;
   --text-muted: #646673;
   --text-faint: #9a9ca8;
