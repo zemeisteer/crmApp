@@ -18,6 +18,7 @@ const card: React.CSSProperties = { background: "var(--surface)", border: "1px s
 export default function CardTransfer({ debt, forMonth, onSent }: { debt: number; forMonth?: string; onSent?: () => void }) {
   const { t, lang } = useLanguage();
   const [data, setData] = useState<PortalCardPayment | null>(null);
+  const [chosen, setChosen] = useState<string | null>(null);
   const [amount, setAmount] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [note, setNote] = useState("");
@@ -47,11 +48,14 @@ export default function CardTransfer({ debt, forMonth, onSent }: { debt: number;
   }, [debt, amount]);
 
   if (!data?.card) return null;
+  const cards = data.cards?.length ? data.cards : [data.card];
+  // The list may have changed under an open page: what is shown is always one of today's cards.
+  const shown = cards.find((c) => c.number === chosen) ?? cards[0];
   const pending = data.claims.filter((c) => c.status === "PENDING");
 
   async function copy() {
     try {
-      await navigator.clipboard.writeText(data!.card!.number.replace(/\s/g, ""));
+      await navigator.clipboard.writeText(shown.number.replace(/\s/g, ""));
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
@@ -65,9 +69,9 @@ export default function CardTransfer({ debt, forMonth, onSent }: { debt: number;
     setBusy(true);
     setError(null);
     try {
-      const fingerprint = JSON.stringify([amount, forMonth, note.trim(), await fileFingerprint(file)]);
+      const fingerprint = JSON.stringify([amount, forMonth, note.trim(), shown.number, await fileFingerprint(file)]);
       if (sendKey.current?.fingerprint !== fingerprint) sendKey.current = { fingerprint, key: newKey() };
-      await portalApi.sendCardPayment({ amount: Number(amount), forMonth, note: note.trim() || undefined, file, idempotencyKey: sendKey.current.key });
+      await portalApi.sendCardPayment({ amount: Number(amount), forMonth, note: note.trim() || undefined, cardNumber: shown.number, file, idempotencyKey: sendKey.current.key });
       sendKey.current = null;
       setSent(true);
       setFile(null);
@@ -86,16 +90,28 @@ export default function CardTransfer({ debt, forMonth, onSent }: { debt: number;
   return (
     <div style={{ ...card, display: "flex", flexDirection: "column", gap: 12 }} data-testid="card-transfer">
       <div style={{ fontFamily: "var(--font-display)", fontSize: 16, fontWeight: 700 }}>💳 {t("ct.title")}</div>
+      {cards.length > 1 && (
+        <div role="radiogroup" aria-label={t("pcp.chooseCard")} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          <div style={{ fontSize: 12.5, fontWeight: 700, color: "var(--text-soft)" }}>{t("pcp.chooseCard")}</div>
+          {cards.map((c) => (
+            <label key={c.number} style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13, cursor: "pointer", padding: "9px 12px", borderRadius: "var(--radius-sm)", border: `1.5px solid ${c.number === shown.number ? "var(--primary)" : "var(--border)"}`, background: c.number === shown.number ? "var(--primary-soft)" : "var(--surface)" }}>
+              <input type="radio" name="center-card" checked={c.number === shown.number} onChange={() => setChosen(c.number)} />
+              <span style={{ fontFamily: "ui-monospace, monospace", fontWeight: 700 }}>•••• {c.number.slice(-4)}</span>
+              <span style={{ color: "var(--text-muted)", textTransform: "uppercase", fontSize: 12 }}>{c.holder}</span>
+            </label>
+          ))}
+        </div>
+      )}
       <div style={{ borderRadius: "var(--radius-lg)", padding: 16, color: "var(--on-ink)", background: "linear-gradient(135deg, var(--ink), var(--ink))" }}>
         <div style={{ fontSize: 12, opacity: 0.75 }}>{t("ct.cardNumber")}</div>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
-          <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 20, fontWeight: 700, letterSpacing: 1 }}>{data.card.number}</div>
+          <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 20, fontWeight: 700, letterSpacing: 1 }}>{shown.number}</div>
           <button type="button" onClick={copy} style={{ background: "rgba(255,255,255,0.15)", color: "var(--on-ink)", border: "none", borderRadius: "var(--radius-xs)", padding: "6px 12px", fontWeight: 700, fontSize: 12.5, cursor: "pointer" }}>
             {copied ? `✓ ${t("ct.copied")}` : t("ct.copy")}
           </button>
         </div>
         <div style={{ fontSize: 12, opacity: 0.75, marginTop: 10 }}>{t("ct.holder")}</div>
-        <div style={{ fontSize: 15, fontWeight: 700, textTransform: "uppercase" }}>{data.card.holder}</div>
+        <div style={{ fontSize: 15, fontWeight: 700, textTransform: "uppercase" }}>{shown.holder}</div>
       </div>
 
       <ol style={{ margin: 0, paddingLeft: 20, fontSize: 13, color: "var(--text-soft)", lineHeight: 1.6 }}>

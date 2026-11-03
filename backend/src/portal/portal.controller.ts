@@ -235,7 +235,7 @@ export class PortalController {
   )
   async sendCardPayment(
     @PortalUser() user: PortalUserPayload,
-    @Body() body: { amount?: string; forMonth?: string; invoiceId?: string; note?: string },
+    @Body() body: { amount?: string; forMonth?: string; invoiceId?: string; note?: string; cardNumber?: string },
     @Headers('idempotency-key') idempotencyKey?: string,
     @UploadedFile() file?: Express.Multer.File,
   ) {
@@ -246,6 +246,7 @@ export class PortalController {
         forMonth: body.forMonth,
         invoiceId: body.invoiceId || undefined,
         note: body.note,
+        cardNumber: typeof body.cardNumber === 'string' ? body.cardNumber.slice(0, 32) : undefined,
         receiptFile: file.filename,
         receiptSha256: await sha256File(file.path),
         idempotencyKey,

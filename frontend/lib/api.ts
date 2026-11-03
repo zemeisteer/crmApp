@@ -2185,6 +2185,8 @@ export interface CardClaim {
   receiptFile: string;
   note: string | null;
   sentBy: "student" | "parent";
+  /** The card it says it was paid to. */
+  cardNumber: string | null;
   status: CardClaimStatus;
   rejectReason: string | null;
   reviewedBy: string | null;
@@ -2194,11 +2196,14 @@ export interface CardClaim {
 }
 export interface PortalCardPayment {
   card: { number: string; holder: string } | null;
+  cards?: Array<{ number: string; holder: string }>;
   claims: Array<{ id: string; amount: number; forMonth: string; status: CardClaimStatus; rejectReason: string | null; createdAt: string; reviewedAt: string | null }>;
 }
 
 export const cardPaymentsApi = {
-  getCard: () => request<{ card: { number: string; holder: string } | null }>("/card-payments/card"),
+  getCard: () => request<{ card: { number: string; holder: string } | null; cards: Array<{ number: string; holder: string }> }>("/card-payments/card"),
+  setCards: (cards: Array<{ cardNumber: string; cardHolder: string }>) =>
+    request<{ card: { number: string; holder: string } | null; cards: Array<{ number: string; holder: string }> }>("/card-payments/cards", { method: "PUT", body: JSON.stringify({ cards }) }),
   setCard: (data: { cardNumber: string; cardHolder: string }) =>
     request<{ card: { number: string; holder: string } | null }>("/card-payments/card", { method: "PUT", body: JSON.stringify(data) }),
   claims: (status?: CardClaimStatus) => request<{ pending: number; items: CardClaim[] }>(`/card-payments/claims${status ? `?status=${status}` : ""}`),
@@ -3466,12 +3471,13 @@ export const portalApi = {
   getPayments: () => request<PortalPayments>("/portal/payments"),
   getCardPayment: () => request<PortalCardPayment>("/portal/card-payment"),
   // "I paid by card": the amount, and a picture (or PDF) of the receipt.
-  sendCardPayment: async (data: { amount: number; forMonth?: string; invoiceId?: string; note?: string; file: File; idempotencyKey?: string }) => {
+  sendCardPayment: async (data: { amount: number; forMonth?: string; invoiceId?: string; note?: string; cardNumber?: string; file: File; idempotencyKey?: string }) => {
     const form = new FormData();
     form.append("amount", String(data.amount));
     if (data.forMonth) form.append("forMonth", data.forMonth);
     if (data.invoiceId) form.append("invoiceId", data.invoiceId);
     if (data.note) form.append("note", data.note);
+    if (data.cardNumber) form.append("cardNumber", data.cardNumber);
     form.append("file", data.file);
     const res = await fetch(`${API_URL}/portal/card-payment`, {
       method: "POST",

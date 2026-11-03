@@ -264,6 +264,9 @@ export const tenants = pgTable('tenants', {
   // besides them): shown in the cabinet; the receipt is checked by staff.
   cardNumber: text('card_number'),
   cardHolder: text('card_holder'),
+  // Several cards, in the center's order (the first is also in card_number /
+  // card_holder). Null for a center that set one card before there could be more.
+  cardList: jsonb('card_list').$type<Array<{ number: string; holder: string }>>(),
   // The phone confirmed with a code when the center signed up: one free
   // trial per number (null for centers made before, or by the platform).
   signupPhone: text('signup_phone'),
@@ -908,6 +911,8 @@ export const paymentClaims = pgTable('payment_claims', {
   note: text('note'),
   // Who sent it from the cabinet: the student or a parent.
   sentBy: text('sent_by').notNull().default('student'),
+  // The center's card it says it was paid to, as shown then: where staff look for the money.
+  cardNumber: text('card_number'),
   status: text('status').notNull().default('PENDING'), // PENDING | CONFIRMED | REJECTED
   rejectReason: text('reject_reason'),
   reviewedByUserId: text('reviewed_by_user_id').references(() => users.id, { onDelete: 'set null' }),

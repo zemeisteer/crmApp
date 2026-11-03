@@ -74,7 +74,7 @@ export default function CardClaims({ canDecide, onCount }: { canDecide: boolean;
             <div style={{ minWidth: 0, display: "flex", flexDirection: "column", gap: 2 }}>
               <b style={{ fontSize: 14, color: "var(--text)" }}>{c.studentName}</b>
               <span style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 15 }}>{money(c.amount)} {t("common.sumUnit")}</span>
-              <span style={{ fontSize: 12, color: "var(--text-muted)" }}>{c.forMonth} · {formatDateTime(c.createdAt, lang)}</span>
+              <span style={{ fontSize: 12, color: "var(--text-muted)" }}>{c.forMonth} · {formatDateTime(c.createdAt, lang)}{c.cardNumber ? ` · •••• ${c.cardNumber.slice(-4)}` : ""}</span>
               {c.status !== "PENDING" && (
                 <span style={{ fontSize: 12, fontWeight: 700, color: c.status === "CONFIRMED" ? "var(--success)" : "var(--danger)" }}>
                   {t(`cc.f.${c.status}`)}{c.reviewedBy ? ` · ${c.reviewedBy}` : ""}
@@ -128,6 +128,7 @@ function ClaimModal({ claim, canDecide, onClose, onDone }: { claim: CardClaim; c
         <div style={{ fontSize: 13, color: "var(--text-soft)", lineHeight: 1.6 }}>
           {claim.studentPhone && <>{claim.studentPhone} · </>}
           {t("cc.month")}: <b>{claim.forMonth}</b> · {t("cc.sent")}: {formatDateTime(claim.createdAt, lang)}
+          {claim.cardNumber && <> · {t("ct.cardNumber")}: <b style={{ fontFamily: "ui-monospace, monospace" }} data-testid="claim-card">{claim.cardNumber}</b></>}
           {claim.sentBy === "parent" && <> · {t("cc.byParent")}</>}
         </div>
         {claim.note && <div style={{ fontSize: 13, background: "var(--primary-soft)", borderRadius: "var(--radius-xs)", padding: "8px 12px" }}>💬 {claim.note}</div>}

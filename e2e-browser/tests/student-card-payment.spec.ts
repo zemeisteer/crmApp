@@ -66,3 +66,57 @@ test('a student sends card receipts; the center confirms one and rejects one; th
   await expect(cab.getByTestId('card-transfer')).toContainText('240');
   await ctx.close();
 });
+
+test('several center cards: the owner adds one in settings, the student pays to it, staff see which card', async ({ page, browser }) => {
+  const a = await newCenter('scards');
+  await api('PUT', '/card-payments/card', { token: a.token, body: { cardNumber: '8600 1111 2222 3333', cardHolder: 'Test Markaz' } });
+  const local = `94${String(Date.now()).slice(-7)}`;
+  const kid = await api('POST', '/students', { token: a.token, body: { fullName: 'Two Cards Kid', phone: `+998${local}` } });
+  const { pin } = await api('POST', `/students/${kid.id}/portal-pin`, { token: a.token });
+
+  // --- The owner adds a second card ------------------------------------------
+  await loginOnMainSite(page, a.email);
+  await expectCenterDashboard(page, a.sub);
+  await page.goto(centerUrl(a.sub, '/settings'));
+  await page.getByRole('button', { name: 'Integratsiyalar', exact: true }).first().click();
+  const form = page.getByTestId('card-settings');
+  await expect(form.getByTestId('card-settings-row')).toHaveCount(1);
+  await form.getByRole('button', { name: "+ Karta qo'shish" }).click();
+  const second = form.getByTestId('card-settings-row').nth(1);
+  await second.locator('input').nth(0).fill('9860555566667777');
+  await second.locator('input').nth(1).fill('Ikkinchi Karta');
+  await form.getByRole('button', { name: 'Saqlash', exact: true }).click();
+  await expect(form.getByRole('status')).toBeVisible();
+  await page.reload();
+  await page.getByRole('button', { name: 'Integratsiyalar', exact: true }).first().click();
+  await expect(page.getByTestId('card-settings').getByTestId('card-settings-row')).toHaveCount(2);
+
+  // --- The cabinet picks the second card -------------------------------------
+  const ctx = await browser.newContext();
+  const cab = await ctx.newPage();
+  await cab.goto(centerUrl(a.sub, '/portal'));
+  await cab.getByRole('textbox').first().pressSequentially(local);
+  await authSlot('cabinet');
+  await cab.getByRole('button', { name: 'Davom etish' }).click();
+  await cab.getByPlaceholder('••••••').fill(String(pin));
+  await cab.getByRole('button', { name: 'Kabinetga kirish' }).click();
+  await expect(cab.getByText('Two Cards Kid').first()).toBeVisible();
+  await cab.locator('.ptl-side').getByRole('button', { name: /^To'lovlar/ }).click();
+  const transfer = cab.getByTestId('card-transfer');
+  await expect(transfer).toContainText('8600 1111 2222 3333');
+  await transfer.getByRole('radio').nth(1).check();
+  await expect(transfer).toContainText('9860 5555 6666 7777');
+  await transfer.getByLabel("O'tkazilgan summa (so'm)").fill('150000');
+  await transfer.locator('input[type="file"]').setInputFiles({ name: 'chek.png', mimeType: 'image/png', buffer: PNG });
+  await transfer.getByRole('button', { name: 'Chekni yuborish' }).click();
+  await expect(transfer.getByRole('status')).toContainText('Chek yuborildi');
+  await ctx.close();
+
+  // --- Staff see which card it went to ---------------------------------------
+  await page.goto(centerUrl(a.sub, '/payments'));
+  await page.getByTestId('cards-tab').click();
+  const claim = page.getByTestId('card-claims').getByTestId('card-claim');
+  await expect(claim).toContainText('•••• 7777');
+  await claim.click();
+  await expect(page.getByRole('dialog').getByTestId('claim-card')).toHaveText('9860 5555 6666 7777');
+});
