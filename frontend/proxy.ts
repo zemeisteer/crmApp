@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { ROOT_DOMAIN, customHost, subdomainFromHost } from "@/lib/domain";
 import { serverApiBase } from "@/lib/server-api";
+import { contentSecurityPolicy, newNonce } from "@/lib/csp";
 
 // A center's own domain (custom-domains/ in the API): which center it is,
 // asked once a minute per host. Only verified domains answer.
@@ -28,6 +29,22 @@ async function centerOfDomain(host: string): Promise<string | null> {
 // center subdomain (/login, /t/<token>, /portal ...) work as usual. On the
 // main domain, old /site/<sub> links move to the subdomain.
 export async function proxy(request: NextRequest) {
+  // Not in development: its hot reload needs eval and its own socket.
+  if (process.env.NODE_ENV !== "production") return route(request);
+  // A nonce per page: Next.js reads it from the request's policy and puts it
+  // on its scripts; the answer carries the same policy (lib/csp.ts).
+  const nonce = newNonce();
+  const policy = contentSecurityPolicy(nonce);
+  const headers = new Headers(request.headers);
+  headers.set("content-security-policy", policy);
+  headers.set("x-nonce", nonce);
+  const res = await route(request, headers);
+  res.headers.set("Content-Security-Policy", policy);
+  return res;
+}
+
+async function route(request: NextRequest, headers?: Headers) {
+  const pass = headers ? { request: { headers } } : undefined;
   const host = request.headers.get("x-forwarded-host") ?? request.headers.get("host");
   const { pathname } = request.nextUrl;
   const sub = subdomainFromHost(host);
@@ -41,7 +58,7 @@ export async function proxy(request: NextRequest) {
       if (pathname === "/") {
         const url = request.nextUrl.clone();
         url.pathname = `/site/${center}`;
-        return NextResponse.rewrite(url);
+        return NextResponse.rewrite(url, pass);
       }
       return NextResponse.redirect(new URL(`${pathname}${request.nextUrl.search}`, `https://${center}.${ROOT_DOMAIN}/`), 307);
     }
@@ -51,9 +68,9 @@ export async function proxy(request: NextRequest) {
     if (pathname === "/") {
       const url = request.nextUrl.clone();
       url.pathname = `/site/${sub}`;
-      return NextResponse.rewrite(url);
+      return NextResponse.rewrite(url, pass);
     }
-    return NextResponse.next();
+    return NextResponse.next(pass);
   }
 
   const bare = (host ?? "").toLowerCase().replace(/:\d+$/, "");
@@ -62,7 +79,7 @@ export async function proxy(request: NextRequest) {
     const url = new URL(request.nextUrl.search, `https://${m[1].toLowerCase()}.${ROOT_DOMAIN}/`);
     return NextResponse.redirect(url, 308);
   }
-  return NextResponse.next();
+  return NextResponse.next(pass);
 }
 
 export const config = {

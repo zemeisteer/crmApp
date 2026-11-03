@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { headers } from "next/headers";
 import "./globals.css";
 import { AuthProvider } from "@/lib/auth-context";
 import { LanguageProvider } from "@/lib/i18n-context";
@@ -24,11 +25,14 @@ export const metadata: Metadata = {
   openGraph: { type: "website", siteName: "TalimCRM", title: "TalimCRM - o'quv markazlar uchun CRM", description: "Lidlar, guruhlar, davomat, to'lovlar, kabinetlar, Telegram va AI - bitta tizimda.", locale: "uz_UZ" },
 };
 
-export default function RootLayout({
+// Every page is rendered per request: its scripts carry that request's
+// nonce (proxy.ts). A page built ahead of time would carry none and be blocked.
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  await headers();
   return (
     <html lang="uz">
       <head>
