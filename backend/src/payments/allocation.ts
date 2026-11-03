@@ -72,7 +72,7 @@ export async function allocateToInvoices(
     if (paid === 0 && waived === 0) continue;
     cash -= paid;
     waive -= waived;
-    await tx.insert(paymentAllocations).values({ tenantId: p.tenantId, paymentId: p.paymentId, invoiceId: inv.id, amount: paid });
+    await tx.insert(paymentAllocations).values({ tenantId: p.tenantId, paymentId: p.paymentId, invoiceId: inv.id, amount: paid, waived });
     const remaining = inv.remainingAmount - paid - waived;
     await tx
       .update(invoices)

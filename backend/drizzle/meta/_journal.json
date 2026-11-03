@@ -575,6 +575,13 @@
       "when": 1797900003000,
       "tag": "0081_payment_void",
       "breakpoints": true
+    },
+    {
+      "idx": 82,
+      "version": "7",
+      "when": 1797900004000,
+      "tag": "0082_allocation_waived",
+      "breakpoints": true
     }
   ]
 }

@@ -750,6 +750,9 @@ export const paymentAllocations = pgTable('payment_allocations', {
   paymentId: text('payment_id').notNull().references(() => payments.id, { onDelete: 'cascade' }),
   invoiceId: text('invoice_id').notNull().references(() => invoices.id, { onDelete: 'cascade' }),
   amount: integer('amount').notNull(),
+  // The part of the payment's discount this invoice was let off: what a void
+  // puts back (0 for allocations made before 0082, which did not record it).
+  waived: integer('waived').notNull().default(0),
   createdAt: timestamp('created_at').notNull().defaultNow(),
 }, (t) => ({
   tenantIdx: index('payment_allocations_tenant_idx').on(t.tenantId),

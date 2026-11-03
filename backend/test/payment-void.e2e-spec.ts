@@ -82,11 +82,22 @@ describe('Voiding a payment (e2e)', () => {
     expect(await inv(invId)).toMatchObject({ amountPaid: 0, remainingAmount: 200_000 });
   });
 
-  it('refused: a payment with a discount, and cash on a day whose cash is closed', async () => {
-    const s = await student('Refused Kid');
+  it('a payment with a discount: both come off; one recorded before the discount was kept per invoice is refused', async () => {
+    const s = await student('Discount Kid');
     const invId = await invoice(s, 500_000);
     const discounted = await pay({ studentId: s, amount: 100_000, discount: 50_000, invoiceId: invId });
-    expect((await voidIt(discounted).expect(409)).body.code).toBe('DISCOUNT');
+    expect(await inv(invId)).toMatchObject({ amountPaid: 100_000, remainingAmount: 350_000 });
+    await voidIt(discounted).expect(201);
+    expect(await inv(invId)).toMatchObject({ amountPaid: 0, remainingAmount: 500_000, status: 'OPEN' });
+
+    const old = await pay({ studentId: s, amount: 100_000, discount: 50_000, invoiceId: invId });
+    await db.update(paymentAllocations).set({ waived: 0 }).where(eq(paymentAllocations.paymentId, old));
+    expect((await voidIt(old).expect(409)).body.code).toBe('DISCOUNT');
+  });
+
+  it('refused: cash on a day whose cash is closed', async () => {
+    const s = await student('Refused Kid');
+    const invId = await invoice(s, 500_000);
 
     const cash = await pay({ studentId: s, amount: 70_000, method: 'CASH', invoiceId: invId, paidAt: '2026-10-15T07:00:00.000Z' });
     await http().post('/api/cash/day/close').set(bearer(owner)).send({ date: '2026-10-15', countedCash: 70_000 }).expect(201);

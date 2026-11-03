@@ -375,9 +375,9 @@ export class PaymentsService {
    *
    * Refused where taking it back here would leave something else wrong:
    * online payments (the money is with Click/Payme: refunded there), a card
-   * receipt's payment (the receipt says confirmed), one with a discount (the
-   * waived part is not recorded per invoice), and cash on a day whose cash
-   * was already counted and closed.
+   * receipt's payment (the receipt says confirmed), one with a discount
+   * recorded before 0082 (where the waived part was not kept per invoice),
+   * and cash on a day whose cash was already counted and closed.
    */
   async voidPayment(tenantId: string, userId: string, id: string, reason: string) {
     const why = (reason ?? '').trim().slice(0, 300);
@@ -394,7 +394,6 @@ export class PaymentsService {
       }
       const [claim] = await tx.select({ id: paymentClaims.id }).from(paymentClaims).where(eq(paymentClaims.paymentId, id));
       if (claim) throw new ConflictException({ code: 'CARD_RECEIPT', message: "Bu to'lov karta cheki orqali tasdiqlangan: uni bu yerdan bekor qilib bo'lmaydi" });
-      if (p.discount > 0) throw new ConflictException({ code: 'DISCOUNT', message: "Chegirma bilan kiritilgan to'lovni bekor qilib bo'lmaydi" });
       if (p.method === 'CASH') {
         const day = formatZoned(p.paidAt, await this.ledger.timezone(tenantId)).slice(0, 10);
         const [closed] = await tx.select({ id: cashClosings.id }).from(cashClosings).where(and(eq(cashClosings.tenantId, tenantId), eq(cashClosings.date, day)));
@@ -402,11 +401,15 @@ export class PaymentsService {
       }
 
       const allocations = await tx.select().from(paymentAllocations).where(eq(paymentAllocations.paymentId, id));
+      // A discount is put back where it was given; one from before 0082 has no such record.
+      if (p.discount > 0 && allocations.length > 0 && allocations.every((a) => a.waived === 0)) {
+        throw new ConflictException({ code: 'DISCOUNT', message: "Bu chegirmali to'lov eski tartibda kiritilgan: chegirma qaysi hisob-fakturaga tushgani yozilmagan, uni bekor qilib bo'lmaydi" });
+      }
       for (const a of allocations) {
         const inv = await lockInvoice(tx, tenantId, p.studentId, a.invoiceId);
         if (!inv) continue;
         const amountPaid = Math.max(0, inv.amountPaid - a.amount);
-        const remaining = Math.min(inv.amount, inv.remainingAmount + a.amount);
+        const remaining = Math.min(inv.amount, inv.remainingAmount + a.amount + a.waived);
         await tx.update(invoices).set({
           amountPaid,
           remainingAmount: remaining,
@@ -419,7 +422,7 @@ export class PaymentsService {
       await tx.update(payments).set({ status: 'VOIDED', voidedAt: new Date(), voidedById: userId, voidReason: why }).where(eq(payments.id, id));
       await this.audit.record(tx, {
         tenantId, userId, action: 'void', entityType: 'payment', entityId: id,
-        meta: { amount: p.amount, method: p.method, forMonth: p.forMonth, studentId: p.studentId, reason: why, invoices: allocations.map((a) => ({ id: a.invoiceId, amount: a.amount })) },
+        meta: { amount: p.amount, method: p.method, forMonth: p.forMonth, studentId: p.studentId, reason: why, invoices: allocations.map((a) => ({ id: a.invoiceId, amount: a.amount, waived: a.waived })) },
       });
       return { id, status: 'VOIDED' as const, replay: false };
     });

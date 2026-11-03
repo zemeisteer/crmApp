@@ -652,8 +652,8 @@ function PaymentsContent() {
   const seesExpenses = can(user, "expenses.view");
   // Taking back a payment entered by mistake: whoever takes payments, for
   // ones taken here (online ones are refunded at Click/Payme; a card
-  // receipt's and a discounted one are refused by the server too).
-  const canVoid = (p: Payment) => can(user, "payments.take") && p.status === "PAID" && p.method !== "CLICK" && p.method !== "PAYME" && !p.cardReceipt && !(p.discount > 0);
+  // receipt's is refused by the server too, as are the rare cases it names).
+  const canVoid = (p: Payment) => can(user, "payments.take") && p.status === "PAID" && p.method !== "CLICK" && p.method !== "PAYME" && !p.cardReceipt;
   async function voidPayment(p: Payment) {
     const reason = window.prompt(t("payment.voidPrompt").replace("{amount}", formatMoney(p.amount)).replace("{student}", p.student?.fullName ?? ""))?.trim();
     if (!reason) return;
