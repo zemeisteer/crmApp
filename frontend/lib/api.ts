@@ -59,29 +59,75 @@ export async function freshToken(): Promise<string | null> {
   return accessToken;
 }
 
-const PORTAL_TOKEN_KEY = "talimcrm_portal_token";
+// The cabinet's sessions are httpOnly cookies, one per child signed in: a
+// script on the page cannot read them. Kept here is only which child is
+// shown and the list to switch between - names, never tokens.
+const PORTAL_ACTIVE_KEY = "talimcrm_portal_active";
+const LEGACY_PORTAL_TOKEN_KEY = "talimcrm_portal_token";
 
-export function getPortalToken(): string | null {
+/** The child shown (whose session the requests use), or null when signed out. */
+export function getPortalStudent(): string | null {
   if (typeof window === "undefined") return null;
-  return localStorage.getItem(PORTAL_TOKEN_KEY);
+  return localStorage.getItem(PORTAL_ACTIVE_KEY);
 }
 
-export function setPortalToken(token: string) {
+export function setPortalStudent(studentId: string) {
   if (typeof window === "undefined") return;
-  localStorage.setItem(PORTAL_TOKEN_KEY, token);
+  localStorage.setItem(PORTAL_ACTIVE_KEY, studentId);
 }
 
 export function clearPortalToken() {
   if (typeof window === "undefined") return;
-  localStorage.removeItem(PORTAL_TOKEN_KEY);
+  localStorage.removeItem(PORTAL_ACTIVE_KEY);
   localStorage.removeItem(PORTAL_SESSIONS_KEY);
+  localStorage.removeItem(LEGACY_PORTAL_TOKEN_KEY);
+}
+
+/** Signs every child out on the server (their cookies go), then here. */
+export async function portalLogout() {
+  await fetch(`${API_URL}/portal/auth/logout`, { method: "POST", credentials: "include", headers: SESSION_TRANSPORT }).catch(() => undefined);
+  clearPortalToken();
+}
+
+/** What a cabinet request carries: the cookie transport and the child it is for. */
+function portalHeaders(): Record<string, string> {
+  const id = getPortalStudent();
+  return id ? { ...SESSION_TRANSPORT, "X-Portal-Student": id } : { ...SESSION_TRANSPORT };
+}
+
+/**
+ * A cabinet opened before tokens left browser storage: each token it still
+ * holds becomes its cookie, once, and then no token is left in storage.
+ * Nobody is signed out by the change.
+ */
+export async function adoptLegacyPortalTokens(): Promise<void> {
+  if (typeof window === "undefined") return;
+  let listed: Array<{ accessToken?: unknown; student?: { id?: unknown } }> = [];
+  try {
+    const raw = JSON.parse(localStorage.getItem(PORTAL_SESSIONS_KEY) || "[]");
+    if (Array.isArray(raw)) listed = raw;
+  } catch {
+    // unreadable: nothing to adopt from it
+  }
+  const legacy = localStorage.getItem(LEGACY_PORTAL_TOKEN_KEY);
+  const tokens = [...new Set([legacy, ...listed.map((s) => s?.accessToken)].filter((t): t is string => typeof t === "string" && t.length > 0))];
+  if (tokens.length === 0) return;
+  for (const token of tokens) {
+    const res = await fetch(`${API_URL}/portal/auth/adopt`, { method: "POST", credentials: "include", headers: { ...SESSION_TRANSPORT, Authorization: `Bearer ${token}` } }).catch(() => null);
+    const body = res?.ok ? ((await res.json().catch(() => null)) as { student?: { id?: string } } | null) : null;
+    if (token === legacy && body?.student?.id) setPortalStudent(body.student.id);
+  }
+  localStorage.removeItem(LEGACY_PORTAL_TOKEN_KEY);
+  // Written again without the tokens.
+  addPortalSessions([]);
 }
 
 // A parent may have several children signed in at once: one session each,
 // switched without signing in again.
 export type PortalViewer = "student" | "parent";
 export interface PortalSession {
-  accessToken: string;
+  /** Never kept: the server answers the site with a cookie instead. */
+  accessToken?: string;
   viewer?: PortalViewer;
   student: { id: string; fullName: string };
   tenant: { id: string; name: string };
@@ -92,7 +138,7 @@ export function getPortalSessions(): PortalSession[] {
   if (typeof window === "undefined") return [];
   try {
     const list = JSON.parse(localStorage.getItem(PORTAL_SESSIONS_KEY) || "[]");
-    return Array.isArray(list) ? list.filter((s) => s?.accessToken && s?.student?.id) : [];
+    return Array.isArray(list) ? list.filter((s) => s?.student?.id) : [];
   } catch {
     return [];
   }
@@ -101,7 +147,7 @@ export function getPortalSessions(): PortalSession[] {
 export function addPortalSessions(list: PortalSession[]): PortalSession[] {
   const byId = new Map(getPortalSessions().map((s) => [s.student.id, s]));
   for (const s of list) byId.set(s.student.id, s);
-  const all = [...byId.values()];
+  const all = [...byId.values()].map(({ accessToken: _token, ...s }) => s);
   try {
     localStorage.setItem(PORTAL_SESSIONS_KEY, JSON.stringify(all));
   } catch {
@@ -187,10 +233,11 @@ async function request<T>(
   const callerToken = !!(options.headers as Record<string, string> | undefined)?.["Authorization"];
   const opensSession = NO_SESSION_NEEDED.test(path);
   const hadSession = !isPortal && !callerToken && !opensSession && hasSession();
-  const token = isPortal ? getPortalToken() : callerToken || opensSession ? getToken() : await freshToken();
+  const portalSession = isPortal && !!getPortalStudent();
+  const token = isPortal ? null : callerToken || opensSession ? getToken() : await freshToken();
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
-    ...(isPortal ? {} : SESSION_TRANSPORT),
+    ...(isPortal ? portalHeaders() : SESSION_TRANSPORT),
     ...(options.headers as Record<string, string> | undefined),
   };
   // A caller may pass its own token (e.g. a staff token to a /portal door).
@@ -198,7 +245,7 @@ async function request<T>(
 
   const res = await fetch(`${API_URL}${path}`, {
     ...options,
-    ...(isPortal ? {} : { credentials: "include" as const }),
+    credentials: "include",
     headers,
   });
 
@@ -208,7 +255,7 @@ async function request<T>(
   // A 401 while we were sending a token: try a silent refresh once before
   // giving up and bouncing to login. A 401 with no token attached (e.g. a
   // failed login attempt itself) is just a normal error to surface.
-  if (res.status === 401 && (token || hadSession)) {
+  if (res.status === 401 && (token || hadSession || portalSession)) {
     if (isPortal) {
       clearPortalToken();
       throw new ApiError("Portal sessiyasi eskirgan", 401);
@@ -3166,6 +3213,8 @@ export interface PortalMe {
   id: string;
   fullName: string;
   viewer?: PortalViewer;
+  /** Opened from a parent's own account (not a phone and PIN): that parent also has their own calendar. */
+  parentAccount?: boolean;
   phone?: string | null;
   parentPhone?: string | null;
   tenant: {
@@ -3362,7 +3411,7 @@ export type PortalTutorAnswer =
 
 export const portalApi = {
   loginWithToken: (token: string) =>
-    request<{ accessToken: string; student: unknown; tenant: unknown }>("/portal/auth/token", {
+    request<PortalSession>("/portal/auth/token", {
       method: "POST",
       body: JSON.stringify({ token }),
     }),
@@ -3394,10 +3443,10 @@ export const portalApi = {
     const form = new FormData();
     if (data.text) form.append("text", data.text);
     if (data.file) form.append("file", data.file);
-    const token = getPortalToken();
     const res = await fetch(`${API_URL}/portal/homework/${homeworkId}/submit`, {
       method: "POST",
-      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      credentials: "include",
+      headers: portalHeaders(),
       body: form,
     });
     const body = await res.json().catch(() => null);
@@ -3424,10 +3473,10 @@ export const portalApi = {
     if (data.invoiceId) form.append("invoiceId", data.invoiceId);
     if (data.note) form.append("note", data.note);
     form.append("file", data.file);
-    const token = getPortalToken();
     const res = await fetch(`${API_URL}/portal/card-payment`, {
       method: "POST",
-      headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}), ...(data.idempotencyKey ? { "Idempotency-Key": data.idempotencyKey } : {}) },
+      credentials: "include",
+      headers: { ...portalHeaders(), ...(data.idempotencyKey ? { "Idempotency-Key": data.idempotencyKey } : {}) },
       body: form,
     });
     const body = await res.json().catch(() => null);
@@ -3933,8 +3982,10 @@ export interface PortalPractice {
   }>;
 }
 
-async function postForm<T>(path: string, form: FormData, token: string | null): Promise<T> {
-  const res = await fetch(`${API_URL}${path}`, { method: "POST", headers: token ? { Authorization: `Bearer ${token}` } : undefined, body: form });
+/** A staff token, or "cabinet" for the cabinet's cookie session. */
+async function postForm<T>(path: string, form: FormData, token: string | null | "cabinet"): Promise<T> {
+  const headers = token === "cabinet" ? portalHeaders() : token ? { Authorization: `Bearer ${token}` } : undefined;
+  const res = await fetch(`${API_URL}${path}`, { method: "POST", credentials: "include", headers, body: form });
   const body = await res.json().catch(() => null);
   if (!res.ok) throw new ApiError(body?.message || "Yuklanmadi", res.status, body);
   return body as T;
@@ -4031,7 +4082,7 @@ export const portalMockApi = {
     if (data.audio) form.append("audio", data.audio, `answer.${data.audio.type.includes("mp4") ? "m4a" : data.audio.type.includes("ogg") ? "ogg" : "webm"}`);
     if (data.transcript) form.append("transcript", data.transcript);
     if (data.seconds !== undefined) form.append("seconds", String(Math.round(data.seconds)));
-    return postForm<{ saved: boolean }>(`/portal/mock-tests/attempts/${attemptId}/speaking/${key}`, form, getPortalToken());
+    return postForm<{ saved: boolean }>(`/portal/mock-tests/attempts/${attemptId}/speaking/${key}`, form, "cabinet");
   },
 };
 
@@ -4357,7 +4408,7 @@ function makeChatClient(side: "staff" | "cabinet"): ChatClient {
       connectChatStream({
         ...opts,
         url: `${API_URL}${base}/stream`,
-        getToken: side === "staff" ? freshToken : getPortalToken,
+        ...(side === "staff" ? { getToken: freshToken } : { authHeaders: () => (getPortalStudent() ? portalHeaders() : null) }),
         // Staff: an expired access token is renewed once, as request() does.
         refresh: side === "staff" ? tryRefresh : undefined,
       }),

@@ -15,15 +15,16 @@ import PortalCustomFields from "@/components/portal/PortalCustomFields";
 import PortalMakeups from "@/components/portal/PortalMakeups";
 import PortalEvents from "@/components/portal/PortalEvents";
 import PortalCalendar from "@/components/portal/PortalCalendar";
-import { openedFromParentAccount } from "@/lib/portal-token";
 import PortalChat from "@/components/portal/PortalChat";
 import type { Lang, TranslationKey } from "@/lib/i18n";
 import {
   portalApi,
   portalChatApi,
   fileUrl,
-  getPortalToken,
-  setPortalToken,
+  getPortalStudent,
+  setPortalStudent,
+  portalLogout,
+  adoptLegacyPortalTokens,
   freshToken,
   getPortalSessions,
   addPortalSessions,
@@ -206,8 +207,7 @@ export default function StudentPortalPage() {
       portalApi
         .loginWithToken(urlToken)
         .then((res) => {
-          setPortalToken(res.accessToken);
-          setTokenState(res.accessToken);
+          activate([res]);
           // Clean token from url without refresh
           window.history.replaceState({}, document.title, window.location.pathname);
         })
@@ -220,18 +220,20 @@ export default function StudentPortalPage() {
       return;
     }
 
-    const stored = getPortalToken();
-    setSessions(getPortalSessions());
-    if (stored) {
-      setTokenState(stored);
-      setLoading(false);
-      return;
-    }
-    // A parent signed in with their own account: open their children.
-    freshToken()
-      .then((staff) => (staff ? portalApi.parentAccount(staff).then((res) => activate(res.sessions)) : undefined))
-      .catch(() => undefined)
-      .finally(() => setLoading(false));
+    void adoptLegacyPortalTokens().finally(() => {
+      const stored = getPortalStudent();
+      setSessions(getPortalSessions());
+      if (stored) {
+        setTokenState(stored);
+        setLoading(false);
+        return;
+      }
+      // A parent signed in with their own account: open their children.
+      freshToken()
+        .then((staff) => (staff ? portalApi.parentAccount(staff).then((res) => activate(res.sessions)) : undefined))
+        .catch(() => undefined)
+        .finally(() => setLoading(false));
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -240,17 +242,17 @@ export default function StudentPortalPage() {
     if (list.length === 0) return;
     const all = addPortalSessions(list);
     const pick = list.find((s) => s.student.id === activeId) ?? list[0];
-    setPortalToken(pick.accessToken);
+    setPortalStudent(pick.student.id);
     setSessions(all);
-    setTokenState(pick.accessToken);
+    setTokenState(pick.student.id);
     setActiveTab("home");
     setAddingChild(false);
   }
 
   function switchChild(s: PortalSession) {
-    if (s.accessToken === token) return;
-    setPortalToken(s.accessToken);
-    setTokenState(s.accessToken);
+    if (s.student.id === token) return;
+    setPortalStudent(s.student.id);
+    setTokenState(s.student.id);
     setActiveTab("home");
     window.scrollTo(0, 0);
   }
@@ -340,7 +342,7 @@ export default function StudentPortalPage() {
   }
 
   function handleLogout() {
-    clearPortalToken();
+    void portalLogout();
     setSessions([]);
     setTokenState(null);
     setMe(null);
@@ -635,7 +637,7 @@ export default function StudentPortalPage() {
         {activeTab === "schedule" && <PortalEvents key={`ev-${token ?? ""}`} />}
         {/* Make-up lessons and the calendar link belong to the child shown: remounted per session. */}
         {activeTab === "schedule" && <PortalMakeups key={`mk-${token ?? ""}`} tz={centerTimeZone(me?.tenant?.timezone)} />}
-        {activeTab === "schedule" && <PortalCalendar key={`cal-${token ?? ""}`} parentAccount={openedFromParentAccount(token)} />}
+        {activeTab === "schedule" && <PortalCalendar key={`cal-${token ?? ""}`} parentAccount={me?.parentAccount === true} />}
         {activeTab === "attendance" && <AttendanceTab attendance={attendance} tz={centerTimeZone(me?.tenant?.timezone)} />}
         {activeTab === "homework" && <HomeworkTab homework={homework} onSubmit={handleHomeworkSubmit} readOnly={isParent} />}
         {activeTab === "ai" && !isParent && <PortalTutor firstName={me?.fullName?.split(" ")[0]} />}

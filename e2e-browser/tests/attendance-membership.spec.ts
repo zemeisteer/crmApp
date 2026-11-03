@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { addStaff, api, apiLogin, centerDay, centerUrl, cleanUpStagingCenters, expectCenterDashboard, loginOnMainSite, newCenter, pickTime, run } from './support';
+import { authSlot, addStaff, api, apiLogin, centerDay, centerUrl, cleanUpStagingCenters, expectCenterDashboard, loginOnMainSite, newCenter, pickTime, run } from './support';
 
 // Attendance per lesson and the membership history, through the pages:
 // two lessons of one day get different marks, one of them is corrected, the
@@ -126,6 +126,7 @@ test('two lessons of one day: different marks, one corrected, a credit for that 
   const cab = await cabCtx.newPage();
   await cab.goto(centerUrl(a.sub, '/portal'));
   await cab.getByRole('textbox').first().pressSequentially('941117788');
+  await authSlot('cabinet');
   await cab.getByRole('button', { name: 'Davom etish' }).click();
   await cab.getByPlaceholder('••••••').fill(String(pin));
   await cab.getByRole('button', { name: 'Kabinetga kirish' }).click();

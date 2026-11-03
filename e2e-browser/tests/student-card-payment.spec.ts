@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { api, centerUrl, cleanUpStagingCenters, expectCenterDashboard, loginOnMainSite, newCenter } from './support';
+import { authSlot, api, centerUrl, cleanUpStagingCenters, expectCenterDashboard, loginOnMainSite, newCenter } from './support';
 
 // A student pays the center by card transfer: the cabinet sends a receipt;
 // the owner opens it under Payments -> card receipts, confirms one at the
@@ -22,6 +22,7 @@ test('a student sends card receipts; the center confirms one and rejects one; th
   const cab = await ctx.newPage();
   await cab.goto(centerUrl(a.sub, '/portal'));
   await cab.getByRole('textbox').first().pressSequentially(local);
+  await authSlot('cabinet');
   await cab.getByRole('button', { name: 'Davom etish' }).click();
   await cab.getByPlaceholder('••••••').fill(String(pin));
   await cab.getByRole('button', { name: 'Kabinetga kirish' }).click();

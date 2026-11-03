@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { api, centerDay, centerUrl, cleanUpStagingCenters, expectCenterDashboard, isApiUrl, loginOnMainSite, newCenter } from './support';
+import { authSlot, api, centerDay, centerUrl, cleanUpStagingCenters, expectCenterDashboard, isApiUrl, loginOnMainSite, newCenter } from './support';
 
 // A lesson is one lesson: in the make-up form the lessons listed are those
 // of the group picked now (not of a group picked a moment earlier whose
@@ -116,6 +116,7 @@ test("a group is deleted: its open make-up is released and said so; the parent's
   const cab = await cabCtx.newPage();
   await cab.goto(centerUrl(a.sub, '/portal'));
   await cab.getByRole('textbox').first().pressSequentially('941114455');
+  await authSlot('cabinet');
   await cab.getByRole('button', { name: 'Davom etish' }).click();
   await cab.getByPlaceholder('••••••').fill(String(pin));
   await cab.getByRole('button', { name: 'Kabinetga kirish' }).click();

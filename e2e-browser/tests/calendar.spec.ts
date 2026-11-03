@@ -15,6 +15,8 @@ test('a staff member makes, copies, replaces and turns off a calendar link; Goog
   await loginOnMainSite(page, a.email);
   await expectCenterDashboard(page, a.sub);
   await page.locator('.sidebar').getByRole('link', { name: 'Kalendar', exact: true }).click();
+  // The rail opens under the pointer and would cover the page: the pointer leaves it.
+  await page.mouse.move(900, 500);
   await expect(page).toHaveURL(centerUrl(a.sub, '/calendar'));
   await expect(page.getByRole('heading', { name: 'Kalendar bilan ulash' })).toBeVisible();
 
@@ -98,6 +100,7 @@ test("the cabinet shows the child's make-ups and makes the child's own calendar 
 
   await page.goto(centerUrl(a.sub, '/portal'));
   await page.getByRole('textbox').first().pressSequentially('941112244');
+  await authSlot('cabinet');
   await page.getByRole('button', { name: 'Davom etish' }).click();
   await page.getByPlaceholder('••••••').fill(String(pin));
   await page.getByRole('button', { name: 'Kabinetga kirish' }).click();
@@ -187,6 +190,7 @@ test("a parent account's cabinet links to the parent's own calendar of all their
   const cab = await ctx.newPage();
   await cab.goto(centerUrl(a.sub, '/portal'));
   await cab.getByRole('textbox').first().pressSequentially(local);
+  await authSlot('cabinet');
   await cab.getByRole('button', { name: 'Davom etish' }).click();
   await cab.getByPlaceholder('••••••').fill(String(pin));
   await cab.getByRole('button', { name: 'Kabinetga kirish' }).click();

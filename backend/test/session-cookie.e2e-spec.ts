@@ -69,4 +69,61 @@ describe('The site\'s session cookie (e2e)', () => {
   it('logout with no token at all is a plain answer, not a crash', async () => {
     await http().post('/api/auth/logout').send({}).expect(201);
   });
+
+  describe('the cabinet (students and parents)', () => {
+    const cabCookie = (res: request.Response, id: string) => ([] as string[]).concat(res.headers['set-cookie'] ?? []).find((c) => c.startsWith(`talimcrm_cab_${id}=`));
+    // One sign-in for the whole block: sign-ins are rate limited.
+    let ownerAuth: Record<string, string> | null = null;
+    const owner = async () => (ownerAuth ??= { Authorization: `Bearer ${(await login({})).body.accessToken}` });
+    let n = 0;
+    async function kid() {
+      const auth = await owner();
+      const phone = `+99894${String(suffix + ++n).slice(-7)}`;
+      const id = (await http().post('/api/students').set(auth).send({ fullName: `Cookie Kid ${n}`, phone }).expect(201)).body.id as string;
+      const { pin } = (await http().post(`/api/students/${id}/portal-pin`).set(auth).expect(201)).body;
+      return { id, phone, pin: String(pin), auth };
+    }
+    const signIn = (k: { phone: string; pin: string }, headers: Record<string, string> = COOKIE_MODE) =>
+      http().post('/api/portal/auth/phone/verify').set(headers).send({ phone: k.phone, pin: k.pin }).expect(201);
+    const as = (id: string) => ({ ...COOKIE_MODE, 'X-Portal-Student': id });
+
+    it('the token is a locked cookie for that child only; other clients keep the body form', async () => {
+      const k = await kid();
+      const res = await signIn(k);
+      expect(res.body.accessToken).toBeUndefined();
+      expect(res.body.student.id).toBe(k.id);
+      const set = cabCookie(res, k.id)!;
+      expect(set).toMatch(/HttpOnly/i);
+      expect(set).toMatch(/SameSite=Lax/i);
+      expect(set).toMatch(/Path=\/api\/portal/i);
+      const plain = await signIn(k, {});
+      expect(plain.body.accessToken).toEqual(expect.any(String));
+      expect(cabCookie(plain, k.id)).toBeUndefined();
+    });
+
+    it('two children, two cookies: the header picks which; without the transport header nothing opens', async () => {
+      const a = await kid();
+      const b = await kid();
+      const jar = [pair(cabCookie(await signIn(a), a.id)!), pair(cabCookie(await signIn(b), b.id)!)].join('; ');
+      expect((await http().get('/api/portal/me').set(as(a.id)).set('Cookie', jar).expect(200)).body.fullName).toBe('Cookie Kid ' + (n - 1));
+      expect((await http().get('/api/portal/me').set(as(b.id)).set('Cookie', jar).expect(200)).body.fullName).toBe('Cookie Kid ' + n);
+      await http().get('/api/portal/me').set('X-Portal-Student', a.id).set('Cookie', jar).expect(401);
+      await http().get('/api/portal/me').set(as('someone-else')).set('Cookie', jar).expect(401);
+      // A new PIN still ends a session opened before it (tokens carry whole seconds).
+      await new Promise((r) => setTimeout(r, 1100));
+      await http().post(`/api/students/${a.id}/portal-pin`).set(a.auth).expect(201);
+      await http().get('/api/portal/me').set(as(a.id)).set('Cookie', jar).expect(401);
+    });
+
+    it('a token kept by an older page becomes its cookie; logout removes every child\'s cookie', async () => {
+      const k = await kid();
+      const token = (await signIn(k, {})).body.accessToken as string;
+      const adopted = await http().post('/api/portal/auth/adopt').set(COOKIE_MODE).set('Authorization', `Bearer ${token}`).expect(201);
+      expect(adopted.body.accessToken).toBeUndefined();
+      const cookie = pair(cabCookie(adopted, k.id)!);
+      await http().get('/api/portal/me').set(as(k.id)).set('Cookie', cookie).expect(200);
+      const out = await http().post('/api/portal/auth/logout').set(COOKIE_MODE).set('Cookie', cookie).expect(201);
+      expect(cabCookie(out, k.id)).toMatch(/Expires=Thu, 01 Jan 1970/i);
+    });
+  });
 });

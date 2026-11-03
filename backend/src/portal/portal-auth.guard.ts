@@ -10,6 +10,7 @@ import { ConfigService } from '@nestjs/config';
 import { and, eq, isNull } from 'drizzle-orm';
 import { DB, Database } from '../db/db.module';
 import { organizationMemberships, studentGuardians, studentPortalPins, students } from '../db/schema';
+import { portalTokenFromCookie } from '../common/session-cookie';
 
 @Injectable()
 export class PortalAuthGuard implements CanActivate {
@@ -22,11 +23,12 @@ export class PortalAuthGuard implements CanActivate {
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const req = context.switchToHttp().getRequest();
     const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    // A Bearer token (the API's other clients, a staff page), else the site's httpOnly cookie.
+    const token = authHeader?.startsWith('Bearer ') ? authHeader.replace('Bearer ', '').trim() : portalTokenFromCookie(req);
+    if (!token) {
       throw new UnauthorizedException('Portal sessiyasi mavjud emas');
     }
 
-    const token = authHeader.replace('Bearer ', '').trim();
     try {
       const payload = await this.jwt.verifyAsync(token, {
         secret: this.config.get<string>('JWT_SECRET'),
@@ -62,6 +64,7 @@ export class PortalAuthGuard implements CanActivate {
         parentUserId: typeof payload.parentUserId === 'string' ? payload.parentUserId : undefined,
         iat: typeof payload.iat === 'number' ? payload.iat : undefined,
       };
+      req.portalToken = token;
       return true;
     } catch {
       throw new UnauthorizedException('Portal sessiyasi eskirgan yoki xato');
