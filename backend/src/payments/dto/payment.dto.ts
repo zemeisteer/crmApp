@@ -45,3 +45,10 @@ export class CreatePaymentDto {
   @Length(8, 120)
   idempotencyKey?: string;
 }
+
+// Taking back a payment entered by mistake: why (the student and the audit see it).
+export class VoidPaymentDto {
+  @IsString()
+  @MaxLength(300)
+  reason!: string;
+}

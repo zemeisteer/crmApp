@@ -980,6 +980,9 @@ export interface Payment {
   cardReceipt?: { claimId: string; receiptFile: string } | null;
   /** In the cabinet: paid to the center's card with a receipt. */
   viaCard?: boolean;
+  /** Taken back (status VOIDED): when and why. */
+  voidedAt?: string | null;
+  voidReason?: string | null;
   student?: {
     id: string;
     fullName: string;
@@ -1757,6 +1760,9 @@ export const paymentsApi = {
   // One page and the total (pageSize up to 200), newest payment first.
   page: (q: PaymentFilters & { page: number; pageSize?: number }) =>
     request<PageOf<Payment>>(`/payments${paymentQuery(q, q)}`),
+  /** A payment entered by mistake, taken back with a reason: it stays in the list, its money leaves the invoices. */
+  voidPayment: (id: string, reason: string) =>
+    request<{ id: string; status: "VOIDED"; replay: boolean }>(`/payments/${id}/void`, { method: "POST", body: JSON.stringify({ reason }) }),
   get: (id: string) => request<Payment>(`/payments/${id}`),
   summary: () => request<PaymentsSummary>("/payments/summary"),
   debtors: (params?: { forMonth?: string; onlyDebtors?: boolean }) => {

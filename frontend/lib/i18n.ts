@@ -2502,6 +2502,9 @@ export const dict = {
   // Payment status/method (shared)
   "payment.statusPaid": { UZ: "To'landi", RU: "Оплачено", EN: "Paid" },
   "payment.statusPending": { UZ: "Kutilmoqda", RU: "В ожидании", EN: "Pending" },
+  "payment.statusVoided": { UZ: "Bekor qilingan", RU: "Отменён", EN: "Voided" },
+  "payment.void": { UZ: "Bekor qilish", RU: "Отменить", EN: "Void" },
+  "payment.voidPrompt": { UZ: "{student}: {amount} to'lovi bekor qilinadi. Summasi hisob-fakturadan qaytariladi, to'lov esa tarixda \"bekor qilingan\" bo'lib qoladi. Sababini yozing:", RU: "{student}: платёж {amount} будет отменён. Сумма вернётся в счёт, платёж останется в истории как «отменён». Укажите причину:", EN: "{student}: the payment of {amount} will be voided. Its money comes off the invoice; the payment stays in the history as voided. Write the reason:" },
   "payment.statusFailed": { UZ: "Muvaffaqiyatsiz", RU: "Неудачно", EN: "Failed" },
   "payment.methodCash": { UZ: "Naqd", RU: "Наличные", EN: "Cash" },
   "payment.methodClick": { UZ: "Click", RU: "Click", EN: "Click" },

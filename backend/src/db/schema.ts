@@ -89,6 +89,9 @@ export const paymentStatusEnum = pgEnum('payment_status', [
   'PAID',
   'PENDING',
   'FAILED',
+  // Entered by mistake and taken back by staff (payments.service.ts voidPayment):
+  // the row stays for the record, its money left the invoices.
+  'VOIDED',
 ]);
 export const attendanceStatusEnum = pgEnum('attendance_status', [
   'PRESENT',
@@ -775,6 +778,10 @@ export const payments = pgTable('payments', {
   // The staff member who took it at the desk (null: online, or recorded
   // before 0037).
   recordedById: text('recorded_by_id').references(() => users.id, { onDelete: 'set null' }),
+  // A payment taken back (status VOIDED): when, by whom and why.
+  voidedAt: timestamp('voided_at'),
+  voidedById: text('voided_by_id').references(() => users.id, { onDelete: 'set null' }),
+  voidReason: text('void_reason'),
   paidAt: timestamp('paid_at').notNull().defaultNow(),
   createdAt: timestamp('created_at').notNull().defaultNow(),
 }, (t) => ({
