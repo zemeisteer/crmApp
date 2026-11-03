@@ -140,7 +140,7 @@ export const ACCESS_CATALOG: AccessKey[] = [
   },
   { key: 'leads.assign', area: 'admissions', template: [M], routes: ['POST /api/leads/:id/assign'] },
   { key: 'leads.convert', area: 'admissions', template: [M], routes: ['GET /api/leads/:id/student-match', 'POST /api/leads/:id/convert'] },
-  { key: 'leads.manage', area: 'admissions', template: [M], routes: ['POST /api/leads/:id/reopen', 'POST /api/leads/:id/archive', 'POST /api/leads/:id/restore', 'DELETE /api/leads/:id'] },
+  { key: 'leads.manage', area: 'admissions', template: [M], routes: ['POST /api/leads/:id/reopen', 'POST /api/leads/:id/archive', 'DELETE /api/leads/:id/permanent', 'POST /api/leads/:id/restore', 'DELETE /api/leads/:id'] },
   { key: 'leads.analytics', area: 'admissions', template: [M], routes: ['GET /api/leads/funnel', 'GET /api/leads/analytics'] },
   { key: 'leads.export', area: 'admissions', template: [M], routes: ['GET /api/leads/export'] },
 
