@@ -1316,6 +1316,8 @@ export const placementApi = {
   }) => request<PlacementTestSummary & { source: "ai" | "bank" | "manual"; questions: PlacementQuestion[] }>("/placement-tests", { method: "POST", body: JSON.stringify(data) }),
   get: (id: string) => request<PlacementTestSummary & { questions: PlacementQuestion[] }>(`/placement-tests/${id}`),
   attempts: (id: string) => request<PlacementAttempt[]>(`/placement-tests/${id}/attempts`),
+  /** The test and its results. */
+  remove: (id: string) => request<{ id: string; deleted: true; attempts: number }>(`/placement-tests/${id}`, { method: "DELETE" }),
   setActive: (id: string, active: boolean) =>
     request<PlacementTestSummary>(`/placement-tests/${id}`, { method: "PATCH", body: JSON.stringify({ active }) }),
   rename: (id: string, title: string) =>
@@ -2831,6 +2833,8 @@ export const leadsApi = {
   convert: (id: string, data: ConvertLeadInput) => postJson<ConvertLeadResult>(`/leads/${id}/convert`, data),
   archive: (id: string, reason?: string) => postJson<Lead>(`/leads/${id}/archive`, { reason }),
   restore: (id: string) => postJson<Lead>(`/leads/${id}/restore`),
+  /** An archived lead, for good. */
+  removeForGood: (id: string) => request<{ id: string; deleted: true }>(`/leads/${id}/permanent`, { method: "DELETE" }),
   exportCsv: (query?: LeadQuery) => download(`/leads/export${leadQueryString(query)}`, "leads.csv"),
 };
 
@@ -2845,6 +2849,8 @@ export const customFieldsApi = {
     request<CustomFieldDef & { unlinkedLeadFields?: Array<{ id: string; label: string }> }>(`/custom-fields/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
   archive: (id: string) => postJson<CustomFieldDef>(`/custom-fields/${id}/archive`),
   restore: (id: string) => postJson<CustomFieldDef>(`/custom-fields/${id}/restore`),
+  /** An archived field, for good, with its values. */
+  remove: (id: string) => request<{ id: string; deleted: true }>(`/custom-fields/${id}`, { method: "DELETE" }),
 };
 
 // ---- Reports (server-side monthly overview) ----

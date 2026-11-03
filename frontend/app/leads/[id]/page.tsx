@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { nextLessonDate } from "@/lib/date";
 import { centerWallClock, isoToCenterParts } from "@/lib/center-time";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import DashboardShell from "@/components/DashboardShell";
 import Modal from "@/components/Modal";
 import Select from "@/components/Select";
@@ -89,6 +89,7 @@ function activityTitle(a: LeadActivity, t: (k: TranslationKey) => string) {
 
 function LeadProfile() {
   const { id } = useParams<{ id: string }>();
+  const router = useRouter();
   const { t, lang } = useLanguage();
   const { can, tenant } = useAuth();
   const tz = useCenterTimeZone();
@@ -146,6 +147,20 @@ function LeadProfile() {
   }, [load]);
 
   // Every mutating action: disable controls, run, reload the source of truth.
+  // For good: the lead and its history; the list is what is left to show.
+  async function removeForGood() {
+    if (busy || !window.confirm(t("adm.deleteForGoodConfirm"))) return;
+    setBusy(true);
+    setActionError(null);
+    try {
+      await leadsApi.removeForGood(lead!.id);
+      router.replace("/leads");
+    } catch (err) {
+      setActionError(err instanceof ApiError ? err.message : t("common.errorGeneric"));
+      setBusy(false);
+    }
+  }
+
   async function run(action: () => Promise<unknown>, onDone?: () => void) {
     if (busy) return;
     setBusy(true);
@@ -312,7 +327,10 @@ function LeadProfile() {
           <div style={{ ...card, background: "var(--surface-muted)", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
             <span>{t("adm.archivedBanner")}</span>
             {can("admissions.manage") && (
-              <button type="button" className="btn" style={ghostBtn} disabled={busy} onClick={() => run(() => leadsApi.restore(lead.id))}>{t("common.restore")}</button>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <button type="button" className="btn" style={ghostBtn} disabled={busy} onClick={() => run(() => leadsApi.restore(lead.id))}>{t("common.restore")}</button>
+                <button type="button" className="btn" style={{ ...ghostBtn, color: "var(--danger)" }} disabled={busy} onClick={() => void removeForGood()}>{t("common.deleteForGood")}</button>
+              </div>
             )}
           </div>
         )}

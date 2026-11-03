@@ -270,6 +270,14 @@ export class LeadsController {
     return this.leadsService.restore(tenantId, actor, id);
   }
 
+  // An archived lead, for good (the archive is the way back until then).
+  @Delete(':id/permanent')
+  @RequirePermissions(Permission.ADMISSIONS_MANAGE)
+  removeForGood(@CurrentUser() user: JwtPayload, @Param('id') id: string) {
+    const { tenantId, actor } = this.ctx(user);
+    return this.leadsService.removeForGood(tenantId, actor, id);
+  }
+
   // Kept for existing clients; it archives (soft-deletes) rather than
   // destroying the lead and its history.
   @Delete(':id')

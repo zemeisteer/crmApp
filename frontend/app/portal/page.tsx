@@ -47,9 +47,9 @@ const NAV: Array<{ id: PortalTab; icon: string; label: TranslationKey; short: Tr
   { id: "home", icon: "🏠", label: "ptn.home", short: "ptn.home", bottom: true },
   { id: "schedule", icon: "🗓️", label: "ptn.schedule", short: "ptn.schedule", bottom: true },
   { id: "homework", icon: "📚", label: "ptn.homework", short: "ptn.homework", bottom: true },
-  { id: "ai", icon: "🤖", label: "ptn.ai", short: "ptn.aiShort", bottom: true },
-  { id: "practice", icon: "🎯", label: "ptn.practice", short: "ptn.practiceShort", bottom: true },
-  { id: "exams", icon: "📝", label: "ptn.exams", short: "ptn.examsShort", bottom: true },
+  { id: "ai", icon: "🤖", label: "ptn.ai", short: "ptn.aiShort", bottom: false },
+  { id: "practice", icon: "🎯", label: "ptn.practice", short: "ptn.practiceShort", bottom: false },
+  { id: "exams", icon: "📝", label: "ptn.exams", short: "ptn.examsShort", bottom: false },
   { id: "payments", icon: "💳", label: "ptn.payments", short: "ptn.paymentsShort", bottom: true },
   { id: "attendance", icon: "✅", label: "ptn.attendance", short: "ptn.attendance", bottom: false },
   { id: "chat", icon: "💬", label: "chat.portalNav", short: "chat.portalNav", bottom: false },
@@ -90,6 +90,10 @@ const PORTAL_CSS = `
     .ptl-bottom button.on{background:var(--ink);color:var(--on-ink);}
     .ptl-bottom button.on .ptl-bl{display:inline;}
     .ptl-main{padding-bottom:104px!important;}
+    .ptl-more{position:fixed;left:10px;right:10px;bottom:calc(max(10px,env(safe-area-inset-bottom)) + 68px);z-index:41;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:8px;box-shadow:var(--shadow-pop);display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px;max-height:60vh;overflow-y:auto;}
+    .ptl-more button{display:flex;align-items:center;gap:10px;min-height:48px;padding:0 12px;border:none;border-radius:var(--radius-sm);background:transparent;color:var(--text);font-family:inherit;font-size:13.5px;font-weight:600;text-align:left;cursor:pointer;}
+    .ptl-more button.on{background:var(--primary-soft);color:var(--primary);}
+    .ptl-more-scrim{position:fixed;inset:0;z-index:39;background:transparent;border:none;}
   }
   @media print{.ptl-shell{padding:0;}.ptl-body{background:var(--surface);border:none;box-shadow:none;}}
 `;
@@ -99,7 +103,8 @@ const svg = (children: React.ReactNode) => (
     {children}
   </svg>
 );
-const ICONS: Record<PortalTab | "logout" | "logo", React.ReactNode> = {
+const ICONS: Record<PortalTab | "logout" | "logo" | "more", React.ReactNode> = {
+  more: svg(<><circle cx="5" cy="12" r="1.6" /><circle cx="12" cy="12" r="1.6" /><circle cx="19" cy="12" r="1.6" /></>),
   home: svg(<><rect x="3" y="3" width="7" height="9" rx="1.5" /><rect x="14" y="3" width="7" height="5" rx="1.5" /><rect x="14" y="12" width="7" height="9" rx="1.5" /><rect x="3" y="16" width="7" height="5" rx="1.5" /></>),
   schedule: svg(<><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></>),
   homework: svg(<><path d="M9 4H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-3" /><rect x="8" y="2" width="8" height="4" rx="1" /><path d="M9 14l2 2 4-4" /></>),
@@ -156,6 +161,14 @@ export default function StudentPortalPage() {
   const [addingChild, setAddingChild] = useState(false);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<PortalTab>("home");
+  // The phone's bottom bar holds the main sections; "more" lists every one.
+  const [moreOpen, setMoreOpen] = useState(false);
+  useEffect(() => {
+    if (!moreOpen) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setMoreOpen(false);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [moreOpen]);
 
   // Auth form state
   const [authError, setAuthError] = useState<string | null>(null);
@@ -337,6 +350,7 @@ export default function StudentPortalPage() {
   }
 
   function go(tab: PortalTab) {
+    setMoreOpen(false);
     setActiveTab(tab);
     window.scrollTo(0, 0);
   }
@@ -561,7 +575,28 @@ export default function StudentPortalPage() {
             </button>
           );
         })}
+        <button type="button" onClick={() => setMoreOpen((v) => !v)} aria-expanded={moreOpen} aria-controls="ptl-more" aria-label={t("ptn.more")} title={t("ptn.more")} className={moreOpen || !nav.find((x) => x.id === activeTab)?.bottom ? "on" : undefined}>
+          <span aria-hidden="true" style={{ display: "grid" }}>{ICONS.more}</span>
+          <span className="ptl-bl" aria-hidden="true">{t("ptn.more")}</span>
+        </button>
       </nav>
+      {moreOpen && (
+        <>
+          <button type="button" className="ptl-more-scrim" aria-label={t("common.close")} onClick={() => setMoreOpen(false)} />
+          <nav id="ptl-more" className="ptl-more" aria-label={t("ptn.more")}>
+            {nav.map((tab) => (
+              <button key={tab.id} type="button" onClick={() => go(tab.id)} aria-current={activeTab === tab.id ? "page" : undefined} className={activeTab === tab.id ? "on" : undefined}>
+                <span aria-hidden="true" style={{ display: "grid" }}>{ICONS[tab.id]}</span>
+                {t(tab.label)}
+              </button>
+            ))}
+            <button type="button" onClick={handleLogout}>
+              <span aria-hidden="true" style={{ display: "grid" }}>{ICONS.logout}</span>
+              {t("ptl.logout")}
+            </button>
+          </nav>
+        </>
+      )}
 
       {/* Main Container: keyed by the section, so each one opened fades in. */}
       <main

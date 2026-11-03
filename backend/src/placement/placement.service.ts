@@ -8,6 +8,7 @@ import { AiService } from '../ai/ai.service';
 import { LeadsService } from '../leads/leads.service';
 import { gradeAnswer, normalizeQuestion, publicQuestion, suggestLevel, type TestQuestion } from '../common/test-questions';
 import { CreatePlacementTestDto, SubmitPlacementDto } from './placement.dto';
+import { AuditService } from '../audit/audit.service';
 
 // Placement tests are saved and shared by link (/t/<token>) so a new
 // student can take one on their own phone or computer; results come back
@@ -22,6 +23,7 @@ export class PlacementService {
     private readonly ai: AiService,
     private readonly leads: LeadsService,
     private readonly hiring: HiringService,
+    private readonly audit: AuditService,
   ) {}
 
   // Older tests stored a simpler format; normalizeQuestion reads both.
@@ -137,6 +139,15 @@ export class PlacementService {
     }).from(placementAttempts)
       .where(and(eq(placementAttempts.testId, id), eq(placementAttempts.tenantId, tenantId)))
       .orderBy(desc(placementAttempts.createdAt));
+  }
+
+  /** The test and every attempt at it; the leads and candidates they were filed under stay. */
+  async remove(tenantId: string, userId: string, id: string) {
+    const test = await this.owned(tenantId, id);
+    const [{ n }] = await this.db.select({ n: sql<number>`count(*)::int` }).from(placementAttempts).where(eq(placementAttempts.testId, id));
+    await this.db.delete(placementTests).where(and(eq(placementTests.id, id), eq(placementTests.tenantId, tenantId)));
+    this.audit.log({ tenantId, userId, action: 'delete', entityType: 'placement_test', entityId: id, meta: { title: test.title, attempts: n } });
+    return { id, deleted: true, attempts: n };
   }
 
   async setActive(tenantId: string, id: string, active: boolean) {
