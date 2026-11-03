@@ -2645,7 +2645,7 @@ export const platformApi = {
 
 // ---- First steps (dashboard checklist) ----
 
-export type ChecklistKey = "group" | "students" | "attendance" | "payment" | "team" | "telegram" | "site";
+export type ChecklistKey = "teacher" | "group" | "students" | "attendance" | "payment" | "team" | "telegram" | "site";
 export const checklistApi = {
   get: () => request<{ items: Array<{ key: ChecklistKey; done: boolean }>; done: number; total: number }>("/onboarding/checklist"),
 };

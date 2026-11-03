@@ -3195,6 +3195,7 @@ export const dict = {
   "fs.title": { UZ: "Birinchi qadamlar", RU: "Первые шаги", EN: "First steps" },
   "fs.progress": { UZ: "{done} / {total} bajarildi", RU: "Выполнено {done} из {total}", EN: "{done} of {total} done" },
   "fs.hide": { UZ: "Yashirish", RU: "Скрыть", EN: "Hide" },
+  "fs.teacher": { UZ: "O'qituvchi qo'shing", RU: "Добавьте преподавателя", EN: "Add a teacher" },
   "fs.group": { UZ: "Birinchi guruhni yarating", RU: "Создайте первую группу", EN: "Create your first group" },
   "fs.students": { UZ: "O'quvchilarni qo'shing", RU: "Добавьте учеников", EN: "Add students" },
   "fs.attendance": { UZ: "Davomatni belgilang", RU: "Отметьте посещаемость", EN: "Take attendance" },
