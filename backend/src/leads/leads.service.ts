@@ -730,6 +730,26 @@ export class LeadsService {
     }
   }
 
+  // A lead a phone call opened goes to whoever answered that call - only
+  // while nobody has it yet (staff may have assigned it meanwhile).
+  async assignFromCall(tenantId: string, leadId: string, managerUserId: string, callId: string) {
+    const updated = await this.db.transaction(async (tx) => {
+      const [row] = await tx
+        .update(leads)
+        .set({ assignedManagerUserId: managerUserId, updatedAt: new Date() })
+        .where(and(eq(leads.id, leadId), eq(leads.tenantId, tenantId), isNull(leads.assignedManagerUserId)))
+        .returning({ id: leads.id });
+      if (!row) return false;
+      await this.recordActivity(tx, {
+        tenantId, leadId, actorUserId: null, type: 'NOTE',
+        metadata: { kind: 'ASSIGNED', fromUserId: null, toUserId: managerUserId, channel: 'phone_call', callId },
+      });
+      return true;
+    });
+    if (updated) this.events.emit('LeadAssigned', { tenantId, leadId, actorUserId: null, data: { managerUserId } });
+    return updated;
+  }
+
   async update(tenantId: string, actor: Actor, id: string, dto: UpdateLeadDto) {
     if (dto.status !== undefined) {
       throw new BadRequestException({

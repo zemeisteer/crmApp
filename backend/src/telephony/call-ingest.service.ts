@@ -4,6 +4,7 @@ import { DB, Database } from '../db/db.module';
 import { callEvents, calls, telephonyExtensions } from '../db/schema';
 import { maskPhone, normalizePhone } from '../leads/phone';
 import { LeadsService } from '../leads/leads.service';
+import { CallsHub, type CallPhase } from './calls-hub.service';
 import { matchContact } from './contact-match';
 import type { CallEvent } from './providers/telephony-provider.interface';
 import type { TelephonyAccountRow } from './telephony-accounts.service';
@@ -44,6 +45,7 @@ export class CallIngestService {
   constructor(
     @Inject(DB) private readonly db: Database,
     private readonly leadsService: LeadsService,
+    private readonly hub: CallsHub,
   ) {}
 
   async ingest(account: TelephonyAccountRow, ev: CallEvent, payload: Record<string, string>): Promise<IngestResult> {
@@ -93,8 +95,32 @@ export class CallIngestService {
     let call = applied.call;
 
     if (call.contactKind === 'UNKNOWN' && call.clientNumber) call = await this.linkContact(call);
+    // A lead this call opened goes to whoever answered it.
+    if (call.createdLead && call.leadId && call.status === 'ANSWERED' && call.managerUserId) {
+      await this.leadsService.assignFromCall(call.tenantId, call.leadId, call.managerUserId, call.id).catch((e: Error) =>
+        this.logger.warn(JSON.stringify({ op: 'telephony.assign_failed', tenantId: call.tenantId, callId: call.id, error: e.message })));
+    }
     if (applied.finished && call.leadId) await this.noteOnLead(call);
+    await this.announce(call, ev);
     return { duplicate: false, callId: call.id, event: ev.kind };
+  }
+
+  /** The live popup: who should hear about this event (calls-hub.service.ts). */
+  private async announce(call: CallRow, ev: CallEvent) {
+    let phase: CallPhase | null = null;
+    const users: string[] = [];
+    if (ev.kind === 'RINGING_EXTENSION' && call.direction === 'INBOUND' && call.status === 'RINGING' && !call.endedAt && ev.extension) {
+      phase = 'ringing';
+      const u = await this.userForExtension(this.db, call.tenantId, ev.extension);
+      if (u) users.push(u);
+    } else if (ev.kind === 'ANSWERED' && !call.endedAt) {
+      phase = 'answered';
+    } else if (ev.kind === 'INBOUND_END' || ev.kind === 'OUTBOUND_END') {
+      phase = 'ended';
+    }
+    if (!phase) return;
+    if (call.managerUserId) users.push(call.managerUserId);
+    await this.hub.publish(call.tenantId, call.id, phase, users);
   }
 
   /** What this event changes on the call. */
@@ -159,7 +185,7 @@ export class CallIngestService {
     return p;
   }
 
-  private async userForExtension(tx: Tx, tenantId: string, extension: string) {
+  private async userForExtension(tx: Tx | Database, tenantId: string, extension: string) {
     const [r] = await tx
       .select({ userId: telephonyExtensions.userId })
       .from(telephonyExtensions)

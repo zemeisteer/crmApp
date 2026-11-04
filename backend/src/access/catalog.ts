@@ -143,6 +143,11 @@ export const ACCESS_CATALOG: AccessKey[] = [
   { key: 'leads.manage', area: 'admissions', template: [M], routes: ['POST /api/leads/:id/reopen', 'POST /api/leads/:id/archive', 'POST /api/leads/:id/restore', 'DELETE /api/leads/:id'] },
   { key: 'leads.analytics', area: 'admissions', template: [M], routes: ['GET /api/leads/funnel', 'GET /api/leads/analytics'] },
   { key: 'leads.export', area: 'admissions', template: [M], routes: ['GET /api/leads/export'] },
+  // IP telephony (telephony/). What a member then sees inside the center is
+  // the owner's setting (own calls or all; who plays recordings).
+  { key: 'calls.view', area: 'admissions', template: [M, R], routes: ['GET /api/calls', 'GET /api/calls/stream', 'GET /api/calls/:id/card', 'GET /api/calls/:id/recording'] },
+  { key: 'calls.make', area: 'admissions', template: [M, R], routes: ['POST /api/calls/click-to-call'] },
+  { key: 'calls.stats', area: 'admissions', template: [], routes: ['GET /api/calls/stats'] },
 
   // ---- Finance ----
   {
