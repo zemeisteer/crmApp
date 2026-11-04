@@ -8,6 +8,8 @@ import StudentPortalPin from "@/components/students/StudentPortalPin";
 import StudentStatusModal, { STATUS_STYLE } from "@/components/students/StudentStatusModal";
 import ParentBotLink from "@/components/students/ParentBotLink";
 import MembershipHistory from "@/components/students/MembershipHistory";
+import CallButton from "@/components/telephony/CallButton";
+import CallHistory from "@/components/telephony/CallHistory";
 import Modal from "@/components/Modal";
 import Select from "@/components/Select";
 import GroupPicker from "@/components/students/GroupPicker";
@@ -334,7 +336,7 @@ function StudentDetailContent() {
                 )}
               </h1>
               <div style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 2 }}>
-                {student.phone || t("studentDetail.phoneMissing")} · {t("studentDetail.registeredOn")}: {formatDate(student.startDate)}
+                {student.phone || t("studentDetail.phoneMissing")} <CallButton phone={student.phone} /> · {t("studentDetail.registeredOn")}: {formatDate(student.startDate)}
               </div>
             </div>
           </div>
@@ -456,7 +458,7 @@ function StudentDetailContent() {
             <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0,1fr))", gap: "18px 16px" }}>
               <InfoField label={t("studentDetail.birthDate")} value={formatDate(student.birthDate)} />
               <InfoField label={t("studentDetail.telegram")} value={student.telegramUsername ? `@${student.telegramUsername}` : "—"} />
-              <InfoField label={t("studentDetail.parentPhone")} value={student.parentPhone || "—"} />
+              <InfoField label={t("studentDetail.parentPhone")} value={student.parentPhone ? <span style={{ display: "inline-flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>{student.parentPhone}<CallButton phone={student.parentPhone} /></span> : "—"} />
               <InfoField label={t("studentDetail.address")} value={student.address || "—"} />
               <InfoField label={t("stu.foundUs")} value={student.origin ? t(`adm.source.${student.origin.source}` as TranslationKey) : "—"} />
               {student.notes && <InfoField label={t("stu.notes")} value={student.notes} />}
@@ -553,6 +555,7 @@ function StudentDetailContent() {
 
         <MembershipHistory studentId={student.id} refreshKey={`${student.status}|${allEnrollments.map((e) => `${e.groupId}:${e.status}`).join(",")}`} />
         <StudentPortalPin studentId={student.id} hasPhone={Boolean(student.phone || student.parentPhone)} />
+        <CallHistory studentId={student.id} />
 
         <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", overflow: "hidden" }}>
           <div style={{ padding: "16px 20px 4px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
@@ -825,7 +828,7 @@ function StudentDetailContent() {
   );
 }
 
-function InfoField({ label, value }: { label: string; value: string }) {
+function InfoField({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div>
       <div style={{ fontSize: 11.5, color: "var(--text-muted)" }}>{label}</div>

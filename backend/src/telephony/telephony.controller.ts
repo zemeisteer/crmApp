@@ -1,9 +1,9 @@
-import { Body, Controller, Delete, Get, HttpCode, Post, Put, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, Patch, Post, Put, UseGuards } from '@nestjs/common';
 import { CurrentUser } from '../common/current-user.decorator';
 import { JwtAuthGuard } from '../common/jwt-auth.guard';
 import { Roles } from '../common/roles.decorator';
 import { RolesGuard } from '../common/roles.guard';
-import { SaveTelephonyAccountDto, SetTelephonyExtensionsDto } from './dto/telephony.dto';
+import { SaveTelephonyAccountDto, SetTelephonyExtensionsDto, TelephonyPolicyDto } from './dto/telephony.dto';
 import { TelephonyAccountsService } from './telephony-accounts.service';
 
 // The center's telephony settings: owner and admins only (like the center's
@@ -22,6 +22,11 @@ export class TelephonyController {
   @Put('settings')
   save(@CurrentUser('tenantId') tenantId: string, @Body() dto: SaveTelephonyAccountDto) {
     return this.accounts.save(tenantId, dto);
+  }
+
+  @Patch('settings')
+  policy(@CurrentUser('tenantId') tenantId: string, @Body() dto: TelephonyPolicyDto) {
+    return this.accounts.setPolicy(tenantId, dto);
   }
 
   @Delete('settings')

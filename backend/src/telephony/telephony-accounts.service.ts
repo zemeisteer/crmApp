@@ -122,6 +122,19 @@ export class TelephonyAccountsService {
     return this.view(tenantId);
   }
 
+  /** On/off and who sees what; the keys stay as they are. */
+  async setPolicy(tenantId: string, dto: Pick<SaveTelephonyAccount, 'enabled' | 'callsVisibility' | 'recordingsAccess'>) {
+    const r = await this.row(tenantId);
+    if (!r) throw new NotFoundException('Telefoniya ulanmagan');
+    await this.db.update(telephonyAccounts).set({
+      ...(dto.enabled !== undefined ? { enabled: dto.enabled } : {}),
+      ...(dto.callsVisibility ? { callsVisibility: dto.callsVisibility } : {}),
+      ...(dto.recordingsAccess ? { recordingsAccess: dto.recordingsAccess } : {}),
+      updatedAt: new Date(),
+    }).where(eq(telephonyAccounts.id, r.id));
+    return this.view(tenantId);
+  }
+
   /** A new webhook address; the old one stops working at once. */
   async rotateToken(tenantId: string) {
     const r = await this.row(tenantId);

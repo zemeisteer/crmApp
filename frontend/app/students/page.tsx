@@ -2,6 +2,7 @@
 
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import CallButton from "@/components/telephony/CallButton";
 import { useSearchParams } from "next/navigation";
 import DashboardShell from "@/components/DashboardShell";
 import LoadError from "@/components/LoadError";
@@ -339,7 +340,7 @@ function StudentsContent() {
                         return r === null ? <span style={{ color: "var(--text-muted)" }}>—</span> : <span style={{ fontWeight: 700, color: r >= 85 ? "var(--success)" : r >= 70 ? "var(--warning)" : "var(--danger)" }}>{r}%</span>;
                       })()}
                     </td>
-                    <td>{s.phone || "—"}</td>
+                    <td>{s.phone ? <span style={{ display: "inline-flex", gap: 6, alignItems: "center" }}>{s.phone}<CallButton phone={s.phone} /></span> : "—"}</td>
                     <td>{s.parentPhone || "—"}</td>
                     {summary?.withPayments && (
                       <td>

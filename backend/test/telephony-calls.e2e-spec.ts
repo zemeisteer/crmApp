@@ -179,9 +179,9 @@ describe('Telephony calls (e2e)', () => {
     const all = (await http().get('/api/calls?limit=200').set(bearer(owner.token)).expect(200)).body.items;
     expect(all.some((c: { id: string }) => c.id === m2call.id)).toBe(true);
 
-    await http().put('/api/telephony/settings').set(bearer(owner.token)).send({ provider: 'MOCK', apiKey: 'keyA', callsVisibility: 'ALL' }).expect(200);
+    await http().patch('/api/telephony/settings').set(bearer(owner.token)).send({ callsVisibility: 'ALL' }).expect(200);
     await http().get(`/api/calls/${m2call.id}/card`).set(bearer(m1.token)).expect(200);
-    await http().put('/api/telephony/settings').set(bearer(owner.token)).send({ provider: 'MOCK', apiKey: 'keyA', callsVisibility: 'OWN' }).expect(200);
+    await http().patch('/api/telephony/settings').set(bearer(owner.token)).send({ callsVisibility: 'OWN' }).expect(200);
 
     // A contact's history (the card's "Calls" tab).
     const forStudent = (await http().get(`/api/calls?studentId=${studentA}`).set(bearer(owner.token)).expect(200)).body.items;
@@ -208,7 +208,7 @@ describe('Telephony calls (e2e)', () => {
     expect(link.url).toContain(`rec_${suffix}`);
     const listed = (await http().get('/api/calls').set(bearer(m1.token)).expect(200)).body.items.find((x: { id: string }) => x.id === c.id);
     expect(listed).toMatchObject({ hasRecording: true, canPlay: false });
-    await http().put('/api/telephony/settings').set(bearer(owner.token)).send({ provider: 'MOCK', apiKey: 'keyA', recordingsAccess: 'CALL_VIEWERS' }).expect(200);
+    await http().patch('/api/telephony/settings').set(bearer(owner.token)).send({ recordingsAccess: 'CALL_VIEWERS' }).expect(200);
     await http().get(`/api/calls/${c.id}/recording`).set(bearer(m1.token)).expect(200);
     // Still only calls they can see.
     await http().get(`/api/calls/${c.id}/recording`).set(bearer(m2.token)).expect(404);

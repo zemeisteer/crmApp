@@ -26,6 +26,7 @@ export class MockTelephonyProvider extends ZadarmaProvider {
 
   override async recordingLink(_creds: TelephonyCredentials, call: { providerCallId: string; recordingRef: string | null }) {
     if (!call.recordingRef) return null;
-    return { url: `about:blank#mock-recording-${encodeURIComponent(call.recordingRef)}`, expiresAt: null };
+    // A short tone served by the frontend itself (frontend/public/telephony/), so ▶ really plays.
+    return { url: `/telephony/mock-recording.wav#${encodeURIComponent(call.recordingRef)}`, expiresAt: null };
   }
 }

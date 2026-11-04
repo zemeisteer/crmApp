@@ -1,6 +1,7 @@
 import { BadRequestException, ForbiddenException, Inject, Injectable, Logger, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
 import { and, desc, eq, gte, lt, sql, type SQL } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
+import { effectiveAccess } from '../access/catalog';
 import { DEFAULT_TIMEZONE, isValidTimeZone, zonedTimeToUtc } from '../common/timezone';
 import { DB, Database } from '../db/db.module';
 import { calls, leadActivities, leads, students, tenants, users } from '../db/schema';
@@ -105,7 +106,7 @@ export class CallsService {
         .from(leads).where(and(eq(leads.id, c.leadId), eq(leads.tenantId, v.tenantId)));
       if (l) {
         const recent = await this.db
-          .select({ type: leadActivities.type, body: leadActivities.body, occurredAt: leadActivities.occurredAt })
+          .select({ type: leadActivities.type, body: leadActivities.body, metadata: leadActivities.metadata, occurredAt: leadActivities.occurredAt })
           .from(leadActivities)
           .where(and(eq(leadActivities.tenantId, v.tenantId), eq(leadActivities.leadId, l.id), sql`${leadActivities.body} IS NOT NULL AND ${leadActivities.body} <> ''`))
           .orderBy(desc(leadActivities.occurredAt))
@@ -127,6 +128,25 @@ export class CallsService {
       call: { id: c.id, direction: c.direction, status: c.status, clientNumber: c.clientNumber, extension: c.extension, managerUserId: c.managerUserId, startedAt: c.startedAt, createdLead: c.createdLead },
       contact,
       previousCalls: previous,
+    };
+  }
+
+  /**
+   * What this member's screens should offer: whether telephony is on for the
+   * center, and whether they can see calls / call out (the server checks
+   * again on every request; this only keeps dead buttons out of sight).
+   */
+  async me(v: CallsViewer, access: string[] | null | undefined) {
+    const keys = effectiveAccess(v.role, access);
+    const account = await this.accounts.row(v.tenantId);
+    const available = Boolean(account?.enabled) && allows(await entitlementsOf(this.db, v.tenantId), 'TELEPHONY');
+    const extension = available ? await this.accounts.extensionOfUser(v.tenantId, v.userId) : null;
+    return {
+      available,
+      canView: available && keys.includes('calls.view'),
+      canCall: available && keys.includes('calls.make') && Boolean(extension),
+      canStats: keys.includes('calls.stats'),
+      extension,
     };
   }
 

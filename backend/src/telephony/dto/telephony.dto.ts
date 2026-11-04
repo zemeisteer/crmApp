@@ -32,6 +32,21 @@ export class SaveTelephonyAccountDto {
   recordingsAccess?: 'ADMINS' | 'CALL_VIEWERS';
 }
 
+// Who sees what, and on/off: no keys needed.
+export class TelephonyPolicyDto {
+  @IsOptional()
+  @IsBoolean()
+  enabled?: boolean;
+
+  @IsOptional()
+  @IsIn(['OWN', 'ALL'])
+  callsVisibility?: 'OWN' | 'ALL';
+
+  @IsOptional()
+  @IsIn(['ADMINS', 'CALL_VIEWERS'])
+  recordingsAccess?: 'ADMINS' | 'CALL_VIEWERS';
+}
+
 export class TelephonyExtensionDto {
   @IsString()
   @Matches(/^\d{1,10}$/, { message: "Ichki raqam faqat raqamlardan iborat (masalan 100)" })

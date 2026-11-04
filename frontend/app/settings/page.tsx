@@ -8,6 +8,7 @@ import StaffAccessEditor, { isConfigurableRole } from "@/components/settings/Sta
 import SiteContentEditor from "@/components/settings/SiteContentEditor";
 import CustomDomains from "@/components/settings/CustomDomains";
 import PaymentAccounts from "@/components/settings/PaymentAccounts";
+import TelephonySettings from "@/components/settings/TelephonySettings";
 import BranchesManager from "@/components/settings/BranchesManager";
 import CustomFieldsManager from "@/components/settings/CustomFieldsManager";
 import MakeupPolicyCard from "@/components/settings/MakeupPolicyCard";
@@ -20,7 +21,7 @@ import type { TranslationKey } from "@/lib/i18n";
 import {
   tenantsApi, telegramApi, authApi, webhooksApi, staffApi, notificationsApi, accessApi,
   Session, Webhook, StaffMember, ApiError, Role, fileUrl, type AccessCatalog,
-  NotificationLog, NotificationSettings, NotificationStats,
+  NotificationLog, NotificationSettings, NotificationStats, planAllows,
 } from "@/lib/api";
 import { PHONE_PATTERN, PHONE_TITLE, NAME_PATTERN, NAME_TITLE } from "@/lib/validation";
 import { formatDate, formatDateTime, formatTime } from "@/lib/format-date";
@@ -820,6 +821,12 @@ function SettingsContent() {
                 <div style={{ marginTop: 22 }}>
                   <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 15, marginBottom: 8 }}>{t("pacc.title")}</div>
                   <PaymentAccounts />
+                </div>
+              )}
+              {isAdminRole(user?.role) && planAllows(tenant?.entitlements, "TELEPHONY") && (
+                <div style={{ marginTop: 22 }}>
+                  <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 15, marginBottom: 8 }}>{t("tel.settingsTitle")}</div>
+                  <TelephonySettings />
                 </div>
               )}
             </div>

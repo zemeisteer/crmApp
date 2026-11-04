@@ -282,7 +282,7 @@ export class LeadsService {
     ]);
     const meta = (created?.metadata ?? {}) as { channel?: string; utm?: Record<string, string> };
     const origin = {
-      channel: lead.createdByUserId ? 'STAFF' : meta.channel === 'placement_test' ? 'PLACEMENT_TEST' : 'PUBLIC_FORM',
+      channel: lead.createdByUserId ? 'STAFF' : meta.channel === 'placement_test' ? 'PLACEMENT_TEST' : meta.channel === 'phone_call' ? 'PHONE_CALL' : 'PUBLIC_FORM',
       createdBy: createdBy ?? null,
       utm: meta.utm ?? null,
     };

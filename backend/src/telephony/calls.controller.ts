@@ -50,6 +50,13 @@ export class CallsController {
     return this.service.list(viewer(u), q);
   }
 
+  // Any staff member: what their screens should show (no secret, no call data).
+  @Roles('ADMIN', 'MANAGER', 'RECEPTIONIST', 'ACCOUNTANT', 'TEACHER')
+  @Get('me')
+  me(@CurrentUser() u: JwtPayload) {
+    return this.service.me(viewer(u), u.access);
+  }
+
   @Roles('ADMIN')
   @Get('stats')
   stats(@CurrentUser() u: JwtPayload, @Query() q: CallStatsQuery) {
