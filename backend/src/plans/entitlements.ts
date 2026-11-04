@@ -14,12 +14,13 @@ import { plans, tenants } from '../db/schema';
  *   MOCK_EXAMS    mock exams and practice sets
  *   CERTIFICATES  certificates
  *   CUSTOM_DOMAIN the center's public site on its own domain
+ *   TELEPHONY     IP telephony: the center's own provider account, the call log
  * Limits (a number, or null for none):
  *   MAX_STUDENTS, MAX_STAFF, MAX_BRANCHES
  *
  * SMS stays with plans.smsIncluded (notifications.service.ts smsRoute).
  */
-export const FEATURES = ['AI_TOOLS', 'AI_TUTOR', 'MOCK_EXAMS', 'CERTIFICATES', 'CUSTOM_DOMAIN'] as const;
+export const FEATURES = ['AI_TOOLS', 'AI_TUTOR', 'MOCK_EXAMS', 'CERTIFICATES', 'CUSTOM_DOMAIN', 'TELEPHONY'] as const;
 export const LIMITS = ['MAX_STUDENTS', 'MAX_STAFF', 'MAX_BRANCHES'] as const;
 export type Feature = (typeof FEATURES)[number];
 export type Limit = (typeof LIMITS)[number];
@@ -47,6 +48,7 @@ const LABELS: Record<Feature, string> = {
   MOCK_EXAMS: 'Mock imtihonlar',
   CERTIFICATES: 'Sertifikatlar',
   CUSTOM_DOMAIN: "O'z domeni",
+  TELEPHONY: 'IP telefoniya',
 };
 
 export const notInPlan = (f: Feature) =>

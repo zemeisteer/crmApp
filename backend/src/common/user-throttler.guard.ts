@@ -6,6 +6,7 @@ import { ThrottlerGuard } from '@nestjs/throttler';
 // Where a password, code or link is being guessed: always counted by address,
 // or an attacker with a few accounts would get a fresh allowance per token.
 const GUESSABLE = /\/(auth\/(login|register|2fa\/verify-login|forgot-password|reset-password|handoff)|portal\/auth\/|invitations\/[^/]+\/accept|public\/)/;
+const TELEPHONY_HOOK = /\/telephony\/webhook\/([A-Za-z0-9_-]{1,64})(?:[/?]|$)/;
 const jwt = new JwtService();
 
 /**
@@ -19,6 +20,10 @@ export class UserThrottlerGuard extends ThrottlerGuard {
   @Inject(ConfigService) private readonly config!: ConfigService;
 
   protected async getTracker(req: Record<string, any>): Promise<string> {
+    // Telephony webhooks: every center's events come from the same few
+    // provider addresses, so they are counted per center (its webhook token).
+    const hook = TELEPHONY_HOOK.exec(req.path ?? req.url ?? '');
+    if (hook) return `telephony:${hook[1]}`;
     const header: string | undefined = req.headers?.authorization;
     const secret = this.config.get<string>('JWT_SECRET');
     if (secret && header?.startsWith('Bearer ') && !GUESSABLE.test(req.path ?? req.url ?? '')) {

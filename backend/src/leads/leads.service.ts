@@ -37,7 +37,7 @@ import {
   type LeadStatus,
   type TransitionContext,
 } from './lead-lifecycle';
-import { maskPhone, normalizeEmail, normalizePhone } from './phone';
+import { formatPhoneName, maskPhone, normalizeEmail, normalizePhone } from './phone';
 import { CustomFieldsService } from '../custom-fields/custom-fields.service';
 import {
   AssignLeadDto,
@@ -693,6 +693,41 @@ export class LeadsService {
       metadata: { kind: 'PLACEMENT_TEST', attemptId: a.attemptId, percent: a.percent, level: a.level, pending: a.pending },
     });
     return id;
+  }
+
+  // An incoming call from a number nobody in the center has (telephony/):
+  // a new lead with source PHONE, named by its number until staff rename it.
+  // Never fails on a duplicate: a lead with this number (created meanwhile,
+  // e.g. by another event of the same call) is returned instead.
+  async createFromCall(tenantId: string, a: { phoneNormalized: string; callId: string }): Promise<{ id: string; created: boolean }> {
+    const [existing] = await this.findDuplicates(this.db, tenantId, a.phoneNormalized, null);
+    if (existing) return { id: existing.id, created: false };
+    try {
+      const lead = await this.db.transaction(async (tx) => {
+        const [row] = await tx.insert(leads).values({
+          tenantId,
+          fullName: formatPhoneName(a.phoneNormalized),
+          phone: a.phoneNormalized,
+          phoneNormalized: a.phoneNormalized,
+          source: 'PHONE',
+          ...appTimestamps(),
+        }).returning();
+        await this.recordActivity(tx, {
+          tenantId, leadId: row.id, actorUserId: null, type: 'STATUS_CHANGE', toStatus: 'NEW',
+          metadata: { kind: 'CREATED', source: 'PHONE', channel: 'phone_call', callId: a.callId },
+        });
+        return row;
+      });
+      this.logger.log(JSON.stringify({ op: 'lead.create', tenantId, leadId: lead.id, channel: 'phone_call', phone: maskPhone(a.phoneNormalized) }));
+      this.events.emit('LeadCreated', { tenantId, leadId: lead.id, actorUserId: null, data: { source: 'PHONE', channel: 'phone_call' } });
+      return { id: lead.id, created: true };
+    } catch (err) {
+      if (isUniqueViolation(err)) {
+        const [dup] = await this.findDuplicates(this.db, tenantId, a.phoneNormalized, null);
+        if (dup) return { id: dup.id, created: false };
+      }
+      throw err;
+    }
   }
 
   async update(tenantId: string, actor: Actor, id: string, dto: UpdateLeadDto) {
