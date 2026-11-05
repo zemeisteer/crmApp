@@ -84,6 +84,9 @@ describe('Staff access lists (e2e)', () => {
       'GET /api/calendar/feed', 'POST /api/calendar/feed', 'DELETE /api/calendar/feed',
       'GET /api/calendar/google', 'POST /api/calendar/google/connect', 'GET /api/calendar/google/calendars',
       'PATCH /api/calendar/google', 'POST /api/calendar/google/sync', 'DELETE /api/calendar/google', 'DELETE /api/calendar/google/leftovers', 'GET /api/attendance/unbound',
+      // What one's own screens should offer for telephony (whether to show the
+      // call button): no call data; the calls themselves are calls.* keys.
+      'GET /api/calls/me',
     ]);
     const unclassified = app.get(RouteAccessService).routes()
       .filter((r) => (r.rolesGuard || r.permissionsGuard) && CONFIGURABLE_ROLES.some((role) => RouteAccessService.allows(r, role)))
