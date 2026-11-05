@@ -4,6 +4,7 @@ import { MAX_MONEY } from '../../common/money';
 // One payout (installment) of a teacher's month.
 export class DisburseSalaryDto {
   @IsString()
+  @MaxLength(2000)
   teacherId: string;
 
   @IsInt()
@@ -21,6 +22,7 @@ export class DisburseSalaryDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(2000)
   paidAt?: string;
 
   @IsOptional()
@@ -37,5 +39,6 @@ export class ReverseSalaryDto {
 
 export class LinkSalaryExpenseDto {
   @IsString()
+  @MaxLength(2000)
   expenseId: string;
 }

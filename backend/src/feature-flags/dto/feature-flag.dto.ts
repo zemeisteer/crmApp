@@ -1,7 +1,8 @@
-import { IsBoolean, IsString } from 'class-validator';
+import { IsBoolean, IsString, MaxLength } from 'class-validator';
 
 export class SetFeatureFlagDto {
   @IsString()
+  @MaxLength(2000)
   key: string;
 
   @IsBoolean()

@@ -7,10 +7,10 @@ import DirectionSelect from "@/components/DirectionSelect";
 import { ImageField, PartHeader, QuestionsEditor } from "@/components/mock-tests/MockTestEditor";
 import { PrivateImg } from "@/components/PrivateFile";
 
-const ACCENT = "#4F46E5";
-const card: React.CSSProperties = { background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 16 };
-const label: React.CSSProperties = { fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6, display: "block" };
-const ghost: React.CSSProperties = { background: "#fff", border: "1px solid #EAE8E2", borderRadius: 9, padding: "7px 11px", fontSize: 12.5, fontWeight: 700, cursor: "pointer" };
+const ACCENT = "var(--primary)";
+const card: React.CSSProperties = { background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 16 };
+const label: React.CSSProperties = { fontSize: 12.5, fontWeight: 600, color: "var(--text-soft)", marginBottom: 6, display: "block" };
+const ghost: React.CSSProperties = { background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", padding: "7px 11px", fontSize: 12.5, fontWeight: 700, cursor: "pointer" };
 const MAX_SECTIONS = 6;
 
 type Section = PracticeContent["sections"][number];
@@ -81,16 +81,16 @@ export default function PracticeEditor({ test, onSaved }: { test: PracticeTest; 
           </div>
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-          <span style={{ fontSize: 12, fontWeight: 800, padding: "3px 10px", borderRadius: 100, background: test.status === "PUBLISHED" ? "#E9F8EF" : "#F2F1EC", color: test.status === "PUBLISHED" ? "#16794A" : "#6B6E78" }}>
+          <span style={{ fontSize: 12, fontWeight: 800, padding: "3px 10px", borderRadius: "var(--radius-pill)", background: test.status === "PUBLISHED" ? "var(--success-soft)" : "var(--surface-muted)", color: test.status === "PUBLISHED" ? "var(--success)" : "var(--text-muted)" }}>
             {test.status === "PUBLISHED" ? t("mock.published") : t("mock.draft")}
           </span>
-          {msg && <span style={{ fontSize: 12.5, fontWeight: 600, color: msg.ok ? "#16794A" : "#B23A47" }}>{msg.text}</span>}
+          {msg && <span style={{ fontSize: 12.5, fontWeight: 600, color: msg.ok ? "var(--success)" : "var(--danger)" }}>{msg.text}</span>}
           <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
             <button type="button" className="btn" disabled={busy || !dirty} onClick={() => save()} style={{ ...ghost, opacity: dirty ? 1 : 0.5 }}>💾 {t("common.save")}</button>
             {test.status === "PUBLISHED" ? (
               <button type="button" className="btn" disabled={busy} onClick={() => save("DRAFT")} style={ghost}>{t("mock.unpublish")}</button>
             ) : (
-              <button type="button" className="btn" disabled={busy} onClick={() => save("PUBLISHED")} style={{ ...ghost, background: ACCENT, color: "#fff", border: "none" }}>🚀 {t("mock.publish")}</button>
+              <button type="button" className="btn" disabled={busy} onClick={() => save("PUBLISHED")} style={{ ...ghost, background: ACCENT, color: "var(--on-ink)", border: "none" }}>🚀 {t("mock.publish")}</button>
             )}
           </div>
         </div>
@@ -100,8 +100,8 @@ export default function PracticeEditor({ test, onSaved }: { test: PracticeTest; 
         {content.sections.map((s, i) => {
           const n = s.parts.reduce((m, p) => m + p.questions.length, 0) + s.tasks.length;
           return (
-            <button key={i} type="button" onClick={() => setSi(i)} style={{ border: `1.5px solid ${si === i ? ACCENT : "#EAE8E2"}`, background: si === i ? "#EEF0FF" : "#fff", color: si === i ? ACCENT : "#4A4E58", borderRadius: 11, padding: "9px 14px", fontWeight: 700, fontSize: 13.5, cursor: "pointer", maxWidth: 260, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-              {i + 1}. {s.title} <span style={{ color: "#686B75", fontWeight: 600 }}>{n}</span>
+            <button key={i} type="button" onClick={() => setSi(i)} style={{ border: `1.5px solid ${si === i ? ACCENT : "var(--border)"}`, background: si === i ? "var(--primary-soft)" : "var(--surface)", color: si === i ? ACCENT : "var(--text-soft)", borderRadius: "var(--radius-sm)", padding: "9px 14px", fontWeight: 700, fontSize: 13.5, cursor: "pointer", maxWidth: 260, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {i + 1}. {s.title} <span style={{ color: "var(--text-muted)", fontWeight: 600 }}>{n}</span>
             </button>
           );
         })}
@@ -125,7 +125,7 @@ export default function PracticeEditor({ test, onSaved }: { test: PracticeTest; 
                 <input type="number" min={1} max={180} className="field-input" style={{ width: 100 }} value={section.durationMin} onChange={(e) => edit((c) => { c.sections[si].durationMin = Number(e.target.value) || 0; })} />
               </div>
               {content.sections.length > 1 && (
-                <button type="button" style={{ ...ghost, color: "#B23A47" }} onClick={() => { if (confirm(t("mock.removePartConfirm"))) { edit((c) => { c.sections.splice(si, 1); }); setSi(Math.max(0, si - 1)); } }}>🗑 {t("pre.removeSection")}</button>
+                <button type="button" style={{ ...ghost, color: "var(--danger)" }} onClick={() => { if (confirm(t("mock.removePartConfirm"))) { edit((c) => { c.sections.splice(si, 1); }); setSi(Math.max(0, si - 1)); } }}>🗑 {t("pre.removeSection")}</button>
               )}
             </div>
             <input className="field-input" placeholder={t("pre.instructionPh")} value={section.instruction ?? ""} onChange={(e) => edit((c) => { c.sections[si].instruction = e.target.value || null; })} />
@@ -154,17 +154,17 @@ export default function PracticeEditor({ test, onSaved }: { test: PracticeTest; 
           <div style={{ ...card, display: "grid", gap: 10 }}>
             <div style={{ fontWeight: 800, fontSize: 14 }}>✍️ {t("pre.tasks")}</div>
             {section.tasks.map((task, ti) => (
-              <div key={ti} style={{ border: "1px solid #EAE8E2", borderRadius: 12, padding: 12, display: "grid", gap: 8 }}>
+              <div key={ti} style={{ border: "1px solid var(--border)", borderRadius: "var(--radius-md)", padding: 12, display: "grid", gap: 8 }}>
                 <PartHeader title={task.title} onTitle={(v) => edit((c) => { c.sections[si].tasks[ti].title = v; })} onRemove={() => edit((c) => { c.sections[si].tasks.splice(ti, 1); })} />
                 <textarea className="field-input" rows={4} value={task.prompt} onChange={(e) => edit((c) => { c.sections[si].tasks[ti].prompt = e.target.value; })} placeholder={t("mock.taskPh")} style={{ fontFamily: "inherit" }} />
                 <input className="field-input" value={task.rubric ?? ""} onChange={(e) => edit((c) => { c.sections[si].tasks[ti].rubric = e.target.value || null; })} placeholder={t("pre.rubricPh")} />
                 <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", fontSize: 13 }}>
-                  <span style={{ color: "#6B6E78" }}>{t("mock.minWords")}</span>
+                  <span style={{ color: "var(--text-muted)" }}>{t("mock.minWords")}</span>
                   <input type="number" min={0} max={2000} className="field-input" style={{ width: 90 }} value={task.minWords} onChange={(e) => edit((c) => { c.sections[si].tasks[ti].minWords = Number(e.target.value) || 0; })} />
                   {task.imagePath ? (
                     <>
-                      <PrivateImg name={task.imagePath} scope="staff" alt="" style={{ height: 60, borderRadius: 8, border: "1px solid #EAE8E2" }} />
-                      <button type="button" style={{ ...ghost, color: "#B23A47" }} onClick={() => edit((c) => { c.sections[si].tasks[ti].imagePath = null; })}>✕</button>
+                      <PrivateImg name={task.imagePath} scope="staff" alt="" style={{ height: 60, borderRadius: "var(--radius-xs)", border: "1px solid var(--border)" }} />
+                      <button type="button" style={{ ...ghost, color: "var(--danger)" }} onClick={() => edit((c) => { c.sections[si].tasks[ti].imagePath = null; })}>✕</button>
                     </>
                   ) : (
                     <label style={{ ...ghost, display: "inline-flex", gap: 6 }}>
@@ -208,12 +208,12 @@ function AiQuestions({ subject, onAdd }: { subject: string; onAdd: (qs: import("
     }
   }
   return (
-    <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", background: "#FAFAFF", border: "1px dashed #C7D2FE", borderRadius: 12, padding: 10 }}>
+    <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", background: "var(--primary-soft)", border: "1px dashed var(--primary-border)", borderRadius: "var(--radius-md)", padding: 10 }}>
       <span style={{ fontSize: 13, fontWeight: 700, color: ACCENT }}>{t("pre.aiQuestions")}</span>
       <input className="field-input" value={topic} onChange={(e) => setTopic(e.target.value)} placeholder={t("pre.aiTopicPh")} style={{ flex: "1 1 200px" }} />
       <input type="number" min={1} max={30} className="field-input" value={count} onChange={(e) => setCount(Math.max(1, Math.min(30, Number(e.target.value) || 1)))} style={{ width: 70 }} aria-label="count" />
-      <button type="button" className="btn" disabled={busy} onClick={run} style={{ ...ghost, background: ACCENT, color: "#fff", border: "none" }}>{t("pre.aiAdd")}{busy ? "…" : ""}</button>
-      {note && <span style={{ fontSize: 12.5, fontWeight: 600, color: note.ok ? "#16794A" : "#B23A47", width: "100%" }}>{note.text}</span>}
+      <button type="button" className="btn" disabled={busy} onClick={run} style={{ ...ghost, background: ACCENT, color: "var(--on-ink)", border: "none" }}>{t("pre.aiAdd")}{busy ? "…" : ""}</button>
+      {note && <span style={{ fontSize: 12.5, fontWeight: 600, color: note.ok ? "var(--success)" : "var(--danger)", width: "100%" }}>{note.text}</span>}
     </div>
   );
 }

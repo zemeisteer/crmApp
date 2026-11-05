@@ -22,5 +22,5 @@ test("a parent signs in with the child's PIN and only watches", async ({ page })
   await expect(page.getByText('Ota-ona').first()).toBeVisible();
   await expect(page.getByRole('button', { name: /AI/ })).toHaveCount(0);
   // The staff session was never touched: the portal keeps its own.
-  expect(await page.evaluate(() => localStorage.getItem('talimcrm_token'))).toBeNull();
+  expect(await page.evaluate(() => localStorage.getItem('talimcrm_session'))).toBeNull();
 });

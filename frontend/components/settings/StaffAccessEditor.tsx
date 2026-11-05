@@ -4,7 +4,7 @@ import type { AccessCatalog, Role } from "@/lib/api";
 import { useLanguage } from "@/lib/i18n-context";
 import type { TranslationKey } from "@/lib/i18n";
 
-const ACCENT = "#4F46E5";
+const ACCENT = "var(--primary)";
 
 export function isConfigurableRole(catalog: AccessCatalog, role: Role) {
   return catalog.roles.includes(role);
@@ -34,7 +34,7 @@ export default function StaffAccessEditor({
 }) {
   const { t } = useLanguage();
   if (!isConfigurableRole(catalog, role)) {
-    return <div style={{ fontSize: 12.5, color: "#4A4E58", background: "#F7F7F5", borderRadius: 10, padding: "10px 12px" }}>{t("perm.adminAll")}</div>;
+    return <div style={{ fontSize: 12.5, color: "var(--text-soft)", background: "var(--surface-muted)", borderRadius: "var(--radius-sm)", padding: "10px 12px" }}>{t("perm.adminAll")}</div>;
   }
   const template = templateOf(catalog, role);
   const current = value ?? template;
@@ -50,11 +50,11 @@ export default function StaffAccessEditor({
       <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
         <span
           className="badge"
-          style={{ background: custom ? "#FEF3C7" : "#EBF8F2", color: custom ? "#B45309" : "#16794A", fontWeight: 700, fontSize: 11.5, borderRadius: 7, padding: "3px 9px" }}
+          style={{ background: custom ? "var(--warning-soft)" : "var(--success-soft)", color: custom ? "var(--warning)" : "var(--success)", fontWeight: 700, fontSize: 11.5, borderRadius: "var(--radius-xs)", padding: "3px 9px" }}
         >
           {custom ? t("perm.custom") : t("perm.default")}
         </span>
-        <span style={{ fontSize: 12, color: "#686B75" }}>{t("perm.count").replace("{n}", String(current.length)).replace("{m}", String(catalog.keys.length))}</span>
+        <span style={{ fontSize: 12, color: "var(--text-muted)" }}>{t("perm.count").replace("{n}", String(current.length)).replace("{m}", String(catalog.keys.length))}</span>
         {custom && (
           <button type="button" className="btn" disabled={disabled} onClick={() => onChange(null)} style={{ marginLeft: "auto", background: "none", border: "none", color: ACCENT, fontSize: 12.5, fontWeight: 700, padding: 0, cursor: "pointer" }}>
             ↺ {t("perm.reset")}
@@ -65,8 +65,8 @@ export default function StaffAccessEditor({
         const keys = catalog.keys.filter((k) => k.area === area);
         if (keys.length === 0) return null;
         return (
-          <fieldset key={area} style={{ border: "1px solid #EAE8E2", borderRadius: 12, padding: "10px 12px", margin: 0 }}>
-            <legend style={{ fontSize: 12, fontWeight: 700, color: "#4A4E58", padding: "0 6px" }}>{t(`acc.area.${area}` as TranslationKey)}</legend>
+          <fieldset key={area} style={{ border: "1px solid var(--border)", borderRadius: "var(--radius-md)", padding: "10px 12px", margin: 0 }}>
+            <legend style={{ fontSize: 12, fontWeight: 700, color: "var(--text-soft)", padding: "0 6px" }}>{t(`acc.area.${area}` as TranslationKey)}</legend>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 6 }}>
               {keys.map((k) => {
                 const on = current.includes(k.key);
@@ -79,13 +79,13 @@ export default function StaffAccessEditor({
                       alignItems: "center",
                       gap: 8,
                       padding: "7px 9px",
-                      borderRadius: 8,
-                      background: on ? "#EEF2FF" : "#F7F7F5",
-                      border: `1px solid ${changed ? "#F59E0B" : on ? "#C7D2FE" : "#EAE8E2"}`,
+                      borderRadius: "var(--radius-xs)",
+                      background: on ? "var(--primary-soft)" : "var(--surface-muted)",
+                      border: `1px solid ${changed ? "var(--warning)" : on ? "var(--primary-border)" : "var(--border)"}`,
                       cursor: disabled ? "default" : "pointer",
                       fontSize: 12.5,
                       fontWeight: on ? 600 : 500,
-                      color: on ? "#3730A3" : "#4A4E58",
+                      color: on ? "var(--primary)" : "var(--text-soft)",
                     }}
                   >
                     <input type="checkbox" checked={on} disabled={disabled} onChange={() => toggle(k.key)} style={{ accentColor: ACCENT }} />
@@ -97,7 +97,7 @@ export default function StaffAccessEditor({
           </fieldset>
         );
       })}
-      <div style={{ fontSize: 11.5, color: "#686B75", lineHeight: 1.5 }}>{t("perm.ownerOnly")}</div>
+      <div style={{ fontSize: 11.5, color: "var(--text-muted)", lineHeight: 1.5 }}>{t("perm.ownerOnly")}</div>
     </div>
   );
 }

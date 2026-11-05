@@ -18,7 +18,7 @@ export interface BarDatum {
 
 export default function BarChart({
   data,
-  color = "#4F46E5",
+  color = "var(--primary)",
   height = 160,
   formatValue,
   defaultActiveIdx,
@@ -66,11 +66,11 @@ export default function BarChart({
               display: "inline-flex",
               alignItems: "center",
               gap: 8,
-              background: "#EEF0FF",
+              background: `color-mix(in srgb, ${color} 9%, var(--surface))`,
               color,
-              border: "1px solid rgba(79, 70, 229, 0.25)",
-              borderRadius: 8,
-              padding: "4px 10px",
+              border: `1px solid color-mix(in srgb, ${color} 25%, transparent)`,
+              borderRadius: "var(--radius-pill)",
+              padding: "4px 12px",
               fontSize: 12,
               fontWeight: 700,
             }}
@@ -108,7 +108,7 @@ export default function BarChart({
       )}
       <div style={{ display: "flex", alignItems: "flex-end", gap: 10, height, width: "100%", overflowX: "auto", position: "relative", paddingBottom: 4 }}>
         {isEmpty ? (
-          <div style={{ color: "#686B75", fontSize: 13, margin: "auto", textAlign: "center", maxWidth: 320 }}>{emptyText ?? t("chart.noData")}</div>
+          <div style={{ color: "var(--text-muted)", fontSize: 13, margin: "auto", textAlign: "center", maxWidth: 320 }}>{emptyText ?? t("chart.noData")}</div>
         ) : (
           data.map((d, i) => {
             const isSelected = activeIdx === i;
@@ -134,18 +134,20 @@ export default function BarChart({
                   userSelect: "none",
                 }}
               >
-                <div style={{ fontSize: 11, fontWeight: isSelected ? 800 : 600, color: isSelected ? color : "#4A4E58" }}>
+                <div style={{ fontSize: 11, fontWeight: isSelected ? 800 : 600, color: isSelected ? color : "var(--text-soft)" }}>
                   {formatted}
                 </div>
                 <div
+                  className="grow-y"
                   style={{
-                    width: "70%",
-                    maxWidth: 40,
-                    minWidth: 18,
+                    ["--i" as string]: i,
+                    width: "62%",
+                    maxWidth: 34,
+                    minWidth: 14,
                     height: barHeight,
-                    background: isSelected ? color : isHovered ? `${color}66` : `${color}24`,
-                    border: isSelected ? `2px solid ${color}` : "1px solid transparent",
-                    borderRadius: 6,
+                    background: isSelected ? color : isHovered ? `color-mix(in srgb, ${color} 40%, transparent)` : `color-mix(in srgb, ${color} 14%, transparent)`,
+                    border: "none",
+                    borderRadius: "var(--radius-pill)",
                     transition: "background 0.15s ease, transform 0.15s ease",
                     transform: isHovered || isSelected ? "scaleY(1.04)" : "scaleY(1)",
                     transformOrigin: "bottom",
@@ -154,7 +156,7 @@ export default function BarChart({
                 <div
                   style={{
                     fontSize: 10.5,
-                    color: isSelected ? color : "#686B75",
+                    color: isSelected ? color : "var(--text-muted)",
                     fontWeight: isSelected ? 700 : 500,
                     textAlign: "center",
                     maxWidth: 56,
@@ -177,7 +179,7 @@ export default function BarChart({
 export function DonutChart({
   value,
   max,
-  color = "#4F46E5",
+  color = "var(--primary)",
   size = 120,
   label,
 }: {
@@ -194,7 +196,7 @@ export function DonutChart({
   return (
     <div style={{ position: "relative", width: size, height: size }}>
       <svg width={size} height={size} style={{ transform: "rotate(-90deg)" }}>
-        <circle cx={size / 2} cy={size / 2} r={r} stroke="#EAE8E2" strokeWidth={10} fill="none" />
+        <circle cx={size / 2} cy={size / 2} r={r} stroke="var(--surface-sunken)" strokeWidth={10} fill="none" />
         <circle
           cx={size / 2}
           cy={size / 2}
@@ -205,11 +207,13 @@ export function DonutChart({
           strokeDasharray={circumference}
           strokeDashoffset={offset}
           strokeLinecap="round"
+          className="donut-arc"
+          style={{ ["--from" as string]: circumference }}
         />
       </svg>
       <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
-        <div style={{ fontSize: 18, fontWeight: 800 }}>{Math.round(pct * 100)}%</div>
-        {label && <div style={{ fontSize: 10, color: "#686B75" }}>{label}</div>}
+        <div style={{ fontSize: size >= 140 ? 28 : 18, fontWeight: 600, letterSpacing: "-0.03em" }}>{Math.round(pct * 100)}%</div>
+        {label && <div style={{ fontSize: 10, color: "var(--text-muted)" }}>{label}</div>}
       </div>
     </div>
   );

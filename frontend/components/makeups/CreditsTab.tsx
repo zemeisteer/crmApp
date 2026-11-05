@@ -107,7 +107,7 @@ export default function CreditsTab({ canManage, refreshKey }: { canManage: boole
                 <div style={{ display: "flex", alignItems: "flex-start", gap: 10, flexWrap: "wrap" }}>
                   <div style={{ flex: "1 1 220px", minWidth: 0 }}>
                     {c.student ? (
-                      <Link href={`/students/${c.student.id}`} style={{ fontSize: 14, fontWeight: 700, color: "#181A1F", overflowWrap: "anywhere" }}>{name}</Link>
+                      <Link href={`/students/${c.student.id}`} style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", overflowWrap: "anywhere" }}>{name}</Link>
                     ) : (
                       <span style={{ fontSize: 14, fontWeight: 700 }}>{name}</span>
                     )}
@@ -116,19 +116,19 @@ export default function CreditsTab({ canManage, refreshKey }: { canManage: boole
                     </div>
                   </div>
                   <Badge text={t(st.key)} color={st.color} bg={st.bg} />
-                  {c.expired && <Badge text={t("mk.expired")} color="#B23A47" bg="#FDEBEC" />}
+                  {c.expired && <Badge text={t("mk.expired")} color="var(--danger)" bg="var(--danger-soft)" />}
                 </div>
                 <div style={{ ...muted, display: "flex", flexWrap: "wrap", gap: "2px 14px" }}>
                   <span>{t("mk.issuedOn")}: {centerDay(c.issuedAt)}</span>
                   {(c.status === "ISSUED" || c.status === "BOOKED") && (
-                    <span style={c.expired ? { color: "#B23A47", fontWeight: 700 } : undefined}>
+                    <span style={c.expired ? { color: "var(--danger)", fontWeight: 700 } : undefined}>
                       {c.expiresAt ? `${c.expired ? t("mk.expiredOn") : t("mk.expiresOn")}: ${centerDay(c.expiresAt)}` : t("mk.noExpiry")}
                     </span>
                   )}
                 </div>
-                {c.note && <div style={{ fontSize: 12.5, color: "#4A4E58", overflowWrap: "anywhere" }}>📝 {c.note}</div>}
+                {c.note && <div style={{ fontSize: 12.5, color: "var(--text-soft)", overflowWrap: "anywhere" }}>📝 {c.note}</div>}
                 {live && (
-                  <div style={{ background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: 10, padding: "8px 12px", fontSize: 12.5, lineHeight: 1.6, display: "flex", flexWrap: "wrap", gap: "4px 10px", alignItems: "center" }}>
+                  <div style={{ background: "var(--surface-muted)", border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", padding: "8px 12px", fontSize: 12.5, lineHeight: 1.6, display: "flex", flexWrap: "wrap", gap: "4px 10px", alignItems: "center" }}>
                     <span style={{ fontWeight: 700 }}>{t("mk.makeup")}:</span>
                     <span style={{ overflowWrap: "anywhere" }}>
                       {live.mode === "GROUP_LESSON" ? live.targetGroup?.name ?? "—" : t("mk.session")} · {dayLabel(live.date, lang, t)} · {live.startTime}–{live.endTime}

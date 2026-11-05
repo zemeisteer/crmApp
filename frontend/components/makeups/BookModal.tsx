@@ -165,9 +165,9 @@ export default function BookModal({ credit, onClose, onBooked }: { credit: Makeu
       aria-pressed={mode === m}
       onClick={() => { setMode(m); setError(null); }}
       style={{
-        flex: 1, fontSize: 12.5, fontWeight: 700, padding: "8px 10px", borderRadius: 8, cursor: "pointer", border: "none",
-        background: mode === m ? "#fff" : "transparent", color: mode === m ? "#181A1F" : "#686B75",
-        boxShadow: mode === m ? "0 1px 3px rgba(18,19,26,0.08)" : "none",
+        flex: 1, fontSize: 12.5, fontWeight: 700, padding: "8px 10px", borderRadius: "var(--radius-pill)", cursor: "pointer", border: "none",
+        background: mode === m ? "var(--ink)" : "transparent", color: mode === m ? "var(--on-ink)" : "var(--text-muted)",
+        boxShadow: "none",
       }}
     >
       {label}
@@ -178,19 +178,19 @@ export default function BookModal({ credit, onClose, onBooked }: { credit: Makeu
     <Modal open onClose={onClose} title={t("mk.bookTitle")} width={520}>
       <form onSubmit={submit} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
         {error && <Notice tone="error">{error}</Notice>}
-        <div style={{ background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: 10, padding: "10px 14px", fontSize: 13, lineHeight: 1.6 }}>
+        <div style={{ background: "var(--surface-muted)", border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", padding: "10px 14px", fontSize: 13, lineHeight: 1.6 }}>
           <div style={{ fontWeight: 700 }}>{credit.student?.fullName ?? "—"}</div>
-          <div style={{ color: "#686B75" }}>{t("mk.missedOn")}: {credit.originGroup?.name ?? "—"} · {dayLabel(credit.originDate, lang, t)}</div>
+          <div style={{ color: "var(--text-muted)" }}>{t("mk.missedOn")}: {credit.originGroup?.name ?? "—"} · {dayLabel(credit.originDate, lang, t)}</div>
         </div>
 
-        <div role="group" aria-label={t("mk.bookMode")} style={{ display: "flex", gap: 2, background: "#F2F1EC", borderRadius: 10, padding: 4 }}>
+        <div role="group" aria-label={t("mk.bookMode")} style={{ display: "flex", gap: 2, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 4 }}>
           {modeBtn("GROUP_LESSON", t("mk.modeGroup"))}
           {modeBtn("SESSION", t("mk.modeSession"))}
         </div>
 
         {mode === "GROUP_LESSON" ? (
           <>
-            <div style={{ fontSize: 12.5, color: "#686B75", lineHeight: 1.5 }}>{t("mk.modeGroupHint")}</div>
+            <div style={{ fontSize: 12.5, color: "var(--text-muted)", lineHeight: 1.5 }}>{t("mk.modeGroupHint")}</div>
             <div role="group" aria-label={t("mk.targetGroup")}>
               <span style={lbl}>{t("mk.targetGroup")}</span>
               {groupsError ? (
@@ -208,7 +208,7 @@ export default function BookModal({ credit, onClose, onBooked }: { credit: Makeu
                 />
               )}
               {groups !== null && originSubject && (
-                <div style={{ fontSize: 12, color: "#686B75", marginTop: 6, lineHeight: 1.5 }}>
+                <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 6, lineHeight: 1.5 }}>
                   {sameSubject.length === 0
                     ? t("mk.noSameSubject").replace("{subject}", originSubject)
                     : otherSubjects
@@ -232,13 +232,13 @@ export default function BookModal({ credit, onClose, onBooked }: { credit: Makeu
                 {lessonsError ? (
                   <Notice tone="error">{t("mk.loadError")}</Notice>
                 ) : lessons === null ? (
-                  <div role="status" style={{ fontSize: 13, color: "#686B75" }}>{t("common.loading")}</div>
+                  <div role="status" style={{ fontSize: 13, color: "var(--text-muted)" }}>{t("common.loading")}</div>
                 ) : upcoming.length === 0 ? (
                   <Notice tone="warn">{t("mk.noLessonsAhead").replace("{n}", String(LOOKAHEAD_DAYS))}</Notice>
                 ) : (
                   <>
-                    <div style={{ fontSize: 12, color: "#686B75", marginBottom: 6 }}>
-                      {t("mk.groupWeek")}: <b style={{ color: "#3A3D45" }}>{pattern}</b>
+                    <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 6 }}>
+                      {t("mk.groupWeek")}: <b style={{ color: "var(--text-soft)" }}>{pattern}</b>
                     </div>
                     <Select
                       ariaLabel={t("mk.lessonDate")}
@@ -265,7 +265,7 @@ export default function BookModal({ credit, onClose, onBooked }: { credit: Makeu
           </>
         ) : (
           <>
-            <div style={{ fontSize: 12.5, color: "#686B75", lineHeight: 1.5 }}>{t("mk.modeSessionHint")}</div>
+            <div style={{ fontSize: 12.5, color: "var(--text-muted)", lineHeight: 1.5 }}>{t("mk.modeSessionHint")}</div>
             <div role="group" aria-label={t("mk.sessionDate")}>
               <span style={lbl}>{t("mk.sessionDate")}</span>
               <DatePicker value={date} onChange={setDate} />
@@ -311,7 +311,7 @@ export default function BookModal({ credit, onClose, onBooked }: { credit: Makeu
           <span style={lbl}>{t("mk.noteOptional")}</span>
           <textarea className="field-input" value={note} onChange={(e) => setNote(e.target.value)} maxLength={500} rows={2} style={{ width: "100%", resize: "vertical", fontFamily: "inherit" }} />
         </label>
-        <button type="submit" className="btn" disabled={busy} style={{ ...primaryBtn, background: ACCENT, fontSize: 14, padding: "11px 16px", borderRadius: 10 }}>
+        <button type="submit" className="btn" disabled={busy} style={{ ...primaryBtn, background: ACCENT, fontSize: 14, padding: "11px 16px", borderRadius: "var(--radius-sm)" }}>
           {busy ? t("common.saving") : t("mk.bookConfirm")}
         </button>
       </form>

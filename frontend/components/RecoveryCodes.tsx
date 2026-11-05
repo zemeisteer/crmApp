@@ -24,17 +24,17 @@ export default function RecoveryCodes({ codes, onDone }: { codes: string[]; onDo
   return (
     <div role="region" aria-label={t("twofa.recoveryTitle")} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
       <div style={{ fontSize: 14, fontWeight: 700 }}>{t("twofa.recoveryTitle")}</div>
-      <div style={{ fontSize: 12.5, color: "#4A4E58", lineHeight: 1.55 }}>{t("twofa.recoveryText")}</div>
-      <ul style={{ listStyle: "none", margin: 0, padding: 12, display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 6, background: "#F7F6F2", borderRadius: 10, fontFamily: "ui-monospace, monospace", fontSize: 14 }}>
+      <div style={{ fontSize: 12.5, color: "var(--text-soft)", lineHeight: 1.55 }}>{t("twofa.recoveryText")}</div>
+      <ul style={{ listStyle: "none", margin: 0, padding: 12, display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 6, background: "var(--surface-muted)", borderRadius: "var(--radius-sm)", fontFamily: "ui-monospace, monospace", fontSize: 14 }}>
         {codes.map((c) => (
           <li key={c}>{c}</li>
         ))}
       </ul>
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-        <button type="button" className="btn" onClick={copy} style={{ background: "#F2F1EC", color: "#181A1F", border: "none", fontSize: 12.5, fontWeight: 700, padding: "8px 14px", borderRadius: 8 }}>
+        <button type="button" className="btn" onClick={copy} style={{ background: "var(--surface-muted)", color: "var(--text)", border: "none", fontSize: 12.5, fontWeight: 700, padding: "8px 14px", borderRadius: "var(--radius-xs)" }}>
           {copied ? t("twofa.copied") : t("twofa.copy")}
         </button>
-        <button type="button" className="btn" onClick={onDone} style={{ background: "#4F46E5", color: "#fff", border: "none", fontSize: 12.5, fontWeight: 700, padding: "8px 14px", borderRadius: 8 }}>
+        <button type="button" className="btn" onClick={onDone} style={{ background: "var(--primary)", color: "var(--on-ink)", border: "none", fontSize: 12.5, fontWeight: 700, padding: "8px 14px", borderRadius: "var(--radius-xs)" }}>
           {t("twofa.saved")}
         </button>
       </div>

@@ -149,22 +149,22 @@ export default function MockRunner({ initial, readOnly, onExit }: { initial: Por
         </button>
         <div style={{ fontWeight: 800, fontSize: 16, flex: 1, minWidth: 160 }}>{a.test.title}</div>
         {section && !done(section) && left !== null && (
-          <div style={{ fontFamily: "'Manrope', monospace", fontWeight: 800, fontSize: 18, padding: "6px 12px", borderRadius: 10, background: left < 5 * 60_000 ? "#FEE2E2" : "#EEF0FF", color: left < 5 * 60_000 ? "#B91C1C" : ACCENT }}>
+          <div style={{ fontFamily: "'Manrope', monospace", fontWeight: 800, fontSize: 18, padding: "6px 12px", borderRadius: "var(--radius-sm)", background: left < 5 * 60_000 ? "var(--danger-soft)" : "var(--primary-soft)", color: left < 5 * 60_000 ? "var(--danger)" : ACCENT }}>
             ⏱ {mmss(left)}
           </div>
         )}
-        {section && !done(section) && section !== "speaking" && <span style={{ fontSize: 12, color: saved === "error" ? "#B23A47" : "#686B75" }}>{saved === "saving" ? t("pmk.saving") : saved === "saved" ? `✓ ${t("pmk.saved")}` : saved === "error" ? `⚠ ${t("exm.saveError")}` : ""}</span>}
+        {section && !done(section) && section !== "speaking" && <span style={{ fontSize: 12, color: saved === "error" ? "var(--danger)" : "var(--text-muted)" }}>{saved === "saving" ? t("pmk.saving") : saved === "saved" ? `✓ ${t("pmk.saved")}` : saved === "error" ? `⚠ ${t("exm.saveError")}` : ""}</span>}
       </div>
-      {error && <div role="alert" style={{ ...card, color: "#B23A47", fontSize: 13 }}>{error}</div>}
+      {error && <div role="alert" style={{ ...card, color: "var(--danger)", fontSize: 13 }}>{error}</div>}
 
       {!section && (
         <>
           {overall != null && (
-            <div style={{ ...card, display: "flex", alignItems: "center", gap: 16, background: "linear-gradient(135deg, #EEF0FF, #fff)" }}>
-              <div style={{ width: 76, height: 76, borderRadius: "50%", display: "grid", placeItems: "center", background: "#fff", border: `4px solid ${bandColor(overall)}`, fontSize: 26, fontWeight: 800, color: bandColor(overall) }}>{overall}</div>
+            <div style={{ ...card, display: "flex", alignItems: "center", gap: 16, background: "linear-gradient(135deg, var(--primary-soft), var(--surface))" }}>
+              <div style={{ width: 76, height: 76, borderRadius: "50%", display: "grid", placeItems: "center", background: "var(--surface)", border: `4px solid ${bandColor(overall)}`, fontSize: 26, fontWeight: 800, color: bandColor(overall) }}>{overall}</div>
               <div>
                 <div style={{ fontSize: 17, fontWeight: 800 }}>{t("pmk.overallBand")}</div>
-                <div style={{ fontSize: 13, color: "#6B6E78" }}>{t("pmk.overallHint")}</div>
+                <div style={{ fontSize: 13, color: "var(--text-muted)" }}>{t("pmk.overallHint")}</div>
               </div>
             </div>
           )}
@@ -181,23 +181,23 @@ export default function MockRunner({ initial, readOnly, onExit }: { initial: Por
                     <div style={{ fontSize: 16, fontWeight: 800 }}>{SECTION_ICON[s]} {t(sectionKey(s))}</div>
                     {done(s) && <span style={{ fontSize: 20, fontWeight: 800, color: bandColor(r?.band) }}>{r?.band ?? (r?.status === "PENDING" ? "⏳" : "✓")}</span>}
                   </div>
-                  <div style={{ fontSize: 12.5, color: "#6B6E78" }}>
+                  <div style={{ fontSize: 12.5, color: "var(--text-muted)" }}>
                     {count} {s === "writing" ? t("pmk.tasks") : t("pmk.questions")} · ⏱ {minutes(s)} {t("pmk.min")}
                   </div>
                   {done(s) ? (
-                    <div style={{ fontSize: 12.5, color: r?.status === "REVIEW" ? "#B45309" : r?.status === "PENDING" ? ACCENT : "#16794A", fontWeight: 700 }}>
+                    <div style={{ fontSize: 12.5, color: r?.status === "REVIEW" ? "var(--warning)" : r?.status === "PENDING" ? ACCENT : "var(--success)", fontWeight: 700 }}>
                       {r?.status === "PENDING" ? t("pmk.aiMarking") : r?.status === "REVIEW" ? t("pmk.teacherMarks") : r?.raw !== undefined ? `${r.raw}/${r.max} ${t("pmk.correct")}` : t("pmk.marked")}
                     </div>
                   ) : null}
                   <button type="button" disabled={busy || (readOnly && !done(s) && !started(s))} onClick={() => setSection(s)}
-                    style={{ marginTop: "auto", background: done(s) ? "#fff" : ACCENT, color: done(s) ? "#181A1F" : "#fff", border: done(s) ? "1px solid #EAE8E2" : "none", borderRadius: 11, padding: "10px 14px", fontWeight: 700, cursor: "pointer" }}>
+                    style={{ marginTop: "auto", background: done(s) ? "var(--surface)" : ACCENT, color: done(s) ? "var(--text)" : "var(--on-ink)", border: done(s) ? "1px solid var(--border)" : "none", borderRadius: "var(--radius-sm)", padding: "10px 14px", fontWeight: 700, cursor: "pointer" }}>
                     {done(s) ? `📊 ${t("pmk.review")}` : started(s) ? `▶ ${t("pmk.continue")}` : `▶ ${t("pmk.startSection")}`}
                   </button>
                 </div>
               );
             })}
           </div>
-          <div style={{ fontSize: 12.5, color: "#686B75", lineHeight: 1.5 }}>ℹ️ {t("pmk.rules")}</div>
+          <div style={{ fontSize: 12.5, color: "var(--text-muted)", lineHeight: 1.5 }}>ℹ️ {t("pmk.rules")}</div>
         </>
       )}
 
@@ -254,11 +254,11 @@ function ListeningPlayer({ part }: { part: PortalMockAttempt["test"]["content"][
   }
   return (
     <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-      <button type="button" disabled={!canSpeak || speaking || plays >= 2} onClick={play} style={{ background: ACCENT, color: "#fff", border: "none", borderRadius: 10, padding: "9px 16px", fontWeight: 700, cursor: "pointer", opacity: plays >= 2 ? 0.5 : 1 }}>
+      <button type="button" disabled={!canSpeak || speaking || plays >= 2} onClick={play} style={{ background: ACCENT, color: "var(--on-ink)", border: "none", borderRadius: "var(--radius-sm)", padding: "9px 16px", fontWeight: 700, cursor: "pointer", opacity: plays >= 2 ? 0.5 : 1 }}>
         {speaking ? `🔊 ${t("pmk.playing")}` : `▶ ${t("pmk.play")}`}
       </button>
-      {speaking && <button type="button" onClick={() => { window.speechSynthesis.cancel(); setSpeaking(false); }} style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 10, padding: "9px 12px", cursor: "pointer" }}>■</button>}
-      <span style={{ fontSize: 12, color: "#686B75" }}>{canSpeak ? t("pmk.playsLeft").replace("{n}", String(Math.max(0, 2 - plays))) : t("pmk.noTts")}</span>
+      {speaking && <button type="button" onClick={() => { window.speechSynthesis.cancel(); setSpeaking(false); }} style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", padding: "9px 12px", cursor: "pointer" }}>■</button>}
+      <span style={{ fontSize: 12, color: "var(--text-muted)" }}>{canSpeak ? t("pmk.playsLeft").replace("{n}", String(Math.max(0, 2 - plays))) : t("pmk.noTts")}</span>
     </div>
   );
 }
@@ -285,15 +285,15 @@ function ObjectiveSection({ a, section, answers, onAnswer, readOnly, children }:
       {qs.map((q) => {
         const mark = r?.marks?.[Number(q.id)];
         return (
-          <div key={q.id} style={{ ...card, padding: 12, borderColor: mark === true ? "#BBF7D0" : mark === false ? "#FECACA" : "#EAE8E2" }}>
+          <div key={q.id} style={{ ...card, padding: 12, borderColor: mark === true ? "var(--success-border)" : mark === false ? "var(--danger-border)" : "var(--border)" }}>
             <div style={{ display: "flex", gap: 8, alignItems: "flex-start", marginBottom: 8 }}>
-              <span style={{ minWidth: 26, height: 26, padding: "0 4px", borderRadius: 8, background: "#EEF0FF", color: ACCENT, fontWeight: 800, fontSize: 12.5, display: "grid", placeItems: "center" }}>{q.span > 1 ? `${q.no}–${q.no + q.span - 1}` : q.no}</span>
+              <span style={{ minWidth: 26, height: 26, padding: "0 4px", borderRadius: "var(--radius-xs)", background: "var(--primary-soft)", color: ACCENT, fontWeight: 800, fontSize: 12.5, display: "grid", placeItems: "center" }}>{q.span > 1 ? `${q.no}–${q.no + q.span - 1}` : q.no}</span>
               <div style={{ fontSize: 14, lineHeight: 1.5, whiteSpace: "pre-wrap", flex: 1 }}>{q.prompt}</div>
               {mark !== undefined && <span style={{ fontSize: 16 }}>{mark ? "✅" : "❌"}</span>}
             </div>
             <QuestionInput q={q} value={answers[q.id] ?? ""} onChange={(v) => onAnswer(q.id, v)} disabled={readOnly} exam />
-            {keys && mark === false && !(answers[q.id] ?? "").trim() && <div style={{ marginTop: 8, fontSize: 12.5, color: "#B45309", fontWeight: 700 }}>— {t("exm.noAnswer")}</div>}
-            {keys && mark === false && <div style={{ marginTop: 6, fontSize: 12.5, color: "#167A48", fontWeight: 700 }}>✓ {t("pmk.answer")}: {keys[Number(q.id)]}</div>}
+            {keys && mark === false && !(answers[q.id] ?? "").trim() && <div style={{ marginTop: 8, fontSize: 12.5, color: "var(--warning)", fontWeight: 700 }}>— {t("exm.noAnswer")}</div>}
+            {keys && mark === false && <div style={{ marginTop: 6, fontSize: 12.5, color: "var(--success)", fontWeight: 700 }}>✓ {t("pmk.answer")}: {keys[Number(q.id)]}</div>}
           </div>
         );
       })}
@@ -305,7 +305,7 @@ function ObjectiveSection({ a, section, answers, onAnswer, readOnly, children }:
       {r && (
         <div style={{ ...card, display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap" }}>
           <div style={{ textAlign: "center" }}>
-            <div style={{ fontSize: 11, fontWeight: 800, color: "#686B75", letterSpacing: "0.06em" }}>BAND</div>
+            <div style={{ fontSize: 11, fontWeight: 800, color: "var(--text-muted)", letterSpacing: "0.06em" }}>BAND</div>
             <div style={{ fontSize: 30, fontWeight: 800, color: bandColor(r.band), lineHeight: 1.1 }}>{r.band}</div>
           </div>
           <div style={{ fontSize: 13.5 }}><b>{r.raw}/{r.max}</b> {t("pmk.correct")}{r.late ? ` · ${t("pmk.late")}` : ""}</div>
@@ -314,7 +314,7 @@ function ObjectiveSection({ a, section, answers, onAnswer, readOnly, children }:
       {groups.map((g, gi) => (
         <section key={gi} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           <div style={{ fontSize: 15, fontWeight: 800 }}>{g.title}</div>
-          {g.instruction && <div style={{ fontSize: 13, color: "#4A4E58", fontStyle: "italic" }}>{g.instruction}</div>}
+          {g.instruction && <div style={{ fontSize: 13, color: "var(--text-soft)", fontStyle: "italic" }}>{g.instruction}</div>}
           {children?.(gi)}
           {g.text ? (
             <div className="mkr-read">
@@ -346,9 +346,9 @@ function WritingSection({ a, answers, onAnswer, readOnly }: { a: PortalMockAttem
               <div style={{ fontSize: 15, fontWeight: 800 }}>{task.title}</div>
               {tr?.band != null && <b style={{ color: bandColor(tr.band), fontSize: 18 }}>{tr.band}</b>}
             </div>
-            <div style={{ fontSize: 14, lineHeight: 1.6, whiteSpace: "pre-wrap", background: "#F7F7F5", borderRadius: 12, padding: 12 }}>{task.prompt}</div>
+            <div style={{ fontSize: 14, lineHeight: 1.6, whiteSpace: "pre-wrap", background: "var(--surface-muted)", borderRadius: "var(--radius-md)", padding: 12 }}>{task.prompt}</div>
             {task.imagePath && (
-              <PrivateImg name={task.imagePath} scope="portal" alt="" style={{ maxWidth: "100%", maxHeight: 360, objectFit: "contain", borderRadius: 12, border: "1px solid #EAE8E2" }} />
+              <PrivateImg name={task.imagePath} scope="portal" alt="" style={{ maxWidth: "100%", maxHeight: 360, objectFit: "contain", borderRadius: "var(--radius-md)", border: "1px solid var(--border)" }} />
             )}
             <textarea
               value={text}
@@ -357,9 +357,9 @@ function WritingSection({ a, answers, onAnswer, readOnly }: { a: PortalMockAttem
               rows={readOnly ? 8 : 14}
               spellCheck={false}
               placeholder={t("pmk.writeHere")}
-              style={{ width: "100%", boxSizing: "border-box", borderRadius: 12, border: "1px solid #D9D6CE", padding: 14, fontSize: 15, lineHeight: 1.7, fontFamily: "inherit", resize: "vertical", background: readOnly ? "#FAFAF8" : "#fff" }}
+              style={{ width: "100%", boxSizing: "border-box", borderRadius: "var(--radius-md)", border: "1px solid var(--border-strong)", padding: 14, fontSize: 15, lineHeight: 1.7, fontFamily: "inherit", resize: "vertical", background: readOnly ? "var(--surface-muted)" : "var(--surface)" }}
             />
-            <div style={{ fontSize: 12.5, fontWeight: 700, color: words >= task.minWords ? "#16794A" : "#B45309" }}>
+            <div style={{ fontSize: 12.5, fontWeight: 700, color: words >= task.minWords ? "var(--success)" : "var(--warning)" }}>
               {words} / {task.minWords}+ {t("mock.words")}
             </div>
             {tr?.feedback && <FeedbackView fb={tr.feedback} />}
@@ -375,9 +375,9 @@ function ResultBanner({ band, status, comment }: { band: number | null; status: 
   return (
     <div style={{ ...card, display: "flex", gap: 14, alignItems: "center", flexWrap: "wrap" }}>
       <div style={{ fontSize: 30, fontWeight: 800, color: bandColor(band) }}>{band ?? (status === "PENDING" ? "⏳" : "—")}</div>
-      <div style={{ fontSize: 13.5, color: "#4A4E58", flex: 1, minWidth: 200 }}>
+      <div style={{ fontSize: 13.5, color: "var(--text-soft)", flex: 1, minWidth: 200 }}>
         {status === "PENDING" ? t("pmk.aiMarking") : status === "REVIEW" ? t("pmk.teacherMarks") : t("pmk.marked")}
-        {comment && <div style={{ marginTop: 6, color: "#14532D", background: "#ECFDF5", borderRadius: 10, padding: "8px 10px" }}>💬 {comment}</div>}
+        {comment && <div style={{ marginTop: 6, color: "var(--success)", background: "var(--success-soft)", borderRadius: "var(--radius-sm)", padding: "8px 10px" }}>💬 {comment}</div>}
       </div>
     </div>
   );
@@ -394,13 +394,13 @@ function SpeakingSection({ a, readOnly, onSaved }: { a: PortalMockAttempt; readO
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       {r && <ResultBanner band={r.band} status={r.status} comment={r.teacherComment} />}
       {/* An AI Speaking band comes from the transcript alone: say so. */}
-      {r?.gradedBy === "AI" && <div style={{ fontSize: 12.5, color: "#6B6E78", background: "#F7F7F5", border: "1px solid #EAE8E2", borderRadius: 10, padding: "9px 12px" }}>ℹ️ {t("mock.speakingTranscriptOnly")}</div>}
+      {r?.gradedBy === "AI" && <div style={{ fontSize: 12.5, color: "var(--text-muted)", background: "var(--surface-muted)", border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", padding: "9px 12px" }}>ℹ️ {t("mock.speakingTranscriptOnly")}</div>}
       {r?.feedback && <div style={card}><FeedbackView fb={r.feedback} /></div>}
-      {!readOnly && <div style={{ fontSize: 12.5, color: "#6B6E78" }}>🎙 {t("pmk.micHint")}</div>}
+      {!readOnly && <div style={{ fontSize: 12.5, color: "var(--text-muted)" }}>🎙 {t("pmk.micHint")}</div>}
       {a.test.content.speaking.parts.map((p, pi) => (
         <section key={pi} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           <div style={{ fontSize: 15, fontWeight: 800 }}>{p.title}</div>
-          {p.instruction && <div style={{ fontSize: 13, color: "#4A4E58", fontStyle: "italic" }}>{p.instruction}</div>}
+          {p.instruction && <div style={{ fontSize: 13, color: "var(--text-soft)", fontStyle: "italic" }}>{p.instruction}</div>}
           {p.questions.map((q, qi) => (
             <SpeakingQuestion key={qi} attemptId={a.id} k={`${pi}.${qi}`} question={q} prep={p.prepSeconds} limit={p.answerSeconds} saved={a.answers.speaking?.[`${pi}.${qi}`]} readOnly={readOnly} onSaved={onSaved} />
           ))}
@@ -520,40 +520,40 @@ function SpeakingQuestion({ attemptId, k, question, prep, limit, saved, readOnly
   }
 
   return (
-    <div style={{ ...card, display: "flex", flexDirection: "column", gap: 10, borderColor: phase === "rec" ? "#FCA5A5" : saved ? "#BBF7D0" : "#EAE8E2" }}>
+    <div style={{ ...card, display: "flex", flexDirection: "column", gap: 10, borderColor: phase === "rec" ? "var(--danger-border)" : saved ? "var(--success-border)" : "var(--border)" }}>
       <div style={{ fontSize: 14.5, lineHeight: 1.5, whiteSpace: "pre-wrap" }}>❓ {question}</div>
       {!readOnly && (
         <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
           {phase === "idle" && (
-            <button type="button" onClick={begin} style={{ background: saved ? "#fff" : "#DC2626", color: saved ? "#DC2626" : "#fff", border: "1.5px solid #DC2626", borderRadius: 100, padding: "9px 16px", fontWeight: 700, cursor: "pointer" }}>
+            <button type="button" onClick={begin} style={{ background: saved ? "var(--surface)" : "var(--danger)", color: saved ? "var(--danger)" : "var(--on-ink)", border: "1.5px solid var(--danger)", borderRadius: "var(--radius-pill)", padding: "9px 16px", fontWeight: 700, cursor: "pointer" }}>
               ● {saved ? t("pmk.reRecord") : prep > 0 ? t("pmk.prepare") : t("pmk.record")}
             </button>
           )}
           {phase === "prep" && (
             <>
-              <span style={{ fontWeight: 800, color: "#B45309" }}>🧠 {t("pmk.prepTime")}: {count}s</span>
-              <button type="button" onClick={() => { stopTimer(); void record(); }} style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 100, padding: "8px 14px", cursor: "pointer", fontWeight: 700 }}>{t("pmk.startNow")}</button>
+              <span style={{ fontWeight: 800, color: "var(--warning)" }}>🧠 {t("pmk.prepTime")}: {count}s</span>
+              <button type="button" onClick={() => { stopTimer(); void record(); }} style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-pill)", padding: "8px 14px", cursor: "pointer", fontWeight: 700 }}>{t("pmk.startNow")}</button>
             </>
           )}
           {phase === "rec" && (
             <>
-              <span style={{ fontWeight: 800, color: "#DC2626" }}>● REC {count}s</span>
-              <button type="button" onClick={() => { stopTimer(); recorder.current?.stop(); }} style={{ background: "#181A1F", color: "#fff", border: "none", borderRadius: 100, padding: "8px 16px", cursor: "pointer", fontWeight: 700 }}>■ {t("pmk.stop")}</button>
+              <span style={{ fontWeight: 800, color: "var(--danger)" }}>● REC {count}s</span>
+              <button type="button" onClick={() => { stopTimer(); recorder.current?.stop(); }} style={{ background: "var(--ink)", color: "var(--on-ink)", border: "none", borderRadius: "var(--radius-pill)", padding: "8px 16px", cursor: "pointer", fontWeight: 700 }}>■ {t("pmk.stop")}</button>
             </>
           )}
           {phase === "upload" && <span style={{ color: ACCENT, fontWeight: 700 }}>⏫ {t("pmk.uploading")}</span>}
         </div>
       )}
-      {phase === "rec" && live && <div style={{ fontSize: 13, color: "#4A4E58", fontStyle: "italic" }}>{live}</div>}
+      {phase === "rec" && live && <div style={{ fontSize: 13, color: "var(--text-soft)", fontStyle: "italic" }}>{live}</div>}
       {saved && phase === "idle" && (
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
           {saved.audio && <PrivateAudio controls name={saved.audio} scope="portal" style={{ width: "100%", height: 36 }} />}
-          <div style={{ fontSize: 12.5, color: "#6B6E78" }}>
+          <div style={{ fontSize: 12.5, color: "var(--text-muted)" }}>
             ✓ {t("pmk.recorded")}{saved.seconds ? ` · ${saved.seconds}s` : ""}{saved.transcript ? ` · “${saved.transcript}”` : ""}
           </div>
         </div>
       )}
-      {error && <div role="alert" style={{ fontSize: 12.5, color: "#B23A47" }}>{error}</div>}
+      {error && <div role="alert" style={{ fontSize: 12.5, color: "var(--danger)" }}>{error}</div>}
     </div>
   );
 }

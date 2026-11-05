@@ -7,12 +7,12 @@ import { useLanguage } from "@/lib/i18n-context";
 import Select from "@/components/Select";
 import { centerHost, centerSiteUrl } from "@/lib/domain";
 
-const ACCENT = "#4F46E5";
+const ACCENT = "var(--primary)";
 const ICONS = ["✅", "🎯", "👩‍🏫", "📚", "🏆", "💡", "🕒", "💬", "📈", "🧑‍🎓", "🏫", "💳", "🌍", "🤝", "⭐", "🎓"];
-const card: React.CSSProperties = { background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 20 };
-const lbl: React.CSSProperties = { fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 };
-const small: React.CSSProperties = { background: "none", border: "1px dashed #CBD5E1", borderRadius: 8, padding: "6px 12px", fontSize: 12.5, fontWeight: 700, color: ACCENT, cursor: "pointer" };
-const xBtn: React.CSSProperties = { width: 32, height: 32, flexShrink: 0, border: "1px solid #EAE8E2", background: "#fff", borderRadius: 8, color: "#B23A47", cursor: "pointer" };
+const card: React.CSSProperties = { background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 20 };
+const lbl: React.CSSProperties = { fontSize: 12.5, fontWeight: 600, color: "var(--text-soft)", marginBottom: 6 };
+const small: React.CSSProperties = { background: "none", border: "1px dashed var(--border-strong)", borderRadius: "var(--radius-xs)", padding: "6px 12px", fontSize: 12.5, fontWeight: 700, color: ACCENT, cursor: "pointer" };
+const xBtn: React.CSSProperties = { width: 32, height: 32, flexShrink: 0, border: "1px solid var(--border)", background: "var(--surface)", borderRadius: "var(--radius-xs)", color: "var(--danger)", cursor: "pointer" };
 
 // Settings → Site: what the center shows on its public page. Sections left
 // empty are simply not shown there.
@@ -32,7 +32,7 @@ export default function SiteContentEditor() {
     placementApi.list().then(setTests).catch(() => setTests([]));
   }, [t]);
 
-  if (!site) return <div style={{ color: "#686B75", fontSize: 14 }}>{error ?? t("common.loading")}</div>;
+  if (!site) return <div style={{ color: "var(--text-muted)", fontSize: 14 }}>{error ?? t("common.loading")}</div>;
   const set = (patch: Partial<SiteContent>) => {
     setSite({ ...site, ...patch });
     setSaved(false);
@@ -74,7 +74,7 @@ export default function SiteContentEditor() {
     return (
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         {list.map((row, i) => (
-          <div key={i} style={{ display: "flex", gap: 8, alignItems: "flex-start", background: "#F7F6F2", borderRadius: 12, padding: 10 }}>
+          <div key={i} style={{ display: "flex", gap: 8, alignItems: "flex-start", background: "var(--surface-muted)", borderRadius: "var(--radius-md)", padding: 10 }}>
             <div style={{ flex: 1, minWidth: 0 }}>
               {render(row, (p) => set({ [key]: list.map((r, j) => (j === i ? { ...r, ...p } : r)) } as Partial<SiteContent>))}
             </div>
@@ -95,20 +95,20 @@ export default function SiteContentEditor() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16, maxWidth: 760 }}>
-      <div style={{ ...card, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap", background: "#F5F3FF", borderColor: "#DDD6FE" }}>
-        <div style={{ fontSize: 13.5, color: "#4A4E58", lineHeight: 1.5, flex: 1, minWidth: 220 }}>
+      <div style={{ ...card, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap", background: "var(--violet-soft)", borderColor: "var(--primary-border)" }}>
+        <div style={{ fontSize: 13.5, color: "var(--text-soft)", lineHeight: 1.5, flex: 1, minWidth: 220 }}>
           {t("site.intro")}
           {tenant?.subdomain && <div style={{ marginTop: 4, fontWeight: 700, color: ACCENT, overflowWrap: "anywhere" }}>{centerHost(tenant.subdomain)}</div>}
         </div>
         {siteUrl && (
-          <a href={siteUrl} target="_blank" rel="noreferrer" className="btn" style={{ background: "#fff", border: "1px solid #DDD6FE", color: ACCENT, fontSize: 13, fontWeight: 700, padding: "9px 14px", borderRadius: 9, textDecoration: "none" }}>
+          <a href={siteUrl} target="_blank" rel="noreferrer" className="btn" style={{ background: "var(--surface)", border: "1px solid var(--primary-border)", color: ACCENT, fontSize: 13, fontWeight: 700, padding: "9px 14px", borderRadius: "var(--radius-sm)", textDecoration: "none" }}>
             🌐 {t("site.open")}
           </a>
         )}
       </div>
 
       <div style={card}>
-        <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 700, fontSize: 15, marginBottom: 12 }}>{t("site.secHero")}</div>
+        <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 15, marginBottom: 12 }}>{t("site.secHero")}</div>
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           <div>
             <div style={lbl}>{t("site.heroTitle")}</div>
@@ -126,8 +126,8 @@ export default function SiteContentEditor() {
       </div>
 
       <div style={card}>
-        <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 700, fontSize: 15 }}>{t("site.secAdvantages")}</div>
-        <div style={{ fontSize: 12.5, color: "#686B75", margin: "4px 0 12px" }}>{t("site.advantagesHint")}</div>
+        <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 15 }}>{t("site.secAdvantages")}</div>
+        <div style={{ fontSize: 12.5, color: "var(--text-muted)", margin: "4px 0 12px" }}>{t("site.advantagesHint")}</div>
         {rows("advantages", 8, { icon: "✅", title: "", text: "" }, (r, u) => (
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             <div style={{ display: "flex", gap: 8 }}>
@@ -140,8 +140,8 @@ export default function SiteContentEditor() {
       </div>
 
       <div style={card}>
-        <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 700, fontSize: 15 }}>{t("site.secResults")}</div>
-        <div style={{ fontSize: 12.5, color: "#686B75", margin: "4px 0 12px" }}>{t("site.resultsHint")}</div>
+        <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 15 }}>{t("site.secResults")}</div>
+        <div style={{ fontSize: 12.5, color: "var(--text-muted)", margin: "4px 0 12px" }}>{t("site.resultsHint")}</div>
         {rows("results", 12, { name: "", result: "", detail: "" }, (r, u) => (
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
             <input className="field-input" value={r.name} maxLength={80} onChange={(e) => u({ name: e.target.value })} placeholder={t("site.resNamePh")} />
@@ -152,8 +152,8 @@ export default function SiteContentEditor() {
       </div>
 
       <div style={card}>
-        <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 700, fontSize: 15 }}>{t("site.secTestimonials")}</div>
-        <div style={{ fontSize: 12.5, color: site.testimonials.length >= 10 ? "#16794A" : "#B45309", margin: "4px 0 12px", fontWeight: 600 }}>
+        <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 15 }}>{t("site.secTestimonials")}</div>
+        <div style={{ fontSize: 12.5, color: site.testimonials.length >= 10 ? "var(--success)" : "var(--warning)", margin: "4px 0 12px", fontWeight: 600 }}>
           {t("site.testimonialsHint").replace("{n}", String(site.testimonials.length))}
         </div>
         {rows("testimonials", 20, { name: "", role: "", text: "" }, (r, u) => (
@@ -168,7 +168,7 @@ export default function SiteContentEditor() {
       </div>
 
       <div style={card}>
-        <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 700, fontSize: 15, marginBottom: 12 }}>{t("site.secFaq")}</div>
+        <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 15, marginBottom: 12 }}>{t("site.secFaq")}</div>
         {rows("faq", 12, { q: "", a: "" }, (r, u) => (
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             <input className="field-input" value={r.q} maxLength={200} onChange={(e) => u({ q: e.target.value })} placeholder={t("site.faqQPh")} />
@@ -178,11 +178,11 @@ export default function SiteContentEditor() {
       </div>
 
       <div style={card}>
-        <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 700, fontSize: 15 }}>{t("site.secGallery")}</div>
-        <div style={{ fontSize: 12.5, color: "#686B75", margin: "4px 0 12px" }}>{t("site.galleryHint")}</div>
+        <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 15 }}>{t("site.secGallery")}</div>
+        <div style={{ fontSize: 12.5, color: "var(--text-muted)", margin: "4px 0 12px" }}>{t("site.galleryHint")}</div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))", gap: 10 }}>
           {site.gallery.map((g) => (
-            <div key={g} style={{ position: "relative", borderRadius: 10, overflow: "hidden", aspectRatio: "4 / 3", background: "#F2F1EC" }}>
+            <div key={g} style={{ position: "relative", borderRadius: "var(--radius-sm)", overflow: "hidden", aspectRatio: "4 / 3", background: "var(--surface-muted)" }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={fileUrl(g) ?? ""} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
               <button type="button" onClick={() => set({ gallery: site.gallery.filter((x) => x !== g) })} style={{ ...xBtn, position: "absolute", top: 6, right: 6, width: 28, height: 28 }} aria-label={t("common.delete")}>✕</button>
@@ -198,13 +198,13 @@ export default function SiteContentEditor() {
       </div>
 
       <div style={card}>
-        <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 700, fontSize: 15, marginBottom: 12 }}>{t("site.secExtra")}</div>
+        <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 15, marginBottom: 12 }}>{t("site.secExtra")}</div>
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           <label style={{ display: "flex", gap: 10, alignItems: "flex-start", cursor: "pointer", fontSize: 13.5 }}>
             <input type="checkbox" checked={site.trialLesson} onChange={(e) => set({ trialLesson: e.target.checked })} style={{ marginTop: 2, accentColor: ACCENT, width: 16, height: 16 }} />
             <span>
               <b>{t("site.trial")}</b>
-              <span style={{ display: "block", fontSize: 12.5, color: "#686B75" }}>{t("site.trialHint")}</span>
+              <span style={{ display: "block", fontSize: 12.5, color: "var(--text-muted)" }}>{t("site.trialHint")}</span>
             </span>
           </label>
           {site.trialLesson && (
@@ -218,7 +218,7 @@ export default function SiteContentEditor() {
               options={[{ value: "", label: t("site.placementNone") }, ...tests.filter((x) => x.active).map((x) => ({ value: x.id, label: x.title }))]}
               style={{ width: "100%" }}
             />
-            <div style={{ fontSize: 12, color: "#686B75", marginTop: 4 }}>{t("site.placementHint")}</div>
+            <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 4 }}>{t("site.placementHint")}</div>
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
             <div>
@@ -241,12 +241,12 @@ export default function SiteContentEditor() {
         </div>
       </div>
 
-      {error && <div role="alert" style={{ background: "#FDEBEC", color: "#B23A47", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: 10 }}>{error}</div>}
-      <div style={{ position: "sticky", bottom: 0, background: "#F7F7F5", padding: "10px 0", display: "flex", alignItems: "center", gap: 12 }}>
-        <button type="button" className="btn" disabled={saving} onClick={save} style={{ background: ACCENT, color: "#fff", border: "none", fontSize: 14, fontWeight: 700, padding: "11px 20px", borderRadius: 10 }}>
+      {error && <div role="alert" style={{ background: "var(--danger-soft)", color: "var(--danger)", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: "var(--radius-sm)" }}>{error}</div>}
+      <div style={{ position: "sticky", bottom: 0, background: "var(--surface-muted)", padding: "10px 0", display: "flex", alignItems: "center", gap: 12 }}>
+        <button type="button" className="btn" disabled={saving} onClick={save} style={{ background: ACCENT, color: "var(--on-ink)", border: "none", fontSize: 14, fontWeight: 700, padding: "11px 20px", borderRadius: "var(--radius-sm)" }}>
           {saving ? t("common.saving") : t("site.save")}
         </button>
-        {saved && <span style={{ fontSize: 13, fontWeight: 600, color: "#167A48" }}>✓ {t("site.saved")}</span>}
+        {saved && <span style={{ fontSize: 13, fontWeight: 600, color: "var(--success)" }}>✓ {t("site.saved")}</span>}
       </div>
     </div>
   );

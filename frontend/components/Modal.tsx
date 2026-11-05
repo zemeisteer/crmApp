@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode, useEffect, useRef } from "react";
+import { ReactNode, useEffect, useLayoutEffect, useRef } from "react";
 import { useLanguage } from "@/lib/i18n-context";
 
 // Open dialogs, oldest first: Escape closes only the one on top.
@@ -32,7 +32,9 @@ export default function Modal({
   useEffect(() => {
     closeRef.current = onClose;
   });
-  useEffect(() => {
+  // A layout effect: the key handler is in place before the dialog is first
+  // painted, so an Escape pressed the moment it appears is not lost.
+  useLayoutEffect(() => {
     if (!open) return;
     const me = {};
     openDialogs.push(me);
@@ -107,8 +109,8 @@ export default function Modal({
         aria-label={title}
         onClick={(e) => e.stopPropagation()}
         style={{
-          background: "#fff",
-          borderRadius: 18,
+          background: "var(--surface)",
+          borderRadius: "var(--radius-lg)",
           padding: "24px 26px",
           width,
           maxWidth: "92vw",
@@ -121,7 +123,7 @@ export default function Modal({
         }}
       >
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
-          <h2 style={{ fontSize: 18.5, fontWeight: 800, color: "#181A1F" }}>{title}</h2>
+          <h2 style={{ fontSize: 18.5, fontWeight: 800, color: "var(--text)" }}>{title}</h2>
           <button
             type="button"
             data-modal-close="true"
@@ -129,8 +131,8 @@ export default function Modal({
             onClick={onClose}
             className="btn"
             style={{
-              background: "#F2F1EC",
-              color: "#686B75",
+              background: "var(--surface-muted)",
+              color: "var(--text-muted)",
               fontSize: 18,
               width: 30,
               height: 30,

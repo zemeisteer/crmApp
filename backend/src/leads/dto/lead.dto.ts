@@ -62,24 +62,29 @@ export class CreateLeadDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(2000)
   desiredSubjectId?: string;
 
   @IsOptional()
   @IsArray()
   @ArrayMaxSize(5)
   @IsString({ each: true })
+  @MaxLength(2000, { each: true })
   extraSubjectIds?: string[];
 
   @IsOptional()
   @IsString()
+  @MaxLength(2000)
   desiredCourseId?: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(2000)
   preferredBranchId?: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(2000)
   assignedManagerUserId?: string;
 
   @IsOptional()
@@ -142,20 +147,24 @@ export class UpdateLeadDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(2000)
   desiredSubjectId?: string | null;
 
   @IsOptional()
   @IsArray()
   @ArrayMaxSize(5)
   @IsString({ each: true })
+  @MaxLength(2000, { each: true })
   extraSubjectIds?: string[];
 
   @IsOptional()
   @IsString()
+  @MaxLength(2000)
   desiredCourseId?: string | null;
 
   @IsOptional()
   @IsString()
+  @MaxLength(2000)
   preferredBranchId?: string | null;
 
   @IsOptional()
@@ -165,6 +174,7 @@ export class UpdateLeadDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(2000)
   status?: string;
 
   // Only the fields sent change; null clears one.
@@ -187,6 +197,7 @@ export class AssignLeadDto {
   // null unassigns.
   @ValidateIf((o: AssignLeadDto) => o.managerUserId !== null)
   @IsString()
+  @MaxLength(2000)
   managerUserId: string | null;
 }
 
@@ -275,19 +286,23 @@ export class QueryLeadDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(2000)
   preferredBranchId?: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(2000)
   desiredSubjectId?: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(2000)
   desiredCourseId?: string;
 
   // A user id, "me" or "unassigned".
   @IsOptional()
   @IsString()
+  @MaxLength(2000)
   assignedManagerUserId?: string;
 
   @IsOptional()
@@ -339,10 +354,12 @@ export class FunnelQueryDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(2000)
   preferredBranchId?: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(2000)
   assignedManagerUserId?: string;
 }
 
@@ -359,26 +376,32 @@ export class BookTrialDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(2000)
   groupId?: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(2000)
   teacherId?: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(2000)
   roomId?: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(2000)
   branchId?: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(2000)
   subjectId?: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(2000)
   courseId?: string;
 
   @IsOptional()
@@ -400,14 +423,17 @@ export class RescheduleTrialDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(2000)
   teacherId?: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(2000)
   roomId?: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(2000)
   groupId?: string;
 
   @IsOptional()
@@ -435,6 +461,7 @@ export class ConvertLeadDto {
 
   @ValidateIf((o: ConvertLeadDto) => o.studentResolution === 'LINK_EXISTING')
   @IsString()
+  @MaxLength(2000)
   existingStudentId?: string;
 
   // Student profile overrides; default to the lead's own data.
@@ -459,6 +486,7 @@ export class ConvertLeadDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(2000)
   branchId?: string;
 
   // Stored as the student's parentPhone. Linking a guardian *user account*
@@ -472,6 +500,7 @@ export class ConvertLeadDto {
   @IsArray()
   @ArrayMaxSize(5)
   @IsString({ each: true })
+  @MaxLength(2000, { each: true })
   groupIds?: string[];
 
   // First invoice is created through InvoicesService for the first group's

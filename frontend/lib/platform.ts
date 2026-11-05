@@ -11,10 +11,10 @@ export const STATUS_LABEL_KEYS: Record<TenantStatus, TranslationKey> = {
 };
 
 export const STATUS_COLORS: Record<TenantStatus, { bg: string; fg: string }> = {
-  TRIAL: { bg: "#EEF0FF", fg: "#3730A3" },
-  ACTIVE: { bg: "#E9F8EF", fg: "#16794A" },
-  PAST_DUE: { bg: "#FFF7E6", fg: "#8A5A00" },
-  SUSPENDED: { bg: "#FDEBEC", fg: "#B23A47" },
+  TRIAL: { bg: "var(--primary-soft)", fg: "var(--primary)" },
+  ACTIVE: { bg: "var(--success-soft)", fg: "var(--success)" },
+  PAST_DUE: { bg: "var(--warning-soft)", fg: "var(--warning)" },
+  SUSPENDED: { bg: "var(--danger-soft)", fg: "var(--danger)" },
 };
 
 const LOCALE: Record<Lang, string> = { UZ: "uz-UZ", RU: "ru-RU", EN: "en-US" };

@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CRM — Dashboard</title>
+<style>
+:root{--bg:#eef0f6;--card:#fff;--ink:#16161d;--muted:#8a8c99;--line:#eceef3;--or:#f26b3a;--or2:#ff8a5c;--green:#22c55e;--red:#ef4444;
+--lav:#e3dcff;--sky:#dbe9ff;--mint:#dcf5e3;--peach:#ffe6d8}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Inter,system-ui,sans-serif;color:var(--ink);background:
+ radial-gradient(900px 600px at 0% 0%,#e7ddff 0,transparent 60%),
+ radial-gradient(900px 700px at 100% 100%,#ffdfe9 0,transparent 60%),
+ radial-gradient(700px 500px at 100% 0%,#d9e8ff 0,transparent 60%),#f3f2f8;min-height:100vh;padding:22px;-webkit-font-smoothing:antialiased}
+.app{background:rgba(255,255,255,.55);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,.8);border-radius:30px;padding:18px 22px 24px 92px;position:relative;box-shadow:0 30px 80px rgba(80,60,140,.12)}
+/* side rail */
+.rail{position:absolute;left:18px;top:18px;bottom:18px;width:56px;display:flex;flex-direction:column;align-items:center;gap:10px}
+.rail .logo{width:46px;height:46px;border-radius:14px;background:var(--ink);display:grid;place-items:center;margin-bottom:24px}
+.rail .logo i{width:20px;height:20px;border:3px solid #fff;border-radius:5px;position:relative}
+.rail .logo i:after{content:"";position:absolute;inset:3px;background:#fff;border-radius:1px}
+.rail .ic{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;background:#fff;color:#6b6d7a;font-size:17px;border:1px solid var(--line);transition:.25s}
+.rail .ic.on{background:var(--ink);color:#fff}
+.rail .sp{flex:1}
+/* top */
+.top{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+.brand{display:flex;align-items:center;gap:8px;font-weight:700;font-size:17px;background:#fff;padding:10px 16px;border-radius:999px;border:1px solid var(--line)}
+.brand b{color:var(--or)}
+.tabs{display:flex;gap:4px;background:#fff;border:1px solid var(--line);border-radius:999px;padding:5px}
+.tabs a{padding:9px 18px;border-radius:999px;font-size:13.5px;font-weight:500;color:#555866;position:relative;z-index:1}
+.tabs a.on{background:var(--ink);color:#fff}
+.tools{display:flex;gap:8px;align-items:center}
+.tools .c{width:40px;height:40px;border-radius:50%;background:#fff;border:1px solid var(--line);display:grid;place-items:center;font-size:15px;position:relative}
+.tools .c .dot{position:absolute;top:8px;right:9px;width:8px;height:8px;border-radius:50%;background:var(--red);border:2px solid #fff}
+.ava{width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,#f6b38a,#c2410c);display:grid;place-items:center;color:#fff;font-weight:700;font-size:14px}
+/* header row */
+.head{display:grid;grid-template-columns:1.3fr repeat(4,1fr);gap:18px;align-items:end;margin-bottom:18px}
+.head h1{font-size:44px;font-weight:600;letter-spacing:-.035em}
+.head h1 small{display:block;font-size:14px;color:var(--muted);font-weight:500;letter-spacing:0;margin-bottom:6px}
+.kpi small{font-size:12.5px;color:var(--muted)}
+.kpi div{display:flex;align-items:center;gap:8px;margin-top:4px}
+.kpi b{font-size:30px;font-weight:600;letter-spacing:-.03em}
+.chip{font-size:11px;font-weight:700;padding:3px 7px;border-radius:999px;color:#fff;background:var(--green)}
+.chip.r{background:var(--red)}
+/* grid */
+.grid{display:grid;grid-template-columns:repeat(12,1fr);gap:18px}
+.card{background:var(--card);border-radius:24px;padding:20px;border:1px solid rgba(255,255,255,.9);box-shadow:0 2px 10px rgba(30,20,60,.04);position:relative;overflow:hidden}
+.card h3{font-size:17px;font-weight:600;letter-spacing:-.01em}
+.card .sub{font-size:12px;color:var(--muted);margin-top:3px}
+.ch{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px}
+.plus{width:34px;height:34px;border-radius:50%;border:1px solid var(--line);display:grid;place-items:center;color:#555;font-size:16px}
+.sel{font-size:12px;border:1px solid var(--line);padding:7px 12px;border-radius:999px;color:#555}
+.c3{grid-column:span 3}.c4{grid-column:span 4}.c5{grid-column:span 5}.c6{grid-column:span 6}.c2{grid-column:span 2}.c7{grid-column:span 7}.c8{grid-column:span 8}
+/* groups */
+.search{display:flex;align-items:center;gap:8px;background:#f4f5f8;border-radius:999px;padding:6px 6px 6px 14px;font-size:13px;color:#9a9ca8;margin-bottom:12px}
+.search span{flex:1}.search i{width:28px;height:28px;border-radius:50%;background:var(--ink);color:#fff;display:grid;place-items:center;font-style:normal;font-size:12px}
+.grp{border-radius:18px;padding:14px;margin-bottom:10px}
+.grp h4{font-size:15px;font-weight:600}
+.grp p{font-size:11.5px;color:#5b5d6b;margin:4px 0 10px;line-height:1.4}
+.grp .row{display:flex;justify-content:space-between;align-items:center;font-size:11.5px;color:#444}
+.grp .row span{display:flex;align-items:center;gap:6px}
+.grp .row em{width:22px;height:22px;border-radius:7px;background:var(--ink);color:#fff;display:grid;place-items:center;font-style:normal;font-size:10px}
+.avs{display:flex}.avs i{width:22px;height:22px;border-radius:50%;border:2px solid #fff;margin-left:-7px;display:block}
+/* chart */
+.legend{display:flex;gap:14px;font-size:12px;color:#555;margin-top:8px}
+.legend i{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px}
+svg.chart{width:100%;height:210px;display:block}
+.draw{stroke-dasharray:1500;stroke-dashoffset:1500;animation:draw 2.4s ease forwards .4s}
+@keyframes draw{to{stroke-dashoffset:0}}
+.bars rect{transform-origin:bottom;transform-box:fill-box;transform:scaleY(0);animation:grow .9s cubic-bezier(.2,.8,.2,1) forwards}
+@keyframes grow{to{transform:scaleY(1)}}
+.days{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);padding:0 4px}
+/* orange */
+.orange{background:linear-gradient(160deg,var(--or2),var(--or));color:#fff;display:flex;flex-direction:column}
+.orange h3{font-size:19px}
+.orange .btn{margin-top:14px;background:#fff;color:var(--ink);border-radius:999px;padding:9px 14px;font-size:12.5px;font-weight:600;display:inline-flex;gap:6px;width:max-content}
+.orange .big{margin-top:auto;font-size:54px;font-weight:600;letter-spacing:-.04em;display:flex;align-items:flex-end;gap:10px}
+.orange .big small{letter-spacing:0;font-size:11px;font-weight:500;opacity:.85;margin-bottom:12px;line-height:1.3}
+.arrow{position:absolute;top:16px;right:16px;width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,.25);display:grid;place-items:center}
+/* gauge */
+.gwrap{display:flex;align-items:center;gap:6px}
+.gnum b{font-size:40px;font-weight:600;letter-spacing:-.03em}
+.gauge{width:170px;height:100px}
+.needle{transform-origin:85px 88px;transform:rotate(-90deg);animation:needle 2s cubic-bezier(.3,1.4,.4,1) forwards .6s}
+@keyframes needle{to{transform:rotate(38deg)}}
+.channels{display:flex;gap:10px;margin-top:14px;align-items:center}
+.channels .ch2{width:40px;height:40px;border-radius:50%;border:1px solid var(--line);display:grid;place-items:center;position:relative;font-size:16px}
+.channels .ch2 b{position:absolute;top:-4px;right:-4px;background:var(--red);color:#fff;font-size:9px;width:17px;height:17px;border-radius:50%;display:grid;place-items:center}
+.channels .note{flex:1;border:1px solid var(--line);border-radius:999px;padding:7px 12px;font-size:11.5px;display:flex;gap:8px;align-items:center}
+.channels .note b{display:block;font-size:12px}
+/* list */
+.li{display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:1px dashed var(--line)}
+.li:last-child{border:0}
+.li .ico{width:34px;height:34px;border-radius:10px;background:var(--ink);color:#fff;display:grid;place-items:center;font-size:13px;flex-shrink:0}
+.li .t{flex:1;font-size:13px;font-weight:500}
+.li .t small{display:block;color:var(--muted);font-weight:400;font-size:11px;margin-top:2px}
+.bar{height:5px;border-radius:9px;background:#eef0f4;margin-top:6px;overflow:hidden}
+.bar i{display:block;height:100%;border-radius:9px;width:0;transition:width 1.6s cubic-bezier(.2,.8,.2,1)}
+.li .pct{font-size:18px;font-weight:600;width:52px;text-align:right}
+.pf{width:34px;height:34px;border-radius:50%;flex-shrink:0}
+.li .score{font-size:18px;font-weight:600}
+.li .score small{display:block;text-align:right;color:var(--green);font-size:10.5px;font-weight:600}
+/* schedule */
+.week{display:flex;gap:6px;margin-bottom:12px}
+.week span{flex:1;text-align:center;font-size:11.5px;color:#666;padding:8px 0;border-radius:999px}
+.week span.on{background:var(--ink);color:#fff}
+.slots{position:relative;height:150px;border-top:1px dashed var(--line)}
+.slot{position:absolute;border-radius:14px;padding:9px 11px;font-size:11.5px;font-weight:600;opacity:0;transform:translateY(10px);transition:.6s}
+.slot small{display:block;font-weight:400;opacity:.75;margin-top:2px;font-size:10.5px}
+.slot.in{opacity:1;transform:none}
+.hours{display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-top:6px}
+/* map-ish */
+.mapc{background:#f5f6f9;border-radius:16px;height:150px;position:relative;overflow:hidden}
+.mapc svg{position:absolute;inset:0;width:100%;height:100%}
+.pin{position:absolute;display:flex;align-items:center;gap:6px;background:#fff;border-radius:999px;padding:4px 10px 4px 4px;font-size:11px;font-weight:600;box-shadow:0 4px 14px rgba(0,0,0,.08);opacity:0;transform:scale(.6);transition:.5s cubic-bezier(.3,1.5,.5,1)}
+.pin.in{opacity:1;transform:none}
+.pin i{width:22px;height:22px;border-radius:50%;display:block}
+/* entrance */
+.rv{opacity:0;transform:translateY(24px) scale(.98);transition:opacity .7s ease,transform .7s cubic-bezier(.2,.8,.2,1)}
+.rv.in{opacity:1;transform:none}
+.card:hover{transform:translateY(-3px)}
+.demo{text-align:center;margin-top:12px;font-size:11px;color:#9a9ca8}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="rail">
+    <div class="logo"><i></i></div>
+    <div class="ic on">⌂</div><div class="ic">👥</div><div class="ic">📅</div><div class="ic">💳</div><div class="ic">📊</div><div class="ic">✉</div>
+    <div class="sp"></div><div class="ic">⚙</div><div class="ic">☾</div>
+  </div>
+
+  <div class="top rv">
+    <div class="brand">✦ <span>Edu<b>CRM</b></span></div>
+    <div class="tabs" id="tabs"><a class="on">Dashboard</a><a>O'quvchilar</a><a>Guruhlar</a><a>To'lovlar</a><a>Dars jadvali</a><a>Lidlar</a></div>
+    <div class="tools"><div class="c">🔍</div><div class="c">🔔<span class="dot"></span></div><div class="c">⚙</div><div class="ava">AS</div></div>
+  </div>
+
+  <div class="head">
+    <h1 class="rv"><small>Xayrli kun, Anvar 👋</small>Dashboard</h1>
+    <div class="kpi rv"><small>Faol o'quvchilar</small><div><b data-n="1368">0</b><span class="chip">+12%</span></div></div>
+    <div class="kpi rv"><small>Bu oy tushum (mln so'm)</small><div><b data-n="184.6" data-d="1">0</b><span class="chip">+8%</span></div></div>
+    <div class="kpi rv"><small>Qarzdorlar</small><div><b data-n="47">0</b><span class="chip r">-5</span></div></div>
+    <div class="kpi rv"><small>O'rtacha davomat</small><div><b data-n="92" data-s="%">0</b><span class="chip">+3%</span></div></div>
+  </div>
+
+  <div class="grid">
+    <!-- groups -->
+    <div class="card c3 rv" style="grid-row:span 2">
+      <div class="ch"><div><h3>Guruhlar</h3><div class="sub">Bugungi faol guruhlar</div></div><div class="plus">⤢</div></div>
+      <div class="search"><span>Guruh qidirish…</span><i>🔍</i></div>
+      <div class="grp" style="background:var(--lav)"><h4>IELTS 7.0+</h4><p>Speaking va Writing'ga urg'u, haftasiga 3 marta</p><div class="row"><span><em>14</em>Du · Cho · Ju</span><div class="avs"><i style="background:#c084fc"></i><i style="background:#f59e0b"></i><i style="background:#60a5fa"></i></div></div></div>
+      <div class="grp" style="background:var(--sky)"><h4>General English B1</h4><p>Grammatika va so'z boyligi, boshlang'ichdan o'rta darajaga</p><div class="row"><span><em>18</em>Se · Pa · Sh</span><div class="avs"><i style="background:#34d399"></i><i style="background:#f472b6"></i></div></div></div>
+      <div class="grp" style="background:var(--mint)"><h4>Kids Starter</h4><p>7–10 yoshli bolalar uchun o'yin orqali ingliz tili</p><div class="row"><span><em>12</em>Du · Cho</span><div class="avs"><i style="background:#fb923c"></i><i style="background:#a78bfa"></i><i style="background:#38bdf8"></i></div></div></div>
+      <div class="grp" style="background:var(--peach)"><h4>CEFR B2 intensiv</h4><p>Imtihonga 2 oylik tayyorgarlik</p><div class="row"><span><em>9</em>Har kuni</span><div class="avs"><i style="background:#f87171"></i><i style="background:#4ade80"></i></div></div></div>
+    </div>
+
+    <!-- chart -->
+    <div class="card c6 rv">
+      <div class="ch"><div><h3>Tushum va davomat</h3><div class="sub">Haftalik ko'rsatkichlar</div>
+        <div class="legend"><span><i style="background:#8b7cf6"></i>Tushum</span><span><i style="background:#f26b3a"></i>Davomat</span><span><i style="background:#93c5fd"></i>Yangi lidlar</span></div></div>
+        <span class="sel">Haftalik ▾</span></div>
+      <svg class="chart" viewBox="0 0 600 210" preserveAspectRatio="none" id="chart"></svg>
+      <div class="days"><span>Du</span><span>Se</span><span>Cho</span><span>Pa</span><span>Ju</span><span>Sh</span><span>Ya</span></div>
+    </div>
+
+    <!-- orange -->
+    <div class="card c3 orange rv">
+      <div class="arrow">↗</div>
+      <h3>Yangi lidlar</h3>
+      <div style="font-size:12px;opacity:.85;margin-top:4px">Instagram, Telegram va sayt orqali</div>
+      <span class="btn">⊕ Lid qo'shish</span>
+      <div class="big"><span data-n="126">0</span><small>shu oy<br>kelib tushdi</small></div>
+    </div>
+
+    <!-- gauge -->
+    <div class="card c4 rv">
+      <div class="ch"><div><h3>Lidga javob vaqti</h3><div class="sub">O'rtacha, daqiqada</div></div><div class="plus">+</div></div>
+      <div class="gwrap">
+        <div class="gnum"><b data-n="4.2" data-d="1">0</b><div><span class="chip">Tez</span></div></div>
+        <svg class="gauge" viewBox="0 0 170 100">
+          <defs><linearGradient id="gg" x1="0" x2="1"><stop offset="0" stop-color="#ffb08a"/><stop offset="1" stop-color="#f26b3a"/></linearGradient></defs>
+          <path d="M15 88 A70 70 0 0 1 155 88" fill="none" stroke="#eef0f4" stroke-width="18" stroke-linecap="round"/>
+          <path d="M15 88 A70 70 0 0 1 155 88" fill="none" stroke="url(#gg)" stroke-width="18" stroke-linecap="round" class="draw" style="stroke-dasharray:220;stroke-dashoffset:220;animation:arc 2s ease forwards .6s"/>
+          <g class="needle"><path d="M85 88 L80 40 L85 32 L90 40Z" fill="#16161d"/><circle cx="85" cy="88" r="7" fill="#16161d"/></g>
+        </svg>
+      </div>
+      <style>@keyframes arc{to{stroke-dashoffset:60}}</style>
+      <div class="channels"><div class="ch2">✈<b>8</b></div><div class="ch2">📷<b>5</b></div><div class="ch2">☎<b>3</b></div>
+        <div class="note"><span style="font-size:18px">💬</span><div><b>Telegram bot</b><span style="color:var(--muted)">3 ta yangi xabar</span></div></div></div>
+    </div>
+
+    <!-- payments -->
+    <div class="card c5 rv">
+      <div class="ch"><div><h3>To'lovlar holati</h3><div class="sub">Guruhlar bo'yicha to'langan ulush</div></div><span class="sel">Bu oy ▾</span></div>
+      <div class="li"><div class="ico">◆</div><div class="t">IELTS 7.0+<div class="bar"><i data-w="94" style="background:#8b7cf6"></i></div></div><div class="pct" data-n="94" data-s="%">0</div></div>
+      <div class="li"><div class="ico">◆</div><div class="t">General English B1<div class="bar"><i data-w="81" style="background:#60a5fa"></i></div></div><div class="pct" data-n="81" data-s="%">0</div></div>
+      <div class="li"><div class="ico">◆</div><div class="t">Kids Starter<div class="bar"><i data-w="67" style="background:#34d399"></i></div></div><div class="pct" data-n="67" data-s="%">0</div></div>
+    </div>
+
+    <!-- teachers -->
+    <div class="card c3 rv">
+      <div class="ch"><div><h3>O'qituvchilar</h3><div class="sub">Reyting bo'yicha</div></div><span class="sel">Hammasi</span></div>
+      <div class="li"><i class="pf" style="background:linear-gradient(135deg,#fcd34d,#f59e0b)"></i><div class="t">Madina R.<small>IELTS · 4 guruh</small></div><div class="score">4.9</div></div>
+      <div class="li"><i class="pf" style="background:linear-gradient(135deg,#a5b4fc,#6366f1)"></i><div class="t">Jasur T.<small>General · 5 guruh</small></div><div class="score">4.8</div></div>
+      <div class="li"><i class="pf" style="background:linear-gradient(135deg,#86efac,#16a34a)"></i><div class="t">Nilufar A.<small>Kids · 3 guruh</small></div><div class="score">4.7</div></div>
+    </div>
+
+    <!-- schedule -->
+    <div class="card c6 rv">
+      <div class="ch"><div><h3>Dars jadvali</h3><div class="sub">Bugungi darslar va xonalar</div></div><span class="sel">Oktyabr 2026 ▾</span></div>
+      <div class="week"><span>Du 26</span><span>Se 27</span><span>Cho 28</span><span>Pa 29</span><span>Ju 30</span><span class="on">Sh 31</span><span>Ya 1</span></div>
+      <div class="slots">
+        <div class="slot" style="left:2%;top:10px;width:24%;background:var(--lav)">IELTS 7.0+<small>09:00 · 1-xona</small></div>
+        <div class="slot" style="left:28%;top:60px;width:26%;background:var(--sky)">General B1<small>11:00 · 3-xona</small></div>
+        <div class="slot" style="left:50%;top:6px;width:22%;background:var(--ink);color:#fff">Ochiq dars<small>13:00 · zal</small></div>
+        <div class="slot" style="left:74%;top:70px;width:24%;background:var(--peach)">Kids Starter<small>16:00 · 2-xona</small></div>
+      </div>
+      <div class="hours"><span>08:00</span><span>10:00</span><span>12:00</span><span>14:00</span><span>16:00</span><span>18:00</span></div>
+    </div>
+
+    <!-- debtors -->
+    <div class="card c3 rv">
+      <div class="ch"><div><h3>Qarzdorlar</h3><div class="sub">Eslatma yuborish</div></div><div class="plus">↗</div></div>
+      <div class="li"><i class="pf" style="background:#fda4af"></i><div class="t">Aziz K.<small>B1 · 2 oy</small></div><span class="chip r">SMS</span></div>
+      <div class="li"><i class="pf" style="background:#93c5fd"></i><div class="t">Sevara M.<small>IELTS · 1 oy</small></div><span class="chip r">SMS</span></div>
+      <div class="li"><i class="pf" style="background:#fcd34d"></i><div class="t">Bekzod O.<small>Kids · 1 oy</small></div><span class="chip r">SMS</span></div>
+    </div>
+  </div>
+</div>
+<div class="demo">Demo ma'lumotlar</div>
+
+<script>
+// chart
+const svg=document.getElementById('chart');
+const W=600,H=200;
+const s1=[60,75,70,95,110,130,150],s2=[80,85,82,88,90,92,94],leads=[14,22,18,30,26,34,40];
+const pts=(a,mx)=>a.map((v,i)=>[i*(W/6),H-10-v/mx*(H-40)]);
+const smooth=p=>p.reduce((d,[x,y],i)=>{if(!i)return`M${x},${y}`;const[px,py]=p[i-1];const cx=(px+x)/2;return d+` C${cx},${py} ${cx},${y} ${x},${y}`},'');
+let html=`<defs><linearGradient id="fa" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8b7cf6" stop-opacity=".25"/><stop offset="1" stop-color="#8b7cf6" stop-opacity="0"/></linearGradient></defs>`;
+[50,100,150].forEach(y=>html+=`<line x1="0" x2="${W}" y1="${y}" y2="${y}" stroke="#eef0f4" stroke-dasharray="4 6"/>`);
+html+='<g class="bars">'+leads.map((v,i)=>`<rect x="${i*(W/6)-7}" y="${H-v*2.6}" width="14" height="${v*2.6}" rx="5" fill="#bfdbfe" style="animation-delay:${.3+i*.08}s"/>`).join('')+'</g>';
+const p1=pts(s1,160),p2=pts(s2.map(v=>(v-70)*4),100);
+html+=`<path d="${smooth(p1)} L${W},${H} L0,${H}Z" fill="url(#fa)" opacity="0" style="animation:fade 1s forwards 1.8s"/>`;
+html+=`<path class="draw" d="${smooth(p1)}" fill="none" stroke="#8b7cf6" stroke-width="3"/>`;
+html+=`<path class="draw" d="${smooth(p2)}" fill="none" stroke="#f26b3a" stroke-width="3" style="animation-delay:.8s"/>`;
+html+=`<circle cx="${p1[6][0]-2}" cy="${p1[6][1]}" r="6" fill="#fff" stroke="#8b7cf6" stroke-width="3" opacity="0" style="animation:fade .4s forwards 2.6s"/>`;
+html+=`<style>@keyframes fade{to{opacity:1}}</style>`;
+svg.innerHTML=html;
+
+// entrance stagger
+const rv=[...document.querySelectorAll('.rv')];
+rv.forEach((el,i)=>setTimeout(()=>el.classList.add('in'),150+i*90));
+// count-up
+function count(el){const n=+el.dataset.n,d=+(el.dataset.d||0),s=el.dataset.s||'',t0=performance.now(),D=1600;
+ (function f(t){const k=Math.min(1,(t-t0)/D),e=1-Math.pow(1-k,3);el.textContent=(n*e).toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d})+s;k<1&&requestAnimationFrame(f)})(t0)}
+setTimeout(()=>document.querySelectorAll('[data-n]').forEach(count),700);
+setTimeout(()=>document.querySelectorAll('.bar i').forEach(b=>b.style.width=b.dataset.w+'%'),1100);
+setTimeout(()=>document.querySelectorAll('.slot').forEach((s,i)=>setTimeout(()=>s.classList.add('in'),i*180)),1500);
+setTimeout(()=>document.querySelectorAll('.pin').forEach((s,i)=>setTimeout(()=>s.classList.add('in'),i*220)),1900);
+// tab cycle for life
+const tabs=[...document.querySelectorAll('#tabs a')];
+</script>
+</body>
+</html>

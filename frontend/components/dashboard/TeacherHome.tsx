@@ -4,8 +4,9 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { salaryApi, type DashboardData, type TeacherPayrollItem } from "@/lib/api";
 import { useLanguage } from "@/lib/i18n-context";
+import { Card, CardHeader, CountUp, Stat } from "@/components/ui";
 
-const ACCENT = "#4F46E5";
+const PASTELS = ["var(--lav)", "var(--sky)", "var(--mint)", "var(--peach)"];
 const money = (n: number) => new Intl.NumberFormat("uz-UZ").format(n);
 const initials = (name: string) => name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]?.toUpperCase()).join("") || "?";
 
@@ -21,105 +22,115 @@ export default function TeacherHome({ data }: { data: DashboardData }) {
   }, []);
 
   const studentsTotal = data.groupFill.reduce((s, g) => s + g.students, 0);
-  const tiles = [
-    { label: t("th.todayLessons"), value: String(data.counts.todaysLessons) },
-    { label: t("th.myStudents"), value: String(data.counts.activeStudents || studentsTotal) },
-    { label: t("th.toReview"), value: String(data.homeworkToReview ?? 0), warn: (data.homeworkToReview ?? 0) > 0, href: "/homework" },
-    { label: t("th.myPay"), value: pay === undefined ? "…" : pay ? `${money(pay.calculatedSalary)} ${t("common.sumUnit")}` : "—" },
-  ];
+  const toReview = data.homeworkToReview ?? 0;
+  const next = data.todaysLessons.find((l) => l.status !== "DONE");
 
   return (
-    <>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0,1fr))", gap: 16 }}>
-        {tiles.map((c) => {
-          const body = (
-            <div style={{ background: c.warn ? "#FFFBEB" : "#fff", border: `1px solid ${c.warn ? "#FDE68A" : "#EAE8E2"}`, borderRadius: 14, padding: 18, height: "100%", boxSizing: "border-box" }}>
-              <div style={{ fontSize: 12, color: c.warn ? "#92400E" : "#686B75" }}>{c.label}</div>
-              <div style={{ fontSize: 22, fontWeight: 800, fontFamily: "'Manrope', sans-serif", marginTop: 4, color: c.warn ? "#B45309" : "#181A1F" }}>{c.value}</div>
-            </div>
-          );
-          return c.href ? <Link key={c.label} href={c.href} style={{ textDecoration: "none", color: "inherit" }}>{body}</Link> : <div key={c.label}>{body}</div>;
-        })}
-      </div>
+    <div className="dash-grid">
+      {/* KPIs */}
+      <Card index={0} className="c12" padding="18px 22px">
+        <div className="teacher-kpis">
+          <Stat label={t("th.todayLessons")} value={data.counts.todaysLessons} />
+          <Stat label={t("th.myStudents")} value={data.counts.activeStudents || studentsTotal} />
+          <Link href="/homework" style={{ color: "inherit", textDecoration: "none" }}>
+            <Stat label={t("th.toReview")} value={toReview} tone={toReview > 0 ? "danger" : undefined} chip={toReview > 0 ? <span className="badge badge-warning">→</span> : undefined} />
+          </Link>
+          <Stat label={t("th.myPay")} value={pay === undefined ? "…" : pay ? `${money(pay.calculatedSalary)} ${t("common.sumUnit")}` : "—"} />
+        </div>
+      </Card>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: 16 }}>
-        <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 20 }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-            <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 700, fontSize: 15 }}>{t("th.todaysLessons")}</div>
-            <Link href="/schedule" style={{ fontSize: 12, color: ACCENT, fontWeight: 600, textDecoration: "none" }}>{t("dashboard.openTimetable")} →</Link>
+      {/* Today's lessons, with the shortcut to marking attendance. */}
+      <Card index={1} lift className="c8">
+        <CardHeader title={t("th.todaysLessons")} action={<Link href="/schedule" className="dash-link">{t("dashboard.openTimetable")} →</Link>} />
+        {data.todaysLessons.length === 0 ? (
+          <div style={{ fontSize: 13, color: "var(--text-muted)" }}>{t("dashboard.noLessonsToday")}</div>
+        ) : (
+          <div className="dash-list">
+            {data.todaysLessons.map((l, i) => {
+              const done = l.status === "DONE";
+              return (
+                <div key={l.id} className="dash-row" style={{ flexWrap: "wrap" }}>
+                  <span className="dash-ico" style={{ background: PASTELS[i % PASTELS.length], color: "var(--text)", width: 54, flexBasis: 54, fontSize: 13 }}>{l.startTime ?? "—"}</span>
+                  <span style={{ flex: 1, minWidth: 120 }}>
+                    <span className="dash-row-title">{l.name}</span>
+                    <span className="dash-row-sub">
+                      {l.students} {t("dash.studentsShort")}
+                      {done && l.marked ? ` · ${t("dash.lessonDone")} ${l.present}/${l.marked}` : ""}
+                    </span>
+                  </span>
+                  <Link href={`/groups/${l.id}`} className={done ? "btn badge badge-success" : "btn-primary btn-sm"} style={done ? { padding: "7px 12px" } : undefined}>
+                    {done ? `✓ ${t("th.marked")}` : t("th.markAttendance")}
+                  </Link>
+                </div>
+              );
+            })}
           </div>
-          {data.todaysLessons.length === 0 ? (
-            <div style={{ fontSize: 13, color: "#686B75" }}>{t("dashboard.noLessonsToday")}</div>
-          ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {data.todaysLessons.map((l) => {
-                const done = l.status === "DONE";
-                return (
-                  <div key={l.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 12px", borderRadius: 12, border: "1px solid #EAE8E2", flexWrap: "wrap" }}>
-                    <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 800, fontSize: 14, color: ACCENT, minWidth: 48 }}>{l.startTime ?? "—"}</div>
-                    <div style={{ flex: 1, minWidth: 120 }}>
-                      <div style={{ fontSize: 13.5, fontWeight: 700 }}>{l.name}</div>
-                      <div style={{ fontSize: 12, color: "#686B75" }}>
-                        {l.students} {t("dash.studentsShort")}
-                        {done && l.marked ? ` · ${t("dash.lessonDone")} ${l.present}/${l.marked}` : ""}
-                      </div>
-                    </div>
-                    <Link
-                      href={`/groups/${l.id}`}
-                      className="btn"
-                      style={{ fontSize: 12.5, fontWeight: 700, padding: "8px 14px", borderRadius: 9, textDecoration: "none", ...(done ? { background: "#E9F8EF", color: "#167A48" } : { background: ACCENT, color: "#fff" }) }}
-                    >
-                      {done ? `✓ ${t("th.marked")}` : t("th.markAttendance")}
-                    </Link>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
+        )}
+      </Card>
 
-        <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 20 }}>
-          <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 700, fontSize: 15, marginBottom: 14 }}>{t("th.myGroups")}</div>
-          {data.groupFill.length === 0 ? (
-            <div style={{ fontSize: 13, color: "#686B75" }}>{t("th.noGroups")}</div>
-          ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {data.groupFill.map((g) => (
-                <Link key={g.id} href={`/groups/${g.id}`} style={{ display: "flex", alignItems: "center", gap: 12, textDecoration: "none", color: "#181A1F" }}>
-                  <div style={{ width: 36, height: 36, borderRadius: 10, background: "#ECEBFB", color: ACCENT, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 12.5, flexShrink: 0 }}>{initials(g.name)}</div>
-                  <div style={{ flex: 1, minWidth: 0, fontSize: 13.5, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{g.name}</div>
-                  <div style={{ fontSize: 12.5, color: "#686B75", whiteSpace: "nowrap" }}>{g.students}/{g.maxStudents}</div>
-                </Link>
-              ))}
-            </div>
-          )}
+      {/* The hero: what is next today. */}
+      <Card tone="accent" index={2} lift className="c4 dash-hero">
+        <h3 style={{ fontSize: 19, fontWeight: 600, margin: 0 }}>{t("th.todayLessons")}</h3>
+        <div style={{ fontSize: 12.5, opacity: 0.9, marginTop: 4 }}>{next ? `${next.startTime ?? ""} · ${next.name}` : t("dashboard.noLessonsToday")}</div>
+        {next && (
+          <Link href={`/groups/${next.id}`} className="dash-hero-btn">
+            {t("th.markAttendance")} →
+          </Link>
+        )}
+        <div className="dash-hero-big">
+          <span><CountUp value={data.counts.todaysLessons} /></span>
+          <small>{t("dash.heroLessonsHint")}</small>
         </div>
-      </div>
+      </Card>
+
+      {/* My groups, as pastel cards. */}
+      <Card index={3} lift className={pay ? "c5" : "c12"}>
+        <CardHeader title={t("th.myGroups")} />
+        {data.groupFill.length === 0 ? (
+          <div style={{ fontSize: 13, color: "var(--text-muted)" }}>{t("th.noGroups")}</div>
+        ) : (
+          <div className="dash-groups">
+            {data.groupFill.map((g, i) => (
+              <Link key={g.id} href={`/groups/${g.id}`} className="dash-group" style={{ background: PASTELS[i % PASTELS.length], display: "flex", alignItems: "center", gap: 12 }}>
+                <span className="dash-ico" aria-hidden="true">{initials(g.name)}</span>
+                <span style={{ flex: 1, minWidth: 0, fontSize: 14, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{g.name}</span>
+                <span style={{ fontSize: 12.5, color: "var(--text-soft)", whiteSpace: "nowrap" }}>{g.students}/{g.maxStudents}</span>
+              </Link>
+            ))}
+          </div>
+        )}
+      </Card>
 
       {pay && (
-        <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 20 }}>
-          <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 700, fontSize: 15, marginBottom: 12 }}>{t("th.payTitle")}</div>
-          <div style={{ display: "flex", gap: 24, flexWrap: "wrap", fontSize: 13, color: "#4A4E58" }}>
-            <div>
-              {t("th.payCalculated")}: <b style={{ color: "#181A1F" }}>{money(pay.calculatedSalary)} {t("common.sumUnit")}</b>
+        <Card index={4} lift className="c7">
+          <CardHeader title={t("th.payTitle")} />
+          <div className="dash-list">
+            <div className="dash-row">
+              <span className="dash-row-title" style={{ flex: 1 }}>{t("th.payCalculated")}</span>
+              <b style={{ fontSize: 18, fontWeight: 600 }}>{money(pay.calculatedSalary)} {t("common.sumUnit")}</b>
             </div>
             {pay.details.plannedLessons !== undefined && (
-              <div>
-                {t("th.lessons")}: <b style={{ color: "#181A1F" }}>{pay.details.plannedLessons - (pay.details.absentLessons ?? 0)}/{pay.details.plannedLessons}</b>
+              <div className="dash-row">
+                <span className="dash-row-title" style={{ flex: 1 }}>{t("th.lessons")}</span>
+                <b style={{ fontSize: 16, fontWeight: 600 }}>{pay.details.plannedLessons - (pay.details.absentLessons ?? 0)}/{pay.details.plannedLessons}</b>
               </div>
             )}
             {(pay.details.absentLessons ?? 0) > 0 && (
-              <div style={{ color: "#B23A47" }}>
-                {t("th.missed")}: <b>{pay.details.absentLessons}</b>
-                {pay.details.deduction ? ` (−${money(pay.details.deduction)} ${t("common.sumUnit")})` : ""}
+              <div className="dash-row" style={{ color: "var(--danger)" }}>
+                <span className="dash-row-title" style={{ flex: 1 }}>{t("th.missed")}</span>
+                <b>
+                  {pay.details.absentLessons}
+                  {pay.details.deduction ? ` (−${money(pay.details.deduction)} ${t("common.sumUnit")})` : ""}
+                </b>
               </div>
             )}
-            <div>
-              {t("th.paidOut")}: <b style={{ color: pay.isPaid ? "#16794A" : "#181A1F" }}>{money(pay.paidAmount)} {t("common.sumUnit")}</b>
+            <div className="dash-row">
+              <span className="dash-row-title" style={{ flex: 1 }}>{t("th.paidOut")}</span>
+              <b style={{ fontSize: 16, fontWeight: 600, color: pay.isPaid ? "var(--success)" : "var(--text)" }}>{money(pay.paidAmount)} {t("common.sumUnit")}</b>
             </div>
           </div>
-        </div>
+        </Card>
       )}
-    </>
+    </div>
   );
 }

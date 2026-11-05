@@ -11,9 +11,9 @@ import { formatDate } from "@/lib/format-date";
 // The director's page: money per month (collected vs still owed), debt that
 // has built up over months, and who left and why.
 
-const COLLECTED = "#4F46E5"; // validated pair (light): indigo + orange
-const UNPAID = "#EB6834";
-const card: React.CSSProperties = { background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 18 };
+const COLLECTED = "var(--primary)"; // validated pair (light): indigo + orange
+const UNPAID = "var(--accent)";
+const card: React.CSSProperties = { background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 18 };
 const money = (n: number) => new Intl.NumberFormat("uz-UZ").format(n);
 const short = (n: number, t: (k: TranslationKey) => string) =>
   n >= 1_000_000 ? `${Math.round(n / 100_000) / 10} ${t("common.mlnShort")}` : n >= 1000 ? `${Math.round(n / 1000)} ${t("common.thousandShort")}` : String(n);
@@ -61,18 +61,18 @@ export default function DirectorReport({ month, onMonth, onSms }: { month: strin
     <div style={{ display: "grid", gap: 16 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
         <MonthPicker value={month} onChange={onMonth} style={{ width: 200 }} />
-        {loading && <span style={{ fontSize: 12, color: "#686B75" }}>{t("common.loading")}</span>}
+        {loading && <span style={{ fontSize: 12, color: "var(--text-muted)" }}>{t("common.loading")}</span>}
       </div>
-      {error && <div role="alert" style={{ background: "#FEE2E2", color: "#B91C1C", fontWeight: 600, fontSize: 13, padding: "12px 16px", borderRadius: 12 }}>{error}</div>}
+      {error && <div role="alert" style={{ background: "var(--danger-soft)", color: "var(--danger)", fontWeight: 600, fontSize: 13, padding: "12px 16px", borderRadius: "var(--radius-md)" }}>{error}</div>}
 
       {data && now && (
         <>
           {/* Headline numbers */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))", gap: 12 }}>
-            <Tile label={t("dir.collected")} value={`${money(now.collected)}`} sub={delta === null ? t("dir.sumUnit") : `${delta >= 0 ? "▲" : "▼"} ${Math.abs(delta)}% ${t("dir.vsPrev")}`} subColor={delta === null ? undefined : delta >= 0 ? "#16794A" : "#DC2626"} />
+            <Tile label={t("dir.collected")} value={`${money(now.collected)}`} sub={delta === null ? t("dir.sumUnit") : `${delta >= 0 ? "▲" : "▼"} ${Math.abs(delta)}% ${t("dir.vsPrev")}`} subColor={delta === null ? undefined : delta >= 0 ? "var(--success)" : "var(--danger)"} />
             <Tile label={t("dir.expected")} value={money(now.expected)} sub={now.collectionRate === null ? "—" : `${t("dir.covered")} ${now.collectionRate}%`} />
-            <Tile label={t("dir.debt")} value={money(data.debtors.totalDebt)} sub={t("dir.debtSub").replace("{n}", String(data.debtors.count)).replace("{m}", String(data.debtors.multiMonth))} subColor={data.debtors.multiMonth > 0 ? "#DC2626" : undefined} />
-            {typeof now.net === "number" && <Tile label={t("dir.net")} value={money(now.net)} sub={`${t("dir.expenses")}: ${money((now.expenses ?? 0) + (now.salaries ?? 0))}`} valueColor={now.net < 0 ? "#DC2626" : undefined} />}
+            <Tile label={t("dir.debt")} value={money(data.debtors.totalDebt)} sub={t("dir.debtSub").replace("{n}", String(data.debtors.count)).replace("{m}", String(data.debtors.multiMonth))} subColor={data.debtors.multiMonth > 0 ? "var(--danger)" : undefined} />
+            {typeof now.net === "number" && <Tile label={t("dir.net")} value={money(now.net)} sub={`${t("dir.expenses")}: ${money((now.expenses ?? 0) + (now.salaries ?? 0))}`} valueColor={now.net < 0 ? "var(--danger)" : undefined} />}
             <Tile label={t("dir.students")} value={`+${now.newStudents} / −${now.left}`} sub={now.churnRate !== null ? `${t("dir.churn")} ${now.churnRate}%` : now.left > 0 ? `${t("dir.churn")}: —` : t("dir.churnNone")} />
           </div>
 
@@ -80,13 +80,13 @@ export default function DirectorReport({ month, onMonth, onSms }: { month: strin
           <div style={card}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 10 }}>
               <div>
-                <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 700, fontSize: 15 }}>{t("dir.trendTitle")}</div>
-                <div style={{ fontSize: 12.5, color: "#686B75" }}>{t("dir.trendHint")}</div>
+                <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 15 }}>{t("dir.trendTitle")}</div>
+                <div style={{ fontSize: 12.5, color: "var(--text-muted)" }}>{t("dir.trendHint")}</div>
               </div>
-              <div style={{ display: "flex", alignItems: "center", gap: 14, fontSize: 12.5, color: "#4A4E58" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 14, fontSize: 12.5, color: "var(--text-soft)" }}>
                 <Legend color={COLLECTED} label={t("dir.collected")} />
                 <Legend color={UNPAID} label={t("dir.unpaid")} />
-                <button type="button" onClick={() => setAsTable((v) => !v)} style={{ border: "1px solid #EAE8E2", background: "#fff", borderRadius: 8, padding: "5px 10px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+                <button type="button" onClick={() => setAsTable((v) => !v)} style={{ border: "1px solid var(--border)", background: "var(--surface)", borderRadius: "var(--radius-xs)", padding: "5px 10px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
                   {asTable ? `📊 ${t("dir.chart")}` : `☰ ${t("dir.table")}`}
                 </button>
               </div>
@@ -99,8 +99,8 @@ export default function DirectorReport({ month, onMonth, onSms }: { month: strin
             <div style={{ ...card, padding: 0, overflow: "hidden" }}>
               <div style={{ padding: "16px 18px 10px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
                 <div>
-                  <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 700, fontSize: 15 }}>💸 {t("dir.debtorsTitle")}</div>
-                  <div style={{ fontSize: 12.5, color: "#686B75" }}>{t("dir.debtorsHint")}</div>
+                  <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 15 }}>💸 {t("dir.debtorsTitle")}</div>
+                  <div style={{ fontSize: 12.5, color: "var(--text-muted)" }}>{t("dir.debtorsHint")}</div>
                 </div>
                 <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 600, cursor: "pointer" }}>
                   <input type="checkbox" checked={onlyMulti} onChange={(e) => setOnlyMulti(e.target.checked)} style={{ accentColor: COLLECTED }} />
@@ -108,32 +108,32 @@ export default function DirectorReport({ month, onMonth, onSms }: { month: strin
                 </label>
               </div>
               {debtors.length === 0 ? (
-                <div style={{ padding: "8px 18px 20px", fontSize: 13.5, color: "#167A48", fontWeight: 600 }}>✓ {t("dir.noDebtors")}</div>
+                <div style={{ padding: "8px 18px 20px", fontSize: 13.5, color: "var(--success)", fontWeight: 600 }}>✓ {t("dir.noDebtors")}</div>
               ) : (
                 <div>
                   {debtors.map((d) => (
-                    <div key={d.studentId} style={{ display: "flex", alignItems: "center", gap: 10, padding: "11px 18px", borderTop: "1px solid #F2F1EC" }}>
+                    <div key={d.studentId} style={{ display: "flex", alignItems: "center", gap: 10, padding: "11px 18px", borderTop: "1px solid var(--border)" }}>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <Link href={`/students/${d.studentId}`} style={{ fontSize: 14, fontWeight: 700, color: "#181A1F", textDecoration: "none" }}>{d.fullName}</Link>
-                        <div style={{ fontSize: 12, color: "#686B75", marginTop: 2, display: "flex", flexWrap: "wrap", gap: "2px 10px" }}>
+                        <Link href={`/students/${d.studentId}`} style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", textDecoration: "none" }}>{d.fullName}</Link>
+                        <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2, display: "flex", flexWrap: "wrap", gap: "2px 10px" }}>
                           {d.groups.length > 0 && <span>{d.groups.join(", ")}</span>}
                           <span>{t("dir.lastPaid")}: {d.lastPaymentAt ? formatDate(d.lastPaymentAt, lang, "short") : "—"}</span>
-                          {d.status !== "ACTIVE" && <span style={{ color: "#B45309" }}>{t(`stStatus.${d.status}` as TranslationKey)}</span>}
+                          {d.status !== "ACTIVE" && <span style={{ color: "var(--warning)" }}>{t(`stStatus.${d.status}` as TranslationKey)}</span>}
                         </div>
                       </div>
                       <div style={{ textAlign: "right" }}>
-                        <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 800, fontSize: 15 }}>{money(d.totalDebt)}</div>
-                        <span style={{ fontSize: 11.5, fontWeight: 700, padding: "2px 8px", borderRadius: 100, ...(d.monthsBehind >= 2 ? { background: "#FEE2E2", color: "#DC2626" } : { background: "#FEF3C7", color: "#B45309" }) }}>
+                        <div style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 15 }}>{money(d.totalDebt)}</div>
+                        <span style={{ fontSize: 11.5, fontWeight: 700, padding: "2px 8px", borderRadius: "var(--radius-pill)", ...(d.monthsBehind >= 2 ? { background: "var(--danger-soft)", color: "var(--danger)" } : { background: "var(--warning-soft)", color: "var(--warning)" }) }}>
                           {t("dir.months").replace("{n}", String(d.monthsBehind))}
                         </span>
                       </div>
-                      <button type="button" title={t("dir.sms")} aria-label={t("dir.sms")} onClick={() => onSms({ id: d.studentId, fullName: d.fullName, phone: d.phone ?? d.parentPhone })} disabled={!d.phone && !d.parentPhone} style={{ width: 34, height: 34, flexShrink: 0, borderRadius: 10, border: "1px solid #EAE8E2", background: "#fff", cursor: d.phone || d.parentPhone ? "pointer" : "default", opacity: d.phone || d.parentPhone ? 1 : 0.4 }}>
+                      <button type="button" title={t("dir.sms")} aria-label={t("dir.sms")} onClick={() => onSms({ id: d.studentId, fullName: d.fullName, phone: d.phone ?? d.parentPhone })} disabled={!d.phone && !d.parentPhone} style={{ width: 34, height: 34, flexShrink: 0, borderRadius: "var(--radius-sm)", border: "1px solid var(--border)", background: "var(--surface)", cursor: d.phone || d.parentPhone ? "pointer" : "default", opacity: d.phone || d.parentPhone ? 1 : 0.4 }}>
                         💬
                       </button>
                     </div>
                   ))}
                   {!showAll && (data.debtors.items.filter((d) => !onlyMulti || d.monthsBehind >= 2).length > 15) && (
-                    <button type="button" onClick={() => setShowAll(true)} style={{ width: "100%", border: "none", borderTop: "1px solid #F2F1EC", background: "#FAFAF8", padding: 12, fontSize: 13, fontWeight: 700, color: COLLECTED, cursor: "pointer" }}>
+                    <button type="button" onClick={() => setShowAll(true)} style={{ width: "100%", border: "none", borderTop: "1px solid var(--border)", background: "var(--surface-muted)", padding: 12, fontSize: 13, fontWeight: 700, color: COLLECTED, cursor: "pointer" }}>
                       {t("dir.showAll")}
                     </button>
                   )}
@@ -143,16 +143,16 @@ export default function DirectorReport({ month, onMonth, onSms }: { month: strin
 
             {/* Churn */}
             <div style={card}>
-              <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 700, fontSize: 15 }}>🚪 {t("dir.churnTitle")}</div>
-              <div style={{ fontSize: 12.5, color: "#686B75", marginBottom: 12 }}>{t("dir.churnHint")}</div>
+              <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 15 }}>🚪 {t("dir.churnTitle")}</div>
+              <div style={{ fontSize: 12.5, color: "var(--text-muted)", marginBottom: 12 }}>{t("dir.churnHint")}</div>
               <div style={{ display: "flex", gap: 10, marginBottom: 14 }}>
-                <div style={{ flex: 1, background: "#F7F6F2", borderRadius: 12, padding: "10px 14px" }}>
-                  <div style={{ fontSize: 11.5, color: "#686B75", fontWeight: 600 }}>{t("dir.leftThisMonth")}</div>
-                  <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 800, fontSize: 20 }}>{data.churn.left}</div>
+                <div style={{ flex: 1, background: "var(--surface-muted)", borderRadius: "var(--radius-md)", padding: "10px 14px" }}>
+                  <div style={{ fontSize: 11.5, color: "var(--text-muted)", fontWeight: 600 }}>{t("dir.leftThisMonth")}</div>
+                  <div style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 20 }}>{data.churn.left}</div>
                 </div>
-                <div style={{ flex: 1, background: "#F7F6F2", borderRadius: 12, padding: "10px 14px" }}>
-                  <div style={{ fontSize: 11.5, color: "#686B75", fontWeight: 600 }}>{t("dir.churn")}</div>
-                  <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 800, fontSize: 20 }}>{data.churn.rate === null ? "—" : `${data.churn.rate}%`}</div>
+                <div style={{ flex: 1, background: "var(--surface-muted)", borderRadius: "var(--radius-md)", padding: "10px 14px" }}>
+                  <div style={{ fontSize: 11.5, color: "var(--text-muted)", fontWeight: 600 }}>{t("dir.churn")}</div>
+                  <div style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 20 }}>{data.churn.rate === null ? "—" : `${data.churn.rate}%`}</div>
                 </div>
               </div>
 
@@ -161,15 +161,15 @@ export default function DirectorReport({ month, onMonth, onSms }: { month: strin
               {data.churn.leavers.length > 0 && (
                 <div style={{ marginTop: 14, display: "grid", gap: 6 }}>
                   {data.churn.leavers.map((l) => (
-                    <div key={l.studentId} style={{ display: "flex", justifyContent: "space-between", gap: 10, fontSize: 13, padding: "8px 10px", background: "#FAFAF8", borderRadius: 10 }}>
-                      <Link href={`/students/${l.studentId}`} style={{ fontWeight: 700, color: "#181A1F", textDecoration: "none", minWidth: 0 }}>{l.fullName}</Link>
-                      <span style={{ color: l.reason ? "#4A4E58" : "#B45309", whiteSpace: "nowrap" }}>{l.reason ? reasonLabel(l.reason) : t("left.UNKNOWN")}</span>
+                    <div key={l.studentId} style={{ display: "flex", justifyContent: "space-between", gap: 10, fontSize: 13, padding: "8px 10px", background: "var(--surface-muted)", borderRadius: "var(--radius-sm)" }}>
+                      <Link href={`/students/${l.studentId}`} style={{ fontWeight: 700, color: "var(--text)", textDecoration: "none", minWidth: 0 }}>{l.fullName}</Link>
+                      <span style={{ color: l.reason ? "var(--text-soft)" : "var(--warning)", whiteSpace: "nowrap" }}>{l.reason ? reasonLabel(l.reason) : t("left.UNKNOWN")}</span>
                     </div>
                   ))}
                 </div>
               )}
               {Object.keys(data.churn.reasonsLast3Months).includes("UNKNOWN") && (
-                <div style={{ marginTop: 10, fontSize: 12, color: "#686B75", lineHeight: 1.5 }}>{t("dir.reasonTip")}</div>
+                <div style={{ marginTop: 10, fontSize: 12, color: "var(--text-muted)", lineHeight: 1.5 }}>{t("dir.reasonTip")}</div>
               )}
             </div>
           </div>
@@ -182,9 +182,9 @@ export default function DirectorReport({ month, onMonth, onSms }: { month: strin
 function Tile({ label, value, sub, subColor, valueColor }: { label: string; value: string; sub?: string; subColor?: string; valueColor?: string }) {
   return (
     <div style={{ ...card, padding: "14px 16px" }}>
-      <div style={{ fontSize: 12, color: "#686B75", fontWeight: 600 }}>{label}</div>
-      <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 800, fontSize: 21, marginTop: 2, color: valueColor ?? "#181A1F", overflowWrap: "anywhere" }}>{value}</div>
-      {sub && <div style={{ fontSize: 12, color: subColor ?? "#686B75", marginTop: 2, fontWeight: subColor ? 700 : 500 }}>{sub}</div>}
+      <div style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 600 }}>{label}</div>
+      <div style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 21, marginTop: 2, color: valueColor ?? "var(--text)", overflowWrap: "anywhere" }}>{value}</div>
+      {sub && <div style={{ fontSize: 12, color: subColor ?? "var(--text-muted)", marginTop: 2, fontWeight: subColor ? 700 : 500 }}>{sub}</div>}
     </div>
   );
 }
@@ -220,8 +220,8 @@ function TrendChart({ data, monthName, t }: { data: DirectorReportData; monthNam
       <svg viewBox={`0 0 ${W} ${H}`} width="100%" role="img" aria-label={t("dir.trendTitle")} style={{ display: "block" }} onMouseLeave={() => setHover(null)}>
         {ticks.map((v) => (
           <g key={v}>
-            <line x1={pad.l} x2={W - pad.r} y1={y(v)} y2={y(v)} stroke="#EFEEE9" strokeWidth={1} />
-            <text x={pad.l - 8} y={y(v) + 4} textAnchor="end" fontSize="11" fill="#686B75">{short(v, t)}</text>
+            <line x1={pad.l} x2={W - pad.r} y1={y(v)} y2={y(v)} stroke="var(--border)" strokeWidth={1} />
+            <text x={pad.l - 8} y={y(v) + 4} textAnchor="end" fontSize="11" fill="var(--text-muted)">{short(v, t)}</text>
           </g>
         ))}
         {rows.map((r, i) => {
@@ -232,10 +232,10 @@ function TrendChart({ data, monthName, t }: { data: DirectorReportData; monthNam
           const base = y(0);
           return (
             <g key={r.month} onMouseEnter={() => setHover(i)}>
-              <rect x={pad.l + i * bw} y={pad.t} width={bw} height={H - pad.t - pad.b} fill={hover === i ? "#F7F6F2" : "transparent"} />
+              <rect x={pad.l + i * bw} y={pad.t} width={bw} height={H - pad.t - pad.b} fill={hover === i ? "var(--surface-muted)" : "transparent"} />
               {r.collected > 0 && <path d={roundTop(x, paidTop, barW, base - paidTop, unpaid > 0 ? 0 : 4)} fill={COLLECTED} />}
               {unpaid > 0 && <path d={roundTop(x, unpaidTop, barW, Math.max(0, paidTop - unpaidTop - (r.collected > 0 ? 2 : 0)), 4)} fill={UNPAID} />}
-              <text x={pad.l + i * bw + bw / 2} y={H - 8} textAnchor="middle" fontSize="11" fill={i === rows.length - 1 ? "#181A1F" : "#686B75"} fontWeight={i === rows.length - 1 ? 700 : 400}>
+              <text x={pad.l + i * bw + bw / 2} y={H - 8} textAnchor="middle" fontSize="11" fill={i === rows.length - 1 ? "var(--text)" : "var(--text-muted)"} fontWeight={i === rows.length - 1 ? 700 : 400}>
                 {monthName(r.month)}
               </text>
             </g>
@@ -243,7 +243,7 @@ function TrendChart({ data, monthName, t }: { data: DirectorReportData; monthNam
         })}
       </svg>
       {h && hover !== null && (
-        <div style={{ position: "absolute", top: 8, left: `${Math.min(70, Math.max(2, ((pad.l + hover * bw) / W) * 100))}%`, background: "#181A1F", color: "#fff", borderRadius: 10, padding: "8px 10px", fontSize: 12, lineHeight: 1.6, pointerEvents: "none", whiteSpace: "nowrap", zIndex: 2 }}>
+        <div style={{ position: "absolute", top: 8, left: `${Math.min(70, Math.max(2, ((pad.l + hover * bw) / W) * 100))}%`, background: "var(--ink)", color: "var(--on-ink)", borderRadius: "var(--radius-sm)", padding: "8px 10px", fontSize: 12, lineHeight: 1.6, pointerEvents: "none", whiteSpace: "nowrap", zIndex: 2 }}>
           <div style={{ fontWeight: 700 }}>{h.month}</div>
           <div>{t("dir.expected")}: {money(h.expected)}</div>
           <div>{t("dir.collected")}: {money(h.collected)}</div>
@@ -257,8 +257,8 @@ function TrendChart({ data, monthName, t }: { data: DirectorReportData; monthNam
 
 function TrendTable({ data, monthName, t }: { data: DirectorReportData; monthName: (m: string) => string; t: T }) {
   const profit = data.trend.some((r) => typeof r.net === "number");
-  const th: React.CSSProperties = { padding: "8px 10px", fontSize: 11.5, color: "#686B75", textAlign: "right", whiteSpace: "nowrap", fontWeight: 700 };
-  const td: React.CSSProperties = { padding: "8px 10px", fontSize: 12.5, textAlign: "right", whiteSpace: "nowrap", borderTop: "1px solid #F2F1EC" };
+  const th: React.CSSProperties = { padding: "8px 10px", fontSize: 11.5, color: "var(--text-muted)", textAlign: "right", whiteSpace: "nowrap", fontWeight: 700 };
+  const td: React.CSSProperties = { padding: "8px 10px", fontSize: 12.5, textAlign: "right", whiteSpace: "nowrap", borderTop: "1px solid var(--border)" };
   return (
     <div style={{ overflowX: "auto" }}>
       <table style={{ width: "100%", borderCollapse: "collapse" }}>
@@ -281,10 +281,10 @@ function TrendTable({ data, monthName, t }: { data: DirectorReportData; monthNam
               <td style={{ ...td, textAlign: "left", fontWeight: 700 }}>{monthName(r.month)} {r.month.slice(0, 4)}</td>
               <td style={td}>{money(r.expected)}</td>
               <td style={td}>{money(r.collected)}</td>
-              <td style={{ ...td, color: r.debt > 0 ? "#B45309" : undefined }}>{money(r.debt)}</td>
+              <td style={{ ...td, color: r.debt > 0 ? "var(--warning)" : undefined }}>{money(r.debt)}</td>
               <td style={td}>{r.collectionRate === null ? "—" : `${r.collectionRate}%`}</td>
               {profit && <td style={td}>{money((r.expenses ?? 0) + (r.salaries ?? 0))}</td>}
-              {profit && <td style={{ ...td, color: (r.net ?? 0) < 0 ? "#DC2626" : undefined, fontWeight: 700 }}>{money(r.net ?? 0)}</td>}
+              {profit && <td style={{ ...td, color: (r.net ?? 0) < 0 ? "var(--danger)" : undefined, fontWeight: 700 }}>{money(r.net ?? 0)}</td>}
               <td style={td}>{r.newStudents}</td>
               <td style={td}>{r.left}</td>
             </tr>
@@ -301,13 +301,13 @@ function ReasonBars({ reasons, label, title }: { reasons: Record<string, number>
   const max = Math.max(...entries.map(([, n]) => n));
   return (
     <div>
-      <div style={{ fontSize: 12, fontWeight: 700, color: "#4A4E58", marginBottom: 8 }}>{title}</div>
+      <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-soft)", marginBottom: 8 }}>{title}</div>
       <div style={{ display: "grid", gap: 6 }}>
         {entries.map(([r, n]) => (
           <div key={r} style={{ display: "grid", gridTemplateColumns: "minmax(0, 150px) 1fr 28px", alignItems: "center", gap: 8, fontSize: 12.5 }}>
-            <span style={{ color: "#4A4E58", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{label(r)}</span>
-            <span style={{ height: 10, background: "#F2F1EC", borderRadius: 4, overflow: "hidden" }}>
-              <span style={{ display: "block", height: "100%", width: `${(n / max) * 100}%`, background: r === "UNKNOWN" ? "#C9C6BD" : COLLECTED, borderRadius: 4 }} />
+            <span style={{ color: "var(--text-soft)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{label(r)}</span>
+            <span style={{ height: 10, background: "var(--surface-muted)", borderRadius: 4, overflow: "hidden" }}>
+              <span style={{ display: "block", height: "100%", width: `${(n / max) * 100}%`, background: r === "UNKNOWN" ? "var(--border-strong)" : COLLECTED, borderRadius: 4 }} />
             </span>
             <span style={{ textAlign: "right", fontWeight: 700 }}>{n}</span>
           </div>

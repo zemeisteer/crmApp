@@ -14,17 +14,21 @@ export class CreateHomeworkDto {
   @IsArray()
   @ArrayMinSize(1)
   @IsString({ each: true })
+  @MaxLength(2000, { each: true })
   groupIds: string[];
 
   @IsString()
+  @MaxLength(2000)
   title: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(50000)
   description?: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(2000)
   dueDate?: string;
 
   @IsOptional()
@@ -42,6 +46,7 @@ export class UpdateHomeworkDto {
 
 export class SetCompletionDto {
   @IsString()
+  @MaxLength(2000)
   studentId: string;
 
   @IsBoolean()
@@ -50,14 +55,17 @@ export class SetCompletionDto {
 
 export class SubmitHomeworkDto {
   @IsString()
+  @MaxLength(2000)
   studentId: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(50000)
   submissionText?: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(2000)
   attachmentUrl?: string;
 }
 
@@ -76,6 +84,7 @@ export class AttachTextDto {
 
 export class GradeHomeworkDto {
   @IsString()
+  @MaxLength(2000)
   studentId: string;
 
   @IsNumber()
@@ -84,5 +93,6 @@ export class GradeHomeworkDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(2000)
   feedback?: string;
 }

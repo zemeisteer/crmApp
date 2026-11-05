@@ -196,8 +196,8 @@ export default function ConvertWizard({ lead, open, onClose }: { lead: Lead; ope
   }
 
   const row = (k: string, v: React.ReactNode) => (
-    <div style={{ display: "flex", justifyContent: "space-between", gap: 12, padding: "7px 0", borderBottom: "1px solid #F2F1EC", fontSize: 13 }}>
-      <span style={{ color: "#686B75" }}>{k}</span>
+    <div style={{ display: "flex", justifyContent: "space-between", gap: 12, padding: "7px 0", borderBottom: "1px solid var(--border)", fontSize: 13 }}>
+      <span style={{ color: "var(--text-muted)" }}>{k}</span>
       <span style={{ fontWeight: 600, textAlign: "right" }}>{v}</span>
     </div>
   );
@@ -214,9 +214,9 @@ export default function ConvertWizard({ lead, open, onClose }: { lead: Lead; ope
               fontSize: 12,
               fontWeight: 700,
               padding: "4px 10px",
-              borderRadius: 999,
-              background: i === step ? ACCENT : i < step ? "#EEF0FF" : "#F2F1EC",
-              color: i === step ? "#fff" : i < step ? ACCENT : "#686B75",
+              borderRadius: "var(--radius-pill)",
+              background: i === step ? ACCENT : i < step ? "var(--primary-soft)" : "var(--surface-muted)",
+              color: i === step ? "var(--on-ink)" : i < step ? ACCENT : "var(--text-muted)",
             }}
           >
             {i + 1}. {t(k)}
@@ -227,7 +227,7 @@ export default function ConvertWizard({ lead, open, onClose }: { lead: Lead; ope
       <div style={{ minHeight: 220 }}>
         {step === 0 && (
           <div>
-            <p style={{ fontSize: 13, color: "#5B5F6A", marginBottom: 12 }}>{t("adm.wiz.reviewHint")}</p>
+            <p style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 12 }}>{t("adm.wiz.reviewHint")}</p>
             {row(t("leads.fieldFullName"), lead.fullName)}
             {row(t("leads.fieldPhone"), lead.phone)}
             {row(t("leads.colStatus"), <StatusBadge status={lead.status} label={t(statusKey(lead.status))} />)}
@@ -239,14 +239,14 @@ export default function ConvertWizard({ lead, open, onClose }: { lead: Lead; ope
         {step === 1 && (
           <div style={{ display: "grid", gap: 10 }}>
             {candidates === null ? (
-              <p style={{ color: "#686B75" }}>{t("adm.wiz.checking")}</p>
+              <p style={{ color: "var(--text-muted)" }}>{t("adm.wiz.checking")}</p>
             ) : candidates.length === 0 ? (
               <p style={{ fontSize: 13.5 }}>{t("adm.wiz.noMatch")}</p>
             ) : (
               <>
-                <p style={{ fontSize: 13, color: "#92400E" }}>{t("adm.wiz.matchHint")}</p>
+                <p style={{ fontSize: 13, color: "var(--warning)" }}>{t("adm.wiz.matchHint")}</p>
                 {candidates.map((c) => (
-                  <label key={c.id} style={{ display: "flex", gap: 10, alignItems: "center", padding: 12, border: "1px solid #EAE8E2", borderRadius: 10, cursor: "pointer" }}>
+                  <label key={c.id} style={{ display: "flex", gap: 10, alignItems: "center", padding: 12, border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", cursor: "pointer" }}>
                     <input
                       type="radio"
                       name="resolution"
@@ -254,13 +254,13 @@ export default function ConvertWizard({ lead, open, onClose }: { lead: Lead; ope
                       onChange={() => setResolution({ mode: "LINK_EXISTING", studentId: c.id })}
                     />
                     <span style={{ fontWeight: 700 }}>{c.fullName}</span>
-                    <span style={{ fontSize: 12, color: "#686B75" }}>
+                    <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
                       {c.exact ? t("adm.wiz.exact") : c.matchedOn === "parentPhone" ? t("adm.wiz.viaParentPhone") : t("leads.fieldPhone")}
                     </span>
                     <span style={{ marginLeft: "auto", fontSize: 12, color: ACCENT }}>{t("adm.wiz.linkExisting")}</span>
                   </label>
                 ))}
-                <label style={{ display: "flex", gap: 10, alignItems: "center", padding: 12, border: "1px solid #EAE8E2", borderRadius: 10, cursor: "pointer" }}>
+                <label style={{ display: "flex", gap: 10, alignItems: "center", padding: 12, border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", cursor: "pointer" }}>
                   <input type="radio" name="resolution" checked={resolution.mode === "CREATE_NEW"} onChange={() => setResolution({ mode: "CREATE_NEW" })} />
                   <span style={{ fontWeight: 700 }}>{t("adm.wiz.createNew")}</span>
                 </label>
@@ -311,7 +311,7 @@ export default function ConvertWizard({ lead, open, onClose }: { lead: Lead; ope
         )}
             {cfList.length > 0 && (
               <div>
-                <p style={{ fontSize: 12, color: "#686B75", marginBottom: 4 }}>{linking ? t("cf.wizLinkedHint") : t("cf.wizCarriedHint")}</p>
+                <p style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 4 }}>{linking ? t("cf.wizLinkedHint") : t("cf.wizCarriedHint")}</p>
                 <CustomFieldInputs
                   defs={studentDefs.defs ?? []}
                   values={cf.draft}
@@ -324,7 +324,7 @@ export default function ConvertWizard({ lead, open, onClose }: { lead: Lead; ope
                 />
               </div>
             )}
-            {studentDefs.error && <div role="alert" style={{ fontSize: 12.5, fontWeight: 600, color: "#B45309" }}>{t("cf.defsError")}</div>}
+            {studentDefs.error && <div role="alert" style={{ fontSize: 12.5, fontWeight: 600, color: "var(--warning)" }}>{t("cf.defsError")}</div>}
           </div>
         )}
 
@@ -337,13 +337,13 @@ export default function ConvertWizard({ lead, open, onClose }: { lead: Lead; ope
               options={openGroups.map((g) => ({ value: g.id, label: `${g.name} (max ${g.maxStudents})` }))}
               placeholder={t("common.notSelected")}
             />
-            <p style={{ fontSize: 12, color: "#686B75", marginTop: 8 }}>{t("adm.wiz.groupsHint")}</p>
+            <p style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 8 }}>{t("adm.wiz.groupsHint")}</p>
           </div>
         )}
 
         {step === 4 && (
           groupIds.length === 0 ? (
-            <p style={{ fontSize: 13.5, color: "#686B75" }}>{t("adm.wiz.invoiceNeedsGroup")}</p>
+            <p style={{ fontSize: 13.5, color: "var(--text-muted)" }}>{t("adm.wiz.invoiceNeedsGroup")}</p>
           ) : (
             <div style={{ display: "grid", gap: 12 }}>
               <label style={{ display: "flex", gap: 8, alignItems: "center", fontWeight: 600, fontSize: 13.5 }}>
@@ -372,7 +372,7 @@ export default function ConvertWizard({ lead, open, onClose }: { lead: Lead; ope
                   </div>
                 </div>
               )}
-              <p style={{ fontSize: 12, color: "#686B75" }}>{t("adm.wiz.invoiceHint")}</p>
+              <p style={{ fontSize: 12, color: "var(--text-muted)" }}>{t("adm.wiz.invoiceHint")}</p>
             </div>
           )
         )}
@@ -389,12 +389,12 @@ export default function ConvertWizard({ lead, open, onClose }: { lead: Lead; ope
               const v = fromDraft(d, cf.draft[d.id]);
               return v === undefined ? null : <div key={d.id}>{row(d.label, formatCfValue(d, v, t, lang))}</div>;
             })}
-            <p style={{ fontSize: 12, color: "#686B75", marginTop: 12 }}>{t("adm.wiz.atomicHint")}</p>
+            <p style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 12 }}>{t("adm.wiz.atomicHint")}</p>
           </div>
         )}
       </div>
 
-      {error && <div role="alert" style={{ color: "#B91C1C", fontSize: 13, fontWeight: 600, marginTop: 10 }}>{error}</div>}
+      {error && <div role="alert" style={{ color: "var(--danger)", fontSize: 13, fontWeight: 600, marginTop: 10 }}>{error}</div>}
 
       <div style={{ display: "flex", justifyContent: "space-between", gap: 10, marginTop: 18 }}>
         <button type="button" className="btn" style={ghostBtn} disabled={submitting} onClick={() => (step === 0 ? onClose() : setStep(step - 1))}>

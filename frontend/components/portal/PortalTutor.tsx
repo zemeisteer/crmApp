@@ -87,7 +87,7 @@ export default function PortalTutor({ firstName }: { firstName?: string }) {
     return (
       <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
         <TabTitle title={`🤖 ${t("tutor.title")}`} />
-        <div style={{ ...card, color: "#686B75", fontSize: 14 }}>{notice ?? t("common.loading")}</div>
+        <div style={{ ...card, color: "var(--text-muted)", fontSize: 14 }}>{notice ?? t("common.loading")}</div>
       </div>
     );
   }
@@ -96,7 +96,7 @@ export default function PortalTutor({ firstName }: { firstName?: string }) {
     return (
       <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
         <TabTitle title={`🤖 ${t("tutor.title")}`} />
-        <div style={{ ...card, textAlign: "center", padding: "36px 20px", color: "#6B6E78", fontSize: 14 }}>
+        <div style={{ ...card, textAlign: "center", padding: "36px 20px", color: "var(--text-muted)", fontSize: 14 }}>
           <div style={{ fontSize: 34, marginBottom: 8 }}>🤖</div>
           {state.enabled ? t("tutor.unavailable") : t("tutor.off")}
         </div>
@@ -112,11 +112,11 @@ export default function PortalTutor({ firstName }: { firstName?: string }) {
       <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
         <TabTitle title={`🤖 ${t("tutor.title")}`} hint={t("tutor.hint")} />
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ fontSize: 12.5, fontWeight: 700, padding: "6px 10px", borderRadius: 100, background: out ? "#FEE2E2" : "#EEF0FF", color: out ? "#DC2626" : ACCENT, whiteSpace: "nowrap" }}>
+          <span style={{ fontSize: 12.5, fontWeight: 700, padding: "6px 10px", borderRadius: "var(--radius-pill)", background: out ? "var(--danger-soft)" : "var(--primary-soft)", color: out ? "var(--danger)" : ACCENT, whiteSpace: "nowrap" }}>
             {t("tutor.left").replace("{n}", String(state.left)).replace("{limit}", String(state.limit))}
           </span>
           {msgs.length > 0 && (
-            <button type="button" onClick={reset} disabled={busy} style={{ border: "1px solid #EAE8E2", background: "#fff", borderRadius: 100, fontSize: 12.5, fontWeight: 700, padding: "6px 12px", cursor: "pointer", color: "#4A4E58" }}>
+            <button type="button" onClick={reset} disabled={busy} style={{ border: "1px solid var(--border)", background: "var(--surface)", borderRadius: "var(--radius-pill)", fontSize: 12.5, fontWeight: 700, padding: "6px 12px", cursor: "pointer", color: "var(--text-soft)" }}>
               🧹 {t("tutor.new")}
             </button>
           )}
@@ -125,15 +125,15 @@ export default function PortalTutor({ firstName }: { firstName?: string }) {
 
       <div style={{ ...card, padding: 14, display: "flex", flexDirection: "column", gap: 10, minHeight: 280 }}>
         {msgs.length === 0 ? (
-          <div style={{ textAlign: "center", padding: "22px 8px", color: "#6B6E78" }}>
-            <div style={{ width: 56, height: 56, margin: "0 auto 10px", borderRadius: 18, background: `linear-gradient(135deg, ${ACCENT}, #7C3AED)`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28 }}>🤖</div>
-            <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 800, fontSize: 17, color: "#181A1F" }}>
+          <div style={{ textAlign: "center", padding: "22px 8px", color: "var(--text-muted)" }}>
+            <div style={{ width: 56, height: 56, margin: "0 auto 10px", borderRadius: "var(--radius-lg)", background: `linear-gradient(135deg, ${ACCENT}, var(--violet))`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28 }}>🤖</div>
+            <div style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 17, color: "var(--text)" }}>
               {t("tutor.hello").replace("{name}", firstName || "")}
             </div>
             <div style={{ fontSize: 13.5, marginTop: 6, lineHeight: 1.55, maxWidth: 420, marginInline: "auto" }}>{t("tutor.intro")}</div>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "center", marginTop: 16 }}>
               {suggestions.map((s) => (
-                <button key={s} type="button" disabled={out} onClick={() => send(s)} style={{ border: "1px solid #E0E7FF", background: "#F5F6FF", color: "#3730A3", borderRadius: 100, padding: "9px 14px", fontSize: 13, fontWeight: 600, cursor: out ? "default" : "pointer", textAlign: "left" }}>
+                <button key={s} type="button" disabled={out} onClick={() => send(s)} style={{ border: "1px solid var(--primary-border)", background: "var(--primary-soft)", color: "var(--primary)", borderRadius: "var(--radius-pill)", padding: "9px 14px", fontSize: 13, fontWeight: 600, cursor: out ? "default" : "pointer", textAlign: "left" }}>
                   {s}
                 </button>
               ))}
@@ -142,13 +142,13 @@ export default function PortalTutor({ firstName }: { firstName?: string }) {
         ) : (
           msgs.map((m, i) =>
             m.role === "user" ? (
-              <div key={i} style={{ alignSelf: "flex-end", maxWidth: "85%", background: ACCENT, color: "#fff", padding: "10px 14px", borderRadius: "16px 16px 4px 16px", fontSize: 14, lineHeight: 1.5, whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>
+              <div key={i} style={{ alignSelf: "flex-end", maxWidth: "85%", background: ACCENT, color: "var(--on-ink)", padding: "10px 14px", borderRadius: "16px 16px 4px 16px", fontSize: 14, lineHeight: 1.5, whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>
                 {m.content}
               </div>
             ) : (
               <div key={i} style={{ alignSelf: "flex-start", maxWidth: "92%", display: "flex", gap: 8 }}>
-                <div style={{ width: 28, height: 28, flexShrink: 0, borderRadius: 9, background: "#EEF0FF", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15 }}>🤖</div>
-                <div style={{ background: "#F7F7F5", border: "1px solid #EFEEE9", padding: "10px 14px", borderRadius: "4px 16px 16px 16px", minWidth: 0, overflowWrap: "anywhere" }}>
+                <div style={{ width: 28, height: 28, flexShrink: 0, borderRadius: "var(--radius-sm)", background: "var(--primary-soft)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15 }}>🤖</div>
+                <div style={{ background: "var(--surface-muted)", border: "1px solid var(--border)", padding: "10px 14px", borderRadius: "4px 16px 16px 16px", minWidth: 0, overflowWrap: "anywhere" }}>
                   {m.pending ? (
                     <span className="tutor-typing" aria-label={t("tutor.thinking")}>
                       <i />
@@ -167,7 +167,7 @@ export default function PortalTutor({ firstName }: { firstName?: string }) {
       </div>
 
       {notice && (
-        <div role="alert" style={{ background: "#FFFBEB", border: "1px solid #FDE68A", color: "#92400E", borderRadius: 12, padding: "10px 14px", fontSize: 13.5 }}>
+        <div role="alert" style={{ background: "var(--warning-soft)", border: "1px solid var(--warning-border)", color: "var(--warning)", borderRadius: "var(--radius-md)", padding: "10px 14px", fontSize: 13.5 }}>
           {notice}
         </div>
       )}
@@ -199,15 +199,15 @@ export default function PortalTutor({ firstName }: { firstName?: string }) {
           type="submit"
           disabled={busy || out || !text.trim()}
           aria-label={t("tutor.send")}
-          style={{ flexShrink: 0, width: 44, height: 44, borderRadius: 12, border: "none", background: busy || out || !text.trim() ? "#C7CAD6" : ACCENT, color: "#fff", fontSize: 18, cursor: busy || out || !text.trim() ? "default" : "pointer" }}
+          style={{ flexShrink: 0, width: 44, height: 44, borderRadius: "var(--radius-md)", border: "none", background: busy || out || !text.trim() ? "var(--border-strong)" : ACCENT, color: "var(--on-ink)", fontSize: 18, cursor: busy || out || !text.trim() ? "default" : "pointer" }}
         >
           ➤
         </button>
       </form>
-      <div style={{ fontSize: 12, color: "#686B75", textAlign: "center" }}>{t("tutor.footer")}</div>
+      <div style={{ fontSize: 12, color: "var(--text-muted)", textAlign: "center" }}>{t("tutor.footer")}</div>
       <style>{`
         .tutor-typing{display:inline-flex;gap:4px;padding:4px 0;}
-        .tutor-typing i{width:7px;height:7px;border-radius:50%;background:#A5A8B5;display:block;animation:tutorDot 1.2s infinite ease-in-out;}
+        .tutor-typing i{width:7px;height:7px;border-radius:50%;background:var(--text-faint);display:block;animation:tutorDot 1.2s infinite ease-in-out;}
         .tutor-typing i:nth-child(2){animation-delay:.15s}.tutor-typing i:nth-child(3){animation-delay:.3s}
         @media (max-width:640px){.tutor-input{bottom:calc(74px + env(safe-area-inset-bottom))!important;}}
         @keyframes tutorDot{0%,80%,100%{opacity:.3;transform:translateY(0)}40%{opacity:1;transform:translateY(-3px)}}

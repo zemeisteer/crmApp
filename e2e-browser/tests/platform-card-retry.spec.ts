@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { api, centerUrl, cleanUpStagingCenters, expectCenterDashboard, loginOnMainSite, newCenter, TARGET } from './support';
+import { fetchViaApi, api, centerUrl, cleanUpStagingCenters, expectCenterDashboard, loginOnMainSite, newCenter, TARGET } from './support';
 
 // Sending a platform receipt when the network misbehaves: the answer to a
 // send is lost (the server did get it); the user retries, or picks another
@@ -40,7 +40,7 @@ async function loseNextAnswer(page: Page) {
   await page.route('**/api/platform-billing/card', async (route) => {
     if (done || route.request().method() !== 'POST') return route.fallback();
     done = true;
-    await route.fetch(); // the server receives and stores it
+    await fetchViaApi(route); // the server receives and stores it
     await route.abort('timedout'); // the browser never hears back
   });
 }

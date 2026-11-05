@@ -26,12 +26,12 @@ export default function PortalCustomFields({ token }: { token: string | null }) 
 
   if (items.length === 0) return null;
   return (
-    <section aria-labelledby="portal-cf-title" style={{ background: "#fff", border: "1px solid #E2E8F0", borderRadius: 16, padding: 16, marginTop: 14 }}>
-      <h2 id="portal-cf-title" style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 700, fontSize: 16, marginBottom: 10 }}>{t("cf.portalTitle")}</h2>
+    <section aria-labelledby="portal-cf-title" style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 16, marginTop: 14 }}>
+      <h2 id="portal-cf-title" style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 16, marginBottom: 10 }}>{t("cf.portalTitle")}</h2>
       <dl style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 220px), 1fr))", gap: "12px 16px", margin: 0 }}>
         {items.map((it) => (
           <div key={it.id} style={{ minWidth: 0 }}>
-            <dt style={{ fontSize: 12.5, color: "#5B6577" }}>{it.label}</dt>
+            <dt style={{ fontSize: 12.5, color: "var(--text-muted)" }}>{it.label}</dt>
             <dd style={{ margin: "3px 0 0", fontSize: 14.5, fontWeight: 600, overflowWrap: "anywhere", whiteSpace: "pre-wrap" }}>{it.value || "—"}</dd>
           </div>
         ))}

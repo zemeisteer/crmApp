@@ -1,6 +1,6 @@
 "use client";
 
-const ACCENT = "#4F46E5";
+const ACCENT = "var(--primary)";
 
 export function usePagedSlice<T>(items: T[], page: number, pageSize = 20): T[] {
   const start = (page - 1) * pageSize;
@@ -30,31 +30,31 @@ export default function Pagination({
         className="btn"
         onClick={() => onChange(page - 1)}
         disabled={page <= 1}
-        style={{ background: "#F2F1EC", color: "#181A1F", border: "none", fontSize: 12.5, fontWeight: 700, padding: "7px 12px", borderRadius: 8 }}
+        style={{ background: "var(--surface-muted)", color: "var(--text)", border: "none", fontSize: 12.5, fontWeight: 700, padding: "7px 12px", borderRadius: "var(--radius-xs)" }}
       >
         ‹
       </button>
-      {pages[0] > 1 && <span style={{ color: "#686B75", fontSize: 12.5 }}>…</span>}
+      {pages[0] > 1 && <span style={{ color: "var(--text-muted)", fontSize: 12.5 }}>…</span>}
       {pages.map((p) => (
         <button
           key={p}
           className="btn"
           onClick={() => onChange(p)}
           style={{
-            background: p === page ? ACCENT : "#F2F1EC",
-            color: p === page ? "#fff" : "#181A1F",
-            border: "none", fontSize: 12.5, fontWeight: 700, padding: "7px 12px", borderRadius: 8, minWidth: 34,
+            background: p === page ? ACCENT : "var(--surface-muted)",
+            color: p === page ? "var(--on-ink)" : "var(--text)",
+            border: "none", fontSize: 12.5, fontWeight: 700, padding: "7px 12px", borderRadius: "var(--radius-xs)", minWidth: 34,
           }}
         >
           {p}
         </button>
       ))}
-      {pages[pages.length - 1] < pageCount && <span style={{ color: "#686B75", fontSize: 12.5 }}>…</span>}
+      {pages[pages.length - 1] < pageCount && <span style={{ color: "var(--text-muted)", fontSize: 12.5 }}>…</span>}
       <button
         className="btn"
         onClick={() => onChange(page + 1)}
         disabled={page >= pageCount}
-        style={{ background: "#F2F1EC", color: "#181A1F", border: "none", fontSize: 12.5, fontWeight: 700, padding: "7px 12px", borderRadius: 8 }}
+        style={{ background: "var(--surface-muted)", color: "var(--text)", border: "none", fontSize: 12.5, fontWeight: 700, padding: "7px 12px", borderRadius: "var(--radius-xs)" }}
       >
         ›
       </button>

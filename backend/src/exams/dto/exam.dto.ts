@@ -20,13 +20,16 @@ export class CreateExamDto {
   @IsArray()
   @ArrayMinSize(1)
   @IsString({ each: true })
+  @MaxLength(2000, { each: true })
   groupIds: string[];
 
   @IsString()
+  @MaxLength(2000)
   title: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(50000)
   description?: string;
 
   @IsOptional()
@@ -46,11 +49,13 @@ export class CreateExamDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(2000)
   examDate?: string;
 }
 
 export class ExamResultEntryDto {
   @IsString()
+  @MaxLength(2000)
   studentId: string;
 
   @IsInt()
@@ -59,6 +64,7 @@ export class ExamResultEntryDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(50000)
   note?: string;
 }
 
@@ -72,6 +78,7 @@ export class SubmitResultsDto {
 // Shape of one question (validated in depth by normalizeQuestion).
 export class CreateExamQuestionDto {
   @IsString()
+  @MaxLength(50000)
   @IsNotEmpty()
   prompt: string;
 
@@ -88,6 +95,7 @@ export class CreateExamQuestionDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(50000)
   correctAnswer?: string;
 
   @IsOptional() @IsString() @MaxLength(300) section?: string | null;
@@ -99,6 +107,7 @@ export class CreateExamQuestionDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(2000)
   explanation?: string | null;
 
   @IsOptional()
@@ -130,6 +139,7 @@ export class BatchCreateQuestionsDto {
 
 export class SubmitAttemptDto {
   @IsString()
+  @MaxLength(2000)
   @IsNotEmpty()
   studentId: string;
 

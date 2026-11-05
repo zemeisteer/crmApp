@@ -6,7 +6,7 @@ import Link from "next/link";
 import { authApi, ApiError } from "@/lib/api";
 import { useLanguage } from "@/lib/i18n-context";
 
-const ACCENT = "#4F46E5";
+const ACCENT = "var(--primary)";
 
 function VerifyEmailContent() {
   const { t } = useLanguage();
@@ -37,12 +37,12 @@ function VerifyEmailContent() {
   return (
     <div style={{ textAlign: "center", display: "flex", flexDirection: "column", gap: 14 }}>
       <h1 style={{ fontSize: 20, fontWeight: 800 }}>{t("verifyEmail.title")}</h1>
-      {status === "loading" && <div style={{ color: "#686B75", fontSize: 14 }}>{t("verifyEmail.verifying")}</div>}
+      {status === "loading" && <div style={{ color: "var(--text-muted)", fontSize: 14 }}>{t("verifyEmail.verifying")}</div>}
       {status === "ok" && (
-        <div style={{ background: "#E9F8EF", color: "#167A48", fontSize: 13.5, fontWeight: 600, padding: "12px 16px", borderRadius: 10 }}>{message}</div>
+        <div style={{ background: "var(--success-soft)", color: "var(--success)", fontSize: 13.5, fontWeight: 600, padding: "12px 16px", borderRadius: "var(--radius-sm)" }}>{message}</div>
       )}
       {status === "error" && (
-        <div style={{ background: "#FDEBEC", color: "#B23A47", fontSize: 13.5, fontWeight: 600, padding: "12px 16px", borderRadius: 10 }}>{message}</div>
+        <div style={{ background: "var(--danger-soft)", color: "var(--danger)", fontSize: 13.5, fontWeight: 600, padding: "12px 16px", borderRadius: "var(--radius-sm)" }}>{message}</div>
       )}
       <Link href="/login" style={{ color: ACCENT, fontWeight: 600, fontSize: 13.5 }}>
         {t("verifyEmail.goToLogin")}
@@ -54,9 +54,9 @@ function VerifyEmailContent() {
 export default function VerifyEmailPage() {
   const { t } = useLanguage();
   return (
-    <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#F7F7F5" }}>
-      <div style={{ width: 380, background: "#fff", borderRadius: 16, padding: 32 }}>
-        <Suspense fallback={<div style={{ color: "#686B75", fontSize: 14 }}>{t("common.loading")}</div>}>
+    <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <div style={{ width: 380, background: "var(--surface)", borderRadius: "var(--radius-lg)", padding: 32 }}>
+        <Suspense fallback={<div style={{ color: "var(--text-muted)", fontSize: 14 }}>{t("common.loading")}</div>}>
           <VerifyEmailContent />
         </Suspense>
       </div>

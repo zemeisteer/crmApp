@@ -43,12 +43,12 @@ export default function PdfImportPanel({ examId, onImported }: { examId: string;
         onClick={() => inputRef.current?.click()}
         disabled={reading}
         title={error ?? undefined}
-        className="px-3 py-1.5 rounded-lg bg-white border border-indigo-200 hover:bg-indigo-50 disabled:opacity-50 text-indigo-700 text-xs font-semibold transition cursor-pointer"
+        className="px-3 py-1.5 rounded-lg bg-surface border border-primary-border hover:bg-primary-soft disabled:opacity-50 text-primary text-xs font-semibold transition cursor-pointer"
       >
         {reading ? t("pdfq.reading") : t("pdfq.button")}
       </button>
       {error && !drafts && (
-        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 rounded-lg bg-rose-600 text-white text-xs font-semibold px-4 py-2 shadow-lg cursor-pointer" onClick={() => setError(null)}>
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 rounded-lg bg-danger text-white text-xs font-semibold px-4 py-2 shadow-lg cursor-pointer" onClick={() => setError(null)}>
           {error} ✕
         </div>
       )}

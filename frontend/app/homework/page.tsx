@@ -18,7 +18,7 @@ import { useCenterClock } from "@/lib/use-center-clock";
 import { PrivateImg, PrivateLink } from "@/components/PrivateFile";
 import Link from "next/link";
 
-const ACCENT = "#4F46E5";
+const ACCENT = "var(--primary)";
 
 function RosterModal({ homeworkItem, onClose }: { homeworkItem: Homework; onClose: () => void }) {
   const { t } = useLanguage();
@@ -103,21 +103,21 @@ function RosterModal({ homeworkItem, onClose }: { homeworkItem: Homework; onClos
   return (
     <Modal open onClose={onClose} title={`${t("homework.rosterTitlePrefix")} — ${homeworkItem.title}`}>
       {!roster ? (
-        <div style={{ color: "#686B75", fontSize: 13.5 }}>{t("common.loading")}</div>
+        <div style={{ color: "var(--text-muted)", fontSize: 13.5 }}>{t("common.loading")}</div>
       ) : roster.length === 0 ? (
-        <div style={{ color: "#686B75", fontSize: 13.5 }}>{t("homework.noStudentsInGroup")}</div>
+        <div style={{ color: "var(--text-muted)", fontSize: 13.5 }}>{t("homework.noStudentsInGroup")}</div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          <div style={{ fontSize: 12, color: "#64748B" }}>
+          <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
             {t("hw.maxScoreB")} <b>{homeworkItem.maxScore || 100} {t("hw.pointsUnit")}</b>. {t("hw.rosterHint")}
           </div>
           {roster.map((r) => (
             <div
               key={r.student.id}
               style={{
-                background: "#F8FAFC",
-                border: "1px solid #E2E8F0",
-                borderRadius: 12,
+                background: "var(--surface-muted)",
+                border: "1px solid var(--border)",
+                borderRadius: "var(--radius-md)",
                 padding: "12px 14px",
                 display: "flex",
                 flexDirection: "column",
@@ -126,7 +126,7 @@ function RosterModal({ homeworkItem, onClose }: { homeworkItem: Homework; onClos
             >
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <span style={{ fontSize: 14, fontWeight: 700 }}>{r.student.fullName}</span>
-                <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "#64748B", cursor: "pointer" }}>
+                <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--text-muted)", cursor: "pointer" }}>
                   <span>{t("hw.done")}</span>
                   <input
                     type="checkbox"
@@ -140,12 +140,12 @@ function RosterModal({ homeworkItem, onClose }: { homeworkItem: Homework; onClos
               {r.submissionText && (
                 <div
                   style={{
-                    background: "#EFF6FF",
-                    border: "1px solid #DBEAFE",
-                    borderRadius: 8,
+                    background: "var(--info-soft)",
+                    border: "1px solid var(--info-border)",
+                    borderRadius: "var(--radius-xs)",
                     padding: 8,
                     fontSize: 12,
-                    color: "#1E40AF",
+                    color: "var(--info)",
                   }}
                 >
                   <span style={{ fontWeight: 600 }}>{t("hw.studentAnswer")}</span> {r.submissionText}
@@ -153,9 +153,9 @@ function RosterModal({ homeworkItem, onClose }: { homeworkItem: Homework; onClos
               )}
               {r.submissionAttachmentUrl && (
                 // The student's photo of the notebook (or a file) from the cabinet.
-                <PrivateLink name={r.submissionAttachmentUrl} style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 12, fontWeight: 600, color: "#4F46E5" }}>
+                <PrivateLink name={r.submissionAttachmentUrl} style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 12, fontWeight: 600, color: "var(--primary)" }}>
                   {/\.(jpe?g|png|webp|gif)$/i.test(r.submissionAttachmentUrl) ? (
-                    <PrivateImg name={r.submissionAttachmentUrl} scope="staff" alt="" style={{ width: 120, maxHeight: 120, objectFit: "cover", borderRadius: 8, border: "1px solid #DBEAFE" }} />
+                    <PrivateImg name={r.submissionAttachmentUrl} scope="staff" alt="" style={{ width: 120, maxHeight: 120, objectFit: "cover", borderRadius: "var(--radius-xs)", border: "1px solid var(--info-border)" }} />
                   ) : (
                     <span>📎 {t("homework.file")}</span>
                   )}
@@ -175,8 +175,8 @@ function RosterModal({ homeworkItem, onClose }: { homeworkItem: Homework; onClos
                   style={{
                     width: 90,
                     padding: "6px 10px",
-                    borderRadius: 8,
-                    border: "1px solid #CBD5E1",
+                    borderRadius: "var(--radius-xs)",
+                    border: "1px solid var(--border-strong)",
                     fontSize: 12.5,
                   }}
                 />
@@ -190,8 +190,8 @@ function RosterModal({ homeworkItem, onClose }: { homeworkItem: Homework; onClos
                   style={{
                     flex: 1,
                     padding: "6px 10px",
-                    borderRadius: 8,
-                    border: "1px solid #CBD5E1",
+                    borderRadius: "var(--radius-xs)",
+                    border: "1px solid var(--border-strong)",
                     fontSize: 12.5,
                   }}
                 />
@@ -201,10 +201,10 @@ function RosterModal({ homeworkItem, onClose }: { homeworkItem: Homework; onClos
                   onClick={() => handleGrade(r.student.id)}
                   style={{
                     background: ACCENT,
-                    color: "#fff",
+                    color: "var(--on-ink)",
                     border: "none",
                     padding: "6px 12px",
-                    borderRadius: 8,
+                    borderRadius: "var(--radius-xs)",
                     fontSize: 12,
                     fontWeight: 700,
                     cursor: "pointer",
@@ -264,7 +264,7 @@ function LeaderboardModal({
   }, [list, q, sortBy, limit]);
 
   const medal = (place: number) => (place === 1 ? "🥇" : place === 2 ? "🥈" : place === 3 ? "🥉" : String(place));
-  const tint = (place: number) => (place === 1 ? "#FEF9C3" : place === 2 ? "#F1F5F9" : place === 3 ? "#FFEDD5" : "#fff");
+  const tint = (place: number) => (place === 1 ? "var(--warning-soft)" : place === 2 ? "var(--surface-muted)" : place === 3 ? "var(--accent-soft)" : "var(--surface)");
 
   return (
     <Modal open onClose={onClose} title={t("leader.title")} width={720}>
@@ -297,13 +297,13 @@ function LeaderboardModal({
       </div>
 
       {loading ? (
-        <div style={{ color: "#686B75", fontSize: 13.5 }}>{t("common.loading")}</div>
+        <div style={{ color: "var(--text-muted)", fontSize: 13.5 }}>{t("common.loading")}</div>
       ) : rows.length === 0 ? (
-        <div style={{ color: "#686B75", fontSize: 13.5 }}>{q ? t("leader.notFound") : t("leader.empty")}</div>
+        <div style={{ color: "var(--text-muted)", fontSize: 13.5 }}>{q ? t("leader.notFound") : t("leader.empty")}</div>
       ) : (
-        <div style={{ maxHeight: 460, overflowY: "auto", border: "1px solid #EAE8E2", borderRadius: 12 }}>
+        <div style={{ maxHeight: 460, overflowY: "auto", border: "1px solid var(--border)", borderRadius: "var(--radius-md)" }}>
           <table className="table" style={{ margin: 0 }}>
-            <thead style={{ position: "sticky", top: 0, background: "#fff", zIndex: 1 }}>
+            <thead style={{ position: "sticky", top: 0, background: "var(--surface)", zIndex: 1 }}>
               <tr>
                 <th style={{ width: 56 }}>#</th>
                 <th>{t("leader.student")}</th>
@@ -319,17 +319,17 @@ function LeaderboardModal({
                   <td style={{ fontWeight: 600 }}>{e.studentName}</td>
                   <td style={{ textAlign: "right" }}>
                     {e.homeworkScore}
-                    <span style={{ color: "#A0A3AB", fontSize: 11 }}> · {e.completedHomeworkCount} {t("leader.tasks")}</span>
+                    <span style={{ color: "var(--text-faint)", fontSize: 11 }}> · {e.completedHomeworkCount} {t("leader.tasks")}</span>
                   </td>
                   <td style={{ textAlign: "right" }}>{e.examScore}</td>
-                  <td style={{ textAlign: "right", fontWeight: 800, color: sortBy === "total" ? ACCENT : "#181A1F" }}>{e.totalScore}</td>
+                  <td style={{ textAlign: "right", fontWeight: 800, color: sortBy === "total" ? ACCENT : "var(--text)" }}>{e.totalScore}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
       )}
-      <div style={{ marginTop: 10, fontSize: 12, color: "#686B75" }}>
+      <div style={{ marginTop: 10, fontSize: 12, color: "var(--text-muted)" }}>
         {t("leader.shown")}: {rows.length} / {list.length}
       </div>
     </Modal>
@@ -573,8 +573,8 @@ function HomeworkContent() {
 
   return (
     <>
-      <div style={{ padding: "22px 32px", borderBottom: "1px solid #EAE8E2", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
-        <h1 style={{ fontSize: 22, fontWeight: 800 }}>{t("homework.title")}</h1>
+      <div style={{ padding: "var(--page-head-pad)", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
+        <h1 className="page-title">{t("homework.title")}</h1>
         <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
           <input
             className="field-input"
@@ -600,13 +600,13 @@ function HomeworkContent() {
             type="button"
             onClick={() => setLeaderboardOpen(true)}
             style={{
-              background: "#FEF3C7",
-              color: "#B45309",
-              border: "1px solid #FCD34D",
+              background: "var(--warning-soft)",
+              color: "var(--warning)",
+              border: "1px solid var(--warning-border)",
               fontSize: 13.5,
               fontWeight: 700,
               padding: "10px 18px",
-              borderRadius: 9,
+              borderRadius: "var(--radius-sm)",
               display: "flex",
               alignItems: "center",
               gap: 6,
@@ -619,20 +619,20 @@ function HomeworkContent() {
             className="btn"
             onClick={() => setModalOpen(true)}
             disabled={groups.length === 0}
-            style={{ background: ACCENT, color: "#fff", border: "none", fontSize: 13.5, fontWeight: 700, padding: "10px 18px", borderRadius: 9 }}
+            style={{ background: ACCENT, color: "var(--on-ink)", border: "none", fontSize: 13.5, fontWeight: 700, padding: "10px 18px", borderRadius: "var(--radius-sm)" }}
           >
             {t("homework.newAssignment")}
           </button>
         </div>
       </div>
 
-      <div style={{ flex: 1, minHeight: 0, padding: "26px 32px", overflow: "auto", boxSizing: "border-box" }}>
+      <div style={{ flex: 1, minHeight: 0, padding: "var(--page-pad)", overflow: "auto", boxSizing: "border-box" }}>
         {loadError !== null ? (
           <LoadError message={loadError || t("adm.loadError")} onRetry={load} />
         ) : loading ? (
-          <div style={{ color: "#686B75", fontSize: 14 }}>{t("common.loading")}</div>
+          <div style={{ color: "var(--text-muted)", fontSize: 14 }}>{t("common.loading")}</div>
         ) : groups.length === 0 ? (
-          <div style={{ color: "#686B75", fontSize: 14, background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 32, textAlign: "center" }}>
+          <div style={{ color: "var(--text-muted)", fontSize: 14, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 32, textAlign: "center" }}>
             {t("homework.createGroupFirst")}
           </div>
         ) : (
@@ -646,23 +646,23 @@ function HomeworkContent() {
                   { label: t("hws.avgDone"), value: hwStats.avgDone === null ? "—" : `${hwStats.avgDone}%` },
                   { label: t("hws.notSubmitted"), value: String(hwStats.notSubmitted), danger: hwStats.notSubmitted > 0 },
                 ].map((c) => (
-                  <div key={c.label} style={{ background: c.danger ? "#FDEBEC" : "#fff", border: `1px solid ${c.danger ? "#F6D2D6" : "#EAE8E2"}`, borderRadius: 14, padding: 18 }}>
-                    <div style={{ fontSize: 12, color: c.danger ? "#B23A47" : "#686B75" }}>{c.label}</div>
-                    <div style={{ fontSize: 24, fontWeight: 800, fontFamily: "'Manrope', sans-serif", marginTop: 4, color: c.danger ? "#B23A47" : c.warn ? "#B45309" : "#181A1F" }}>{c.value}</div>
+                  <div key={c.label} style={{ background: c.danger ? "var(--danger-soft)" : "var(--surface)", border: `1px solid ${c.danger ? "var(--danger-border)" : "var(--border)"}`, borderRadius: "var(--radius-lg)", padding: 18 }}>
+                    <div style={{ fontSize: 12, color: c.danger ? "var(--danger)" : "var(--text-muted)" }}>{c.label}</div>
+                    <div style={{ fontSize: 24, fontWeight: 800, fontFamily: "var(--font-display)", marginTop: 4, color: c.danger ? "var(--danger)" : c.warn ? "var(--warning)" : "var(--text)" }}>{c.value}</div>
                   </div>
                 ))}
               </div>
             )}
             {items.length > 0 && (
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 20 }}>
-                <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 20 }}>
+                <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 20 }}>
                   <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 14 }}>{t("homework.completionRateTitle")}</div>
-                  <BarChart data={groupCompletionChart} color="#16794A" formatValue={(v) => `${v}%`} />
+                  <BarChart data={groupCompletionChart} color="var(--success)" formatValue={(v) => `${v}%`} />
                   {groupCompletionChart.length === 0 && (
-                    <div style={{ fontSize: 12, color: "#686B75", marginTop: 8 }}>{t("homework.noCompletionsYet")}</div>
+                    <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 8 }}>{t("homework.noCompletionsYet")}</div>
                   )}
                 </div>
-                <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 20 }}>
+                <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 20 }}>
                   <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 14 }}>{t("homework.countByGroupTitle")}</div>
                   <BarChart data={homeworkCountChart} color={ACCENT} />
                 </div>
@@ -671,27 +671,27 @@ function HomeworkContent() {
 
             {items.length === 0 ? (
               // The first visit: what this page is for and the two ways to start.
-              <div data-testid="homework-empty" style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 28, display: "flex", flexDirection: "column", gap: 16 }}>
+              <div data-testid="homework-empty" style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 28, display: "flex", flexDirection: "column", gap: 16 }}>
                 <div>
-                  <div style={{ fontSize: 17, fontWeight: 800, fontFamily: "'Manrope', sans-serif" }}>{t("hwe.title")}</div>
-                  <div style={{ fontSize: 13.5, color: "#686B75", marginTop: 4, lineHeight: 1.6 }}>{t("hwe.text")}</div>
+                  <div style={{ fontSize: 17, fontWeight: 800, fontFamily: "var(--font-display)" }}>{t("hwe.title")}</div>
+                  <div style={{ fontSize: 13.5, color: "var(--text-muted)", marginTop: 4, lineHeight: 1.6 }}>{t("hwe.text")}</div>
                 </div>
-                <ol style={{ margin: 0, paddingLeft: 20, display: "flex", flexDirection: "column", gap: 6, fontSize: 13.5, color: "#3A3D45", lineHeight: 1.55 }}>
+                <ol style={{ margin: 0, paddingLeft: 20, display: "flex", flexDirection: "column", gap: 6, fontSize: 13.5, color: "var(--text-soft)", lineHeight: 1.55 }}>
                   <li>{t("hwe.step1")}</li>
                   <li>{t("hwe.step2")}</li>
                   <li>{t("hwe.step3")}</li>
                 </ol>
                 <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                  <button type="button" className="btn" onClick={() => setModalOpen(true)} style={{ background: ACCENT, color: "#fff", border: "none", fontSize: 13.5, fontWeight: 700, padding: "10px 18px", borderRadius: 9 }}>
+                  <button type="button" className="btn" onClick={() => setModalOpen(true)} style={{ background: ACCENT, color: "var(--on-ink)", border: "none", fontSize: 13.5, fontWeight: 700, padding: "10px 18px", borderRadius: "var(--radius-sm)" }}>
                     + {t("hwe.create")}
                   </button>
-                  <Link href="/ai-materials" className="btn" style={{ background: "#F1EBFF", color: "#5B21B6", fontSize: 13.5, fontWeight: 700, padding: "10px 18px", borderRadius: 9, textDecoration: "none" }}>
+                  <Link href="/ai-materials" className="btn" style={{ background: "var(--violet-soft)", color: "var(--violet)", fontSize: 13.5, fontWeight: 700, padding: "10px 18px", borderRadius: "var(--radius-sm)", textDecoration: "none" }}>
                     ✨ {t("hwe.withAi")}
                   </Link>
                 </div>
               </div>
             ) : filtered.length === 0 ? (
-              <div style={{ color: "#686B75", fontSize: 14, background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 32, textAlign: "center" }}>
+              <div style={{ color: "var(--text-muted)", fontSize: 14, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 32, textAlign: "center" }}>
                 {t("homework.noSearchResults")}
               </div>
             ) : (
@@ -703,45 +703,45 @@ function HomeworkContent() {
                     const st = hwState(h);
                     const badge =
                       st.status === "DONE"
-                        ? { text: t("hws.stDone"), color: "#167A48", bg: "#E9F8EF" }
+                        ? { text: t("hws.stDone"), color: "var(--success)", bg: "var(--success-soft)" }
                         : st.status === "TODAY"
-                          ? { text: t("hws.stToday"), color: "#B45309", bg: "#FEF3C7" }
+                          ? { text: t("hws.stToday"), color: "var(--warning)", bg: "var(--warning-soft)" }
                           : st.status === "OVERDUE"
-                            ? { text: t("hws.stOverdue"), color: "#B23A47", bg: "#FDEBEC" }
-                            : { text: t("hws.stActive"), color: ACCENT, bg: "#EEF0FF" };
+                            ? { text: t("hws.stOverdue"), color: "var(--danger)", bg: "var(--danger-soft)" }
+                            : { text: t("hws.stActive"), color: ACCENT, bg: "var(--primary-soft)" };
                     return (
-                      <div key={h.id} style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 20, display: "flex", flexDirection: "column", gap: 10 }}>
+                      <div key={h.id} style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 20, display: "flex", flexDirection: "column", gap: 10 }}>
                         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
                           <div>
-                            <div style={{ fontSize: 15.5, fontWeight: 700, fontFamily: "'Manrope', sans-serif" }}>{h.title}</div>
-                            <div style={{ fontSize: 12, color: ACCENT, fontWeight: 600, marginTop: 4, background: "#EEF0FF", display: "inline-block", padding: "3px 9px", borderRadius: 7 }}>
+                            <div style={{ fontSize: 15.5, fontWeight: 700, fontFamily: "var(--font-display)" }}>{h.title}</div>
+                            <div style={{ fontSize: 12, color: ACCENT, fontWeight: 600, marginTop: 4, background: "var(--primary-soft)", display: "inline-block", padding: "3px 9px", borderRadius: "var(--radius-xs)" }}>
                               {h.group?.name || t("homework.groupFallback")}
                             </div>
                           </div>
                           <button
                             className="btn"
                             onClick={() => onDelete(h.id)}
-                            style={{ background: "#FDEBEC", color: "#B23A47", fontSize: 12, fontWeight: 700, padding: "6px 12px", borderRadius: 8, border: "none", flexShrink: 0 }}
+                            style={{ background: "var(--danger-soft)", color: "var(--danger)", fontSize: 12, fontWeight: 700, padding: "6px 12px", borderRadius: "var(--radius-xs)", border: "none", flexShrink: 0 }}
                           >
                             {t("homework.delete")}
                           </button>
                         </div>
-                        {h.description && <div style={{ fontSize: 13.5, lineHeight: 1.6, color: "#4A4E58" }}>{h.description}</div>}
+                        {h.description && <div style={{ fontSize: 13.5, lineHeight: 1.6, color: "var(--text-soft)" }}>{h.description}</div>}
                         <div>
                           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 6 }}>
-                            <span style={{ fontSize: 12.5, fontWeight: 700, color: "#4A4E58" }}>
+                            <span style={{ fontSize: 12.5, fontWeight: 700, color: "var(--text-soft)" }}>
                               {st.size > 0 ? t("hws.submitted").replace("{done}", String(st.done)).replace("{total}", String(st.size)) : t("hws.noStudents")}
                             </span>
-                            <span style={{ fontSize: 11.5, fontWeight: 700, color: badge.color, background: badge.bg, padding: "3px 9px", borderRadius: 100, whiteSpace: "nowrap" }}>{badge.text}</span>
+                            <span style={{ fontSize: 11.5, fontWeight: 700, color: badge.color, background: badge.bg, padding: "3px 9px", borderRadius: "var(--radius-pill)", whiteSpace: "nowrap" }}>{badge.text}</span>
                           </div>
                           {st.size > 0 && (
-                            <div style={{ height: 6, background: "#F1F0EC", borderRadius: 4, overflow: "hidden" }}>
+                            <div style={{ height: 6, background: "var(--surface-muted)", borderRadius: 4, overflow: "hidden" }}>
                               <div style={{ width: `${Math.min(100, Math.round((st.done / st.size) * 100))}%`, height: "100%", background: badge.color, borderRadius: 4 }} />
                             </div>
                           )}
                         </div>
-                        <div style={{ marginTop: "auto", display: "flex", alignItems: "center", justifyContent: "space-between", paddingTop: 10, borderTop: "1px solid #F1F0EC", flexWrap: "wrap", gap: 8 }}>
-                          <div style={{ fontSize: 12, color: "#686B75" }}>{t("homework.due")}: {formatDate(h.dueDate)}</div>
+                        <div style={{ marginTop: "auto", display: "flex", alignItems: "center", justifyContent: "space-between", paddingTop: 10, borderTop: "1px solid var(--border)", flexWrap: "wrap", gap: 8 }}>
+                          <div style={{ fontSize: 12, color: "var(--text-muted)" }}>{t("homework.due")}: {formatDate(h.dueDate)}</div>
                           {h.attachmentPath && (
                             <PrivateLink
                               name={h.attachmentPath}
@@ -754,7 +754,7 @@ function HomeworkContent() {
                         <button
                           className="btn"
                           onClick={() => setRosterHomework(h)}
-                          style={{ background: "#F2F1EC", color: "#181A1F", border: "none", fontSize: 12, fontWeight: 700, padding: "8px 12px", borderRadius: 8 }}
+                          style={{ background: "var(--surface-muted)", color: "var(--text)", border: "none", fontSize: 12, fontWeight: 700, padding: "8px 12px", borderRadius: "var(--radius-xs)" }}
                         >
                           {t("homework.completedCount")} ({completedCount})
                         </button>
@@ -772,10 +772,10 @@ function HomeworkContent() {
       <Modal open={modalOpen} onClose={() => { setModalOpen(false); resetForm(); }} title={t("homework.modalTitle")}>
         <form onSubmit={onSubmit} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           {error && (
-            <div role="alert" style={{ background: "#FDEBEC", color: "#B23A47", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: 10 }}>{error}</div>
+            <div role="alert" style={{ background: "var(--danger-soft)", color: "var(--danger)", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: "var(--radius-sm)" }}>{error}</div>
           )}
           <div>
-            <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>{t("homework.fieldDirection")}</div>
+            <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-soft)", marginBottom: 6 }}>{t("homework.fieldDirection")}</div>
             <Select
               options={[{ value: "", label: t("homework.allDirections") }, ...subjects.map((s) => ({ value: s, label: s }))]}
               value={formDirection}
@@ -783,7 +783,7 @@ function HomeworkContent() {
             />
           </div>
           <div>
-            <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>{t("homework.fieldGroups")}</div>
+            <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-soft)", marginBottom: 6 }}>{t("homework.fieldGroups")}</div>
             <MultiSelect
               options={groupsInFormDirection.map((g) => ({ value: g.id, label: g.name }))}
               selected={groupIds}
@@ -792,11 +792,11 @@ function HomeworkContent() {
             />
           </div>
           <div>
-            <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>{t("homework.fieldTitle")}</div>
+            <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-soft)", marginBottom: 6 }}>{t("homework.fieldTitle")}</div>
             <input className="field-input" required value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Unit 5 grammar" />
           </div>
           <div>
-            <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>{t("homework.fieldDescription")}</div>
+            <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-soft)", marginBottom: 6 }}>{t("homework.fieldDescription")}</div>
             <textarea
               className="field-input"
               rows={3}
@@ -808,11 +808,11 @@ function HomeworkContent() {
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
             <div>
-              <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>{t("homework.fieldDueDate")}</div>
+              <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-soft)", marginBottom: 6 }}>{t("homework.fieldDueDate")}</div>
               <DatePicker value={dueDate} onChange={setDueDate} />
             </div>
             <div>
-              <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>{t("hw.maxScore")}</div>
+              <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-soft)", marginBottom: 6 }}>{t("hw.maxScore")}</div>
               <input
                 className="field-input"
                 type="number"
@@ -825,17 +825,17 @@ function HomeworkContent() {
             </div>
           </div>
           <div>
-            <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>{t("homework.fieldAttachment")}</div>
+            <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-soft)", marginBottom: 6 }}>{t("homework.fieldAttachment")}</div>
             {aiFile && !file ? (
-              <div style={{ border: "1px solid #DDD6FE", background: "#FAF8FF", borderRadius: 10, padding: 10, display: "flex", flexDirection: "column", gap: 8 }}>
+              <div style={{ border: "1px solid var(--primary-border)", background: "var(--violet-soft)", borderRadius: "var(--radius-sm)", padding: 10, display: "flex", flexDirection: "column", gap: 8 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                   <span style={{ fontSize: 22 }}>📄</span>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: "#181A1F", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{(title.trim() || aiFile.title)}.pdf</div>
-                    <div style={{ fontSize: 11.5, color: "#7C3AED", fontWeight: 600 }}>{t("hwAi.fileNote")}</div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{(title.trim() || aiFile.title)}.pdf</div>
+                    <div style={{ fontSize: 11.5, color: "var(--violet)", fontWeight: 600 }}>{t("hwAi.fileNote")}</div>
                   </div>
                   <button type="button" onClick={() => setAiFileEditing((v) => !v)} style={smallBtn}>{aiFileEditing ? t("hwAi.fileDone") : t("hwAi.fileEdit")}</button>
-                  <button type="button" onClick={() => { setAiFile(null); setAiFileEditing(false); }} style={{ ...smallBtn, color: "#B23A47" }} aria-label={t("common.delete")}>✕</button>
+                  <button type="button" onClick={() => { setAiFile(null); setAiFileEditing(false); }} style={{ ...smallBtn, color: "var(--danger)" }} aria-label={t("common.delete")}>✕</button>
                 </div>
                 {aiFileEditing ? (
                   <textarea
@@ -843,10 +843,10 @@ function HomeworkContent() {
                     rows={10}
                     value={aiFile.content}
                     onChange={(e) => setAiFile({ ...aiFile, content: e.target.value })}
-                    style={{ resize: "vertical", fontFamily: "inherit", fontSize: 12.5, background: "#fff" }}
+                    style={{ resize: "vertical", fontFamily: "inherit", fontSize: 12.5, background: "var(--surface)" }}
                   />
                 ) : (
-                  <div style={{ maxHeight: 180, overflowY: "auto", background: "#fff", borderRadius: 8, border: "1px solid #EDE9FE", padding: "8px 12px" }}>
+                  <div style={{ maxHeight: 180, overflowY: "auto", background: "var(--surface)", borderRadius: "var(--radius-xs)", border: "1px solid var(--violet-soft)", padding: "8px 12px" }}>
                     <MarkdownLite text={aiFile.content} style={{ fontSize: 12.5 }} />
                   </div>
                 )}
@@ -854,15 +854,15 @@ function HomeworkContent() {
             ) : (
               <>
                 <input className="field-input" type="file" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
-                {file && aiFile && <div style={{ fontSize: 11.5, color: "#686B75", marginTop: 4 }}>{t("hwAi.fileReplaced")}</div>}
+                {file && aiFile && <div style={{ fontSize: 11.5, color: "var(--text-muted)", marginTop: 4 }}>{t("hwAi.fileReplaced")}</div>}
               </>
             )}
           </div>
           {aiPromptOpen && (
-            <div style={{ border: "1px solid #DDD6FE", background: "#F5F3FF", borderRadius: 12, padding: 14, display: "flex", flexDirection: "column", gap: 10 }}>
+            <div style={{ border: "1px solid var(--primary-border)", background: "var(--violet-soft)", borderRadius: "var(--radius-md)", padding: 14, display: "flex", flexDirection: "column", gap: 10 }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <div style={{ fontSize: 13.5, fontWeight: 700, color: "#5B21B6" }}>{t("hwAi.title")}</div>
-                <button type="button" onClick={() => setAiPromptOpen(false)} style={{ background: "none", border: "none", cursor: "pointer", color: "#7C3AED", fontSize: 14, fontWeight: 800 }} aria-label={t("common.cancel")}>✕</button>
+                <div style={{ fontSize: 13.5, fontWeight: 700, color: "var(--violet)" }}>{t("hwAi.title")}</div>
+                <button type="button" onClick={() => setAiPromptOpen(false)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--violet)", fontSize: 14, fontWeight: 800 }} aria-label={t("common.cancel")}>✕</button>
               </div>
               <textarea
                 className="field-input"
@@ -872,11 +872,11 @@ function HomeworkContent() {
                 value={aiRequest}
                 onChange={(e) => setAiRequest(e.target.value)}
                 placeholder={t("hwAi.placeholder")}
-                style={{ resize: "vertical", background: "#fff" }}
+                style={{ resize: "vertical", background: "var(--surface)" }}
               />
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                 {(["hwAi.example1", "hwAi.example2", "hwAi.example3"] as const).map((k) => (
-                  <button key={k} type="button" onClick={() => setAiRequest(t(k))} style={{ fontSize: 11.5, fontWeight: 600, padding: "5px 10px", borderRadius: 999, border: "1px solid #DDD6FE", background: "#fff", color: "#6D28D9", cursor: "pointer" }}>
+                  <button key={k} type="button" onClick={() => setAiRequest(t(k))} style={{ fontSize: 11.5, fontWeight: 600, padding: "5px 10px", borderRadius: "var(--radius-pill)", border: "1px solid var(--primary-border)", background: "var(--surface)", color: "var(--violet)", cursor: "pointer" }}>
                     {t(k)}
                   </button>
                 ))}
@@ -886,7 +886,7 @@ function HomeworkContent() {
                 className="btn"
                 onClick={onGetAiSuggestion}
                 disabled={aiSuggesting || !aiRequest.trim()}
-                style={{ alignSelf: "flex-end", background: "linear-gradient(135deg, #7C3AED, #4F46E5)", color: "#fff", border: "none", fontSize: 13, fontWeight: 700, padding: "9px 16px", borderRadius: 9, opacity: aiRequest.trim() ? 1 : 0.6 }}
+                style={{ alignSelf: "flex-end", background: "linear-gradient(135deg, var(--violet), var(--primary))", color: "var(--on-ink)", border: "none", fontSize: 13, fontWeight: 700, padding: "9px 16px", borderRadius: "var(--radius-sm)", opacity: aiRequest.trim() ? 1 : 0.6 }}
               >
                 {aiSuggesting ? t("hwAi.loading") : t("hwAi.get")}
               </button>
@@ -896,9 +896,9 @@ function HomeworkContent() {
           {aiSuggestion && (
             <div
               style={{
-                background: "#F7F6FF",
-                border: "1px solid #D7D3F8",
-                borderRadius: 12,
+                background: "var(--primary-soft)",
+                border: "1px solid var(--primary-border)",
+                borderRadius: "var(--radius-md)",
                 padding: 14,
                 display: "flex",
                 flexDirection: "column",
@@ -912,30 +912,30 @@ function HomeworkContent() {
                 <button
                   type="button"
                   onClick={() => setAiSuggestion(null)}
-                  style={{ background: "none", border: "none", color: "#686B75", cursor: "pointer", fontSize: 16, lineHeight: 1 }}
+                  style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", fontSize: 16, lineHeight: 1 }}
                 >
                   ✕
                 </button>
               </div>
-              <div style={{ fontSize: 13.5, fontWeight: 700, color: "#181A1F" }}>{aiSuggestion.title}</div>
-              <div style={{ fontSize: 12.5, color: "#4A4E58", whiteSpace: "pre-line", lineHeight: 1.5 }}>
+              <div style={{ fontSize: 13.5, fontWeight: 700, color: "var(--text)" }}>{aiSuggestion.title}</div>
+              <div style={{ fontSize: 12.5, color: "var(--text-soft)", whiteSpace: "pre-line", lineHeight: 1.5 }}>
                 {aiSuggestion.description}
               </div>
               {aiSuggestion.content && (
-                <div style={{ background: "#fff", border: "1px solid #E4E1FB", borderRadius: 8, padding: "8px 12px", maxHeight: 200, overflowY: "auto" }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: "#7C3AED", marginBottom: 4 }}>📄 {t("hwAi.fileWillAttach")}</div>
+                <div style={{ background: "var(--surface)", border: "1px solid #E4E1FB", borderRadius: "var(--radius-xs)", padding: "8px 12px", maxHeight: 200, overflowY: "auto" }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: "var(--violet)", marginBottom: 4 }}>📄 {t("hwAi.fileWillAttach")}</div>
                   <MarkdownLite text={aiSuggestion.content} style={{ fontSize: 12.5 }} />
                 </div>
               )}
               {aiSuggestion.dueDate && (
-                <div style={{ fontSize: 11.5, color: "#686B75" }}>{t("hwAi.dueSuggested")}: {aiSuggestion.dueDate}</div>
+                <div style={{ fontSize: 11.5, color: "var(--text-muted)" }}>{t("hwAi.dueSuggested")}: {aiSuggestion.dueDate}</div>
               )}
               <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
                 <button
                   type="button"
                   className="btn"
                   onClick={applyAiSuggestion}
-                  style={{ background: ACCENT, color: "#fff", border: "none", fontSize: 12, fontWeight: 700, padding: "8px 14px", borderRadius: 8 }}
+                  style={{ background: ACCENT, color: "var(--on-ink)", border: "none", fontSize: 12, fontWeight: 700, padding: "8px 14px", borderRadius: "var(--radius-xs)" }}
                 >
                   ✅ {t("hwAi.apply")}
                 </button>
@@ -944,7 +944,7 @@ function HomeworkContent() {
                   className="btn"
                   onClick={onGetAiSuggestion}
                   disabled={aiSuggesting}
-                  style={{ background: "#fff", color: ACCENT, border: `1px solid ${ACCENT}`, fontSize: 12, fontWeight: 700, padding: "8px 14px", borderRadius: 8 }}
+                  style={{ background: "var(--surface)", color: ACCENT, border: `1px solid ${ACCENT}`, fontSize: 12, fontWeight: 700, padding: "8px 14px", borderRadius: "var(--radius-xs)" }}
                 >
                   🔄 {t("hwAi.another")}
                 </button>
@@ -959,12 +959,12 @@ function HomeworkContent() {
               onClick={() => setAiPromptOpen((v) => !v)}
               disabled={aiSuggesting || saving}
               style={{
-                background: "linear-gradient(135deg, #7C3AED, #4F46E5)",
-                color: "#fff",
+                background: "linear-gradient(135deg, var(--violet), var(--primary))",
+                color: "var(--on-ink)",
                 fontSize: 13.5,
                 fontWeight: 700,
                 padding: "12px 16px",
-                borderRadius: 10,
+                borderRadius: "var(--radius-sm)",
                 border: "none",
                 display: "flex",
                 alignItems: "center",
@@ -980,7 +980,7 @@ function HomeworkContent() {
               className="btn"
               type="submit"
               disabled={saving}
-              style={{ flex: 1, background: ACCENT, color: "#fff", fontSize: 14, fontWeight: 700, padding: 12, borderRadius: 10 }}
+              style={{ flex: 1, background: ACCENT, color: "var(--on-ink)", fontSize: 14, fontWeight: 700, padding: 12, borderRadius: "var(--radius-sm)" }}
             >
               {saving ? t("homework.adding") : t("homework.assign")}
             </button>
@@ -1018,4 +1018,4 @@ export default function HomeworkPage() {
   );
 }
 
-const smallBtn: React.CSSProperties = { background: "#fff", border: "1px solid #E4E1FB", color: "#4F46E5", fontSize: 12, fontWeight: 700, padding: "5px 10px", borderRadius: 7, cursor: "pointer", whiteSpace: "nowrap" };
+const smallBtn: React.CSSProperties = { background: "var(--surface)", border: "1px solid #E4E1FB", color: "var(--primary)", fontSize: 12, fontWeight: 700, padding: "5px 10px", borderRadius: "var(--radius-xs)", cursor: "pointer", whiteSpace: "nowrap" };

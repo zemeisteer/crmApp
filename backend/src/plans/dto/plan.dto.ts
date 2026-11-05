@@ -19,9 +19,11 @@ import { MAX_MONEY } from '../../common/money';
 
 export class CreatePlanDto {
   @IsString()
+  @MaxLength(2000)
   key: string;
 
   @IsString()
+  @MaxLength(2000)
   name: string;
 
   @IsInt()
@@ -31,6 +33,7 @@ export class CreatePlanDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(2000)
   features?: string;
 
   @IsOptional() @IsString() featuresRu?: string;

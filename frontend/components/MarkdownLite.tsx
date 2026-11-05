@@ -5,11 +5,11 @@ import { Fragment, type ReactNode } from "react";
 export default function MarkdownLite({ text, style }: { text: string; style?: React.CSSProperties }) {
   const lines = text.replace(/\r/g, "").split("\n");
   return (
-    <div style={{ fontSize: 13.5, lineHeight: 1.65, color: "#2C3038", ...style }}>
+    <div style={{ fontSize: 13.5, lineHeight: 1.65, color: "var(--text-soft)", ...style }}>
       {lines.map((raw, i) => {
         const line = raw.trimEnd();
         if (!line.trim()) return <div key={i} style={{ height: 8 }} />;
-        if (/^\s*(-{3,}|\*{3,}|_{3,})\s*$/.test(line)) return <hr key={i} style={{ border: "none", borderTop: "1px solid #E5E7EB", margin: "10px 0" }} />;
+        if (/^\s*(-{3,}|\*{3,}|_{3,})\s*$/.test(line)) return <hr key={i} style={{ border: "none", borderTop: "1px solid var(--border)", margin: "10px 0" }} />;
         const heading = line.match(/^(#{1,4})\s+(.*)$/);
         if (heading) {
           return (
@@ -22,7 +22,7 @@ export default function MarkdownLite({ text, style }: { text: string; style?: Re
         if (bullet) {
           return (
             <div key={i} style={{ display: "flex", gap: 8, paddingLeft: 6 + Math.min(3, Math.floor(bullet[1].length / 2)) * 14 }}>
-              <span style={{ color: "#94A3B8" }}>•</span>
+              <span style={{ color: "var(--text-faint)" }}>•</span>
               <span>{inline(bullet[2])}</span>
             </div>
           );

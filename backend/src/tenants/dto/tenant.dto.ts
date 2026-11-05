@@ -2,19 +2,23 @@ import { IsArray, Equals, IsEmail, IsIn, IsInt, IsOptional, IsString, Max, MaxLe
 
 export class CreateTenantDto {
   @IsString()
+  @MaxLength(2000)
   name: string;
 
   @IsString()
+  @MaxLength(2000)
   subdomain: string;
 
   @IsEmail()
   adminEmail: string;
 
   @IsString()
+  @MaxLength(2000)
   @MinLength(6)
   adminPassword: string;
 
   @IsString()
+  @MaxLength(2000)
   adminFullName: string;
 }
 
@@ -28,6 +32,7 @@ export class UpdateTenantDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(2000)
   name?: string;
 
   // Daily AI tutor questions per student in Telegram (0 turns it off).
@@ -39,6 +44,7 @@ export class UpdateTenantDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(2000)
   accentColor?: string;
 
   @IsOptional()
@@ -47,10 +53,12 @@ export class UpdateTenantDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(2000)
   phone?: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(2000)
   address?: string;
 
   @IsOptional()
@@ -59,14 +67,17 @@ export class UpdateTenantDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(2000)
   telegramUsername?: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(2000)
   website?: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(2000)
   websiteLabel?: string;
 
   @IsOptional()
@@ -93,6 +104,7 @@ export class UpdateTenantStatusDto {
   // beyond the original 3 tiers from the Tariflar page.
   @IsOptional()
   @IsString()
+  @MaxLength(2000)
   plan?: string;
 }
 

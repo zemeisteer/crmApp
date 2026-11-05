@@ -42,14 +42,14 @@ type FieldErrors = Partial<Record<"fullName" | "phone" | "secondaryPhone" | "ema
 function FieldError({ msg }: { msg?: string }) {
   if (!msg) return null;
   return (
-    <div role="alert" style={{ marginTop: 5, fontSize: 12, fontWeight: 600, color: "#B91C1C", display: "flex", alignItems: "center", gap: 5 }}>
-      <span aria-hidden style={{ display: "inline-flex", width: 14, height: 14, borderRadius: 7, background: "#B91C1C", color: "#fff", fontSize: 10, alignItems: "center", justifyContent: "center" }}>!</span>
+    <div role="alert" style={{ marginTop: 5, fontSize: 12, fontWeight: 600, color: "var(--danger)", display: "flex", alignItems: "center", gap: 5 }}>
+      <span aria-hidden style={{ display: "inline-flex", width: 14, height: 14, borderRadius: "var(--radius-xs)", background: "var(--danger)", color: "var(--on-ink)", fontSize: 10, alignItems: "center", justifyContent: "center" }}>!</span>
       {msg}
     </div>
   );
 }
 
-const errBorder = (on: boolean): React.CSSProperties | undefined => (on ? { borderColor: "#DC2626", boxShadow: "0 0 0 3px rgba(220,38,38,0.12)" } : undefined);
+const errBorder = (on: boolean): React.CSSProperties | undefined => (on ? { borderColor: "var(--danger)", boxShadow: "0 0 0 3px rgba(220,38,38,0.12)" } : undefined);
 
 interface Props {
   open: boolean;
@@ -241,7 +241,7 @@ export default function LeadFormModal({ open, onClose, onSaved, lead, managers =
               placeholder={t("common.notSelected")}
               options={[{ value: "", label: t("common.notSelected") }, ...subjects.map((s) => ({ value: s.id, label: s.name }))]}
             />
-            {subjects.length === 0 && <div style={{ marginTop: 5, fontSize: 12, color: "#686B75" }}>{t("leadForm.noSubjectsHint")}</div>}
+            {subjects.length === 0 && <div style={{ marginTop: 5, fontSize: 12, color: "var(--text-muted)" }}>{t("leadForm.noSubjectsHint")}</div>}
           </div>
           {((subjectId && subjects.length > 1) || extraIds.length > 0) && (
             <div style={{ gridColumn: "1 / -1" }}>
@@ -264,13 +264,13 @@ export default function LeadFormModal({ open, onClose, onSaved, lead, managers =
                       onClick={() => setExtraIds((prev) => (on ? prev.filter((id) => id !== s.id) : [...prev, s.id]))}
                       style={{
                         padding: "6px 12px",
-                        borderRadius: 999,
+                        borderRadius: "var(--radius-pill)",
                         fontSize: 12.5,
                         fontWeight: 600,
                         cursor: full ? "not-allowed" : "pointer",
-                        border: `1px solid ${on ? "#4F46E5" : "#E2E0DA"}`,
-                        background: on ? "#EEF0FF" : "#fff",
-                        color: on ? "#4F46E5" : full ? "#A3A6AE" : "#3A3D45",
+                        border: `1px solid ${on ? "var(--primary)" : "var(--border)"}`,
+                        background: on ? "var(--primary-soft)" : "var(--surface)",
+                        color: on ? "var(--primary)" : full ? "var(--text-faint)" : "var(--text-soft)",
                       }}
                     >
                       {on ? "✓ " : "+ "}{s.name}
@@ -278,7 +278,7 @@ export default function LeadFormModal({ open, onClose, onSaved, lead, managers =
                   );
                 })}
               </div>
-              <div style={{ marginTop: 5, fontSize: 12, color: "#686B75" }}>{t("leadForm.extraSubjectsHint")}</div>
+              <div style={{ marginTop: 5, fontSize: 12, color: "var(--text-muted)" }}>{t("leadForm.extraSubjectsHint")}</div>
             </div>
           )}
           {courses.length > 0 && (
@@ -308,7 +308,7 @@ export default function LeadFormModal({ open, onClose, onSaved, lead, managers =
               <label style={label}>{t("adm.fieldFollowUp")}</label>
               <DatePicker value={followDate} onChange={setFollowDate} />
               <CenterTimeNote tz={tz} text={t("adm.centerTime")} />
-              <div style={{ marginTop: 5, fontSize: 12, color: "#686B75" }}>{t("leadForm.followUpHint")}</div>
+              <div style={{ marginTop: 5, fontSize: 12, color: "var(--text-muted)" }}>{t("leadForm.followUpHint")}</div>
             </div>
           )}
         </div>
@@ -318,21 +318,21 @@ export default function LeadFormModal({ open, onClose, onSaved, lead, managers =
           <textarea className="field-input" rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} maxLength={5000} />
         </div>
 
-        {cfDefs.error && <div role="alert" style={{ marginTop: 14, fontSize: 12.5, fontWeight: 600, color: "#B45309" }}>{t("cf.defsError")}</div>}
+        {cfDefs.error && <div role="alert" style={{ marginTop: 14, fontSize: 12.5, fontWeight: 600, color: "var(--warning)" }}>{t("cf.defsError")}</div>}
         <div style={{ marginTop: 14 }}>
           <CustomFieldInputs defs={cfDefs.defs ?? []} values={cf.draft} errors={cf.errors} onChange={cf.change} idPrefix={editing ? "lead-edit-cf" : "lead-new-cf"} title={t("cf.section")} />
         </div>
 
         {duplicates.length > 0 && (
-          <div style={{ marginTop: 14, padding: 14, borderRadius: 12, background: "#FFFBEB", border: "1px solid #FDE68A" }}>
-            <div style={{ fontWeight: 700, fontSize: 13.5, color: "#92400E" }}>{t("adm.duplicateTitle")}</div>
-            <div style={{ fontSize: 12.5, color: "#92400E", marginTop: 4 }}>{t("adm.duplicateHint")}</div>
+          <div style={{ marginTop: 14, padding: 14, borderRadius: "var(--radius-md)", background: "var(--warning-soft)", border: "1px solid var(--warning-border)" }}>
+            <div style={{ fontWeight: 700, fontSize: 13.5, color: "var(--warning)" }}>{t("adm.duplicateTitle")}</div>
+            <div style={{ fontSize: 12.5, color: "var(--warning)", marginTop: 4 }}>{t("adm.duplicateHint")}</div>
             <ul style={{ margin: "10px 0 0", padding: 0, listStyle: "none", display: "grid", gap: 6 }}>
               {duplicates.map((d) => (
                 <li key={d.id} style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                  <Link href={`/leads/${d.id}`} style={{ fontWeight: 700, color: "#4F46E5" }}>{d.fullName}</Link>
+                  <Link href={`/leads/${d.id}`} style={{ fontWeight: 700, color: "var(--primary)" }}>{d.fullName}</Link>
                   <StatusBadge status={d.status} label={t(statusKey(d.status))} />
-                  <span style={{ fontSize: 12, color: "#686B75" }}>({d.matchedOn === "phone" ? t("leads.fieldPhone") : t("adm.fieldEmail")})</span>
+                  <span style={{ fontSize: 12, color: "var(--text-muted)" }}>({d.matchedOn === "phone" ? t("leads.fieldPhone") : t("adm.fieldEmail")})</span>
                 </li>
               ))}
             </ul>
@@ -358,7 +358,7 @@ export default function LeadFormModal({ open, onClose, onSaved, lead, managers =
         )}
 
         {error && duplicates.length === 0 && (
-          <div role="alert" style={{ marginTop: 14, color: "#B91C1C", fontSize: 13, fontWeight: 600 }}>{error}</div>
+          <div role="alert" style={{ marginTop: 14, color: "var(--danger)", fontSize: 13, fontWeight: 600 }}>{error}</div>
         )}
 
         <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 18 }}>

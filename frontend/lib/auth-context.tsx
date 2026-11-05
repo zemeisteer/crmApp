@@ -5,9 +5,8 @@ import { useRouter } from "next/navigation";
 import { centerRedirectBase, rememberCenter } from "./domain";
 import {
   authApi,
-  getToken,
+  hasSession,
   setToken,
-  setRefreshToken,
   clearToken,
   markLeavingForCenter,
   Tenant,
@@ -122,8 +121,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   useEffect(() => {
-    const token = getToken();
-    if (!token) {
+    if (!hasSession()) {
       setLoading(false);
       return;
     }
@@ -132,7 +130,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   function setAuthSession(res: AuthResponse, redirectUrl?: string) {
     setToken(res.accessToken);
-    setRefreshToken(res.refreshToken);
     setUser(res.user);
     setTenant(res.tenant);
 
@@ -163,7 +160,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // submitted, but let the login page show the picker before navigating.
     if (isWorkspaceSelection(res)) {
       setToken(res.accessToken);
-      setRefreshToken(res.refreshToken);
       return res;
     }
 
@@ -184,7 +180,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if ("pendingToken" in res) return res;
     if (isWorkspaceSelection(res)) {
       setToken(res.accessToken);
-      setRefreshToken(res.refreshToken);
       return res;
     }
     setAuthSession(res);
@@ -204,7 +199,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }) {
     const res = await authApi.register(data);
     setToken(res.accessToken);
-    setRefreshToken(res.refreshToken);
     setUser(res.user);
     setTenant(res.tenant);
     // Directly start center onboarding wizard

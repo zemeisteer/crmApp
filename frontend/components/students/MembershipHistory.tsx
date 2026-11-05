@@ -32,31 +32,31 @@ export default function MembershipHistory({ studentId, refreshKey }: { studentId
   }, [studentId, refreshKey, nonce]);
 
   return (
-    <section aria-label={t("mh.title")} style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 20, minWidth: 0 }}>
-      <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 700, fontSize: 15, marginBottom: 4 }}>{t("mh.title")}</div>
-      <div style={{ fontSize: 12.5, color: "#686B75", marginBottom: 12, lineHeight: 1.5 }}>{t("mh.hint")}</div>
+    <section aria-label={t("mh.title")} style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 20, minWidth: 0 }}>
+      <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 15, marginBottom: 4 }}>{t("mh.title")}</div>
+      <div style={{ fontSize: 12.5, color: "var(--text-muted)", marginBottom: 12, lineHeight: 1.5 }}>{t("mh.hint")}</div>
       {failed ? (
-        <div role="alert" style={{ fontSize: 13, fontWeight: 600, color: "#B23A47", display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+        <div role="alert" style={{ fontSize: 13, fontWeight: 600, color: "var(--danger)", display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
           {t("mh.error")}
-          <button type="button" className="btn" onClick={() => setNonce((n) => n + 1)} style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 8, padding: "5px 10px", fontSize: 12.5, fontWeight: 700 }}>{t("err.retry")}</button>
+          <button type="button" className="btn" onClick={() => setNonce((n) => n + 1)} style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-xs)", padding: "5px 10px", fontSize: 12.5, fontWeight: 700 }}>{t("err.retry")}</button>
         </div>
       ) : stays === null ? (
-        <div style={{ fontSize: 13, color: "#686B75" }}>{t("common.loading")}</div>
+        <div style={{ fontSize: 13, color: "var(--text-muted)" }}>{t("common.loading")}</div>
       ) : stays.length === 0 ? (
-        <div style={{ fontSize: 13, color: "#686B75" }}>{t("mh.empty")}</div>
+        <div style={{ fontSize: 13, color: "var(--text-muted)" }}>{t("mh.empty")}</div>
       ) : (
         <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 8 }}>
           {stays.map((s) => (
-            <li key={s.id} style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center", background: "#FAF9F6", borderRadius: 10, padding: "9px 12px", fontSize: 13 }}>
+            <li key={s.id} style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center", background: "var(--surface-muted)", borderRadius: "var(--radius-sm)", padding: "9px 12px", fontSize: 13 }}>
               <span style={{ minWidth: 0 }}>
-                <Link href={`/groups/${s.groupId}`} style={{ fontWeight: 700, color: "#181A1F" }}>{s.groupName}</Link>
-                <span style={{ color: "#686B75" }}>
+                <Link href={`/groups/${s.groupId}`} style={{ fontWeight: 700, color: "var(--text)" }}>{s.groupName}</Link>
+                <span style={{ color: "var(--text-muted)" }}>
                   {" · "}
                   {formatDate(s.startedAt, lang, "short")} – {s.endedAt ? formatDate(s.endedAt, lang, "short") : t("mh.now")}
                   {s.endedAt && s.endReason ? ` · ${t(`mh.reason.${s.endReason}` as TranslationKey)}` : ""}
                 </span>
               </span>
-              <span style={{ fontSize: 11.5, fontWeight: 800, padding: "3px 10px", borderRadius: 100, whiteSpace: "nowrap", background: s.endedAt ? "#F2F1EC" : "#E9F8EF", color: s.endedAt ? "#686B75" : "#16794A" }}>
+              <span style={{ fontSize: 11.5, fontWeight: 800, padding: "3px 10px", borderRadius: "var(--radius-pill)", whiteSpace: "nowrap", background: s.endedAt ? "var(--surface-muted)" : "var(--success-soft)", color: s.endedAt ? "var(--text-muted)" : "var(--success)" }}>
                 {s.endedAt ? t("mh.ended") : t("mh.current")}
                 {s.source === "LEGACY" ? ` · ${t("mh.legacy")}` : ""}
               </span>

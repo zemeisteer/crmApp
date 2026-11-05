@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useLanguage } from "@/lib/i18n-context";
 import { usePopoverPlacement, useEscapeToClose } from "@/lib/use-popover";
 
-const ACCENT = "#4F46E5";
+const ACCENT = "var(--primary)";
 const HOURS = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, "0"));
 const MINUTES = ["00", "15", "30", "45"];
 
@@ -51,8 +51,8 @@ export default function TimePicker({
         className="field-input"
         style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, cursor: "pointer", textAlign: "left", width: "100%" }}
       >
-        <span style={{ color: value ? "#181A1F" : "#686B75" }}>{value || effectivePlaceholder}</span>
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#686B75" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+        <span style={{ color: value ? "var(--text)" : "var(--text-muted)" }}>{value || effectivePlaceholder}</span>
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
           <circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" />
         </svg>
       </button>
@@ -64,16 +64,16 @@ export default function TimePicker({
             left: 0,
             width: 200,
             zIndex: 50,
-            background: "#fff",
-            border: "1px solid #EAE8E2",
-            borderRadius: 12,
+            background: "var(--surface)",
+            border: "1px solid var(--border)",
+            borderRadius: "var(--radius-md)",
             boxShadow: "0 12px 32px rgba(18,19,26,0.14)",
             display: "flex",
             overflow: "hidden",
             ...place,
           }}
         >
-          <div style={{ flex: 1, maxHeight: 200, overflow: "auto", borderRight: "1px solid #F1F0EC" }}>
+          <div style={{ flex: 1, maxHeight: 200, overflow: "auto", borderRight: "1px solid var(--border)" }}>
             {HOURS.map((hour) => (
               <button
                 type="button"
@@ -82,7 +82,7 @@ export default function TimePicker({
                 style={{
                   display: "block", width: "100%", textAlign: "center", padding: "7px 0", border: "none", cursor: "pointer",
                   fontSize: 13, fontWeight: hour === h ? 700 : 500,
-                  background: hour === h ? "#F7F6FF" : "transparent", color: hour === h ? ACCENT : "#181A1F",
+                  background: hour === h ? "var(--primary-soft)" : "transparent", color: hour === h ? ACCENT : "var(--text)",
                 }}
               >
                 {hour}
@@ -98,7 +98,7 @@ export default function TimePicker({
                 style={{
                   display: "block", width: "100%", textAlign: "center", padding: "7px 0", border: "none", cursor: "pointer",
                   fontSize: 13, fontWeight: min === m ? 700 : 500,
-                  background: min === m ? "#F7F6FF" : "transparent", color: min === m ? ACCENT : "#181A1F",
+                  background: min === m ? "var(--primary-soft)" : "transparent", color: min === m ? ACCENT : "var(--text)",
                 }}
               >
                 {min}

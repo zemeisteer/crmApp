@@ -118,6 +118,8 @@ jobs:
         run: npm audit --omit=dev --audit-level=high
       - run: npx tsc --noEmit
       - run: npm run lint
+      - name: No new raw colors (design tokens only, scripts/redesign/)
+        run: node ../scripts/redesign/check-no-raw-colors.mjs
       # Pure helpers (the center's clock for lead dates), in a timezone far
       # from the centers' so a browser-local mistake would show.
       - run: npm test

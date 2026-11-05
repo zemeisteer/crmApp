@@ -13,8 +13,8 @@ const CRITERIA: Record<string, string> = {
 };
 
 export function bandColor(b: number | null | undefined) {
-  if (b == null) return "#686B75";
-  return b >= 7 ? "#16794A" : b >= 5.5 ? "#4F46E5" : b >= 4 ? "#B45309" : "#DC2626";
+  if (b == null) return "var(--text-muted)";
+  return b >= 7 ? "var(--success)" : b >= 5.5 ? "var(--primary)" : b >= 4 ? "var(--warning)" : "var(--danger)";
 }
 
 // The AI examiner's (or teacher's) feedback: criterion bars, strengths,
@@ -26,34 +26,34 @@ export default function FeedbackView({ fb }: { fb: ExaminerFeedback }) {
       <div style={{ display: "grid", gap: 6 }}>
         {Object.entries(fb.criteria).map(([k, v]) => (
           <div key={k} style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) 110px 34px", gap: 8, alignItems: "center", fontSize: 12.5 }}>
-            <span style={{ color: "#4A4E58", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{CRITERIA[k] ?? k}</span>
-            <span style={{ height: 7, background: "#F2F1EC", borderRadius: 99, overflow: "hidden" }}>
-              <span style={{ display: "block", height: "100%", width: `${(v / 9) * 100}%`, background: bandColor(v), borderRadius: 99 }} />
+            <span style={{ color: "var(--text-soft)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{CRITERIA[k] ?? k}</span>
+            <span style={{ height: 7, background: "var(--surface-muted)", borderRadius: "var(--radius-pill)", overflow: "hidden" }}>
+              <span style={{ display: "block", height: "100%", width: `${(v / 9) * 100}%`, background: bandColor(v), borderRadius: "var(--radius-pill)" }} />
             </span>
             <b style={{ textAlign: "right", color: bandColor(v) }}>{v}</b>
           </div>
         ))}
       </div>
-      {fb.summary && <div style={{ fontSize: 13.5, lineHeight: 1.55, color: "#33363D" }}>{fb.summary}</div>}
+      {fb.summary && <div style={{ fontSize: 13.5, lineHeight: 1.55, color: "var(--text-soft)" }}>{fb.summary}</div>}
       {fb.strengths.length > 0 && (
         <div>
-          <div style={{ fontSize: 12, fontWeight: 800, color: "#167A48", marginBottom: 4 }}>✓ {t("mock.strengths")}</div>
+          <div style={{ fontSize: 12, fontWeight: 800, color: "var(--success)", marginBottom: 4 }}>✓ {t("mock.strengths")}</div>
           <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, lineHeight: 1.55 }}>{fb.strengths.map((s, i) => <li key={i}>{s}</li>)}</ul>
         </div>
       )}
       {fb.improvements.length > 0 && (
         <div>
-          <div style={{ fontSize: 12, fontWeight: 800, color: "#B45309", marginBottom: 4 }}>↗ {t("mock.improve")}</div>
+          <div style={{ fontSize: 12, fontWeight: 800, color: "var(--warning)", marginBottom: 4 }}>↗ {t("mock.improve")}</div>
           <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, lineHeight: 1.55 }}>{fb.improvements.map((s, i) => <li key={i}>{s}</li>)}</ul>
         </div>
       )}
       {fb.corrections && fb.corrections.length > 0 && (
         <div style={{ display: "grid", gap: 6 }}>
-          <div style={{ fontSize: 12, fontWeight: 800, color: "#4F46E5" }}>✎ {t("mock.corrections")}</div>
+          <div style={{ fontSize: 12, fontWeight: 800, color: "var(--primary)" }}>✎ {t("mock.corrections")}</div>
           {fb.corrections.map((c, i) => (
-            <div key={i} style={{ fontSize: 13, background: "#F7F7F5", borderRadius: 10, padding: "8px 10px", lineHeight: 1.5 }}>
-              <div style={{ color: "#B23A47", textDecoration: "line-through" }}>{c.original}</div>
-              <div style={{ color: "#167A48" }}>{c.better}</div>
+            <div key={i} style={{ fontSize: 13, background: "var(--surface-muted)", borderRadius: "var(--radius-sm)", padding: "8px 10px", lineHeight: 1.5 }}>
+              <div style={{ color: "var(--danger)", textDecoration: "line-through" }}>{c.original}</div>
+              <div style={{ color: "var(--success)" }}>{c.better}</div>
             </div>
           ))}
         </div>

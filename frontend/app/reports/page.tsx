@@ -26,7 +26,7 @@ import { centerToday, centerTimeZone } from "@/lib/center-time";
 import { useAuth } from "@/lib/auth-context";
 import { useLanguage } from "@/lib/i18n-context";
 
-const ACCENT = "#4F46E5";
+const ACCENT = "var(--primary)";
 
 function formatMoney(n: number) {
   return new Intl.NumberFormat("uz-UZ").format(n);
@@ -231,10 +231,10 @@ function ReportsContent() {
       <div style={{ display: "grid", gap: 16 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
           <MonthPicker value={reportMonth} onChange={setReportMonth} style={{ width: 200 }} />
-          {reportLoading && <span style={{ fontSize: 12, color: "#686B75" }}>{t("common.loading")}</span>}
+          {reportLoading && <span style={{ fontSize: 12, color: "var(--text-muted)" }}>{t("common.loading")}</span>}
         </div>
         {reportError ? (
-          <div style={{ background: "#FEE2E2", color: "#B91C1C", fontWeight: 600, fontSize: 13, padding: "12px 16px", borderRadius: 12 }}>{reportError}</div>
+          <div style={{ background: "var(--danger-soft)", color: "var(--danger)", fontWeight: 600, fontSize: 13, padding: "12px 16px", borderRadius: "var(--radius-md)" }}>{reportError}</div>
         ) : report ? (
           <ReportsOverviewView report={report} view={view} onSms={openSmsToStudent} />
         ) : null}
@@ -247,8 +247,7 @@ function ReportsContent() {
       {/* Header */}
       <div
         style={{
-          padding: "22px 32px",
-          borderBottom: "1px solid #EAE8E2",
+          padding: "var(--page-head-pad)",
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
@@ -257,28 +256,28 @@ function ReportsContent() {
         }}
       >
         <div>
-          <h1 style={{ fontSize: 22, fontWeight: 800 }}>{t("reports.title")}</h1>
-          <p style={{ fontSize: 12.5, color: "#686B75", marginTop: 2 }}>
+          <h1 className="page-title">{t("reports.title")}</h1>
+          <p style={{ fontSize: 12.5, color: "var(--text-muted)", marginTop: 2 }}>
             {t("rep3.subtitle")}
           </p>
         </div>
 
         {/* Tab switchers */}
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <div style={{ display: "flex", background: "#F2F1EC", borderRadius: 9, padding: 3, gap: 2, flexWrap: "wrap" }}>
+          <div style={{ display: "flex", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 3, gap: 2, flexWrap: "wrap" }}>
             <button
               type="button"
               onClick={() => setActiveTab("director")}
               style={{
                 border: "none",
-                background: activeTab === "director" ? "#fff" : "transparent",
-                color: activeTab === "director" ? "#181A1F" : "#686B75",
+                background: activeTab === "director" ? "var(--ink)" : "transparent",
+                color: activeTab === "director" ? "var(--on-ink)" : "var(--text-muted)",
                 fontWeight: 700,
                 fontSize: 12.5,
                 padding: "6px 14px",
-                borderRadius: 7,
+                borderRadius: "var(--radius-pill)",
                 cursor: "pointer",
-                boxShadow: activeTab === "director" ? "0 1px 3px rgba(0,0,0,0.08)" : "none",
+                boxShadow: "none",
               }}
             >
               👔 {t("dir.tab")}
@@ -288,14 +287,14 @@ function ReportsContent() {
               onClick={() => setActiveTab("overview")}
               style={{
                 border: "none",
-                background: activeTab === "overview" ? "#fff" : "transparent",
-                color: activeTab === "overview" ? "#181A1F" : "#686B75",
+                background: activeTab === "overview" ? "var(--ink)" : "transparent",
+                color: activeTab === "overview" ? "var(--on-ink)" : "var(--text-muted)",
                 fontWeight: 700,
                 fontSize: 12.5,
                 padding: "6px 14px",
-                borderRadius: 7,
+                borderRadius: "var(--radius-pill)",
                 cursor: "pointer",
-                boxShadow: activeTab === "overview" ? "0 1px 3px rgba(0,0,0,0.08)" : "none",
+                boxShadow: "none",
               }}
             >
               📊 {t("rep3.tabOverview")}
@@ -305,14 +304,14 @@ function ReportsContent() {
               onClick={() => setActiveTab("payroll")}
               style={{
                 border: "none",
-                background: activeTab === "payroll" ? "#fff" : "transparent",
-                color: activeTab === "payroll" ? "#181A1F" : "#686B75",
+                background: activeTab === "payroll" ? "var(--ink)" : "transparent",
+                color: activeTab === "payroll" ? "var(--on-ink)" : "var(--text-muted)",
                 fontWeight: 700,
                 fontSize: 12.5,
                 padding: "6px 14px",
-                borderRadius: 7,
+                borderRadius: "var(--radius-pill)",
                 cursor: "pointer",
-                boxShadow: activeTab === "payroll" ? "0 1px 3px rgba(0,0,0,0.08)" : "none",
+                boxShadow: "none",
               }}
             >
               💼 {t("rep3.tabPayroll")}
@@ -322,14 +321,14 @@ function ReportsContent() {
               onClick={() => setActiveTab("retention")}
               style={{
                 border: "none",
-                background: activeTab === "retention" ? "#fff" : "transparent",
-                color: activeTab === "retention" ? "#181A1F" : "#686B75",
+                background: activeTab === "retention" ? "var(--ink)" : "transparent",
+                color: activeTab === "retention" ? "var(--on-ink)" : "var(--text-muted)",
                 fontWeight: 700,
                 fontSize: 12.5,
                 padding: "6px 14px",
-                borderRadius: 7,
+                borderRadius: "var(--radius-pill)",
                 cursor: "pointer",
-                boxShadow: activeTab === "retention" ? "0 1px 3px rgba(0,0,0,0.08)" : "none",
+                boxShadow: "none",
               }}
             >
               🛡️ {t("rep3.tabRetention")} ({report?.atRisk.length ?? 0})
@@ -340,13 +339,13 @@ function ReportsContent() {
             className="btn"
             onClick={() => exportApi.paymentsXlsx()}
             style={{
-              background: "#F2F1EC",
-              color: "#181A1F",
+              background: "var(--surface-muted)",
+              color: "var(--text)",
               border: "none",
               fontSize: 12.5,
               fontWeight: 700,
               padding: "9px 16px",
-              borderRadius: 9,
+              borderRadius: "var(--radius-sm)",
             }}
           >
             {t("reports.exportExcel")}
@@ -354,7 +353,7 @@ function ReportsContent() {
         </div>
       </div>
 
-      <div style={{ flex: 1, minHeight: 0, padding: "26px 32px", display: "flex", flexDirection: "column", gap: 20, overflow: "auto", boxSizing: "border-box" }}>
+      <div style={{ flex: 1, minHeight: 0, padding: "var(--page-pad)", display: "flex", flexDirection: "column", gap: 20, overflow: "auto", boxSizing: "border-box" }}>
         
         {/* ========================================================================= */}
         {/* TAB 1: OVERVIEW & GENERAL FINANCE                                         */}
@@ -372,7 +371,7 @@ function ReportsContent() {
                 <h2 style={{ fontSize: 17, fontWeight: 800, margin: 0 }}>
                   {t("rep3.payrollTitle")}
                 </h2>
-                <p style={{ fontSize: 12, color: "#686B75", margin: "2px 0 0" }}>
+                <p style={{ fontSize: 12, color: "var(--text-muted)", margin: "2px 0 0" }}>
                   {t("rep3.payrollHint")}
                 </p>
               </div>
@@ -390,8 +389,8 @@ function ReportsContent() {
             </div>
 
             {/* Payroll Table */}
-            <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, overflow: "hidden" }}>
-              <div style={{ padding: "16px 20px", borderBottom: "1px solid #EAE8E2", fontSize: 14, fontWeight: 700 }}>
+            <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", overflow: "hidden" }}>
+              <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--border)", fontSize: 14, fontWeight: 700 }}>
                 {t("rep3.sheetTitle").replace("{m}", selectedPayrollMonth)}
               </div>
               {payrollError ? (
@@ -399,9 +398,9 @@ function ReportsContent() {
                   <LoadError message={payrollError} onRetry={() => loadPayroll(selectedPayrollMonth)} />
                 </div>
               ) : loadingPayroll ? (
-                <div style={{ padding: 32, textAlign: "center", color: "#686B75" }}>{t("rep3.calculating")}</div>
+                <div style={{ padding: 32, textAlign: "center", color: "var(--text-muted)" }}>{t("rep3.calculating")}</div>
               ) : !payrollData || payrollData.teachers.length === 0 ? (
-                <div style={{ padding: 32, textAlign: "center", color: "#686B75" }}>{t("rep2.noTeachers")}</div>
+                <div style={{ padding: 32, textAlign: "center", color: "var(--text-muted)" }}>{t("rep2.noTeachers")}</div>
               ) : (
                 <table>
                   <thead>
@@ -421,15 +420,15 @@ function ReportsContent() {
                       <tr key={item.teacherId}>
                         <td>
                           <div style={{ fontWeight: 700 }}>{item.teacherName}</div>
-                          <div style={{ fontSize: 11.5, color: "#686B75" }}>{item.subject || t("rep2.noSubject")} • {item.phone || "—"}</div>
+                          <div style={{ fontSize: 11.5, color: "var(--text-muted)" }}>{item.subject || t("rep2.noSubject")} • {item.phone || "—"}</div>
                         </td>
                         <td>
                           <span
                             style={{
-                              background: item.salaryType === "PERCENTAGE" ? "#FEF3C7" : item.salaryType === "PER_LESSON" ? "#E0F2FE" : "#F3F4F6",
-                              color: item.salaryType === "PERCENTAGE" ? "#B45309" : item.salaryType === "PER_LESSON" ? "#0284C7" : "#4B5563",
+                              background: item.salaryType === "PERCENTAGE" ? "var(--warning-soft)" : item.salaryType === "PER_LESSON" ? "var(--info-soft)" : "var(--surface-muted)",
+                              color: item.salaryType === "PERCENTAGE" ? "var(--warning)" : item.salaryType === "PER_LESSON" ? "var(--info)" : "var(--text-soft)",
                               padding: "3px 8px",
-                              borderRadius: 6,
+                              borderRadius: "var(--radius-xs)",
                               fontSize: 11,
                               fontWeight: 700,
                             }}
@@ -437,7 +436,7 @@ function ReportsContent() {
                             {salaryTypeLabel(item.salaryType)}
                           </span>
                         </td>
-                        <td style={{ fontSize: 12, color: "#4A4E58" }}>
+                        <td style={{ fontSize: 12, color: "var(--text-soft)" }}>
                           {item.salaryType === "FIXED" && t("rep3.detailFixed").replace("{x}", `${formatMoney(item.salaryValue)} ${t("common.sumUnit")}`)}
                           {item.salaryType === "PER_LESSON" && t("rep3.detailPerLesson").replace("{n}", String(item.details.lessonCount || 0)).replace("{x}", `${formatMoney(item.salaryValue)} ${t("common.sumUnit")}`)}
                           {item.salaryType === "PERCENTAGE" && t("rep3.detailPercent").replace("{x}", formatMoney(item.details.groupRevenue || 0)).replace("{p}", String(item.salaryValue))}
@@ -445,28 +444,28 @@ function ReportsContent() {
                         <td style={{ fontWeight: 700 }}>
                           {formatMoney(item.calculatedSalary)} {t("common.sumUnit")}
                           {(item.details.absentLessons ?? 0) > 0 && (
-                            <div style={{ fontSize: 11.5, fontWeight: 600, color: "#B23A47" }}>
+                            <div style={{ fontSize: 11.5, fontWeight: 600, color: "var(--danger)" }}>
                               −{formatMoney(item.details.deduction ?? 0)} · {item.details.absentLessons}/{item.details.plannedLessons} {t("tatt.missed")}
                             </div>
                           )}
                           {(item.details.substitutedLessons ?? 0) > 0 && (
-                            <div style={{ fontSize: 11.5, fontWeight: 600, color: "#167A48" }}>+{item.details.substitutedLessons} {t("tatt.covered")}</div>
+                            <div style={{ fontSize: 11.5, fontWeight: 600, color: "var(--success)" }}>+{item.details.substitutedLessons} {t("tatt.covered")}</div>
                           )}
                         </td>
-                        <td style={{ fontWeight: 600, color: item.paidAmount > 0 ? "#10B981" : "#686B75" }}>
+                        <td style={{ fontWeight: 600, color: item.paidAmount > 0 ? "var(--success)" : "var(--text-muted)" }}>
                           {formatMoney(item.paidAmount)} {t("common.sumUnit")}
                           {item.installments > 1 && (
-                            <div style={{ fontSize: 11.5, fontWeight: 600, color: "#686B75" }}>
+                            <div style={{ fontSize: 11.5, fontWeight: 600, color: "var(--text-muted)" }}>
                               {t("rep2.installments").replace("{n}", String(item.installments))}
                             </div>
                           )}
                         </td>
-                        <td style={{ fontWeight: 800, color: item.netPayable > 0 ? "#DC2626" : "#10B981" }}>
+                        <td style={{ fontWeight: 800, color: item.netPayable > 0 ? "var(--danger)" : "var(--success)" }}>
                           {formatMoney(item.netPayable)} {t("common.sumUnit")}
                         </td>
                         <td>
                           {item.calculatedSalary <= 0 && !item.isPaid ? (
-                            <span style={{ color: "#686B75" }}>—</span>
+                            <span style={{ color: "var(--text-muted)" }}>—</span>
                           ) : item.isPaid ? (
                             <span className="badge badge-success">✓ {t("rep3.statusPaid")}</span>
                           ) : item.paidAmount > 0 ? (
@@ -481,11 +480,11 @@ function ReportsContent() {
                             type="button"
                             onClick={() => openDisburseModal(item)}
                             style={{
-                              background: item.netPayable > 0 ? ACCENT : "#F2F1EC",
-                              color: item.netPayable > 0 ? "#fff" : "#181A1F",
+                              background: item.netPayable > 0 ? ACCENT : "var(--surface-muted)",
+                              color: item.netPayable > 0 ? "var(--on-ink)" : "var(--text)",
                               border: "none",
                               padding: "6px 12px",
-                              borderRadius: 7,
+                              borderRadius: "var(--radius-xs)",
                               fontSize: 12,
                               fontWeight: 700,
                               cursor: "pointer",
@@ -497,7 +496,7 @@ function ReportsContent() {
                             <button
                               type="button"
                               onClick={() => openDisburseModal(item)}
-                              style={{ background: "#F2F1EC", color: "#181A1F", border: "none", padding: "6px 12px", borderRadius: 7, fontSize: 12, fontWeight: 700, cursor: "pointer" }}
+                              style={{ background: "var(--surface-muted)", color: "var(--text)", border: "none", padding: "6px 12px", borderRadius: "var(--radius-xs)", fontSize: 12, fontWeight: 700, cursor: "pointer" }}
                             >
                               {t("rep2.payouts")}
                             </button>
@@ -527,23 +526,23 @@ function ReportsContent() {
         title={t("rep2.disburseTitle")}
       >
         <form onSubmit={handleDisburseSubmit} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-          <div style={{ background: "#F8F8F6", borderRadius: 10, padding: 12, border: "1px solid #EAE8E2" }}>
-            <div style={{ fontSize: 14, fontWeight: 700, color: "#181A1F" }}>{disburseTeacher?.teacherName}</div>
-            <div style={{ fontSize: 12, color: "#686B75", marginTop: 2 }}>
+          <div style={{ background: "var(--surface-muted)", borderRadius: "var(--radius-sm)", padding: 12, border: "1px solid var(--border)" }}>
+            <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text)" }}>{disburseTeacher?.teacherName}</div>
+            <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>
               {t("rep2.subject")}: {disburseTeacher?.subject || t("rep2.notSet")} • {t("rep3.colModel")}: {disburseTeacher ? salaryTypeLabel(disburseTeacher.salaryType) : ""}
             </div>
-            <div style={{ fontSize: 12.5, color: "#4A4E58", marginTop: 6 }}>
+            <div style={{ fontSize: 12.5, color: "var(--text-soft)", marginTop: 6 }}>
               {disburseMonth} · {t("rep2.calculated")}: {formatMoney(disburseTeacher?.calculatedSalary || 0)} · {t("rep2.paidSalary")}: {formatMoney(disburseTeacher?.paidAmount || 0)}
             </div>
             <div style={{ fontSize: 13, color: ACCENT, fontWeight: 700, marginTop: 4 }}>
               {t("rep2.remaining")}: {formatMoney(disburseTeacher?.netPayable || 0)} {t("common.sumUnit")}
             </div>
             {monthPayouts && monthPayouts.length > 0 && (
-              <div style={{ marginTop: 8, borderTop: "1px solid #EAE8E2", paddingTop: 8 }}>
-                <div style={{ fontSize: 11.5, fontWeight: 700, color: "#686B75", marginBottom: 4 }}>{t("rep2.earlierPayouts")}</div>
+              <div style={{ marginTop: 8, borderTop: "1px solid var(--border)", paddingTop: 8 }}>
+                <div style={{ fontSize: 11.5, fontWeight: 700, color: "var(--text-muted)", marginBottom: 4 }}>{t("rep2.earlierPayouts")}</div>
                 {monthPayouts.map((p) => (
                   <div key={p.id} style={{ padding: "3px 0" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, fontSize: 12, color: p.reversedAt ? "#686B75" : "#4A4E58" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, fontSize: 12, color: p.reversedAt ? "var(--text-muted)" : "var(--text-soft)" }}>
                       <span style={{ textDecoration: p.reversedAt ? "line-through" : undefined }}>
                         {p.paidAt.slice(0, 10)}{p.paymentMethod ? ` · ${p.paymentMethod}` : ""}
                       </span>
@@ -552,7 +551,7 @@ function ReportsContent() {
                         {p.reversedAt ? (
                           <span className="badge badge-neutral" title={p.reversalReason ?? undefined}>{t("rep2.reversed")}</span>
                         ) : p.expenseId && reversingId !== p.id ? (
-                          <button type="button" onClick={() => { setReversingId(p.id); setReverseReason(""); setDisburseError(null); }} style={{ background: "none", border: "none", color: "#B23A47", fontSize: 11.5, fontWeight: 700, cursor: "pointer", padding: 0 }}>
+                          <button type="button" onClick={() => { setReversingId(p.id); setReverseReason(""); setDisburseError(null); }} style={{ background: "none", border: "none", color: "var(--danger)", fontSize: 11.5, fontWeight: 700, cursor: "pointer", padding: 0 }}>
                             {t("rep2.reverse")}
                           </button>
                         ) : null}
@@ -571,10 +570,10 @@ function ReportsContent() {
                           maxLength={500}
                           style={{ flex: 1, fontSize: 12.5, padding: "6px 10px" }}
                         />
-                        <button type="button" className="btn" disabled={reverseBusy} onClick={() => void confirmReverse(p.id, p.amount)} style={{ background: "#B23A47", color: "#fff", border: "none", fontSize: 12, fontWeight: 700, padding: "6px 10px", borderRadius: 8 }}>
+                        <button type="button" className="btn" disabled={reverseBusy} onClick={() => void confirmReverse(p.id, p.amount)} style={{ background: "var(--danger)", color: "var(--on-ink)", border: "none", fontSize: 12, fontWeight: 700, padding: "6px 10px", borderRadius: "var(--radius-xs)" }}>
                           {reverseBusy ? t("common.saving") : t("rep2.reverseConfirm")}
                         </button>
-                        <button type="button" className="btn" disabled={reverseBusy} onClick={() => setReversingId(null)} style={{ background: "#fff", color: "#181A1F", border: "1px solid #EAE8E2", fontSize: 12, fontWeight: 700, padding: "6px 10px", borderRadius: 8 }}>
+                        <button type="button" className="btn" disabled={reverseBusy} onClick={() => setReversingId(null)} style={{ background: "var(--surface)", color: "var(--text)", border: "1px solid var(--border)", fontSize: 12, fontWeight: 700, padding: "6px 10px", borderRadius: "var(--radius-xs)" }}>
                           {t("common.cancel")}
                         </button>
                       </div>
@@ -586,15 +585,15 @@ function ReportsContent() {
           </div>
 
           {disburseError && (
-            <div role="alert" style={{ background: "#FDEBEC", color: "#B23A47", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: 10 }}>{disburseError}</div>
+            <div role="alert" style={{ background: "var(--danger-soft)", color: "var(--danger)", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: "var(--radius-sm)" }}>{disburseError}</div>
           )}
 
           {(disburseTeacher?.netPayable ?? 0) <= 0 ? (
-            <div style={{ fontSize: 13, color: "#167A48", fontWeight: 700 }}>{t("rep2.monthPaid")}</div>
+            <div style={{ fontSize: 13, color: "var(--success)", fontWeight: 700 }}>{t("rep2.monthPaid")}</div>
           ) : (
           <>
           <div>
-            <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>{t("rep3.amountLabel")}</div>
+            <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-soft)", marginBottom: 6 }}>{t("rep3.amountLabel")}</div>
             <input
               type="number"
               className="field-input"
@@ -605,11 +604,11 @@ function ReportsContent() {
               step={1}
               required
             />
-            <div style={{ fontSize: 11.5, color: "#686B75", marginTop: 4 }}>{t("rep2.installmentHint")}</div>
+            <div style={{ fontSize: 11.5, color: "var(--text-muted)", marginTop: 4 }}>{t("rep2.installmentHint")}</div>
           </div>
 
           <div>
-            <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>{t("rep3.methodLabel")}</div>
+            <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-soft)", marginBottom: 6 }}>{t("rep3.methodLabel")}</div>
             <Select
               options={[
                 { value: "CASH", label: t("rep3.methodCash") },
@@ -623,7 +622,7 @@ function ReportsContent() {
           </div>
 
           <div>
-            <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>{t("rep3.note")}</div>
+            <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-soft)", marginBottom: 6 }}>{t("rep3.note")}</div>
             <input
               className="field-input"
               value={disburseNotes}
@@ -638,11 +637,11 @@ function ReportsContent() {
             disabled={disbursing}
             style={{
               background: ACCENT,
-              color: "#fff",
+              color: "var(--on-ink)",
               fontSize: 14,
               fontWeight: 700,
               padding: 12,
-              borderRadius: 10,
+              borderRadius: "var(--radius-sm)",
               marginTop: 4,
             }}
           >
@@ -660,12 +659,12 @@ function ReportsContent() {
         title={t("rep2.smsTitle")}
       >
         <form onSubmit={handleSendSmsToStudent} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-          <div style={{ background: "#F8F8F6", borderRadius: 10, padding: 12, border: "1px solid #EAE8E2" }}>
+          <div style={{ background: "var(--surface-muted)", borderRadius: "var(--radius-sm)", padding: 12, border: "1px solid var(--border)" }}>
             <div style={{ fontSize: 14, fontWeight: 700 }}>{smsStudent?.fullName}</div>
             <div style={{ fontSize: 12.5, color: ACCENT, fontWeight: 600, marginTop: 2 }}>📞 {smsStudent?.phone}</div>
           </div>
           <div>
-            <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>{t("rep3.smsText")}</div>
+            <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-soft)", marginBottom: 6 }}>{t("rep3.smsText")}</div>
             <textarea
               className="field-input"
               rows={4}
@@ -680,11 +679,11 @@ function ReportsContent() {
             disabled={sendingSms}
             style={{
               background: ACCENT,
-              color: "#fff",
+              color: "var(--on-ink)",
               fontSize: 14,
               fontWeight: 700,
               padding: 12,
-              borderRadius: 10,
+              borderRadius: "var(--radius-sm)",
             }}
           >
             {sendingSms ? t("pay.sending") : t("rep2.sendSms")}
@@ -697,10 +696,10 @@ function ReportsContent() {
 
 function StatCard({ label, value, delta, danger }: { label: string; value: string; delta?: string; danger?: boolean }) {
   return (
-    <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 14, padding: 18 }}>
-      <div style={{ fontSize: 12, color: "#686B75" }}>{label}</div>
-      <div style={{ fontSize: 24, fontWeight: 800, fontFamily: "'Manrope', sans-serif", marginTop: 4, color: danger ? "#B23A47" : "#181A1F" }}>{value}</div>
-      {delta && <div style={{ fontSize: 11.5, color: danger ? "#B23A47" : delta.startsWith("↑") ? "#16794A" : "#686B75", marginTop: 4, fontWeight: 600 }}>{delta}</div>}
+    <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 18 }}>
+      <div style={{ fontSize: 12, color: "var(--text-muted)" }}>{label}</div>
+      <div style={{ fontSize: 24, fontWeight: 800, fontFamily: "var(--font-display)", marginTop: 4, color: danger ? "var(--danger)" : "var(--text)" }}>{value}</div>
+      {delta && <div style={{ fontSize: 11.5, color: danger ? "var(--danger)" : delta.startsWith("↑") ? "var(--success)" : "var(--text-muted)", marginTop: 4, fontWeight: 600 }}>{delta}</div>}
     </div>
   );
 }

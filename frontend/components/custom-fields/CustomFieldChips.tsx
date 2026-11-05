@@ -25,9 +25,9 @@ export default function CustomFieldChips({ defs, values }: { defs: CustomFieldDe
           <li
             key={d.id}
             title={text.length > CHIP_MAX ? text : undefined}
-            style={{ fontSize: 12, color: "#4A4E58", background: "#F2F1EC", borderRadius: 999, padding: "3px 10px", maxWidth: "100%", overflowWrap: "anywhere" }}
+            style={{ fontSize: 12, color: "var(--text-soft)", background: "var(--surface-muted)", borderRadius: "var(--radius-pill)", padding: "3px 10px", maxWidth: "100%", overflowWrap: "anywhere" }}
           >
-            <span style={{ color: "#686B75" }}>{d.label}:</span> <span style={{ fontWeight: 600 }}>{text.length > CHIP_MAX ? `${text.slice(0, CHIP_MAX)}…` : text}</span>
+            <span style={{ color: "var(--text-muted)" }}>{d.label}:</span> <span style={{ fontWeight: 600 }}>{text.length > CHIP_MAX ? `${text.slice(0, CHIP_MAX)}…` : text}</span>
           </li>
         );
       })}

@@ -10,7 +10,7 @@ import { PORTAL_ACCENT as ACCENT, portalCard as card } from "@/components/portal
 type Text = Record<string, string>;
 
 export const percentColor = (p: number | null | undefined) =>
-  p == null ? "#686B75" : p >= 85 ? "#16794A" : p >= 60 ? ACCENT : p >= 40 ? "#D97706" : "#DC2626";
+  p == null ? "var(--text-muted)" : p >= 85 ? "var(--success)" : p >= 60 ? ACCENT : p >= 40 ? "var(--warning)" : "var(--danger)";
 
 // One sitting of a practice test: the sections as cards, each with its own
 // clock (server time) from the first start; answers autosave; a finished
@@ -121,18 +121,18 @@ export default function PracticeRunner({ initial, readOnly, onExit }: { initial:
           ← {open ? t("pmk.allSections") : t("pmk.back")}
         </button>
         <div style={{ fontWeight: 800, fontSize: 16, flex: 1, minWidth: 160 }}>{a.test.title}</div>
-        <span style={{ fontSize: 12, fontWeight: 800, color: "#4A4E58", background: "#F2F1EC", padding: "3px 10px", borderRadius: 100 }}>{a.test.subject}</span>
+        <span style={{ fontSize: 12, fontWeight: 800, color: "var(--text-soft)", background: "var(--surface-muted)", padding: "3px 10px", borderRadius: "var(--radius-pill)" }}>{a.test.subject}</span>
       </div>
-      {error && <div role="alert" style={{ ...card, color: "#B23A47", fontSize: 13 }}>{error}</div>}
+      {error && <div role="alert" style={{ ...card, color: "var(--danger)", fontSize: 13 }}>{error}</div>}
 
       {!open && (
         <>
           {overall != null && (
-            <div style={{ ...card, display: "flex", alignItems: "center", gap: 16, background: "linear-gradient(135deg, #EEF0FF, #fff)" }}>
-              <div style={{ width: 76, height: 76, borderRadius: "50%", display: "grid", placeItems: "center", background: "#fff", border: `4px solid ${percentColor(overall)}`, fontSize: 22, fontWeight: 800, color: percentColor(overall) }}>{overall}%</div>
+            <div style={{ ...card, display: "flex", alignItems: "center", gap: 16, background: "linear-gradient(135deg, var(--primary-soft), var(--surface))" }}>
+              <div style={{ width: 76, height: 76, borderRadius: "50%", display: "grid", placeItems: "center", background: "var(--surface)", border: `4px solid ${percentColor(overall)}`, fontSize: 22, fontWeight: 800, color: percentColor(overall) }}>{overall}%</div>
               <div>
                 <div style={{ fontSize: 17, fontWeight: 800 }}>{t("prx.overall")}</div>
-                <div style={{ fontSize: 13, color: "#6B6E78" }}>{t("prx.overallHint")}</div>
+                <div style={{ fontSize: 13, color: "var(--text-muted)" }}>{t("prx.overallHint")}</div>
               </div>
             </div>
           )}
@@ -146,23 +146,23 @@ export default function PracticeRunner({ initial, readOnly, onExit }: { initial:
                     <div style={{ fontSize: 15.5, fontWeight: 800 }}>{s.title}</div>
                     {done(s.key) && <span style={{ fontSize: 19, fontWeight: 800, color: percentColor(r?.percent) }}>{r?.percent != null ? `${r.percent}%` : r?.status === "PENDING" ? "⏳" : "✓"}</span>}
                   </div>
-                  <div style={{ fontSize: 12.5, color: "#6B6E78" }}>
+                  <div style={{ fontSize: 12.5, color: "var(--text-muted)" }}>
                     {[qn ? `${qn} ${t("pmk.questions")}` : null, s.tasks.length ? `${s.tasks.length} ${t("pmk.tasks")}` : null].filter(Boolean).join(" · ")} · ⏱ {s.durationMin} {t("pmk.min")}
                   </div>
                   {done(s.key) && (
-                    <div style={{ fontSize: 12.5, fontWeight: 700, color: r?.status === "REVIEW" ? "#B45309" : r?.status === "PENDING" ? ACCENT : "#16794A" }}>
+                    <div style={{ fontSize: 12.5, fontWeight: 700, color: r?.status === "REVIEW" ? "var(--warning)" : r?.status === "PENDING" ? ACCENT : "var(--success)" }}>
                       {r?.status === "PENDING" ? t("prx.aiMarking") : r?.status === "REVIEW" ? t("pmk.teacherMarks") : `${Math.round((r?.raw ?? 0) * 10) / 10}/${r?.max ?? 0} ${t("prx.points")}`}
                     </div>
                   )}
                   <button type="button" disabled={readOnly && !done(s.key)} onClick={() => setOpen(s.key)}
-                    style={{ marginTop: "auto", background: done(s.key) ? "#fff" : ACCENT, color: done(s.key) ? "#181A1F" : "#fff", border: done(s.key) ? "1px solid #EAE8E2" : "none", borderRadius: 11, padding: "10px 14px", fontWeight: 700, cursor: "pointer", opacity: readOnly && !done(s.key) ? 0.5 : 1 }}>
+                    style={{ marginTop: "auto", background: done(s.key) ? "var(--surface)" : ACCENT, color: done(s.key) ? "var(--text)" : "var(--on-ink)", border: done(s.key) ? "1px solid var(--border)" : "none", borderRadius: "var(--radius-sm)", padding: "10px 14px", fontWeight: 700, cursor: "pointer", opacity: readOnly && !done(s.key) ? 0.5 : 1 }}>
                     {done(s.key) ? `📊 ${t("pmk.review")}` : started(s.key) ? `▶ ${t("pmk.continue")}` : `▶ ${t("pmk.startSection")}`}
                   </button>
                 </div>
               );
             })}
           </div>
-          <div style={{ fontSize: 12.5, color: "#686B75", lineHeight: 1.5 }}>ℹ️ {t("pmk.rules")}</div>
+          <div style={{ fontSize: 12.5, color: "var(--text-muted)", lineHeight: 1.5 }}>ℹ️ {t("pmk.rules")}</div>
         </>
       )}
 
@@ -197,11 +197,11 @@ function SectionReview({ a, section, answers }: { a: PortalPracticeAttempt; sect
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <div style={{ ...card, display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap" }}>
         <div style={{ fontSize: 30, fontWeight: 800, color: percentColor(r?.percent) }}>{r?.percent != null ? `${r.percent}%` : r?.status === "PENDING" ? "⏳" : "—"}</div>
-        <div style={{ fontSize: 13.5, color: "#4A4E58", flex: 1, minWidth: 200 }}>
+        <div style={{ fontSize: 13.5, color: "var(--text-soft)", flex: 1, minWidth: 200 }}>
           <b>{Math.round((r?.raw ?? 0) * 10) / 10}/{r?.max ?? 0}</b> {t("prx.points")}{r?.late ? ` · ${t("pmk.late")}` : ""}
           {r?.status === "PENDING" && <div>{t("prx.aiMarking")}</div>}
           {r?.status === "REVIEW" && <div>{t("pmk.teacherMarks")}</div>}
-          {r?.teacherComment && <div style={{ marginTop: 6, color: "#14532D", background: "#ECFDF5", borderRadius: 10, padding: "8px 10px" }}>💬 {r.teacherComment}</div>}
+          {r?.teacherComment && <div style={{ marginTop: 6, color: "var(--success)", background: "var(--success-soft)", borderRadius: "var(--radius-sm)", padding: "8px 10px" }}>💬 {r.teacherComment}</div>}
         </div>
       </div>
       {section.parts.map((p, pi) => (
@@ -217,15 +217,15 @@ function SectionReview({ a, section, answers }: { a: PortalPracticeAttempt; sect
             const mark = r?.marks?.[Number(q.id)];
             const given = (answers[q.id] ?? "").trim();
             return (
-              <div key={q.id} style={{ ...card, padding: 12, borderColor: mark === true ? "#BBF7D0" : mark === false ? "#FECACA" : "#EAE8E2" }}>
+              <div key={q.id} style={{ ...card, padding: 12, borderColor: mark === true ? "var(--success-border)" : mark === false ? "var(--danger-border)" : "var(--border)" }}>
                 <div style={{ display: "flex", gap: 8, alignItems: "flex-start", marginBottom: 8 }}>
-                  <span style={{ minWidth: 26, height: 26, padding: "0 4px", borderRadius: 8, background: "#EEF0FF", color: ACCENT, fontWeight: 800, fontSize: 12.5, display: "grid", placeItems: "center" }}>{q.span > 1 ? `${q.no}–${q.no + q.span - 1}` : q.no}</span>
+                  <span style={{ minWidth: 26, height: 26, padding: "0 4px", borderRadius: "var(--radius-xs)", background: "var(--primary-soft)", color: ACCENT, fontWeight: 800, fontSize: 12.5, display: "grid", placeItems: "center" }}>{q.span > 1 ? `${q.no}–${q.no + q.span - 1}` : q.no}</span>
                   <div style={{ fontSize: 14, lineHeight: 1.5, whiteSpace: "pre-wrap", flex: 1 }}>{q.prompt}</div>
                   {mark !== undefined && <span style={{ fontSize: 16 }}>{mark ? "✅" : "❌"}</span>}
                 </div>
                 <QuestionInput q={q} value={answers[q.id] ?? ""} onChange={() => undefined} disabled exam examWording={english} />
-                {mark === false && !given && <div style={{ marginTop: 8, fontSize: 12.5, color: "#B45309", fontWeight: 700 }}>— {t("exm.noAnswer")}</div>}
-                {keys && mark === false && <div style={{ marginTop: 6, fontSize: 12.5, color: "#167A48", fontWeight: 700 }}>✓ {t("pmk.answer")}: {keyLabel(keys[Number(q.id)])}</div>}
+                {mark === false && !given && <div style={{ marginTop: 8, fontSize: 12.5, color: "var(--warning)", fontWeight: 700 }}>— {t("exm.noAnswer")}</div>}
+                {keys && mark === false && <div style={{ marginTop: 6, fontSize: 12.5, color: "var(--success)", fontWeight: 700 }}>✓ {t("pmk.answer")}: {keyLabel(keys[Number(q.id)])}</div>}
               </div>
             );
           })}
@@ -239,12 +239,12 @@ function SectionReview({ a, section, answers }: { a: PortalPracticeAttempt; sect
               <div style={{ fontSize: 15, fontWeight: 800 }}>{task.title}</div>
               {tr?.score != null && <b style={{ color: percentColor(tr.score * 10), fontSize: 18 }}>{tr.score}/10</b>}
             </div>
-            <div style={{ fontSize: 14, lineHeight: 1.6, whiteSpace: "pre-wrap", background: "#F7F7F5", borderRadius: 12, padding: 12 }}>{task.prompt}</div>
-            <div style={{ fontSize: 14.5, lineHeight: 1.7, whiteSpace: "pre-wrap", border: "1px solid #EAE8E2", borderRadius: 12, padding: 12, background: "#FAFAF8" }}>
-              {answers[`t${i}`]?.trim() || <span style={{ color: "#686B75" }}>{t("exm.noAnswer")}</span>}
+            <div style={{ fontSize: 14, lineHeight: 1.6, whiteSpace: "pre-wrap", background: "var(--surface-muted)", borderRadius: "var(--radius-md)", padding: 12 }}>{task.prompt}</div>
+            <div style={{ fontSize: 14.5, lineHeight: 1.7, whiteSpace: "pre-wrap", border: "1px solid var(--border)", borderRadius: "var(--radius-md)", padding: 12, background: "var(--surface-muted)" }}>
+              {answers[`t${i}`]?.trim() || <span style={{ color: "var(--text-muted)" }}>{t("exm.noAnswer")}</span>}
             </div>
-            <div style={{ fontSize: 12.5, color: "#6B6E78" }}>{tr?.words ?? 0} {t("mock.words")}</div>
-            {tr?.comment && <div style={{ borderLeft: `3px solid ${ACCENT}`, background: "#EEF0FF", borderRadius: 8, padding: "8px 10px", fontSize: 13.5 }}>🤖 {tr.comment}</div>}
+            <div style={{ fontSize: 12.5, color: "var(--text-muted)" }}>{tr?.words ?? 0} {t("mock.words")}</div>
+            {tr?.comment && <div style={{ borderLeft: `3px solid ${ACCENT}`, background: "var(--primary-soft)", borderRadius: "var(--radius-xs)", padding: "8px 10px", fontSize: 13.5 }}>🤖 {tr.comment}</div>}
           </section>
         );
       })}

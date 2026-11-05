@@ -1,12 +1,14 @@
-import { IsEnum, IsInt, IsISO8601, IsOptional, IsPositive, IsString, Matches, Max } from 'class-validator';
+import { IsEnum, IsInt, IsISO8601, IsOptional, IsPositive, IsString, Matches, Max, MaxLength } from 'class-validator';
 import { MAX_MONEY } from '../../common/money';
 
 export class CreateInvoiceDto {
   @IsString()
+  @MaxLength(2000)
   studentId: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(2000)
   enrollmentId?: string;
 
   @IsInt()
@@ -22,12 +24,14 @@ export class CreateInvoiceDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(50000)
   description?: string;
 }
 
 export class QueryInvoicesDto {
   @IsOptional()
   @IsString()
+  @MaxLength(2000)
   studentId?: string;
 
   @IsOptional()
@@ -40,5 +44,6 @@ export class QueryInvoicesDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(2000)
   overdueOnly?: string;
 }

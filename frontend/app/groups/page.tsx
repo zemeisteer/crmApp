@@ -18,7 +18,7 @@ import type { TranslationKey } from "@/lib/i18n";
 import { groupsApi, branchesApi, teachersApi, subjectsApi, Group, Branch, Teacher, ApiError, CATEGORY_SUBJECT_SUGGESTIONS } from "@/lib/api";
 import { matchesSubject } from "@/lib/subject";
 
-const ACCENT = "#4F46E5";
+const ACCENT = "var(--primary)";
 // Actual values stored on groups.scheduleDays (always Uzbek) — WEEKDAY_LABEL_KEYS below is the parallel display-only translation.
 const WEEKDAYS = ["Dushanba", "Seshanba", "Chorshanba", "Payshanba", "Juma", "Shanba", "Yakshanba"];
 const WEEKDAY_LABEL_KEYS: TranslationKey[] = [
@@ -331,24 +331,24 @@ function GroupsContent() {
 
   return (
     <>
-      <div style={{ padding: "22px 32px", borderBottom: "1px solid #EAE8E2", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+      <div style={{ padding: "var(--page-head-pad)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div>
-          <h1 style={{ fontSize: 22, fontWeight: 800 }}>{t("groups.title")}</h1>
+          <h1 className="page-title">{t("groups.title")}</h1>
           {canManage && (
-            <Link href="/groups/trash" style={{ fontSize: 12, color: "#686B75", fontWeight: 600 }}>
+            <Link href="/groups/trash" style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 600 }}>
               {t("nav.trash")}
             </Link>
           )}
         </div>
         {canManage && (
           <div style={{ display: "flex", alignItems: "center" }}>
-            <button type="button" className="btn" onClick={() => setImportOpen(true)} style={{ background: "#fff", color: "#181A1F", border: "1px solid #EAE8E2", fontSize: 13.5, fontWeight: 700, padding: "10px 16px", borderRadius: 9, marginRight: 8 }}>
+            <button type="button" className="btn" onClick={() => setImportOpen(true)} style={{ background: "var(--surface)", color: "var(--text)", border: "1px solid var(--border)", fontSize: 13.5, fontWeight: 700, padding: "10px 16px", borderRadius: "var(--radius-sm)", marginRight: 8 }}>
               {t("imp.button")}
             </button>
             <button
               className="btn"
               onClick={() => setModalOpen(true)}
-              style={{ background: ACCENT, color: "#fff", border: "none", fontSize: 13.5, fontWeight: 700, padding: "10px 18px", borderRadius: 9 }}
+              style={{ background: ACCENT, color: "var(--on-ink)", border: "none", fontSize: 13.5, fontWeight: 700, padding: "10px 18px", borderRadius: "var(--radius-sm)" }}
             >
               {t("groups.newGroup")}
             </button>
@@ -357,7 +357,7 @@ function GroupsContent() {
         )}
       </div>
 
-      <div style={{ flex: 1, minHeight: 0, padding: "26px 32px", overflow: "auto", boxSizing: "border-box" }}>
+      <div style={{ flex: 1, minHeight: 0, padding: "var(--page-pad)", overflow: "auto", boxSizing: "border-box" }}>
         {!loading && groups.length > 0 && (
           <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap", alignItems: "center" }}>
             <input
@@ -380,15 +380,15 @@ function GroupsContent() {
         ) : loading ? (
           <ListSkeleton />
         ) : groups.length === 0 ? (
-          <div style={{ color: "#686B75", fontSize: 14, background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 32, textAlign: "center" }}>
+          <div style={{ color: "var(--text-muted)", fontSize: 14, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 32, textAlign: "center" }}>
             {t("groups.noGroupsYet")}
           </div>
         ) : filtered.length === 0 ? (
-          <div style={{ color: "#686B75", fontSize: 14, background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 32, textAlign: "center" }}>
+          <div style={{ color: "var(--text-muted)", fontSize: 14, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 32, textAlign: "center" }}>
             {t("groups.noSearchResults")}
           </div>
         ) : (
-          <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, overflowX: "auto" }}>
+          <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", overflowX: "auto" }}>
             <table>
               <thead>
                 <tr>
@@ -425,7 +425,7 @@ function GroupsContent() {
                               width: 24,
                               height: 24,
                               borderRadius: "50%",
-                              background: "#EEF0FF",
+                              background: "var(--primary-soft)",
                               color: ACCENT,
                               display: "inline-flex",
                               alignItems: "center",
@@ -439,7 +439,7 @@ function GroupsContent() {
                           <span>{g.teacher.fullName}</span>
                         </Link>
                       ) : (
-                        <span style={{ color: "#A0A3AB", fontSize: 13 }}>—</span>
+                        <span style={{ color: "var(--text-faint)", fontSize: 13 }}>—</span>
                       )}
                     </td>
                     <td>{g.subject}</td>
@@ -452,7 +452,7 @@ function GroupsContent() {
                     <td>{g.monthlyPrice ? `${new Intl.NumberFormat("uz-UZ").format(g.monthlyPrice)} ${t("common.sumUnit")}` : "—"}</td>
                     <td>
                       <span style={{ fontWeight: 700 }}>{g.studentCount ?? 0}</span>
-                      <span style={{ color: "#686B75" }}>/{g.maxStudents || "—"}</span>
+                      <span style={{ color: "var(--text-muted)" }}>/{g.maxStudents || "—"}</span>
                     </td>
                     <td>
                       {(() => {
@@ -460,13 +460,13 @@ function GroupsContent() {
                         const max = g.maxStudents || 0;
                         const b =
                           g.status && g.status !== "ACTIVE"
-                            ? { text: g.status === "PLANNED" ? t("grp.stPlanned") : g.status === "COMPLETED" ? t("grp.stCompleted") : t("grp.stArchived"), color: "#686B75", bg: "#F2F1EC" }
+                            ? { text: g.status === "PLANNED" ? t("grp.stPlanned") : g.status === "COMPLETED" ? t("grp.stCompleted") : t("grp.stArchived"), color: "var(--text-muted)", bg: "var(--surface-muted)" }
                             : max > 0 && n >= max
-                              ? { text: t("grp.stFull"), color: "#167A48", bg: "#E9F8EF" }
+                              ? { text: t("grp.stFull"), color: "var(--success)", bg: "var(--success-soft)" }
                               : max > 0 && n / max < 0.6
-                                ? { text: t("grp.stUnderfilled"), color: "#B45309", bg: "#FEF3C7" }
-                                : { text: t("grp.stActive"), color: ACCENT, bg: "#EEF0FF" };
-                        return <span style={{ fontSize: 12, fontWeight: 700, color: b.color, background: b.bg, padding: "4px 10px", borderRadius: 100, whiteSpace: "nowrap" }}>{b.text}</span>;
+                                ? { text: t("grp.stUnderfilled"), color: "var(--warning)", bg: "var(--warning-soft)" }
+                                : { text: t("grp.stActive"), color: ACCENT, bg: "var(--primary-soft)" };
+                        return <span style={{ fontSize: 12, fontWeight: 700, color: b.color, background: b.bg, padding: "4px 10px", borderRadius: "var(--radius-pill)", whiteSpace: "nowrap" }}>{b.text}</span>;
                       })()}
                     </td>
 
@@ -476,7 +476,7 @@ function GroupsContent() {
                           type="button"
                           className="btn"
                           onClick={() => openEdit(g)}
-                          style={{ display: "inline-block", background: "#fff", border: "1px solid #EAE8E2", color: "#181A1F", fontSize: 12, fontWeight: 700, padding: "6px 12px", borderRadius: 8, marginRight: 6, cursor: "pointer" }}
+                          style={{ display: "inline-block", background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text)", fontSize: 12, fontWeight: 700, padding: "6px 12px", borderRadius: "var(--radius-xs)", marginRight: 6, cursor: "pointer" }}
                         >
                           {t("common.edit")}
                         </button>
@@ -484,7 +484,7 @@ function GroupsContent() {
                       <Link
                         href={`/groups/${g.id}`}
                         className="btn"
-                        style={{ display: "inline-block", background: "#F2F1EC", color: "#181A1F", fontSize: 12, fontWeight: 700, padding: "7px 14px", borderRadius: 8 }}
+                        style={{ display: "inline-block", background: "var(--surface-muted)", color: "var(--text)", fontSize: 12, fontWeight: 700, padding: "7px 14px", borderRadius: "var(--radius-xs)" }}
                       >
                         {t("groups.viewGroup")}
                       </Link>
@@ -501,7 +501,7 @@ function GroupsContent() {
       <Modal open={modalOpen} onClose={() => { setModalOpen(false); resetForm(); }} title={editingId ? t("groups.editTitle") : t("groups.modalTitle")}>
         <form onSubmit={onSubmit} style={{ display: "flex", flexDirection: "column", gap: 14 }} noValidate>
           {error && (
-            <div role="alert" style={{ background: "#FDEBEC", color: "#B23A47", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: 10 }}>{error}</div>
+            <div role="alert" style={{ background: "var(--danger-soft)", color: "var(--danger)", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: "var(--radius-sm)" }}>{error}</div>
           )}
           <Field label={t("groups.fieldName")} required error={fieldErrors.name}>
             <input className="field-input" value={name} onChange={(e) => setName(e.target.value)} placeholder="IELTS Speaking — B2" />
@@ -532,7 +532,7 @@ function GroupsContent() {
           </Field>
           {teachersHidden ? (
             <Field label={t("groups.fieldTeacher")}>
-              <div role="note" style={{ fontSize: 12.5, color: "#686B75", background: "#F2F1EC", borderRadius: 10, padding: "9px 12px", lineHeight: 1.5 }}>{t("groups.teachersHidden")}</div>
+              <div role="note" style={{ fontSize: 12.5, color: "var(--text-muted)", background: "var(--surface-muted)", borderRadius: "var(--radius-sm)", padding: "9px 12px", lineHeight: 1.5 }}>{t("groups.teachersHidden")}</div>
             </Field>
           ) : (
             <Field label={t("groups.fieldTeacher")} required error={fieldErrors.teacher}>
@@ -542,10 +542,10 @@ function GroupsContent() {
                 onChange={setTeacherId}
               />
               {teacherChoice.note && (
-                <div style={{ fontSize: 12, color: "#686B75", marginTop: 6, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 6, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
                   <span>{teacherChoice.note}</span>
                   {teacherChoice.filtered && (
-                    <button type="button" onClick={() => setAllTeachers(true)} style={{ background: "none", border: "none", padding: 0, color: "#4F46E5", fontWeight: 600, cursor: "pointer", fontSize: 12 }}>
+                    <button type="button" onClick={() => setAllTeachers(true)} style={{ background: "none", border: "none", padding: 0, color: "var(--primary)", fontWeight: 600, cursor: "pointer", fontSize: 12 }}>
                       {t("groups.teachersShowAll")}
                     </button>
                   )}
@@ -570,10 +570,10 @@ function GroupsContent() {
                   key={d}
                   onClick={() => toggleDay(d)}
                   style={{
-                    fontSize: 12, fontWeight: 600, padding: "7px 11px", borderRadius: 8, cursor: "pointer",
-                    border: days.includes(d) ? `1px solid ${ACCENT}` : "1px solid #EAE8E2",
-                    background: days.includes(d) ? "#EEF0FF" : "#fff",
-                    color: days.includes(d) ? ACCENT : "#4A4E58",
+                    fontSize: 12, fontWeight: 600, padding: "7px 11px", borderRadius: "var(--radius-xs)", cursor: "pointer",
+                    border: days.includes(d) ? `1px solid ${ACCENT}` : "1px solid var(--border)",
+                    background: days.includes(d) ? "var(--primary-soft)" : "var(--surface)",
+                    color: days.includes(d) ? ACCENT : "var(--text-soft)",
                   }}
                 >
                   {t(WEEKDAY_LABEL_KEYS[i])}
@@ -590,13 +590,13 @@ function GroupsContent() {
             </Field>
           </div>
           {days.length > 0 && startTime && (
-            <div style={{ fontSize: 12, color: "#686B75", marginTop: -6 }}>{t("groups.timetableHint")}</div>
+            <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: -6 }}>{t("groups.timetableHint")}</div>
           )}
           {conflictCheckError && (
             <LoadError compact message={conflictCheckError} onRetry={() => setConflictRetry((n) => n + 1)} />
           )}
           {scheduleConflicts.length > 0 && (
-            <div style={{ background: "#FFF7E6", color: "#A15C00", fontSize: 12.5, fontWeight: 600, padding: "10px 14px", borderRadius: 10, lineHeight: 1.5 }}>
+            <div style={{ background: "var(--warning-soft)", color: "var(--warning)", fontSize: 12.5, fontWeight: 600, padding: "10px 14px", borderRadius: "var(--radius-sm)", lineHeight: 1.5 }}>
               {t("groups.scheduleConflictWarning")} {scheduleConflicts.map((c) => c.name).join(", ")}
             </div>
           )}
@@ -621,7 +621,7 @@ function GroupsContent() {
             className="btn"
             type="submit"
             disabled={saving}
-            style={{ background: ACCENT, color: "#fff", fontSize: 14, fontWeight: 700, padding: 12, borderRadius: 10, marginTop: 6 }}
+            style={{ background: ACCENT, color: "var(--on-ink)", fontSize: 14, fontWeight: 700, padding: 12, borderRadius: "var(--radius-sm)", marginTop: 6 }}
           >
             {saving ? t(editingId ? "common.saving" : "groups.creating") : t(editingId ? "common.save" : "groups.createGroup")}
           </button>
@@ -634,12 +634,12 @@ function GroupsContent() {
 function Field({ label, children, required, error }: { label: string; children: React.ReactNode; required?: boolean; error?: string }) {
   return (
     <div role="group" aria-label={label}>
-      <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>
+      <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-soft)", marginBottom: 6 }}>
         {label}
-        {required && <span style={{ color: "#DC2626", marginLeft: 3 }}>*</span>}
+        {required && <span style={{ color: "var(--danger)", marginLeft: 3 }}>*</span>}
       </div>
-      <div style={error ? { borderRadius: 10, boxShadow: "0 0 0 2px rgba(220,38,38,0.35)" } : undefined}>{children}</div>
-      {error && <div role="alert" style={{ marginTop: 5, fontSize: 12, fontWeight: 600, color: "#B91C1C" }}>{error}</div>}
+      <div style={error ? { borderRadius: "var(--radius-sm)", boxShadow: "0 0 0 2px rgba(220,38,38,0.35)" } : undefined}>{children}</div>
+      {error && <div role="alert" style={{ marginTop: 5, fontSize: 12, fontWeight: 600, color: "var(--danger)" }}>{error}</div>}
     </div>
   );
 }

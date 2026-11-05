@@ -17,6 +17,7 @@ export class CreatePlacementTestDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(2000)
   groupId?: string;
 
   @IsOptional()

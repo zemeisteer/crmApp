@@ -3,19 +3,17 @@
 import Link from "next/link";
 import { useLanguage } from "@/lib/i18n-context";
 
-const ACCENT = "#4F46E5";
-
 export default function NotFound() {
   const { t } = useLanguage();
   return (
-    <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#F7F7F5" }}>
-      <div style={{ maxWidth: 420, textAlign: "center", background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 32 }}>
-        <div style={{ fontSize: 40, fontWeight: 800, fontFamily: "'Manrope', sans-serif", color: ACCENT }}>404</div>
-        <h1 style={{ fontSize: 18, fontWeight: 800, marginTop: 8 }}>{t("nf.title")}</h1>
-        <p style={{ fontSize: 13.5, color: "#686B75", marginTop: 8 }}>{t("nf.body")}</p>
+    <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+      <div className="rise-in" style={{ maxWidth: 440, width: "100%", textAlign: "center", background: "var(--surface)", border: "1px solid var(--card-border)", borderRadius: "var(--radius-xl)", padding: "36px 28px", boxShadow: "var(--shadow-frame)" }}>
+        <div style={{ fontSize: 72, fontWeight: 600, letterSpacing: "-0.05em", lineHeight: 1, fontFamily: "var(--font-display)", color: "var(--accent-strong)" }}>404</div>
+        <h1 style={{ fontSize: 22, fontWeight: 600, marginTop: 12 }}>{t("nf.title")}</h1>
+        <p style={{ fontSize: 13.5, color: "var(--text-muted)", marginTop: 8 }}>{t("nf.body")}</p>
         <Link
           href="/dashboard"
-          style={{ display: "inline-block", marginTop: 20, background: ACCENT, color: "#fff", fontSize: 13.5, fontWeight: 700, padding: "10px 20px", borderRadius: 9 }}
+          className="btn-primary" style={{ marginTop: 22 }}
         >
           {t("nf.home")}
         </Link>

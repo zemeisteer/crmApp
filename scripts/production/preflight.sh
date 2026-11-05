@@ -20,6 +20,11 @@ if [ ! -f .env ]; then bad ".env yo'q (cp .env.production.example .env)"; echo; 
 for k in DOMAIN POSTGRES_PASSWORD REDIS_PASSWORD JWT_SECRET; do
   [ -n "$(env_value $k)" ] && ok "$k" || bad "$k bo'sh"
 done
+# Namunadagi qiymat maxfiy emas: u repozitoriyda hammaga ochiq.
+for k in POSTGRES_PASSWORD REDIS_PASSWORD JWT_SECRET; do
+  example="$(grep -E "^$k=" .env.production.example 2>/dev/null | tail -n1 | cut -d '=' -f2- | tr -d ' "' || true)"
+  if [ -n "$example" ] && [ "$(env_value $k)" = "$example" ]; then bad "$k hali namunadagi qiymat — almashtiring (openssl rand -hex 32)"; fi
+done
 JWT_LEN="$(env_value JWT_SECRET | tr -d '\n' | wc -c)"
 [ "$JWT_LEN" -ge 32 ] && ok "JWT_SECRET yetarlicha uzun" || bad "JWT_SECRET juda qisqa (openssl rand -hex 32)"
 for k in TELEGRAM_BOT_TOKEN TELEGRAM_BOT_USERNAME TELEGRAM_WEBHOOK_SECRET; do
@@ -28,6 +33,9 @@ done
 if [ -n "$(env_value GEMINI_API_KEY)" ] || [ -n "$(env_value ANTHROPIC_API_KEY)" ]; then ok "AI kaliti"; else warn "GEMINI_API_KEY / ANTHROPIC_API_KEY bo'sh — AI funksiyalar o'chiq"; fi
 [ -n "$(env_value CLOUDFLARE_API_TOKEN)" ] && ok "CLOUDFLARE_API_TOKEN (SSL avtomatik yangilanadi)" || warn "CLOUDFLARE_API_TOKEN bo'sh — SSL TXT yozuv bilan qo'lda, 90 kunda yangilash kerak"
 if [ -z "$(env_value SMTP_USER)" ] && [ -z "$(env_value RESEND_API_KEY)" ]; then warn "Email sozlanmagan — parolni tiklash xatlari ketmaydi"; else ok "Email"; fi
+
+[ -n "$(env_value SETTINGS_KEY)" ] && ok "SETTINGS_KEY" || warn "SETTINGS_KEY bo'sh — admin paneldagi integratsiya sahifasi faqat o'qish uchun"
+if [ -n "$(env_value PLATFORM_CARD_NUMBER)" ] && [ -n "$(env_value PLATFORM_CARD_HOLDER)" ]; then ok "Platforma kartasi"; else warn "Platforma kartasi .env da yo'q — admin panelida kiritilmasa, markazlar obunani karta bilan to'lay olmaydi"; fi
 
 DOMAIN="$(env_value DOMAIN)"
 echo "== DNS ($DOMAIN)"

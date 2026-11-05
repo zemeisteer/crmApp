@@ -1,5 +1,5 @@
 import { expect, test, type Browser, type Page } from '@playwright/test';
-import { PASSWORD, api, authSlot, centerUrl, cleanUpStagingCenters, expectCenterDashboard, loginOnMainSite, newCenter, run } from './support';
+import { fetchViaApi, PASSWORD, sessionToken, api, authSlot, centerUrl, cleanUpStagingCenters, expectCenterDashboard, loginOnMainSite, newCenter, run } from './support';
 
 // Two-way messages: a teacher (staff, context A) and their student's cabinet
 // (context B) - two separate browser sessions - write to each other and see
@@ -16,7 +16,7 @@ import { PASSWORD, api, authSlot, centerUrl, cleanUpStagingCenters, expectCenter
 cleanUpStagingCenters();
 
 /** The session token a signed-in page holds (staff). */
-const staffToken = (page: Page) => page.evaluate(() => localStorage.getItem('talimcrm_token')) as Promise<string>;
+const staffToken = sessionToken;
 
 type Msg = { body: string; seq: number; clientMessageId: string };
 
@@ -145,7 +145,7 @@ test('a teacher and a student write to each other live; unread clears; one messa
     const req = route.request();
     if (req.method() === 'POST' && lost === 0) {
       lost++;
-      await route.fetch();
+      await fetchViaApi(route);
       return route.abort('connectionreset');
     }
     if (req.method() === 'GET' && holdCatchUp && new URL(req.url()).searchParams.has('after')) return route.abort('connectionreset');

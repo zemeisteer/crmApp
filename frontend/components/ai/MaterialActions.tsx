@@ -12,7 +12,7 @@ import type { TestQuestion } from "@/lib/tests";
 import { useAuth } from "@/lib/auth-context";
 import { formatDate } from "@/lib/format-date";
 
-const ACCENT = "#4F46E5";
+const ACCENT = "var(--primary)";
 
 // Cuts the answer key off a material (a heading or line such as "Javoblar
 // kaliti", "Answer key", "Ответы") so students don't get the answers.
@@ -67,7 +67,7 @@ export default function MaterialActions({ material, groups, defaultGroupId, onGi
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-        <button type="button" className="btn" onClick={() => { setNotice(null); setMode("homework"); }} style={{ ...btn, background: ACCENT, color: "#fff", border: "none" }}>
+        <button type="button" className="btn" onClick={() => { setNotice(null); setMode("homework"); }} style={{ ...btn, background: ACCENT, color: "var(--on-ink)", border: "none" }}>
           📤 {t("aim.toHomework")}
         </button>
         <button type="button" className="btn" onClick={() => { setNotice(null); setMode("exam"); }} style={btn}>
@@ -78,7 +78,7 @@ export default function MaterialActions({ material, groups, defaultGroupId, onGi
         </button>
       </div>
       {material.given?.length ? (
-        <div data-testid="material-given" style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12.5, color: "#15803D", background: "#ECFDF5", borderRadius: 8, padding: "8px 12px" }}>
+        <div data-testid="material-given" style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12.5, color: "var(--success)", background: "var(--success-soft)", borderRadius: "var(--radius-xs)", padding: "8px 12px" }}>
           {material.given.map((g, i) => (
             <div key={i}>
               📤 <b>{t("aim.givenTo")}</b> {g.groups.join(", ")} — {g.by}, {formatDate(g.at, lang)}
@@ -86,10 +86,10 @@ export default function MaterialActions({ material, groups, defaultGroupId, onGi
           ))}
         </div>
       ) : (
-        <div style={{ fontSize: 11.5, color: "#686B75" }}>{t("aim.visibilityHint")}</div>
+        <div style={{ fontSize: 11.5, color: "var(--text-muted)" }}>{t("aim.visibilityHint")}</div>
       )}
-      {notice && <div style={{ fontSize: 12.5, fontWeight: 600, color: "#15803D", background: "#ECFDF5", borderRadius: 8, padding: "8px 12px" }}>✓ {notice}</div>}
-      {error && <div role="alert" style={{ fontSize: 12.5, fontWeight: 600, color: "#B23A47", background: "#FDEBEC", borderRadius: 8, padding: "8px 12px" }}>{error}</div>}
+      {notice && <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--success)", background: "var(--success-soft)", borderRadius: "var(--radius-xs)", padding: "8px 12px" }}>✓ {notice}</div>}
+      {error && <div role="alert" style={{ fontSize: 12.5, fontWeight: 600, color: "var(--danger)", background: "var(--danger-soft)", borderRadius: "var(--radius-xs)", padding: "8px 12px" }}>{error}</div>}
 
       {mode === "homework" && (
         <HomeworkModal
@@ -171,15 +171,15 @@ function HomeworkModal({ material, groups, defaultGroupId, onClose, onDone }: { 
           <div style={lbl}>{t("homework.fieldDueDate")}</div>
           <DatePicker value={dueDate} onChange={setDueDate} />
         </div>
-        <div style={{ fontSize: 12, color: "#6D28D9", background: "#F5F3FF", borderRadius: 8, padding: "8px 12px" }}>📄 {t("aim.hwFileNote")}</div>
+        <div style={{ fontSize: 12, color: "var(--violet)", background: "var(--violet-soft)", borderRadius: "var(--radius-xs)", padding: "8px 12px" }}>📄 {t("aim.hwFileNote")}</div>
         {keyCut.removed && (
-          <label style={{ display: "flex", gap: 8, alignItems: "flex-start", fontSize: 12.5, color: "#92400E", background: "#FFFBEB", border: "1px solid #FDE68A", borderRadius: 8, padding: "8px 12px", cursor: "pointer" }}>
+          <label style={{ display: "flex", gap: 8, alignItems: "flex-start", fontSize: 12.5, color: "var(--warning)", background: "var(--warning-soft)", border: "1px solid var(--warning-border)", borderRadius: "var(--radius-xs)", padding: "8px 12px", cursor: "pointer" }}>
             <input type="checkbox" checked={hideKey} onChange={(e) => setHideKey(e.target.checked)} style={{ marginTop: 2, accentColor: ACCENT }} />
             <span>🔑 {t("aim.hideKey")}</span>
           </label>
         )}
-        {error && <div role="alert" style={{ fontSize: 12.5, fontWeight: 600, color: "#B23A47", background: "#FDEBEC", borderRadius: 8, padding: "8px 12px" }}>{error}</div>}
-        <button type="button" className="btn" disabled={saving} onClick={submit} style={{ background: ACCENT, color: "#fff", border: "none", fontSize: 14, fontWeight: 700, padding: 12, borderRadius: 10 }}>
+        {error && <div role="alert" style={{ fontSize: 12.5, fontWeight: 600, color: "var(--danger)", background: "var(--danger-soft)", borderRadius: "var(--radius-xs)", padding: "8px 12px" }}>{error}</div>}
+        <button type="button" className="btn" disabled={saving} onClick={submit} style={{ background: ACCENT, color: "var(--on-ink)", border: "none", fontSize: 14, fontWeight: 700, padding: 12, borderRadius: "var(--radius-sm)" }}>
           {saving ? t("homework.adding") : t("homework.assign")}
         </button>
       </div>
@@ -235,19 +235,19 @@ function ExamModal({ material, onClose, onDone }: { material: MaterialLike; onCl
   return (
     <Modal open onClose={onClose} title={`📝 ${t("aim.toExam")}`} width={500}>
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-        <div style={{ fontSize: 13, color: "#4A4E58", lineHeight: 1.5 }}>{t("aim.toExamHint")}</div>
+        <div style={{ fontSize: 13, color: "var(--text-soft)", lineHeight: 1.5 }}>{t("aim.toExamHint")}</div>
         {exams === null ? (
-          <div style={{ fontSize: 13, color: "#686B75" }}>{t("common.loading")}</div>
+          <div style={{ fontSize: 13, color: "var(--text-muted)" }}>{t("common.loading")}</div>
         ) : exams.length === 0 ? (
-          <div style={{ fontSize: 13, color: "#B23A47" }}>{t("aim.noExams")}</div>
+          <div style={{ fontSize: 13, color: "var(--danger)" }}>{t("aim.noExams")}</div>
         ) : (
           <div>
             <div style={lbl}>{t("aim.pickExam")}</div>
             <Select value={examId} onChange={setExamId} options={exams.map((e) => ({ value: e.id, label: `${e.title}${e.group?.name ? ` · ${e.group.name}` : ""}` }))} />
           </div>
         )}
-        {error && <div role="alert" style={{ fontSize: 12.5, fontWeight: 600, color: "#B23A47", background: "#FDEBEC", borderRadius: 8, padding: "8px 12px" }}>{error}</div>}
-        <button type="button" className="btn" disabled={reading || !examId} onClick={read} style={{ background: "linear-gradient(135deg, #7C3AED, #4F46E5)", color: "#fff", border: "none", fontSize: 14, fontWeight: 700, padding: 12, borderRadius: 10, opacity: examId ? 1 : 0.6 }}>
+        {error && <div role="alert" style={{ fontSize: 12.5, fontWeight: 600, color: "var(--danger)", background: "var(--danger-soft)", borderRadius: "var(--radius-xs)", padding: "8px 12px" }}>{error}</div>}
+        <button type="button" className="btn" disabled={reading || !examId} onClick={read} style={{ background: "linear-gradient(135deg, var(--violet), var(--primary))", color: "var(--on-ink)", border: "none", fontSize: 14, fontWeight: 700, padding: 12, borderRadius: "var(--radius-sm)", opacity: examId ? 1 : 0.6 }}>
           {reading ? t("aim.reading") : t("aim.readQuestions")}
         </button>
       </div>
@@ -255,5 +255,5 @@ function ExamModal({ material, onClose, onDone }: { material: MaterialLike; onCl
   );
 }
 
-const btn: React.CSSProperties = { background: "#fff", border: "1px solid #EAE8E2", color: "#181A1F", fontSize: 12.5, fontWeight: 700, padding: "8px 14px", borderRadius: 9, cursor: "pointer" };
-const lbl: React.CSSProperties = { fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 };
+const btn: React.CSSProperties = { background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text)", fontSize: 12.5, fontWeight: 700, padding: "8px 14px", borderRadius: "var(--radius-sm)", cursor: "pointer" };
+const lbl: React.CSSProperties = { fontSize: 12.5, fontWeight: 600, color: "var(--text-soft)", marginBottom: 6 };

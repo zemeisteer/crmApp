@@ -9,9 +9,9 @@ import { useLanguage } from "@/lib/i18n-context";
 import { formatDateTime } from "@/lib/format-date";
 import { PrivateAudio } from "@/components/PrivateFile";
 
-const ACCENT = "#4F46E5";
-const card: React.CSSProperties = { background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 16 };
-const ghost: React.CSSProperties = { background: "#fff", border: "1px solid #EAE8E2", borderRadius: 9, padding: "7px 11px", fontSize: 12.5, fontWeight: 700, cursor: "pointer" };
+const ACCENT = "var(--primary)";
+const card: React.CSSProperties = { background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 16 };
+const ghost: React.CSSProperties = { background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", padding: "7px 11px", fontSize: 12.5, fontWeight: 700, cursor: "pointer" };
 
 // Sittings of one test: bands per section, and a review window where the
 // teacher reads Writing, listens to Speaking and sets or corrects the band.
@@ -27,17 +27,17 @@ export default function MockAttempts({ test }: { test: MockTest }) {
 
   // One table cell per score (never a <td> inside a <td>).
   const cell = (key: string, b: number | null | undefined, status?: string, done = true) => (
-    <td key={key} style={{ textAlign: "center", fontWeight: 800, fontSize: 15, color: done ? bandColor(b) : "#C9C7C0", padding: "14px 12px", whiteSpace: "nowrap" }}>
-      {!done ? "·" : b != null ? b : status === "PENDING" ? "⏳" : status === "REVIEW" ? <span style={{ fontSize: 11, color: "#B45309" }}>{t("mock.needsReview")}</span> : "—"}
+    <td key={key} style={{ textAlign: "center", fontWeight: 800, fontSize: 15, color: done ? bandColor(b) : "var(--text-faint)", padding: "14px 12px", whiteSpace: "nowrap" }}>
+      {!done ? "·" : b != null ? b : status === "PENDING" ? "⏳" : status === "REVIEW" ? <span style={{ fontSize: 11, color: "var(--warning)" }}>{t("mock.needsReview")}</span> : "—"}
     </td>
   );
 
   return (
     <div style={{ ...card, padding: 0, overflowX: "auto" }}>
       {rows === null ? (
-        <div style={{ padding: 16, color: "#686B75" }}>{t("common.loading")}</div>
+        <div style={{ padding: 16, color: "var(--text-muted)" }}>{t("common.loading")}</div>
       ) : rows.length === 0 ? (
-        <div style={{ padding: 30, textAlign: "center", color: "#686B75" }}>{t("mock.noAttempts")}</div>
+        <div style={{ padding: 30, textAlign: "center", color: "var(--text-muted)" }}>{t("mock.noAttempts")}</div>
       ) : (
         <table className="table" style={{ margin: 0, minWidth: 860, width: "100%", tableLayout: "fixed" }}>
           <colgroup>
@@ -54,7 +54,7 @@ export default function MockAttempts({ test }: { test: MockTest }) {
               {MOCK_SECTIONS.map((s) => (
                 <th key={s} style={{ textAlign: "center", padding: "12px 8px" }} title={t(sectionKey(s))}>
                   <div style={{ fontSize: 16, lineHeight: 1 }}>{SECTION_ICON[s]}</div>
-                  <div style={{ fontSize: 10.5, fontWeight: 600, color: "#686B75", marginTop: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t(sectionKey(s))}</div>
+                  <div style={{ fontSize: 10.5, fontWeight: 600, color: "var(--text-muted)", marginTop: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t(sectionKey(s))}</div>
                 </th>
               ))}
               <th style={{ textAlign: "center", padding: "12px 8px" }}>{t("mock.overall")}</th>
@@ -65,9 +65,9 @@ export default function MockAttempts({ test }: { test: MockTest }) {
             {rows.map((r) => (
               <tr key={r.id}>
                 <td style={{ fontWeight: 700, padding: "14px 16px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={r.studentName}>{r.studentName}</td>
-                <td style={{ fontSize: 12.5, color: "#6B6E78", padding: "14px 12px" }}>
+                <td style={{ fontSize: 12.5, color: "var(--text-muted)", padding: "14px 12px" }}>
                   {formatDateTime(r.completedAt ?? r.createdAt, lang)}
-                  {r.status === "IN_PROGRESS" && <div style={{ display: "inline-block", marginLeft: 6, fontSize: 11, fontWeight: 700, color: "#B45309", background: "#FEF3C7", borderRadius: 100, padding: "2px 8px" }}>{t("mock.inProgress")}</div>}
+                  {r.status === "IN_PROGRESS" && <div style={{ display: "inline-block", marginLeft: 6, fontSize: 11, fontWeight: 700, color: "var(--warning)", background: "var(--warning-soft)", borderRadius: "var(--radius-pill)", padding: "2px 8px" }}>{t("mock.inProgress")}</div>}
                 </td>
                 {MOCK_SECTIONS.map((s) => cell(s, r.results[s]?.band, r.results[s]?.status, Boolean(r.sectionDone[s])))}
                 {cell("overall", r.results.overall)}
@@ -112,24 +112,24 @@ function ReviewModal({ detail, onClose, onChanged }: { detail: MockAttemptDetail
   return (
     <Modal open onClose={onClose} title={`${detail.student.fullName} — ${detail.test.title}`}>
       <div style={{ display: "grid", gap: 16, maxHeight: "75vh", overflowY: "auto", paddingRight: 4 }}>
-        {error && <div role="alert" style={{ background: "#FDEBEC", color: "#B23A47", padding: "8px 12px", borderRadius: 10, fontSize: 13 }}>{error}</div>}
+        {error && <div role="alert" style={{ background: "var(--danger-soft)", color: "var(--danger)", padding: "8px 12px", borderRadius: "var(--radius-sm)", fontSize: 13 }}>{error}</div>}
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           {MOCK_SECTIONS.map((s) => (
-            <span key={s} style={{ background: "#F7F7F5", borderRadius: 10, padding: "6px 10px", fontSize: 13 }}>
+            <span key={s} style={{ background: "var(--surface-muted)", borderRadius: "var(--radius-sm)", padding: "6px 10px", fontSize: 13 }}>
               {SECTION_ICON[s]} {t(sectionKey(s))}: <b style={{ color: bandColor(detail.results[s]?.band) }}>{detail.results[s]?.band ?? "—"}</b>
-              {detail.results[s]?.raw !== undefined && <span style={{ color: "#686B75" }}> ({detail.results[s]?.raw}/{detail.results[s]?.max})</span>}
+              {detail.results[s]?.raw !== undefined && <span style={{ color: "var(--text-muted)" }}> ({detail.results[s]?.raw}/{detail.results[s]?.max})</span>}
             </span>
           ))}
-          <span style={{ background: "#EEF0FF", borderRadius: 10, padding: "6px 10px", fontSize: 13, fontWeight: 800, color: ACCENT }}>{t("mock.overall")}: {detail.results.overall ?? "—"}</span>
+          <span style={{ background: "var(--primary-soft)", borderRadius: "var(--radius-sm)", padding: "6px 10px", fontSize: 13, fontWeight: 800, color: ACCENT }}>{t("mock.overall")}: {detail.results.overall ?? "—"}</span>
         </div>
 
         {detail.sectionDone.writing && (
           <section style={{ display: "grid", gap: 10 }}>
             <h3 style={{ margin: 0, fontSize: 15 }}>✍️ Writing {w?.gradedBy === "AI" && <span style={{ fontSize: 11, color: ACCENT }}>· AI</span>}</h3>
             {c.writing.tasks.map((task, i) => (
-              <div key={i} style={{ border: "1px solid #EAE8E2", borderRadius: 12, padding: 12, display: "grid", gap: 8 }}>
+              <div key={i} style={{ border: "1px solid var(--border)", borderRadius: "var(--radius-md)", padding: 12, display: "grid", gap: 8 }}>
                 <div style={{ fontWeight: 700, fontSize: 13 }}>{task.title} · {w?.tasks?.[i]?.words ?? 0} {t("mock.words")} {w?.tasks?.[i]?.band != null && <b style={{ color: bandColor(w.tasks[i].band) }}>· {w.tasks[i].band}</b>}</div>
-                <div style={{ fontSize: 13.5, whiteSpace: "pre-wrap", lineHeight: 1.6, background: "#FAFAF8", borderRadius: 10, padding: 10, maxHeight: 260, overflowY: "auto" }}>{detail.answers.writing?.[String(i)] || "—"}</div>
+                <div style={{ fontSize: 13.5, whiteSpace: "pre-wrap", lineHeight: 1.6, background: "var(--surface-muted)", borderRadius: "var(--radius-sm)", padding: 10, maxHeight: 260, overflowY: "auto" }}>{detail.answers.writing?.[String(i)] || "—"}</div>
                 {w?.tasks?.[i]?.feedback && <FeedbackView fb={w.tasks[i].feedback!} />}
               </div>
             ))}
@@ -140,7 +140,7 @@ function ReviewModal({ detail, onClose, onChanged }: { detail: MockAttemptDetail
             </div>
             <textarea className="field-input" rows={2} placeholder={t("mock.commentPh")} value={wComment} onChange={(e) => setWComment(e.target.value)} />
             <div style={{ display: "flex", gap: 8 }}>
-              <button type="button" disabled={busy || num(wBand) === undefined} style={{ ...ghost, background: ACCENT, color: "#fff", border: "none" }}
+              <button type="button" disabled={busy || num(wBand) === undefined} style={{ ...ghost, background: ACCENT, color: "var(--on-ink)", border: "none" }}
                 onClick={() => run(() => mockTestsApi.review(detail.id, { section: "writing", band: num(wBand)!, task1: num(t1), task2: num(t2), comment: wComment }))}>
                 💾 {t("mock.saveBand")}
               </button>
@@ -158,23 +158,23 @@ function ReviewModal({ detail, onClose, onChanged }: { detail: MockAttemptDetail
                 {p.questions.map((q, qi) => {
                   const a = detail.answers.speaking?.[`${pi}.${qi}`];
                   return (
-                    <div key={qi} style={{ border: "1px solid #EAE8E2", borderRadius: 10, padding: 10, fontSize: 13, display: "grid", gap: 6 }}>
-                      <div style={{ color: "#4A4E58" }}>❓ {q}</div>
-                      {a?.audio ? <PrivateAudio controls name={a.audio} scope="staff" style={{ width: "100%", height: 36 }} /> : <span style={{ color: "#686B75" }}>{t("mock.noRecording")}</span>}
-                      {a?.transcript && <div style={{ fontStyle: "italic", color: "#33363D" }}>“{a.transcript}”</div>}
+                    <div key={qi} style={{ border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", padding: 10, fontSize: 13, display: "grid", gap: 6 }}>
+                      <div style={{ color: "var(--text-soft)" }}>❓ {q}</div>
+                      {a?.audio ? <PrivateAudio controls name={a.audio} scope="staff" style={{ width: "100%", height: 36 }} /> : <span style={{ color: "var(--text-muted)" }}>{t("mock.noRecording")}</span>}
+                      {a?.transcript && <div style={{ fontStyle: "italic", color: "var(--text-soft)" }}>“{a.transcript}”</div>}
                     </div>
                   );
                 })}
               </div>
             ))}
-            {sp?.gradedBy === "AI" && <div style={{ fontSize: 12.5, color: "#6B6E78", background: "#F7F7F5", border: "1px solid #EAE8E2", borderRadius: 10, padding: "9px 12px" }}>ℹ️ {t("mock.speakingTranscriptOnly")}</div>}
+            {sp?.gradedBy === "AI" && <div style={{ fontSize: 12.5, color: "var(--text-muted)", background: "var(--surface-muted)", border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", padding: "9px 12px" }}>ℹ️ {t("mock.speakingTranscriptOnly")}</div>}
             {sp?.feedback && <FeedbackView fb={sp.feedback} />}
             <div style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 13 }}>
               <b>{t("mock.band")}</b><input className="field-input" style={{ width: 70 }} value={sBand} onChange={(e) => setSBand(e.target.value)} inputMode="decimal" />
             </div>
             <textarea className="field-input" rows={2} placeholder={t("mock.commentPh")} value={sComment} onChange={(e) => setSComment(e.target.value)} />
             <div style={{ display: "flex", gap: 8 }}>
-              <button type="button" disabled={busy || num(sBand) === undefined} style={{ ...ghost, background: ACCENT, color: "#fff", border: "none" }}
+              <button type="button" disabled={busy || num(sBand) === undefined} style={{ ...ghost, background: ACCENT, color: "var(--on-ink)", border: "none" }}
                 onClick={() => run(() => mockTestsApi.review(detail.id, { section: "speaking", band: num(sBand)!, comment: sComment }))}>
                 💾 {t("mock.saveBand")}
               </button>
@@ -182,7 +182,7 @@ function ReviewModal({ detail, onClose, onChanged }: { detail: MockAttemptDetail
             </div>
           </section>
         )}
-        {!detail.sectionDone.writing && !detail.sectionDone.speaking && <div style={{ color: "#686B75", fontSize: 13 }}>{t("mock.nothingToReview")}</div>}
+        {!detail.sectionDone.writing && !detail.sectionDone.speaking && <div style={{ color: "var(--text-muted)", fontSize: 13 }}>{t("mock.nothingToReview")}</div>}
       </div>
     </Modal>
   );

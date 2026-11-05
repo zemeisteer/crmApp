@@ -1,14 +1,16 @@
-import { IsArray, IsEmail, IsIn, IsOptional, IsString, MinLength } from 'class-validator';
+import { IsArray, IsEmail, IsIn, IsOptional, IsString, MinLength, MaxLength } from 'class-validator';
 import { ACCESS_KEYS } from '../../access/catalog';
 
 export class CreateStaffDto {
   @IsString()
+  @MaxLength(2000)
   fullName: string;
 
   @IsEmail()
   email: string;
 
   @IsString()
+  @MaxLength(2000)
   @MinLength(6)
   password: string;
 
@@ -18,6 +20,7 @@ export class CreateStaffDto {
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
+  @MaxLength(2000, { each: true })
   permissions?: string[];
 
   // The member's own list (keys of access/catalog.ts); null: the role's default.
@@ -35,6 +38,7 @@ export class UpdateStaffDto {
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
+  @MaxLength(2000, { each: true })
   permissions?: string[];
 
   // The member's own list (keys of access/catalog.ts); null: the role's default.

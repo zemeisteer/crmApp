@@ -6,8 +6,8 @@ import Select from "@/components/Select";
 import { ApiError, scheduleApi, type Branch, type Room } from "@/lib/api";
 import { useLanguage } from "@/lib/i18n-context";
 
-const ACCENT = "#4F46E5";
-const COLORS = ["#4F46E5", "#0EA5E9", "#10B981", "#F59E0B", "#EF4444", "#EC4899", "#8B5CF6", "#64748B"];
+const ACCENT = "var(--primary)";
+const COLORS = ["var(--primary)", "var(--info)", "var(--success)", "var(--warning)", "var(--danger)", "var(--pink)", "var(--violet)", "var(--text-muted)"];
 
 // Rooms: add, edit and remove, with branch, capacity and a colour used on
 // the timetable. Shows how many weekly lessons each room already has.
@@ -91,7 +91,7 @@ export default function RoomsManager({
 
   return (
     <Modal open onClose={onClose} title={`🚪 ${t("schedule.manageRooms")}`} width={640}>
-      <form onSubmit={save} noValidate style={{ border: "1px solid #EAE8E2", borderRadius: 14, padding: 16, background: editing ? "#F7F6FF" : "#FAFAF8", marginBottom: 16 }}>
+      <form onSubmit={save} noValidate style={{ border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 16, background: editing ? "var(--primary-soft)" : "var(--surface-muted)", marginBottom: 16 }}>
         <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 12 }}>{editing ? `✏️ ${t("rooms.editTitle")}` : `+ ${t("sch.newRoom")}`}</div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 10 }}>
           <div>
@@ -118,12 +118,12 @@ export default function RoomsManager({
                 type="button"
                 onClick={() => setColor(c)}
                 aria-label={c}
-                style={{ width: 28, height: 28, borderRadius: 8, background: c, cursor: "pointer", border: color === c ? "3px solid #181A1F" : "3px solid transparent", boxShadow: color === c ? "0 0 0 2px #fff inset" : "none" }}
+                style={{ width: 28, height: 28, borderRadius: "var(--radius-xs)", background: c, cursor: "pointer", border: color === c ? "3px solid var(--ink)" : "3px solid transparent", boxShadow: color === c ? "0 0 0 2px var(--surface) inset" : "none" }}
               />
             ))}
           </div>
         </div>
-        {error && <div role="alert" style={{ marginTop: 10, fontSize: 12.5, fontWeight: 600, color: "#B91C1C" }}>{error}</div>}
+        {error && <div role="alert" style={{ marginTop: 10, fontSize: 12.5, fontWeight: 600, color: "var(--danger)" }}>{error}</div>}
         <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 14 }}>
           {editing && (
             <button type="button" className="btn" onClick={reset} style={ghost}>{t("common.cancel")}</button>
@@ -135,22 +135,22 @@ export default function RoomsManager({
       </form>
 
       {rooms.length === 0 ? (
-        <div style={{ textAlign: "center", color: "#686B75", padding: 24, border: "1px dashed #EAE8E2", borderRadius: 12 }}>{t("sch.noRooms")}</div>
+        <div style={{ textAlign: "center", color: "var(--text-muted)", padding: 24, border: "1px dashed var(--border)", borderRadius: "var(--radius-md)" }}>{t("sch.noRooms")}</div>
       ) : (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: 10, maxHeight: 340, overflowY: "auto" }}>
           {rooms.map((room) => (
-            <div key={room.id} style={{ border: `1px solid ${editing?.id === room.id ? ACCENT : "#EAE8E2"}`, borderRadius: 12, overflow: "hidden", background: "#fff" }}>
+            <div key={room.id} style={{ border: `1px solid ${editing?.id === room.id ? ACCENT : "var(--border)"}`, borderRadius: "var(--radius-md)", overflow: "hidden", background: "var(--surface)" }}>
               <div style={{ height: 6, background: room.color || ACCENT }} />
               <div style={{ padding: 12 }}>
                 <div style={{ fontWeight: 800, fontSize: 14 }}>{room.name}</div>
-                <div style={{ fontSize: 12, color: "#686B75", marginTop: 4, lineHeight: 1.6 }}>
+                <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 4, lineHeight: 1.6 }}>
                   👥 {room.capacity} {t("rooms.seats")}
                   {branchName(room.branchId) && <><br />📍 {branchName(room.branchId)}</>}
                   <br />📅 {lessonsPerRoom[room.id] ?? 0} {t("rooms.weeklyLessons")}
                 </div>
                 <div style={{ display: "flex", gap: 6, marginTop: 10 }}>
                   <button type="button" onClick={() => edit(room)} style={{ ...ghost, padding: "5px 10px", fontSize: 12 }}>{t("common.edit")}</button>
-                  <button type="button" onClick={() => remove(room)} style={{ ...ghost, padding: "5px 10px", fontSize: 12, color: "#B23A47" }}>{t("common.delete")}</button>
+                  <button type="button" onClick={() => remove(room)} style={{ ...ghost, padding: "5px 10px", fontSize: 12, color: "var(--danger)" }}>{t("common.delete")}</button>
                 </div>
               </div>
             </div>
@@ -161,6 +161,6 @@ export default function RoomsManager({
   );
 }
 
-const lbl: React.CSSProperties = { fontSize: 12, fontWeight: 600, color: "#4A4E58", marginBottom: 6 };
-const ghost: React.CSSProperties = { background: "#fff", border: "1px solid #EAE8E2", color: "#181A1F", fontSize: 13, fontWeight: 700, padding: "8px 14px", borderRadius: 8, cursor: "pointer" };
-const primary: React.CSSProperties = { background: ACCENT, color: "#fff", border: "none", fontSize: 13, fontWeight: 700, padding: "8px 16px", borderRadius: 8, cursor: "pointer" };
+const lbl: React.CSSProperties = { fontSize: 12, fontWeight: 600, color: "var(--text-soft)", marginBottom: 6 };
+const ghost: React.CSSProperties = { background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text)", fontSize: 13, fontWeight: 700, padding: "8px 14px", borderRadius: "var(--radius-xs)", cursor: "pointer" };
+const primary: React.CSSProperties = { background: ACCENT, color: "var(--on-ink)", border: "none", fontSize: 13, fontWeight: 700, padding: "8px 16px", borderRadius: "var(--radius-xs)", cursor: "pointer" };

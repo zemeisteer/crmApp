@@ -16,7 +16,7 @@ import type { TranslationKey } from "@/lib/i18n";
 import PhoneInput from "@/components/PhoneInput";
 import { centerHost, ROOT_DOMAIN } from "@/lib/domain";
 
-const ACCENT = "#4F46E5";
+const ACCENT = "var(--primary)";
 
 const TEACHING_CATEGORIES = [
   { id: "languages", label: "onb.catLanguages" as TranslationKey, desc: "onb.catLanguagesDesc" as TranslationKey, icon: "🌐" },
@@ -395,12 +395,12 @@ export default function OnboardingPage() {
 
   if (initialLoading) {
     return (
-      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#F7F7F5" }}>
+      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14 }}>
           <svg className="animate-spin" width="32" height="32" viewBox="0 0 24 24" fill="none">
             <circle cx="12" cy="12" r="10" stroke={ACCENT} strokeWidth="4" strokeDasharray="30 60" />
           </svg>
-          <div style={{ fontSize: 14, fontWeight: 600, color: "#6B7280" }}>
+          <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-muted)" }}>
             {t("onb.loadingWs")}
           </div>
         </div>
@@ -411,13 +411,13 @@ export default function OnboardingPage() {
   // Final Completion Screen
   if (isCompleted) {
     return (
-      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#F7F7F5", padding: 24 }}>
+      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
         <div
           style={{
             width: "100%",
             maxWidth: 520,
-            background: "#FFFFFF",
-            borderRadius: 24,
+            background: "var(--surface)",
+            borderRadius: "var(--radius-lg)",
             padding: "48px 36px",
             boxShadow: "0 20px 40px rgba(0,0,0,0.06)",
             display: "flex",
@@ -432,7 +432,7 @@ export default function OnboardingPage() {
               width: 72,
               height: 72,
               borderRadius: "50%",
-              background: "#ECFDF5",
+              background: "var(--success-soft)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -443,10 +443,10 @@ export default function OnboardingPage() {
           </div>
 
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            <h1 style={{ fontSize: 30, fontWeight: 800, color: "#111827", letterSpacing: "-0.03em" }}>
+            <h1 style={{ fontSize: 30, fontWeight: 800, color: "var(--text)", letterSpacing: "-0.03em" }}>
               {t("onb.ready")}
             </h1>
-            <p style={{ fontSize: 15, color: "#6B7280", maxWidth: 400, lineHeight: 1.5 }}>
+            <p style={{ fontSize: 15, color: "var(--text-muted)", maxWidth: 400, lineHeight: 1.5 }}>
               {t("onb.readyBody")}
             </p>
           </div>
@@ -454,9 +454,9 @@ export default function OnboardingPage() {
           <div
             style={{
               width: "100%",
-              background: "#F8FAFC",
-              border: "1.5px solid #E2E8F0",
-              borderRadius: 14,
+              background: "var(--surface-muted)",
+              border: "1.5px solid var(--border)",
+              borderRadius: "var(--radius-lg)",
               padding: "16px 20px",
               display: "flex",
               alignItems: "center",
@@ -464,7 +464,7 @@ export default function OnboardingPage() {
             }}
           >
             <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 2 }}>
-              <span style={{ fontSize: 11.5, fontWeight: 700, color: "#64748B", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+              <span style={{ fontSize: 11.5, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
                 {t("onb.wsUrl")}
               </span>
               <span style={{ fontSize: 16, fontWeight: 700, color: ACCENT }}>
@@ -478,13 +478,13 @@ export default function OnboardingPage() {
                 alert(t("msg.urlCopied"));
               }}
               style={{
-                background: "#EEF2FF",
+                background: "var(--primary-soft)",
                 border: "none",
                 color: ACCENT,
                 fontSize: 12.5,
                 fontWeight: 700,
                 padding: "8px 14px",
-                borderRadius: 8,
+                borderRadius: "var(--radius-xs)",
                 cursor: "pointer",
               }}
             >
@@ -500,10 +500,10 @@ export default function OnboardingPage() {
               width: "100%",
               height: 50,
               background: ACCENT,
-              color: "#FFFFFF",
+              color: "var(--on-ink)",
               fontSize: 15.5,
               fontWeight: 700,
-              borderRadius: 12,
+              borderRadius: "var(--radius-md)",
               border: "none",
               cursor: "pointer",
               boxShadow: "0 4px 16px rgba(79, 70, 229, 0.35)",
@@ -525,12 +525,12 @@ export default function OnboardingPage() {
   }
 
   return (
-    <div style={{ minHeight: "100vh", background: "#F7F7F5", display: "flex", flexDirection: "column" }}>
+    <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
       {/* Top Bar with Center Name & Step indicator */}
       <header
         style={{
-          background: "#FFFFFF",
-          borderBottom: "1px solid #EAE8E2",
+          background: "var(--surface)",
+          borderBottom: "1px solid var(--border)",
           padding: "16px 32px",
           display: "flex",
           alignItems: "center",
@@ -542,29 +542,29 @@ export default function OnboardingPage() {
             style={{
               width: 32,
               height: 32,
-              borderRadius: 8,
+              borderRadius: "var(--radius-xs)",
               background: ACCENT,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              color: "#fff",
+              color: "var(--on-ink)",
               fontWeight: 800,
               fontSize: 15,
             }}
             aria-hidden
           >
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--surface)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M22 10 12 5 2 10l10 5 10-5Z" />
               <path d="M6 12v5c0 1.5 2.7 3 6 3s6-1.5 6-3v-5" />
             </svg>
           </div>
-          <span style={{ fontSize: 16, fontWeight: 800, color: "#111827", letterSpacing: "-0.02em" }}>
+          <span style={{ fontSize: 16, fontWeight: 800, color: "var(--text)", letterSpacing: "-0.02em" }}>
             TalimCRM Onboarding
           </span>
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <span style={{ fontSize: 13, fontWeight: 700, color: "#4B5563" }}>
+          <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text-soft)" }}>
             {t("onb.step")} {currentStepIndex + 1} {t("onb.of")} {STEPS.length}:
           </span>
           <span style={{ fontSize: 13, fontWeight: 800, color: ACCENT }}>
@@ -574,7 +574,7 @@ export default function OnboardingPage() {
       </header>
 
       {/* Stepper Progress Bar */}
-      <div style={{ width: "100%", height: 4, background: "#E5E7EB" }}>
+      <div style={{ width: "100%", height: 4, background: "var(--border)" }}>
         <div
           style={{
             height: "100%",
@@ -601,8 +601,8 @@ export default function OnboardingPage() {
         {/* Step Card Container */}
         <div
           style={{
-            background: "#FFFFFF",
-            borderRadius: 20,
+            background: "var(--surface)",
+            borderRadius: "var(--radius-lg)",
             padding: "36px 32px",
             boxShadow: "0 8px 24px rgba(0,0,0,0.04)",
             display: "flex",
@@ -613,13 +613,13 @@ export default function OnboardingPage() {
           {error && (
             <div role="alert"
               style={{
-                background: "#FEF2F2",
-                border: "1px solid #FEE2E2",
-                color: "#B91C1C",
+                background: "var(--danger-soft)",
+                border: "1px solid var(--danger-border)",
+                color: "var(--danger)",
                 fontSize: 13.5,
                 fontWeight: 600,
                 padding: "12px 16px",
-                borderRadius: 12,
+                borderRadius: "var(--radius-md)",
               }}
             >
               {error}
@@ -633,17 +633,17 @@ export default function OnboardingPage() {
                 <span style={{ fontSize: 12, fontWeight: 700, color: ACCENT, textTransform: "uppercase", letterSpacing: "0.05em" }}>
                   {t("onb.step")} 1
                 </span>
-                <h2 style={{ fontSize: 24, fontWeight: 800, color: "#111827", marginTop: 4 }}>
+                <h2 style={{ fontSize: 24, fontWeight: 800, color: "var(--text)", marginTop: 4 }}>
                   {t("onb.welcome")}
                 </h2>
-                <p style={{ fontSize: 14.5, color: "#6B7280", marginTop: 2 }}>
+                <p style={{ fontSize: 14.5, color: "var(--text-muted)", marginTop: 2 }}>
                   {t("onb.welcomeBody")}
                 </p>
               </div>
 
               <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
                 <div>
-                  <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 6 }}>
+                  <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "var(--text-soft)", marginBottom: 6 }}>
                     {t("onb.centerName")}
                   </label>
                   <input
@@ -651,30 +651,30 @@ export default function OnboardingPage() {
                     value={tenantName}
                     onChange={(e) => setTenantName(e.target.value)}
                     placeholder="Bilimdon"
-                    style={{ width: "100%", height: 44, padding: "0 14px", borderRadius: 10, border: "1.5px solid #E5E7EB", fontSize: 14.5 }}
+                    style={{ width: "100%", height: 44, padding: "0 14px", borderRadius: "var(--radius-sm)", border: "1.5px solid var(--border)", fontSize: 14.5 }}
                   />
                 </div>
 
                 <div>
-                  <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 6 }}>
+                  <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "var(--text-soft)", marginBottom: 6 }}>
                     {t("onb.phone")}
                   </label>
                   <PhoneInput
                     value={phone}
                     onChange={setPhone}
-                    style={{ width: "100%", height: 44, padding: "0 14px", borderRadius: 10, border: "1.5px solid #E5E7EB", fontSize: 14.5 }}
+                    style={{ width: "100%", height: 44, padding: "0 14px", borderRadius: "var(--radius-sm)", border: "1.5px solid var(--border)", fontSize: 14.5 }}
                   />
                 </div>
 
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14 }}>
                   <div>
-                    <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 6 }}>
+                    <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "var(--text-soft)", marginBottom: 6 }}>
                       {t("onb.country")}
                     </label>
                     <select
                       value={country}
                       onChange={(e) => setCountry(e.target.value)}
-                      style={{ width: "100%", height: 44, padding: "0 10px", borderRadius: 10, border: "1.5px solid #E5E7EB", fontSize: 14 }}
+                      style={{ width: "100%", height: 44, padding: "0 10px", borderRadius: "var(--radius-sm)", border: "1.5px solid var(--border)", fontSize: 14 }}
                     >
                       <option value="UZ">{t("onb.uz")}</option>
                       <option value="KZ">{t("onb.kz")}</option>
@@ -685,13 +685,13 @@ export default function OnboardingPage() {
                   </div>
 
                   <div>
-                    <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 6 }}>
+                    <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "var(--text-soft)", marginBottom: 6 }}>
                       {t("onb.timezone")}
                     </label>
                     <select
                       value={timezone}
                       onChange={(e) => setTimezone(e.target.value)}
-                      style={{ width: "100%", height: 44, padding: "0 10px", borderRadius: 10, border: "1.5px solid #E5E7EB", fontSize: 14 }}
+                      style={{ width: "100%", height: 44, padding: "0 10px", borderRadius: "var(--radius-sm)", border: "1.5px solid var(--border)", fontSize: 14 }}
                     >
                       <option value="Asia/Tashkent">Tashkent (UTC+5)</option>
                       <option value="Asia/Samarkand">Samarkand (UTC+5)</option>
@@ -701,13 +701,13 @@ export default function OnboardingPage() {
                   </div>
 
                   <div>
-                    <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 6 }}>
+                    <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "var(--text-soft)", marginBottom: 6 }}>
                       {t("onb.currency")}
                     </label>
                     <select
                       value={currency}
                       onChange={(e) => setCurrency(e.target.value)}
-                      style={{ width: "100%", height: 44, padding: "0 10px", borderRadius: 10, border: "1.5px solid #E5E7EB", fontSize: 14 }}
+                      style={{ width: "100%", height: 44, padding: "0 10px", borderRadius: "var(--radius-sm)", border: "1.5px solid var(--border)", fontSize: 14 }}
                     >
                       <option value="UZS">UZS (so&apos;m)</option>
                       <option value="USD">USD ($)</option>
@@ -723,10 +723,10 @@ export default function OnboardingPage() {
                 style={{
                   height: 48,
                   background: ACCENT,
-                  color: "#fff",
+                  color: "var(--on-ink)",
                   fontSize: 15,
                   fontWeight: 700,
-                  borderRadius: 11,
+                  borderRadius: "var(--radius-sm)",
                   border: "none",
                   cursor: "pointer",
                   marginTop: 8,
@@ -744,10 +744,10 @@ export default function OnboardingPage() {
                 <span style={{ fontSize: 12, fontWeight: 700, color: ACCENT, textTransform: "uppercase", letterSpacing: "0.05em" }}>
                   {t("onb.step")} 2
                 </span>
-                <h2 style={{ fontSize: 24, fontWeight: 800, color: "#111827", marginTop: 4 }}>
+                <h2 style={{ fontSize: 24, fontWeight: 800, color: "var(--text)", marginTop: 4 }}>
                   {t("onb.whatTeach")}
                 </h2>
-                <p style={{ fontSize: 14.5, color: "#6B7280", marginTop: 2 }}>
+                <p style={{ fontSize: 14.5, color: "var(--text-muted)", marginTop: 2 }}>
                   {t("onb.whatTeachBody")}
                 </p>
               </div>
@@ -762,9 +762,9 @@ export default function OnboardingPage() {
                       onClick={() => toggleCategory(cat.id)}
                       style={{
                         padding: "16px 18px",
-                        borderRadius: 14,
-                        border: isSelected ? `2px solid ${ACCENT}` : "1.5px solid #E5E7EB",
-                        background: isSelected ? "#EEF2FF" : "#FFFFFF",
+                        borderRadius: "var(--radius-lg)",
+                        border: isSelected ? `2px solid ${ACCENT}` : "1.5px solid var(--border)",
+                        background: isSelected ? "var(--primary-soft)" : "var(--surface)",
                         display: "flex",
                         alignItems: "flex-start",
                         gap: 12,
@@ -775,10 +775,10 @@ export default function OnboardingPage() {
                     >
                       <span style={{ fontSize: 24 }}>{cat.icon}</span>
                       <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: 14.5, fontWeight: 700, color: isSelected ? ACCENT : "#111827" }}>
+                        <div style={{ fontSize: 14.5, fontWeight: 700, color: isSelected ? ACCENT : "var(--text)" }}>
                           {t(cat.label)}
                         </div>
-                        <div style={{ fontSize: 12, color: "#6B7280", marginTop: 2, lineHeight: 1.35 }}>
+                        <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2, lineHeight: 1.35 }}>
                           {t(cat.desc)}
                         </div>
                       </div>
@@ -786,13 +786,13 @@ export default function OnboardingPage() {
                         style={{
                           width: 20,
                           height: 20,
-                          borderRadius: 6,
-                          border: isSelected ? `2px solid ${ACCENT}` : "2px solid #D1D5DB",
+                          borderRadius: "var(--radius-xs)",
+                          border: isSelected ? `2px solid ${ACCENT}` : "2px solid var(--border-strong)",
                           background: isSelected ? ACCENT : "transparent",
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "center",
-                          color: "#fff",
+                          color: "var(--on-ink)",
                         }}
                       >
                         {isSelected && (
@@ -810,7 +810,7 @@ export default function OnboardingPage() {
                 <button
                   type="button"
                   onClick={() => setCurrentStepIndex(0)}
-                  style={{ background: "transparent", border: "none", color: "#6B7280", fontSize: 14, fontWeight: 600, cursor: "pointer" }}
+                  style={{ background: "transparent", border: "none", color: "var(--text-muted)", fontSize: 14, fontWeight: 600, cursor: "pointer" }}
                 >
                   {t("onb.back")}
                 </button>
@@ -822,10 +822,10 @@ export default function OnboardingPage() {
                     height: 46,
                     padding: "0 28px",
                     background: ACCENT,
-                    color: "#fff",
+                    color: "var(--on-ink)",
                     fontSize: 15,
                     fontWeight: 700,
-                    borderRadius: 11,
+                    borderRadius: "var(--radius-sm)",
                     border: "none",
                     cursor: "pointer",
                   }}
@@ -843,10 +843,10 @@ export default function OnboardingPage() {
                 <span style={{ fontSize: 12, fontWeight: 700, color: ACCENT, textTransform: "uppercase", letterSpacing: "0.05em" }}>
                   {t("onb.step")} 3
                 </span>
-                <h2 style={{ fontSize: 24, fontWeight: 800, color: "#111827", marginTop: 4 }}>
+                <h2 style={{ fontSize: 24, fontWeight: 800, color: "var(--text)", marginTop: 4 }}>
                   {t("onb.addSubjects")}
                 </h2>
-                <p style={{ fontSize: 14.5, color: "#6B7280", marginTop: 2 }}>
+                <p style={{ fontSize: 14.5, color: "var(--text-muted)", marginTop: 2 }}>
                   {t("onb.addSubjectsBody")}
                 </p>
               </div>
@@ -863,18 +863,18 @@ export default function OnboardingPage() {
                     }
                   }}
                   placeholder={t("onb.subjectPh")}
-                  style={{ flex: 1, height: 44, padding: "0 14px", borderRadius: 10, border: "1.5px solid #E5E7EB", fontSize: 14.5 }}
+                  style={{ flex: 1, height: 44, padding: "0 14px", borderRadius: "var(--radius-sm)", border: "1.5px solid var(--border)", fontSize: 14.5 }}
                 />
                 <button
                   type="button"
                   onClick={() => addSubject(newSubjectInput)}
                   style={{
                     padding: "0 18px",
-                    background: "#EEF2FF",
+                    background: "var(--primary-soft)",
                     color: ACCENT,
                     fontWeight: 700,
                     fontSize: 14,
-                    borderRadius: 10,
+                    borderRadius: "var(--radius-sm)",
                     border: "none",
                     cursor: "pointer",
                   }}
@@ -885,7 +885,7 @@ export default function OnboardingPage() {
 
               {/* Active subjects list */}
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                <span style={{ fontSize: 13, fontWeight: 700, color: "#4B5563" }}>
+                <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text-soft)" }}>
                   {t("onb.selectedSubjects")} ({subjectsList.length}):
                 </span>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
@@ -896,20 +896,20 @@ export default function OnboardingPage() {
                         display: "inline-flex",
                         alignItems: "center",
                         gap: 8,
-                        background: "#F3F4F6",
-                        border: "1px solid #E5E7EB",
+                        background: "var(--surface-muted)",
+                        border: "1px solid var(--border)",
                         padding: "8px 14px",
-                        borderRadius: 10,
+                        borderRadius: "var(--radius-sm)",
                         fontSize: 14,
                         fontWeight: 600,
-                        color: "#1F2937",
+                        color: "var(--text)",
                       }}
                     >
                       <span>{subj}</span>
                       <button
                         type="button"
                         onClick={() => removeSubject(subj)}
-                        style={{ background: "transparent", border: "none", cursor: "pointer", color: "#686B75", padding: 0 }}
+                        style={{ background: "transparent", border: "none", cursor: "pointer", color: "var(--text-muted)", padding: 0 }}
                       >
                         &times;
                       </button>
@@ -920,7 +920,7 @@ export default function OnboardingPage() {
 
               {/* Suggestions */}
               <div>
-                <span style={{ fontSize: 12.5, fontWeight: 600, color: "#6B7280" }}>
+                <span style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-muted)" }}>
                   {t("onb.suggested")}
                 </span>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
@@ -932,10 +932,10 @@ export default function OnboardingPage() {
                       onClick={() => addSubject(s)}
                       style={{
                         padding: "5px 10px",
-                        borderRadius: 8,
-                        border: "1px dashed #D1D5DB",
-                        background: subjectsList.includes(s) ? "#F9FAFB" : "#FFFFFF",
-                        color: subjectsList.includes(s) ? "#686B75" : "#4B5563",
+                        borderRadius: "var(--radius-xs)",
+                        border: "1px dashed var(--border-strong)",
+                        background: subjectsList.includes(s) ? "var(--surface-muted)" : "var(--surface)",
+                        color: subjectsList.includes(s) ? "var(--text-muted)" : "var(--text-soft)",
                         fontSize: 12.5,
                         cursor: subjectsList.includes(s) ? "default" : "pointer",
                       }}
@@ -950,7 +950,7 @@ export default function OnboardingPage() {
                 <button
                   type="button"
                   onClick={() => setCurrentStepIndex(1)}
-                  style={{ background: "transparent", border: "none", color: "#6B7280", fontSize: 14, fontWeight: 600, cursor: "pointer" }}
+                  style={{ background: "transparent", border: "none", color: "var(--text-muted)", fontSize: 14, fontWeight: 600, cursor: "pointer" }}
                 >
                   {t("onb.back")}
                 </button>
@@ -962,10 +962,10 @@ export default function OnboardingPage() {
                     height: 46,
                     padding: "0 28px",
                     background: ACCENT,
-                    color: "#fff",
+                    color: "var(--on-ink)",
                     fontSize: 15,
                     fontWeight: 700,
-                    borderRadius: 11,
+                    borderRadius: "var(--radius-sm)",
                     border: "none",
                     cursor: "pointer",
                   }}
@@ -983,10 +983,10 @@ export default function OnboardingPage() {
                 <span style={{ fontSize: 12, fontWeight: 700, color: ACCENT, textTransform: "uppercase", letterSpacing: "0.05em" }}>
                   {t("onb.step")} 4
                 </span>
-                <h2 style={{ fontSize: 24, fontWeight: 800, color: "#111827", marginTop: 4 }}>
+                <h2 style={{ fontSize: 24, fontWeight: 800, color: "var(--text)", marginTop: 4 }}>
                   {t("onb.courses")}
                 </h2>
-                <p style={{ fontSize: 14.5, color: "#6B7280", marginTop: 2 }}>
+                <p style={{ fontSize: 14.5, color: "var(--text-muted)", marginTop: 2 }}>
                   {t("onb.coursesBody")}
                 </p>
               </div>
@@ -1001,9 +1001,9 @@ export default function OnboardingPage() {
                     <div
                       key={subj}
                       style={{
-                        background: "#F8FAFC",
-                        border: "1.5px solid #E2E8F0",
-                        borderRadius: 14,
+                        background: "var(--surface-muted)",
+                        border: "1.5px solid var(--border)",
+                        borderRadius: "var(--radius-lg)",
                         padding: "16px 18px",
                         display: "flex",
                         flexDirection: "column",
@@ -1011,10 +1011,10 @@ export default function OnboardingPage() {
                       }}
                     >
                       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                        <span style={{ fontSize: 15, fontWeight: 800, color: "#0F172A" }}>
+                        <span style={{ fontSize: 15, fontWeight: 800, color: "var(--text)" }}>
                           📚 {subj}
                         </span>
-                        <span style={{ fontSize: 12, color: "#64748B" }}>
+                        <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
                           {courses.length} ta kurs
                         </span>
                       </div>
@@ -1025,13 +1025,13 @@ export default function OnboardingPage() {
                           <div
                             key={courseName}
                             style={{
-                              background: "#FFFFFF",
-                              border: "1px solid #CBD5E1",
-                              borderRadius: 8,
+                              background: "var(--surface)",
+                              border: "1px solid var(--border-strong)",
+                              borderRadius: "var(--radius-xs)",
                               padding: "4px 10px",
                               fontSize: 13,
                               fontWeight: 600,
-                              color: "#334155",
+                              color: "var(--text-soft)",
                               display: "inline-flex",
                               alignItems: "center",
                               gap: 6,
@@ -1041,7 +1041,7 @@ export default function OnboardingPage() {
                             <button
                               type="button"
                               onClick={() => removeCourseFromSubject(subj, courseName)}
-                              style={{ background: "transparent", border: "none", color: "#94A3B8", cursor: "pointer", padding: 0 }}
+                              style={{ background: "transparent", border: "none", color: "var(--text-faint)", cursor: "pointer", padding: 0 }}
                             >
                               &times;
                             </button>
@@ -1065,10 +1065,10 @@ export default function OnboardingPage() {
                             flex: 1,
                             height: 36,
                             padding: "0 12px",
-                            borderRadius: 8,
-                            border: "1px solid #CBD5E1",
+                            borderRadius: "var(--radius-xs)",
+                            border: "1px solid var(--border-strong)",
                             fontSize: 13,
-                            background: "#FFFFFF",
+                            background: "var(--surface)",
                           }}
                         />
                         <button
@@ -1076,9 +1076,9 @@ export default function OnboardingPage() {
                           onClick={() => addCourseToSubject(subj, inputVal)}
                           style={{
                             padding: "0 12px",
-                            background: "#EEF2FF",
+                            background: "var(--primary-soft)",
                             color: ACCENT,
-                            borderRadius: 8,
+                            borderRadius: "var(--radius-xs)",
                             border: "none",
                             fontWeight: 700,
                             fontSize: 12.5,
@@ -1092,7 +1092,7 @@ export default function OnboardingPage() {
                       {/* Popular suggestions */}
                       {popular.length > 0 && (
                         <div style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center" }}>
-                          <span style={{ fontSize: 11.5, color: "#64748B" }}>{t("onb.suggestion")}</span>
+                          <span style={{ fontSize: 11.5, color: "var(--text-muted)" }}>{t("onb.suggestion")}</span>
                           {popular.map((p) => (
                             <button
                               key={p}
@@ -1102,10 +1102,10 @@ export default function OnboardingPage() {
                               style={{
                                 fontSize: 11.5,
                                 padding: "2px 8px",
-                                borderRadius: 6,
-                                border: "1px dashed #94A3B8",
-                                background: courses.includes(p) ? "#E2E8F0" : "#FFFFFF",
-                                color: courses.includes(p) ? "#94A3B8" : "#475569",
+                                borderRadius: "var(--radius-xs)",
+                                border: "1px dashed var(--text-faint)",
+                                background: courses.includes(p) ? "var(--border)" : "var(--surface)",
+                                color: courses.includes(p) ? "var(--text-faint)" : "var(--text-muted)",
                                 cursor: courses.includes(p) ? "default" : "pointer",
                               }}
                             >
@@ -1123,7 +1123,7 @@ export default function OnboardingPage() {
                 <button
                   type="button"
                   onClick={() => setCurrentStepIndex(2)}
-                  style={{ background: "transparent", border: "none", color: "#6B7280", fontSize: 14, fontWeight: 600, cursor: "pointer" }}
+                  style={{ background: "transparent", border: "none", color: "var(--text-muted)", fontSize: 14, fontWeight: 600, cursor: "pointer" }}
                 >
                   {t("onb.back")}
                 </button>
@@ -1135,10 +1135,10 @@ export default function OnboardingPage() {
                     height: 46,
                     padding: "0 28px",
                     background: ACCENT,
-                    color: "#fff",
+                    color: "var(--on-ink)",
                     fontSize: 15,
                     fontWeight: 700,
-                    borderRadius: 11,
+                    borderRadius: "var(--radius-sm)",
                     border: "none",
                     cursor: "pointer",
                   }}
@@ -1156,26 +1156,26 @@ export default function OnboardingPage() {
                 <span style={{ fontSize: 12, fontWeight: 700, color: ACCENT, textTransform: "uppercase", letterSpacing: "0.05em" }}>
                   {t("onb.step")} 5
                 </span>
-                <h2 style={{ fontSize: 24, fontWeight: 800, color: "#111827", marginTop: 4 }}>
+                <h2 style={{ fontSize: 24, fontWeight: 800, color: "var(--text)", marginTop: 4 }}>
                   {t("onb.chooseWs")}
                 </h2>
-                <p style={{ fontSize: 14.5, color: "#6B7280", marginTop: 2 }}>
+                <p style={{ fontSize: 14.5, color: "var(--text-muted)", marginTop: 2 }}>
                   {t("onb.chooseWsBody")}
                 </p>
               </div>
 
               <div>
-                <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 6 }}>
+                <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "var(--text-soft)", marginBottom: 6 }}>
                   {t("onb.wsLabel")}
                 </label>
                 <div
                   style={{
                     display: "flex",
                     alignItems: "center",
-                    border: slugAvailable === false ? "1.5px solid #EF4444" : slugAvailable === true ? "1.5px solid #10B981" : "1.5px solid #E5E7EB",
-                    borderRadius: 12,
+                    border: slugAvailable === false ? "1.5px solid var(--danger)" : slugAvailable === true ? "1.5px solid var(--success)" : "1.5px solid var(--border)",
+                    borderRadius: "var(--radius-md)",
                     overflow: "hidden",
-                    background: "#FFFFFF",
+                    background: "var(--surface)",
                   }}
                 >
                   <input
@@ -1198,9 +1198,9 @@ export default function OnboardingPage() {
                   <span
                     style={{
                       padding: "12px 16px",
-                      background: "#F8FAFC",
-                      borderLeft: "1px solid #E2E8F0",
-                      color: "#64748B",
+                      background: "var(--surface-muted)",
+                      borderLeft: "1px solid var(--border)",
+                      color: "var(--text-muted)",
                       fontSize: 14,
                       fontWeight: 600,
                       whiteSpace: "nowrap",
@@ -1213,13 +1213,13 @@ export default function OnboardingPage() {
                 {/* Status indicator */}
                 <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
                   {slugChecking && (
-                    <span style={{ color: "#6B7280" }}>{t("onb.checking")}</span>
+                    <span style={{ color: "var(--text-muted)" }}>{t("onb.checking")}</span>
                   )}
                   {!slugChecking && slugAvailable === true && (
-                    <span style={{ color: "#059669", fontWeight: 600 }}>✓ {slugMessage}</span>
+                    <span style={{ color: "var(--success)", fontWeight: 600 }}>✓ {slugMessage}</span>
                   )}
                   {!slugChecking && slugAvailable === false && (
-                    <span style={{ color: "#DC2626", fontWeight: 600 }}>✗ {slugMessage}</span>
+                    <span style={{ color: "var(--danger)", fontWeight: 600 }}>✗ {slugMessage}</span>
                   )}
                 </div>
               </div>
@@ -1227,9 +1227,9 @@ export default function OnboardingPage() {
               {/* Preview card */}
               <div
                 style={{
-                  background: "#F8FAFC",
-                  border: "1px solid #E2E8F0",
-                  borderRadius: 12,
+                  background: "var(--surface-muted)",
+                  border: "1px solid var(--border)",
+                  borderRadius: "var(--radius-md)",
                   padding: "16px",
                   display: "flex",
                   alignItems: "center",
@@ -1238,7 +1238,7 @@ export default function OnboardingPage() {
               >
                 <div style={{ fontSize: 20 }}>🌐</div>
                 <div>
-                  <div style={{ fontSize: 12, color: "#64748B" }}>{t("onb.preview")}</div>
+                  <div style={{ fontSize: 12, color: "var(--text-muted)" }}>{t("onb.preview")}</div>
                   <div style={{ fontSize: 14.5, fontWeight: 700, color: ACCENT }}>
                     {centerHost(workspaceSlug || "bilimdon")}
                   </div>
@@ -1249,7 +1249,7 @@ export default function OnboardingPage() {
                 <button
                   type="button"
                   onClick={() => setCurrentStepIndex(3)}
-                  style={{ background: "transparent", border: "none", color: "#6B7280", fontSize: 14, fontWeight: 600, cursor: "pointer" }}
+                  style={{ background: "transparent", border: "none", color: "var(--text-muted)", fontSize: 14, fontWeight: 600, cursor: "pointer" }}
                 >
                   {t("onb.back")}
                 </button>
@@ -1260,10 +1260,10 @@ export default function OnboardingPage() {
                     height: 46,
                     padding: "0 28px",
                     background: ACCENT,
-                    color: "#fff",
+                    color: "var(--on-ink)",
                     fontSize: 15,
                     fontWeight: 700,
-                    borderRadius: 11,
+                    borderRadius: "var(--radius-sm)",
                     border: "none",
                     cursor: "pointer",
                   }}
@@ -1281,47 +1281,47 @@ export default function OnboardingPage() {
                 <span style={{ fontSize: 12, fontWeight: 700, color: ACCENT, textTransform: "uppercase", letterSpacing: "0.05em" }}>
                   {t("onb.step")} 6 {t("onb.optional")}
                 </span>
-                <h2 style={{ fontSize: 24, fontWeight: 800, color: "#111827", marginTop: 4 }}>
+                <h2 style={{ fontSize: 24, fontWeight: 800, color: "var(--text)", marginTop: 4 }}>
                   {t("onb.addBranch")}
                 </h2>
-                <p style={{ fontSize: 14.5, color: "#6B7280", marginTop: 2 }}>
+                <p style={{ fontSize: 14.5, color: "var(--text-muted)", marginTop: 2 }}>
                   {t("onb.addBranchBody")}
                 </p>
               </div>
 
               <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                 <div>
-                  <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 6 }}>
+                  <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "var(--text-soft)", marginBottom: 6 }}>
                     {t("onb.branchName")}
                   </label>
                   <input
                     value={branchName}
                     onChange={(e) => setBranchName(e.target.value)}
                     placeholder={t("onb.branchNamePh")}
-                    style={{ width: "100%", height: 44, padding: "0 14px", borderRadius: 10, border: "1.5px solid #E5E7EB", fontSize: 14.5 }}
+                    style={{ width: "100%", height: 44, padding: "0 14px", borderRadius: "var(--radius-sm)", border: "1.5px solid var(--border)", fontSize: 14.5 }}
                   />
                 </div>
 
                 <div>
-                  <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 6 }}>
+                  <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "var(--text-soft)", marginBottom: 6 }}>
                     {t("onb.address")}
                   </label>
                   <input
                     value={branchAddress}
                     onChange={(e) => setBranchAddress(e.target.value)}
                     placeholder={t("onb.addressPh")}
-                    style={{ width: "100%", height: 44, padding: "0 14px", borderRadius: 10, border: "1.5px solid #E5E7EB", fontSize: 14.5 }}
+                    style={{ width: "100%", height: 44, padding: "0 14px", borderRadius: "var(--radius-sm)", border: "1.5px solid var(--border)", fontSize: 14.5 }}
                   />
                 </div>
 
                 <div>
-                  <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 6 }}>
+                  <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "var(--text-soft)", marginBottom: 6 }}>
                     {t("onb.branchPhone")}
                   </label>
                   <PhoneInput
                     value={branchPhone}
                     onChange={setBranchPhone}
-                    style={{ width: "100%", height: 44, padding: "0 14px", borderRadius: 10, border: "1.5px solid #E5E7EB", fontSize: 14.5 }}
+                    style={{ width: "100%", height: 44, padding: "0 14px", borderRadius: "var(--radius-sm)", border: "1.5px solid var(--border)", fontSize: 14.5 }}
                   />
                 </div>
               </div>
@@ -1333,7 +1333,7 @@ export default function OnboardingPage() {
                   style={{
                     background: "transparent",
                     border: "none",
-                    color: "#6B7280",
+                    color: "var(--text-muted)",
                     fontSize: 14,
                     fontWeight: 600,
                     cursor: "pointer",
@@ -1350,10 +1350,10 @@ export default function OnboardingPage() {
                     height: 46,
                     padding: "0 28px",
                     background: ACCENT,
-                    color: "#fff",
+                    color: "var(--on-ink)",
                     fontSize: 15,
                     fontWeight: 700,
-                    borderRadius: 11,
+                    borderRadius: "var(--radius-sm)",
                     border: "none",
                     cursor: "pointer",
                   }}
@@ -1371,10 +1371,10 @@ export default function OnboardingPage() {
                 <span style={{ fontSize: 12, fontWeight: 700, color: ACCENT, textTransform: "uppercase", letterSpacing: "0.05em" }}>
                   {t("onb.step")} 7 {t("onb.optional")}
                 </span>
-                <h2 style={{ fontSize: 24, fontWeight: 800, color: "#111827", marginTop: 4 }}>
+                <h2 style={{ fontSize: 24, fontWeight: 800, color: "var(--text)", marginTop: 4 }}>
                   {t("onb.inviteTeam")}
                 </h2>
-                <p style={{ fontSize: 14.5, color: "#6B7280", marginTop: 2 }}>
+                <p style={{ fontSize: 14.5, color: "var(--text-muted)", marginTop: 2 }}>
                   {t("onb.inviteTeamBody")}
                 </p>
               </div>
@@ -1384,7 +1384,7 @@ export default function OnboardingPage() {
                 <select
                   value={teamRole}
                   onChange={(e) => setTeamRole(e.target.value as Role)}
-                  style={{ width: 140, height: 44, padding: "0 10px", borderRadius: 10, border: "1.5px solid #E5E7EB", fontSize: 14 }}
+                  style={{ width: 140, height: 44, padding: "0 10px", borderRadius: "var(--radius-sm)", border: "1.5px solid var(--border)", fontSize: 14 }}
                 >
                   <option value="TEACHER">{t("role.teacher")}</option>
                   <option value="MANAGER">{t("role.manager")}</option>
@@ -1397,7 +1397,7 @@ export default function OnboardingPage() {
                   value={teamInput}
                   onChange={(e) => setTeamInput(e.target.value)}
                   placeholder={t("onb.contactPh")}
-                  style={{ flex: 1, height: 44, padding: "0 14px", borderRadius: 10, border: "1.5px solid #E5E7EB", fontSize: 14.5 }}
+                  style={{ flex: 1, height: 44, padding: "0 14px", borderRadius: "var(--radius-sm)", border: "1.5px solid var(--border)", fontSize: 14.5 }}
                 />
 
                 <button
@@ -1406,11 +1406,11 @@ export default function OnboardingPage() {
                   disabled={submitting || !teamInput.trim()}
                   style={{
                     padding: "0 20px",
-                    background: "#EEF2FF",
+                    background: "var(--primary-soft)",
                     color: ACCENT,
                     fontWeight: 700,
                     fontSize: 14,
-                    borderRadius: 10,
+                    borderRadius: "var(--radius-sm)",
                     border: "none",
                     cursor: "pointer",
                   }}
@@ -1422,7 +1422,7 @@ export default function OnboardingPage() {
               {/* List of invited members */}
               {invitedTeam.length > 0 && (
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: "#4B5563" }}>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text-soft)" }}>
                     {t("onb.sentInvites")}
                   </span>
                   {invitedTeam.map((item, idx) => (
@@ -1430,17 +1430,17 @@ export default function OnboardingPage() {
                       key={idx}
                       style={{
                         padding: "10px 14px",
-                        background: "#F8FAFC",
-                        border: "1px solid #E2E8F0",
-                        borderRadius: 10,
+                        background: "var(--surface-muted)",
+                        border: "1px solid var(--border)",
+                        borderRadius: "var(--radius-sm)",
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "space-between",
                         fontSize: 13.5,
                       }}
                     >
-                      <span style={{ fontWeight: 600, color: "#1E293B" }}>{item.target}</span>
-                      <span style={{ fontSize: 12, fontWeight: 700, color: ACCENT, background: "#EEF2FF", padding: "3px 8px", borderRadius: 6 }}>
+                      <span style={{ fontWeight: 600, color: "var(--text)" }}>{item.target}</span>
+                      <span style={{ fontSize: 12, fontWeight: 700, color: ACCENT, background: "var(--primary-soft)", padding: "3px 8px", borderRadius: "var(--radius-xs)" }}>
                         {item.role}
                       </span>
                     </div>
@@ -1455,7 +1455,7 @@ export default function OnboardingPage() {
                   style={{
                     background: "transparent",
                     border: "none",
-                    color: "#6B7280",
+                    color: "var(--text-muted)",
                     fontSize: 14,
                     fontWeight: 600,
                     cursor: "pointer",
@@ -1472,10 +1472,10 @@ export default function OnboardingPage() {
                     height: 46,
                     padding: "0 28px",
                     background: ACCENT,
-                    color: "#fff",
+                    color: "var(--on-ink)",
                     fontSize: 15,
                     fontWeight: 700,
-                    borderRadius: 11,
+                    borderRadius: "var(--radius-sm)",
                     border: "none",
                     cursor: "pointer",
                   }}
@@ -1493,10 +1493,10 @@ export default function OnboardingPage() {
                 <span style={{ fontSize: 12, fontWeight: 700, color: ACCENT, textTransform: "uppercase", letterSpacing: "0.05em" }}>
                   {t("onb.step")} 8 {t("onb.final")}
                 </span>
-                <h2 style={{ fontSize: 24, fontWeight: 800, color: "#111827", marginTop: 4 }}>
+                <h2 style={{ fontSize: 24, fontWeight: 800, color: "var(--text)", marginTop: 4 }}>
                   {t("onb.addStudents")}
                 </h2>
-                <p style={{ fontSize: 14.5, color: "#6B7280", marginTop: 2 }}>
+                <p style={{ fontSize: 14.5, color: "var(--text-muted)", marginTop: 2 }}>
                   {t("onb.addStudentsBody")}
                 </p>
               </div>
@@ -1516,9 +1516,9 @@ export default function OnboardingPage() {
                       onClick={() => setStudentMode(opt.id as any)}
                       style={{
                         padding: "16px 14px",
-                        borderRadius: 14,
-                        border: isSelected ? `2px solid ${ACCENT}` : "1.5px solid #E5E7EB",
-                        background: isSelected ? "#EEF2FF" : "#FFFFFF",
+                        borderRadius: "var(--radius-lg)",
+                        border: isSelected ? `2px solid ${ACCENT}` : "1.5px solid var(--border)",
+                        background: isSelected ? "var(--primary-soft)" : "var(--surface)",
                         display: "flex",
                         flexDirection: "column",
                         alignItems: "center",
@@ -1528,10 +1528,10 @@ export default function OnboardingPage() {
                       }}
                     >
                       <span style={{ fontSize: 26 }}>{opt.icon}</span>
-                      <span style={{ fontSize: 14, fontWeight: 700, color: isSelected ? ACCENT : "#111827" }}>
+                      <span style={{ fontSize: 14, fontWeight: 700, color: isSelected ? ACCENT : "var(--text)" }}>
                         {opt.title}
                       </span>
-                      <span style={{ fontSize: 11.5, color: "#6B7280" }}>{opt.desc}</span>
+                      <span style={{ fontSize: 11.5, color: "var(--text-muted)" }}>{opt.desc}</span>
                     </button>
                   );
                 })}
@@ -1539,18 +1539,18 @@ export default function OnboardingPage() {
 
               {/* Manual input subview */}
               {studentMode === "MANUAL" && (
-                <div style={{ background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: 12, padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
+                <div style={{ background: "var(--surface-muted)", border: "1px solid var(--border)", borderRadius: "var(--radius-md)", padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
                   <div style={{ display: "flex", gap: 10 }}>
                     <input
                       value={manualStudentName}
                       onChange={(e) => setManualStudentName(e.target.value)}
                       placeholder={t("onb.studentNamePh")}
-                      style={{ flex: 1, height: 40, padding: "0 12px", borderRadius: 8, border: "1px solid #CBD5E1", fontSize: 13.5 }}
+                      style={{ flex: 1, height: 40, padding: "0 12px", borderRadius: "var(--radius-xs)", border: "1px solid var(--border-strong)", fontSize: 13.5 }}
                     />
                     <PhoneInput
                       value={manualStudentPhone}
                       onChange={setManualStudentPhone}
-                      style={{ flex: 1, height: 40, padding: "0 12px", borderRadius: 8, border: "1px solid #CBD5E1", fontSize: 13.5 }}
+                      style={{ flex: 1, height: 40, padding: "0 12px", borderRadius: "var(--radius-xs)", border: "1px solid var(--border-strong)", fontSize: 13.5 }}
                     />
                     <button
                       type="button"
@@ -1564,10 +1564,10 @@ export default function OnboardingPage() {
                       style={{
                         padding: "0 14px",
                         background: ACCENT,
-                        color: "#fff",
+                        color: "var(--on-ink)",
                         fontWeight: 700,
                         fontSize: 13,
-                        borderRadius: 8,
+                        borderRadius: "var(--radius-xs)",
                         border: "none",
                         cursor: "pointer",
                       }}
@@ -1579,7 +1579,7 @@ export default function OnboardingPage() {
                   {manualStudentsList.length > 0 && (
                     <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                       {manualStudentsList.map((st, i) => (
-                        <span key={i} style={{ background: "#EEF2FF", color: ACCENT, padding: "4px 8px", borderRadius: 6, fontSize: 12, fontWeight: 600 }}>
+                        <span key={i} style={{ background: "var(--primary-soft)", color: ACCENT, padding: "4px 8px", borderRadius: "var(--radius-xs)", fontSize: 12, fontWeight: 600 }}>
                           {st.name} {st.phone && `(${st.phone})`}
                         </span>
                       ))}
@@ -1590,12 +1590,12 @@ export default function OnboardingPage() {
 
               {/* Excel subview */}
               {studentMode === "EXCEL" && (
-                <div style={{ background: "#F8FAFC", border: "1.5px dashed #CBD5E1", borderRadius: 14, padding: "24px", textAlign: "center" }}>
+                <div style={{ background: "var(--surface-muted)", border: "1.5px dashed var(--border-strong)", borderRadius: "var(--radius-lg)", padding: "24px", textAlign: "center" }}>
                   <div style={{ fontSize: 32 }}>📁</div>
-                  <div style={{ fontSize: 14, fontWeight: 700, color: "#1E293B", marginTop: 6 }}>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", marginTop: 6 }}>
                     {t("onb.upload")}
                   </div>
-                  <div style={{ fontSize: 12.5, color: "#64748B", marginTop: 4 }}>
+                  <div style={{ fontSize: 12.5, color: "var(--text-muted)", marginTop: 4 }}>
                     {t("onb.uploadLater")}
                   </div>
                 </div>
@@ -1605,7 +1605,7 @@ export default function OnboardingPage() {
                 <button
                   type="button"
                   onClick={() => setCurrentStepIndex(6)}
-                  style={{ background: "transparent", border: "none", color: "#6B7280", fontSize: 14, fontWeight: 600, cursor: "pointer" }}
+                  style={{ background: "transparent", border: "none", color: "var(--text-muted)", fontSize: 14, fontWeight: 600, cursor: "pointer" }}
                 >
                   {t("onb.back")}
                 </button>
@@ -1618,10 +1618,10 @@ export default function OnboardingPage() {
                     height: 48,
                     padding: "0 32px",
                     background: ACCENT,
-                    color: "#fff",
+                    color: "var(--on-ink)",
                     fontSize: 15,
                     fontWeight: 700,
-                    borderRadius: 11,
+                    borderRadius: "var(--radius-sm)",
                     border: "none",
                     cursor: "pointer",
                     boxShadow: "0 4px 14px rgba(79, 70, 229, 0.3)",

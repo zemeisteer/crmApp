@@ -51,7 +51,9 @@ await call('POST', '/payments', { token: A.owner, body: { studentId: student.id,
 await call('POST', '/students', { token: B.owner, body: { fullName: `Rehearsal Other ${run}` } });
 
 // An uploaded file the database refers to: the center's logo (tenants.logo_url).
-const bytes = randomBytes(48 * 1024);
+// It starts as a PNG does: uploads of pictures are checked by their content
+// (backend common/upload.util.ts), so plain random bytes would be refused.
+const bytes = Buffer.concat([Buffer.from('89504e470d0a1a0a', 'hex'), randomBytes(48 * 1024 - 8)]);
 const form = new FormData();
 form.append('file', new Blob([bytes], { type: 'image/png' }), 'rehearsal-logo.png');
 const withLogo = await call('POST', '/tenants/me/logo', { token: A.owner, form });

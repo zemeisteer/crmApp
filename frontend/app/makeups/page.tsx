@@ -10,7 +10,6 @@ import { can } from "@/lib/access";
 import { useLanguage } from "@/lib/i18n-context";
 import type { TranslationKey } from "@/lib/i18n";
 
-const ACCENT = "#4F46E5";
 type Tab = "missed" | "credits" | "roster";
 const TAB_LABELS: Record<Tab, TranslationKey> = { missed: "mk.tabMissed", credits: "mk.tabCredits", roster: "mk.tabRoster" };
 
@@ -36,13 +35,13 @@ function MakeupsContent() {
 
   return (
     <>
-      <div style={{ padding: "22px 32px", borderBottom: "1px solid #EAE8E2" }}>
-        <h1 style={{ fontSize: 22, fontWeight: 800 }}>{t("mk.title")}</h1>
-        <div style={{ fontSize: 13, color: "#686B75", marginTop: 2, lineHeight: 1.5 }}>{t(seesCredits ? "mk.subtitle" : "mk.subtitleTeacher")}</div>
+      <div style={{ padding: "var(--page-head-pad)" }}>
+        <h1 className="page-title">{t("mk.title")}</h1>
+        <div style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 2, lineHeight: 1.5 }}>{t(seesCredits ? "mk.subtitle" : "mk.subtitleTeacher")}</div>
         {seesCredits && (
           // How the three tabs fit together, for someone who opens this page the first time.
-          <details style={{ marginTop: 10, fontSize: 13, color: "#3A3D45" }}>
-            <summary style={{ cursor: "pointer", fontWeight: 700, color: "#4F46E5" }}>{t("mk.howTitle")}</summary>
+          <details style={{ marginTop: 10, fontSize: 13, color: "var(--text-soft)" }}>
+            <summary style={{ cursor: "pointer", fontWeight: 700, color: "var(--primary)" }}>{t("mk.howTitle")}</summary>
             <ol style={{ margin: "8px 0 0", paddingLeft: 20, lineHeight: 1.7, maxWidth: 760 }}>
               <li>{t("mk.howStep1")}</li>
               <li>{t("mk.howStep2")}</li>
@@ -52,13 +51,13 @@ function MakeupsContent() {
           </details>
         )}
       </div>
-      <div style={{ flex: 1, minHeight: 0, padding: "20px 32px", display: "flex", flexDirection: "column", gap: 16, overflow: "auto", boxSizing: "border-box" }}>
+      <div style={{ flex: 1, minHeight: 0, padding: "var(--page-pad)", display: "flex", flexDirection: "column", gap: 16, overflow: "auto", boxSizing: "border-box" }}>
         {tabs.length === 0 ? (
-          <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 14, padding: 24, color: "#686B75", fontSize: 13.5 }}>{t("mk.noAccess")}</div>
+          <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 24, color: "var(--text-muted)", fontSize: 13.5 }}>{t("mk.noAccess")}</div>
         ) : (
           <>
             {tabs.length > 1 && (
-              <div role="tablist" aria-label={t("mk.title")} style={{ display: "flex", gap: 4, background: "#F2F1EC", padding: 4, borderRadius: 12, alignSelf: "flex-start", maxWidth: "100%", overflowX: "auto" }}>
+              <div role="tablist" aria-label={t("mk.title")} style={{ display: "flex", gap: 4, background: "var(--surface)", border: "1px solid var(--border)", padding: 4, borderRadius: "var(--radius-lg)", alignSelf: "flex-start", maxWidth: "100%", overflowX: "auto" }}>
                 {tabs.map((k, i) => (
                   <button
                     key={k}
@@ -71,9 +70,9 @@ function MakeupsContent() {
                     onClick={() => setChosen(k)}
                     onKeyDown={(e) => onTabKey(e, i)}
                     style={{
-                      border: "none", cursor: "pointer", padding: "8px 14px", borderRadius: 9, fontSize: 13, fontWeight: 700, whiteSpace: "nowrap",
-                      background: tab === k ? "#fff" : "transparent", color: tab === k ? ACCENT : "#5F626B",
-                      boxShadow: tab === k ? "0 1px 3px rgba(0,0,0,0.08)" : "none",
+                      border: "none", cursor: "pointer", padding: "8px 14px", borderRadius: "var(--radius-pill)", fontSize: 13, fontWeight: 700, whiteSpace: "nowrap",
+                      background: tab === k ? "var(--ink)" : "transparent", color: tab === k ? "var(--on-ink)" : "var(--text-muted)",
+                      boxShadow: "none",
                     }}
                   >
                     {t(TAB_LABELS[k])}

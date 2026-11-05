@@ -7,8 +7,8 @@ import { ApiError, featureFlagsApi, platformApi, type FlagOverview } from "@/lib
 import { useLanguage } from "@/lib/i18n-context";
 import type { TranslationKey } from "@/lib/i18n";
 
-const ACCENT = "#4F46E5";
-const card: React.CSSProperties = { background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 18 };
+const ACCENT = "var(--primary)";
+const card: React.CSSProperties = { background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 18 };
 
 function Switch({ flag, onChanged }: { flag: FlagOverview; onChanged: () => void }) {
   const { t } = useLanguage();
@@ -53,11 +53,11 @@ function Switch({ flag, onChanged }: { flag: FlagOverview; onChanged: () => void
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}>
         <div style={{ maxWidth: 560 }}>
           <h2 style={{ fontSize: 16, fontWeight: 800 }}>{t(`pf.fl.${flag.key}` as TranslationKey)}</h2>
-          <div style={{ fontSize: 13, color: "#686B75", marginTop: 4, lineHeight: 1.55 }}>{t(`pf.fl.${flag.key}.d` as TranslationKey)}</div>
+          <div style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 4, lineHeight: 1.55 }}>{t(`pf.fl.${flag.key}.d` as TranslationKey)}</div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 800, padding: "6px 12px", borderRadius: 100, background: flag.enabled ? "#E9F8EF" : "#FDEBEC", color: flag.enabled ? "#16794A" : "#B23A47" }}>
-            <span aria-hidden="true" style={{ width: 8, height: 8, borderRadius: 100, background: flag.enabled ? "#16794A" : "#B23A47" }} />
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 800, padding: "6px 12px", borderRadius: "var(--radius-pill)", background: flag.enabled ? "var(--success-soft)" : "var(--danger-soft)", color: flag.enabled ? "var(--success)" : "var(--danger)" }}>
+            <span aria-hidden="true" style={{ width: 8, height: 8, borderRadius: "var(--radius-pill)", background: flag.enabled ? "var(--success)" : "var(--danger)" }} />
             {flag.enabled ? t("pf.fl.on") : t("pf.fl.off")}
           </span>
           <button
@@ -68,7 +68,7 @@ function Switch({ flag, onChanged }: { flag: FlagOverview; onChanged: () => void
             disabled={busy}
             onClick={toggleGlobal}
             className="btn"
-            style={{ background: flag.enabled ? "#fff" : ACCENT, color: flag.enabled ? "#B23A47" : "#fff", border: flag.enabled ? "1px solid #F3C6CB" : "none", borderRadius: 9, padding: "8px 14px", fontSize: 13, fontWeight: 700, cursor: busy ? "wait" : "pointer" }}
+            style={{ background: flag.enabled ? "var(--surface)" : ACCENT, color: flag.enabled ? "var(--danger)" : "var(--on-ink)", border: flag.enabled ? "1px solid var(--danger-border)" : "none", borderRadius: "var(--radius-sm)", padding: "8px 14px", fontSize: 13, fontWeight: 700, cursor: busy ? "wait" : "pointer" }}
           >
             {flag.enabled ? t("pf.fl.turnOff") : t("pf.fl.turnOn")}
           </button>
@@ -76,21 +76,21 @@ function Switch({ flag, onChanged }: { flag: FlagOverview; onChanged: () => void
       </div>
 
       <details open={flag.overrides.length > 0}>
-        <summary style={{ cursor: "pointer", fontSize: 12.5, fontWeight: 700, color: "#4A4E58" }}>{t("pf.fl.oneCenter")}</summary>
+        <summary style={{ cursor: "pointer", fontSize: 12.5, fontWeight: 700, color: "var(--text-soft)" }}>{t("pf.fl.oneCenter")}</summary>
       <div style={{ marginTop: 8 }}>
-        <div style={{ fontSize: 12.5, fontWeight: 700, color: "#4A4E58", marginBottom: 6 }}>
+        <div style={{ fontSize: 12.5, fontWeight: 700, color: "var(--text-soft)", marginBottom: 6 }}>
           {flag.enabled ? t("pf.fl.offFor") : t("pf.fl.onFor")}
         </div>
         {flag.overrides.length === 0 ? (
-          <div style={{ fontSize: 13, color: "#686B75" }}>{t("pf.fl.noExceptions")}</div>
+          <div style={{ fontSize: 13, color: "var(--text-muted)" }}>{t("pf.fl.noExceptions")}</div>
         ) : (
           <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 6 }}>
             {flag.overrides.map((o) => (
-              <li key={o.tenantId} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, fontSize: 13, padding: "6px 10px", background: "#F7F6F2", borderRadius: 8 }}>
+              <li key={o.tenantId} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, fontSize: 13, padding: "6px 10px", background: "var(--surface-muted)", borderRadius: "var(--radius-xs)" }}>
                 <span>
-                  <b>{o.name ?? o.tenantId}</b> <span style={{ color: "#686B75" }}>{o.subdomain}</span> · {o.enabled ? t("pf.fl.on") : t("pf.fl.off")}
+                  <b>{o.name ?? o.tenantId}</b> <span style={{ color: "var(--text-muted)" }}>{o.subdomain}</span> · {o.enabled ? t("pf.fl.on") : t("pf.fl.off")}
                 </span>
-                <button type="button" className="btn" disabled={busy} onClick={() => void run(() => featureFlagsApi.clearForTenant(flag.key, o.tenantId))} style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 8, padding: "4px 10px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+                <button type="button" className="btn" disabled={busy} onClick={() => void run(() => featureFlagsApi.clearForTenant(flag.key, o.tenantId))} style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-xs)", padding: "4px 10px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
                   {t("pf.fl.remove")}
                 </button>
               </li>
@@ -99,13 +99,13 @@ function Switch({ flag, onChanged }: { flag: FlagOverview; onChanged: () => void
         )}
         <form onSubmit={addException} style={{ display: "flex", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
           <input className="field-input" aria-label={t("pf.fl.subdomain")} placeholder={t("pf.fl.subdomain")} value={sub} onChange={(e) => setSub(e.target.value)} style={{ flex: "1 1 200px" }} />
-          <button type="submit" className="btn" disabled={busy || !sub.trim()} style={{ background: ACCENT, color: "#fff", border: "none", borderRadius: 9, padding: "8px 14px", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
+          <button type="submit" className="btn" disabled={busy || !sub.trim()} style={{ background: ACCENT, color: "var(--on-ink)", border: "none", borderRadius: "var(--radius-sm)", padding: "8px 14px", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
             {t("pf.fl.add")}
           </button>
         </form>
       </div>
       </details>
-      {error && <div role="alert" style={{ fontSize: 13, fontWeight: 600, padding: "9px 12px", borderRadius: 10, background: "#FDEBEC", color: "#B23A47" }}>{error}</div>}
+      {error && <div role="alert" style={{ fontSize: 13, fontWeight: 600, padding: "9px 12px", borderRadius: "var(--radius-sm)", background: "var(--danger-soft)", color: "var(--danger)" }}>{error}</div>}
     </section>
   );
 }
@@ -123,15 +123,15 @@ function FlagsContent() {
 
   return (
     <>
-      <div style={{ padding: "22px 32px", borderBottom: "1px solid #EAE8E2" }}>
-        <h1 style={{ fontSize: 22, fontWeight: 800 }}>{t("nav.flags")}</h1>
-        <div style={{ fontSize: 13, color: "#686B75", marginTop: 2 }}>{t("pf.fl.subtitle")}</div>
+      <div style={{ padding: "var(--page-head-pad)" }}>
+        <h1 className="page-title">{t("nav.flags")}</h1>
+        <div style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 2 }}>{t("pf.fl.subtitle")}</div>
       </div>
-      <div style={{ padding: "22px 32px", display: "flex", flexDirection: "column", gap: 14 }}>
+      <div style={{ padding: "var(--page-pad)", display: "flex", flexDirection: "column", gap: 14 }}>
         {error !== null ? (
           <LoadError message={error || t("adm.loadError")} onRetry={load} />
         ) : !flags ? (
-          <div style={{ color: "#686B75", fontSize: 14 }}>{t("common.loading")}</div>
+          <div style={{ color: "var(--text-muted)", fontSize: 14 }}>{t("common.loading")}</div>
         ) : (
           flags.map((f) => <Switch key={f.key} flag={f} onChanged={load} />)
         )}

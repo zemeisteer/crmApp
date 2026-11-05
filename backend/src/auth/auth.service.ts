@@ -9,10 +9,12 @@ import { ForbiddenException,
 import { effectiveAccess } from '../access/catalog';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
-import * as bcrypt from 'bcryptjs';
+import * as bcrypt from 'bcrypt';
 import { generateSecret as generateTotpSecret, generateURI as generateTotpUri, verify as verifyTotp } from 'otplib';
 import * as qrcode from 'qrcode';
 import { randomBytes, createHash } from 'crypto';
+import { hashPassword, needsRehash } from '../common/password';
+import { recordSignInFailure } from '../common/security-events';
 import { eq, and, gt, isNull, lt, ne, sql } from 'drizzle-orm';
 import { DB, Database } from '../db/db.module';
 import { tenants, users, sessions, organizationMemberships, authHandoffCodes } from '../db/schema';
@@ -179,7 +181,7 @@ export class AuthService {
       codeId = await this.signupPhone.verify(signupPhone!, dto.phoneCode, attemptId);
     }
 
-    const passwordHash = await bcrypt.hash(dto.password, 10);
+    const passwordHash = await hashPassword(dto.password);
     const verifyToken = randomBytes(32).toString('hex');
     const trialEndsAt = new Date();
     if (right === 'FREE_TRIAL') trialEndsAt.setDate(trialEndsAt.getDate() + 7);
@@ -294,10 +296,14 @@ export class AuthService {
     const user = await this.db.query.users.findFirst({
       where: eq(users.email, identifier),
     });
-    if (!user) throw new UnauthorizedException('Email yoki parol noto\'g\'ri');
-
-    const valid = await bcrypt.compare(dto.password, user.passwordHash);
-    if (!valid) throw new UnauthorizedException('Email yoki parol noto\'g\'ri');
+    const valid = !!user && (await bcrypt.compare(dto.password, user.passwordHash));
+    if (!user || !valid) {
+      recordSignInFailure('staff', identifier, meta.ip);
+      throw new UnauthorizedException('Email yoki parol noto\'g\'ri');
+    }
+    if (needsRehash(user.passwordHash)) {
+      await this.db.update(users).set({ passwordHash: await hashPassword(dto.password) }).where(eq(users.id, user.id));
+    }
 
     if (user.twoFactorEnabled) {
       const pendingToken = await this.signPendingToken(user.id);
@@ -722,7 +728,8 @@ export class AuthService {
     return { accessToken, refreshToken: newRefreshToken };
   }
 
-  async logout(refreshToken: string) {
+  async logout(refreshToken: string | undefined) {
+    if (!refreshToken) return { success: true };
     const hash = hashToken(refreshToken);
     await this.db.delete(sessions).where(eq(sessions.refreshTokenHash, hash));
     return { success: true };
@@ -782,7 +789,7 @@ export class AuthService {
     });
     if (!user) throw new BadRequestException("Havola noto'g'ri yoki muddati o'tgan");
 
-    const passwordHash = await bcrypt.hash(newPassword, 10);
+    const passwordHash = await hashPassword(newPassword);
     await this.db
       .update(users)
       .set({ passwordHash, resetTokenHash: null, resetTokenExpiresAt: null })

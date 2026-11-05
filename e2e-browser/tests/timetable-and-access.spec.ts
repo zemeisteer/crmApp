@@ -59,7 +59,16 @@ test('timetable: a lesson is moved by its button, undone, refused on a taken day
   await expect(inDay(1)).toHaveCount(1);
 
   // --- Dragging the card onto another day -----------------------------------
-  await inDay(1).dragTo(page.getByTestId('schedule-day-4'));
+  // Moved the way a hand moves a pointer, in steps: Playwright's one-jump
+  // dragTo did not start the browser's native drag in this layout.
+  {
+    const from = (await inDay(1).boundingBox())!;
+    const to = (await page.getByTestId('schedule-day-4').boundingBox())!;
+    await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(to.x + to.width / 2, to.y + Math.min(to.height / 2, 120), { steps: 12 });
+    await page.mouse.up();
+  }
   await expect(inDay(4)).toHaveCount(1);
   expect(await dayNow()).toBe(4);
 

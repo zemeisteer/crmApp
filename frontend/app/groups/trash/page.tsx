@@ -8,7 +8,7 @@ import { groupsApi, Group } from "@/lib/api";
 import { useLanguage } from "@/lib/i18n-context";
 import { formatDate } from "@/lib/format-date";
 
-const ACCENT = "#4F46E5";
+const ACCENT = "var(--primary)";
 
 function TrashContent() {
   const { t, lang } = useLanguage();
@@ -45,30 +45,30 @@ function TrashContent() {
 
   return (
     <>
-      <div style={{ padding: "22px 32px", borderBottom: "1px solid #EAE8E2" }}>
-        <Link href="/groups" style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 600, color: "#686B75", marginBottom: 10 }}>
+      <div style={{ padding: "var(--page-head-pad)" }}>
+        <Link href="/groups" style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 600, color: "var(--text-muted)", marginBottom: 10 }}>
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
             <path d="M15 18l-6-6 6-6" />
           </svg>
           {t("trash.backToGroups")}
         </Link>
-        <h1 style={{ fontSize: 22, fontWeight: 800 }}>{t("trash.groupsTitle")}</h1>
+        <h1 className="page-title">{t("trash.groupsTitle")}</h1>
       </div>
 
-      <div style={{ flex: 1, minHeight: 0, padding: "26px 32px", overflow: "auto", boxSizing: "border-box" }}>
+      <div style={{ flex: 1, minHeight: 0, padding: "var(--page-pad)", overflow: "auto", boxSizing: "border-box" }}>
         {restoreError && (
-          <div role="alert" style={{ marginBottom: 14, padding: "10px 14px", borderRadius: 10, background: "#FDECEC", border: "1px solid #F5C2C2", color: "#B42318", fontSize: 13.5 }}>
+          <div role="alert" style={{ marginBottom: 14, padding: "10px 14px", borderRadius: "var(--radius-sm)", background: "var(--danger-soft)", border: "1px solid var(--danger-border)", color: "var(--danger)", fontSize: 13.5 }}>
             {restoreError}
           </div>
         )}
         {loading ? (
-          <div style={{ color: "#686B75", fontSize: 14 }}>{t("common.loading")}</div>
+          <div style={{ color: "var(--text-muted)", fontSize: 14 }}>{t("common.loading")}</div>
         ) : groups.length === 0 ? (
-          <div style={{ color: "#686B75", fontSize: 14, background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 32, textAlign: "center" }}>
+          <div style={{ color: "var(--text-muted)", fontSize: 14, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 32, textAlign: "center" }}>
             {t("trash.empty")}
           </div>
         ) : (
-          <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, overflowX: "auto" }}>
+          <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", overflowX: "auto" }}>
             <table>
               <thead>
                 <tr>
@@ -87,7 +87,7 @@ function TrashContent() {
                         className="btn"
                         onClick={() => onRestore(g.id)}
                         disabled={restoringId === g.id}
-                        style={{ background: ACCENT, color: "#fff", border: "none", fontSize: 12.5, fontWeight: 700, padding: "6px 14px", borderRadius: 8 }}
+                        style={{ background: ACCENT, color: "var(--on-ink)", border: "none", fontSize: 12.5, fontWeight: 700, padding: "6px 14px", borderRadius: "var(--radius-xs)" }}
                       >
                         {t("trash.restore")}
                       </button>

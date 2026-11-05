@@ -199,7 +199,7 @@ function LeadProfile() {
     return (
       <div className="adm-page">
         <Link href="/leads" style={{ color: ACCENT, fontWeight: 600 }}>← {t("adm.back")}</Link>
-        <div style={{ ...card, marginTop: 14, color: "#B91C1C" }}>
+        <div style={{ ...card, marginTop: 14, color: "var(--danger)" }}>
           {loadError.status === 404 ? t("adm.notFound") : loadError.status === 403 ? t("adm.noPermission") : loadError.message}
           {loadError.status !== 404 && loadError.status !== 403 && (
             <button type="button" className="btn" style={{ ...ghostBtn, marginLeft: 12 }} onClick={load}>{t("adm.retry")}</button>
@@ -208,7 +208,7 @@ function LeadProfile() {
       </div>
     );
   }
-  if (!lead) return <div className="adm-page" style={{ color: "#686B75" }}>{t("common.loading")}</div>;
+  if (!lead) return <div className="adm-page" style={{ color: "var(--text-muted)" }}>{t("common.loading")}</div>;
 
   const archived = !!lead.archivedAt;
   const editable = !archived && can("admissions.update");
@@ -239,19 +239,19 @@ function LeadProfile() {
   const utm = origin?.utm ? [origin.utm.source, origin.utm.medium, origin.utm.campaign].filter(Boolean).join(" / ") : "";
 
   const detail = (k: string, v: React.ReactNode) => (
-    <div style={{ display: "grid", gridTemplateColumns: "140px minmax(0,1fr)", gap: 10, padding: "8px 0", borderBottom: "1px solid #F2F1EC", fontSize: 13 }}>
-      <span style={{ color: "#686B75" }}>{k}</span>
+    <div style={{ display: "grid", gridTemplateColumns: "140px minmax(0,1fr)", gap: 10, padding: "8px 0", borderBottom: "1px solid var(--border)", fontSize: 13 }}>
+      <span style={{ color: "var(--text-muted)" }}>{k}</span>
       <span style={{ fontWeight: 600, wordBreak: "break-word" }}>{v}</span>
     </div>
   );
 
   return (
     <>
-      <div className="adm-page" style={{ borderBottom: "1px solid #EAE8E2", display: "grid", gap: 12 }}>
+      <div className="adm-page" style={{ borderBottom: "1px solid var(--border)", display: "grid", gap: 12 }}>
         <Link href="/leads" style={{ color: ACCENT, fontWeight: 600, fontSize: 13 }}>← {t("adm.back")}</Link>
         <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
           <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-            <h1 style={{ fontSize: 22, fontWeight: 800 }}>{lead.fullName}</h1>
+            <h1 className="page-title">{lead.fullName}</h1>
             <StatusBadge status={lead.status} label={t(statusKey(lead.status))} />
           </div>
           <div className="adm-actions">
@@ -281,7 +281,7 @@ function LeadProfile() {
               <button type="button" className="btn" style={primaryBtn} onClick={() => openDialog({ kind: "trial" })}>{t("adm.bookTrial")}</button>
             )}
             {lead.status === "QUALIFIED" && can("admissions.convert") && (
-              <button type="button" className="btn" style={{ ...primaryBtn, background: "#15803D" }} onClick={() => setConvertOpen(true)}>{t("adm.convert")}</button>
+              <button type="button" className="btn" style={{ ...primaryBtn, background: "var(--success)" }} onClick={() => setConvertOpen(true)}>{t("adm.convert")}</button>
             )}
             {allowed.includes("LOST") && (
               <button type="button" className="btn" style={dangerBtn} onClick={() => openDialog({ kind: "lose" })}>{t("adm.markLost")}</button>
@@ -306,10 +306,10 @@ function LeadProfile() {
 
       <div className="adm-page" style={{ display: "grid", gap: 14 }}>
         {actionError && !dialog && (
-          <div role="alert" style={{ background: "#FEE2E2", color: "#B91C1C", fontWeight: 600, fontSize: 13, padding: "10px 14px", borderRadius: 10 }}>{actionError}</div>
+          <div role="alert" style={{ background: "var(--danger-soft)", color: "var(--danger)", fontWeight: 600, fontSize: 13, padding: "10px 14px", borderRadius: "var(--radius-sm)" }}>{actionError}</div>
         )}
         {archived && (
-          <div style={{ ...card, background: "#F3F4F6", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+          <div style={{ ...card, background: "var(--surface-muted)", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
             <span>{t("adm.archivedBanner")}</span>
             {can("admissions.manage") && (
               <button type="button" className="btn" style={ghostBtn} disabled={busy} onClick={() => run(() => leadsApi.restore(lead.id))}>{t("common.restore")}</button>
@@ -317,13 +317,13 @@ function LeadProfile() {
           </div>
         )}
         {lead.convertedStudent && (
-          <div style={{ ...card, background: "#F0FDF4", border: "1px solid #BBF7D0", display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+          <div style={{ ...card, background: "var(--success-soft)", border: "1px solid var(--success-border)", display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
             <span>{t("adm.convertedBanner")}: <strong>{lead.convertedStudent.fullName}</strong> · {formatDateTime(lead.convertedAt, lang, tz)}</span>
-            <Link href={`/students/${lead.convertedStudent.id}`} style={{ color: "#15803D", fontWeight: 700 }}>{t("adm.viewStudent")} →</Link>
+            <Link href={`/students/${lead.convertedStudent.id}`} style={{ color: "var(--success)", fontWeight: 700 }}>{t("adm.viewStudent")} →</Link>
           </div>
         )}
         {lead.duplicateOfLeadId && (
-          <div style={{ ...card, background: "#FFFBEB", border: "1px solid #FDE68A", fontSize: 13 }}>
+          <div style={{ ...card, background: "var(--warning-soft)", border: "1px solid var(--warning-border)", fontSize: 13 }}>
             {t("adm.duplicateOf")} <Link href={`/leads/${lead.duplicateOfLeadId}`} style={{ color: ACCENT, fontWeight: 700 }}>{lead.duplicateOfLeadId}</Link>
           </div>
         )}
@@ -347,11 +347,11 @@ function LeadProfile() {
             <section style={card}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
                 <h2 style={{ fontSize: 15, fontWeight: 800 }}>{t("adm.test")}</h2>
-                <span style={{ fontSize: 11.5, color: "#686B75" }}>{t("adm.flowSteps")}</span>
+                <span style={{ fontSize: 11.5, color: "var(--text-muted)" }}>{t("adm.flowSteps")}</span>
               </div>
               {attempts.length === 0 ? (
                 <div style={{ display: "grid", gap: 10 }}>
-                  <p style={{ fontSize: 13, color: "#686B75", margin: 0 }}>{t("adm.testNone")}</p>
+                  <p style={{ fontSize: 13, color: "var(--text-muted)", margin: 0 }}>{t("adm.testNone")}</p>
                   {shareTest && (
                     <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                       <button
@@ -385,18 +385,18 @@ function LeadProfile() {
               ) : (
                 <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gap: 10 }}>
                   {attempts.map((a) => (
-                    <li key={a.id} style={{ border: "1px solid #F2F1EC", borderRadius: 10, padding: 12, display: "grid", gap: 8 }}>
+                    <li key={a.id} style={{ border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", padding: 12, display: "grid", gap: 8 }}>
                       <div style={{ display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
                         <strong style={{ fontSize: 13.5 }}>{a.testTitle}</strong>
-                        <span style={{ fontSize: 11.5, color: "#686B75" }}>{formatDateTime(a.createdAt, lang, tz)}</span>
+                        <span style={{ fontSize: 11.5, color: "var(--text-muted)" }}>{formatDateTime(a.createdAt, lang, tz)}</span>
                       </div>
                       <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-                        <span style={{ fontFamily: "'Manrope',sans-serif", fontWeight: 800, fontSize: 24, color: a.percent >= 70 ? "#15803D" : a.percent >= 40 ? "#B45309" : "#B91C1C" }}>{a.percent}%</span>
-                        <span style={{ fontSize: 12.5, color: "#5B5F6A" }}>{a.correct}/{a.total}</span>
+                        <span style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 24, color: a.percent >= 70 ? "var(--success)" : a.percent >= 40 ? "var(--warning)" : "var(--danger)" }}>{a.percent}%</span>
+                        <span style={{ fontSize: 12.5, color: "var(--text-muted)" }}>{a.correct}/{a.total}</span>
                         {a.reviewStatus === "PENDING" ? (
-                          <span style={{ fontSize: 11.5, fontWeight: 700, padding: "3px 9px", borderRadius: 999, background: "#FEF3C7", color: "#92400E" }}>⏳ {t("adm.testPending")}</span>
+                          <span style={{ fontSize: 11.5, fontWeight: 700, padding: "3px 9px", borderRadius: "var(--radius-pill)", background: "var(--warning-soft)", color: "var(--warning)" }}>⏳ {t("adm.testPending")}</span>
                         ) : (
-                          <span style={{ fontSize: 11.5, fontWeight: 700, padding: "3px 9px", borderRadius: 999, background: "#EEF0FF", color: ACCENT }}>
+                          <span style={{ fontSize: 11.5, fontWeight: 700, padding: "3px 9px", borderRadius: "var(--radius-pill)", background: "var(--primary-soft)", color: ACCENT }}>
                             {t("adm.testLevel")}: {placementLevelName(a.subject, a.suggestedLevel, t)}
                           </span>
                         )}
@@ -407,17 +407,17 @@ function LeadProfile() {
                 </ul>
               )}
               {canTrialFlow && (
-                <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid #F2F1EC", display: "grid", gap: 8 }}>
+                <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid var(--border)", display: "grid", gap: 8 }}>
                   <div style={{ fontSize: 12.5, fontWeight: 700 }}>{t("adm.flowTitle")}</div>
-                  <div style={{ fontSize: 12.5, color: "#5B5F6A" }}>{t("adm.flowTrial")}</div>
+                  <div style={{ fontSize: 12.5, color: "var(--text-muted)" }}>{t("adm.flowTrial")}</div>
                   {matchingGroups.length > 0 && (
                     <div style={{ display: "grid", gap: 6 }}>
-                      <div style={{ fontSize: 11.5, color: "#686B75", fontWeight: 600 }}>{t("adm.flowGroups")}</div>
+                      <div style={{ fontSize: 11.5, color: "var(--text-muted)", fontWeight: 600 }}>{t("adm.flowGroups")}</div>
                       {matchingGroups.map((g) => (
-                        <div key={g.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, flexWrap: "wrap", background: "#FAFAF8", border: "1px solid #F2F1EC", borderRadius: 9, padding: "8px 10px" }}>
+                        <div key={g.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, flexWrap: "wrap", background: "var(--surface-muted)", border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", padding: "8px 10px" }}>
                           <div style={{ minWidth: 0 }}>
                             <div style={{ fontSize: 13, fontWeight: 700 }}>{g.name}</div>
-                            <div style={{ fontSize: 11.5, color: "#686B75" }}>
+                            <div style={{ fontSize: 11.5, color: "var(--text-muted)" }}>
                               {[g.level, scheduleDaysLabel(g.scheduleDays, t), g.startTime, g.teacher?.fullName].filter(Boolean).join(" · ")}
                               {typeof g.studentCount === "number" ? ` · ${g.studentCount}/${g.maxStudents}` : ""}
                             </div>
@@ -465,7 +465,7 @@ function LeadProfile() {
                 ),
               )}
               {lead.assignedManagerActive === false && (
-                <div style={{ fontSize: 12, color: "#B45309", marginTop: 6 }}>⚠ {t("adm.managerInactive")}</div>
+                <div style={{ fontSize: 12, color: "var(--warning)", marginTop: 6 }}>⚠ {t("adm.managerInactive")}</div>
               )}
               {lead.status === "LOST" && detail(t("adm.lostReason"), <>{lead.lostReason ? t(lostKey(lead.lostReason)) : "—"}{lead.lostNote ? ` — ${lead.lostNote}` : ""}</>)}
               {detail(t("adm.createdBy"), formatDateTime(lead.createdAt, lang, tz))}
@@ -481,7 +481,7 @@ function LeadProfile() {
 
             <section style={card}>
               <h2 style={{ fontSize: 15, fontWeight: 800, marginBottom: 8 }}>{t("adm.followUp")}</h2>
-              <div style={{ fontSize: 13.5, marginBottom: 10, color: isOverdue(lead.followUpAt) && isOpen ? "#B91C1C" : undefined, fontWeight: 600 }}>
+              <div style={{ fontSize: 13.5, marginBottom: 10, color: isOverdue(lead.followUpAt) && isOpen ? "var(--danger)" : undefined, fontWeight: 600 }}>
                 {lead.followUpAt ? formatDateTime(lead.followUpAt, lang, tz) : t("adm.noFollowUp")}
                 {lead.followUpAt && isOverdue(lead.followUpAt) && isOpen ? ` (${t("adm.overdue")})` : ""}
               </div>
@@ -511,19 +511,19 @@ function LeadProfile() {
             <section style={card}>
               <h2 style={{ fontSize: 15, fontWeight: 800, marginBottom: 8 }}>{t("adm.trials")}</h2>
               {(lead.trials ?? []).length === 0 ? (
-                <p style={{ fontSize: 13, color: "#686B75" }}>{t("adm.noTrials")}</p>
+                <p style={{ fontSize: 13, color: "var(--text-muted)" }}>{t("adm.noTrials")}</p>
               ) : (
                 <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gap: 10 }}>
                   {lead.trials!.map((tr) => (
-                    <li key={tr.id} style={{ border: "1px solid #F2F1EC", borderRadius: 10, padding: 10, display: "grid", gap: 6 }}>
+                    <li key={tr.id} style={{ border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", padding: 10, display: "grid", gap: 6 }}>
                       <div style={{ display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
                         <strong style={{ fontSize: 13.5 }}>{formatDateTime(tr.scheduledAt, lang, tz)} · {tr.durationMinutes}′</strong>
-                        <span style={{ fontSize: 11.5, fontWeight: 700, padding: "2px 8px", borderRadius: 999, ...TRIAL_STYLE[tr.status] }}>{t(trialKey(tr.status))}</span>
+                        <span style={{ fontSize: 11.5, fontWeight: 700, padding: "2px 8px", borderRadius: "var(--radius-pill)", ...TRIAL_STYLE[tr.status] }}>{t(trialKey(tr.status))}</span>
                       </div>
-                      <div style={{ fontSize: 12.5, color: "#5B5F6A" }}>
+                      <div style={{ fontSize: 12.5, color: "var(--text-muted)" }}>
                         {[tr.group?.name, tr.teacher?.fullName, tr.room?.name].filter(Boolean).join(" · ") || "—"}
                       </div>
-                      {tr.outcomeNote && <div style={{ fontSize: 12.5, color: "#686B75" }}>{tr.outcomeNote}</div>}
+                      {tr.outcomeNote && <div style={{ fontSize: 12.5, color: "var(--text-muted)" }}>{tr.outcomeNote}</div>}
                       {editable && tr.status === "BOOKED" && (
                         <div className="adm-actions">
                           <button type="button" className="btn" style={{ ...primaryBtn, padding: "6px 12px", fontSize: 12 }} disabled={busy} onClick={() => { if (trialHappened(tr.scheduledAt, t("adm.trialNotYet"))) run(() => leadsApi.attendTrial(lead.id, tr.id)); }}>{t("adm.trialAttend")}</button>
@@ -558,7 +558,7 @@ function LeadProfile() {
                       aria-pressed={activityType === k}
                       onClick={() => setActivityType(k)}
                       className="btn"
-                      style={{ ...ghostBtn, padding: "5px 12px", fontSize: 12, ...(activityType === k ? { background: "#EEF0FF", border: "1px solid #C7D2FE", color: ACCENT } : {}) }}
+                      style={{ ...ghostBtn, padding: "5px 12px", fontSize: 12, ...(activityType === k ? { background: "var(--primary-soft)", border: "1px solid var(--primary-border)", color: ACCENT } : {}) }}
                     >
                       {t(`adm.activity.${k}` as TranslationKey)}
                     </button>
@@ -572,19 +572,19 @@ function LeadProfile() {
             )}
             <ol style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gap: 0 }}>
               {timeline.map((a) => (
-                <li key={a.id} style={{ borderLeft: "2px solid #EAE8E2", padding: "0 0 14px 14px", position: "relative" }}>
-                  <span style={{ position: "absolute", left: -6, top: 3, width: 10, height: 10, borderRadius: 999, background: a.toStatus ? ACCENT : "#C9C7C0" }} />
+                <li key={a.id} style={{ borderLeft: "2px solid var(--border)", padding: "0 0 14px 14px", position: "relative" }}>
+                  <span style={{ position: "absolute", left: -6, top: 3, width: 10, height: 10, borderRadius: "var(--radius-pill)", background: a.toStatus ? ACCENT : "var(--border-strong)" }} />
                   <div style={{ fontSize: 13, fontWeight: 700 }}>
                     {activityTitle(a, t)}
                     {a.fromStatus && a.toStatus && (
-                      <span style={{ fontWeight: 500, color: "#5B5F6A" }}> · {t(statusKey(a.fromStatus))} → {t(statusKey(a.toStatus))}</span>
+                      <span style={{ fontWeight: 500, color: "var(--text-muted)" }}> · {t(statusKey(a.fromStatus))} → {t(statusKey(a.toStatus))}</span>
                     )}
                     {a.type === "LOST" && typeof a.metadata?.reason === "string" && (
-                      <span style={{ fontWeight: 500, color: "#B91C1C" }}> · {t(lostKey(a.metadata.reason as LeadLostReason))}</span>
+                      <span style={{ fontWeight: 500, color: "var(--danger)" }}> · {t(lostKey(a.metadata.reason as LeadLostReason))}</span>
                     )}
                   </div>
                   {a.body && <div style={{ fontSize: 13, whiteSpace: "pre-wrap", marginTop: 3 }}>{a.body}</div>}
-                  <div style={{ fontSize: 11.5, color: "#686B75", marginTop: 3 }}>
+                  <div style={{ fontSize: 11.5, color: "var(--text-muted)", marginTop: 3 }}>
                     {formatDateTime(a.occurredAt, lang, tz)} · {a.actor?.fullName ?? t("adm.system")}
                   </div>
                 </li>
@@ -713,22 +713,22 @@ function LeadProfile() {
                 <input className="field-input" value={note} onChange={(e) => setNote(e.target.value)} />
               </div>
               {conflicts.length > 0 && (
-                <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 10, padding: 12 }}>
-                  <div style={{ fontWeight: 700, color: "#B91C1C", fontSize: 13 }}>{t("adm.conflictTitle")}</div>
-                  <ul style={{ margin: "6px 0 0 16px", fontSize: 12.5, color: "#7F1D1D" }}>
+                <div style={{ background: "var(--danger-soft)", border: "1px solid var(--danger-border)", borderRadius: "var(--radius-sm)", padding: 12 }}>
+                  <div style={{ fontWeight: 700, color: "var(--danger)", fontSize: 13 }}>{t("adm.conflictTitle")}</div>
+                  <ul style={{ margin: "6px 0 0 16px", fontSize: 12.5, color: "var(--danger)" }}>
                     {conflicts.map((c, i) => <li key={i}>{c.message}</li>)}
                   </ul>
                 </div>
               )}
             </>
           )}
-          {actionError && conflicts.length === 0 && <div role="alert" style={{ color: "#B91C1C", fontSize: 13, fontWeight: 600 }}>{actionError}</div>}
+          {actionError && conflicts.length === 0 && <div role="alert" style={{ color: "var(--danger)", fontSize: 13, fontWeight: 600 }}>{actionError}</div>}
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
             <button type="button" className="btn" style={ghostBtn} disabled={busy} onClick={() => setDialog(null)}>{t("common.cancel")}</button>
             <button
               type="submit"
               className="btn"
-              style={{ ...(dialog?.kind === "lose" ? { ...primaryBtn, background: "#B91C1C" } : primaryBtn), opacity: busy ? 0.7 : 1 }}
+              style={{ ...(dialog?.kind === "lose" ? { ...primaryBtn, background: "var(--danger)" } : primaryBtn), opacity: busy ? 0.7 : 1 }}
               disabled={busy || (dialog?.kind === "trial" && !trialDate)}
             >
               {busy ? t("common.saving") : t("common.save")}

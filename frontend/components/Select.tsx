@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useLanguage } from "@/lib/i18n-context";
 import { usePopoverPlacement, useEscapeToClose } from "@/lib/use-popover";
 
-const ACCENT = "#4F46E5";
+const ACCENT = "var(--primary)";
 
 export interface SelectOption {
   value: string;
@@ -106,7 +106,7 @@ export default function Select({
           ...(tone ? { background: tone.bg, color: tone.fg, fontWeight: 700 } : {}),
         }}
       >
-        <span style={{ color: tone ? tone.fg : selectedLabel ? "#181A1F" : "#686B75", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: wrap ? "normal" : "nowrap", lineHeight: wrap ? 1.35 : undefined }}>
+        <span style={{ color: tone ? tone.fg : selectedLabel ? "var(--text)" : "var(--text-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: wrap ? "normal" : "nowrap", lineHeight: wrap ? 1.35 : undefined }}>
           {selectedLabel || effectivePlaceholder}
         </span>
         <svg
@@ -116,7 +116,7 @@ export default function Select({
           fill="none"
           style={{ flexShrink: 0, transform: open ? "rotate(180deg)" : "none", transition: "transform 0.18s ease" }}
         >
-          <path d="M1 1.5L6 6.5L11 1.5" stroke={open ? ACCENT : "#686B75"} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M1 1.5L6 6.5L11 1.5" stroke={open ? ACCENT : "var(--text-muted)"} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       </button>
 
@@ -140,11 +140,11 @@ export default function Select({
                 }
               }
             }}
-            style={{ width: "100%", boxSizing: "border-box", marginBottom: 5, fontSize: 13, padding: "8px 10px", position: "sticky", top: 0, zIndex: 1, background: "#fff" }}
+            style={{ width: "100%", boxSizing: "border-box", marginBottom: 5, fontSize: 13, padding: "8px 10px", position: "sticky", top: 0, zIndex: 1, background: "var(--surface)" }}
           />
         ) : null;
         const list = shown.length === 0 ? (
-          <div style={{ padding: "10px 12px", fontSize: 12.5, color: "#686B75", textAlign: "center" }}>
+          <div style={{ padding: "10px 12px", fontSize: 12.5, color: "var(--text-muted)", textAlign: "center" }}>
             {options.length === 0 ? t("common.noOptions") : t("picker.noOptions")}
           </div>
         ) : (
@@ -167,17 +167,17 @@ export default function Select({
                   width: "100%",
                   textAlign: "left",
                   padding: asSheet ? "12px 14px" : "8px 12px",
-                  borderRadius: 8,
+                  borderRadius: "var(--radius-xs)",
                   cursor: "pointer",
                   fontSize: asSheet ? 15 : 13,
                   border: "none",
                   fontWeight: isSelected ? 700 : 500,
-                  background: isSelected ? "#EEF0FF" : "transparent",
-                  color: isSelected ? ACCENT : "#181A1F",
+                  background: isSelected ? "var(--primary-soft)" : "transparent",
+                  color: isSelected ? ACCENT : "var(--text)",
                   transition: "all 0.12s ease",
                 }}
                 onMouseEnter={(e) => {
-                  if (!isSelected) e.currentTarget.style.background = "#F7F6FF";
+                  if (!isSelected) e.currentTarget.style.background = "var(--primary-soft)";
                 }}
                 onMouseLeave={(e) => {
                   if (!isSelected) e.currentTarget.style.background = "transparent";
@@ -195,10 +195,10 @@ export default function Select({
               <div
                 role="listbox"
                 onClick={(e) => e.stopPropagation()}
-                style={{ width: "100%", maxHeight: "70vh", overflowY: "auto", background: "#fff", borderRadius: "18px 18px 0 0", padding: "8px 8px calc(12px + env(safe-area-inset-bottom))", boxShadow: "0 -12px 36px rgba(18,19,26,0.2)" }}
+                style={{ width: "100%", maxHeight: "70vh", overflowY: "auto", background: "var(--surface)", borderRadius: "18px 18px 0 0", padding: "8px 8px calc(12px + env(safe-area-inset-bottom))", boxShadow: "0 -12px 36px rgba(18,19,26,0.2)" }}
               >
-                <div style={{ width: 40, height: 4, borderRadius: 4, background: "#D9D6CE", margin: "4px auto 10px" }} />
-                {sheetTitle && <div style={{ fontSize: 13, fontWeight: 800, color: "#4A4E58", padding: "0 10px 8px" }}>{sheetTitle}</div>}
+                <div style={{ width: 40, height: 4, borderRadius: 4, background: "var(--border-strong)", margin: "4px auto 10px" }} />
+                {sheetTitle && <div style={{ fontSize: 13, fontWeight: 800, color: "var(--text-soft)", padding: "0 10px 8px" }}>{sheetTitle}</div>}
                 {search}
                 {list}
               </div>
@@ -214,9 +214,9 @@ export default function Select({
               left: 0,
               width: "100%",
               zIndex: 100,
-              background: "#fff",
-              border: "1px solid #EAE8E2",
-              borderRadius: 12,
+              background: "var(--surface)",
+              border: "1px solid var(--border)",
+              borderRadius: "var(--radius-md)",
               maxHeight: 240,
               overflowY: "auto",
               padding: 5,

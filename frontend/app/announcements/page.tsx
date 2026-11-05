@@ -147,21 +147,21 @@ export function AnnouncementsContent() {
     switch (p) {
       case "URGENT":
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-50 text-rose-700 border border-rose-200">
-            <span className="w-1.5 h-1.5 rounded-full bg-rose-600 animate-pulse" />
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-danger-soft text-danger border border-danger-border">
+            <span className="w-1.5 h-1.5 rounded-full bg-danger animate-pulse" />
             {t("ann2.urgent")}
           </span>
         );
       case "HIGH":
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200">
-            <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-warning-soft text-warning border border-warning-border">
+            <span className="w-1.5 h-1.5 rounded-full bg-warning" />
             {t("ann2.high")}
           </span>
         );
       default:
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-200">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-surface-muted text-soft border border-line">
             {t("ann2.normal")}
           </span>
         );
@@ -172,25 +172,25 @@ export function AnnouncementsContent() {
     switch (audience) {
       case "ALL":
         return (
-          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">
+          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-primary-soft text-primary border border-primary-border">
             👥 {t("ann2.toAll")}
           </span>
         );
       case "STUDENTS":
         return (
-          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
+          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-success-soft text-success border border-success-border">
             🎓 {t("ann2.toStudents")}
           </span>
         );
       case "TEACHERS":
         return (
-          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-sky-50 text-sky-800 border border-sky-200">
+          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-info-soft text-info border border-info-border">
             👨‍🏫 {t("ann2.toTeachers")}
           </span>
         );
       case "GROUP":
         return (
-          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-purple-50 text-purple-800 border border-purple-200">
+          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-violet-soft text-violet border border-violet-border">
             🏫 {t("ann.group")}: {groupName || t("ann.selectedGroup")}
           </span>
         );
@@ -202,8 +202,8 @@ export function AnnouncementsContent() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2.5">
-            <span className="p-2 rounded-xl bg-indigo-50 text-indigo-600 border border-indigo-100">
+          <h1 className="page-title text-fg flex items-center gap-2.5">
+            <span className="p-2 rounded-xl bg-primary-soft text-primary border border-primary-soft">
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="m3 11 18-5v12L3 14v-3z" />
                 <path d="M11.6 16.8a3 3 0 1 1-5.8-1.6" />
@@ -211,14 +211,14 @@ export function AnnouncementsContent() {
             </span>
             {t("ann2.title")}
           </h1>
-          <p className="text-xs sm:text-sm text-slate-600 mt-1">
+          <p className="text-xs sm:text-sm text-soft mt-1">
             {t("ann2.subtitle")}
           </p>
         </div>
 
         <button
           onClick={openCreateModal}
-          className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition shadow-sm cursor-pointer"
+          className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-primary hover:bg-primary text-white text-xs font-bold transition shadow-sm cursor-pointer"
         >
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <line x1="12" y1="5" x2="12" y2="19" />
@@ -230,26 +230,26 @@ export function AnnouncementsContent() {
 
       {/* KPI Stats cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
-          <span className="text-xs text-slate-500 font-bold">{t("ann.total")}</span>
-          <div className="text-2xl font-black text-slate-900 mt-1">{stats.total}</div>
+        <div className="bg-surface border border-line rounded-2xl p-4 shadow-sm">
+          <span className="text-xs text-muted font-bold">{t("ann.total")}</span>
+          <div className="text-2xl font-black text-fg mt-1">{stats.total}</div>
         </div>
-        <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
-          <span className="text-xs text-rose-600 font-bold">{t("ann2.urgent")}</span>
-          <div className="text-2xl font-black text-rose-600 mt-1">{stats.urgent}</div>
+        <div className="bg-surface border border-line rounded-2xl p-4 shadow-sm">
+          <span className="text-xs text-danger font-bold">{t("ann2.urgent")}</span>
+          <div className="text-2xl font-black text-danger mt-1">{stats.urgent}</div>
         </div>
-        <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
-          <span className="text-xs text-amber-600 font-bold">{t("ann2.high")}</span>
-          <div className="text-2xl font-black text-amber-600 mt-1">{stats.high}</div>
+        <div className="bg-surface border border-line rounded-2xl p-4 shadow-sm">
+          <span className="text-xs text-warning font-bold">{t("ann2.high")}</span>
+          <div className="text-2xl font-black text-warning mt-1">{stats.high}</div>
         </div>
-        <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
-          <span className="text-xs text-sky-600 font-bold">{t("ann.telegramSent")}</span>
-          <div className="text-2xl font-black text-sky-600 mt-1">{stats.telegramSent}</div>
+        <div className="bg-surface border border-line rounded-2xl p-4 shadow-sm">
+          <span className="text-xs text-info font-bold">{t("ann.telegramSent")}</span>
+          <div className="text-2xl font-black text-info mt-1">{stats.telegramSent}</div>
         </div>
       </div>
 
       {/* Filter toolbar */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-sm">
+      <div className="bg-surface border border-line rounded-2xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-sm">
         {/* Priority Tabs */}
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0">
           {[
@@ -266,8 +266,8 @@ export function AnnouncementsContent() {
               }}
               className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer whitespace-nowrap ${
                 priorityFilter === tab.id
-                  ? "bg-indigo-600 text-white shadow-sm"
-                  : "bg-slate-100 text-slate-700 hover:text-slate-900 hover:bg-slate-200 border border-slate-200"
+                  ? "bg-primary text-white shadow-sm"
+                  : "bg-surface-muted text-soft hover:text-fg hover:bg-line border border-line"
               }`}
             >
               {tab.label}
@@ -295,7 +295,7 @@ export function AnnouncementsContent() {
 
           <div className="relative w-full md:w-64">
             <svg
-              className="absolute left-3 top-2.5 text-slate-400"
+              className="absolute left-3 top-2.5 text-faint"
               width="15"
               height="15"
               viewBox="0 0 24 24"
@@ -316,7 +316,7 @@ export function AnnouncementsContent() {
                 setSearch(e.target.value);
                 setPage(1);
               }}
-              className="w-full bg-white border border-slate-300 rounded-xl pl-9 pr-3 py-1.5 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 shadow-sm"
+              className="w-full bg-surface border border-line-strong rounded-xl pl-9 pr-3 py-1.5 text-xs text-fg placeholder-faint focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary shadow-sm"
             />
           </div>
         </div>
@@ -324,22 +324,22 @@ export function AnnouncementsContent() {
 
       {/* Announcements List */}
       {loading ? (
-        <div className="py-20 text-center text-xs text-slate-500 font-medium">{t("common.loading")}</div>
+        <div className="py-20 text-center text-xs text-muted font-medium">{t("common.loading")}</div>
       ) : filtered.length === 0 ? (
-        <div className="bg-white border border-slate-200 rounded-2xl p-12 text-center shadow-sm">
-          <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 border border-indigo-100 flex items-center justify-center mx-auto mb-3">
+        <div className="bg-surface border border-line rounded-2xl p-12 text-center shadow-sm">
+          <div className="w-12 h-12 rounded-2xl bg-primary-soft text-primary border border-primary-soft flex items-center justify-center mx-auto mb-3">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="m3 11 18-5v12L3 14v-3z" />
               <path d="M11.6 16.8a3 3 0 1 1-5.8-1.6" />
             </svg>
           </div>
-          <h3 className="text-sm font-bold text-slate-900">{t("ann.empty")}</h3>
-          <p className="text-xs text-slate-600 mt-1 max-w-sm mx-auto">
+          <h3 className="text-sm font-bold text-fg">{t("ann.empty")}</h3>
+          <p className="text-xs text-soft mt-1 max-w-sm mx-auto">
             {t("ann2.empty")}
           </p>
           <button
             onClick={openCreateModal}
-            className="mt-4 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold cursor-pointer shadow-sm"
+            className="mt-4 px-4 py-2 rounded-xl bg-primary hover:bg-primary text-white text-xs font-bold cursor-pointer shadow-sm"
           >
             {t("ann2.create")}
           </button>
@@ -349,12 +349,12 @@ export function AnnouncementsContent() {
           {paged.map((item) => (
             <div
               key={item.id}
-              className={`relative bg-white border rounded-2xl p-5 transition hover:shadow-md shadow-sm ${
+              className={`relative bg-surface border rounded-2xl p-5 transition hover:shadow-md shadow-sm ${
                 item.priority === "URGENT"
-                  ? "border-rose-300 bg-rose-50/40"
+                  ? "border-danger-border bg-danger-soft/40"
                   : item.priority === "HIGH"
-                  ? "border-amber-300 bg-amber-50/40"
-                  : "border-slate-200"
+                  ? "border-warning-border bg-warning-soft/40"
+                  : "border-line"
               }`}
             >
               <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
@@ -363,7 +363,7 @@ export function AnnouncementsContent() {
                     {priorityBadge(item.priority)}
                     {audienceBadge(item.targetAudience, item.targetGroup?.name)}
                     {item.sendTelegram && (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold bg-sky-50 text-sky-700 border border-sky-200">
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold bg-info-soft text-info border border-info-border">
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                           <line x1="22" y1="2" x2="11" y2="13" />
                           <polygon points="22 2 15 22 11 13 2 9 22 2" />
@@ -373,17 +373,17 @@ export function AnnouncementsContent() {
                     )}
                   </div>
 
-                  <h3 className="text-base font-bold text-slate-900 tracking-tight">
+                  <h3 className="text-base font-bold text-fg tracking-tight">
                     {item.title}
                   </h3>
 
-                  <p className="text-xs text-slate-700 whitespace-pre-wrap leading-relaxed">
+                  <p className="text-xs text-soft whitespace-pre-wrap leading-relaxed">
                     {item.content}
                   </p>
                 </div>
 
                 <div className="flex sm:flex-col items-end justify-between sm:justify-start gap-2 shrink-0">
-                  <span className="text-[11px] text-slate-500 font-medium">
+                  <span className="text-[11px] text-muted font-medium">
                     {formatDateTime(item.publishedAt, "UZ")}
                   </span>
 
@@ -391,7 +391,7 @@ export function AnnouncementsContent() {
                     onClick={() => handleDelete(item.id)}
                     disabled={deletingId === item.id}
                     title={t("common.delete")}
-                    className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer"
+                    className="p-1.5 rounded-lg text-faint hover:text-danger hover:bg-danger-soft transition cursor-pointer"
                   >
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M3 6h18" />
@@ -403,11 +403,11 @@ export function AnnouncementsContent() {
               </div>
 
               {item.author && (
-                <div className="mt-4 pt-3 border-t border-slate-100 flex items-center gap-2 text-[11px] text-slate-600">
-                  <div className="w-5 h-5 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-[10px]">
+                <div className="mt-4 pt-3 border-t border-line flex items-center gap-2 text-[11px] text-soft">
+                  <div className="w-5 h-5 rounded-full bg-primary-soft text-primary flex items-center justify-center font-bold text-[10px]">
                     {item.author.fullName.charAt(0)}
                   </div>
-                  <span>{t("ann2.author")}: <strong className="text-slate-900 font-bold">{item.author.fullName}</strong></span>
+                  <span>{t("ann2.author")}: <strong className="text-fg font-bold">{item.author.fullName}</strong></span>
                 </div>
               )}
             </div>
@@ -425,14 +425,14 @@ export function AnnouncementsContent() {
       <Modal open={modalOpen} onClose={() => setModalOpen(false)} title={t("ann.newTitle")}>
         <form onSubmit={handleSubmit} className="space-y-4">
           {error && (
-            <div role="alert" className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold">
+            <div role="alert" className="p-3 rounded-xl bg-danger-soft border border-danger-border text-danger text-xs font-semibold">
               {error}
             </div>
           )}
 
           <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1">
-              {t("ann2.fieldTitle")} <span className="text-rose-500">*</span>
+            <label className="block text-xs font-bold text-soft mb-1">
+              {t("ann2.fieldTitle")} <span className="text-danger">*</span>
             </label>
             <input
               type="text"
@@ -440,13 +440,13 @@ export function AnnouncementsContent() {
               placeholder={t("ann.titlePh")}
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 shadow-sm"
+              className="w-full bg-surface border border-line-strong rounded-xl px-3.5 py-2 text-xs text-fg placeholder-faint focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary shadow-sm"
             />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">
+              <label className="block text-xs font-bold text-soft mb-1">
                 {t("ann2.audience")}
               </label>
               <Select
@@ -462,7 +462,7 @@ export function AnnouncementsContent() {
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">
+              <label className="block text-xs font-bold text-soft mb-1">
                 {t("ann2.priority")}
               </label>
               <Select
@@ -479,8 +479,8 @@ export function AnnouncementsContent() {
 
           {targetAudience === "GROUP" && (
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">
-                {t("ann2.pickGroup")} <span className="text-rose-500">*</span>
+              <label className="block text-xs font-bold text-soft mb-1">
+                {t("ann2.pickGroup")} <span className="text-danger">*</span>
               </label>
               <Select
                 value={targetGroupId}
@@ -497,8 +497,8 @@ export function AnnouncementsContent() {
           )}
 
           <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1">
-              {t("ann2.fieldText")} <span className="text-rose-500">*</span>
+            <label className="block text-xs font-bold text-soft mb-1">
+              {t("ann2.fieldText")} <span className="text-danger">*</span>
             </label>
             <textarea
               required
@@ -506,44 +506,44 @@ export function AnnouncementsContent() {
               placeholder={t("ann.contentPh")}
               value={content}
               onChange={(e) => setContent(e.target.value)}
-              className="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 shadow-sm resize-none"
+              className="w-full bg-surface border border-line-strong rounded-xl px-3.5 py-2 text-xs text-fg placeholder-faint focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary shadow-sm resize-none"
             />
           </div>
 
           {/* Telegram broadcast switch */}
-          <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-200">
+          <div className="flex items-center justify-between p-3 rounded-xl bg-surface-muted border border-line">
             <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-sky-50 text-sky-600 border border-sky-200 flex items-center justify-center">
+              <div className="w-8 h-8 rounded-lg bg-info-soft text-info border border-info-border flex items-center justify-center">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <line x1="22" y1="2" x2="11" y2="13" />
                   <polygon points="22 2 15 22 11 13 2 9 22 2" />
                 </svg>
               </div>
               <div>
-                <span className="text-xs font-bold text-slate-900 block">{t("ann.viaTelegram")}</span>
-                <span className="text-[11px] text-slate-600">{t("ann.viaTelegramHint")}</span>
+                <span className="text-xs font-bold text-fg block">{t("ann.viaTelegram")}</span>
+                <span className="text-[11px] text-soft">{t("ann.viaTelegramHint")}</span>
               </div>
             </div>
             <input
               type="checkbox"
               checked={sendTelegram}
               onChange={(e) => setSendTelegram(e.target.checked)}
-              className="w-4 h-4 accent-indigo-600 rounded cursor-pointer"
+              className="w-4 h-4 accent-primary rounded cursor-pointer"
             />
           </div>
 
-          <div className="pt-3 flex justify-end gap-2 border-t border-slate-100">
+          <div className="pt-3 flex justify-end gap-2 border-t border-line">
             <button
               type="button"
               onClick={() => setModalOpen(false)}
-              className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold cursor-pointer border border-slate-200"
+              className="px-4 py-2 rounded-xl bg-surface-muted hover:bg-line text-soft text-xs font-semibold cursor-pointer border border-line"
             >
               {t("common.cancel")}
             </button>
             <button
               type="submit"
               disabled={saving}
-              className="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-xs font-bold cursor-pointer shadow-sm"
+              className="px-5 py-2 rounded-xl bg-primary hover:bg-primary disabled:opacity-50 text-white text-xs font-bold cursor-pointer shadow-sm"
             >
               {saving ? t("pay.sending") : t("ann.publish")}
             </button>
@@ -557,7 +557,7 @@ export function AnnouncementsContent() {
 export default function AnnouncementsPage() {
   return (
     <DashboardShell>
-      <div style={{ padding: "24px 32px", width: "100%", maxWidth: 1400, margin: "0 auto", boxSizing: "border-box" }}>
+      <div style={{ padding: "var(--page-pad)", width: "100%", maxWidth: 1400, margin: "0 auto", boxSizing: "border-box" }}>
         <AnnouncementsContent />
       </div>
     </DashboardShell>

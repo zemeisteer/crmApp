@@ -35,13 +35,13 @@ export default function AccessMatrixPanel() {
   useEffect(load, [load]);
 
   return (
-    <section style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 22, marginTop: 20, maxWidth: 980 }} aria-labelledby="acc-title">
-      <div id="acc-title" style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 700, fontSize: 15, marginBottom: 4 }}>{t("acc.title")}</div>
-      <div style={{ fontSize: 12.5, color: "#686B75", marginBottom: 16, lineHeight: 1.5 }}>{t("acc.hint")}</div>
+    <section style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 22, marginTop: 20, maxWidth: 980 }} aria-labelledby="acc-title">
+      <div id="acc-title" style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 15, marginBottom: 4 }}>{t("acc.title")}</div>
+      <div style={{ fontSize: 12.5, color: "var(--text-muted)", marginBottom: 16, lineHeight: 1.5 }}>{t("acc.hint")}</div>
       {error !== null ? (
         <LoadError message={error} onRetry={load} />
       ) : !data ? (
-        <div style={{ fontSize: 13, color: "#686B75" }}>{t("common.loading")}</div>
+        <div style={{ fontSize: 13, color: "var(--text-muted)" }}>{t("common.loading")}</div>
       ) : (
         <div style={{ overflowX: "auto" }}>
           <table aria-label={t("acc.title")}>
@@ -59,7 +59,7 @@ export default function AccessMatrixPanel() {
                 if (rows.length === 0) return [];
                 return [
                   <tr key={area}>
-                    <th colSpan={data.roles.length + 1} scope="colgroup" style={{ textAlign: "left", background: "#F7F7F5", fontSize: 12, color: "#4A4E58", paddingTop: 8, paddingBottom: 8 }}>
+                    <th colSpan={data.roles.length + 1} scope="colgroup" style={{ textAlign: "left", background: "var(--surface-muted)", fontSize: 12, color: "var(--text-soft)", paddingTop: 8, paddingBottom: 8 }}>
                       {t(`acc.area.${area}` as TranslationKey)}
                     </th>
                   </tr>,
@@ -67,14 +67,14 @@ export default function AccessMatrixPanel() {
                     <tr key={c.key}>
                       <th scope="row" style={{ textAlign: "left", fontWeight: 600, fontSize: 13 }}>
                         {t(`acc.cap.${c.key}` as TranslationKey)}
-                        {c.note && <div style={{ fontSize: 11, color: "#686B75", fontWeight: 500 }}>{t(`acc.note.${c.note}` as TranslationKey)}</div>}
+                        {c.note && <div style={{ fontSize: 11, color: "var(--text-muted)", fontWeight: 500 }}>{t(`acc.note.${c.note}` as TranslationKey)}</div>}
                       </th>
                       {data.roles.map((r) => (
                         <td key={r} style={{ textAlign: "center" }}>
                           {c.allowed[r] ? (
-                            <span aria-label="✓" style={{ color: "#167A48", fontWeight: 800 }}>✓</span>
+                            <span aria-label="✓" style={{ color: "var(--success)", fontWeight: 800 }}>✓</span>
                           ) : (
-                            <span aria-label="—" style={{ color: "#C9C7C1" }}>—</span>
+                            <span aria-label="—" style={{ color: "var(--text-faint)" }}>—</span>
                           )}
                         </td>
                       ))}

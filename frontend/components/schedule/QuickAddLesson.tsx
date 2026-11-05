@@ -7,7 +7,7 @@ import TimePicker from "@/components/TimePicker";
 import { ApiError, scheduleApi, type Group, type Room, type ScheduleConflict, type ScheduleItem, type Teacher } from "@/lib/api";
 import { useLanguage } from "@/lib/i18n-context";
 
-const ACCENT = "#4F46E5";
+const ACCENT = "var(--primary)";
 const WIDTH = 348;
 const DURATIONS = [60, 90, 120];
 
@@ -170,25 +170,25 @@ export default function QuickAddLesson({
 
   const length = startTime < endTime ? toMinutes(endTime) - toMinutes(startTime) : 0;
   const blocked = saving || checking || !!checkError || conflicts.length > 0 || !groupId;
-  const label: React.CSSProperties = { display: "block", fontSize: 12, fontWeight: 700, color: "#4A4E58", marginBottom: 5 };
+  const label: React.CSSProperties = { display: "block", fontSize: 12, fontWeight: 700, color: "var(--text-soft)", marginBottom: 5 };
 
   return (
     <div
       ref={ref}
       role="dialog"
       aria-label={`${dayLabel}: ${t("schedule.addLesson")}`}
-      style={{ position: "fixed", left: pos.left, top: pos.top, width: `min(${WIDTH}px, calc(100vw - 24px))`, zIndex: 60, background: "#fff", borderRadius: 16, border: "1px solid #E5E3DC", boxShadow: "0 18px 50px rgba(18,19,26,0.22)", overflow: "visible" }}
+      style={{ position: "fixed", left: pos.left, top: pos.top, width: `min(${WIDTH}px, calc(100vw - 24px))`, zIndex: 60, background: "var(--surface)", borderRadius: "var(--radius-lg)", border: "1px solid var(--border)", boxShadow: "0 18px 50px rgba(18,19,26,0.22)", overflow: "visible" }}
     >
-      <div style={{ background: ACCENT, color: "#fff", borderRadius: "15px 15px 0 0", padding: "12px 14px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+      <div style={{ background: ACCENT, color: "var(--on-ink)", borderRadius: "15px 15px 0 0", padding: "12px 14px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
         <div>
           <div style={{ fontSize: 11, fontWeight: 700, opacity: 0.85, letterSpacing: "0.05em", textTransform: "uppercase" }}>{t("schedule.addLesson")}</div>
-          <div style={{ fontSize: 16, fontWeight: 800, fontFamily: "'Manrope', sans-serif" }}>{dayLabel}</div>
+          <div style={{ fontSize: 16, fontWeight: 800, fontFamily: "var(--font-display)" }}>{dayLabel}</div>
         </div>
-        <button type="button" onClick={onClose} aria-label={t("common.close")} style={{ background: "rgba(255,255,255,0.18)", border: "none", color: "#fff", width: 28, height: 28, borderRadius: 100, cursor: "pointer", fontSize: 15 }}>×</button>
+        <button type="button" onClick={onClose} aria-label={t("common.close")} style={{ background: "rgba(255,255,255,0.18)", border: "none", color: "var(--on-ink)", width: 28, height: 28, borderRadius: "var(--radius-pill)", cursor: "pointer", fontSize: 15 }}>×</button>
       </div>
 
       {groups.length === 0 ? (
-        <div style={{ padding: 16, fontSize: 13, color: "#686B75" }}>{t("sch.quick.noGroups")}</div>
+        <div style={{ padding: 16, fontSize: 13, color: "var(--text-muted)" }}>{t("sch.quick.noGroups")}</div>
       ) : (
         <form onSubmit={save} style={{ padding: 14, display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 12 }}>
           <div>
@@ -212,7 +212,7 @@ export default function QuickAddLesson({
                 key={d}
                 type="button"
                 onClick={() => setEndTime(toTime(toMinutes(startTime) + d))}
-                style={{ fontSize: 11.5, fontWeight: 700, padding: "4px 10px", borderRadius: 100, cursor: "pointer", border: `1px solid ${length === d ? ACCENT : "#EAE8E2"}`, background: length === d ? "#EEF0FF" : "#fff", color: length === d ? ACCENT : "#4A4E58" }}
+                style={{ fontSize: 11.5, fontWeight: 700, padding: "4px 10px", borderRadius: "var(--radius-pill)", cursor: "pointer", border: `1px solid ${length === d ? ACCENT : "var(--border)"}`, background: length === d ? "var(--primary-soft)" : "var(--surface)", color: length === d ? ACCENT : "var(--text-soft)" }}
               >
                 {d} {t("sch.quick.min")}
               </button>
@@ -233,24 +233,24 @@ export default function QuickAddLesson({
           {checkError && <LoadError compact message={checkError} onRetry={() => setRetry((n) => n + 1)} />}
 
           {conflicts.length > 0 ? (
-            <div role="alert" style={{ background: "#FEF2F2", border: "1px solid #F5B5B5", borderRadius: 10, padding: "10px 12px", fontSize: 12, color: "#991B1B", display: "grid", gap: 4 }}>
-              <div style={{ fontWeight: 800, color: "#B91C1C" }}>{t("sch.quick.busy")}</div>
+            <div role="alert" style={{ background: "var(--danger-soft)", border: "1px solid var(--danger-border)", borderRadius: "var(--radius-sm)", padding: "10px 12px", fontSize: 12, color: "var(--danger)", display: "grid", gap: 4 }}>
+              <div style={{ fontWeight: 800, color: "var(--danger)" }}>{t("sch.quick.busy")}</div>
               {conflicts.map((c, i) => <div key={i}>• {c.message}</div>)}
             </div>
           ) : !checkError && groupId && startTime < endTime ? (
-            <div style={{ fontSize: 12, fontWeight: 700, color: checking ? "#686B75" : "#16794A", display: "flex", alignItems: "center", gap: 6 }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: checking ? "var(--text-muted)" : "var(--success)", display: "flex", alignItems: "center", gap: 6 }}>
               <span aria-hidden="true">{checking ? "…" : "✓"}</span>
               {checking ? t("sch.quick.checking") : t("sch.quick.free")}
             </div>
           ) : null}
 
-          {error && <div role="alert" style={{ color: "#B91C1C", fontSize: 12.5, fontWeight: 600, background: "#FEE2E2", padding: "8px 10px", borderRadius: 8 }}>{error}</div>}
+          {error && <div role="alert" style={{ color: "var(--danger)", fontSize: 12.5, fontWeight: 600, background: "var(--danger-soft)", padding: "8px 10px", borderRadius: "var(--radius-xs)" }}>{error}</div>}
 
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
             <button type="button" onClick={() => onMore({ groupId, teacherId, roomId, startTime, endTime })} style={{ background: "none", border: "none", color: ACCENT, fontSize: 12.5, fontWeight: 700, cursor: "pointer", padding: 0 }}>
               {t("sch.quick.more")}
             </button>
-            <button type="submit" className="btn" disabled={blocked} style={{ background: blocked ? "#A9ABB3" : ACCENT, color: "#fff", border: "none", borderRadius: 10, padding: "9px 18px", fontSize: 13.5, fontWeight: 700, cursor: blocked ? "not-allowed" : "pointer" }}>
+            <button type="submit" className="btn" disabled={blocked} style={{ background: blocked ? "var(--text-faint)" : ACCENT, color: "var(--on-ink)", border: "none", borderRadius: "var(--radius-sm)", padding: "9px 18px", fontSize: 13.5, fontWeight: 700, cursor: blocked ? "not-allowed" : "pointer" }}>
               {saving ? t("common.loading") : t("common.save")}
             </button>
           </div>

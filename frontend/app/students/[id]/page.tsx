@@ -26,7 +26,7 @@ import CustomFieldsEditModal from "@/components/custom-fields/CustomFieldsEditMo
 import { activeDefs } from "@/lib/custom-fields";
 import { listReturnHref } from "@/lib/list-paging";
 
-const ACCENT = "#4F46E5";
+const ACCENT = "var(--primary)";
 
 const STATUS_LABEL_KEYS: Record<string, TranslationKey> = {
   PAID: "payment.statusPaid",
@@ -161,13 +161,13 @@ function StudentDetailContent() {
   useEffect(load, [id]);
 
   if (loading) {
-    return <div style={{ padding: 32, color: "#686B75", fontSize: 14 }}>{t("common.loading")}</div>;
+    return <div style={{ padding: 32, color: "var(--text-muted)", fontSize: 14 }}>{t("common.loading")}</div>;
   }
 
   if (notFound || !student) {
     return (
       <div style={{ padding: 32 }}>
-        <div style={{ color: "#686B75", fontSize: 14, background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 32, textAlign: "center" }}>
+        <div style={{ color: "var(--text-muted)", fontSize: 14, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 32, textAlign: "center" }}>
           {t("studentDetail.notFound")}{" "}
           <Link href="/students" style={{ color: ACCENT, fontWeight: 600 }}>
             {t("studentDetail.back")}
@@ -285,8 +285,8 @@ function StudentDetailContent() {
 
   return (
     <>
-      <div style={{ padding: "22px 32px", borderBottom: "1px solid #EAE8E2" }}>
-        <Link href="/students" style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 600, color: "#686B75", marginBottom: 10 }}>
+      <div style={{ padding: "var(--page-head-pad)" }}>
+        <Link href="/students" style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 600, color: "var(--text-muted)", marginBottom: 10 }}>
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
             <path d="M15 18l-6-6 6-6" />
           </svg>
@@ -298,13 +298,13 @@ function StudentDetailContent() {
               style={{
                 width: 46,
                 height: 46,
-                borderRadius: 12,
+                borderRadius: "var(--radius-md)",
                 background: ACCENT,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                color: "#fff",
-                fontFamily: "'Manrope', sans-serif",
+                color: "var(--on-ink)",
+                fontFamily: "var(--font-display)",
                 fontWeight: 700,
                 fontSize: 16,
               }}
@@ -312,7 +312,7 @@ function StudentDetailContent() {
               {initials(student.fullName)}
             </div>
             <div>
-              <h1 style={{ fontSize: 22, fontWeight: 800, display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+              <h1 className="page-title" style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
                 {student.fullName}
                 {payState && payState !== "NONE" && (
                   <span
@@ -320,20 +320,20 @@ function StudentDetailContent() {
                       fontSize: 12,
                       fontWeight: 700,
                       padding: "4px 10px",
-                      borderRadius: 100,
+                      borderRadius: "var(--radius-pill)",
                       fontFamily: "'Inter', sans-serif",
                       ...(payState === "PAID"
-                        ? { color: "#167A48", background: "#E9F8EF" }
+                        ? { color: "var(--success)", background: "var(--success-soft)" }
                         : payState === "PENDING"
-                          ? { color: "#B45309", background: "#FEF3C7" }
-                          : { color: "#B23A47", background: "#FDEBEC" }),
+                          ? { color: "var(--warning)", background: "var(--warning-soft)" }
+                          : { color: "var(--danger)", background: "var(--danger-soft)" }),
                     }}
                   >
                     {payState === "PAID" ? t("stu.payPaid") : payState === "PENDING" ? t("stu.payPending") : t("stu.payDebt")}
                   </span>
                 )}
               </h1>
-              <div style={{ fontSize: 13, color: "#686B75", marginTop: 2 }}>
+              <div style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 2 }}>
                 {student.phone || t("studentDetail.phoneMissing")} · {t("studentDetail.registeredOn")}: {formatDate(student.startDate)}
               </div>
             </div>
@@ -344,7 +344,7 @@ function StudentDetailContent() {
               className="btn"
               onClick={() => setStatusOpen(true)}
               title={t("stStatus.title")}
-              style={{ ...STATUS_STYLE[student.status ?? "ACTIVE"], border: "none", fontSize: 13, fontWeight: 700, padding: "9px 14px", borderRadius: 9 }}
+              style={{ ...STATUS_STYLE[student.status ?? "ACTIVE"], border: "none", fontSize: 13, fontWeight: 700, padding: "9px 14px", borderRadius: "var(--radius-sm)" }}
             >
               {t(`stStatus.${student.status ?? "ACTIVE"}` as TranslationKey)} ▾
             </button>
@@ -352,14 +352,14 @@ function StudentDetailContent() {
               type="button"
               className="btn"
               onClick={() => setQrCardOpen(true)}
-              style={{ background: "#EEF2FF", color: ACCENT, border: "1px solid #C7D2FE", fontSize: 13, fontWeight: 700, padding: "9px 16px", borderRadius: 9 }}
+              style={{ background: "var(--primary-soft)", color: ACCENT, border: "1px solid var(--primary-border)", fontSize: 13, fontWeight: 700, padding: "9px 16px", borderRadius: "var(--radius-sm)" }}
             >
               {t("std.qrCard")}
             </button>
             <button
               className="btn"
               onClick={onDeleteStudent}
-              style={{ background: "#FDEBEC", color: "#B23A47", border: "none", fontSize: 13, fontWeight: 700, padding: "9px 16px", borderRadius: 9 }}
+              style={{ background: "var(--danger-soft)", color: "var(--danger)", border: "none", fontSize: 13, fontWeight: 700, padding: "9px 16px", borderRadius: "var(--radius-sm)" }}
             >
               {t("studentDetail.deleteStudent")}
             </button>
@@ -367,78 +367,78 @@ function StudentDetailContent() {
         </div>
       </div>
 
-      <div style={{ flex: 1, minHeight: 0, padding: "26px 32px", display: "flex", flexDirection: "column", gap: 20, overflow: "auto", boxSizing: "border-box" }}>
+      <div style={{ flex: 1, minHeight: 0, padding: "var(--page-pad)", display: "flex", flexDirection: "column", gap: 20, overflow: "auto", boxSizing: "border-box" }}>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0,1fr))", gap: 16 }}>
-          <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 14, padding: 18 }}>
-            <div style={{ fontSize: 12, color: "#686B75" }}>{enrollments.length > 1 ? t("stu.currentGroups") : t("stu.currentGroup")}</div>
-            <div style={{ fontSize: 17, fontWeight: 800, fontFamily: "'Manrope', sans-serif", marginTop: 6, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={enrollments.map((e) => e.group.name).join(", ")}>
+          <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 18 }}>
+            <div style={{ fontSize: 12, color: "var(--text-muted)" }}>{enrollments.length > 1 ? t("stu.currentGroups") : t("stu.currentGroup")}</div>
+            <div style={{ fontSize: 17, fontWeight: 800, fontFamily: "var(--font-display)", marginTop: 6, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={enrollments.map((e) => e.group.name).join(", ")}>
               {enrollments.map((e) => e.group.name).join(", ") || "—"}
             </div>
           </div>
-          <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 14, padding: 18 }}>
-            <div style={{ fontSize: 12, color: "#686B75" }}>{t("studentDetail.statTotalAttendance")}</div>
-            <div style={{ fontSize: 24, fontWeight: 800, fontFamily: "'Manrope', sans-serif", marginTop: 4 }}>
+          <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 18 }}>
+            <div style={{ fontSize: 12, color: "var(--text-muted)" }}>{t("studentDetail.statTotalAttendance")}</div>
+            <div style={{ fontSize: 24, fontWeight: 800, fontFamily: "var(--font-display)", marginTop: 4 }}>
               {attendancePercent === null ? "—" : `${attendancePercent}%`}
             </div>
           </div>
-          <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 14, padding: 18 }}>
-            <div style={{ fontSize: 12, color: "#686B75" }}>{t("studentDetail.statTotalPaid")}</div>
-            <div style={{ fontSize: 24, fontWeight: 800, fontFamily: "'Manrope', sans-serif", marginTop: 4 }}>{formatMoney(totalPaid)} {t("common.sumUnit")}</div>
+          <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 18 }}>
+            <div style={{ fontSize: 12, color: "var(--text-muted)" }}>{t("studentDetail.statTotalPaid")}</div>
+            <div style={{ fontSize: 24, fontWeight: 800, fontFamily: "var(--font-display)", marginTop: 4 }}>{formatMoney(totalPaid)} {t("common.sumUnit")}</div>
           </div>
-          <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 14, padding: 18 }}>
-            <div style={{ fontSize: 12, color: "#686B75" }}>{t("stu.studyTime")}</div>
-            <div style={{ fontSize: 24, fontWeight: 800, fontFamily: "'Manrope', sans-serif", marginTop: 4 }}>{studyTime}</div>
+          <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 18 }}>
+            <div style={{ fontSize: 12, color: "var(--text-muted)" }}>{t("stu.studyTime")}</div>
+            <div style={{ fontSize: 24, fontWeight: 800, fontFamily: "var(--font-display)", marginTop: 4 }}>{studyTime}</div>
           </div>
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-          <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 20 }}>
+          <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 20 }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-              <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 700, fontSize: 15 }}>{t("stu.groupHistory")}</div>
+              <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 15 }}>{t("stu.groupHistory")}</div>
               <button
                 className="btn"
                 onClick={() => setEnrollOpen(true)}
                 disabled={availableGroups.length === 0}
-                style={{ background: ACCENT, color: "#fff", border: "none", fontSize: 12, fontWeight: 700, padding: "7px 12px", borderRadius: 8 }}
+                style={{ background: ACCENT, color: "var(--on-ink)", border: "none", fontSize: 12, fontWeight: 700, padding: "7px 12px", borderRadius: "var(--radius-xs)" }}
               >
                 {t("studentDetail.addToGroup")}
               </button>
             </div>
             {history.length === 0 ? (
-              <div style={{ color: "#686B75", fontSize: 13.5 }}>{t("studentDetail.noGroupsYet")}</div>
+              <div style={{ color: "var(--text-muted)", fontSize: 13.5 }}>{t("studentDetail.noGroupsYet")}</div>
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                 {history.map((e) => {
                   const current = isCurrent(e.status);
                   const badge =
                     e.status === "PAUSED"
-                      ? { text: t("stu.enrPaused"), color: "#B45309", bg: "#FEF3C7" }
+                      ? { text: t("stu.enrPaused"), color: "var(--warning)", bg: "var(--warning-soft)" }
                       : current
-                        ? { text: t("stu.enrCurrent"), color: ACCENT, bg: "#EEF0FF" }
+                        ? { text: t("stu.enrCurrent"), color: ACCENT, bg: "var(--primary-soft)" }
                         : e.status === "COMPLETED"
-                          ? { text: t("stu.enrCompleted"), color: "#167A48", bg: "#E9F8EF" }
-                          : { text: t("stu.enrLeft"), color: "#686B75", bg: "#F2F1EC" };
+                          ? { text: t("stu.enrCompleted"), color: "var(--success)", bg: "var(--success-soft)" }
+                          : { text: t("stu.enrLeft"), color: "var(--text-muted)", bg: "var(--surface-muted)" };
                   const period = `${monthYear(e.joinedAt)} — ${current ? t("stu.untilNow") : monthYear(e.leftAt) || "—"}`;
                   return (
                     <div
                       key={e.id}
-                      style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, border: "1px solid #EAE8E2", borderRadius: 12, padding: "12px 14px", opacity: current ? 1 : 0.85 }}
+                      style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, border: "1px solid var(--border)", borderRadius: "var(--radius-md)", padding: "12px 14px", opacity: current ? 1 : 0.85 }}
                     >
                       <div style={{ minWidth: 0 }}>
-                        <Link href={`/groups/${e.group.id}`} style={{ fontSize: 13.5, fontWeight: 600, color: current ? ACCENT : "#181A1F" }}>
+                        <Link href={`/groups/${e.group.id}`} style={{ fontSize: 13.5, fontWeight: 600, color: current ? ACCENT : "var(--text)" }}>
                           {e.group.name}
                         </Link>
-                        <div style={{ fontSize: 12, color: "#686B75", marginTop: 2 }}>
+                        <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>
                           {[period, e.group.teacher?.fullName].filter(Boolean).join(" · ")}
                         </div>
                       </div>
                       <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
-                        <span style={{ fontSize: 11.5, fontWeight: 700, color: badge.color, background: badge.bg, padding: "4px 10px", borderRadius: 100 }}>{badge.text}</span>
+                        <span style={{ fontSize: 11.5, fontWeight: 700, color: badge.color, background: badge.bg, padding: "4px 10px", borderRadius: "var(--radius-pill)" }}>{badge.text}</span>
                         {current && (
                           <button
                             className="btn"
                             onClick={() => onUnenroll(e.group.id)}
-                            style={{ background: "transparent", color: "#B23A47", fontSize: 12, fontWeight: 600, padding: "6px 8px", borderRadius: 8 }}
+                            style={{ background: "transparent", color: "var(--danger)", fontSize: 12, fontWeight: 600, padding: "6px 8px", borderRadius: "var(--radius-xs)" }}
                           >
                             {t("studentDetail.remove")}
                           </button>
@@ -451,8 +451,8 @@ function StudentDetailContent() {
             )}
           </div>
 
-          <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 20 }}>
-            <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 700, fontSize: 15, marginBottom: 14 }}>{t("studentDetail.aboutStudent")}</div>
+          <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 20 }}>
+            <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 15, marginBottom: 14 }}>{t("studentDetail.aboutStudent")}</div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0,1fr))", gap: "18px 16px" }}>
               <InfoField label={t("studentDetail.birthDate")} value={formatDate(student.birthDate)} />
               <InfoField label={t("studentDetail.telegram")} value={student.telegramUsername ? `@${student.telegramUsername}` : "—"} />
@@ -462,7 +462,7 @@ function StudentDetailContent() {
               {student.notes && <InfoField label={t("stu.notes")} value={student.notes} />}
             </div>
             {cfDefs.defs && (hasCustomFieldContent(cfDefs.defs, student.customFields) || (canEditStudent && activeDefs(cfDefs.defs).length > 0)) && (
-              <section aria-labelledby="student-cf-title" style={{ marginTop: 16, paddingTop: 16, borderTop: "1px solid #EAE8E2" }}>
+              <section aria-labelledby="student-cf-title" style={{ marginTop: 16, paddingTop: 16, borderTop: "1px solid var(--border)" }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 12 }}>
                   <h3 id="student-cf-title" style={{ fontSize: 13.5, fontWeight: 700 }}>{t("cf.section")}</h3>
                   {canEditStudent && activeDefs(cfDefs.defs).length > 0 && (
@@ -471,7 +471,7 @@ function StudentDetailContent() {
                       className="btn"
                       onClick={() => setCfEditOpen(true)}
                       aria-label={`${t("common.edit")}: ${t("cf.section")}`}
-                      style={{ background: "#F2F1EC", color: "#181A1F", border: "none", fontSize: 12, fontWeight: 700, padding: "6px 12px", borderRadius: 8 }}
+                      style={{ background: "var(--surface-muted)", color: "var(--text)", border: "none", fontSize: 12, fontWeight: 700, padding: "6px 12px", borderRadius: "var(--radius-xs)" }}
                     >
                       {t("common.edit")}
                     </button>
@@ -480,8 +480,8 @@ function StudentDetailContent() {
                 <CustomFieldValues defs={cfDefs.defs} values={student.customFields} />
               </section>
             )}
-            <div style={{ marginTop: 16, paddingTop: 16, borderTop: "1px solid #EAE8E2" }}>
-              <div style={{ fontSize: 11.5, color: "#686B75", marginBottom: 6 }}>{t("studentDetail.telegramNotifications")}</div>
+            <div style={{ marginTop: 16, paddingTop: 16, borderTop: "1px solid var(--border)" }}>
+              <div style={{ fontSize: 11.5, color: "var(--text-muted)", marginBottom: 6 }}>{t("studentDetail.telegramNotifications")}</div>
               {student.telegramChatId ? (
                 <span className="badge badge-success">{t("studentDetail.telegramLinked")}</span>
               ) : botUsername ? (
@@ -494,25 +494,25 @@ function StudentDetailContent() {
                       onClick={onGenerateLink}
                       disabled={generatingLink}
                       style={{
-                        background: "#EEF0FF",
+                        background: "var(--primary-soft)",
                         color: ACCENT,
                         border: "1px solid rgba(79, 70, 229, 0.25)",
                         fontSize: 12,
                         fontWeight: 700,
                         padding: "6px 12px",
-                        borderRadius: 8,
+                        borderRadius: "var(--radius-xs)",
                       }}
                     >
                       {generatingLink ? t("std.creating") : t("std.secureLink")}
                     </button>
                   </div>
                   {linkTokenData?.linkUrl ? (
-                    <div style={{ marginTop: 10, background: "#F7F6FF", border: "1px solid #D7D3F8", borderRadius: 10, padding: 12 }}>
-                      <div style={{ fontSize: 12, color: "#4A4E58", marginBottom: 6, fontWeight: 600 }}>
+                    <div style={{ marginTop: 10, background: "var(--primary-soft)", border: "1px solid var(--primary-border)", borderRadius: "var(--radius-sm)", padding: 12 }}>
+                      <div style={{ fontSize: 12, color: "var(--text-soft)", marginBottom: 6, fontWeight: 600 }}>
                         {t("std.linkIntro")}
                       </div>
                       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        <code style={{ flex: 1, background: "#fff", padding: "8px 10px", borderRadius: 8, fontSize: 11.5, wordBreak: "break-all", border: "1px solid #EAE8E2" }}>
+                        <code style={{ flex: 1, background: "var(--surface)", padding: "8px 10px", borderRadius: "var(--radius-xs)", fontSize: 11.5, wordBreak: "break-all", border: "1px solid var(--border)" }}>
                           {linkTokenData.linkUrl}
                         </code>
                         <button
@@ -520,31 +520,31 @@ function StudentDetailContent() {
                           className="btn"
                           onClick={onCopyLink}
                           style={{
-                            background: copiedLink ? "#16794A" : ACCENT,
-                            color: "#fff",
+                            background: copiedLink ? "var(--success)" : ACCENT,
+                            color: "var(--on-ink)",
                             border: "none",
                             fontSize: 12,
                             fontWeight: 700,
                             padding: "8px 14px",
-                            borderRadius: 8,
+                            borderRadius: "var(--radius-xs)",
                             whiteSpace: "nowrap",
                           }}
                         >
                           {copiedLink ? "✓ Nusxalandi" : "Nusxalash"}
                         </button>
                       </div>
-                      <div style={{ fontSize: 11, color: "#686B75", marginTop: 6 }}>
+                      <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 6 }}>
                         {t("std.linkExpiry")}
                       </div>
                     </div>
                   ) : (
-                    <div style={{ marginTop: 8, color: "#686B75", fontSize: 12 }}>
+                    <div style={{ marginTop: 8, color: "var(--text-muted)", fontSize: 12 }}>
                       {t("std.linkHint")}
                     </div>
                   )}
                 </div>
               ) : (
-                <span style={{ fontSize: 12, color: "#686B75" }}>{t("studentDetail.telegramNotConfigured")}</span>
+                <span style={{ fontSize: 12, color: "var(--text-muted)" }}>{t("studentDetail.telegramNotConfigured")}</span>
               )}
               {botUsername && <ParentBotLink studentId={student.id} />}
             </div>
@@ -554,28 +554,28 @@ function StudentDetailContent() {
         <MembershipHistory studentId={student.id} refreshKey={`${student.status}|${allEnrollments.map((e) => `${e.groupId}:${e.status}`).join(",")}`} />
         <StudentPortalPin studentId={student.id} hasPhone={Boolean(student.phone || student.parentPhone)} />
 
-        <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, overflow: "hidden" }}>
+        <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", overflow: "hidden" }}>
           <div style={{ padding: "16px 20px 4px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 700, fontSize: 15 }}>{t("studentDetail.paymentHistory")}</div>
+            <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 15 }}>{t("studentDetail.paymentHistory")}</div>
             <div style={{ display: "flex", gap: 8 }}>
               <button
                 className="btn"
                 onClick={openBilling}
-                style={{ background: "#F2F1EC", color: "#181A1F", border: "none", fontSize: 12.5, fontWeight: 700, padding: "8px 14px", borderRadius: 8 }}
+                style={{ background: "var(--surface-muted)", color: "var(--text)", border: "none", fontSize: 12.5, fontWeight: 700, padding: "8px 14px", borderRadius: "var(--radius-xs)" }}
               >
                 {t("studentDetail.paymentLink")}
               </button>
               <button
                 className="btn"
                 onClick={() => setPaymentOpen(true)}
-                style={{ background: ACCENT, color: "#fff", border: "none", fontSize: 12.5, fontWeight: 700, padding: "8px 14px", borderRadius: 8 }}
+                style={{ background: ACCENT, color: "var(--on-ink)", border: "none", fontSize: 12.5, fontWeight: 700, padding: "8px 14px", borderRadius: "var(--radius-xs)" }}
               >
                 {t("studentDetail.addPayment")}
               </button>
             </div>
           </div>
           {payments.length === 0 ? (
-            <div style={{ color: "#686B75", fontSize: 14, padding: "24px 20px" }}>{t("studentDetail.noPaymentsYet")}</div>
+            <div style={{ color: "var(--text-muted)", fontSize: 14, padding: "24px 20px" }}>{t("studentDetail.noPaymentsYet")}</div>
           ) : (
             <table>
               <thead>
@@ -603,7 +603,7 @@ function StudentDetailContent() {
                         <button
                           className="btn"
                           onClick={() => exportApi.receiptPdf(p.id)}
-                          style={{ background: "transparent", color: ACCENT, fontSize: 12, fontWeight: 600, padding: "4px 8px", borderRadius: 8 }}
+                          style={{ background: "transparent", color: ACCENT, fontSize: 12, fontWeight: 600, padding: "4px 8px", borderRadius: "var(--radius-xs)" }}
                         >
                           {t("studentDetail.receipt")}
                         </button>
@@ -620,17 +620,17 @@ function StudentDetailContent() {
       <Modal open={enrollOpen} onClose={() => { setEnrollOpen(false); setEnrollGroupId(""); setEnrollError(null); }} title={t("studentDetail.modalAddToGroup")}>
         <form onSubmit={onEnroll} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           {enrollError && (
-            <div style={{ background: "#FDEBEC", color: "#B23A47", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: 10 }}>{enrollError}</div>
+            <div style={{ background: "var(--danger-soft)", color: "var(--danger)", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: "var(--radius-sm)" }}>{enrollError}</div>
           )}
           <div>
-            <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>{t("studentDetail.groupField")}</div>
+            <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-soft)", marginBottom: 6 }}>{t("studentDetail.groupField")}</div>
             <GroupPicker groups={availableGroups} value={enrollGroupId} onChange={setEnrollGroupId} />
           </div>
           <button
             className="btn"
             type="submit"
             disabled={saving || !enrollGroupId}
-            style={{ background: ACCENT, color: "#fff", fontSize: 14, fontWeight: 700, padding: 12, borderRadius: 10, marginTop: 6, opacity: enrollGroupId ? 1 : 0.6 }}
+            style={{ background: ACCENT, color: "var(--on-ink)", fontSize: 14, fontWeight: 700, padding: 12, borderRadius: "var(--radius-sm)", marginTop: 6, opacity: enrollGroupId ? 1 : 0.6 }}
           >
             {saving ? t("common.saving") : t("common.add")}
           </button>
@@ -640,14 +640,14 @@ function StudentDetailContent() {
       <Modal open={paymentOpen} onClose={() => { setPaymentOpen(false); setAmount(""); setForMonth(clock.month()); setPaymentError(null); }} title={t("studentDetail.modalNewPayment")}>
         <form onSubmit={onAddPayment} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           {paymentError && (
-            <div style={{ background: "#FDEBEC", color: "#B23A47", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: 10 }}>{paymentError}</div>
+            <div style={{ background: "var(--danger-soft)", color: "var(--danger)", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: "var(--radius-sm)" }}>{paymentError}</div>
           )}
           <div>
-            <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>{t("studentDetail.amountSum")}</div>
+            <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-soft)", marginBottom: 6 }}>{t("studentDetail.amountSum")}</div>
             <input className="field-input" type="number" min={0} required value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="500000" />
           </div>
           <div>
-            <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>{t("studentDetail.paymentMethodField")}</div>
+            <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-soft)", marginBottom: 6 }}>{t("studentDetail.paymentMethodField")}</div>
             <Select
               options={[
                 { value: "CASH", label: t("payment.methodCash") },
@@ -660,14 +660,14 @@ function StudentDetailContent() {
             />
           </div>
           <div>
-            <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>{t("studentDetail.monthField")}</div>
+            <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-soft)", marginBottom: 6 }}>{t("studentDetail.monthField")}</div>
             <MonthPicker value={forMonth} onChange={setForMonth} />
           </div>
           <button
             className="btn"
             type="submit"
             disabled={saving}
-            style={{ background: ACCENT, color: "#fff", fontSize: 14, fontWeight: 700, padding: 12, borderRadius: 10, marginTop: 6 }}
+            style={{ background: ACCENT, color: "var(--on-ink)", fontSize: 14, fontWeight: 700, padding: 12, borderRadius: "var(--radius-sm)", marginTop: 6 }}
           >
             {saving ? t("common.saving") : t("studentDetail.addPaymentBtn")}
           </button>
@@ -676,10 +676,10 @@ function StudentDetailContent() {
       <Modal open={billingOpen} onClose={() => setBillingOpen(false)} title={t("studentDetail.modalCreateLink")}>
         {billingResult ? (
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-            <div style={{ background: "#E9F8EF", color: "#167A48", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: 10 }}>
+            <div style={{ background: "var(--success-soft)", color: "var(--success)", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: "var(--radius-sm)" }}>
               {t("studentDetail.linkCreated")}
             </div>
-            <code style={{ display: "block", background: "#F7F7F5", padding: "10px 12px", borderRadius: 8, fontSize: 12, wordBreak: "break-all" }}>
+            <code style={{ display: "block", background: "var(--surface-muted)", padding: "10px 12px", borderRadius: "var(--radius-xs)", fontSize: 12, wordBreak: "break-all" }}>
               {billingResult}
             </code>
             <button
@@ -687,7 +687,7 @@ function StudentDetailContent() {
               onClick={() => {
                 navigator.clipboard?.writeText(billingResult);
               }}
-              style={{ background: "#F2F1EC", color: "#181A1F", border: "none", fontSize: 13, fontWeight: 700, padding: 10, borderRadius: 9 }}
+              style={{ background: "var(--surface-muted)", color: "var(--text)", border: "none", fontSize: 13, fontWeight: 700, padding: 10, borderRadius: "var(--radius-sm)" }}
             >
               {t("studentDetail.copy")}
             </button>
@@ -695,13 +695,13 @@ function StudentDetailContent() {
         ) : (
           <form onSubmit={onGenerateBillingLink} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
             {billingError && (
-              <div style={{ background: "#FDEBEC", color: "#B23A47", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: 10 }}>{billingError}</div>
+              <div style={{ background: "var(--danger-soft)", color: "var(--danger)", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: "var(--radius-sm)" }}>{billingError}</div>
             )}
-            <div style={{ fontSize: 12, color: "#686B75", lineHeight: 1.5 }}>
+            <div style={{ fontSize: 12, color: "var(--text-muted)", lineHeight: 1.5 }}>
               {t("studentDetail.billingHint")}
             </div>
             <div>
-              <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>{t("studentDetail.providerField")}</div>
+              <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-soft)", marginBottom: 6 }}>{t("studentDetail.providerField")}</div>
               <Select
                 options={[{ value: "CLICK", label: t("payment.methodClick") }, { value: "PAYME", label: t("payment.methodPayme") }]}
                 value={billingProvider}
@@ -709,18 +709,18 @@ function StudentDetailContent() {
               />
             </div>
             <div>
-              <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>{t("studentDetail.amountSum")}</div>
+              <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-soft)", marginBottom: 6 }}>{t("studentDetail.amountSum")}</div>
               <input className="field-input" type="number" min={1000} required value={billingAmount} onChange={(e) => setBillingAmount(e.target.value)} placeholder="500000" />
             </div>
             <div>
-              <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>{t("studentDetail.monthField")}</div>
+              <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-soft)", marginBottom: 6 }}>{t("studentDetail.monthField")}</div>
               <MonthPicker value={billingMonth} onChange={setBillingMonth} />
             </div>
             <button
               className="btn"
               type="submit"
               disabled={billingSaving}
-              style={{ background: ACCENT, color: "#fff", fontSize: 14, fontWeight: 700, padding: 12, borderRadius: 10, marginTop: 6 }}
+              style={{ background: ACCENT, color: "var(--on-ink)", fontSize: 14, fontWeight: 700, padding: 12, borderRadius: "var(--radius-sm)", marginTop: 6 }}
             >
               {billingSaving ? t("studentDetail.creatingLink") : t("studentDetail.createLink")}
             </button>
@@ -749,9 +749,9 @@ function StudentDetailContent() {
             style={{
               width: "100%",
               maxWidth: 360,
-              background: "linear-gradient(135deg, #1E1B4B 0%, #312E81 50%, #4338CA 100%)",
-              color: "#fff",
-              borderRadius: 20,
+              background: "linear-gradient(135deg, #1E1B4B 0%, var(--primary) 50%, var(--primary) 100%)",
+              color: "var(--on-ink)",
+              borderRadius: "var(--radius-lg)",
               padding: 24,
               boxShadow: "0 10px 25px -5px rgba(49, 46, 129, 0.4)",
               position: "relative",
@@ -767,7 +767,7 @@ function StudentDetailContent() {
                   <div style={{ fontSize: 10, opacity: 0.75 }}>{t("std.idCard")}</div>
                 </div>
               </div>
-              <span style={{ fontSize: 11, background: "rgba(255,255,255,0.2)", padding: "3px 8px", borderRadius: 6, fontWeight: 700 }}>STUDENT</span>
+              <span style={{ fontSize: 11, background: "rgba(255,255,255,0.2)", padding: "3px 8px", borderRadius: "var(--radius-xs)", fontWeight: 700 }}>STUDENT</span>
             </div>
 
             <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
@@ -782,14 +782,14 @@ function StudentDetailContent() {
                 </div>
               </div>
 
-              <div style={{ background: "#fff", padding: 6, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 4px 6px -1px rgba(0,0,0,0.1)" }}>
+              <div style={{ background: "var(--surface)", padding: 6, borderRadius: "var(--radius-md)", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 4px 6px -1px rgba(0,0,0,0.1)" }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={`https://api.qrserver.com/v1/create-qr-code/?size=120x120&margin=2&data=${encodeURIComponent(`CRMAPP:STUDENT:${student.id}`)}`}
                   alt="Student QR Code"
                   width={110}
                   height={110}
-                  style={{ display: "block", borderRadius: 6 }}
+                  style={{ display: "block", borderRadius: "var(--radius-xs)" }}
                 />
               </div>
             </div>
@@ -805,7 +805,7 @@ function StudentDetailContent() {
               type="button"
               className="btn"
               onClick={() => window.print()}
-              style={{ flex: 1, background: ACCENT, color: "#fff", border: "none", padding: 12, borderRadius: 10, fontWeight: 700, fontSize: 13 }}
+              style={{ flex: 1, background: ACCENT, color: "var(--on-ink)", border: "none", padding: 12, borderRadius: "var(--radius-sm)", fontWeight: 700, fontSize: 13 }}
             >
               {t("std.print")}
             </button>
@@ -813,7 +813,7 @@ function StudentDetailContent() {
               type="button"
               className="btn"
               onClick={() => setQrCardOpen(false)}
-              style={{ background: "#F2F1EC", color: "#181A1F", border: "none", padding: "12px 18px", borderRadius: 10, fontWeight: 600, fontSize: 13 }}
+              style={{ background: "var(--surface-muted)", color: "var(--text)", border: "none", padding: "12px 18px", borderRadius: "var(--radius-sm)", fontWeight: 600, fontSize: 13 }}
             >
               {t("common.close")}
             </button>
@@ -828,7 +828,7 @@ function StudentDetailContent() {
 function InfoField({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <div style={{ fontSize: 11.5, color: "#686B75" }}>{label}</div>
+      <div style={{ fontSize: 11.5, color: "var(--text-muted)" }}>{label}</div>
       <div style={{ fontSize: 13.5, fontWeight: 600, marginTop: 3 }}>{value}</div>
     </div>
   );

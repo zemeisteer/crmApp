@@ -3,7 +3,7 @@
 const { spawn } = require('child_process');
 const fs = require('fs');
 const path = require('path');
-const { FRONTEND, WEB_PORT, DIST_DIR } = require('./env.cjs');
+const { FRONTEND, API_PORT, WEB_PORT, DIST_DIR } = require('./env.cjs');
 
 if (!fs.existsSync(path.join(FRONTEND, DIST_DIR, 'BUILD_ID'))) {
   console.error(`browser tests: run \`npm run build:frontend\` first (no build in frontend/${DIST_DIR})`);
@@ -13,7 +13,7 @@ const server = spawn(process.platform === 'win32' ? 'npx.cmd' : 'npx', ['next', 
   cwd: FRONTEND,
   stdio: 'inherit',
   shell: process.platform === 'win32',
-  env: { ...process.env, NEXT_DIST_DIR: DIST_DIR, NODE_ENV: 'production' },
+  env: { ...process.env, NEXT_DIST_DIR: DIST_DIR, NODE_ENV: 'production', API_PROXY_TARGET: `http://127.0.0.1:${API_PORT}`, INTERNAL_API_URL: `http://127.0.0.1:${API_PORT}/api` },
 });
 const stop = () => server.kill();
 process.on('SIGTERM', stop);

@@ -11,7 +11,7 @@ import { useLanguage } from "@/lib/i18n-context";
 import type { TranslationKey } from "@/lib/i18n";
 import { formatDateTime } from "@/lib/format-date";
 
-const ACCENT = "#4F46E5";
+const ACCENT = "var(--primary)";
 
 const MATERIAL_TYPE_LABEL_KEYS: Record<string, TranslationKey> = {
   LESSON_PLAN: "aiMaterials.typeLessonPlan",
@@ -190,26 +190,26 @@ function AiMaterialsContent() {
 
   return (
     <>
-      <div style={{ padding: "22px 32px", borderBottom: "1px solid #EAE8E2" }}>
-        <h1 style={{ fontSize: 22, fontWeight: 800, display: "flex", alignItems: "center", gap: 10 }}>
+      <div style={{ padding: "var(--page-head-pad)" }}>
+        <h1 className="page-title" style={{ display: "flex", alignItems: "center", gap: 10 }}>
           {t("aiMaterials.title")}
           <span
             style={{
               fontSize: 10.5,
               fontWeight: 800,
-              background: "linear-gradient(135deg,#8B7CF6,#4F46E5)",
-              color: "#fff",
+              background: "linear-gradient(135deg,var(--violet),var(--primary))",
+              color: "var(--on-ink)",
               padding: "3px 8px",
-              borderRadius: 6,
+              borderRadius: "var(--radius-xs)",
             }}
           >
             {t("aim.assistant")}
           </span>
         </h1>
-        <div style={{ fontSize: 13, color: "#686B75", marginTop: 2 }}>{t("aiMaterials.subtitle")}</div>
+        <div style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 2 }}>{t("aiMaterials.subtitle")}</div>
       </div>
 
-      <div style={{ flex: 1, minHeight: 0, padding: "26px 32px", overflow: "auto", boxSizing: "border-box" }}>
+      <div style={{ flex: 1, minHeight: 0, padding: "var(--page-pad)", overflow: "auto", boxSizing: "border-box" }}>
         {loadError !== null && (
           <div style={{ marginBottom: 16 }}>
             <LoadError message={loadError || t("adm.loadError")} onRetry={loadData} />
@@ -228,9 +228,9 @@ function AiMaterialsContent() {
             <form
               onSubmit={onGenerate}
               style={{
-                background: "#fff",
-                border: "1px solid #EAE8E2",
-                borderRadius: 16,
+                background: "var(--surface)",
+                border: "1px solid var(--border)",
+                borderRadius: "var(--radius-lg)",
                 padding: 22,
                 display: "flex",
                 flexDirection: "column",
@@ -239,7 +239,7 @@ function AiMaterialsContent() {
               }}
             >
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <div style={{ fontSize: 13.5, fontWeight: 700, color: "#181A1F" }}>{t("aiMaterials.scope")}</div>
+                <div style={{ fontSize: 13.5, fontWeight: 700, color: "var(--text)" }}>{t("aiMaterials.scope")}</div>
                 <button
                   type="button"
                   onClick={selectAll}
@@ -251,7 +251,7 @@ function AiMaterialsContent() {
 
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
                 <div>
-                  <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>
+                  <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-soft)", marginBottom: 6 }}>
                     {t("aiMaterials.direction")}
                   </div>
                   <Select
@@ -265,7 +265,7 @@ function AiMaterialsContent() {
                   />
                 </div>
                 <div>
-                  <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>
+                  <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-soft)", marginBottom: 6 }}>
                     {t("aiMaterials.level")}
                   </div>
                   <Select
@@ -276,7 +276,7 @@ function AiMaterialsContent() {
                   />
                 </div>
                 <div>
-                  <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>
+                  <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-soft)", marginBottom: 6 }}>
                     {t("aiMaterials.group")}
                   </div>
                   <Select
@@ -289,7 +289,7 @@ function AiMaterialsContent() {
               </div>
 
               <div>
-                <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>
+                <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-soft)", marginBottom: 6 }}>
                   {t("aiMaterials.linkHomework")}
                 </div>
                 <Select
@@ -302,7 +302,7 @@ function AiMaterialsContent() {
 
               {!homeworkId && (
                 <div>
-                  <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>
+                  <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-soft)", marginBottom: 6 }}>
                     {t("aiMaterials.topic")}
                   </div>
                   <input
@@ -316,7 +316,7 @@ function AiMaterialsContent() {
               )}
 
               <div>
-                <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>
+                <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-soft)", marginBottom: 6 }}>
                   {t("aiMaterials.type")}
                 </div>
                 <Select
@@ -331,7 +331,7 @@ function AiMaterialsContent() {
 
               {/* Teacher custom prompt / instructions */}
               <div>
-                <div style={{ fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 }}>
+                <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-soft)", marginBottom: 6 }}>
                   {t("aim.prompt")}
                 </div>
                 <textarea
@@ -349,13 +349,13 @@ function AiMaterialsContent() {
                 type="submit"
                 disabled={loading}
                 style={{
-                  background: "linear-gradient(135deg, #7C3AED, #4F46E5)",
-                  color: "#fff",
+                  background: "linear-gradient(135deg, var(--violet), var(--primary))",
+                  color: "var(--on-ink)",
                   border: "none",
                   fontSize: 14,
                   fontWeight: 700,
                   padding: 13,
-                  borderRadius: 10,
+                  borderRadius: "var(--radius-sm)",
                   marginTop: 6,
                   cursor: "pointer",
                 }}
@@ -367,12 +367,12 @@ function AiMaterialsContent() {
             {error && (
               <div role="alert"
                 style={{
-                  background: "#FDEBEC",
-                  color: "#B23A47",
+                  background: "var(--danger-soft)",
+                  color: "var(--danger)",
                   fontSize: 13.5,
                   fontWeight: 600,
                   padding: "14px 18px",
-                  borderRadius: 12,
+                  borderRadius: "var(--radius-md)",
                   lineHeight: 1.5,
                 }}
               >
@@ -387,9 +387,9 @@ function AiMaterialsContent() {
             {activeMaterial ? (
               <div
                 style={{
-                  background: "#fff",
-                  border: "1px solid #EAE8E2",
-                  borderRadius: 16,
+                  background: "var(--surface)",
+                  border: "1px solid var(--border)",
+                  borderRadius: "var(--radius-lg)",
                   padding: 22,
                   boxShadow: "0 2px 10px rgba(0,0,0,0.02)",
                 }}
@@ -402,7 +402,7 @@ function AiMaterialsContent() {
                     gap: 12,
                     marginBottom: 14,
                     paddingBottom: 14,
-                    borderBottom: "1px solid #F1F0EC",
+                    borderBottom: "1px solid var(--border)",
                     flexWrap: "wrap",
                   }}
                 >
@@ -410,24 +410,24 @@ function AiMaterialsContent() {
                     <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginBottom: 6 }}>
                       <span
                         style={{
-                          background: "#EEF0FF",
+                          background: "var(--primary-soft)",
                           color: ACCENT,
                           fontSize: 11.5,
                           fontWeight: 700,
                           padding: "3px 9px",
-                          borderRadius: 6,
+                          borderRadius: "var(--radius-xs)",
                         }}
                       >
                         {t(MATERIAL_TYPE_LABEL_KEYS[activeMaterial.type] || "aiMaterials.typeLessonPlan")}
                       </span>
                       <span
                         style={{
-                          background: "#F2F1EC",
-                          color: "#181A1F",
+                          background: "var(--surface-muted)",
+                          color: "var(--text)",
                           fontSize: 11.5,
                           fontWeight: 600,
                           padding: "3px 9px",
-                          borderRadius: 6,
+                          borderRadius: "var(--radius-xs)",
                         }}
                       >
                         {activeMaterial.subject}
@@ -435,30 +435,30 @@ function AiMaterialsContent() {
                       {activeMaterial.level && (
                         <span
                           style={{
-                            background: "#EBF8F2",
-                            color: "#167A48",
+                            background: "var(--success-soft)",
+                            color: "var(--success)",
                             fontSize: 11.5,
                             fontWeight: 600,
                             padding: "3px 9px",
-                            borderRadius: 6,
+                            borderRadius: "var(--radius-xs)",
                           }}
                         >
                           {activeMaterial.level}
                         </span>
                       )}
-                      <span style={{ fontSize: 11.5, color: "#686B75" }}>{formatDate(activeMaterial.createdAt)}</span>
+                      <span style={{ fontSize: 11.5, color: "var(--text-muted)" }}>{formatDate(activeMaterial.createdAt)}</span>
                     </div>
-                    <h2 style={{ fontSize: 17, fontWeight: 800, fontFamily: "'Manrope', sans-serif" }}>
+                    <h2 style={{ fontSize: 17, fontWeight: 800, fontFamily: "var(--font-display)" }}>
                       {activeMaterial.topic}
                     </h2>
                     {activeMaterial.customInstructions && (
                       <div
                         style={{
                           fontSize: 12.5,
-                          color: "#4A4E58",
-                          background: "#F9F9F8",
-                          border: "1px dashed #DCDAD5",
-                          borderRadius: 8,
+                          color: "var(--text-soft)",
+                          background: "var(--surface-muted)",
+                          border: "1px dashed var(--border-strong)",
+                          borderRadius: "var(--radius-xs)",
                           padding: "6px 10px",
                           marginTop: 8,
                         }}
@@ -471,12 +471,12 @@ function AiMaterialsContent() {
                     className="btn"
                     onClick={() => copyToClipboard(activeMaterial.content, activeMaterial.id)}
                     style={{
-                      background: copiedId === activeMaterial.id ? "#EBF8F2" : "#F2F1EC",
-                      color: copiedId === activeMaterial.id ? "#16794A" : "#181A1F",
+                      background: copiedId === activeMaterial.id ? "var(--success-soft)" : "var(--surface-muted)",
+                      color: copiedId === activeMaterial.id ? "var(--success)" : "var(--text)",
                       fontSize: 12.5,
                       fontWeight: 700,
                       padding: "8px 14px",
-                      borderRadius: 8,
+                      borderRadius: "var(--radius-xs)",
                       border: "none",
                       cursor: "pointer",
                       display: "flex",
@@ -488,7 +488,7 @@ function AiMaterialsContent() {
                   </button>
                 </div>
 
-                <div style={{ marginBottom: 14, paddingBottom: 14, borderBottom: "1px solid #F1F0EC" }}>
+                <div style={{ marginBottom: 14, paddingBottom: 14, borderBottom: "1px solid var(--border)" }}>
                   <MaterialActions
                     key={activeMaterial.id}
                     material={activeMaterial}
@@ -510,16 +510,16 @@ function AiMaterialsContent() {
             ) : (
               <div
                 style={{
-                  background: "#fff",
-                  border: "1px dashed #DCDAD5",
-                  borderRadius: 16,
+                  background: "var(--surface)",
+                  border: "1px dashed var(--border-strong)",
+                  borderRadius: "var(--radius-lg)",
                   padding: 36,
                   textAlign: "center",
-                  color: "#686B75",
+                  color: "var(--text-muted)",
                 }}
               >
                 <div style={{ fontSize: 32, marginBottom: 8 }}>💡</div>
-                <div style={{ fontSize: 15, fontWeight: 700, color: "#181A1F", marginBottom: 6 }}>
+                <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text)", marginBottom: 6 }}>
                   {t("aim.noneSelected")}
                 </div>
                 <div style={{ fontSize: 13, maxWidth: 360, margin: "0 auto", lineHeight: 1.5 }}>
@@ -531,9 +531,9 @@ function AiMaterialsContent() {
             {/* Previously Generated AI Materials History */}
             <div
               style={{
-                background: "#fff",
-                border: "1px solid #EAE8E2",
-                borderRadius: 16,
+                background: "var(--surface)",
+                border: "1px solid var(--border)",
+                borderRadius: "var(--radius-lg)",
                 padding: 20,
                 boxShadow: "0 2px 10px rgba(0,0,0,0.02)",
               }}
@@ -546,7 +546,7 @@ function AiMaterialsContent() {
                   marginBottom: 14,
                 }}
               >
-                <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 800, fontSize: 15, color: "#181A1F" }}>
+                <div style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 15, color: "var(--text)" }}>
                   {t("aim.history")} ({history.length})
                 </div>
                 {history.length > 0 && (
@@ -558,7 +558,7 @@ function AiMaterialsContent() {
                         setActiveMaterial(null);
                       }
                     }}
-                    style={{ background: "none", border: "none", color: "#B23A47", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
+                    style={{ background: "none", border: "none", color: "var(--danger)", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
                   >
                     {t("aim.clearHistory")}
                   </button>
@@ -566,7 +566,7 @@ function AiMaterialsContent() {
               </div>
 
               {history.length === 0 ? (
-                <div style={{ fontSize: 13, color: "#686B75", textAlign: "center", padding: "16px 0" }}>
+                <div style={{ fontSize: 13, color: "var(--text-muted)", textAlign: "center", padding: "16px 0" }}>
                   {t("aim.emptyHistory")}
                 </div>
               ) : (
@@ -577,9 +577,9 @@ function AiMaterialsContent() {
                       <div
                         key={h.id}
                         style={{
-                          border: `1px solid ${isSelected ? ACCENT : "#EAE8E2"}`,
-                          background: isSelected ? "#FBFBFF" : "#FAFAF9",
-                          borderRadius: 12,
+                          border: `1px solid ${isSelected ? ACCENT : "var(--border)"}`,
+                          background: isSelected ? "var(--primary-soft)" : "var(--surface-muted)",
+                          borderRadius: "var(--radius-md)",
                           padding: 12,
                           display: "flex",
                           alignItems: "center",
@@ -594,7 +594,7 @@ function AiMaterialsContent() {
                           <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap", marginBottom: 4 }}>
                             <span
                               style={{
-                                background: "#EEF0FF",
+                                background: "var(--primary-soft)",
                                 color: ACCENT,
                                 fontSize: 10.5,
                                 fontWeight: 700,
@@ -604,28 +604,28 @@ function AiMaterialsContent() {
                             >
                               {t(MATERIAL_TYPE_LABEL_KEYS[h.type] || "aiMaterials.typeLessonPlan")}
                             </span>
-                            <span style={{ fontSize: 11, fontWeight: 600, color: "#4A4E58" }}>{h.subject}</span>
-                            {h.level && <span style={{ fontSize: 11, color: "#686B75" }}>· {h.level}</span>}
-                            <span style={{ fontSize: 10.5, color: "#A0A3AB", marginLeft: "auto" }}>{formatDate(h.createdAt)}</span>
+                            <span style={{ fontSize: 11, fontWeight: 600, color: "var(--text-soft)" }}>{h.subject}</span>
+                            {h.level && <span style={{ fontSize: 11, color: "var(--text-muted)" }}>· {h.level}</span>}
+                            <span style={{ fontSize: 10.5, color: "var(--text-faint)", marginLeft: "auto" }}>{formatDate(h.createdAt)}</span>
                           </div>
                           <div
                             style={{
                               fontSize: 13.5,
                               fontWeight: 700,
-                              color: "#181A1F",
+                              color: "var(--text)",
                               overflow: "hidden",
                               textOverflow: "ellipsis",
                               whiteSpace: "nowrap",
                             }}
                           >
-                            {h.given?.length ? <span style={{ fontSize: 10.5, fontWeight: 800, color: "#15803D", background: "#ECFDF5", borderRadius: 6, padding: "1px 6px", marginRight: 6 }}>✓ {t("aim.givenBadge")}</span> : null}
+                            {h.given?.length ? <span style={{ fontSize: 10.5, fontWeight: 800, color: "var(--success)", background: "var(--success-soft)", borderRadius: "var(--radius-xs)", padding: "1px 6px", marginRight: 6 }}>✓ {t("aim.givenBadge")}</span> : null}
                             {h.topic}
                           </div>
                           {h.customInstructions && (
                             <div
                               style={{
                                 fontSize: 11.5,
-                                color: "#686B75",
+                                color: "var(--text-muted)",
                                 overflow: "hidden",
                                 textOverflow: "ellipsis",
                                 whiteSpace: "nowrap",
@@ -643,10 +643,10 @@ function AiMaterialsContent() {
                             onClick={() => copyToClipboard(h.content, h.id)}
                             title={t("aim.copy")}
                             style={{
-                              background: copiedId === h.id ? "#EBF8F2" : "#fff",
-                              color: copiedId === h.id ? "#16794A" : "#4A4E58",
-                              border: "1px solid #EAE8E2",
-                              borderRadius: 7,
+                              background: copiedId === h.id ? "var(--success-soft)" : "var(--surface)",
+                              color: copiedId === h.id ? "var(--success)" : "var(--text-soft)",
+                              border: "1px solid var(--border)",
+                              borderRadius: "var(--radius-xs)",
                               padding: "6px 8px",
                               fontSize: 11,
                               fontWeight: 600,
@@ -660,10 +660,10 @@ function AiMaterialsContent() {
                             onClick={() => deleteHistoryItem(h.id)}
                             title={t("common.delete")}
                             style={{
-                              background: "#fff",
-                              color: "#B23A47",
-                              border: "1px solid #EAE8E2",
-                              borderRadius: 7,
+                              background: "var(--surface)",
+                              color: "var(--danger)",
+                              border: "1px solid var(--border)",
+                              borderRadius: "var(--radius-xs)",
                               padding: "6px 8px",
                               fontSize: 11,
                               cursor: "pointer",

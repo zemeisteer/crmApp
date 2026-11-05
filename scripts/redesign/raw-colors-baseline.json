@@ -1,0 +1,8 @@
+{
+  "frontend/app/homework/page.tsx": 2,
+  "frontend/app/payments/page.tsx": 2,
+  "frontend/app/settings/page.tsx": 9,
+  "frontend/app/students/[id]/page.tsx": 1,
+  "frontend/components/MarkdownLite.tsx": 1,
+  "frontend/components/portal/PortalTabs.tsx": 3
+}

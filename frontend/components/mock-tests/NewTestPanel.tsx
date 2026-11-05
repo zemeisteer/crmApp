@@ -7,7 +7,7 @@ import type { PracticeTemplate } from "@/lib/api";
 import { useLanguage } from "@/lib/i18n-context";
 import type { TranslationKey } from "@/lib/i18n";
 
-const ACCENT = "#4F46E5";
+const ACCENT = "var(--primary)";
 
 /** What "create" sends for one starting point. */
 export interface NewTestChoice {
@@ -53,25 +53,25 @@ export default function NewTestPanel({ busy, onCreate, onClose }: { busy: boolea
   const samples = useMemo(() => (direction ? samplesFor(direction) : []), [direction]);
 
   return (
-    <div style={{ background: "#fff", border: `1.5px solid ${ACCENT}`, borderRadius: 16, padding: 18, display: "grid", gap: 14 }}>
+    <div style={{ background: "var(--surface)", border: `1.5px solid ${ACCENT}`, borderRadius: "var(--radius-lg)", padding: 18, display: "grid", gap: 14 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
         <div style={{ fontSize: 15, fontWeight: 800 }}>{t("mock.newTitle")}</div>
-        <button type="button" onClick={onClose} aria-label={t("common.close")} style={{ border: "none", background: "#F2F1EC", width: 30, height: 30, borderRadius: 100, cursor: "pointer", fontSize: 15, color: "#4A4E58" }}>×</button>
+        <button type="button" onClick={onClose} aria-label={t("common.close")} style={{ border: "none", background: "var(--surface-muted)", width: 30, height: 30, borderRadius: "var(--radius-pill)", cursor: "pointer", fontSize: 15, color: "var(--text-soft)" }}>×</button>
       </div>
 
       <div style={{ maxWidth: 360 }}>
-        <span style={{ display: "block", fontSize: 12.5, fontWeight: 700, color: "#4A4E58", marginBottom: 6 }}>{t("mock.pickDirection")}</span>
+        <span style={{ display: "block", fontSize: 12.5, fontWeight: 700, color: "var(--text-soft)", marginBottom: 6 }}>{t("mock.pickDirection")}</span>
         <DirectionSelect value={direction} onChange={setDirection} directions={directions} placeholder={t("mock.pickDirectionPh")} ariaLabel={t("mock.pickDirection")} />
       </div>
 
       {directions.length === 0 ? (
-        <div style={{ fontSize: 13, color: "#8A5A00", background: "#FFF7E6", border: "1px solid #F5DDA8", borderRadius: 10, padding: "10px 12px" }}>
+        <div style={{ fontSize: 13, color: "var(--warning)", background: "var(--warning-soft)", border: "1px solid var(--warning-border)", borderRadius: "var(--radius-sm)", padding: "10px 12px" }}>
           {t("mock.noDirections")}{" "}
           <Link href="/groups" style={{ color: ACCENT, fontWeight: 700 }}>{t("nav.groups")}</Link>
         </div>
       ) : (
         <div>
-          <div style={{ fontSize: 12.5, fontWeight: 700, color: "#4A4E58", marginBottom: 8 }}>{t("mock.samplesFor")}: <span style={{ color: ACCENT }}>{direction}</span></div>
+          <div style={{ fontSize: 12.5, fontWeight: 700, color: "var(--text-soft)", marginBottom: 8 }}>{t("mock.samplesFor")}: <span style={{ color: ACCENT }}>{direction}</span></div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(230px, 1fr))", gap: 10 }}>
             {samples.map((s) => (
               <button
@@ -80,11 +80,11 @@ export default function NewTestPanel({ busy, onCreate, onClose }: { busy: boolea
                 className="btn"
                 disabled={busy}
                 onClick={() => onCreate({ subject: direction, ...s.choice })}
-                style={{ textAlign: "left", background: "#FAF9F6", border: "1px solid #EAE8E2", borderRadius: 12, padding: 14, cursor: busy ? "wait" : "pointer", display: "grid", gap: 4 }}
+                style={{ textAlign: "left", background: "var(--surface-muted)", border: "1px solid var(--border)", borderRadius: "var(--radius-md)", padding: 14, cursor: busy ? "wait" : "pointer", display: "grid", gap: 4 }}
               >
                 <span style={{ fontSize: 22 }} aria-hidden="true">{s.icon}</span>
-                <span style={{ fontSize: 14, fontWeight: 800, color: "#181A1F" }}>{t(s.title)}</span>
-                <span style={{ fontSize: 12.5, color: "#686B75", lineHeight: 1.5 }}>{t(s.text)}</span>
+                <span style={{ fontSize: 14, fontWeight: 800, color: "var(--text)" }}>{t(s.title)}</span>
+                <span style={{ fontSize: 12.5, color: "var(--text-muted)", lineHeight: 1.5 }}>{t(s.text)}</span>
               </button>
             ))}
           </div>

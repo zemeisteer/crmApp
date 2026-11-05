@@ -3,10 +3,12 @@ import { MAX_MONEY } from '../../common/money';
 
 export class GeneratePaymentLinkDto {
   @IsString()
+  @MaxLength(2000)
   studentId: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(2000)
   invoiceId?: string;
 
   @IsInt()
@@ -15,6 +17,7 @@ export class GeneratePaymentLinkDto {
   amount: number;
 
   @IsString()
+  @MaxLength(2000)
   forMonth: string;
 }
 

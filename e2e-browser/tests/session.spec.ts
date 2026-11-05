@@ -29,7 +29,7 @@ test('logout: protected pages are refused afterwards', async ({ page }) => {
   await page.goto(centerUrl(a.sub, '/payments'));
   await expect(page).toHaveURL(centerUrl(a.sub, '/login'));
   await expect(page.getByRole('button', { name: "+ Yangi to'lov" })).toHaveCount(0);
-  expect(await page.evaluate(() => [localStorage.getItem('talimcrm_token'), localStorage.getItem('talimcrm_refresh')])).toEqual([null, null]);
+  expect(await page.evaluate(() => [localStorage.getItem('talimcrm_session'), localStorage.getItem('talimcrm_refresh')])).toEqual([null, null]);
 });
 
 test('staff removed while their browser is open: the next request is refused', async ({ page }) => {
@@ -55,7 +55,7 @@ test('staff removed while their browser is open: the next request is refused', a
 
   await page.locator('.sidebar').getByRole('link', { name: 'Guruhlar' }).click();
   await expect(page).toHaveURL(centerUrl(a.sub, '/login'));
-  expect(await page.evaluate(() => localStorage.getItem('talimcrm_token'))).toBeNull();
+  expect(await page.evaluate(() => localStorage.getItem('talimcrm_session'))).toBeNull();
   // It was the Groups page's own request that was refused, and nothing after
   // the removal was answered with data. The center's login page it lands on
   // looks up the center's public name (by-subdomain, no session): that is

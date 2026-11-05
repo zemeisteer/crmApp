@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import type { Group } from "@/lib/api";
 import { useLanguage } from "@/lib/i18n-context";
 
-const ACCENT = "#4F46E5";
+const ACCENT = "var(--primary)";
 
 // Every open group of the center, grouped by direction: one student can study
 // several directions at once (English and maths, say). Rendered inline, not as
@@ -40,10 +40,10 @@ export default function GroupPicker({
     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
       <input className="field-input" value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("groupPicker.search")} />
       <div style={{ maxHeight: 360, overflowY: "auto", display: "flex", flexDirection: "column", gap: 12, paddingRight: 2 }}>
-        {sections.length === 0 && <div style={{ fontSize: 13, color: "#686B75", padding: 8 }}>{t("groupPicker.none")}</div>}
+        {sections.length === 0 && <div style={{ fontSize: 13, color: "var(--text-muted)", padding: 8 }}>{t("groupPicker.none")}</div>}
         {sections.map((s) => (
           <div key={s.subject}>
-            <div style={{ fontSize: 11.5, fontWeight: 800, color: "#686B75", textTransform: "uppercase", letterSpacing: 0.4, margin: "0 2px 6px" }}>
+            <div style={{ fontSize: 11.5, fontWeight: 800, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: 0.4, margin: "0 2px 6px" }}>
               {s.subject} · {s.items.length}
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
@@ -60,9 +60,9 @@ export default function GroupPicker({
                     style={{
                       textAlign: "left",
                       padding: "9px 12px",
-                      borderRadius: 10,
-                      border: `1.5px solid ${selected ? ACCENT : "#EAE8E2"}`,
-                      background: selected ? "#EEF0FF" : full ? "#F7F6F2" : "#fff",
+                      borderRadius: "var(--radius-sm)",
+                      border: `1.5px solid ${selected ? ACCENT : "var(--border)"}`,
+                      background: selected ? "var(--primary-soft)" : full ? "var(--surface-muted)" : "var(--surface)",
                       cursor: full ? "not-allowed" : "pointer",
                       opacity: full ? 0.6 : 1,
                       display: "flex",
@@ -72,15 +72,15 @@ export default function GroupPicker({
                     }}
                   >
                     <span style={{ minWidth: 0 }}>
-                      <span style={{ display: "block", fontSize: 13.5, fontWeight: 700, color: selected ? ACCENT : "#181A1F" }}>
+                      <span style={{ display: "block", fontSize: 13.5, fontWeight: 700, color: selected ? ACCENT : "var(--text)" }}>
                         {g.name}
-                        {g.level ? <span style={{ fontWeight: 500, color: "#686B75" }}> · {g.level}</span> : null}
+                        {g.level ? <span style={{ fontWeight: 500, color: "var(--text-muted)" }}> · {g.level}</span> : null}
                       </span>
-                      <span style={{ display: "block", fontSize: 12, color: "#686B75", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      <span style={{ display: "block", fontSize: 12, color: "var(--text-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                         {[g.teacher?.fullName, time].filter(Boolean).join(" · ") || "—"}
                       </span>
                     </span>
-                    <span style={{ fontSize: 11.5, fontWeight: 700, color: full ? "#B23A47" : "#5B5F6A", whiteSpace: "nowrap" }}>
+                    <span style={{ fontSize: 11.5, fontWeight: 700, color: full ? "var(--danger)" : "var(--text-muted)", whiteSpace: "nowrap" }}>
                       {full ? t("groupPicker.full") : g.studentCount !== undefined ? `${g.studentCount}/${g.maxStudents}` : ""}
                     </span>
                   </button>

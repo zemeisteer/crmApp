@@ -11,10 +11,10 @@ import { SECTION_ICON, sectionKey } from "@/components/mock-tests/sections";
 import { levelKey } from "@/components/mock-tests/levels";
 import { PrivateImg, PrivateAudio } from "@/components/PrivateFile";
 
-const ACCENT = "#4F46E5";
-const card: React.CSSProperties = { background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 16 };
-const label: React.CSSProperties = { fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6, display: "block" };
-const ghost: React.CSSProperties = { background: "#fff", border: "1px solid #EAE8E2", borderRadius: 9, padding: "7px 11px", fontSize: 12.5, fontWeight: 700, cursor: "pointer" };
+const ACCENT = "var(--primary)";
+const card: React.CSSProperties = { background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 16 };
+const label: React.CSSProperties = { fontSize: 12.5, fontWeight: 600, color: "var(--text-soft)", marginBottom: 6, display: "block" };
+const ghost: React.CSSProperties = { background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", padding: "7px 11px", fontSize: 12.5, fontWeight: 700, cursor: "pointer" };
 
 // Edits one mock test: title, direction, publish state and the four sections.
 export default function MockTestEditor({ test, onSaved }: { test: MockTest; onSaved: (t: MockTest) => void }) {
@@ -105,21 +105,21 @@ export default function MockTestEditor({ test, onSaved }: { test: MockTest; onSa
           {test.source && (
             <div>
               <span style={label}>{t("mock.source")}</span>
-              <div style={{ fontSize: 13.5, padding: "10px 0", color: "#4A4E58" }}>📚 {test.source}</div>
+              <div style={{ fontSize: 13.5, padding: "10px 0", color: "var(--text-soft)" }}>📚 {test.source}</div>
             </div>
           )}
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-          <span style={{ fontSize: 12, fontWeight: 800, padding: "3px 10px", borderRadius: 100, background: test.status === "PUBLISHED" ? "#E9F8EF" : "#F2F1EC", color: test.status === "PUBLISHED" ? "#16794A" : "#6B6E78" }}>
+          <span style={{ fontSize: 12, fontWeight: 800, padding: "3px 10px", borderRadius: "var(--radius-pill)", background: test.status === "PUBLISHED" ? "var(--success-soft)" : "var(--surface-muted)", color: test.status === "PUBLISHED" ? "var(--success)" : "var(--text-muted)" }}>
             {test.status === "PUBLISHED" ? t("mock.published") : t("mock.draft")}
           </span>
-          {msg && <span style={{ fontSize: 12.5, fontWeight: 600, color: msg.ok ? "#16794A" : "#B23A47" }}>{msg.text}</span>}
+          {msg && <span style={{ fontSize: 12.5, fontWeight: 600, color: msg.ok ? "var(--success)" : "var(--danger)" }}>{msg.text}</span>}
           <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
             <button type="button" className="btn" disabled={busy || !dirty} onClick={() => save()} style={{ ...ghost, opacity: dirty ? 1 : 0.5 }}>💾 {t("common.save")}</button>
             {test.status === "PUBLISHED" ? (
               <button type="button" className="btn" disabled={busy} onClick={() => save("DRAFT")} style={ghost}>{t("mock.unpublish")}</button>
             ) : (
-              <button type="button" className="btn" disabled={busy} onClick={() => save("PUBLISHED")} style={{ ...ghost, background: ACCENT, color: "#fff", border: "none" }}>🚀 {t("mock.publish")}</button>
+              <button type="button" className="btn" disabled={busy} onClick={() => save("PUBLISHED")} style={{ ...ghost, background: ACCENT, color: "var(--on-ink)", border: "none" }}>🚀 {t("mock.publish")}</button>
             )}
           </div>
         </div>
@@ -127,18 +127,18 @@ export default function MockTestEditor({ test, onSaved }: { test: MockTest; onSa
 
       <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
         {(Object.keys(SECTION_ICON) as MockSection[]).map((s) => (
-          <button key={s} type="button" onClick={() => setSection(s)} style={{ border: `1.5px solid ${section === s ? ACCENT : "#EAE8E2"}`, background: section === s ? "#EEF0FF" : "#fff", color: section === s ? ACCENT : "#4A4E58", borderRadius: 11, padding: "9px 14px", fontWeight: 700, fontSize: 13.5, cursor: "pointer" }}>
-            {SECTION_ICON[s]} {t(sectionKey(s))} <span style={{ color: "#686B75", fontWeight: 600 }}>{counts[s]}</span>
+          <button key={s} type="button" onClick={() => setSection(s)} style={{ border: `1.5px solid ${section === s ? ACCENT : "var(--border)"}`, background: section === s ? "var(--primary-soft)" : "var(--surface)", color: section === s ? ACCENT : "var(--text-soft)", borderRadius: "var(--radius-sm)", padding: "9px 14px", fontWeight: 700, fontSize: 13.5, cursor: "pointer" }}>
+            {SECTION_ICON[s]} {t(sectionKey(s))} <span style={{ color: "var(--text-muted)", fontWeight: 600 }}>{counts[s]}</span>
           </button>
         ))}
       </div>
 
       {section !== "speaking" && (
         <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
-          <span style={{ color: "#6B6E78" }}>⏱ {t("mock.duration")}</span>
+          <span style={{ color: "var(--text-muted)" }}>⏱ {t("mock.duration")}</span>
           <input type="number" min={5} max={120} className="field-input" style={{ width: 90 }} value={content[section].durationMin}
             onChange={(e) => edit((c) => { c[section].durationMin = Number(e.target.value) || 0; return c; })} />
-          <span style={{ color: "#6B6E78" }}>{t("mock.minutes")}</span>
+          <span style={{ color: "var(--text-muted)" }}>{t("mock.minutes")}</span>
         </div>
       )}
 
@@ -149,7 +149,7 @@ export default function MockTestEditor({ test, onSaved }: { test: MockTest; onSa
             {content.listening.audioPath ? (
               <>
                 <PrivateAudio controls name={content.listening.audioPath} scope="staff" style={{ height: 36 }} />
-                <button type="button" style={{ ...ghost, color: "#B23A47" }} onClick={() => edit((c) => { c.listening.audioPath = null; return c; })}>✕</button>
+                <button type="button" style={{ ...ghost, color: "var(--danger)" }} onClick={() => edit((c) => { c.listening.audioPath = null; return c; })}>✕</button>
               </>
             ) : (
               <label style={{ ...ghost, display: "inline-flex", gap: 6 }}>
@@ -157,7 +157,7 @@ export default function MockTestEditor({ test, onSaved }: { test: MockTest; onSa
                 <input type="file" accept="audio/*" hidden onChange={(e) => upload(e.target.files?.[0], (path) => edit((c) => { c.listening.audioPath = path; return c; }))} />
               </label>
             )}
-            <span style={{ fontSize: 12, color: "#686B75" }}>{t("mock.sectionAudioHint")}</span>
+            <span style={{ fontSize: 12, color: "var(--text-muted)" }}>{t("mock.sectionAudioHint")}</span>
           </div>
           {content.listening.parts.map((p, pi) => (
             <div key={pi} style={{ ...card, display: "grid", gap: 10 }}>
@@ -167,7 +167,7 @@ export default function MockTestEditor({ test, onSaved }: { test: MockTest; onSa
                 {p.audioPath ? (
                   <>
                     <PrivateAudio controls name={p.audioPath} scope="staff" style={{ height: 36 }} />
-                    <button type="button" style={{ ...ghost, color: "#B23A47" }} onClick={() => edit((c) => { c.listening.parts[pi].audioPath = null; return c; })}>✕ {t("mock.removeAudio")}</button>
+                    <button type="button" style={{ ...ghost, color: "var(--danger)" }} onClick={() => edit((c) => { c.listening.parts[pi].audioPath = null; return c; })}>✕ {t("mock.removeAudio")}</button>
                   </>
                 ) : (
                   <label style={{ ...ghost, display: "inline-flex", gap: 6 }}>
@@ -217,12 +217,12 @@ export default function MockTestEditor({ test, onSaved }: { test: MockTest; onSa
               <PartHeader title={task.title} onTitle={(v) => edit((c) => { c.writing.tasks[ti].title = v; return c; })} onRemove={() => edit((c) => { c.writing.tasks.splice(ti, 1); return c; })} />
               <textarea className="field-input" rows={6} value={task.prompt} onChange={(e) => edit((c) => { c.writing.tasks[ti].prompt = e.target.value; return c; })} placeholder={t("mock.taskPh")} />
               <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap", fontSize: 13 }}>
-                <span style={{ color: "#6B6E78" }}>{t("mock.minWords")}</span>
+                <span style={{ color: "var(--text-muted)" }}>{t("mock.minWords")}</span>
                 <input type="number" min={20} max={1000} className="field-input" style={{ width: 90 }} value={task.minWords} onChange={(e) => edit((c) => { c.writing.tasks[ti].minWords = Number(e.target.value) || 0; return c; })} />
                 {task.imagePath ? (
                   <>
-                    <PrivateImg name={task.imagePath} scope="staff" alt="" style={{ height: 60, borderRadius: 8, border: "1px solid #EAE8E2" }} />
-                    <button type="button" style={{ ...ghost, color: "#B23A47" }} onClick={() => edit((c) => { c.writing.tasks[ti].imagePath = null; return c; })}>✕</button>
+                    <PrivateImg name={task.imagePath} scope="staff" alt="" style={{ height: 60, borderRadius: "var(--radius-xs)", border: "1px solid var(--border)" }} />
+                    <button type="button" style={{ ...ghost, color: "var(--danger)" }} onClick={() => edit((c) => { c.writing.tasks[ti].imagePath = null; return c; })}>✕</button>
                   </>
                 ) : (
                   <label style={{ ...ghost, display: "inline-flex", gap: 6 }}>
@@ -248,9 +248,9 @@ export default function MockTestEditor({ test, onSaved }: { test: MockTest; onSa
               <PartHeader title={p.title} onTitle={(v) => edit((c) => { c.speaking.parts[pi].title = v; return c; })} onRemove={() => edit((c) => { c.speaking.parts.splice(pi, 1); return c; })} />
               <input className="field-input" placeholder={t("mock.instructionPh")} value={p.instruction ?? ""} onChange={(e) => edit((c) => { c.speaking.parts[pi].instruction = e.target.value; return c; })} />
               <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap", fontSize: 13 }}>
-                <span style={{ color: "#6B6E78" }}>{t("mock.prepSeconds")}</span>
+                <span style={{ color: "var(--text-muted)" }}>{t("mock.prepSeconds")}</span>
                 <input type="number" min={0} max={300} className="field-input" style={{ width: 80 }} value={p.prepSeconds} onChange={(e) => edit((c) => { c.speaking.parts[pi].prepSeconds = Number(e.target.value) || 0; return c; })} />
-                <span style={{ color: "#6B6E78" }}>{t("mock.answerSeconds")}</span>
+                <span style={{ color: "var(--text-muted)" }}>{t("mock.answerSeconds")}</span>
                 <input type="number" min={10} max={300} className="field-input" style={{ width: 80 }} value={p.answerSeconds} onChange={(e) => edit((c) => { c.speaking.parts[pi].answerSeconds = Number(e.target.value) || 0; return c; })} />
               </div>
               <div>
@@ -279,8 +279,8 @@ export function ImageField({ path, onUpload, onClear }: { path: string | null; o
     <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
       {path ? (
         <>
-          <PrivateImg name={path} scope="staff" alt="" style={{ height: 70, borderRadius: 8, border: "1px solid #EAE8E2" }} />
-          <button type="button" style={{ ...ghost, color: "#B23A47" }} onClick={onClear}>✕</button>
+          <PrivateImg name={path} scope="staff" alt="" style={{ height: 70, borderRadius: "var(--radius-xs)", border: "1px solid var(--border)" }} />
+          <button type="button" style={{ ...ghost, color: "var(--danger)" }} onClick={onClear}>✕</button>
         </>
       ) : (
         <label style={{ ...ghost, display: "inline-flex", gap: 6 }}>
@@ -297,7 +297,7 @@ export function PartHeader({ title, onTitle, onRemove }: { title: string; onTitl
   return (
     <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
       <input className="field-input" value={title} onChange={(e) => onTitle(e.target.value)} style={{ fontWeight: 800, flex: 1 }} />
-      <button type="button" style={{ ...ghost, color: "#B23A47" }} onClick={() => { if (confirm(t("mock.removePartConfirm"))) onRemove(); }} title={t("common.delete")}>🗑</button>
+      <button type="button" style={{ ...ghost, color: "var(--danger)" }} onClick={() => { if (confirm(t("mock.removePartConfirm"))) onRemove(); }} title={t("common.delete")}>🗑</button>
     </div>
   );
 }
@@ -311,16 +311,16 @@ export function QuestionsEditor({ questions, onChange, start = 0 }: { questions:
     <div style={{ display: "grid", gap: 6 }}>
       <span style={label}>{t("mock.questions")} ({questions.length})</span>
       {questions.map((q, i) => (
-        <div key={i} style={{ border: `1px solid ${hasAnswer(q) ? "#EAE8E2" : "#FECACA"}`, borderRadius: 10, overflow: "hidden" }}>
-          <div style={{ display: "flex", gap: 8, alignItems: "center", padding: "8px 10px", background: open === i ? "#F7F6FF" : "#fff", cursor: "pointer" }} onClick={() => setOpen(open === i ? null : i)}>
-            <b style={{ width: 24, color: "#686B75" }}>{start + i + 1}.</b>
-            <span style={{ flex: 1, minWidth: 0, fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{q.prompt || <i style={{ color: "#686B75" }}>{t("mock.emptyQuestion")}</i>}</span>
-            <span style={{ fontSize: 11, color: "#686B75" }}>{q.type}</span>
-            {!hasAnswer(q) && <span style={{ fontSize: 11, color: "#B23A47", fontWeight: 700 }}>{t("mock.noKey")}</span>}
-            <button type="button" onClick={(e) => { e.stopPropagation(); onChange(questions.filter((_, j) => j !== i)); setOpen(null); }} style={{ background: "none", border: "none", color: "#B23A47", cursor: "pointer" }}>✕</button>
+        <div key={i} style={{ border: `1px solid ${hasAnswer(q) ? "var(--border)" : "var(--danger-border)"}`, borderRadius: "var(--radius-sm)", overflow: "hidden" }}>
+          <div style={{ display: "flex", gap: 8, alignItems: "center", padding: "8px 10px", background: open === i ? "var(--primary-soft)" : "var(--surface)", cursor: "pointer" }} onClick={() => setOpen(open === i ? null : i)}>
+            <b style={{ width: 24, color: "var(--text-muted)" }}>{start + i + 1}.</b>
+            <span style={{ flex: 1, minWidth: 0, fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{q.prompt || <i style={{ color: "var(--text-muted)" }}>{t("mock.emptyQuestion")}</i>}</span>
+            <span style={{ fontSize: 11, color: "var(--text-muted)" }}>{q.type}</span>
+            {!hasAnswer(q) && <span style={{ fontSize: 11, color: "var(--danger)", fontWeight: 700 }}>{t("mock.noKey")}</span>}
+            <button type="button" onClick={(e) => { e.stopPropagation(); onChange(questions.filter((_, j) => j !== i)); setOpen(null); }} style={{ background: "none", border: "none", color: "var(--danger)", cursor: "pointer" }}>✕</button>
           </div>
           {open === i && (
-            <div style={{ padding: 10, borderTop: "1px solid #F0EEE8" }}>
+            <div style={{ padding: 10, borderTop: "1px solid var(--border)" }}>
               <QuestionEditor value={q} onChange={(nq) => set(i, nq)} excludeTypes={["ESSAY"]} />
             </div>
           )}

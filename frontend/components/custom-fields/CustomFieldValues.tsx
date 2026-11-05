@@ -35,12 +35,12 @@ export function hasCustomFieldContent(defs: CustomFieldDef[] | null, values: Rec
 function Item({ label, value, long, badge, muted }: { label: string; value: string; long?: boolean; badge?: string; muted?: boolean }) {
   return (
     <div style={{ minWidth: 0 }}>
-      <div style={{ fontSize: 11.5, color: "#686B75" }}>{label}</div>
-      <div style={{ fontSize: 13.5, fontWeight: 600, marginTop: 3, color: muted ? "#686B75" : "#181A1F", overflowWrap: "anywhere", whiteSpace: long ? "pre-wrap" : undefined }}>
+      <div style={{ fontSize: 11.5, color: "var(--text-muted)" }}>{label}</div>
+      <div style={{ fontSize: 13.5, fontWeight: 600, marginTop: 3, color: muted ? "var(--text-muted)" : "var(--text)", overflowWrap: "anywhere", whiteSpace: long ? "pre-wrap" : undefined }}>
         {value}
       </div>
       {badge && (
-        <span style={{ display: "inline-block", marginTop: 4, fontSize: 11, fontWeight: 700, color: "#B45309", background: "#FEF3C7", padding: "2px 8px", borderRadius: 999 }}>{badge}</span>
+        <span style={{ display: "inline-block", marginTop: 4, fontSize: 11, fontWeight: 700, color: "var(--warning)", background: "var(--warning-soft)", padding: "2px 8px", borderRadius: "var(--radius-pill)" }}>{badge}</span>
       )}
     </div>
   );
@@ -72,8 +72,8 @@ export default function CustomFieldValues({ defs, values }: { defs: CustomFieldD
         </div>
       )}
       {archived.length > 0 && (
-        <div style={{ borderTop: "1px dashed #EAE8E2", paddingTop: 12 }}>
-          <div style={{ fontSize: 11.5, fontWeight: 700, color: "#8A8D96", textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 10 }}>{t("cf.archivedGroup")}</div>
+        <div style={{ borderTop: "1px dashed var(--border)", paddingTop: 12 }}>
+          <div style={{ fontSize: 11.5, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 10 }}>{t("cf.archivedGroup")}</div>
           <div style={grid}>
             {archived.map((d) => (
               <Item key={d.id} label={d.label} value={formatCfValue(d, values?.[d.id], t, lang)} long={d.fieldType === "LONG_TEXT"} muted />

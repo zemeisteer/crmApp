@@ -21,10 +21,10 @@ export const EVENT_KINDS: CenterEventKind[] = ["MEETING", "COMPETITION", "EVENT"
 const AUDIENCES: CenterEventAudience[] = ["STAFF", "STUDENTS", "ALL"];
 
 export const KIND_STYLE: Record<CenterEventKind, { color: string; bg: string; border: string; icon: string }> = {
-  MEETING: { color: "#0369A1", bg: "#E0F2FE", border: "#7DD3FC", icon: "👥" },
-  COMPETITION: { color: "#B45309", bg: "#FEF3C7", border: "#FCD34D", icon: "🏆" },
-  EVENT: { color: "#BE185D", bg: "#FCE7F3", border: "#F9A8D4", icon: "🎉" },
-  OTHER: { color: "#4B5563", bg: "#F3F4F6", border: "#D1D5DB", icon: "📌" },
+  MEETING: { color: "var(--info)", bg: "var(--info-soft)", border: "var(--info-border)", icon: "👥" },
+  COMPETITION: { color: "var(--warning)", bg: "var(--warning-soft)", border: "var(--warning-border)", icon: "🏆" },
+  EVENT: { color: "var(--pink)", bg: "var(--pink-soft)", border: "var(--pink-soft)", icon: "🎉" },
+  OTHER: { color: "var(--text-soft)", bg: "var(--surface-muted)", border: "var(--border-strong)", icon: "📌" },
 };
 
 export const kindKey = (k: CenterEventKind) => `ev.kind.${k}` as TranslationKey;
@@ -56,8 +56,8 @@ export function EventCard({ ev, onOpen }: { ev: CenterEvent; onOpen?: () => void
           {ev.endTime ? `–${ev.endTime}` : ""} · {t(kindKey(ev.kind))}
         </span>
       </div>
-      <div style={{ fontWeight: 700, fontSize: 13, color: "#111827", marginTop: 3 }}>{ev.title}</div>
-      <div style={{ fontSize: 11.5, color: "#4B5563", marginTop: 2 }}>{eventPlace(ev, t)}</div>
+      <div style={{ fontWeight: 700, fontSize: 13, color: "var(--text)", marginTop: 3 }}>{ev.title}</div>
+      <div style={{ fontSize: 11.5, color: "var(--text-soft)", marginTop: 2 }}>{eventPlace(ev, t)}</div>
     </>
   );
   const style: React.CSSProperties = {
@@ -67,7 +67,7 @@ export function EventCard({ ev, onOpen }: { ev: CenterEvent; onOpen?: () => void
     background: s.bg,
     border: `1px solid ${s.border}`,
     borderLeft: `4px solid ${s.color}`,
-    borderRadius: 10,
+    borderRadius: "var(--radius-pill)",
     padding: "8px 10px",
     cursor: onOpen ? "pointer" : "default",
     font: "inherit",
@@ -83,7 +83,7 @@ export function EventCard({ ev, onOpen }: { ev: CenterEvent; onOpen?: () => void
   );
 }
 
-const label: React.CSSProperties = { display: "block", fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 };
+const label: React.CSSProperties = { display: "block", fontSize: 12.5, fontWeight: 600, color: "var(--text-soft)", marginBottom: 6 };
 
 /** Adds or edits an event; deleting is offered when editing. */
 /** The server's answer, with what is in the way when the room is taken. */
@@ -177,19 +177,19 @@ export function EventFormModal({
     fontSize: 12.5,
     fontWeight: 700,
     padding: "8px 10px",
-    borderRadius: 8,
+    borderRadius: "var(--radius-xs)",
     border: "none",
     cursor: readOnly ? "default" : "pointer",
-    background: on ? "#fff" : "transparent",
-    color: on ? "#181A1F" : "#686B75",
-    boxShadow: on ? "0 1px 3px rgba(18,19,26,0.08)" : "none",
+    background: on ? "var(--ink)" : "transparent",
+    color: on ? "var(--on-ink)" : "var(--text-muted)",
+    boxShadow: "none",
   });
 
   return (
     <Modal open onClose={onClose} title={event ? (readOnly ? event.title : t("ev.editTitle")) : t("ev.addTitle")} width={560}>
       <form onSubmit={submit} style={{ display: "flex", flexDirection: "column", gap: 14 }} noValidate>
         {error && (
-          <div role="alert" style={{ background: "#FDEBEC", color: "#B23A47", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: 10 }}>
+          <div role="alert" style={{ background: "var(--danger-soft)", color: "var(--danger)", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: "var(--radius-sm)" }}>
             {error}
           </div>
         )}
@@ -210,7 +210,7 @@ export function EventFormModal({
                     type="button"
                     aria-pressed={on}
                     onClick={() => setKind(k)}
-                    style={{ padding: "7px 12px", borderRadius: 999, fontSize: 12.5, fontWeight: 700, cursor: "pointer", border: `1px solid ${on ? s.color : "#E2E0DA"}`, background: on ? s.bg : "#fff", color: on ? s.color : "#3A3D45" }}
+                    style={{ padding: "7px 12px", borderRadius: "var(--radius-pill)", fontSize: 12.5, fontWeight: 700, cursor: "pointer", border: `1px solid ${on ? s.color : "var(--border)"}`, background: on ? s.bg : "var(--surface)", color: on ? s.color : "var(--text-soft)" }}
                   >
                     {s.icon} {t(kindKey(k))}
                   </button>
@@ -220,7 +220,7 @@ export function EventFormModal({
           </div>
           <div>
             <span style={label}>{t("ev.fieldFormat")}</span>
-            <div role="group" aria-label={t("ev.fieldFormat")} style={{ display: "flex", gap: 2, background: "#F2F1EC", borderRadius: 10, padding: 4 }}>
+            <div role="group" aria-label={t("ev.fieldFormat")} style={{ display: "flex", gap: 2, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 4 }}>
               <button type="button" aria-pressed={format === "OFFLINE"} onClick={() => setFormat("OFFLINE")} style={segBtn(format === "OFFLINE")}>
                 🏫 {t("ev.offline")}
               </button>
@@ -282,20 +282,20 @@ export function EventFormModal({
           </div>
         </fieldset>
         {event?.format === "ONLINE" && event.meetingUrl && (
-          <a href={event.meetingUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize: 13, fontWeight: 700, color: "#4F46E5" }}>
+          <a href={event.meetingUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize: 13, fontWeight: 700, color: "var(--primary)" }}>
             {t("ev.join")} ↗
           </a>
         )}
         {!readOnly && (
           <div style={{ display: "flex", gap: 10, justifyContent: "space-between", flexWrap: "wrap" }}>
             {event ? (
-              <button type="button" className="btn" onClick={remove} disabled={busy} style={{ background: "#FDEBEC", color: "#B23A47", border: "none", padding: "10px 16px", borderRadius: 10, fontWeight: 700, fontSize: 13.5 }}>
+              <button type="button" className="btn" onClick={remove} disabled={busy} style={{ background: "var(--danger-soft)", color: "var(--danger)", border: "none", padding: "10px 16px", borderRadius: "var(--radius-sm)", fontWeight: 700, fontSize: 13.5 }}>
                 {t("ev.delete")}
               </button>
             ) : (
               <span />
             )}
-            <button type="submit" className="btn" disabled={busy} style={{ background: "#4F46E5", color: "#fff", border: "none", padding: "10px 20px", borderRadius: 10, fontWeight: 700, fontSize: 13.5 }}>
+            <button type="submit" className="btn" disabled={busy} style={{ background: "var(--primary)", color: "var(--on-ink)", border: "none", padding: "10px 20px", borderRadius: "var(--radius-sm)", fontWeight: 700, fontSize: 13.5 }}>
               {busy ? t("common.saving") : t("common.save")}
             </button>
           </div>

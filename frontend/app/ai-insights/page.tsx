@@ -13,18 +13,18 @@ import { formatTime } from "@/lib/format-date";
 import { buildInsights, type Insight, type Severity } from "@/lib/insights";
 import { MessagesReview, SignalsList, chip } from "@/components/signals/SignalsPanels";
 
-const ACCENT = "#4F46E5";
-const card: React.CSSProperties = { background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 20 };
-const cardTitle: React.CSSProperties = { fontFamily: "'Manrope', sans-serif", fontWeight: 700, fontSize: 15 };
+const ACCENT = "var(--primary)";
+const card: React.CSSProperties = { background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 20 };
+const cardTitle: React.CSSProperties = { fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 15 };
 
 const SEVERITY_STYLE: Record<Severity, { border: string; bg: string; badge: string }> = {
-  high: { border: "#F5C2C7", bg: "#FFF5F6", badge: "#B23A47" },
-  medium: { border: "#FAD7B5", bg: "#FFF9F2", badge: "#B4531A" },
-  opportunity: { border: "#BDE8CF", bg: "#F3FBF6", badge: "#16794A" },
-  watch: { border: "#D6D3FA", bg: "#F6F5FF", badge: ACCENT },
+  high: { border: "var(--danger-border)", bg: "var(--danger-soft)", badge: "var(--danger)" },
+  medium: { border: "var(--warning-border)", bg: "var(--warning-soft)", badge: "var(--warning)" },
+  opportunity: { border: "var(--success-border)", bg: "var(--success-soft)", badge: "var(--success)" },
+  watch: { border: "var(--primary-border)", bg: "var(--primary-soft)", badge: ACCENT },
 };
 
-const pctColor = (p: number | null) => (p === null ? "#686B75" : p >= 80 ? "#16794A" : p >= 60 ? "#D97706" : "#B23A47");
+const pctColor = (p: number | null) => (p === null ? "var(--text-muted)" : p >= 80 ? "var(--success)" : p >= 60 ? "var(--warning)" : "var(--danger)");
 
 // Center health, 0-100: the average of the rates we actually have
 // (attendance, fee collection, seat occupancy).
@@ -99,14 +99,14 @@ function AiInsightsContent() {
 
   return (
     <>
-      <div style={{ padding: "22px 32px", borderBottom: "1px solid #EAE8E2", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
-        <h1 style={{ fontSize: 22, fontWeight: 800, display: "flex", alignItems: "center", gap: 10 }}>
+      <div style={{ padding: "var(--page-head-pad)", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
+        <h1 className="page-title" style={{ display: "flex", alignItems: "center", gap: 10 }}>
           {t("aiInsights.title")}
-          <span style={{ fontSize: 11, fontWeight: 800, background: "linear-gradient(135deg,#8B7CF6,#4F46E5)", color: "#fff", padding: "4px 10px", borderRadius: 100 }}>
+          <span style={{ fontSize: 11, fontWeight: 800, background: "linear-gradient(135deg,var(--violet),var(--primary))", color: "var(--on-ink)", padding: "4px 10px", borderRadius: "var(--radius-pill)" }}>
             {t("aiInsights.autoBadge")}
           </span>
         </h1>
-        <div style={{ fontSize: 12.5, color: "#686B75" }}>
+        <div style={{ fontSize: 12.5, color: "var(--text-muted)" }}>
           {t("aiInsights.lastUpdated")} {formatTime(updatedAt, lang)}
         </div>
         {seesSignals && (
@@ -121,32 +121,32 @@ function AiInsightsContent() {
       </div>
 
       {tab !== "insights" && (
-        <div style={{ flex: 1, minHeight: 0, padding: "20px 32px", overflow: "auto", boxSizing: "border-box", display: "flex", flexDirection: "column", gap: 14 }}>
-          <div style={{ fontSize: 13, color: "#686B75", lineHeight: 1.5, maxWidth: 760 }}>{t("sig.subtitle")}</div>
+        <div style={{ flex: 1, minHeight: 0, padding: "var(--page-pad)", overflow: "auto", boxSizing: "border-box", display: "flex", flexDirection: "column", gap: 14 }}>
+          <div style={{ fontSize: 13, color: "var(--text-muted)", lineHeight: 1.5, maxWidth: 760 }}>{t("sig.subtitle")}</div>
           {tab === "signals" ? <SignalsList /> : <MessagesReview />}
         </div>
       )}
 
-      <div style={{ flex: 1, minHeight: 0, padding: "26px 32px", overflow: "auto", boxSizing: "border-box", display: tab === "insights" ? "flex" : "none", flexDirection: "column", gap: 18 }}>
+      <div style={{ flex: 1, minHeight: 0, padding: "var(--page-pad)", overflow: "auto", boxSizing: "border-box", display: tab === "insights" ? "flex" : "none", flexDirection: "column", gap: 18 }}>
         {loading ? (
-          <div style={{ color: "#686B75", fontSize: 14 }}>{t("common.loading")}</div>
+          <div style={{ color: "var(--text-muted)", fontSize: 14 }}>{t("common.loading")}</div>
         ) : (
           <>
             {/* Health overview */}
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(340px, 1fr))", gap: 16 }}>
-              <div style={{ borderRadius: 18, padding: 22, color: "#fff", background: "linear-gradient(135deg, #4338CA 0%, #6D28D9 60%, #8B5CF6 100%)", display: "flex", alignItems: "center", gap: 20 }}>
+              <div style={{ borderRadius: "var(--radius-lg)", padding: 22, color: "var(--on-ink)", background: "linear-gradient(135deg, var(--primary) 0%, var(--violet) 60%, var(--violet) 100%)", display: "flex", alignItems: "center", gap: 20 }}>
                 <div style={{ position: "relative", width: 104, height: 104, flexShrink: 0 }}>
                   <svg viewBox="0 0 36 36" width="104" height="104">
                     <circle cx="18" cy="18" r="15.9" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="3.2" />
-                    <circle cx="18" cy="18" r="15.9" fill="none" stroke="#fff" strokeWidth="3.2" strokeLinecap="round" strokeDasharray={`${health ?? 0} 100`} transform="rotate(-90 18 18)" />
+                    <circle cx="18" cy="18" r="15.9" fill="none" stroke="var(--surface)" strokeWidth="3.2" strokeLinecap="round" strokeDasharray={`${health ?? 0} 100`} transform="rotate(-90 18 18)" />
                   </svg>
-                  <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Manrope', sans-serif", fontWeight: 800, fontSize: 26 }}>
+                  <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 26 }}>
                     {health ?? "—"}
                   </div>
                 </div>
                 <div>
                   <div style={{ fontSize: 12, opacity: 0.8, fontWeight: 600, letterSpacing: 0.3 }}>{t("ai2.healthLabel")}</div>
-                  <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 800, fontSize: 20, marginTop: 4 }}>
+                  <div style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 20, marginTop: 4 }}>
                     {health === null ? t("ai2.healthUnknown") : health >= 80 ? t("ai2.healthGood") : health >= 60 ? t("ai2.healthOk") : t("ai2.healthBad")}
                   </div>
                   <div style={{ fontSize: 12.5, opacity: 0.85, marginTop: 6, lineHeight: 1.5 }}>{t("ai2.healthHint")}</div>
@@ -158,11 +158,11 @@ function AiInsightsContent() {
                   { label: t("ai2.kpiAttendance"), value: attendanceRate === null ? "—" : `${attendanceRate}%`, color: pctColor(attendanceRate) },
                   { label: t("ai2.kpiCollection"), value: collection === null ? "—" : `${collection}%`, color: pctColor(collection) },
                   { label: t("ai2.kpiOccupancy"), value: occupancy === null ? "—" : `${occupancy}%`, color: pctColor(occupancy) },
-                  { label: t("ai2.kpiNew"), value: String(report?.students.newThisMonth ?? "—"), color: "#181A1F" },
+                  { label: t("ai2.kpiNew"), value: String(report?.students.newThisMonth ?? "—"), color: "var(--text)" },
                 ].map((k) => (
                   <div key={k.label} style={{ ...card, padding: 16, display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
-                    <div style={{ fontSize: 12, color: "#686B75", fontWeight: 600 }}>{k.label}</div>
-                    <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 800, fontSize: 26, color: k.color, marginTop: 8 }}>{k.value}</div>
+                    <div style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 600 }}>{k.label}</div>
+                    <div style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 26, color: k.color, marginTop: 8 }}>{k.value}</div>
                   </div>
                 ))}
               </div>
@@ -173,13 +173,13 @@ function AiInsightsContent() {
               {(["all", "high", "medium", "opportunity", "watch"] as const).map((k) => {
                 const active = filter === k;
                 const n = k === "all" ? insights.length : count(k);
-                const color = k === "all" ? "#181A1F" : SEVERITY_STYLE[k].badge;
+                const color = k === "all" ? "var(--text)" : SEVERITY_STYLE[k].badge;
                 return (
                   <button
                     key={k}
                     type="button"
                     onClick={() => setFilter(k)}
-                    style={{ border: `1px solid ${active ? color : "#EAE8E2"}`, background: active ? color : "#fff", color: active ? "#fff" : "#4A4E58", fontSize: 12.5, fontWeight: 700, padding: "7px 14px", borderRadius: 999, cursor: "pointer" }}
+                    style={{ border: `1px solid ${active ? color : "var(--border)"}`, background: active ? color : "var(--on-ink)", color: active ? "var(--on-ink)" : "var(--text-soft)", fontSize: 12.5, fontWeight: 700, padding: "7px 14px", borderRadius: "var(--radius-pill)", cursor: "pointer" }}
                   >
                     {k === "all" ? t("aiInsights.statTotal") : SEVERITY_LABEL[k]} · {n}
                   </button>
@@ -190,7 +190,7 @@ function AiInsightsContent() {
             <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 2fr) minmax(280px, 1fr)", gap: 16, alignItems: "start" }}>
               {/* Insight cards, two per row */}
               {shown.length === 0 ? (
-                <div style={{ ...card, color: "#686B75", fontSize: 14, textAlign: "center", padding: 32 }}>
+                <div style={{ ...card, color: "var(--text-muted)", fontSize: 14, textAlign: "center", padding: 32 }}>
                   {report ? t("aiInsights.allGood") : t("ai2.limited")}
                 </div>
               ) : (
@@ -198,13 +198,13 @@ function AiInsightsContent() {
                   {shown.map((i) => {
                     const st = SEVERITY_STYLE[i.severity];
                     return (
-                      <div key={i.id} style={{ background: st.bg, border: `1px solid ${st.border}`, borderRadius: 14, padding: 16, display: "flex", flexDirection: "column", gap: 8 }}>
+                      <div key={i.id} style={{ background: st.bg, border: `1px solid ${st.border}`, borderRadius: "var(--radius-lg)", padding: 16, display: "flex", flexDirection: "column", gap: 8 }}>
                         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
                           <span style={{ fontSize: 20 }} aria-hidden>{i.icon}</span>
-                          <span style={{ fontSize: 10.5, fontWeight: 800, background: st.badge, color: "#fff", padding: "3px 9px", borderRadius: 100 }}>{SEVERITY_LABEL[i.severity]}</span>
+                          <span style={{ fontSize: 10.5, fontWeight: 800, background: st.badge, color: "var(--on-ink)", padding: "3px 9px", borderRadius: "var(--radius-pill)" }}>{SEVERITY_LABEL[i.severity]}</span>
                         </div>
-                        <div style={{ fontSize: 14, fontWeight: 700, fontFamily: "'Manrope', sans-serif", lineHeight: 1.35 }}>{i.title}</div>
-                        {i.description && <div style={{ fontSize: 12.5, color: "#4A4E58", lineHeight: 1.55 }}>{i.description}</div>}
+                        <div style={{ fontSize: 14, fontWeight: 700, fontFamily: "var(--font-display)", lineHeight: 1.35 }}>{i.title}</div>
+                        {i.description && <div style={{ fontSize: 12.5, color: "var(--text-soft)", lineHeight: 1.55 }}>{i.description}</div>}
                         <Link href={i.actionHref} style={{ marginTop: "auto", alignSelf: "flex-start", fontSize: 12.5, fontWeight: 700, color: st.badge, textDecoration: "none" }}>
                           {i.actionLabel} →
                         </Link>
@@ -219,13 +219,13 @@ function AiInsightsContent() {
                 <div style={card}>
                   <div style={{ ...cardTitle, marginBottom: 12 }}>{t("ai2.atRiskTitle")}</div>
                   {(report?.atRisk.length ?? 0) === 0 ? (
-                    <div style={{ fontSize: 13, color: "#686B75" }}>{t("ai2.noRisk")}</div>
+                    <div style={{ fontSize: 13, color: "var(--text-muted)" }}>{t("ai2.noRisk")}</div>
                   ) : (
                     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                       {report!.atRisk.slice(0, 6).map((s) => (
-                        <Link key={s.studentId} href={`/students/${s.studentId}`} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, textDecoration: "none", color: "#181A1F", padding: "8px 10px", borderRadius: 10, background: "#F7F6F2" }}>
+                        <Link key={s.studentId} href={`/students/${s.studentId}`} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, textDecoration: "none", color: "var(--text)", padding: "8px 10px", borderRadius: "var(--radius-sm)", background: "var(--surface-muted)" }}>
                           <span style={{ fontSize: 13, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.fullName}</span>
-                          <span style={{ fontSize: 12, fontWeight: 800, color: s.risk === "HIGH" ? "#B23A47" : "#D97706" }}>
+                          <span style={{ fontSize: 12, fontWeight: 800, color: s.risk === "HIGH" ? "var(--danger)" : "var(--warning)" }}>
                             {s.attendanceRate !== null ? `${s.attendanceRate}%` : "—"}
                           </span>
                         </Link>
@@ -237,7 +237,7 @@ function AiInsightsContent() {
                 <div style={card}>
                   <div style={{ ...cardTitle, marginBottom: 12 }}>{t("ai2.weakGroups")}</div>
                   {groupsByAttendance.length === 0 ? (
-                    <div style={{ fontSize: 13, color: "#686B75" }}>{t("chart.noData")}</div>
+                    <div style={{ fontSize: 13, color: "var(--text-muted)" }}>{t("chart.noData")}</div>
                   ) : (
                     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                       {groupsByAttendance.map((g) => (
@@ -246,7 +246,7 @@ function AiInsightsContent() {
                             <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{g.name}</span>
                             <span style={{ color: pctColor(g.attendanceRate) }}>{g.attendanceRate}%</span>
                           </div>
-                          <div style={{ height: 8, background: "#F2F1EC", borderRadius: 5, overflow: "hidden" }}>
+                          <div style={{ height: 8, background: "var(--surface-muted)", borderRadius: 5, overflow: "hidden" }}>
                             <div style={{ width: `${g.attendanceRate}%`, height: "100%", background: pctColor(g.attendanceRate), borderRadius: 5 }} />
                           </div>
                         </div>
@@ -269,7 +269,7 @@ function AiInsightsContent() {
                   <DonutChart
                     value={report?.students.byStatus.ACTIVE ?? dash?.counts.activeStudents ?? 0}
                     max={Math.max(1, Object.values(report?.students.byStatus ?? {}).reduce((s, n) => s + n, 0) || dash?.counts.activeStudents || 1)}
-                    color="#16794A"
+                    color="var(--success)"
                     label={t("ai2.activeShare")}
                   />
                 </div>

@@ -84,7 +84,7 @@ export default function PortalLogin({ onLoggedIn, subdomain }: { onLoggedIn: (se
 
       {step === "verify" && (
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-          <div style={{ fontSize: 13, color: "#CBD5E1" }}>
+          <div style={{ fontSize: 13, color: "var(--text-muted)" }}>
             {phone} ·{" "}
             <button type="button" onClick={() => { setStep("phone"); setError(null); }} style={linkBtn}>
               {t("plog.changePhone")}
@@ -92,13 +92,13 @@ export default function PortalLogin({ onLoggedIn, subdomain }: { onLoggedIn: (se
           </div>
 
           {noWay ? (
-            <div style={{ ...hint, color: "#FDE68A" }}>{t("plog.noMethod")}</div>
+            <div style={{ ...hint, color: "var(--warning)" }}>{t("plog.noMethod")}</div>
           ) : (
             <>
               {telegramSent && pinAvailable && (
                 <div style={{ display: "flex", gap: 6 }}>
                   {(["code", "pin"] as const).map((m) => (
-                    <button key={m} type="button" onClick={() => { setMethod(m); setSecret(""); }} style={{ ...tab, background: method === m ? "#4F46E5" : "rgba(255,255,255,0.08)" }}>
+                    <button key={m} type="button" onClick={() => { setMethod(m); setSecret(""); }} style={{ ...tab, background: method === m ? "var(--ink)" : "var(--surface-muted)", color: method === m ? "var(--on-ink)" : "var(--text-soft)" }}>
                       {m === "code" ? t("plog.byTelegram") : t("plog.byPin")}
                     </button>
                   ))}
@@ -131,9 +131,9 @@ export default function PortalLogin({ onLoggedIn, subdomain }: { onLoggedIn: (se
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           <div style={hint}>{t("plog.choose")}</div>
           {choices.map((c) => (
-            <button key={c.id} type="button" disabled={busy} onClick={() => (sessions.length ? onLoggedIn(sessions, c.id) : verify(c.id))} style={{ ...tab, padding: "12px 14px", textAlign: "left", background: "rgba(255,255,255,0.08)" }}>
+            <button key={c.id} type="button" disabled={busy} onClick={() => (sessions.length ? onLoggedIn(sessions, c.id) : verify(c.id))} style={{ ...tab, padding: "12px 14px", textAlign: "left", background: "var(--surface-muted)", color: "var(--text)", border: "1px solid var(--border)" }}>
               <div style={{ fontWeight: 700 }}>{c.fullName}</div>
-              <div style={{ fontSize: 12, color: "#94A3B8" }}>{c.centerName}</div>
+              <div style={{ fontSize: 12, color: "var(--text-muted)" }}>{c.centerName}</div>
             </button>
           ))}
         </div>
@@ -142,10 +142,10 @@ export default function PortalLogin({ onLoggedIn, subdomain }: { onLoggedIn: (se
   );
 }
 
-const label: React.CSSProperties = { display: "block", fontSize: 12, fontWeight: 600, color: "#CBD5E1", marginBottom: 6 };
-const input: React.CSSProperties = { width: "100%", padding: "12px 14px", borderRadius: 12, border: "1px solid rgba(255, 255, 255, 0.15)", background: "rgba(15, 23, 42, 0.6)", color: "#fff", fontSize: 14, outline: "none", boxSizing: "border-box" };
-const button: React.CSSProperties = { width: "100%", padding: 13, borderRadius: 12, border: "none", background: "linear-gradient(135deg, #6366F1 0%, #4F46E5 100%)", color: "#fff", fontSize: 14, fontWeight: 700, cursor: "pointer", boxShadow: "0 8px 20px rgba(79, 70, 229, 0.4)" };
-const tab: React.CSSProperties = { flex: 1, padding: "8px 10px", borderRadius: 10, border: "none", color: "#fff", fontSize: 12.5, fontWeight: 700, cursor: "pointer" };
-const hint: React.CSSProperties = { fontSize: 13, color: "#CBD5E1", lineHeight: 1.5 };
-const linkBtn: React.CSSProperties = { background: "none", border: "none", color: "#A5B4FC", cursor: "pointer", fontSize: 13, fontWeight: 600, padding: 0 };
-const errorBox: React.CSSProperties = { background: "rgba(239, 68, 68, 0.15)", border: "1px solid rgba(239, 68, 68, 0.3)", color: "#FCA5A5", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: 12 };
+const label: React.CSSProperties = { display: "block", fontSize: 12.5, fontWeight: 600, color: "var(--text-soft)", marginBottom: 6 };
+const input: React.CSSProperties = { width: "100%", minHeight: 48, padding: "12px 14px", borderRadius: "var(--radius-md)", border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text)", fontSize: 15, outline: "none", boxSizing: "border-box" };
+const button: React.CSSProperties = { width: "100%", minHeight: 48, padding: 13, borderRadius: "var(--radius-pill)", border: "none", background: "var(--ink)", color: "var(--on-ink)", fontSize: 14.5, fontWeight: 600, cursor: "pointer" };
+const tab: React.CSSProperties = { flex: 1, minHeight: 40, padding: "8px 10px", borderRadius: "var(--radius-pill)", border: "none", fontSize: 12.5, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" };
+const hint: React.CSSProperties = { fontSize: 13, color: "var(--text-muted)", lineHeight: 1.5 };
+const linkBtn: React.CSSProperties = { background: "none", border: "none", color: "var(--text)", textDecoration: "underline", textUnderlineOffset: 3, cursor: "pointer", fontSize: 13, fontWeight: 600, padding: "6px 0", minHeight: 32 };
+const errorBox: React.CSSProperties = { background: "var(--danger-soft)", border: "1px solid var(--danger-border)", color: "var(--danger)", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: "var(--radius-md)" };

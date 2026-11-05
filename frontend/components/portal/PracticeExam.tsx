@@ -73,9 +73,9 @@ function Instructions({ section, resuming, onStart }: { section: PortalPracticeS
   const questions = section.parts.reduce((n, p) => n + p.questions.reduce((m, q) => m + q.span, 0), 0);
   return (
     <div style={{ flex: 1, overflowY: "auto", display: "flex", justifyContent: "center", padding: "32px 16px" }}>
-      <div style={{ maxWidth: 680, width: "100%", border: `1px solid ${LINE}`, borderRadius: 8, padding: 28 }}>
+      <div style={{ maxWidth: 680, width: "100%", border: `1px solid ${LINE}`, borderRadius: "var(--radius-xs)", padding: 28 }}>
         <div style={{ fontSize: 22, fontWeight: 800, marginBottom: 4 }}>{section.title}</div>
-        <div style={{ color: "#4B5563", marginBottom: 18 }}>{t("exm.time")}: {section.durationMin} {t("exm.minutes")}</div>
+        <div style={{ color: "var(--text-soft)", marginBottom: 18 }}>{t("exm.time")}: {section.durationMin} {t("exm.minutes")}</div>
         <div style={{ fontWeight: 800, marginBottom: 8 }}>{t("exm.instructions")}</div>
         <ul style={{ margin: 0, paddingLeft: 20, lineHeight: 1.7 }}>
           {section.instruction && <li style={{ whiteSpace: "pre-wrap" }}>{section.instruction}</li>}
@@ -83,8 +83,8 @@ function Instructions({ section, resuming, onStart }: { section: PortalPracticeS
           <li>{t("prx.i2")}</li>
           <li>{t("prx.i3")}</li>
         </ul>
-        {resuming && <div style={{ marginTop: 16, padding: 12, background: "#FEF3C7", borderRadius: 6, fontSize: 14 }}>⚠️ {t("exm.resume")}</div>}
-        <button type="button" onClick={onStart} style={{ marginTop: 24, background: BLUE, color: "#fff", border: "none", borderRadius: 6, padding: "12px 26px", fontSize: 16, fontWeight: 700, cursor: "pointer" }}>
+        {resuming && <div style={{ marginTop: 16, padding: 12, background: "var(--warning-soft)", borderRadius: "var(--radius-xs)", fontSize: 14 }}>⚠️ {t("exm.resume")}</div>}
+        <button type="button" onClick={onStart} style={{ marginTop: 24, background: BLUE, color: "var(--on-ink)", border: "none", borderRadius: "var(--radius-xs)", padding: "12px 26px", fontSize: 16, fontWeight: 700, cursor: "pointer" }}>
           {resuming ? t("exm.continue") : t("exm.start")} ▶
         </button>
       </div>
@@ -132,7 +132,7 @@ function Body({ attempt, section, answers, onAnswer, onSubmit }: {
 
   return (
     <>
-      <div style={{ padding: "8px 16px", borderBottom: `1px solid ${LINE}`, background: "#EFF6FF", fontSize: 14 }}>
+      <div style={{ padding: "8px 16px", borderBottom: `1px solid ${LINE}`, background: "var(--info-soft)", fontSize: 14 }}>
         <b>{groups[group]?.label}</b>
         {part?.questions.length ? ` — ${t("exm.questions")} ${part.questions[0].no}–${part.questions.at(-1)!.no + part.questions.at(-1)!.span - 1}` : ""}
       </div>
@@ -157,8 +157,8 @@ function Body({ attempt, section, answers, onAnswer, onSubmit }: {
                       <PrivateImg name={task.imagePath} scope="portal" alt="" style={{ maxWidth: "100%", border: `1px solid ${LINE}` }} />
                     )}
                     <textarea value={text} onChange={(e) => onAnswer(`t${i}`, e.target.value)} spellCheck={false} rows={12}
-                      style={{ width: "100%", boxSizing: "border-box", border: "1px solid #9CA3AF", borderRadius: 4, padding: 12, fontSize: "inherit", fontFamily: "inherit", lineHeight: 1.7, resize: "vertical" }} />
-                    <div style={{ fontSize: 14, fontWeight: 700, color: task.minWords && words < task.minWords ? "#B45309" : "#15803D" }}>
+                      style={{ width: "100%", boxSizing: "border-box", border: "1px solid var(--text-faint)", borderRadius: 4, padding: 12, fontSize: "inherit", fontFamily: "inherit", lineHeight: 1.7, resize: "vertical" }} />
+                    <div style={{ fontSize: 14, fontWeight: 700, color: task.minWords && words < task.minWords ? "var(--warning)" : "var(--success)" }}>
                       {t("exm.wordCount")}: {words}{task.minWords ? ` / ${task.minWords}+` : ""}
                     </div>
                   </section>

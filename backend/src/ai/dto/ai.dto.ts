@@ -3,11 +3,13 @@ import { IsIn, IsInt, IsOptional, IsString, Max, MaxLength, Min, MinLength } fro
 
 export class GroupInsightsDto {
   @IsString()
+  @MaxLength(2000)
   groupId: string;
 }
 
 export class TutorReportDto {
   @IsString()
+  @MaxLength(2000)
   groupId: string;
 
   @IsOptional()
@@ -20,13 +22,16 @@ export class TutorReportDto {
 
 export class GenerateMaterialDto {
   @IsString()
+  @MaxLength(2000)
   subject: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(2000)
   level?: string;
 
   @IsString()
+  @MaxLength(50000)
   topic: string;
 
   @IsIn(['LESSON_PLAN', 'HOMEWORK', 'QUIZ'])
@@ -34,24 +39,29 @@ export class GenerateMaterialDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(50000)
   customInstructions?: string;
 }
 
 export class SuggestHomeworkDto {
   @IsOptional()
   @IsString()
+  @MaxLength(2000)
   subject?: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(2000)
   level?: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(2000)
   groupName?: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(50000)
   topic?: string;
 
   // What the teacher described they need, in their own words.
@@ -74,6 +84,7 @@ export class PlacementTestDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(2000)
   groupId?: string;
 
   @IsOptional()

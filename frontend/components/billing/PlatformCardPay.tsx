@@ -3,23 +3,12 @@
 import { useEffect, useRef, useState } from "react";
 import { ApiError, platformBillingApi, type PlatformCardView } from "@/lib/api";
 import { useLanguage } from "@/lib/i18n-context";
+import { fileFingerprint, newKey } from "@/lib/send-key";
 
-const ACCENT = "#4F46E5";
+const ACCENT = "var(--primary)";
 const money = (n: number) => new Intl.NumberFormat("uz-UZ").format(n);
-const newKey = () => (typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `k${Date.now()}${Math.random().toString(36).slice(2)}`);
 
 /** The picture's content hash (what the server compares); name, size and date where hashing is unavailable. */
-async function fileFingerprint(file: File) {
-  try {
-    if (typeof crypto !== "undefined" && crypto.subtle) {
-      const digest = await crypto.subtle.digest("SHA-256", await file.arrayBuffer());
-      return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, "0")).join("");
-    }
-  } catch {
-    /* fall through */
-  }
-  return `${file.name}:${file.size}:${file.lastModified}`;
-}
 
 /**
  * Paying the platform by card transfer: the platform's card, the tariff's
@@ -104,11 +93,11 @@ export default function PlatformCardPay({
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }} data-testid="platform-card-pay">
-      <div style={{ borderRadius: 14, padding: 16, color: "#fff", background: "linear-gradient(135deg, #1F2937, #111827)" }}>
+      <div style={{ borderRadius: "var(--radius-lg)", padding: 16, color: "var(--on-ink)", background: "linear-gradient(135deg, var(--ink), var(--ink))" }}>
         <div style={{ fontSize: 12, opacity: 0.75 }}>{t("ct.cardNumber")}</div>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
           <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 19, fontWeight: 700, letterSpacing: 1 }}>{card.number}</div>
-          <button type="button" onClick={copy} style={{ background: "rgba(255,255,255,0.15)", color: "#fff", border: "none", borderRadius: 8, padding: "6px 12px", fontWeight: 700, fontSize: 12.5, cursor: "pointer" }}>
+          <button type="button" onClick={copy} style={{ background: "rgba(255,255,255,0.15)", color: "var(--on-ink)", border: "none", borderRadius: "var(--radius-xs)", padding: "6px 12px", fontWeight: 700, fontSize: 12.5, cursor: "pointer" }}>
             {copied ? `✓ ${t("ct.copied")}` : t("ct.copy")}
           </button>
         </div>
@@ -116,32 +105,32 @@ export default function PlatformCardPay({
         <div style={{ fontSize: 15, fontWeight: 700, textTransform: "uppercase" }}>{card.holder}</div>
       </div>
 
-      <div style={{ fontSize: 13, background: "#F8F8FF", border: "1px solid #E0E7FF", borderRadius: 10, padding: "10px 12px", lineHeight: 1.6 }}>
+      <div style={{ fontSize: 13, background: "var(--primary-soft)", border: "1px solid var(--primary-border)", borderRadius: "var(--radius-sm)", padding: "10px 12px", lineHeight: 1.6 }}>
         {t("pcp.amountLine").replace("{plan}", planName).replace("{month}", forMonth)} <b>{money(amount)} {t("common.sumUnit")}</b>
       </div>
 
-      <ol style={{ margin: 0, paddingLeft: 20, fontSize: 13, color: "#3A3D45", lineHeight: 1.6 }}>
+      <ol style={{ margin: 0, paddingLeft: 20, fontSize: 13, color: "var(--text-soft)", lineHeight: 1.6 }}>
         <li>{t("pcp.step1")}</li>
         <li>{t("ct.step2")}</li>
         <li>{t("pcp.step3")}</li>
       </ol>
 
-      <label style={{ display: "flex", alignItems: "center", gap: 12, border: `1.5px dashed ${file ? "#16794A" : "#C9C6BD"}`, background: file ? "#F0FBF4" : "#FAFAF7", borderRadius: 12, padding: 12, cursor: "pointer", position: "relative" }}>
+      <label style={{ display: "flex", alignItems: "center", gap: 12, border: `1.5px dashed ${file ? "var(--success)" : "var(--border-strong)"}`, background: file ? "var(--success-soft)" : "var(--surface-muted)", borderRadius: "var(--radius-md)", padding: 12, cursor: "pointer", position: "relative" }}>
         <input ref={fileRef} type="file" accept="image/*,application/pdf" onChange={(e) => setFile(e.target.files?.[0] ?? null)} style={{ position: "absolute", width: 1, height: 1, opacity: 0 }} />
         {preview ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={preview} alt="" style={{ width: 52, height: 52, objectFit: "cover", borderRadius: 8 }} />
+          <img src={preview} alt="" style={{ width: 52, height: 52, objectFit: "cover", borderRadius: "var(--radius-xs)" }} />
         ) : (
-          <span aria-hidden="true" style={{ width: 52, height: 52, borderRadius: 8, background: "#EEF0FF", display: "grid", placeItems: "center", fontSize: 22 }}>{file ? "📄" : "📎"}</span>
+          <span aria-hidden="true" style={{ width: 52, height: 52, borderRadius: "var(--radius-xs)", background: "var(--primary-soft)", display: "grid", placeItems: "center", fontSize: 22 }}>{file ? "📄" : "📎"}</span>
         )}
         <span style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
-          <span style={{ fontWeight: 700, color: file ? "#16794A" : ACCENT }}>{file ? t("ct.fileChosen") : t("ct.pickFile")}</span>
-          <span style={{ fontSize: 12, color: "#686B75", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{file ? file.name : t("ct.pickHint")}</span>
+          <span style={{ fontWeight: 700, color: file ? "var(--success)" : ACCENT }}>{file ? t("ct.fileChosen") : t("ct.pickFile")}</span>
+          <span style={{ fontSize: 12, color: "var(--text-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{file ? file.name : t("ct.pickHint")}</span>
         </span>
       </label>
       <input className="field-input" maxLength={500} value={note} onChange={(e) => setNote(e.target.value)} placeholder={t("pcp.noteHint")} aria-label={t("ct.note")} />
-      {error && <div role="alert" style={{ background: "#FDEBEC", color: "#B23A47", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: 10 }}>{error}</div>}
-      <button type="button" className="btn" onClick={submit} disabled={busy} style={{ background: ACCENT, color: "#fff", fontSize: 14, fontWeight: 700, padding: 12, borderRadius: 10, border: "none" }}>
+      {error && <div role="alert" style={{ background: "var(--danger-soft)", color: "var(--danger)", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: "var(--radius-sm)" }}>{error}</div>}
+      <button type="button" className="btn" onClick={submit} disabled={busy} style={{ background: ACCENT, color: "var(--on-ink)", fontSize: 14, fontWeight: 700, padding: 12, borderRadius: "var(--radius-sm)", border: "none" }}>
         {busy ? t("common.loading") : t("ct.send")}
       </button>
     </div>

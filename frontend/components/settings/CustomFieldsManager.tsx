@@ -16,18 +16,18 @@ import { useLanguage } from "@/lib/i18n-context";
 import type { TranslationKey } from "@/lib/i18n";
 import { activeDefs, fieldKeyFromLabel } from "@/lib/custom-fields";
 
-const ACCENT = "#4F46E5";
+const ACCENT = "var(--primary)";
 const MAX_ACTIVE = 30;
 const MAX_OPTIONS = 50;
 const KEY_RE = /^[a-z][a-z0-9_]{0,39}$/;
 const isChoice = (type: CustomFieldType) => type === "SELECT" || type === "MULTI_SELECT";
 const typeKey = (type: CustomFieldType) => `cf.type.${type}` as TranslationKey;
 
-const lbl: React.CSSProperties = { display: "block", fontSize: 12.5, fontWeight: 600, color: "#4A4E58", marginBottom: 6 };
-const small: React.CSSProperties = { background: "#fff", border: "1px solid #EAE8E2", color: "#181A1F", fontSize: 12, fontWeight: 700, padding: "6px 12px", borderRadius: 8, cursor: "pointer" };
+const lbl: React.CSSProperties = { display: "block", fontSize: 12.5, fontWeight: 600, color: "var(--text-soft)", marginBottom: 6 };
+const small: React.CSSProperties = { background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text)", fontSize: 12, fontWeight: 700, padding: "6px 12px", borderRadius: "var(--radius-xs)", cursor: "pointer" };
 const iconBtn: React.CSSProperties = { ...small, padding: "6px 9px", minWidth: 32 };
-const badge = (color: string, bg: string): React.CSSProperties => ({ fontSize: 11, fontWeight: 700, color, background: bg, padding: "2px 8px", borderRadius: 999, whiteSpace: "nowrap" });
-const fieldErr: React.CSSProperties = { marginTop: 5, fontSize: 12, fontWeight: 600, color: "#B91C1C" };
+const badge = (color: string, bg: string): React.CSSProperties => ({ fontSize: 11, fontWeight: 700, color, background: bg, padding: "2px 8px", borderRadius: "var(--radius-pill)", whiteSpace: "nowrap" });
+const fieldErr: React.CSSProperties = { marginTop: 5, fontSize: 12, fontWeight: 600, color: "var(--danger)" };
 
 type Defs = Record<CustomFieldEntity, CustomFieldDef[]>;
 
@@ -105,7 +105,7 @@ export default function CustomFieldsManager() {
       className="btn"
       aria-pressed={entity === e}
       onClick={() => { setEntity(e); setActionError(null); }}
-      style={{ border: "none", fontSize: 13, fontWeight: 700, padding: "8px 14px", borderRadius: 8, background: entity === e ? "#fff" : "transparent", color: entity === e ? "#181A1F" : "#686B75", boxShadow: entity === e ? "0 1px 3px rgba(18,19,26,0.08)" : "none" }}
+      style={{ border: "none", fontSize: 13, fontWeight: 700, padding: "8px 14px", borderRadius: "var(--radius-pill)", background: entity === e ? "var(--ink)" : "transparent", color: entity === e ? "var(--on-ink)" : "var(--text-muted)", boxShadow: "none" }}
     >
       {label}
     </button>
@@ -114,62 +114,62 @@ export default function CustomFieldsManager() {
   const full = active.length >= MAX_ACTIVE;
 
   return (
-    <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 22, maxWidth: 760, minWidth: 0 }}>
-      <h2 style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 700, fontSize: 15, marginBottom: 4 }}>{t("cf.title")}</h2>
-      <div style={{ fontSize: 12.5, color: "#686B75", marginBottom: 16, lineHeight: 1.5 }}>{t("cf.hint")}</div>
+    <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 22, maxWidth: 760, minWidth: 0 }}>
+      <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 15, marginBottom: 4 }}>{t("cf.title")}</h2>
+      <div style={{ fontSize: 12.5, color: "var(--text-muted)", marginBottom: 16, lineHeight: 1.5 }}>{t("cf.hint")}</div>
 
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap", marginBottom: 14 }}>
-        <div role="group" aria-label={t("cf.title")} style={{ display: "inline-flex", background: "#F2F1EC", padding: 4, borderRadius: 10, gap: 2 }}>
+        <div role="group" aria-label={t("cf.title")} style={{ display: "inline-flex", background: "var(--surface-muted)", padding: 4, borderRadius: "var(--radius-sm)", gap: 2 }}>
           {tabBtn("STUDENT", t("cf.entityStudent"))}
           {tabBtn("LEAD", t("cf.entityLead"))}
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-          {defs && <span style={{ fontSize: 12, color: "#686B75" }}>{t("cf.activeCount").replace("{n}", String(active.length)).replace("{max}", String(MAX_ACTIVE))}</span>}
+          {defs && <span style={{ fontSize: 12, color: "var(--text-muted)" }}>{t("cf.activeCount").replace("{n}", String(active.length)).replace("{max}", String(MAX_ACTIVE))}</span>}
           <button
             type="button"
             className="btn"
             disabled={!defs || full}
             onClick={() => setEditor({ def: null })}
-            style={{ background: ACCENT, color: "#fff", border: "none", fontSize: 13, fontWeight: 700, padding: "9px 16px", borderRadius: 9, opacity: !defs || full ? 0.5 : 1 }}
+            style={{ background: ACCENT, color: "var(--on-ink)", border: "none", fontSize: 13, fontWeight: 700, padding: "9px 16px", borderRadius: "var(--radius-sm)", opacity: !defs || full ? 0.5 : 1 }}
           >
             {t("cf.add")}
           </button>
         </div>
       </div>
-      {full && <div style={{ fontSize: 12.5, color: "#B45309", marginBottom: 12 }}>{t("cf.limitReached")}</div>}
-      {actionError && <div role="alert" style={{ background: "#FDEBEC", color: "#B23A47", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: 10, marginBottom: 12 }}>{actionError}</div>}
+      {full && <div style={{ fontSize: 12.5, color: "var(--warning)", marginBottom: 12 }}>{t("cf.limitReached")}</div>}
+      {actionError && <div role="alert" style={{ background: "var(--danger-soft)", color: "var(--danger)", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: "var(--radius-sm)", marginBottom: 12 }}>{actionError}</div>}
 
       {loadError && !defs ? (
-        <div role="alert" style={{ fontSize: 13, color: "#B23A47", display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+        <div role="alert" style={{ fontSize: 13, color: "var(--danger)", display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
           {t("cf.loadError")}
           <button type="button" style={small} onClick={reload}>{t("cf.retry")}</button>
         </div>
       ) : !defs ? (
-        <div style={{ fontSize: 13, color: "#686B75" }}>{t("common.loading")}</div>
+        <div style={{ fontSize: 13, color: "var(--text-muted)" }}>{t("common.loading")}</div>
       ) : active.length === 0 ? (
-        <div style={{ fontSize: 13, color: "#686B75", border: "1px dashed #EAE8E2", borderRadius: 12, padding: 16, textAlign: "center" }}>{t("cf.empty")}</div>
+        <div style={{ fontSize: 13, color: "var(--text-muted)", border: "1px dashed var(--border)", borderRadius: "var(--radius-md)", padding: 16, textAlign: "center" }}>{t("cf.empty")}</div>
       ) : (
         <ul aria-label={entity === "STUDENT" ? t("cf.entityStudent") : t("cf.entityLead")} style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 8 }}>
           {active.map((d, i) => (
-            <li key={d.id} style={{ border: "1px solid #EAE8E2", borderRadius: 12, padding: "12px 14px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+            <li key={d.id} style={{ border: "1px solid var(--border)", borderRadius: "var(--radius-md)", padding: "12px 14px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
               <div style={{ minWidth: 0, flex: "1 1 220px" }}>
                 <div style={{ fontWeight: 700, fontSize: 14, overflowWrap: "anywhere" }}>{d.label}</div>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 6, alignItems: "center" }}>
-                  <code style={{ fontSize: 11.5, color: "#686B75" }}>{d.key}</code>
-                  <span style={badge("#4F46E5", "#EEF0FF")}>{t(typeKey(d.fieldType))}</span>
-                  {d.required && <span style={badge("#B91C1C", "#FEE2E2")}>{t("cf.required")}</span>}
-                  {d.entityType === "STUDENT" && d.portalVisible && <span style={badge("#0F766E", "#CCFBF1")} title={t("cf.portalHint")}>{t("cf.portalBadge")}</span>}
+                  <code style={{ fontSize: 11.5, color: "var(--text-muted)" }}>{d.key}</code>
+                  <span style={badge("var(--primary)", "var(--primary-soft)")}>{t(typeKey(d.fieldType))}</span>
+                  {d.required && <span style={badge("var(--danger)", "var(--danger-soft)")}>{t("cf.required")}</span>}
+                  {d.entityType === "STUDENT" && d.portalVisible && <span style={badge("var(--teal)", "var(--teal-soft)")} title={t("cf.portalHint")}>{t("cf.portalBadge")}</span>}
                   {d.entityType === "LEAD" && d.studentFieldId && (
-                    <span style={badge("#92400E", "#FEF3C7")}>{t("cf.mappedTo").replace("{label}", labelOf(d.studentFieldId) ?? "?")}</span>
+                    <span style={badge("var(--warning)", "var(--warning-soft)")}>{t("cf.mappedTo").replace("{label}", labelOf(d.studentFieldId) ?? "?")}</span>
                   )}
-                  {isChoice(d.fieldType) && <span style={{ fontSize: 11.5, color: "#686B75" }}>{d.options.filter((o) => !o.archived).map((o) => o.label).join(", ")}</span>}
+                  {isChoice(d.fieldType) && <span style={{ fontSize: 11.5, color: "var(--text-muted)" }}>{d.options.filter((o) => !o.archived).map((o) => o.label).join(", ")}</span>}
                 </div>
               </div>
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                 <button type="button" style={{ ...iconBtn, opacity: i === 0 ? 0.4 : 1 }} disabled={busy || i === 0} onClick={() => move(i, -1)} aria-label={`${t("cf.moveUp")}: ${d.label}`} title={t("cf.moveUp")}>↑</button>
                 <button type="button" style={{ ...iconBtn, opacity: i === active.length - 1 ? 0.4 : 1 }} disabled={busy || i === active.length - 1} onClick={() => move(i, 1)} aria-label={`${t("cf.moveDown")}: ${d.label}`} title={t("cf.moveDown")}>↓</button>
                 <button type="button" style={small} disabled={busy} onClick={() => setEditor({ def: d })} aria-label={`${t("common.edit")}: ${d.label}`}>{t("common.edit")}</button>
-                <button type="button" style={{ ...small, color: "#B23A47" }} disabled={busy} onClick={() => archive(d)} aria-label={`${t("cf.archive")}: ${d.label}`}>{t("cf.archive")}</button>
+                <button type="button" style={{ ...small, color: "var(--danger)" }} disabled={busy} onClick={() => archive(d)} aria-label={`${t("cf.archive")}: ${d.label}`}>{t("cf.archive")}</button>
               </div>
             </li>
           ))}
@@ -178,10 +178,10 @@ export default function CustomFieldsManager() {
 
       {defs && archived.length > 0 && (
         <div style={{ marginTop: 18 }}>
-          <h3 style={{ fontSize: 12, fontWeight: 800, color: "#8A8D96", textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 8 }}>{t("cf.archivedTitle")}</h3>
+          <h3 style={{ fontSize: 12, fontWeight: 800, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 8 }}>{t("cf.archivedTitle")}</h3>
           <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 6 }}>
             {archived.map((d) => (
-              <li key={d.id} style={{ border: "1px dashed #EAE8E2", borderRadius: 12, padding: "10px 14px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap", color: "#686B75" }}>
+              <li key={d.id} style={{ border: "1px dashed var(--border)", borderRadius: "var(--radius-md)", padding: "10px 14px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap", color: "var(--text-muted)" }}>
                 <div style={{ minWidth: 0, flex: "1 1 200px" }}>
                   <span style={{ fontWeight: 700, overflowWrap: "anywhere" }}>{d.label}</span>{" "}
                   <span style={{ fontSize: 12 }}>· {t(typeKey(d.fieldType))}</span>
@@ -391,7 +391,7 @@ function FieldEditor({
   return (
     <Modal open onClose={onClose} title={editing ? t("cf.editField") : t("cf.newField")} width={600}>
       <form onSubmit={onSubmit} noValidate style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-        {errors.general && <div role="alert" style={{ background: "#FDEBEC", color: "#B23A47", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: 10 }}>{errors.general}</div>}
+        {errors.general && <div role="alert" style={{ background: "var(--danger-soft)", color: "var(--danger)", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: "var(--radius-sm)" }}>{errors.general}</div>}
 
         <div>
           <label htmlFor="cf-def-label" style={lbl}>{t("cf.label")} *</label>
@@ -413,7 +413,7 @@ function FieldEditor({
         </div>
 
         {editing ? (
-          <div style={{ fontSize: 12.5, color: "#686B75" }}>{t("cf.key")}: <code>{def.key}</code></div>
+          <div style={{ fontSize: 12.5, color: "var(--text-muted)" }}>{t("cf.key")}: <code>{def.key}</code></div>
         ) : (
           <div>
             <label htmlFor="cf-def-key" style={lbl}>{t("cf.key")}</label>
@@ -429,7 +429,7 @@ function FieldEditor({
               aria-describedby={`cf-def-key-hint${errors.key ? " cf-def-key-err" : ""}`}
               onChange={(e) => { setKey(e.target.value); setKeyTouched(true); setErrors((x) => ({ ...x, key: undefined })); }}
             />
-            <div id="cf-def-key-hint" style={{ marginTop: 5, fontSize: 12, color: "#686B75" }}>{t("cf.keyHint")}</div>
+            <div id="cf-def-key-hint" style={{ marginTop: 5, fontSize: 12, color: "var(--text-muted)" }}>{t("cf.keyHint")}</div>
             {errors.key && <div id="cf-def-key-err" role="alert" style={fieldErr}>{errors.key}</div>}
           </div>
         )}
@@ -442,7 +442,7 @@ function FieldEditor({
             ariaLabel={`${t("cf.type")}: ${t(typeKey(fieldType))}`}
             options={CUSTOM_FIELD_TYPES.map((x) => ({ value: x, label: t(typeKey(x)) }))}
           />
-          {editing && <div style={{ marginTop: 5, fontSize: 12, color: "#686B75" }}>{t("cf.typeChangeHint")}</div>}
+          {editing && <div style={{ marginTop: 5, fontSize: 12, color: "var(--text-muted)" }}>{t("cf.typeChangeHint")}</div>}
           {errors.type && <div role="alert" style={fieldErr}>{errors.type}</div>}
         </div>
 
@@ -450,7 +450,7 @@ function FieldEditor({
           <input type="checkbox" checked={required} onChange={(e) => setRequired(e.target.checked)} style={{ marginTop: 3, accentColor: ACCENT }} />
           <span>
             <span style={{ fontWeight: 700 }}>{t("cf.required")}</span>
-            <span style={{ display: "block", fontSize: 12, color: "#686B75", marginTop: 2 }}>{t("cf.requiredHint")}</span>
+            <span style={{ display: "block", fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>{t("cf.requiredHint")}</span>
           </span>
         </label>
 
@@ -459,14 +459,14 @@ function FieldEditor({
             <input type="checkbox" checked={portalVisible} onChange={(e) => setPortalVisible(e.target.checked)} style={{ marginTop: 3, accentColor: ACCENT }} />
             <span>
               <span style={{ fontWeight: 700 }}>{t("cf.portalVisible")}</span>
-              <span style={{ display: "block", fontSize: 12, color: "#686B75", marginTop: 2 }}>{t("cf.portalHint")}</span>
+              <span style={{ display: "block", fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>{t("cf.portalHint")}</span>
             </span>
           </label>
         )}
 
         {choice && (
-          <fieldset style={{ border: "1px solid #EAE8E2", borderRadius: 12, padding: "12px 14px", margin: 0, minWidth: 0 }}>
-            <legend style={{ fontSize: 12.5, fontWeight: 700, color: "#4A4E58", padding: "0 6px" }}>{t("cf.options")}</legend>
+          <fieldset style={{ border: "1px solid var(--border)", borderRadius: "var(--radius-md)", padding: "12px 14px", margin: 0, minWidth: 0 }}>
+            <legend style={{ fontSize: 12.5, fontWeight: 700, color: "var(--text-soft)", padding: "0 6px" }}>{t("cf.options")}</legend>
             <ol style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 8 }}>
               {options.map((o, i) => {
                 const name = t("cf.optionN").replace("{n}", String(i + 1));
@@ -483,7 +483,7 @@ function FieldEditor({
                     />
                     <button type="button" style={{ ...iconBtn, opacity: i === 0 ? 0.4 : 1 }} disabled={i === 0} onClick={() => moveOption(i, -1)} aria-label={`${t("cf.moveUp")}: ${name}`}>↑</button>
                     <button type="button" style={{ ...iconBtn, opacity: i === options.length - 1 ? 0.4 : 1 }} disabled={i === options.length - 1} onClick={() => moveOption(i, 1)} aria-label={`${t("cf.moveDown")}: ${name}`}>↓</button>
-                    <button type="button" style={{ ...iconBtn, color: "#B23A47" }} onClick={() => removeOption(i)} aria-label={`${t("cf.removeOption")}: ${name}`}>✕</button>
+                    <button type="button" style={{ ...iconBtn, color: "var(--danger)" }} onClick={() => removeOption(i)} aria-label={`${t("cf.removeOption")}: ${name}`}>✕</button>
                   </li>
                 );
               })}
@@ -491,16 +491,16 @@ function FieldEditor({
             <button type="button" style={{ ...small, marginTop: 10 }} disabled={options.length >= MAX_OPTIONS} onClick={() => setOptions((list) => [...list, newRow()])}>
               {t("cf.addOption")}
             </button>
-            {editing && <div style={{ marginTop: 8, fontSize: 12, color: "#686B75" }}>{t("cf.optionRemoveHint")}</div>}
+            {editing && <div style={{ marginTop: 8, fontSize: 12, color: "var(--text-muted)" }}>{t("cf.optionRemoveHint")}</div>}
             {errors.options && <div role="alert" style={fieldErr}>{errors.options}</div>}
             {archivedOpts.length > 0 && (
               <div style={{ marginTop: 12 }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: "#8A8D96", marginBottom: 6 }}>{t("cf.archivedOptions")}</div>
+                <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-muted)", marginBottom: 6 }}>{t("cf.archivedOptions")}</div>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                   {archivedOpts.map((o) => (
-                    <span key={o.id} style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, color: "#686B75", border: "1px dashed #D9D6CE", borderRadius: 999, padding: "3px 4px 3px 10px" }}>
+                    <span key={o.id} style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, color: "var(--text-muted)", border: "1px dashed var(--border-strong)", borderRadius: "var(--radius-pill)", padding: "3px 4px 3px 10px" }}>
                       {o.label}
-                      <button type="button" style={{ ...small, padding: "2px 8px", borderRadius: 999 }} onClick={() => restoreOption(o.id)} aria-label={`${t("cf.restoreOption")}: ${o.label}`}>
+                      <button type="button" style={{ ...small, padding: "2px 8px", borderRadius: "var(--radius-pill)" }} onClick={() => restoreOption(o.id)} aria-label={`${t("cf.restoreOption")}: ${o.label}`}>
                         {t("cf.restoreOption")}
                       </button>
                     </span>
@@ -512,10 +512,10 @@ function FieldEditor({
         )}
 
         {entity === "LEAD" && (
-          <div style={{ border: "1px solid #EAE8E2", borderRadius: 12, padding: "12px 14px", minWidth: 0 }}>
+          <div style={{ border: "1px solid var(--border)", borderRadius: "var(--radius-md)", padding: "12px 14px", minWidth: 0 }}>
             <div id="cf-def-target-label" style={lbl}>{t("cf.carryTo")}</div>
             {targets.length === 0 ? (
-              <div style={{ fontSize: 12.5, color: "#686B75" }}>{t("cf.noTargetOfType")}</div>
+              <div style={{ fontSize: 12.5, color: "var(--text-muted)" }}>{t("cf.noTargetOfType")}</div>
             ) : (
               <Select
                 value={targetDef ? target : ""}
@@ -524,11 +524,11 @@ function FieldEditor({
                 options={[{ value: "", label: t("cf.carryNone") }, ...targets.map((d) => ({ value: d.id, label: d.archivedAt ? `${d.label} ${t("cf.archivedSuffix")}` : d.label }))]}
               />
             )}
-            <div style={{ marginTop: 6, fontSize: 12, color: "#686B75", lineHeight: 1.5 }}>{t("cf.carryHint")}</div>
+            <div style={{ marginTop: 6, fontSize: 12, color: "var(--text-muted)", lineHeight: 1.5 }}>{t("cf.carryHint")}</div>
             {choice && targetDef && (
               <div style={{ marginTop: 12 }}>
                 <div style={{ ...lbl, marginBottom: 4 }}>{t("cf.optionMap")}</div>
-                <div style={{ fontSize: 12, color: "#686B75", marginBottom: 8 }}>{t("cf.optionMapHint")}</div>
+                <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 8 }}>{t("cf.optionMapHint")}</div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   {options.map((o, i) => {
                     const name = o.label.trim() || t("cf.optionN").replace("{n}", String(i + 1));
@@ -553,10 +553,10 @@ function FieldEditor({
         )}
 
         <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 4, flexWrap: "wrap" }}>
-          <button type="button" className="btn" onClick={onClose} style={{ background: "#F2F1EC", color: "#181A1F", border: "none", fontSize: 13.5, fontWeight: 700, padding: "11px 18px", borderRadius: 10 }}>
+          <button type="button" className="btn" onClick={onClose} style={{ background: "var(--surface-muted)", color: "var(--text)", border: "none", fontSize: 13.5, fontWeight: 700, padding: "11px 18px", borderRadius: "var(--radius-sm)" }}>
             {t("common.cancel")}
           </button>
-          <button type="submit" className="btn" disabled={saving} style={{ background: ACCENT, color: "#fff", border: "none", fontSize: 13.5, fontWeight: 700, padding: "11px 18px", borderRadius: 10, opacity: saving ? 0.7 : 1 }}>
+          <button type="submit" className="btn" disabled={saving} style={{ background: ACCENT, color: "var(--on-ink)", border: "none", fontSize: 13.5, fontWeight: 700, padding: "11px 18px", borderRadius: "var(--radius-sm)", opacity: saving ? 0.7 : 1 }}>
             {saving ? t("common.saving") : t("common.save")}
           </button>
         </div>

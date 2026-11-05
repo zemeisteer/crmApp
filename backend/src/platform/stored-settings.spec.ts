@@ -1,3 +1,5 @@
+import { readFileSync } from 'fs';
+import { join } from 'path';
 import { randomBytes } from 'crypto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { SettingsCrypto } from './settings-crypto';
@@ -94,5 +96,16 @@ describe('stored settings over the environment', () => {
     mod.applySettings(values);
     expect(process.env.JWT_SECRET).toBe(jwt);
     expect(process.env.GEMINI_API_KEY).toBe('real');
+  });
+});
+
+// A setting the production stack does not pass on is silently empty on the
+// server, whatever its .env says.
+describe('docker-compose.prod.yml', () => {
+  it('passes on every integration key to the backend', async () => {
+    const { INTEGRATIONS } = await import('./stored-settings');
+    const compose = readFileSync(join(__dirname, '..', '..', '..', 'docker-compose.prod.yml'), 'utf8');
+    const missing = INTEGRATIONS.flatMap((i) => i.keys.map((k) => k.name)).filter((name) => !new RegExp(`^ {6}${name}:`, 'm').test(compose));
+    expect(missing).toEqual([]);
   });
 });

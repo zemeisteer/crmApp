@@ -8,7 +8,7 @@ import { usePopoverPlacement, useEscapeToClose } from "@/lib/use-popover";
 import type { TranslationKey } from "@/lib/i18n";
 import { formatDate } from "@/lib/format-date";
 
-const ACCENT = "#4F46E5";
+const ACCENT = "var(--primary)";
 const MONTH_KEYS: TranslationKey[] = [
   "month.jan", "month.feb", "month.mar", "month.apr", "month.may", "month.jun",
   "month.jul", "month.aug", "month.sep", "month.oct", "month.nov", "month.dec",
@@ -114,8 +114,8 @@ export default function DatePicker({
         className="field-input"
         style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, cursor: "pointer", textAlign: "left", width: "100%", minHeight: 44 }}
       >
-        <span style={{ color: displayLabel ? "#181A1F" : "#686B75" }}>{displayLabel || effectivePlaceholder}</span>
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#686B75" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+        <span style={{ color: displayLabel ? "var(--text)" : "var(--text-muted)" }}>{displayLabel || effectivePlaceholder}</span>
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
           <rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" />
         </svg>
       </button>
@@ -129,9 +129,9 @@ export default function DatePicker({
             width: 290,
             maxWidth: "calc(100vw - 32px)",
             zIndex: 110,
-            background: "#fff",
-            border: "1px solid #EAE8E2",
-            borderRadius: 14,
+            background: "var(--surface)",
+            border: "1px solid var(--border)",
+            borderRadius: "var(--radius-lg)",
             padding: 14,
             boxShadow: "0 14px 36px rgba(18,19,26,0.14), 0 2px 8px rgba(18,19,26,0.06)",
             ...place,
@@ -148,7 +148,7 @@ export default function DatePicker({
                   setViewDate(new Date(year - 10, month, 1));
                 }
               }}
-              style={{ background: "none", border: "none", cursor: "pointer", padding: 5, color: "#4A4E58", borderRadius: 6 }}
+              style={{ background: "none", border: "none", cursor: "pointer", padding: 5, color: "var(--text-soft)", borderRadius: "var(--radius-xs)" }}
             >
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
             </button>
@@ -161,11 +161,11 @@ export default function DatePicker({
                 style={{
                   fontSize: 12.5,
                   fontWeight: 700,
-                  border: `1px solid ${viewMode === "months" ? ACCENT : "#EAE8E2"}`,
-                  borderRadius: 8,
+                  border: `1px solid ${viewMode === "months" ? ACCENT : "var(--border)"}`,
+                  borderRadius: "var(--radius-xs)",
                   padding: "5px 10px",
-                  background: viewMode === "months" ? "#EEF0FF" : "#F7F6F3",
-                  color: viewMode === "months" ? ACCENT : "#181A1F",
+                  background: viewMode === "months" ? "var(--primary-soft)" : "var(--surface-muted)",
+                  color: viewMode === "months" ? ACCENT : "var(--text)",
                   cursor: "pointer",
                   display: "inline-flex",
                   alignItems: "center",
@@ -184,11 +184,11 @@ export default function DatePicker({
                 style={{
                   fontSize: 12.5,
                   fontWeight: 700,
-                  border: `1px solid ${viewMode === "years" ? ACCENT : "#EAE8E2"}`,
-                  borderRadius: 8,
+                  border: `1px solid ${viewMode === "years" ? ACCENT : "var(--border)"}`,
+                  borderRadius: "var(--radius-xs)",
                   padding: "5px 10px",
-                  background: viewMode === "years" ? "#EEF0FF" : "#F7F6F3",
-                  color: viewMode === "years" ? ACCENT : "#181A1F",
+                  background: viewMode === "years" ? "var(--primary-soft)" : "var(--surface-muted)",
+                  color: viewMode === "years" ? ACCENT : "var(--text)",
                   cursor: "pointer",
                   display: "inline-flex",
                   alignItems: "center",
@@ -210,7 +210,7 @@ export default function DatePicker({
                   setViewDate(new Date(year + 10, month, 1));
                 }
               }}
-              style={{ background: "none", border: "none", cursor: "pointer", padding: 5, color: "#4A4E58", borderRadius: 6 }}
+              style={{ background: "none", border: "none", cursor: "pointer", padding: 5, color: "var(--text-soft)", borderRadius: "var(--radius-xs)" }}
             >
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6" /></svg>
             </button>
@@ -231,10 +231,10 @@ export default function DatePicker({
                     }}
                     style={{
                       padding: "10px 4px",
-                      borderRadius: 8,
+                      borderRadius: "var(--radius-xs)",
                       border: "none",
-                      background: isCurr ? ACCENT : "#F7F6F3",
-                      color: isCurr ? "#fff" : "#181A1F",
+                      background: isCurr ? ACCENT : "var(--surface-muted)",
+                      color: isCurr ? "var(--on-ink)" : "var(--text)",
                       fontSize: 12,
                       fontWeight: 700,
                       cursor: "pointer",
@@ -263,10 +263,10 @@ export default function DatePicker({
                     }}
                     style={{
                       padding: "8px 4px",
-                      borderRadius: 8,
+                      borderRadius: "var(--radius-xs)",
                       border: "none",
-                      background: isCurr ? ACCENT : "#F7F6F3",
-                      color: isCurr ? "#fff" : "#181A1F",
+                      background: isCurr ? ACCENT : "var(--surface-muted)",
+                      color: isCurr ? "var(--on-ink)" : "var(--text)",
                       fontSize: 12.5,
                       fontWeight: 700,
                       cursor: "pointer",
@@ -285,7 +285,7 @@ export default function DatePicker({
             <>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 2, marginBottom: 4 }}>
                 {WEEKDAY_KEYS.map((wk) => (
-                  <div key={wk} style={{ fontSize: 10.5, color: "#686B75", textAlign: "center", fontWeight: 700, padding: "4px 0" }}>
+                  <div key={wk} style={{ fontSize: 10.5, color: "var(--text-muted)", textAlign: "center", fontWeight: 700, padding: "4px 0" }}>
                     {t(wk)}
                   </div>
                 ))}
@@ -304,10 +304,10 @@ export default function DatePicker({
                       style={{
                         width: 34,
                         height: 34,
-                        borderRadius: 8,
+                        borderRadius: "var(--radius-xs)",
                         border: isToday && !isSelected ? `1.5px solid ${ACCENT}` : "none",
                         background: isSelected ? ACCENT : "transparent",
-                        color: isSelected ? "#fff" : "#181A1F",
+                        color: isSelected ? "var(--on-ink)" : "var(--text)",
                         fontSize: 12.5,
                         fontWeight: isSelected ? 800 : 600,
                         cursor: "pointer",
@@ -332,13 +332,13 @@ export default function DatePicker({
             style={{
               marginTop: 10,
               width: "100%",
-              background: "#F2F1EC",
+              background: "var(--surface-muted)",
               border: "none",
-              borderRadius: 8,
+              borderRadius: "var(--radius-xs)",
               padding: "8px 0",
               fontSize: 12,
               fontWeight: 700,
-              color: "#4A4E58",
+              color: "var(--text-soft)",
               cursor: "pointer",
             }}
           >

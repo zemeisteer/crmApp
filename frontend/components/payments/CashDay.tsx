@@ -8,9 +8,9 @@ import { centerWallClock } from "@/lib/center-time";
 import { useLanguage } from "@/lib/i18n-context";
 import { useCenterClock } from "@/lib/use-center-clock";
 
-const ACCENT = "#4F46E5";
+const ACCENT = "var(--primary)";
 const money = (n: number) => new Intl.NumberFormat("uz-UZ").format(n);
-const card: React.CSSProperties = { background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 18 };
+const card: React.CSSProperties = { background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 18 };
 const METHOD_LABEL: Record<string, string> = { CLICK: "Click", PAYME: "Payme", BANK_TRANSFER: "Bank" };
 
 // The cash desk for one of the center's days: what came in by method and by
@@ -79,20 +79,20 @@ export default function CashDayPanel({ canClose }: { canClose: boolean }) {
     return d ? `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}` : "";
   };
   const diffLabel = (n: number) => (n === 0 ? t("cash.exact") : n < 0 ? t("cash.short") : t("cash.over"));
-  const diffColor = (n: number) => (n === 0 ? "#16794A" : "#B23A47");
+  const diffColor = (n: number) => (n === 0 ? "var(--success)" : "var(--danger)");
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-        <span style={{ fontSize: 12.5, fontWeight: 700, color: "#4A4E58" }}>{t("cash.day")}</span>
+        <span style={{ fontSize: 12.5, fontWeight: 700, color: "var(--text-soft)" }}>{t("cash.day")}</span>
         <DatePicker value={date} onChange={(v) => v && setDate(v)} style={{ width: 200 }} />
-        <span style={{ fontSize: 12, color: "#686B75" }}>{clock.tz}</span>
+        <span style={{ fontSize: 12, color: "var(--text-muted)" }}>{clock.tz}</span>
       </div>
 
       {error !== null ? (
         <LoadError message={error} onRetry={load} />
       ) : !data || data.date !== date ? (
-        <div style={{ color: "#686B75", fontSize: 14 }}>{t("common.loading")}</div>
+        <div style={{ color: "var(--text-muted)", fontSize: 14 }}>{t("common.loading")}</div>
       ) : (
         <>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(200px, 100%), 1fr))", gap: 14 }}>
@@ -116,16 +116,16 @@ export default function CashDayPanel({ canClose }: { canClose: boolean }) {
                 <div style={{ color: diffColor(data.closed.difference), fontWeight: 800 }}>
                   {t("cash.difference")}: {data.closed.difference > 0 ? "+" : ""}{money(data.closed.difference)} ({diffLabel(data.closed.difference)})
                 </div>
-                {data.closed.note && <div style={{ color: "#4A4E58" }}>“{data.closed.note}”</div>}
+                {data.closed.note && <div style={{ color: "var(--text-soft)" }}>“{data.closed.note}”</div>}
                 {data.closed.changedAfterClosing !== 0 && (
-                  <div role="alert" style={{ background: "#FEF3C7", color: "#B45309", borderRadius: 10, padding: "8px 12px", fontWeight: 700 }}>
+                  <div role="alert" style={{ background: "var(--warning-soft)", color: "var(--warning)", borderRadius: "var(--radius-sm)", padding: "8px 12px", fontWeight: 700 }}>
                     {t("cash.changedAfter").replace("{sum}", money(data.closed.changedAfterClosing))}
                   </div>
                 )}
               </div>
             ) : canClose ? (
               <form onSubmit={onClose} style={{ display: "flex", flexDirection: "column", gap: 10, maxWidth: 420 }}>
-                <label style={{ fontSize: 12.5, fontWeight: 700, color: "#4A4E58" }}>
+                <label style={{ fontSize: 12.5, fontWeight: 700, color: "var(--text-soft)" }}>
                   {t("cash.counted")}
                   <input className="field-input" inputMode="numeric" value={counted} onChange={(e) => setCounted(e.target.value.replace(/\D/g, ""))} style={{ marginTop: 6 }} />
                 </label>
@@ -135,21 +135,21 @@ export default function CashDayPanel({ canClose }: { canClose: boolean }) {
                   </div>
                 )}
                 <input className="field-input" placeholder={t("cash.notePh")} aria-label={t("cash.notePh")} value={note} onChange={(e) => setNote(e.target.value)} maxLength={500} />
-                {closeError && <div role="alert" style={{ color: "#B23A47", fontSize: 13, fontWeight: 600 }}>{closeError}</div>}
-                <button type="submit" className="btn" disabled={closing} style={{ background: ACCENT, color: "#fff", border: "none", fontWeight: 700, fontSize: 13.5, padding: "10px 16px", borderRadius: 10, alignSelf: "flex-start" }}>
+                {closeError && <div role="alert" style={{ color: "var(--danger)", fontSize: 13, fontWeight: 600 }}>{closeError}</div>}
+                <button type="submit" className="btn" disabled={closing} style={{ background: ACCENT, color: "var(--on-ink)", border: "none", fontWeight: 700, fontSize: 13.5, padding: "10px 16px", borderRadius: "var(--radius-sm)", alignSelf: "flex-start" }}>
                   {closing ? t("common.saving") : t("cash.closeBtn")}
                 </button>
-                <div style={{ fontSize: 11.5, color: "#686B75" }}>{t("cash.closeHint")}</div>
+                <div style={{ fontSize: 11.5, color: "var(--text-muted)" }}>{t("cash.closeHint")}</div>
               </form>
             ) : (
-              <div style={{ fontSize: 13, color: "#686B75" }}>{t("cash.closeHint")}</div>
+              <div style={{ fontSize: 13, color: "var(--text-muted)" }}>{t("cash.closeHint")}</div>
             )}
           </section>
 
           <section style={card}>
             <div style={{ fontSize: 14, fontWeight: 800, marginBottom: 8 }}>{t("cash.byCashier")}</div>
             {data.byCashier.length === 0 ? (
-              <div style={{ fontSize: 13, color: "#686B75" }}>{t("cash.none")}</div>
+              <div style={{ fontSize: 13, color: "var(--text-muted)" }}>{t("cash.none")}</div>
             ) : (
               <div style={{ overflowX: "auto" }}>
                 <table>
@@ -174,7 +174,7 @@ export default function CashDayPanel({ canClose }: { canClose: boolean }) {
           <section style={card}>
             <div style={{ fontSize: 14, fontWeight: 800, marginBottom: 8 }}>{t("cash.payments")}</div>
             {data.payments.length === 0 ? (
-              <div style={{ fontSize: 13, color: "#686B75" }}>{t("cash.none")}</div>
+              <div style={{ fontSize: 13, color: "var(--text-muted)" }}>{t("cash.none")}</div>
             ) : (
               <div style={{ overflowX: "auto" }}>
                 <table>
@@ -185,7 +185,7 @@ export default function CashDayPanel({ canClose }: { canClose: boolean }) {
                         <td style={{ fontWeight: 600 }}>{p.studentName}</td>
                         <td style={{ fontWeight: 700 }}>{money(p.amount)}</td>
                         <td>{p.method === "CASH" ? t("cash.cash") : METHOD_LABEL[p.method] ?? p.method}</td>
-                        <td style={{ color: "#686B75" }}>{p.recordedByName ?? t("cash.unknownCashier")}</td>
+                        <td style={{ color: "var(--text-muted)" }}>{p.recordedByName ?? t("cash.unknownCashier")}</td>
                         <td>{p.afterClosing && <span className="badge badge-warning">{t("cash.afterClosing")}</span>}</td>
                       </tr>
                     ))}
@@ -198,7 +198,7 @@ export default function CashDayPanel({ canClose }: { canClose: boolean }) {
           <section style={card}>
             <div style={{ fontSize: 14, fontWeight: 800, marginBottom: 8 }}>{t("cash.expenses")}</div>
             {data.expenses.length === 0 ? (
-              <div style={{ fontSize: 13, color: "#686B75" }}>{t("cash.none")}</div>
+              <div style={{ fontSize: 13, color: "var(--text-muted)" }}>{t("cash.none")}</div>
             ) : (
               <div style={{ overflowX: "auto" }}>
                 <table>
@@ -229,7 +229,7 @@ export default function CashDayPanel({ canClose }: { canClose: boolean }) {
                         <td>{money(h.expectedCash)}</td>
                         <td>{money(h.countedCash)}</td>
                         <td style={{ color: diffColor(h.difference), fontWeight: 700 }}>{h.difference > 0 ? "+" : ""}{money(h.difference)}</td>
-                        <td style={{ color: "#686B75" }}>{h.closedBy ?? "—"}</td>
+                        <td style={{ color: "var(--text-muted)" }}>{h.closedBy ?? "—"}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -245,10 +245,10 @@ export default function CashDayPanel({ canClose }: { canClose: boolean }) {
 
 function Tile({ label, value, sub, danger, accent }: { label: string; value: string; sub?: string; danger?: boolean; accent?: boolean }) {
   return (
-    <div style={{ background: accent ? "#ECEBFB" : "#fff", border: `1px solid ${accent ? "#D7D3F8" : "#EAE8E2"}`, borderRadius: 14, padding: 16 }}>
-      <div style={{ fontSize: 12, color: accent ? ACCENT : "#686B75" }}>{label}</div>
-      <div style={{ fontSize: 22, fontWeight: 800, fontFamily: "'Manrope', sans-serif", marginTop: 4, color: danger ? "#B23A47" : accent ? ACCENT : "#181A1F" }}>{value}</div>
-      {sub && <div style={{ fontSize: 11.5, color: "#686B75", marginTop: 2 }}>{sub}</div>}
+    <div style={{ background: accent ? "var(--primary-soft)" : "var(--surface)", border: `1px solid ${accent ? "var(--primary-border)" : "var(--border)"}`, borderRadius: "var(--radius-lg)", padding: 16 }}>
+      <div style={{ fontSize: 12, color: accent ? ACCENT : "var(--text-muted)" }}>{label}</div>
+      <div style={{ fontSize: 22, fontWeight: 800, fontFamily: "var(--font-display)", marginTop: 4, color: danger ? "var(--danger)" : accent ? ACCENT : "var(--text)" }}>{value}</div>
+      {sub && <div style={{ fontSize: 11.5, color: "var(--text-muted)", marginTop: 2 }}>{sub}</div>}
     </div>
   );
 }

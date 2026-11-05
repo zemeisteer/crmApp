@@ -5,7 +5,7 @@ import Modal from "@/components/Modal";
 import { scheduleApi, type ScheduleItem } from "@/lib/api";
 import { useLanguage } from "@/lib/i18n-context";
 
-const ACCENT = "#4F46E5";
+const ACCENT = "var(--primary)";
 
 type DayState = "checking" | "free" | "busy" | "unknown";
 
@@ -56,16 +56,16 @@ export default function MoveLessonDialog({
   }, [id, groupId, teacherId, roomId, startTime, endTime, dayKey, current]);
 
   const chip = (state: DayState | "current"): { text: string; bg: string; fg: string } =>
-    state === "current" ? { text: t("sch.move.currentDay"), bg: "#F2F1EC", fg: "#686B75" }
-      : state === "free" ? { text: t("sch.move.free"), bg: "#E9F8EF", fg: "#16794A" }
-      : state === "busy" ? { text: t("sch.move.busy"), bg: "#FDEBEC", fg: "#B23A47" }
-      : state === "unknown" ? { text: "?", bg: "#F2F1EC", fg: "#686B75" }
-      : { text: "…", bg: "#F2F1EC", fg: "#686B75" };
+    state === "current" ? { text: t("sch.move.currentDay"), bg: "var(--surface-muted)", fg: "var(--text-muted)" }
+      : state === "free" ? { text: t("sch.move.free"), bg: "var(--success-soft)", fg: "var(--success)" }
+      : state === "busy" ? { text: t("sch.move.busy"), bg: "var(--danger-soft)", fg: "var(--danger)" }
+      : state === "unknown" ? { text: "?", bg: "var(--surface-muted)", fg: "var(--text-muted)" }
+      : { text: "…", bg: "var(--surface-muted)", fg: "var(--text-muted)" };
 
   return (
     <Modal open onClose={onClose} title={t("sch.move.dialogTitle")} width={420}>
-      <div style={{ fontSize: 13, color: "#686B75", marginBottom: 12, lineHeight: 1.5 }}>
-        <b style={{ color: "#181A1F" }}>{item.group?.name}</b> · {item.startTime}–{item.endTime}
+      <div style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 12, lineHeight: 1.5 }}>
+        <b style={{ color: "var(--text)" }}>{item.group?.name}</b> · {item.startTime}–{item.endTime}
         <div>{t("sch.move.pickDay")}</div>
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -81,21 +81,21 @@ export default function MoveLessonDialog({
               style={{
                 display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10,
                 // A full-width row, tall enough for a thumb.
-                minHeight: 48, padding: "10px 14px", borderRadius: 12, textAlign: "left",
-                border: `1px solid ${states[day] === "free" ? "#BFE6CF" : "#EAE8E2"}`,
-                background: isCurrent ? "#FAF9F6" : "#fff",
-                color: isCurrent ? "#A9ABB3" : "#181A1F",
+                minHeight: 48, padding: "10px 14px", borderRadius: "var(--radius-md)", textAlign: "left",
+                border: `1px solid ${states[day] === "free" ? "var(--success-border)" : "var(--border)"}`,
+                background: isCurrent ? "var(--surface-muted)" : "var(--surface)",
+                color: isCurrent ? "var(--text-faint)" : "var(--text)",
                 cursor: isCurrent ? "default" : "pointer",
                 fontSize: 14.5, fontWeight: 700,
               }}
             >
               <span>{label}</span>
-              <span style={{ fontSize: 11.5, fontWeight: 800, padding: "3px 10px", borderRadius: 100, background: c.bg, color: c.fg, whiteSpace: "nowrap" }}>{c.text}</span>
+              <span style={{ fontSize: 11.5, fontWeight: 800, padding: "3px 10px", borderRadius: "var(--radius-pill)", background: c.bg, color: c.fg, whiteSpace: "nowrap" }}>{c.text}</span>
             </button>
           );
         })}
       </div>
-      <div style={{ fontSize: 12, color: "#686B75", marginTop: 12, lineHeight: 1.5 }}>
+      <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 12, lineHeight: 1.5 }}>
         <span style={{ color: ACCENT, fontWeight: 700 }}>{t("sch.move.busy")}</span>: {t("sch.move.busyHint")}
       </div>
     </Modal>

@@ -73,7 +73,7 @@ export default function RosterTab({ canMark }: { canMark: boolean }) {
       ) : (
         days.map((d) => (
           <section key={d} aria-label={dayLabel(d, lang, t)} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            <h3 style={{ fontSize: 13, fontWeight: 800, color: d === today ? "#4F46E5" : "#4A4E58", textTransform: "uppercase", letterSpacing: "0.03em", margin: "4px 2px 0" }}>
+            <h3 style={{ fontSize: 13, fontWeight: 800, color: d === today ? "var(--primary)" : "var(--text-soft)", textTransform: "uppercase", letterSpacing: "0.03em", margin: "4px 2px 0" }}>
               {dayLabel(d, lang, t)}
               {d === today ? ` · ${t("mk.today")}` : ""}
             </h3>
@@ -82,9 +82,9 @@ export default function RosterTab({ canMark }: { canMark: boolean }) {
                 const st = BOOKING_STATUS[r.status];
                 return (
                   <li key={r.id} aria-label={`${r.student.fullName} · ${r.startTime}`} style={{ ...card, padding: "12px 14px", display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-                    <div style={{ width: 58, flexShrink: 0, textAlign: "center", borderRight: "1px solid #EAE8E2", paddingRight: 10 }}>
-                      <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 800, fontSize: 15 }}>{r.startTime}</div>
-                      <div style={{ fontSize: 12, color: "#686B75" }}>{r.endTime}</div>
+                    <div style={{ width: 58, flexShrink: 0, textAlign: "center", borderRight: "1px solid var(--border)", paddingRight: 10 }}>
+                      <div style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 15 }}>{r.startTime}</div>
+                      <div style={{ fontSize: 12, color: "var(--text-muted)" }}>{r.endTime}</div>
                     </div>
                     <div style={{ flex: "1 1 160px", minWidth: 0 }}>
                       <div style={{ fontSize: 14, fontWeight: 700, overflowWrap: "anywhere" }}>{r.student.fullName}</div>
@@ -99,7 +99,7 @@ export default function RosterTab({ canMark }: { canMark: boolean }) {
                           disabled={busyId === r.id}
                           onClick={() => mark(r, "ATTENDED")}
                           aria-label={`${t("mk.attended")}: ${r.student.fullName}`}
-                          style={{ background: "#16794A", color: "#fff", border: "none", fontSize: 12.5, fontWeight: 700, padding: "7px 12px", borderRadius: 8 }}
+                          style={{ background: "var(--success)", color: "var(--on-ink)", border: "none", fontSize: 12.5, fontWeight: 700, padding: "7px 12px", borderRadius: "var(--radius-xs)" }}
                         >
                           {t("mk.attended")}
                         </button>
@@ -111,7 +111,7 @@ export default function RosterTab({ canMark }: { canMark: boolean }) {
                             if (window.confirm(t("mk.confirmMissed"))) void mark(r, "MISSED");
                           }}
                           aria-label={`${t("mk.missed")}: ${r.student.fullName}`}
-                          style={{ background: "#FDEBEC", color: "#B23A47", border: "none", fontSize: 12.5, fontWeight: 700, padding: "7px 12px", borderRadius: 8 }}
+                          style={{ background: "var(--danger-soft)", color: "var(--danger)", border: "none", fontSize: 12.5, fontWeight: 700, padding: "7px 12px", borderRadius: "var(--radius-xs)" }}
                         >
                           {t("mk.missed")}
                         </button>

@@ -14,9 +14,9 @@ import { PrivateImg, PrivateLink } from "@/components/PrivateFile";
 // big tap targets, lists instead of tables so nothing scrolls sideways on
 // a phone.
 
-export const PORTAL_ACCENT = "#4F46E5";
+export const PORTAL_ACCENT = "var(--primary)";
 const ACCENT = PORTAL_ACCENT;
-export const portalCard: React.CSSProperties = { background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 16 };
+export const portalCard: React.CSSProperties = { background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 16 };
 const card = portalCard;
 const money = (n: number) => new Intl.NumberFormat("uz-UZ").format(n);
 const DAY_KEYS: TranslationKey[] = [
@@ -34,15 +34,15 @@ const monthLabel = (ym: string, t: (k: TranslationKey) => string) =>
 export function TabTitle({ title, hint }: { title: string; hint?: string }) {
   return (
     <div style={{ padding: "2px 2px 0" }}>
-      <h2 style={{ fontFamily: "'Manrope', sans-serif", fontSize: 21, fontWeight: 800, margin: 0 }}>{title}</h2>
-      {hint && <div style={{ fontSize: 13, color: "#686B75", marginTop: 3 }}>{hint}</div>}
+      <h2 style={{ fontFamily: "var(--font-display)", fontSize: 21, fontWeight: 800, margin: 0 }}>{title}</h2>
+      {hint && <div style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 3 }}>{hint}</div>}
     </div>
   );
 }
 
 function Empty({ icon, text }: { icon: string; text: string }) {
   return (
-    <div style={{ ...card, padding: "36px 20px", textAlign: "center", color: "#686B75", fontSize: 14 }}>
+    <div style={{ ...card, padding: "36px 20px", textAlign: "center", color: "var(--text-muted)", fontSize: 14 }}>
       <div style={{ fontSize: 34, marginBottom: 8 }}>{icon}</div>
       {text}
     </div>
@@ -51,13 +51,13 @@ function Empty({ icon, text }: { icon: string; text: string }) {
 
 function Pill({ children, tone }: { children: React.ReactNode; tone: "green" | "red" | "amber" | "grey" | "accent" }) {
   const tones = {
-    green: { color: "#167A48", background: "#E9F8EF" },
-    red: { color: "#DC2626", background: "#FEE2E2" },
-    amber: { color: "#B45309", background: "#FEF3C7" },
-    grey: { color: "#6B6E78", background: "#F2F1EC" },
-    accent: { color: ACCENT, background: "#EEF0FF" },
+    green: { color: "var(--success)", background: "var(--success-soft)" },
+    red: { color: "var(--danger)", background: "var(--danger-soft)" },
+    amber: { color: "var(--warning)", background: "var(--warning-soft)" },
+    grey: { color: "var(--text-muted)", background: "var(--surface-muted)" },
+    accent: { color: ACCENT, background: "var(--primary-soft)" },
   }[tone];
-  return <span style={{ ...tones, fontSize: 12, fontWeight: 700, padding: "4px 10px", borderRadius: 100, whiteSpace: "nowrap" }}>{children}</span>;
+  return <span style={{ ...tones, fontSize: 12, fontWeight: 700, padding: "4px 10px", borderRadius: "var(--radius-pill)", whiteSpace: "nowrap" }}>{children}</span>;
 }
 
 // ---------------------------------------------------------------- schedule
@@ -79,7 +79,7 @@ export function ScheduleTab({ schedule, tz = DEFAULT_CENTER_TIMEZONE }: { schedu
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
       <TabTitle title={t("ptl.schedule")} />
-      <div role="tablist" style={{ display: "flex", gap: 4, background: "#F2F1EC", padding: 4, borderRadius: 12, alignSelf: "flex-start" }}>
+      <div role="tablist" style={{ display: "flex", gap: 4, background: "var(--surface)", border: "1px solid var(--border)", padding: 4, borderRadius: "var(--radius-lg)", alignSelf: "flex-start" }}>
         {(["week", "past"] as const).map((v) => (
           <button
             key={v}
@@ -87,7 +87,7 @@ export function ScheduleTab({ schedule, tz = DEFAULT_CENTER_TIMEZONE }: { schedu
             role="tab"
             aria-selected={view === v}
             onClick={() => setView(v)}
-            style={{ border: "none", cursor: "pointer", padding: "8px 14px", borderRadius: 9, fontSize: 13, fontWeight: 700, background: view === v ? "#fff" : "transparent", color: view === v ? ACCENT : "#6B6E78", boxShadow: view === v ? "0 1px 3px rgba(0,0,0,0.08)" : "none" }}
+            style={{ border: "none", cursor: "pointer", padding: "8px 14px", borderRadius: "var(--radius-pill)", fontSize: 13, fontWeight: 700, background: view === v ? "var(--ink)" : "transparent", color: view === v ? "var(--on-ink)" : "var(--text-muted)", boxShadow: "none" }}
           >
             {v === "week" ? t("pls.week") : t("pls.past")}
           </button>
@@ -99,25 +99,25 @@ export function ScheduleTab({ schedule, tz = DEFAULT_CENTER_TIMEZONE }: { schedu
         <>
           {days.map(({ d, items }) => (
             <div key={d} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 800, color: d === today ? ACCENT : "#4A4E58", textTransform: "uppercase", letterSpacing: "0.03em" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 800, color: d === today ? ACCENT : "var(--text-soft)", textTransform: "uppercase", letterSpacing: "0.03em" }}>
                 {t(DAY_KEYS[d - 1])}
                 {d === today && <Pill tone="accent">{t("pth.today")}</Pill>}
               </div>
               {items.map((l) => (
-                <div key={l.id} style={{ ...card, display: "flex", gap: 14, alignItems: "center", borderColor: d === today ? "#C7D2FE" : "#EAE8E2" }}>
-                  <div style={{ width: 62, flexShrink: 0, textAlign: "center", borderRight: "1px solid #EAE8E2", paddingRight: 12 }}>
-                    <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 800, fontSize: 16 }}>{l.startTime}</div>
-                    <div style={{ fontSize: 12, color: "#686B75" }}>{l.endTime}</div>
+                <div key={l.id} style={{ ...card, display: "flex", gap: 14, alignItems: "center", borderColor: d === today ? "var(--primary-border)" : "var(--border)" }}>
+                  <div style={{ width: 62, flexShrink: 0, textAlign: "center", borderRight: "1px solid var(--border)", paddingRight: 12 }}>
+                    <div style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 16 }}>{l.startTime}</div>
+                    <div style={{ fontSize: 12, color: "var(--text-muted)" }}>{l.endTime}</div>
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 15, fontWeight: 700 }}>{l.group?.name ?? "—"}</div>
-                    <div style={{ fontSize: 12.5, color: "#6B6E78", marginTop: 3, display: "flex", flexWrap: "wrap", gap: "2px 10px" }}>
+                    <div style={{ fontSize: 12.5, color: "var(--text-muted)", marginTop: 3, display: "flex", flexWrap: "wrap", gap: "2px 10px" }}>
                       {l.teacher && <span>👤 {l.teacher.fullName}</span>}
                       {l.room && <span>🚪 {l.room.name}</span>}
                     </div>
                   </div>
                   {l.onlineMeetingUrl && (
-                    <a href={l.onlineMeetingUrl} target="_blank" rel="noreferrer" style={{ flexShrink: 0, background: ACCENT, color: "#fff", textDecoration: "none", fontSize: 12.5, fontWeight: 700, padding: "9px 12px", borderRadius: 10 }}>
+                    <a href={l.onlineMeetingUrl} target="_blank" rel="noreferrer" style={{ flexShrink: 0, background: ACCENT, color: "var(--on-ink)", textDecoration: "none", fontSize: 12.5, fontWeight: 700, padding: "9px 12px", borderRadius: "var(--radius-sm)" }}>
                       {t("ptl.joinOnline")}
                     </a>
                   )}
@@ -128,7 +128,7 @@ export function ScheduleTab({ schedule, tz = DEFAULT_CENTER_TIMEZONE }: { schedu
           {fallback.map((g) => (
             <div key={g.id} style={card}>
               <div style={{ fontSize: 15, fontWeight: 700 }}>{g.name}</div>
-              <div style={{ fontSize: 13, color: "#6B6E78", marginTop: 4, display: "flex", flexWrap: "wrap", gap: "2px 12px" }}>
+              <div style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 4, display: "flex", flexWrap: "wrap", gap: "2px 12px" }}>
                 <span>🗓️ {g.scheduleDays || g.schedule || "—"}</span>
                 <span>⏰ {g.startTime || "—"}</span>
                 {g.teacher && <span>👤 {g.teacher}</span>}
@@ -156,16 +156,16 @@ const PAST_CSS = `
 .pls-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:12px}
 @media (min-width:720px){.pls-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .pls-card{display:flex;gap:12px;text-align:left;width:100%;font-family:inherit;color:inherit;cursor:pointer;transition:box-shadow .15s,transform .15s,border-color .15s}
-.pls-card:hover{border-color:#C7D2FE;box-shadow:0 10px 24px -16px rgba(79,70,229,.55);transform:translateY(-1px)}
-.pls-card:focus-visible{outline:2px solid #4F46E5;outline-offset:2px}
+.pls-card:hover{border-color:var(--primary-border);box-shadow:0 10px 24px -16px rgba(79,70,229,.55);transform:translateY(-1px)}
+.pls-card:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
 .pls-clamp{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 `;
 
 const ATT_ACCENT: Record<string, { bar: string; bg: string; fg: string }> = {
-  green: { bar: "#16794A", bg: "#E9F8EF", fg: "#15803D" },
-  amber: { bar: "#F59E0B", bg: "#FEF3C7", fg: "#B45309" },
-  red: { bar: "#DC2626", bg: "#FEE2E2", fg: "#B91C1C" },
-  grey: { bar: "#CBD5E1", bg: "#F2F1EC", fg: "#6B6E78" },
+  green: { bar: "var(--success)", bg: "var(--success-soft)", fg: "var(--success)" },
+  amber: { bar: "var(--warning)", bg: "var(--warning-soft)", fg: "var(--warning)" },
+  red: { bar: "var(--danger)", bg: "var(--danger-soft)", fg: "var(--danger)" },
+  grey: { bar: "var(--border-strong)", bg: "var(--surface-muted)", fg: "var(--text-muted)" },
 };
 
 function PastLessons() {
@@ -184,7 +184,7 @@ function PastLessons() {
   }, [days]);
 
   if (error) return <Empty icon="⚠️" text={t("common.errorGeneric")} />;
-  if (!data) return <div style={{ ...card, color: "#686B75", fontSize: 14 }}>{t("common.loading")}</div>;
+  if (!data) return <div style={{ ...card, color: "var(--text-muted)", fontSize: 14 }}>{t("common.loading")}</div>;
   if (data.length === 0) return <Empty icon="📚" text={t("pls.none")} />;
 
   return (
@@ -198,27 +198,27 @@ function PastLessons() {
           const scored = l.exams.filter((e) => e.score != null);
           return (
             <button key={`${l.groupId}-${l.date}-${l.scheduleId ?? l.startTime ?? ""}`} type="button" className="pls-card" onClick={() => setOpen(l)} style={{ ...card, padding: 14, opacity: l.cancelled ? 0.7 : 1 }}>
-              <div style={{ width: 52, flexShrink: 0, borderRadius: 12, background: tone.bg, color: tone.fg, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "8px 0" }}>
-                <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 800, fontSize: 20, lineHeight: 1 }}>{l.date.slice(8, 10)}</div>
+              <div style={{ width: 52, flexShrink: 0, borderRadius: "var(--radius-md)", background: tone.bg, color: tone.fg, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "8px 0" }}>
+                <div style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 20, lineHeight: 1 }}>{l.date.slice(8, 10)}</div>
                 <div style={{ fontSize: 11, fontWeight: 700, marginTop: 3 }}>{t(MONTH_SHORT_KEYS[Number(l.date.slice(5, 7)) - 1])}</div>
               </div>
               <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 4 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "flex-start" }}>
                   <div style={{ minWidth: 0 }}>
                     <div style={{ fontSize: 14.5, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l.groupName}</div>
-                    <div style={{ fontSize: 12, color: "#686B75", marginTop: 1 }}>
+                    <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 1 }}>
                       {weekdayOf(l.date, t)}{l.startTime ? ` · ${l.startTime}${l.endTime ? `–${l.endTime}` : ""}` : ""}
                     </div>
                   </div>
                   <Pill tone={mark.tone}>{t(mark.key)}</Pill>
                 </div>
-                <div className="pls-clamp" style={{ fontSize: 13, color: l.topic ? "#2A2D35" : "#A3A6AE", fontStyle: l.topic ? "normal" : "italic" }}>
+                <div className="pls-clamp" style={{ fontSize: 13, color: l.topic ? "var(--text)" : "var(--text-faint)", fontStyle: l.topic ? "normal" : "italic" }}>
                   📖 {l.topic || t("pls.noTopic")}
                 </div>
                 {(hwCount > 0 || scored.length > 0) && (
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 2 }}>
                     {hwCount > 0 && <span style={chip}>📝 {t("pls.hwCount").replace("{n}", String(hwCount))}</span>}
-                    {scored.map((e) => <span key={e.id} style={{ ...chip, background: "#F5F3FF", color: "#5B21B6" }}>🏆 {e.score}/{e.maxScore}</span>)}
+                    {scored.map((e) => <span key={e.id} style={{ ...chip, background: "var(--violet-soft)", color: "var(--violet)" }}>🏆 {e.score}/{e.maxScore}</span>)}
                   </div>
                 )}
               </div>
@@ -236,7 +236,7 @@ function PastLessons() {
   );
 }
 
-const chip: React.CSSProperties = { fontSize: 11.5, fontWeight: 700, padding: "3px 8px", borderRadius: 7, background: "#F2F1EC", color: "#4A4E58", whiteSpace: "nowrap" };
+const chip: React.CSSProperties = { fontSize: 11.5, fontWeight: 700, padding: "3px 8px", borderRadius: "var(--radius-xs)", background: "var(--surface-muted)", color: "var(--text-soft)", whiteSpace: "nowrap" };
 
 function weekdayOf(date: string, t: (k: TranslationKey) => string) {
   const d = new Date(`${date}T00:00:00`).getDay();
@@ -256,7 +256,7 @@ function hwStatus(st: string | null): { key: TranslationKey; tone: "green" | "am
 function Section({ icon, title, children }: { icon: string; title: string; children: React.ReactNode }) {
   return (
     <section style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-      <div style={{ fontSize: 12, fontWeight: 800, color: "#686B75", textTransform: "uppercase", letterSpacing: "0.04em" }}>{icon} {title}</div>
+      <div style={{ fontSize: 12, fontWeight: 800, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.04em" }}>{icon} {title}</div>
       {children}
     </section>
   );
@@ -270,26 +270,26 @@ function LessonDetails({ lesson: l, onClose }: { lesson: PortalPastLesson; onClo
   return (
     <Modal open onClose={onClose} title={l.groupName} width={560}>
       <div style={{ display: "flex", flexDirection: "column", gap: 18, marginTop: -8 }}>
-        <div style={{ fontSize: 13, color: "#6B6E78", display: "flex", flexWrap: "wrap", gap: "4px 12px" }}>
+        <div style={{ fontSize: 13, color: "var(--text-muted)", display: "flex", flexWrap: "wrap", gap: "4px 12px" }}>
           <span>🗓️ {date}</span>
           {l.startTime && <span>⏰ {l.startTime}{l.endTime ? `–${l.endTime}` : ""}</span>}
           {l.teacher && <span>👤 {l.teacher}</span>}
         </div>
 
         <Section icon="✅" title={t("pls.attendance")}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, background: tone.bg, color: tone.fg, borderRadius: 12, padding: "10px 12px", fontSize: 13.5, fontWeight: 700 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, background: tone.bg, color: tone.fg, borderRadius: "var(--radius-md)", padding: "10px 12px", fontSize: 13.5, fontWeight: 700 }}>
             <span style={{ width: 10, height: 10, borderRadius: "50%", background: tone.bar, flexShrink: 0 }} />
             {t(mark.key)}
           </div>
-          {l.attendance === "ABSENT" && <div style={{ fontSize: 12.5, color: "#B45309" }}>💡 {t("pls.missedHint")}</div>}
+          {l.attendance === "ABSENT" && <div style={{ fontSize: 12.5, color: "var(--warning)" }}>💡 {t("pls.missedHint")}</div>}
           {/* An old mark for the whole day, on a day with several lessons: shown, and not counted as this lesson's. */}
           {!l.attendance && l.dayAttendance && ATT_PILL[l.dayAttendance] && (
-            <div style={{ fontSize: 12.5, color: "#686B75" }}>{t("pls.dayMark")}: {t(ATT_PILL[l.dayAttendance].key)}</div>
+            <div style={{ fontSize: 12.5, color: "var(--text-muted)" }}>{t("pls.dayMark")}: {t(ATT_PILL[l.dayAttendance].key)}</div>
           )}
         </Section>
 
         <Section icon="📖" title={t("pls.topic")}>
-          <div style={{ fontSize: 14, color: l.topic ? "#181A1F" : "#A3A6AE", fontStyle: l.topic ? "normal" : "italic", whiteSpace: "pre-wrap", lineHeight: 1.5 }}>
+          <div style={{ fontSize: 14, color: l.topic ? "var(--text)" : "var(--text-faint)", fontStyle: l.topic ? "normal" : "italic", whiteSpace: "pre-wrap", lineHeight: 1.5 }}>
             {l.topic || t("pls.noTopic")}
           </div>
         </Section>
@@ -299,18 +299,18 @@ function LessonDetails({ lesson: l, onClose }: { lesson: PortalPastLesson; onClo
             {l.homework.map((h) => {
               const st = hwStatus(h.status);
               return (
-                <div key={h.id} style={{ background: "#F9F8F5", borderRadius: 12, padding: "12px 14px", display: "flex", flexDirection: "column", gap: 6 }}>
+                <div key={h.id} style={{ background: "var(--surface-muted)", borderRadius: "var(--radius-md)", padding: "12px 14px", display: "flex", flexDirection: "column", gap: 6 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center" }}>
                     <div style={{ fontSize: 14, fontWeight: 700 }}>{h.title}</div>
                     <Pill tone={st.tone}>{h.status === "GRADED" && h.score != null ? `${h.score}/${h.maxScore}` : t(st.key)}</Pill>
                   </div>
-                  {h.description && <div style={{ fontSize: 13, color: "#4A4E58", whiteSpace: "pre-wrap", lineHeight: 1.5 }}>{h.description}</div>}
-                  {h.dueDate && <div style={{ fontSize: 12, color: "#686B75" }}>{t("pls.due")}: {formatDate(h.dueDate, lang)}</div>}
+                  {h.description && <div style={{ fontSize: 13, color: "var(--text-soft)", whiteSpace: "pre-wrap", lineHeight: 1.5 }}>{h.description}</div>}
+                  {h.dueDate && <div style={{ fontSize: 12, color: "var(--text-muted)" }}>{t("pls.due")}: {formatDate(h.dueDate, lang)}</div>}
                   {h.attachmentPath && (
                     <PrivateLink name={h.attachmentPath} scope="portal" style={{ fontSize: 12.5, fontWeight: 700, color: ACCENT }}>📎 {h.attachmentName || t("pls.file")}</PrivateLink>
                   )}
                   {h.feedback && (
-                    <div style={{ borderLeft: `3px solid ${ACCENT}`, background: "#EEF0FF", borderRadius: 8, padding: "8px 10px", fontSize: 13 }}>
+                    <div style={{ borderLeft: `3px solid ${ACCENT}`, background: "var(--primary-soft)", borderRadius: "var(--radius-xs)", padding: "8px 10px", fontSize: 13 }}>
                       <div style={{ fontSize: 11.5, fontWeight: 800, color: ACCENT, marginBottom: 2 }}>{t("pls.feedback")}</div>
                       {h.feedback}
                     </div>
@@ -327,7 +327,7 @@ function LessonDetails({ lesson: l, onClose }: { lesson: PortalPastLesson; onClo
               const passed = e.score != null && e.passingScore != null ? e.score >= e.passingScore : null;
               const pct = e.score != null && e.maxScore > 0 ? Math.round((e.score / e.maxScore) * 100) : null;
               return (
-                <div key={e.id} style={{ background: "#F5F3FF", borderRadius: 12, padding: "12px 14px", display: "flex", flexDirection: "column", gap: 8 }}>
+                <div key={e.id} style={{ background: "var(--violet-soft)", borderRadius: "var(--radius-md)", padding: "12px 14px", display: "flex", flexDirection: "column", gap: 8 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center" }}>
                     <div style={{ fontSize: 14, fontWeight: 700 }}>{e.title}</div>
                     <Pill tone={e.score == null ? "grey" : passed === false ? "red" : "green"}>
@@ -336,10 +336,10 @@ function LessonDetails({ lesson: l, onClose }: { lesson: PortalPastLesson; onClo
                   </div>
                   {pct != null && (
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <div style={{ flex: 1, height: 6, borderRadius: 6, background: "#E4E0FB", overflow: "hidden" }}>
-                        <div style={{ width: `${Math.min(100, pct)}%`, height: "100%", background: passed === false ? "#DC2626" : "#7C3AED" }} />
+                      <div style={{ flex: 1, height: 6, borderRadius: "var(--radius-xs)", background: "var(--primary-soft)", overflow: "hidden" }}>
+                        <div style={{ width: `${Math.min(100, pct)}%`, height: "100%", background: passed === false ? "var(--danger)" : "var(--violet)" }} />
                       </div>
-                      <span style={{ fontSize: 12, fontWeight: 700, color: "#5B21B6" }}>{pct}%{passed != null ? ` · ${t(passed ? "pls.passed" : "pls.failed")}` : ""}</span>
+                      <span style={{ fontSize: 12, fontWeight: 700, color: "var(--violet)" }}>{pct}%{passed != null ? ` · ${t(passed ? "pls.passed" : "pls.failed")}` : ""}</span>
                     </div>
                   )}
                 </div>
@@ -349,7 +349,7 @@ function LessonDetails({ lesson: l, onClose }: { lesson: PortalPastLesson; onClo
         )}
 
         {l.homework.length === 0 && l.exams.length === 0 && (
-          <div style={{ fontSize: 13, color: "#686B75", background: "#F9F8F5", borderRadius: 12, padding: "12px 14px" }}>{t("pls.nothing")}</div>
+          <div style={{ fontSize: 13, color: "var(--text-muted)", background: "var(--surface-muted)", borderRadius: "var(--radius-md)", padding: "12px 14px" }}>{t("pls.nothing")}</div>
         )}
       </div>
     </Modal>
@@ -359,9 +359,9 @@ function LessonDetails({ lesson: l, onClose }: { lesson: PortalPastLesson; onClo
 // -------------------------------------------------------------- attendance
 
 const ATT_COLORS: Record<string, { dot: string; bg: string }> = {
-  PRESENT: { dot: "#16794A", bg: "#E9F8EF" },
-  LATE: { dot: "#F59E0B", bg: "#FEF3C7" },
-  ABSENT: { dot: "#DC2626", bg: "#FEE2E2" },
+  PRESENT: { dot: "var(--success)", bg: "var(--success-soft)" },
+  LATE: { dot: "var(--warning)", bg: "var(--warning-soft)" },
+  ABSENT: { dot: "var(--danger)", bg: "var(--danger-soft)" },
 };
 
 const ATT_CSS = `
@@ -386,10 +386,10 @@ export function AttendanceTab({ attendance, tz = DEFAULT_CENTER_TIMEZONE }: { at
 
   const stat = (icon: string, value: React.ReactNode, label: string, color: string, bg: string) => (
     <div style={{ ...card, padding: 14, display: "flex", alignItems: "center", gap: 12 }}>
-      <div style={{ width: 42, height: 42, borderRadius: 12, background: bg, display: "grid", placeItems: "center", fontSize: 20, flexShrink: 0 }}>{icon}</div>
+      <div style={{ width: 42, height: 42, borderRadius: "var(--radius-md)", background: bg, display: "grid", placeItems: "center", fontSize: 20, flexShrink: 0 }}>{icon}</div>
       <div style={{ minWidth: 0 }}>
-        <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 800, fontSize: 22, color, lineHeight: 1.1 }}>{value}</div>
-        <div style={{ fontSize: 12, color: "#6B6E78", marginTop: 2 }}>{label}</div>
+        <div style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 22, color, lineHeight: 1.1 }}>{value}</div>
+        <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>{label}</div>
       </div>
     </div>
   );
@@ -399,21 +399,21 @@ export function AttendanceTab({ attendance, tz = DEFAULT_CENTER_TIMEZONE }: { at
       <style>{ATT_CSS}</style>
       <TabTitle title={t("ptl.attHistory")} />
 
-      <div style={{ ...card, display: "flex", alignItems: "center", gap: 18, flexWrap: "wrap", background: "linear-gradient(135deg, #EEF0FF 0%, #fff 70%)" }}>
+      <div style={{ ...card, display: "flex", alignItems: "center", gap: 18, flexWrap: "wrap", background: "linear-gradient(135deg, var(--primary-soft) 0%, var(--surface) 70%)" }}>
         <svg width="96" height="96" viewBox="0 0 36 36" aria-hidden style={{ flexShrink: 0 }}>
-          <circle cx="18" cy="18" r="15" fill="none" stroke="#E4E7F5" strokeWidth="4" />
+          <circle cx="18" cy="18" r="15" fill="none" stroke="var(--primary-soft)" strokeWidth="4" />
           {rate !== null && (
-            <circle cx="18" cy="18" r="15" fill="none" stroke={rate >= 80 ? ACCENT : rate >= 60 ? "#F59E0B" : "#DC2626"} strokeWidth="4" strokeDasharray={`${(rate / 100) * 94.2} 100`} strokeLinecap="round" transform="rotate(-90 18 18)" />
+            <circle cx="18" cy="18" r="15" fill="none" stroke={rate >= 80 ? ACCENT : rate >= 60 ? "var(--warning)" : "var(--danger)"} strokeWidth="4" strokeDasharray={`${(rate / 100) * 94.2} 100`} strokeLinecap="round" transform="rotate(-90 18 18)" />
           )}
-          <text x="18" y="21" textAnchor="middle" fontSize="8" fontWeight="800" fill="#181A1F">{rate === null ? "—" : `${rate}%`}</text>
+          <text x="18" y="21" textAnchor="middle" fontSize="8" fontWeight="800" fill="var(--text)">{rate === null ? "—" : `${rate}%`}</text>
         </svg>
         <div style={{ flex: 1, minWidth: 180 }}>
-          <div style={{ fontFamily: "'Manrope', sans-serif", fontSize: 18, fontWeight: 800 }}>{t("pat.overall")}</div>
-          <div style={{ fontSize: 13, color: "#6B6E78", marginTop: 4, lineHeight: 1.5 }}>
+          <div style={{ fontFamily: "var(--font-display)", fontSize: 18, fontWeight: 800 }}>{t("pat.overall")}</div>
+          <div style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 4, lineHeight: 1.5 }}>
             {rate === null ? t("ptl.noAtt") : rate >= 90 ? t("pat.great") : rate >= 75 ? t("pat.good") : t("pat.low")}
           </div>
           {(attendance?.streak ?? 0) > 1 && (
-            <div style={{ display: "inline-flex", marginTop: 8, gap: 6, alignItems: "center", fontSize: 12.5, fontWeight: 700, color: "#B45309", background: "#FEF3C7", padding: "4px 10px", borderRadius: 100 }}>
+            <div style={{ display: "inline-flex", marginTop: 8, gap: 6, alignItems: "center", fontSize: 12.5, fontWeight: 700, color: "var(--warning)", background: "var(--warning-soft)", padding: "4px 10px", borderRadius: "var(--radius-pill)" }}>
               🔥 {t("pat.streak").replace("{n}", String(attendance?.streak))}
             </div>
           )}
@@ -421,10 +421,10 @@ export function AttendanceTab({ attendance, tz = DEFAULT_CENTER_TIMEZONE }: { at
       </div>
 
       <div className="pat-stats">
-        {stat("📚", total, t("pat.lessons"), "#181A1F", "#F2F1EC")}
-        {stat("✅", present, t("ptl.present"), "#16794A", "#E9F8EF")}
-        {stat("⏰", late, t("ptl.late"), "#B45309", "#FEF3C7")}
-        {stat("❌", absent, t("ptl.absent"), "#DC2626", "#FEE2E2")}
+        {stat("📚", total, t("pat.lessons"), "var(--text)", "var(--surface-muted)")}
+        {stat("✅", present, t("ptl.present"), "var(--success)", "var(--success-soft)")}
+        {stat("⏰", late, t("ptl.late"), "var(--warning)", "var(--warning-soft)")}
+        {stat("❌", absent, t("ptl.absent"), "var(--danger)", "var(--danger-soft)")}
       </div>
 
       {records.length === 0 ? (
@@ -442,16 +442,16 @@ export function AttendanceTab({ attendance, tz = DEFAULT_CENTER_TIMEZONE }: { at
                     <div key={g.groupId}>
                       <div style={{ display: "flex", justifyContent: "space-between", gap: 8, fontSize: 13.5 }}>
                         <span style={{ fontWeight: 700, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                          {g.groupName ?? "—"}{g.subject ? <span style={{ color: "#686B75", fontWeight: 500 }}> · {g.subject}</span> : null}
+                          {g.groupName ?? "—"}{g.subject ? <span style={{ color: "var(--text-muted)", fontWeight: 500 }}> · {g.subject}</span> : null}
                         </span>
-                        <span style={{ fontWeight: 800, color: r >= 80 ? "#16794A" : r >= 60 ? "#B45309" : "#DC2626" }}>{r}%</span>
+                        <span style={{ fontWeight: 800, color: r >= 80 ? "var(--success)" : r >= 60 ? "var(--warning)" : "var(--danger)" }}>{r}%</span>
                       </div>
-                      <div style={{ height: 8, borderRadius: 99, background: "#F2F1EC", overflow: "hidden", margin: "6px 0 4px", display: "flex" }}>
-                        <div style={{ width: `${(g.present / Math.max(1, g.total)) * 100}%`, background: "#16794A" }} />
-                        <div style={{ width: `${(g.late / Math.max(1, g.total)) * 100}%`, background: "#F59E0B" }} />
-                        <div style={{ width: `${(g.absent / Math.max(1, g.total)) * 100}%`, background: "#DC2626" }} />
+                      <div style={{ height: 8, borderRadius: "var(--radius-pill)", background: "var(--surface-muted)", overflow: "hidden", margin: "6px 0 4px", display: "flex" }}>
+                        <div style={{ width: `${(g.present / Math.max(1, g.total)) * 100}%`, background: "var(--success)" }} />
+                        <div style={{ width: `${(g.late / Math.max(1, g.total)) * 100}%`, background: "var(--warning)" }} />
+                        <div style={{ width: `${(g.absent / Math.max(1, g.total)) * 100}%`, background: "var(--danger)" }} />
                       </div>
-                      <div style={{ fontSize: 12, color: "#686B75" }}>
+                      <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
                         ✅ {g.present} · ⏰ {g.late} · ❌ {g.absent} · {t("pat.of").replace("{n}", String(g.total))}
                       </div>
                     </div>
@@ -460,17 +460,17 @@ export function AttendanceTab({ attendance, tz = DEFAULT_CENTER_TIMEZONE }: { at
               </div>
             )}
             <div style={{ ...card, padding: 0, overflow: "hidden" }}>
-              <div style={{ padding: "12px 16px", fontSize: 14, fontWeight: 800, borderBottom: "1px solid #F0EEE8" }}>{t("pat.recent")}</div>
+              <div style={{ padding: "12px 16px", fontSize: 14, fontWeight: 800, borderBottom: "1px solid var(--border)" }}>{t("pat.recent")}</div>
               {records.slice(0, 8).map((r) => {
-                const c = ATT_COLORS[r.status] ?? { dot: "#686B75", bg: "#F2F1EC" };
+                const c = ATT_COLORS[r.status] ?? { dot: "var(--text-muted)", bg: "var(--surface-muted)" };
                 return (
-                  <div key={r.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, padding: "10px 16px", borderBottom: "1px solid #F7F6F2" }}>
+                  <div key={r.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, padding: "10px 16px", borderBottom: "1px solid var(--border)" }}>
                     <span style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
                       <span style={{ width: 8, height: 8, borderRadius: "50%", background: c.dot, flexShrink: 0 }} />
                       <span style={{ minWidth: 0 }}>
                         <span style={{ display: "block", fontSize: 13.5, fontWeight: 600 }}>{formatDate(`${r.date}T00:00:00`, lang, "short")}</span>
                         {/* The lesson's own time: a group may have two lessons on one day, each with its mark. */}
-                        {(r.groupName || r.startTime) && <span style={{ display: "block", fontSize: 12, color: "#686B75", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{[r.groupName, r.startTime].filter(Boolean).join(" · ")}</span>}
+                        {(r.groupName || r.startTime) && <span style={{ display: "block", fontSize: 12, color: "var(--text-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{[r.groupName, r.startTime].filter(Boolean).join(" · ")}</span>}
                       </span>
                     </span>
                     <Pill tone={r.status === "PRESENT" ? "green" : r.status === "LATE" ? "amber" : "red"}>{STATUS_LABEL[r.status] ?? r.status}</Pill>
@@ -511,21 +511,21 @@ function MonthCalendar({ month, months, onMonth, records, statusLabel, tz }: {
   const ok = inMonth.filter((r) => r.status !== "ABSENT").length;
   const cells: Array<number | null> = [...Array(lead).fill(null), ...Array.from({ length: daysIn }, (_, i) => i + 1)];
   const todayStr = centerToday(tz);
-  const navBtn = (disabled: boolean): React.CSSProperties => ({ width: 34, height: 34, borderRadius: 10, border: "1px solid #EAE8E2", background: "#fff", cursor: disabled ? "default" : "pointer", opacity: disabled ? 0.35 : 1, fontSize: 16, fontWeight: 700 });
+  const navBtn = (disabled: boolean): React.CSSProperties => ({ width: 34, height: 34, borderRadius: "var(--radius-sm)", border: "1px solid var(--border)", background: "var(--surface)", cursor: disabled ? "default" : "pointer", opacity: disabled ? 0.35 : 1, fontSize: 16, fontWeight: 700 });
 
   return (
     <div style={{ ...card, display: "flex", flexDirection: "column", gap: 12 }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
         <button type="button" aria-label="prev" disabled={idx >= months.length - 1} onClick={() => onMonth(months[idx + 1])} style={navBtn(idx >= months.length - 1)}>‹</button>
         <div style={{ textAlign: "center" }}>
-          <div style={{ fontFamily: "'Manrope', sans-serif", fontSize: 16, fontWeight: 800 }}>{monthLabel(month, t)}</div>
-          <div style={{ fontSize: 12, color: "#686B75" }}>{t("pat.monthSummary").replace("{a}", String(ok)).replace("{n}", String(inMonth.length))}</div>
+          <div style={{ fontFamily: "var(--font-display)", fontSize: 16, fontWeight: 800 }}>{monthLabel(month, t)}</div>
+          <div style={{ fontSize: 12, color: "var(--text-muted)" }}>{t("pat.monthSummary").replace("{a}", String(ok)).replace("{n}", String(inMonth.length))}</div>
         </div>
         <button type="button" aria-label="next" disabled={idx <= 0} onClick={() => onMonth(months[idx - 1])} style={navBtn(idx <= 0)}>›</button>
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(7, minmax(0, 1fr))", gap: 4, textAlign: "center" }}>
         {DAY_KEYS.map((k) => (
-          <div key={k} style={{ fontSize: 11, fontWeight: 700, color: "#686B75", padding: "2px 0" }}>{t(k).slice(0, 2)}</div>
+          <div key={k} style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", padding: "2px 0" }}>{t(k).slice(0, 2)}</div>
         ))}
         {cells.map((d, i) => {
           if (d === null) return <div key={`e${i}`} />;
@@ -537,19 +537,19 @@ function MonthCalendar({ month, months, onMonth, records, statusLabel, tz }: {
             <div
               key={d}
               title={recs.map((r) => `${r.groupName ?? ""} ${statusLabel[r.status] ?? r.status}`.trim()).join("\n") || undefined}
-              style={{ aspectRatio: "1 / 1", borderRadius: 10, background: c?.bg ?? "#FAFAF8", border: iso === todayStr ? `2px solid ${ACCENT}` : "1px solid #F0EEE8", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 3 }}
+              style={{ aspectRatio: "1 / 1", borderRadius: "var(--radius-sm)", background: c?.bg ?? "var(--surface-muted)", border: iso === todayStr ? `2px solid ${ACCENT}` : "1px solid var(--border)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 3 }}
             >
-              <span style={{ fontSize: 13, fontWeight: c ? 800 : 500, color: c ? "#181A1F" : "#A3A6AE" }}>{d}</span>
+              <span style={{ fontSize: 13, fontWeight: c ? 800 : 500, color: c ? "var(--text)" : "var(--text-faint)" }}>{d}</span>
               {recs.length > 0 && (
                 <span style={{ display: "flex", gap: 2 }}>
-                  {recs.slice(0, 3).map((r) => <span key={r.id} style={{ width: 5, height: 5, borderRadius: "50%", background: ATT_COLORS[r.status]?.dot ?? "#686B75" }} />)}
+                  {recs.slice(0, 3).map((r) => <span key={r.id} style={{ width: 5, height: 5, borderRadius: "50%", background: ATT_COLORS[r.status]?.dot ?? "var(--text-muted)" }} />)}
                 </span>
               )}
             </div>
           );
         })}
       </div>
-      <div style={{ display: "flex", gap: 12, flexWrap: "wrap", fontSize: 12, color: "#6B6E78", justifyContent: "center" }}>
+      <div style={{ display: "flex", gap: 12, flexWrap: "wrap", fontSize: 12, color: "var(--text-muted)", justifyContent: "center" }}>
         {(["PRESENT", "LATE", "ABSENT"] as const).map((k) => (
           <span key={k} style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
             <span style={{ width: 10, height: 10, borderRadius: 3, background: ATT_COLORS[k].bg, border: `2px solid ${ATT_COLORS[k].dot}` }} /> {statusLabel[k]}
@@ -584,14 +584,14 @@ export function HomeworkTab({ homework, onSubmit, readOnly = false }: { homework
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
       <style>{HW_CSS}</style>
       <TabTitle title={t("ptl.homework")} />
-      <div style={{ display: "flex", gap: 6, background: "#EFEEE9", padding: 4, borderRadius: 12, alignSelf: "flex-start", maxWidth: "100%", overflowX: "auto" }}>
+      <div style={{ display: "flex", gap: 4, background: "var(--surface)", border: "1px solid var(--border)", padding: 4, borderRadius: "var(--radius-lg)", alignSelf: "flex-start", maxWidth: "100%", overflowX: "auto" }}>
         {([
           ["all", t("common.all")],
           ["todo", t("pth.todo")],
           ["done", t("hws.stDone")],
         ] as const).map(([k, l]) => (
-          <button key={k} type="button" onClick={() => setFilter(k)} style={{ border: "none", cursor: "pointer", whiteSpace: "nowrap", fontSize: 13, fontWeight: 700, padding: "8px 14px", borderRadius: 9, background: filter === k ? "#fff" : "transparent", color: filter === k ? "#181A1F" : "#6B6E78", boxShadow: filter === k ? "0 1px 3px rgba(0,0,0,0.08)" : "none" }}>
-            {l} <span style={{ color: "#686B75", fontWeight: 600 }}>{counts[k]}</span>
+          <button key={k} type="button" onClick={() => setFilter(k)} style={{ border: "none", cursor: "pointer", whiteSpace: "nowrap", fontSize: 13, fontWeight: 700, padding: "8px 14px", borderRadius: "var(--radius-pill)", background: filter === k ? "var(--ink)" : "transparent", color: filter === k ? "var(--on-ink)" : "var(--text-muted)", boxShadow: "none" }}>
+            {l} <span style={{ color: "var(--text-muted)", fontWeight: 600 }}>{counts[k]}</span>
           </button>
         ))}
       </div>
@@ -649,13 +649,13 @@ function HomeworkCard({ hw, now, readOnly, onSubmit }: { hw: PortalHomework; now
     : <Pill tone="grey">{t("pth.todo")}</Pill>;
 
   return (
-    <div className="phw-card" style={{ ...card, borderColor: overdue ? "#FECACA" : "#EAE8E2", display: "flex", flexDirection: "column", gap: 12 }}>
+    <div className="phw-card" style={{ ...card, borderColor: overdue ? "var(--danger-border)" : "var(--border)", display: "flex", flexDirection: "column", gap: 12 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
         <div style={{ minWidth: 0 }}>
           <div style={{ fontSize: 16, fontWeight: 800, overflowWrap: "anywhere" }}>{hw.title}</div>
-          <div style={{ fontSize: 12.5, color: "#686B75", marginTop: 3, display: "flex", flexWrap: "wrap", gap: "2px 10px" }}>
+          <div style={{ fontSize: 12.5, color: "var(--text-muted)", marginTop: 3, display: "flex", flexWrap: "wrap", gap: "2px 10px" }}>
             <span>{hw.groupName || t("ptl.general")}</span>
-            {due && <span style={{ color: overdue ? "#DC2626" : undefined, fontWeight: overdue ? 700 : 400 }}>⏰ {t("phw.due")}: {formatDate(due, lang)}</span>}
+            {due && <span style={{ color: overdue ? "var(--danger)" : undefined, fontWeight: overdue ? 700 : 400 }}>⏰ {t("phw.due")}: {formatDate(due, lang)}</span>}
             {hw.maxScore ? <span>🎯 {hw.maxScore} {t("phw.points")}</span> : null}
           </div>
         </div>
@@ -663,37 +663,37 @@ function HomeworkCard({ hw, now, readOnly, onSubmit }: { hw: PortalHomework; now
       </div>
 
       <div>
-        <div style={{ fontSize: 11.5, fontWeight: 800, color: "#686B75", textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 6 }}>{t("phw.task")}</div>
-        <div style={{ background: "#F7F7F5", borderRadius: 12, padding: 12, fontSize: 14, color: "#33363D", lineHeight: 1.6, whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>
-          {hw.description || <span style={{ color: "#686B75" }}>{hw.attachmentPath ? t("phw.seeFile") : t("phw.noDescription")}</span>}
+        <div style={{ fontSize: 11.5, fontWeight: 800, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 6 }}>{t("phw.task")}</div>
+        <div style={{ background: "var(--surface-muted)", borderRadius: "var(--radius-md)", padding: 12, fontSize: 14, color: "var(--text-soft)", lineHeight: 1.6, whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>
+          {hw.description || <span style={{ color: "var(--text-muted)" }}>{hw.attachmentPath ? t("phw.seeFile") : t("phw.noDescription")}</span>}
         </div>
       </div>
 
       {hw.attachmentPath && (
         isImage(hw.attachmentName ?? hw.attachmentPath) ? (
           <PrivateLink name={hw.attachmentPath} scope="portal">
-            <PrivateImg name={hw.attachmentPath} scope="portal" alt={hw.attachmentName ?? ""} style={{ width: "100%", maxHeight: 320, objectFit: "contain", borderRadius: 12, border: "1px solid #EAE8E2", background: "#FAFAF8" }} />
+            <PrivateImg name={hw.attachmentPath} scope="portal" alt={hw.attachmentName ?? ""} style={{ width: "100%", maxHeight: 320, objectFit: "contain", borderRadius: "var(--radius-md)", border: "1px solid var(--border)", background: "var(--surface-muted)" }} />
           </PrivateLink>
         ) : (
-          <PrivateLink name={hw.attachmentPath} scope="portal" style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "10px 14px", borderRadius: 11, border: "1px solid #C7D2FE", background: "#EEF0FF", color: "#4338CA", fontSize: 13, fontWeight: 700, textDecoration: "none", maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", alignSelf: "flex-start" }}>
+          <PrivateLink name={hw.attachmentPath} scope="portal" style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "10px 14px", borderRadius: "var(--radius-sm)", border: "1px solid var(--primary-border)", background: "var(--primary-soft)", color: "var(--primary)", fontSize: 13, fontWeight: 700, textDecoration: "none", maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", alignSelf: "flex-start" }}>
             📎 {hw.attachmentName || t("homework.file")} ↓
           </PrivateLink>
         )
       )}
 
       {sub && (sub.text || sub.file || sub.feedback) && (
-        <div style={{ borderTop: "1px dashed #EAE8E2", paddingTop: 10, display: "flex", flexDirection: "column", gap: 8 }}>
-          <div style={{ fontSize: 11.5, fontWeight: 800, color: "#686B75", textTransform: "uppercase", letterSpacing: "0.04em" }}>{t("phw.myAnswer")}</div>
+        <div style={{ borderTop: "1px dashed var(--border)", paddingTop: 10, display: "flex", flexDirection: "column", gap: 8 }}>
+          <div style={{ fontSize: 11.5, fontWeight: 800, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.04em" }}>{t("phw.myAnswer")}</div>
           {sub.text && <div style={{ fontSize: 13.5, whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{sub.text}</div>}
           {sub.file && (isImage(sub.file) ? (
             <PrivateLink name={sub.file} scope="portal">
-              <PrivateImg name={sub.file} scope="portal" alt="" style={{ maxWidth: "100%", maxHeight: 220, borderRadius: 10, border: "1px solid #EAE8E2" }} />
+              <PrivateImg name={sub.file} scope="portal" alt="" style={{ maxWidth: "100%", maxHeight: 220, borderRadius: "var(--radius-sm)", border: "1px solid var(--border)" }} />
             </PrivateLink>
           ) : (
             <PrivateLink name={sub.file} scope="portal" style={{ fontSize: 13, fontWeight: 700, color: ACCENT }}>📎 {t("phw.myFile")}</PrivateLink>
           ))}
           {sub.feedback && (
-            <div style={{ background: "#ECFDF5", border: "1px solid #BBF7D0", borderRadius: 10, padding: 10, fontSize: 13, color: "#14532D" }}>
+            <div style={{ background: "var(--success-soft)", border: "1px solid var(--success-border)", borderRadius: "var(--radius-sm)", padding: 10, fontSize: 13, color: "var(--success)" }}>
               💬 <b>{t("phw.teacherSays")}:</b> {sub.feedback}
             </div>
           )}
@@ -702,8 +702,8 @@ function HomeworkCard({ hw, now, readOnly, onSubmit }: { hw: PortalHomework; now
 
       {!readOnly && !graded && (
         open ? (
-          <div style={{ display: "flex", flexDirection: "column", gap: 10, background: "#FAFAFF", border: "1px solid #E0E7FF", borderRadius: 12, padding: 12 }}>
-            <textarea value={text} onChange={(e) => setText(e.target.value)} rows={3} maxLength={5000} placeholder={t("phw.textPh")} style={{ width: "100%", boxSizing: "border-box", borderRadius: 10, border: "1px solid #EAE8E2", padding: 10, fontSize: 14, fontFamily: "inherit", resize: "vertical" }} />
+          <div style={{ display: "flex", flexDirection: "column", gap: 10, background: "var(--primary-soft)", border: "1px solid var(--primary-border)", borderRadius: "var(--radius-md)", padding: 12 }}>
+            <textarea value={text} onChange={(e) => setText(e.target.value)} rows={3} maxLength={5000} placeholder={t("phw.textPh")} style={{ width: "100%", boxSizing: "border-box", borderRadius: "var(--radius-sm)", border: "1px solid var(--border)", padding: 10, fontSize: 14, fontFamily: "inherit", resize: "vertical" }} />
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               <label style={fileBtn}>
                 📷 {t("phw.takePhoto")}
@@ -715,15 +715,15 @@ function HomeworkCard({ hw, now, readOnly, onSubmit }: { hw: PortalHomework; now
               </label>
             </div>
             {file && (
-              <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 12.5, color: "#4A4E58" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 12.5, color: "var(--text-soft)" }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                {preview ? <img src={preview} alt="" style={{ width: 64, height: 64, objectFit: "cover", borderRadius: 8 }} /> : <span>📄</span>}
+                {preview ? <img src={preview} alt="" style={{ width: 64, height: 64, objectFit: "cover", borderRadius: "var(--radius-xs)" }} /> : <span>📄</span>}
                 <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>{file.name}</span>
-                <button type="button" onClick={() => { setFile(null); setPreview(null); }} style={{ background: "none", border: "none", color: "#B23A47", cursor: "pointer", fontWeight: 700 }}>✕</button>
+                <button type="button" onClick={() => { setFile(null); setPreview(null); }} style={{ background: "none", border: "none", color: "var(--danger)", cursor: "pointer", fontWeight: 700 }}>✕</button>
               </div>
             )}
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-              <button type="button" onClick={() => setOpen(false)} style={{ background: "#F2F1EC", border: "none", borderRadius: 10, padding: "10px 14px", fontWeight: 700, cursor: "pointer" }}>{t("common.cancel")}</button>
+              <button type="button" onClick={() => setOpen(false)} style={{ background: "var(--surface-muted)", border: "none", borderRadius: "var(--radius-sm)", padding: "10px 14px", fontWeight: 700, cursor: "pointer" }}>{t("common.cancel")}</button>
               <button type="button" disabled={busy || (!text.trim() && !file)} onClick={send} style={{ ...submitBtn, opacity: busy || (!text.trim() && !file) ? 0.6 : 1 }}>
                 {busy ? t("common.saving") : `✓ ${t("ptl.submit")}`}
               </button>
@@ -741,8 +741,8 @@ function HomeworkCard({ hw, now, readOnly, onSubmit }: { hw: PortalHomework; now
   );
 }
 
-const fileBtn: React.CSSProperties = { display: "inline-flex", alignItems: "center", gap: 6, padding: "9px 12px", borderRadius: 10, border: "1px solid #C7D2FE", background: "#fff", color: "#4338CA", fontSize: 13, fontWeight: 700, cursor: "pointer" };
-const submitBtn: React.CSSProperties = { background: ACCENT, color: "#fff", border: "none", fontSize: 13.5, fontWeight: 700, padding: "10px 18px", borderRadius: 11, cursor: "pointer", minHeight: 42, boxShadow: "0 8px 18px -10px rgba(79,70,229,0.8)" };
+const fileBtn: React.CSSProperties = { display: "inline-flex", alignItems: "center", gap: 6, padding: "9px 12px", borderRadius: "var(--radius-sm)", border: "1px solid var(--primary-border)", background: "var(--surface)", color: "var(--primary)", fontSize: 13, fontWeight: 700, cursor: "pointer" };
+const submitBtn: React.CSSProperties = { background: ACCENT, color: "var(--on-ink)", border: "none", fontSize: 13.5, fontWeight: 700, padding: "10px 18px", borderRadius: "var(--radius-sm)", cursor: "pointer", minHeight: 42, boxShadow: "0 8px 18px -10px rgba(79,70,229,0.8)" };
 
 // ---------------------------------------------------------------- payments
 
@@ -764,18 +764,18 @@ export function PaymentsTab({ payments, checkoutLoading, onPay, payError }: { pa
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
       <TabTitle title={t("ptl.paymentsBalance")} />
-      <div style={{ borderRadius: 20, padding: 20, color: "#fff", background: debt > 0 ? "linear-gradient(135deg, #B91C1C, #7F1D1D)" : `linear-gradient(135deg, ${ACCENT}, #1B1440)`, boxShadow: "0 18px 36px -20px rgba(18,19,26,0.6)" }}>
+      <div style={{ borderRadius: "var(--radius-lg)", padding: 20, color: "var(--on-ink)", background: debt > 0 ? "linear-gradient(135deg, var(--danger), var(--danger))" : `linear-gradient(135deg, ${ACCENT}, #1B1440)`, boxShadow: "0 18px 36px -20px rgba(18,19,26,0.6)" }}>
         <div style={{ fontSize: 13, opacity: 0.85 }}>
           {t("ptl.monthStatus")} · {payments?.forMonth ? monthLabel(payments.forMonth, t) : "—"}
         </div>
-        <div style={{ fontFamily: "'Manrope', sans-serif", fontSize: 26, fontWeight: 800, marginTop: 6 }}>
+        <div style={{ fontFamily: "var(--font-display)", fontSize: 26, fontWeight: 800, marginTop: 6 }}>
           {debt > 0 ? `${money(debt)} ${t("common.sumUnit")}` : t("ptl.allPaid")}
         </div>
         {debt > 0 && <div style={{ fontSize: 13, opacity: 0.85 }}>{t("ptl.debtLabel")}</div>}
         {expected > 0 && (
           <>
-            <div style={{ height: 8, background: "rgba(255,255,255,0.2)", borderRadius: 100, marginTop: 14, overflow: "hidden" }}>
-              <div style={{ width: `${pct}%`, height: "100%", background: "#fff", borderRadius: 100 }} />
+            <div style={{ height: 8, background: "rgba(255,255,255,0.2)", borderRadius: "var(--radius-pill)", marginTop: 14, overflow: "hidden" }}>
+              <div style={{ width: `${pct}%`, height: "100%", background: "var(--surface)", borderRadius: "var(--radius-pill)" }} />
             </div>
             <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5, opacity: 0.9, marginTop: 6, gap: 10, flexWrap: "wrap" }}>
               <span>{t("ptl.paidSoFar")}: {money(paid)}</span>
@@ -785,39 +785,59 @@ export function PaymentsTab({ payments, checkoutLoading, onPay, payError }: { pa
           </>
         )}
         {debt > 0 && providers.length === 0 && (
-          <div style={{ marginTop: 14, fontSize: 13, background: "rgba(255,255,255,0.14)", borderRadius: 12, padding: "10px 12px", lineHeight: 1.5 }}>🏫 {t("ptl.payAtCenter")}</div>
+          <div style={{ marginTop: 14, fontSize: 13, background: "rgba(255,255,255,0.14)", borderRadius: "var(--radius-md)", padding: "10px 12px", lineHeight: 1.5 }}>🏫 {t("ptl.payAtCenter")}</div>
         )}
         {debt > 0 && providers.length > 0 && (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 8, marginTop: 16 }}>
             {providers.map(([p, l, c]) => (
-              <button key={p} type="button" onClick={() => onPay(p)} disabled={checkoutLoading !== null} style={{ background: "#fff", color: c, border: "none", minHeight: 46, borderRadius: 12, fontWeight: 800, fontSize: 14, cursor: "pointer", opacity: checkoutLoading && checkoutLoading !== p ? 0.6 : 1 }}>
+              <button key={p} type="button" onClick={() => onPay(p)} disabled={checkoutLoading !== null} style={{ background: "var(--surface)", color: c, border: "none", minHeight: 46, borderRadius: "var(--radius-md)", fontWeight: 800, fontSize: 14, cursor: "pointer", opacity: checkoutLoading && checkoutLoading !== p ? 0.6 : 1 }}>
                 {checkoutLoading === p ? t("common.loading") : `💳 ${l}`}
               </button>
             ))}
           </div>
         )}
-        {payError && <div role="alert" style={{ marginTop: 10, fontSize: 13, background: "rgba(255,255,255,0.92)", color: "#B91C1C", borderRadius: 10, padding: "8px 12px" }}>{payError}</div>}
+        {payError && <div role="alert" style={{ marginTop: 10, fontSize: 13, background: "rgba(255,255,255,0.92)", color: "var(--danger)", borderRadius: "var(--radius-sm)", padding: "8px 12px" }}>{payError}</div>}
       </div>
 
       <CardTransfer debt={debt} forMonth={payments?.forMonth} />
 
       <div style={{ ...card, padding: 0, overflow: "hidden" }}>
-        <div style={{ padding: "14px 16px", fontFamily: "'Manrope', sans-serif", fontSize: 16, fontWeight: 700, borderBottom: "1px solid #F0EEE8" }}>{t("ptl.history")}</div>
-        {history.length === 0 ? (
-          <div style={{ padding: 24, textAlign: "center", color: "#686B75", fontSize: 13.5 }}>{t("ptl.noHistory")}</div>
+        <div style={{ padding: "14px 16px", fontFamily: "var(--font-display)", fontSize: 16, fontWeight: 700, borderBottom: "1px solid var(--border)" }}>{t("ptl.history")}</div>
+        {/* Receipts sent by card and not (yet) payments: never missing from the history. */}
+        {(payments?.openReceipts ?? []).map((r) => (
+          <div key={r.id} data-testid="history-receipt" style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 16px", borderBottom: "1px solid var(--border)", background: r.status === "PENDING" ? "var(--warning-soft)" : "var(--danger-soft)" }}>
+            <div style={{ width: 38, height: 38, flexShrink: 0, borderRadius: "var(--radius-sm)", background: r.status === "PENDING" ? "var(--warning-soft)" : "var(--danger-soft)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 17 }}>
+              {r.status === "PENDING" ? "⏳" : "✕"}
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 14, fontWeight: 700 }}>{monthLabel(r.forMonth, t)}</div>
+              <div style={{ fontSize: 12, color: "var(--text-muted)" }}>💳 {t("ph.viaCard")} · {formatDate(r.createdAt, lang)}</div>
+              {r.status === "REJECTED" && r.rejectReason && <div style={{ fontSize: 12, color: "var(--danger)" }}>{r.rejectReason}</div>}
+            </div>
+            <div style={{ textAlign: "right" }}>
+              <div style={{ fontFamily: "var(--font-display)", fontSize: 15, fontWeight: 800, color: "var(--text-muted)" }}>{money(r.amount)}</div>
+              <div style={{ fontSize: 11.5, color: r.status === "PENDING" ? "var(--warning)" : "var(--danger)", fontWeight: 700 }}>{t(r.status === "PENDING" ? "ph.checking" : "ph.rejected")}</div>
+            </div>
+          </div>
+        ))}
+        {history.length === 0 && !(payments?.openReceipts?.length) ? (
+          <div style={{ padding: 24, textAlign: "center", color: "var(--text-muted)", fontSize: 13.5 }}>{t("ptl.noHistory")}</div>
         ) : (
           history.map((p) => (
-            <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 16px", borderBottom: "1px solid #F7F6F2" }}>
-              <div style={{ width: 38, height: 38, flexShrink: 0, borderRadius: 11, background: p.status === "PAID" ? "#E9F8EF" : "#FEE2E2", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 17 }}>
+            <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 16px", borderBottom: "1px solid var(--border)" }}>
+              <div style={{ width: 38, height: 38, flexShrink: 0, borderRadius: "var(--radius-sm)", background: p.status === "PAID" ? "var(--success-soft)" : "var(--danger-soft)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 17 }}>
                 {p.status === "PAID" ? "✓" : "!"}
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 14, fontWeight: 700 }}>{p.forMonth ? monthLabel(p.forMonth, t) : "—"}</div>
-                <div style={{ fontSize: 12, color: "#686B75" }}>{p.paidAt ? formatDate(p.paidAt, lang) : "—"}</div>
+                <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
+                  {p.paidAt ? formatDate(p.paidAt, lang) : "—"}
+                  {p.viaCard && <> · 💳 {t("ph.viaCard")}</>}
+                </div>
               </div>
               <div style={{ textAlign: "right" }}>
-                <div style={{ fontFamily: "'Manrope', sans-serif", fontSize: 15, fontWeight: 800 }}>{money(p.amount)}</div>
-                <div style={{ fontSize: 11.5, color: p.status === "PAID" ? "#16794A" : "#DC2626", fontWeight: 700 }}>{p.status === "PAID" ? t("ptl.paidStatus") : p.status}</div>
+                <div style={{ fontFamily: "var(--font-display)", fontSize: 15, fontWeight: 800 }}>{money(p.amount)}</div>
+                <div style={{ fontSize: 11.5, color: p.status === "PAID" ? "var(--success)" : "var(--danger)", fontWeight: 700 }}>{p.status === "PAID" ? t("ptl.paidStatus") : p.status}</div>
               </div>
             </div>
           ))

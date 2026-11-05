@@ -15,25 +15,25 @@ import { useLanguage } from "@/lib/i18n-context";
 import type { TranslationKey } from "@/lib/i18n";
 import { formatDate, formatDateTime } from "@/lib/format-date";
 
-const ACCENT = "#4F46E5";
-const LBL: React.CSSProperties = { display: "flex", flexDirection: "column", gap: 4, fontSize: 12.5, fontWeight: 600, color: "#4A4E58" };
+const ACCENT = "var(--primary)";
+const LBL: React.CSSProperties = { display: "flex", flexDirection: "column", gap: 4, fontSize: 12.5, fontWeight: 600, color: "var(--text-soft)" };
 // The way through hiring, in order; HIRED and REJECTED are where it ends.
 const STAGES: CandidateStage[] = ["NEW", "TEST", "INTERVIEW", "DEMO", "OFFER", "HIRED", "REJECTED"];
 const STAGE_TONE: Record<CandidateStage, { bg: string; fg: string }> = {
-  NEW: { bg: "#F2F1EC", fg: "#4A4E58" },
-  TEST: { bg: "#E8F0FE", fg: "#1D4ED8" },
-  INTERVIEW: { bg: "#F1EBFF", fg: "#5B21B6" },
-  DEMO: { bg: "#FFF7E6", fg: "#8A5A00" },
-  OFFER: { bg: "#E6F7F5", fg: "#0F766E" },
-  HIRED: { bg: "#E9F8EF", fg: "#16794A" },
-  REJECTED: { bg: "#FDEBEC", fg: "#B23A47" },
+  NEW: { bg: "var(--surface-muted)", fg: "var(--text-soft)" },
+  TEST: { bg: "var(--info-soft)", fg: "var(--info)" },
+  INTERVIEW: { bg: "var(--violet-soft)", fg: "var(--violet)" },
+  DEMO: { bg: "var(--warning-soft)", fg: "var(--warning)" },
+  OFFER: { bg: "var(--teal-soft)", fg: "var(--teal)" },
+  HIRED: { bg: "var(--success-soft)", fg: "var(--success)" },
+  REJECTED: { bg: "var(--danger-soft)", fg: "var(--danger)" },
 };
 const stageKey = (s: CandidateStage) => `hire.stage.${s}` as TranslationKey;
 
 function StageChip({ stage }: { stage: CandidateStage }) {
   const { t } = useLanguage();
   const tone = STAGE_TONE[stage];
-  return <span style={{ fontSize: 12, fontWeight: 800, padding: "3px 10px", borderRadius: 100, background: tone.bg, color: tone.fg, whiteSpace: "nowrap" }}>{t(stageKey(stage))}</span>;
+  return <span style={{ fontSize: 12, fontWeight: 800, padding: "3px 10px", borderRadius: "var(--radius-pill)", background: tone.bg, color: tone.fg, whiteSpace: "nowrap" }}>{t(stageKey(stage))}</span>;
 }
 
 const score = (n: number | null) => (n ? "★".repeat(n) + "☆".repeat(5 - n) : "—");
@@ -74,22 +74,22 @@ function HiringContent() {
 
   return (
     <>
-      <div style={{ padding: "22px 32px", borderBottom: "1px solid #EAE8E2", display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16, flexWrap: "wrap" }}>
+      <div style={{ padding: "var(--page-head-pad)", display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16, flexWrap: "wrap" }}>
         <div>
-          <h1 style={{ fontSize: 22, fontWeight: 800 }}>{t("hire.title")}</h1>
-          <div style={{ fontSize: 13, color: "#686B75", marginTop: 2, lineHeight: 1.5, maxWidth: 640 }}>{t("hire.subtitle")}</div>
+          <h1 className="page-title">{t("hire.title")}</h1>
+          <div style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 2, lineHeight: 1.5, maxWidth: 640 }}>{t("hire.subtitle")}</div>
         </div>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-          <button type="button" className="btn" onClick={() => setTestsOpen(true)} style={{ background: "#F2F1EC", color: "#181A1F", border: "none", fontSize: 13.5, fontWeight: 700, padding: "10px 16px", borderRadius: 9 }}>
+          <button type="button" className="btn" onClick={() => setTestsOpen(true)} style={{ background: "var(--surface-muted)", color: "var(--text)", border: "none", fontSize: 13.5, fontWeight: 700, padding: "10px 16px", borderRadius: "var(--radius-sm)" }}>
             🧭 {t("hire.tests")}
           </button>
-          <button type="button" className="btn" onClick={() => setAdding(true)} style={{ background: ACCENT, color: "#fff", border: "none", fontSize: 13.5, fontWeight: 700, padding: "10px 18px", borderRadius: 9 }}>
+          <button type="button" className="btn" onClick={() => setAdding(true)} style={{ background: ACCENT, color: "var(--on-ink)", border: "none", fontSize: 13.5, fontWeight: 700, padding: "10px 18px", borderRadius: "var(--radius-sm)" }}>
             + {t("hire.add")}
           </button>
         </div>
       </div>
 
-      <div style={{ padding: "20px 32px", display: "flex", flexDirection: "column", gap: 16 }}>
+      <div style={{ padding: "var(--page-pad)", display: "flex", flexDirection: "column", gap: 16 }}>
         <div role="tablist" aria-label={t("hire.title")} style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           {(["ALL", ...STAGES] as const).map((s) => {
             const active = stage === s;
@@ -102,7 +102,7 @@ function HiringContent() {
                 aria-selected={active}
                 onClick={() => setStage(s)}
                 className="btn"
-                style={{ background: active ? ACCENT : "#fff", color: active ? "#fff" : "#4A4E58", border: `1px solid ${active ? ACCENT : "#EAE8E2"}`, borderRadius: 100, padding: "7px 14px", fontSize: 13, fontWeight: 700 }}
+                style={{ background: active ? ACCENT : "var(--surface)", color: active ? "var(--on-ink)" : "var(--text-soft)", border: `1px solid ${active ? ACCENT : "var(--border)"}`, borderRadius: "var(--radius-pill)", padding: "7px 14px", fontSize: 13, fontWeight: 700 }}
               >
                 {s === "ALL" ? t("hire.all") : t(stageKey(s))} <span style={{ opacity: 0.75 }}>{n}</span>
               </button>
@@ -112,12 +112,12 @@ function HiringContent() {
 
         <input className="field-input" placeholder={t("hire.search")} value={q} onChange={(e) => setQ(e.target.value)} style={{ maxWidth: 360 }} aria-label={t("hire.search")} />
 
-        {error && <div role="alert" style={{ color: "#B23A47", fontSize: 13 }}>{error}</div>}
+        {error && <div role="alert" style={{ color: "var(--danger)", fontSize: 13 }}>{error}</div>}
 
         {items && items.length === 0 && total === 0 ? (
-          <div data-testid="hiring-empty" style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 28, display: "flex", flexDirection: "column", gap: 12 }}>
-            <div style={{ fontSize: 17, fontWeight: 800, fontFamily: "'Manrope', sans-serif" }}>{t("hire.emptyTitle")}</div>
-            <ol style={{ margin: 0, paddingLeft: 20, display: "flex", flexDirection: "column", gap: 6, fontSize: 13.5, color: "#3A3D45", lineHeight: 1.55 }}>
+          <div data-testid="hiring-empty" style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 28, display: "flex", flexDirection: "column", gap: 12 }}>
+            <div style={{ fontSize: 17, fontWeight: 800, fontFamily: "var(--font-display)" }}>{t("hire.emptyTitle")}</div>
+            <ol style={{ margin: 0, paddingLeft: 20, display: "flex", flexDirection: "column", gap: 6, fontSize: 13.5, color: "var(--text-soft)", lineHeight: 1.55 }}>
               <li>{t("hire.step1")}</li>
               <li>{t("hire.step2")}</li>
               <li>{t("hire.step3")}</li>
@@ -125,9 +125,9 @@ function HiringContent() {
             </ol>
           </div>
         ) : items && items.length === 0 ? (
-          <div style={{ color: "#686B75", fontSize: 14, background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 32, textAlign: "center" }}>{t("hire.noMatch")}</div>
+          <div style={{ color: "var(--text-muted)", fontSize: 14, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 32, textAlign: "center" }}>{t("hire.noMatch")}</div>
         ) : items ? (
-          <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, overflowX: "auto" }}>
+          <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", overflowX: "auto" }}>
             <table className="adm-table" style={{ minWidth: 720 }}>
               <thead>
                 <tr>
@@ -144,17 +144,17 @@ function HiringContent() {
                 {items.map((c) => (
                   <tr key={c.id} onClick={() => setOpenId(c.id)} style={{ cursor: "pointer" }} data-testid="candidate-row">
                     <td>
-                      <button type="button" onClick={() => setOpenId(c.id)} style={{ background: "none", border: "none", padding: 0, font: "inherit", fontWeight: 700, color: "#181A1F", cursor: "pointer", textAlign: "left" }}>
+                      <button type="button" onClick={() => setOpenId(c.id)} style={{ background: "none", border: "none", padding: 0, font: "inherit", fontWeight: 700, color: "var(--text)", cursor: "pointer", textAlign: "left" }}>
                         {c.fullName}
                       </button>
-                      {c.phone && <div style={{ fontSize: 12, color: "#686B75" }}>{c.phone}</div>}
+                      {c.phone && <div style={{ fontSize: 12, color: "var(--text-muted)" }}>{c.phone}</div>}
                     </td>
                     <td>{c.subject || "—"}</td>
                     <td><StageChip stage={c.stage} /></td>
                     <td>{c.testPercent == null ? "—" : `${c.testPercent}%`}</td>
-                    <td style={{ color: "#B45309" }}>{score(c.interviewScore)}</td>
-                    <td style={{ color: "#B45309" }}>{score(c.demoScore)}</td>
-                    <td style={{ fontSize: 12.5, color: "#686B75" }}>{formatDate(c.updatedAt, lang)}</td>
+                    <td style={{ color: "var(--warning)" }}>{score(c.interviewScore)}</td>
+                    <td style={{ color: "var(--warning)" }}>{score(c.demoScore)}</td>
+                    <td style={{ fontSize: 12.5, color: "var(--text-muted)" }}>{formatDate(c.updatedAt, lang)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -163,7 +163,7 @@ function HiringContent() {
         ) : null}
 
         {counts && total > 0 && (
-          <div style={{ fontSize: 12.5, color: "#686B75" }}>{t("hire.summary").replace("{n}", String(inProgress)).replace("{h}", String(counts.HIRED))}</div>
+          <div style={{ fontSize: 12.5, color: "var(--text-muted)" }}>{t("hire.summary").replace("{n}", String(inProgress)).replace("{h}", String(counts.HIRED))}</div>
         )}
       </div>
 
@@ -287,14 +287,14 @@ function AddCandidate({ onClose, onCreated }: { onClose: () => void; onCreated: 
         }}
         style={{ display: "flex", flexDirection: "column", gap: 12 }}
       >
-        <div style={{ fontSize: 12.5, color: "#686B75", lineHeight: 1.5 }}>{t("hire.addHint")}</div>
+        <div style={{ fontSize: 12.5, color: "var(--text-muted)", lineHeight: 1.5 }}>{t("hire.addHint")}</div>
         <ContactFields form={form} set={(k, v) => setForm({ ...form, [k]: v })} />
         <label style={LBL}>
           {t("hire.f.notes")}
           <textarea className="field-input" rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder={t("hire.f.notesHint")} maxLength={4000} />
         </label>
-        {error && <div role="alert" style={{ color: "#B23A47", fontSize: 12.5, fontWeight: 600 }}>{error}</div>}
-        <button className="btn" type="submit" disabled={busy} style={{ background: ACCENT, color: "#fff", border: "none", fontSize: 13.5, fontWeight: 700, padding: "10px 18px", borderRadius: 9, alignSelf: "flex-start" }}>
+        {error && <div role="alert" style={{ color: "var(--danger)", fontSize: 12.5, fontWeight: 600 }}>{error}</div>}
+        <button className="btn" type="submit" disabled={busy} style={{ background: ACCENT, color: "var(--on-ink)", border: "none", fontSize: 13.5, fontWeight: 700, padding: "10px 18px", borderRadius: "var(--radius-sm)", alignSelf: "flex-start" }}>
           {busy ? t("common.saving") : t("hire.addSubmit")}
         </button>
       </form>
@@ -322,12 +322,12 @@ function Stars({ value, onChange, label }: { value: number | null; onChange: (v:
           aria-checked={value === n}
           aria-label={`${n}/5`}
           onClick={() => onChange(value === n ? null : n)}
-          style={{ background: "none", border: "none", cursor: "pointer", fontSize: 26, lineHeight: 1, padding: "0 2px", color: value && n <= value ? "#F59E0B" : "#D9D7D0" }}
+          style={{ background: "none", border: "none", cursor: "pointer", fontSize: 26, lineHeight: 1, padding: "0 2px", color: value && n <= value ? "var(--warning)" : "var(--text-faint)" }}
         >
           ★
         </button>
       ))}
-      <span style={{ fontSize: 12.5, color: "#686B75", marginLeft: 6 }}>{value ? t(`hire.score.${value}` as TranslationKey) : t("hire.score.none")}</span>
+      <span style={{ fontSize: 12.5, color: "var(--text-muted)", marginLeft: 6 }}>{value ? t(`hire.score.${value}` as TranslationKey) : t("hire.score.none")}</span>
     </div>
   );
 }
@@ -420,7 +420,7 @@ function CandidateModal({ id, onClose, onChanged }: { id: string; onClose: () =>
     return body;
   }
 
-  const btn = (bg: string, fg = "#fff"): React.CSSProperties => ({ background: bg, color: fg, border: "none", fontSize: 13.5, fontWeight: 700, padding: "10px 18px", borderRadius: 9 });
+  const btn = (bg: string, fg = "var(--surface)"): React.CSSProperties => ({ background: bg, color: fg, border: "none", fontSize: 13.5, fontWeight: 700, padding: "10px 18px", borderRadius: "var(--radius-sm)" });
   const dirty = Object.keys(draft).length > 0;
 
   return (
@@ -428,11 +428,11 @@ function CandidateModal({ id, onClose, onChanged }: { id: string; onClose: () =>
       <div style={{ display: "flex", flexDirection: "column", gap: 14 }} data-testid="candidate-modal">
         {/* Who: one line, editable on demand. */}
         <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-          <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", fontSize: 13, color: "#4A4E58" }}>
+          <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", fontSize: 13, color: "var(--text-soft)" }}>
             <StageChip stage={c.stage} />
             {[c.phone, c.email, c.subject, c.source].filter(Boolean).join(" · ") || t("hire.noContact")}
           </div>
-          <button type="button" className="btn" onClick={() => setEditContact(!editContact)} style={{ background: "#F2F1EC", color: "#181A1F", border: "none", fontSize: 12.5, fontWeight: 700, padding: "6px 12px", borderRadius: 8 }}>
+          <button type="button" className="btn" onClick={() => setEditContact(!editContact)} style={{ background: "var(--surface-muted)", color: "var(--text)", border: "none", fontSize: 12.5, fontWeight: 700, padding: "6px 12px", borderRadius: "var(--radius-xs)" }}>
             ✏️ {t("hire.editContact")}
           </button>
         </div>
@@ -442,7 +442,7 @@ function CandidateModal({ id, onClose, onChanged }: { id: string; onClose: () =>
               e.preventDefault();
               void run(() => hiringApi.update(id, { ...contactBody(contact), phone: phoneOrEmpty(contact.phone), email: contact.email.trim() }), t("hire.saved")).then(() => setEditContact(false));
             }}
-            style={{ border: "1px solid #EAE8E2", borderRadius: 12, padding: 14, display: "flex", flexDirection: "column", gap: 10 }}
+            style={{ border: "1px solid var(--border)", borderRadius: "var(--radius-md)", padding: 14, display: "flex", flexDirection: "column", gap: 10 }}
           >
             <ContactFields form={contact} set={(k, val) => setContact({ ...contact, [k]: val })} />
             <button className="btn" type="submit" disabled={busy} style={{ ...btn(ACCENT), alignSelf: "flex-start" }}>{t("common.save")}</button>
@@ -467,16 +467,16 @@ function CandidateModal({ id, onClose, onChanged }: { id: string; onClose: () =>
                     alignItems: "center",
                     gap: 4,
                     padding: "8px 4px",
-                    borderRadius: 10,
+                    borderRadius: "var(--radius-sm)",
                     cursor: "pointer",
-                    border: `1.5px solid ${open ? ACCENT : "#EAE8E2"}`,
-                    background: open ? "#EEF0FF" : "#fff",
+                    border: `1.5px solid ${open ? ACCENT : "var(--border)"}`,
+                    background: open ? "var(--primary-soft)" : "var(--surface)",
                   }}
                 >
-                  <span style={{ width: 26, height: 26, borderRadius: 100, display: "grid", placeItems: "center", fontSize: 13, fontWeight: 800, background: done ? "#16794A" : open ? ACCENT : "#F2F1EC", color: done || open ? "#fff" : "#686B75" }}>
+                  <span style={{ width: 26, height: 26, borderRadius: "var(--radius-pill)", display: "grid", placeItems: "center", fontSize: 13, fontWeight: 800, background: done ? "var(--success)" : open ? ACCENT : "var(--surface-muted)", color: done || open ? "var(--on-ink)" : "var(--text-muted)" }}>
                     {done ? "✓" : i + 1}
                   </span>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: open ? ACCENT : "#4A4E58", textAlign: "center" }}>{t(key)}</span>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: open ? ACCENT : "var(--text-soft)", textAlign: "center" }}>{t(key)}</span>
                 </button>
               </li>
             );
@@ -484,13 +484,13 @@ function CandidateModal({ id, onClose, onChanged }: { id: string; onClose: () =>
         </ol>
 
         {/* The open step. */}
-        <section style={{ border: "1px solid #EAE8E2", borderRadius: 12, padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
-          <div style={{ fontSize: 13, color: "#686B75", lineHeight: 1.55 }}>{t(`hire.step.${["test", "interview", "demo", "decision"][step]}.hint` as TranslationKey)}</div>
+        <section style={{ border: "1px solid var(--border)", borderRadius: "var(--radius-md)", padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
+          <div style={{ fontSize: 13, color: "var(--text-muted)", lineHeight: 1.55 }}>{t(`hire.step.${["test", "interview", "demo", "decision"][step]}.hint` as TranslationKey)}</div>
 
           {step === 0 && (
             <>
               {c.attempts.map((a) => (
-                <div key={a.id} style={{ fontSize: 13, background: "#F8F8FF", borderRadius: 8, padding: "8px 12px" }}>
+                <div key={a.id} style={{ fontSize: 13, background: "var(--primary-soft)", borderRadius: "var(--radius-xs)", padding: "8px 12px" }}>
                   🧭 <b>{a.testTitle}</b>: {a.percent}% ({a.correct}/{a.total}){a.reviewStatus === "PENDING" ? ` · ${t("hire.pendingReview")}` : ""} · {formatDateTime(a.createdAt, lang)}
                 </div>
               ))}
@@ -528,34 +528,34 @@ function CandidateModal({ id, onClose, onChanged }: { id: string; onClose: () =>
           {step === 3 && (
             <>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 8, fontSize: 13 }}>
-                <div style={{ background: "#F8F8FF", borderRadius: 8, padding: "8px 12px" }}>{t("hire.step.test")}: <b>{c.testPercent == null ? "—" : `${c.testPercent}%`}</b></div>
-                <div style={{ background: "#F8F8FF", borderRadius: 8, padding: "8px 12px" }}>{t("hire.step.interview")}: <b style={{ color: "#B45309" }}>{score(c.interviewScore)}</b></div>
-                <div style={{ background: "#F8F8FF", borderRadius: 8, padding: "8px 12px" }}>{t("hire.step.demo")}: <b style={{ color: "#B45309" }}>{score(c.demoScore)}</b></div>
+                <div style={{ background: "var(--primary-soft)", borderRadius: "var(--radius-xs)", padding: "8px 12px" }}>{t("hire.step.test")}: <b>{c.testPercent == null ? "—" : `${c.testPercent}%`}</b></div>
+                <div style={{ background: "var(--primary-soft)", borderRadius: "var(--radius-xs)", padding: "8px 12px" }}>{t("hire.step.interview")}: <b style={{ color: "var(--warning)" }}>{score(c.interviewScore)}</b></div>
+                <div style={{ background: "var(--primary-soft)", borderRadius: "var(--radius-xs)", padding: "8px 12px" }}>{t("hire.step.demo")}: <b style={{ color: "var(--warning)" }}>{score(c.demoScore)}</b></div>
               </div>
               <label style={LBL}>
                 {t("hire.f.decisionNote")}
                 <textarea className="field-input" rows={3} maxLength={4000} value={v("decisionNote") ?? ""} onChange={(e) => put("decisionNote", e.target.value)} />
               </label>
               {c.stage === "HIRED" && c.teacherId && (
-                <div role="status" style={{ background: "#E9F8EF", color: "#16794A", borderRadius: 10, padding: "10px 14px", fontSize: 13, fontWeight: 600 }}>
-                  ✅ {t("hire.isTeacher")} <Link href={`/teachers/${c.teacherId}`} style={{ color: "#16794A", textDecoration: "underline" }}>{t("hire.openTeacher")} →</Link>
+                <div role="status" style={{ background: "var(--success-soft)", color: "var(--success)", borderRadius: "var(--radius-sm)", padding: "10px 14px", fontSize: 13, fontWeight: 600 }}>
+                  ✅ {t("hire.isTeacher")} <Link href={`/teachers/${c.teacherId}`} style={{ color: "var(--success)", textDecoration: "underline" }}>{t("hire.openTeacher")} →</Link>
                 </div>
               )}
-              {c.stage === "REJECTED" && <div role="status" style={{ background: "#FDEBEC", color: "#B23A47", borderRadius: 10, padding: "10px 14px", fontSize: 13, fontWeight: 600 }}>{t("hire.isRejected")}</div>}
+              {c.stage === "REJECTED" && <div role="status" style={{ background: "var(--danger-soft)", color: "var(--danger)", borderRadius: "var(--radius-sm)", padding: "10px 14px", fontSize: 13, fontWeight: 600 }}>{t("hire.isRejected")}</div>}
             </>
           )}
 
-          {error && <div role="alert" style={{ color: "#B23A47", fontSize: 13, fontWeight: 600 }}>{error}</div>}
-          {notice && <div role="status" style={{ color: "#16794A", fontSize: 13, fontWeight: 600 }}>{notice}</div>}
+          {error && <div role="alert" style={{ color: "var(--danger)", fontSize: 13, fontWeight: 600 }}>{error}</div>}
+          {notice && <div role="status" style={{ color: "var(--success)", fontSize: 13, fontWeight: 600 }}>{notice}</div>}
 
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             {(dirty || step === 3) && c.stage !== "HIRED" && (
-              <button type="button" className="btn" disabled={busy || !dirty} onClick={() => run(() => hiringApi.update(id, stepBody(false)), t("hire.saved"), step)} style={btn(dirty ? ACCENT : "#C7C9D1")}>
+              <button type="button" className="btn" disabled={busy || !dirty} onClick={() => run(() => hiringApi.update(id, stepBody(false)), t("hire.saved"), step)} style={btn(dirty ? ACCENT : "var(--border-strong)")}>
                 {busy ? t("common.saving") : t("common.save")}
               </button>
             )}
             {step < 3 && !closed && (
-              <button type="button" className="btn" disabled={busy} onClick={() => run(() => hiringApi.update(id, stepBody(true)), t("hire.moved"))} style={btn("#16794A")}>
+              <button type="button" className="btn" disabled={busy} onClick={() => run(() => hiringApi.update(id, stepBody(true)), t("hire.moved"))} style={btn("var(--success)")}>
                 {t("hire.next").replace("{step}", t(STEP_KEYS[step + 1]))} →
               </button>
             )}
@@ -572,18 +572,18 @@ function CandidateModal({ id, onClose, onChanged }: { id: string; onClose: () =>
                     }, t("hire.hiredNotice"));
                   }
                 }}
-                style={btn("#16794A")}
+                style={btn("var(--success)")}
               >
                 👩‍🏫 {t("hire.makeTeacher")}
               </button>
             )}
             {step === 3 && !closed && (
-              <button type="button" className="btn" disabled={busy} onClick={() => run(() => hiringApi.update(id, { ...stepBody(false), stage: "REJECTED" }), t("hire.saved"))} style={btn("#FDEBEC", "#B23A47")}>
+              <button type="button" className="btn" disabled={busy} onClick={() => run(() => hiringApi.update(id, { ...stepBody(false), stage: "REJECTED" }), t("hire.saved"))} style={btn("var(--danger-soft)", "var(--danger)")}>
                 ✕ {t("hire.reject")}
               </button>
             )}
             {c.stage === "REJECTED" && (
-              <button type="button" className="btn" disabled={busy} onClick={() => run(() => hiringApi.update(id, { stage: "DEMO" }), t("hire.saved"))} style={btn("#F2F1EC", "#181A1F")}>
+              <button type="button" className="btn" disabled={busy} onClick={() => run(() => hiringApi.update(id, { stage: "DEMO" }), t("hire.saved"))} style={btn("var(--surface-muted)", "var(--text)")}>
                 ↺ {t("hire.reopen")}
               </button>
             )}
@@ -591,7 +591,7 @@ function CandidateModal({ id, onClose, onChanged }: { id: string; onClose: () =>
         </section>
 
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-          <div style={{ fontSize: 12, color: "#686B75" }}>
+          <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
             {c.history.map((h, i) => (
               <span key={i}>{i > 0 && " → "}{t(stageKey(h.stage))} ({formatDate(h.at, lang)})</span>
             ))}
@@ -608,7 +608,7 @@ function CandidateModal({ id, onClose, onChanged }: { id: string; onClose: () =>
                 }).catch((e) => setError(errorText(e, t)));
               }
             }}
-            style={{ background: "transparent", color: "#B23A47", border: "none", fontSize: 12.5, fontWeight: 700, padding: "6px 8px" }}
+            style={{ background: "transparent", color: "var(--danger)", border: "none", fontSize: 12.5, fontWeight: 700, padding: "6px 8px" }}
           >
             {t("hire.archive")}
           </button>

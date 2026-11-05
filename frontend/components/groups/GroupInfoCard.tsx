@@ -38,20 +38,20 @@ export default function GroupInfoCard({ group, students, lessonsHeld }: { group:
   if (lessonsHeld !== undefined) rows.push({ icon: "✅", label: t("grp.lessonsHeld"), value: String(lessonsHeld) });
 
   return (
-    <div style={{ background: "#fff", border: "1px solid #EAE8E2", borderRadius: 16, padding: 20 }}>
-      <div style={{ fontFamily: "'Manrope', sans-serif", fontWeight: 700, fontSize: 15, marginBottom: 14 }}>{t("groupDetail.aboutGroup")}</div>
+    <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 20 }}>
+      <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 15, marginBottom: 14 }}>{t("groupDetail.aboutGroup")}</div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(170px, 1fr))", gap: 10 }}>
         {rows.map((r) => (
-          <div key={r.label} style={{ display: "flex", gap: 10, alignItems: "flex-start", background: "#F7F6F2", borderRadius: 10, padding: "9px 11px", minWidth: 0 }}>
+          <div key={r.label} style={{ display: "flex", gap: 10, alignItems: "flex-start", background: "var(--surface-muted)", borderRadius: "var(--radius-sm)", padding: "9px 11px", minWidth: 0 }}>
             <span style={{ fontSize: 16, lineHeight: "20px" }} aria-hidden>{r.icon}</span>
             <div style={{ minWidth: 0 }}>
-              <div style={{ fontSize: 11, color: "#686B75", fontWeight: 600 }}>{r.label}</div>
+              <div style={{ fontSize: 11, color: "var(--text-muted)", fontWeight: 600 }}>{r.label}</div>
               <div style={{ fontSize: 13, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={r.value}>{r.value}</div>
             </div>
           </div>
         ))}
       </div>
-      {group.description && <div style={{ marginTop: 12, fontSize: 13, color: "#4A4E58", lineHeight: 1.55 }}>{group.description}</div>}
+      {group.description && <div style={{ marginTop: 12, fontSize: 13, color: "var(--text-soft)", lineHeight: 1.55 }}>{group.description}</div>}
     </div>
   );
 }
