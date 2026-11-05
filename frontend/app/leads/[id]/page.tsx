@@ -2,6 +2,9 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import CallButton from "@/components/telephony/CallButton";
+import CallHistory from "@/components/telephony/CallHistory";
+import { callNoteText } from "@/components/telephony/useCallsMe";
 import { nextLessonDate } from "@/lib/date";
 import { centerWallClock, isoToCenterParts } from "@/lib/center-time";
 import { useParams } from "next/navigation";
@@ -255,7 +258,8 @@ function LeadProfile() {
             <StatusBadge status={lead.status} label={t(statusKey(lead.status))} />
           </div>
           <div className="adm-actions">
-            {/* A plain tel: link: dialing is not logged automatically; staff log the call below. */}
+            {/* Click-to-call through the center's telephony when it is on (logged by itself); a plain tel: link otherwise. */}
+            <CallButton phone={lead.phone} label={t("tel.callViaPbx")} />
             <a href={telHref(lead.phone)} className="btn" style={{ ...ghostBtn, textDecoration: "none" }}>📞 {t("adm.call")}</a>
             {editable && can("notifications.send") && (
               <button type="button" className="btn" style={ghostBtn} onClick={() => openDialog({ kind: "sms" })}>💬 {t("adm.sms")}</button>
@@ -334,7 +338,7 @@ function LeadProfile() {
               <h2 style={{ fontSize: 15, fontWeight: 800, marginBottom: 8 }}>{t("adm.origin")}</h2>
               {detail(
                 t("adm.originChannel"),
-                origin?.channel === "PLACEMENT_TEST" ? `🧭 ${t("adm.originTest")}` : origin?.channel === "PUBLIC_FORM" ? `🌐 ${t("adm.originForm")}` : `👤 ${t("adm.originStaff")}`,
+                origin?.channel === "PLACEMENT_TEST" ? `🧭 ${t("adm.originTest")}` : origin?.channel === "PHONE_CALL" ? `📞 ${t("adm.originCall")}` : origin?.channel === "PUBLIC_FORM" ? `🌐 ${t("adm.originForm")}` : `👤 ${t("adm.originStaff")}`,
               )}
               {detail(t("leads.fieldSource"), t(sourceKey(lead.source)))}
               {origin?.createdBy && detail(t("adm.originAddedBy"), origin.createdBy.fullName)}
@@ -438,8 +442,8 @@ function LeadProfile() {
 
             <section style={card}>
               <h2 style={{ fontSize: 15, fontWeight: 800, marginBottom: 8 }}>{t("adm.details")}</h2>
-              {detail(t("leads.fieldPhone"), <a href={telHref(lead.phone)} style={{ color: ACCENT }}>{lead.phone}</a>)}
-              {lead.secondaryPhone && detail(t("adm.parentPhone"), <a href={telHref(lead.secondaryPhone)} style={{ color: ACCENT }}>{lead.secondaryPhone}</a>)}
+              {detail(t("leads.fieldPhone"), <span style={{ display: "inline-flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}><a href={telHref(lead.phone)} style={{ color: ACCENT }}>{lead.phone}</a><CallButton phone={lead.phone} /></span>)}
+              {lead.secondaryPhone && detail(t("adm.parentPhone"), <span style={{ display: "inline-flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}><a href={telHref(lead.secondaryPhone)} style={{ color: ACCENT }}>{lead.secondaryPhone}</a><CallButton phone={lead.secondaryPhone} /></span>)}
               {lead.email && detail(t("adm.fieldEmail"), <a href={`mailto:${lead.email}`} style={{ color: ACCENT }}>{lead.email}</a>)}
               {detail(t("adm.fieldSubject"), [lead.desiredSubject?.name, ...(lead.extraSubjects ?? []).map((s) => s.name)].filter(Boolean).join(", ") || "—")}
               {detail(t("adm.fieldCourse"), lead.desiredCourse?.name ?? "—")}
@@ -539,6 +543,8 @@ function LeadProfile() {
             </section>
           </div>
 
+          <CallHistory leadId={lead.id} />
+
           <section style={card}>
             <h2 style={{ fontSize: 15, fontWeight: 800, marginBottom: 10 }}>{t("adm.timeline")}</h2>
             {editable && (
@@ -583,7 +589,7 @@ function LeadProfile() {
                       <span style={{ fontWeight: 500, color: "var(--danger)" }}> · {t(lostKey(a.metadata.reason as LeadLostReason))}</span>
                     )}
                   </div>
-                  {a.body && <div style={{ fontSize: 13, whiteSpace: "pre-wrap", marginTop: 3 }}>{a.body}</div>}
+                  {a.body && <div style={{ fontSize: 13, whiteSpace: "pre-wrap", marginTop: 3 }}>{callNoteText(a.metadata, t) ?? a.body}</div>}
                   <div style={{ fontSize: 11.5, color: "var(--text-muted)", marginTop: 3 }}>
                     {formatDateTime(a.occurredAt, lang, tz)} · {a.actor?.fullName ?? t("adm.system")}
                   </div>

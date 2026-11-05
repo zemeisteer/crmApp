@@ -8,6 +8,7 @@ import { useLanguage } from "@/lib/i18n-context";
 import Sidebar, { canOpenPath, isPlatformMode, PLATFORM_HOME } from "./Sidebar";
 import TwoFactorGate from "./TwoFactorGate";
 import AppTopBar from "./AppTopBar";
+import CallPopup from "./telephony/CallPopup";
 import { formatDate } from "@/lib/format-date";
 
 const ACCENT = "var(--primary)";
@@ -180,6 +181,8 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
           )}
         </main>
       </div>
+      {/* The incoming-call popup (telephony), for a center's staff. */}
+      {tenant && !platformMode && <CallPopup />}
     </div>
   );
 }

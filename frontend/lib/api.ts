@@ -627,7 +627,7 @@ export interface Lead {
   allowedTransitions?: LeadStatus[];
   // Detail view only: how the lead arrived and its level-test results.
   origin?: {
-    channel: "STAFF" | "PUBLIC_FORM" | "PLACEMENT_TEST";
+    channel: "STAFF" | "PUBLIC_FORM" | "PLACEMENT_TEST" | "PHONE_CALL";
     createdBy: { id: string; fullName: string } | null;
     utm: { source?: string; medium?: string; campaign?: string } | null;
   };
@@ -1299,7 +1299,7 @@ export interface LeaderboardEntry {
   badge: "GOLD" | "SILVER" | "BRONZE" | "TOP_PERFORMER" | "PARTICIPANT";
 }
 
-export const PLAN_FEATURES = ["AI_TOOLS", "AI_TUTOR", "MOCK_EXAMS", "CERTIFICATES", "CUSTOM_DOMAIN"] as const;
+export const PLAN_FEATURES = ["AI_TOOLS", "AI_TUTOR", "MOCK_EXAMS", "CERTIFICATES", "CUSTOM_DOMAIN", "TELEPHONY"] as const;
 export const PLAN_LIMITS = ["MAX_STUDENTS", "MAX_STAFF", "MAX_BRANCHES"] as const;
 export type Entitlements = Partial<Record<(typeof PLAN_FEATURES)[number], boolean> & Record<(typeof PLAN_LIMITS)[number], number | null>>;
 /** A feature the center's plan does not leave out (missing means included). */
@@ -4361,3 +4361,128 @@ function makeChatClient(side: "staff" | "cabinet"): ChatClient {
 
 export const chatApi = makeChatClient("staff");
 export const portalChatApi = makeChatClient("cabinet");
+
+// ---- IP telephony (backend telephony/) ----
+
+export type TelephonyProviderName = "ZADARMA" | "MOCK";
+
+/** The center's telephony settings; the secret is never sent back. */
+export interface TelephonySettings {
+  canStore: boolean;
+  mockAllowed: boolean;
+  connected: boolean;
+  provider: TelephonyProviderName | null;
+  apiKeyHint: string | null;
+  enabled: boolean;
+  callsVisibility: "OWN" | "ALL";
+  recordingsAccess: "ADMINS" | "CALL_VIEWERS";
+  webhookUrl: string | null;
+  lastEventAt: string | null;
+  updatedAt: string | null;
+  extensions: Array<{ extension: string; userId: string; fullName: string }>;
+}
+
+export const telephonyApi = {
+  settings: () => request<TelephonySettings>("/telephony/settings"),
+  save: (dto: { provider: TelephonyProviderName; apiKey: string; apiSecret?: string; enabled?: boolean; callsVisibility?: "OWN" | "ALL"; recordingsAccess?: "ADMINS" | "CALL_VIEWERS" }) =>
+    request<TelephonySettings>("/telephony/settings", { method: "PUT", body: JSON.stringify(dto) }),
+  policy: (dto: { enabled?: boolean; callsVisibility?: "OWN" | "ALL"; recordingsAccess?: "ADMINS" | "CALL_VIEWERS" }) =>
+    request<TelephonySettings>("/telephony/settings", { method: "PATCH", body: JSON.stringify(dto) }),
+  remove: () => request<TelephonySettings>("/telephony/settings", { method: "DELETE" }),
+  test: () => request<{ ok: boolean; message?: string }>("/telephony/settings/test", { method: "POST" }),
+  rotateToken: () => request<TelephonySettings>("/telephony/settings/rotate-token", { method: "POST" }),
+  setExtensions: (items: Array<{ extension: string; userId: string }>) =>
+    request<TelephonySettings>("/telephony/extensions", { method: "PUT", body: JSON.stringify({ items }) }),
+};
+
+export type CallStatus = "RINGING" | "ANSWERED" | "MISSED";
+export type CallDirection = "INBOUND" | "OUTBOUND";
+export type CallContactKind = "LEAD" | "STUDENT" | "PARENT" | "UNKNOWN";
+
+export interface CallLogItem {
+  id: string;
+  direction: CallDirection;
+  status: CallStatus;
+  clientNumber: string | null;
+  extension: string | null;
+  managerUserId: string | null;
+  managerName: string | null;
+  contactKind: CallContactKind;
+  leadId: string | null;
+  studentId: string | null;
+  leadName: string | null;
+  studentName: string | null;
+  createdLead: boolean;
+  disposition: string | null;
+  durationSec: number | null;
+  startedAt: string;
+  answeredAt: string | null;
+  endedAt: string | null;
+  hasRecording: boolean;
+  canPlay: boolean;
+}
+
+export interface CallCard {
+  call: { id: string; direction: CallDirection; status: CallStatus; clientNumber: string | null; extension: string | null; managerUserId: string | null; startedAt: string; createdLead: boolean };
+  contact: {
+    kind: "LEAD" | "STUDENT" | "PARENT";
+    id: string;
+    name: string;
+    status: string;
+    source?: string;
+    notes: string | null;
+    recent: Array<{ type: string; body: string | null; metadata?: Record<string, unknown> | null; occurredAt: string }>;
+    href: string;
+  } | null;
+  previousCalls: number;
+}
+
+export interface CallStatsRow {
+  total: number;
+  inbound: number;
+  outbound: number;
+  answered: number;
+  missed: number;
+  avgTalkSec: number;
+  talkSec: number;
+}
+
+export interface CallStats {
+  from: string;
+  to: string;
+  period: "day" | "week";
+  timezone: string;
+  totals: CallStatsRow;
+  byManager: Array<CallStatsRow & { userId: string | null; fullName: string | null }>;
+  series: Array<{ bucket: string; total: number; answered: number; missed: number; avgTalkSec: number }>;
+}
+
+export interface CallsMe {
+  available: boolean;
+  canView: boolean;
+  canCall: boolean;
+  canStats: boolean;
+  extension: string | null;
+}
+
+export const callsApi = {
+  me: () => request<CallsMe>("/calls/me"),
+  list: (q: { leadId?: string; studentId?: string; managerUserId?: string; status?: CallStatus; direction?: CallDirection; limit?: number; before?: string } = {}) => {
+    const p = new URLSearchParams();
+    for (const [k, v] of Object.entries(q)) if (v !== undefined && v !== "") p.set(k, String(v));
+    const qs = p.toString();
+    return request<{ items: CallLogItem[]; hasMore: boolean }>(`/calls${qs ? `?${qs}` : ""}`);
+  },
+  card: (id: string) => request<CallCard>(`/calls/${encodeURIComponent(id)}/card`),
+  recording: (id: string) => request<{ url: string; expiresAt: string | null }>(`/calls/${encodeURIComponent(id)}/recording`),
+  clickToCall: (phone: string) => request<{ ok: boolean; extension: string }>("/calls/click-to-call", { method: "POST", body: JSON.stringify({ phone }) }),
+  stats: (q: { from?: string; to?: string; period?: "day" | "week" } = {}) => {
+    const p = new URLSearchParams();
+    for (const [k, v] of Object.entries(q)) if (v) p.set(k, v);
+    const qs = p.toString();
+    return request<CallStats>(`/calls/stats${qs ? `?${qs}` : ""}`);
+  },
+  /** The incoming-call popup's events: `call` {callId, phase}. Same live channel as the chat. */
+  stream: (opts: Omit<ChatStreamOptions, "url" | "getToken" | "refresh">): ChatStreamHandle =>
+    connectChatStream({ ...opts, url: `${API_URL}/calls/stream`, getToken: freshToken, refresh: tryRefresh }),
+};

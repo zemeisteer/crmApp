@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import CallButton from "@/components/telephony/CallButton";
 import DashboardShell from "@/components/DashboardShell";
 import Select from "@/components/Select";
 import Pagination from "@/components/Pagination";
@@ -328,7 +329,7 @@ function LeadsContent() {
                           </div>
                         )}
                       </td>
-                      <td><a href={telHref(l.phone)} style={{ color: ACCENT }}>{l.phone}</a></td>
+                      <td><span style={{ display: "inline-flex", gap: 6, alignItems: "center" }}><a href={telHref(l.phone)} style={{ color: ACCENT }}>{l.phone}</a><CallButton phone={l.phone} /></span></td>
                       <td><StatusBadge status={l.status} label={t(statusKey(l.status))} /></td>
                       <td>{t(sourceKey(l.source))}</td>
                       <td>
@@ -395,6 +396,7 @@ function LeadsContent() {
                         <div key={l.id} style={{ ...card, padding: 12, display: "grid", gap: 6 }}>
                           <Link href={`/leads/${l.id}`} style={{ fontWeight: 700, color: "var(--text)" }}>{l.fullName}</Link>
                           <a href={telHref(l.phone)} style={{ fontSize: 12.5, color: ACCENT }}>{l.phone}</a>
+                          <CallButton phone={l.phone} />
                           <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
                             {t(sourceKey(l.source))}
                             {l.assignedManager ? ` · ${l.assignedManager.fullName}` : ""}

@@ -12,7 +12,8 @@ function contentSecurityPolicy() {
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "font-src 'self' data: https://fonts.gstatic.com",
     `img-src 'self' data: blob: https://api.qrserver.com ${apiOrigin}`,
-    `media-src 'self' blob: ${apiOrigin}`,
+    // Call recordings play straight from the telephony provider (a short-lived link).
+    `media-src 'self' blob: https://api.zadarma.com ${apiOrigin}`,
     `connect-src 'self' ${apiOrigin}`,
     `frame-src 'self' https://www.youtube-nocookie.com https://www.youtube.com ${apiOrigin}`,
     "object-src 'none'",

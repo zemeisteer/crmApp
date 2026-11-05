@@ -96,6 +96,16 @@ export const attendanceStatusEnum = pgEnum('attendance_status', [
   'LATE',
 ]);
 export const billingProviderEnum = pgEnum('billing_provider', ['CLICK', 'PAYME']);
+
+// IP telephony (telephony/). MOCK is the local stand-in: refused in production.
+export const telephonyProviderEnum = pgEnum('telephony_provider', ['ZADARMA', 'MOCK']);
+export const callDirectionEnum = pgEnum('call_direction', ['INBOUND', 'OUTBOUND']);
+// RINGING until the provider says how the call ended; busy, cancelled,
+// unanswered and failed calls are all MISSED (the raw word is in disposition).
+export const callStatusEnum = pgEnum('call_status', ['RINGING', 'ANSWERED', 'MISSED']);
+// Who the other party turned out to be. PARENT: the number is a student's
+// parent phone, the call is kept on that student's card.
+export const callContactKindEnum = pgEnum('call_contact_kind', ['LEAD', 'STUDENT', 'PARENT', 'UNKNOWN']);
 export const billingTxStatusEnum = pgEnum('billing_tx_status', [
   'CREATED',
   'PENDING',
@@ -630,6 +640,11 @@ export const students = pgTable('students', {
   gender: genderEnum('gender'),
   phone: text('phone'),
   parentPhone: text('parent_phone'),
+  // normalizePhone() of the two numbers, computed by the database on every
+  // write (whatever wrote the row), for matching calls (telephony/). The rule
+  // mirrors src/leads/phone.ts, as drizzle/0003 does for leads.
+  phoneNormalized: text('phone_normalized').generatedAlwaysAs(sql`CASE WHEN length(regexp_replace(regexp_replace("phone", '\\D', '', 'g'), '^00', '')) = 9 AND "phone" !~ '^\\s*\\+' THEN '+998' || regexp_replace(regexp_replace("phone", '\\D', '', 'g'), '^00', '') WHEN length(regexp_replace(regexp_replace("phone", '\\D', '', 'g'), '^00', '')) BETWEEN 8 AND 15 THEN '+' || regexp_replace(regexp_replace("phone", '\\D', '', 'g'), '^00', '') ELSE NULL END`),
+  parentPhoneNormalized: text('parent_phone_normalized').generatedAlwaysAs(sql`CASE WHEN length(regexp_replace(regexp_replace("parent_phone", '\\D', '', 'g'), '^00', '')) = 9 AND "parent_phone" !~ '^\\s*\\+' THEN '+998' || regexp_replace(regexp_replace("parent_phone", '\\D', '', 'g'), '^00', '') WHEN length(regexp_replace(regexp_replace("parent_phone", '\\D', '', 'g'), '^00', '')) BETWEEN 8 AND 15 THEN '+' || regexp_replace(regexp_replace("parent_phone", '\\D', '', 'g'), '^00', '') ELSE NULL END`),
   birthDate: timestamp('birth_date'),
   address: text('address'),
   telegramUsername: text('telegram_username'),
@@ -654,6 +669,8 @@ export const students = pgTable('students', {
   idemUniq: uniqueIndex('students_tenant_idem_uniq').on(t.tenantId, t.idempotencyKey),
   branchIdx: index('students_branch_idx').on(t.branchId),
   leftAtIdx: index('students_left_at_idx').on(t.tenantId, t.leftAt),
+  phoneNormIdx: index('students_tenant_phone_norm_idx').on(t.tenantId, t.phoneNormalized),
+  parentPhoneNormIdx: index('students_tenant_parent_phone_norm_idx').on(t.tenantId, t.parentPhoneNormalized),
 }));
 
 export const enrollments = pgTable('enrollments', {
@@ -2510,4 +2527,105 @@ export const chatReads = pgTable('chat_reads', {
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 }, (t) => ({
   pk: primaryKey({ columns: [t.conversationId, t.participantKey] }),
+}));
+
+// ---------------------------------------------------------------------------
+// IP telephony (telephony/): a center's own provider account, its managers'
+// extensions, and the call log. Every row belongs to one center (tenant_id);
+// a webhook finds its center by webhook_token, then checks the provider's
+// signature with that center's secret.
+
+export const telephonyAccounts = pgTable('telephony_accounts', {
+  id: text('id').primaryKey().$defaultFn(() => createId()),
+  tenantId: text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  provider: telephonyProviderEnum('provider').notNull(),
+  apiKey: text('api_key').notNull(),
+  // Sealed with SETTINGS_KEY, bound to the center and the provider
+  // (platform/settings-crypto.ts); never sent to the browser.
+  apiSecret: text('api_secret').notNull(),
+  // The secret part of this center's webhook address.
+  webhookToken: text('webhook_token').notNull(),
+  enabled: boolean('enabled').notNull().default(true),
+  // Center settings: OWN - a manager sees only their own calls; ALL - every
+  // call. Owner and admins always see all.
+  callsVisibility: text('calls_visibility').notNull().default('OWN'),
+  // ADMINS - only owner and admins play recordings; CALL_VIEWERS - whoever can see the call.
+  recordingsAccess: text('recordings_access').notNull().default('ADMINS'),
+  lastEventAt: timestamp('last_event_at'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+}, (t) => ({
+  tenantUniq: uniqueIndex('telephony_accounts_tenant_uniq').on(t.tenantId),
+  tokenUniq: uniqueIndex('telephony_accounts_webhook_token_uniq').on(t.webhookToken),
+  visibilityCheck: check('telephony_accounts_visibility_check', sql`${t.callsVisibility} IN ('OWN', 'ALL')`),
+  recordingsCheck: check('telephony_accounts_recordings_check', sql`${t.recordingsAccess} IN ('ADMINS', 'CALL_VIEWERS')`),
+}));
+
+// Extension (internal number) -> the center's staff member who answers it.
+export const telephonyExtensions = pgTable('telephony_extensions', {
+  id: text('id').primaryKey().$defaultFn(() => createId()),
+  tenantId: text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  extension: text('extension').notNull(),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+}, (t) => ({
+  tenantExtUniq: uniqueIndex('telephony_extensions_tenant_ext_uniq').on(t.tenantId, t.extension),
+  tenantUserIdx: index('telephony_extensions_tenant_user_idx').on(t.tenantId, t.userId),
+}));
+
+export const calls = pgTable('calls', {
+  id: text('id').primaryKey().$defaultFn(() => createId()),
+  tenantId: text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  provider: telephonyProviderEnum('provider').notNull(),
+  // The provider's id for the whole call (Zadarma: pbx_call_id).
+  providerCallId: text('provider_call_id').notNull(),
+  direction: callDirectionEnum('direction').notNull(),
+  status: callStatusEnum('status').notNull().default('RINGING'),
+  callerNumber: text('caller_number'),
+  calledNumber: text('called_number'),
+  // The outside party, normalized (+998XXXXXXXXX): what is matched to a lead or student.
+  clientNumber: text('client_number'),
+  extension: text('extension'),
+  managerUserId: text('manager_user_id').references(() => users.id, { onDelete: 'set null' }),
+  contactKind: callContactKindEnum('contact_kind').notNull().default('UNKNOWN'),
+  leadId: text('lead_id').references(() => leads.id, { onDelete: 'set null' }),
+  studentId: text('student_id').references(() => students.id, { onDelete: 'set null' }),
+  // True when this call opened the lead (an unknown number).
+  createdLead: boolean('created_lead').notNull().default(false),
+  // The provider's word for how it ended ('answered', 'busy', 'no answer', ...).
+  disposition: text('disposition'),
+  durationSec: integer('duration_sec'),
+  startedAt: timestamp('started_at').notNull(),
+  answeredAt: timestamp('answered_at'),
+  endedAt: timestamp('ended_at'),
+  // The provider's recording id (Zadarma: call_id_with_rec). The playable
+  // link is asked for when someone presses play: provider links expire.
+  recordingRef: text('recording_ref'),
+  hasRecording: boolean('has_recording').notNull().default(false),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+}, (t) => ({
+  providerCallUniq: uniqueIndex('calls_tenant_provider_call_uniq').on(t.tenantId, t.provider, t.providerCallId),
+  tenantStartedIdx: index('calls_tenant_started_idx').on(t.tenantId, t.startedAt),
+  tenantManagerIdx: index('calls_tenant_manager_started_idx').on(t.tenantId, t.managerUserId, t.startedAt),
+  tenantLeadIdx: index('calls_tenant_lead_idx').on(t.tenantId, t.leadId),
+  tenantStudentIdx: index('calls_tenant_student_idx').on(t.tenantId, t.studentId),
+  tenantClientIdx: index('calls_tenant_client_number_idx').on(t.tenantId, t.clientNumber),
+  durationCheck: check('calls_duration_check', sql`${t.durationSec} IS NULL OR ${t.durationSec} >= 0`),
+}));
+
+// Every webhook event as received, once: dedupeKey is built by the provider
+// adapter from the event's own identity, so a repeated delivery is ignored.
+export const callEvents = pgTable('call_events', {
+  id: text('id').primaryKey().$defaultFn(() => createId()),
+  tenantId: text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  provider: telephonyProviderEnum('provider').notNull(),
+  callId: text('call_id').references(() => calls.id, { onDelete: 'cascade' }),
+  eventType: text('event_type').notNull(),
+  dedupeKey: text('dedupe_key').notNull(),
+  payload: jsonb('payload').notNull(),
+  receivedAt: timestamp('received_at').notNull().defaultNow(),
+}, (t) => ({
+  dedupeUniq: uniqueIndex('call_events_tenant_dedupe_uniq').on(t.tenantId, t.provider, t.dedupeKey),
+  tenantCallIdx: index('call_events_tenant_call_idx').on(t.tenantId, t.callId),
 }));

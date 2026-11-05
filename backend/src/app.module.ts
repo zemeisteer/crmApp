@@ -41,6 +41,7 @@ import { PlansModule } from './plans/plans.module';
 import { PlatformModule } from './platform/platform.module';
 import { StaffModule } from './staff/staff.module';
 import { LeadsModule } from './leads/leads.module';
+import { TelephonyModule } from './telephony/telephony.module';
 import { ReportsModule } from './reports/reports.module';
 import { CertificatesModule } from './certificates/certificates.module';
 import { AnnouncementsModule } from './announcements/announcements.module';
@@ -106,6 +107,7 @@ import { NoticeOutboxModule } from './notice-outbox/notice-outbox.module';
     PlatformModule,
     StaffModule,
     LeadsModule,
+    TelephonyModule,
     ReportsModule,
     CertificatesModule,
     AnnouncementsModule,
