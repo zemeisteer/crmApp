@@ -1,8 +1,8 @@
 # TalimCRM - smoke test of the PRODUCTION images, isolated and disposable.
 #
 # Builds the same images as docker-compose.prod.yml (same Dockerfiles, same
-# "runner" targets) and starts them next to a throw-away PostgreSQL and
-# Redis. No nginx, no certificates, no backups, no named volumes: the
+# "runner" targets) and starts them next to a throw-away PostgreSQL.
+# No nginx, no certificates, no backups, no named volumes: the
 # database lives in memory and is gone when the stack stops. Every external
 # integration (AI, Telegram, SMS, e-mail, Click, Payme, Sentry) is blank,
 # and reminders are off, so nothing leaves the machine.
@@ -27,15 +27,6 @@ services:
       timeout: 3s
       retries: 20
 
-  redis:
-    image: redis:7-alpine
-    command: ["redis-server", "--requirepass", "smoke-only-redis"]
-    healthcheck:
-      test: ["CMD", "redis-cli", "-a", "smoke-only-redis", "ping"]
-      interval: 3s
-      timeout: 3s
-      retries: 20
-
   backend:
     build:
       context: ./backend
@@ -44,12 +35,9 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-      redis:
-        condition: service_healthy
     environment:
       NODE_ENV: production
       DATABASE_URL: postgresql://smoke:smoke-only-password@postgres:5432/talimcrm_smoke
-      REDIS_URL: redis://:smoke-only-redis@redis:6379
       JWT_SECRET: smoke-test-secret-not-used-anywhere-else-0123456789abcdef
       JWT_EXPIRES_IN: 15m
       PORT: 4000

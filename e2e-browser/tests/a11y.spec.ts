@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { readFileSync } from 'fs';
 import { createRequire } from 'module';
-import { api, centerMonth, centerUrl, cleanUpStagingCenters, expectCenterDashboard, loginOnMainSite, newCenter } from './support';
+import { authSlot, api, centerMonth, centerUrl, cleanUpStagingCenters, expectCenterDashboard, loginOnMainSite, newCenter } from './support';
 
 // Automated accessibility check (axe-core, WCAG 2.0/2.1 A and AA rules) of
 // the main pages, the pages added for make-ups, calendar and chat, the
@@ -82,6 +82,7 @@ test('main, new and cabinet pages have no critical or serious accessibility find
   const cab = await (await browser.newContext()).newPage();
   await cab.goto(centerUrl(a.sub, '/portal'));
   await cab.getByRole('textbox').first().pressSequentially('901234500');
+  await authSlot('cabinet');
   await cab.getByRole('button', { name: 'Davom etish' }).click();
   await cab.getByPlaceholder('••••••').fill(String(pin));
   await cab.getByRole('button', { name: 'Kabinetga kirish' }).click();

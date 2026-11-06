@@ -4,18 +4,25 @@ import { RolesGuard } from '../common/roles.guard';
 import { Roles } from '../common/roles.decorator';
 import { CurrentUser } from '../common/current-user.decorator';
 import { CardPaymentsService } from './card-payments.service';
-import { ConfirmClaimDto, RejectClaimDto, SetCardDto } from './card-payments.dto';
+import { ConfirmClaimDto, RejectClaimDto, SetCardDto, SetCardsDto } from './card-payments.dto';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('card-payments')
 export class CardPaymentsController {
   constructor(private readonly service: CardPaymentsService) {}
 
-  // The center's card, set by its admins.
+  // The center's cards, set by its admins (`card` is the first).
   @Roles('ADMIN', 'OWNER')
   @Get('card')
   async card(@CurrentUser('tenantId') tenantId: string) {
-    return { card: await this.service.card(tenantId) };
+    const cards = await this.service.cards(tenantId);
+    return { card: cards[0] ?? null, cards };
+  }
+
+  @Roles('ADMIN', 'OWNER')
+  @Put('cards')
+  setCards(@CurrentUser('tenantId') tenantId: string, @CurrentUser('sub') userId: string, @Body() dto: SetCardsDto) {
+    return this.service.setCards(tenantId, userId, dto.cards);
   }
 
   @Roles('ADMIN', 'OWNER')

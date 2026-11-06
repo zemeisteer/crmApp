@@ -149,7 +149,6 @@ NEXT_PUBLIC_API_URL=/api
 POSTGRES_USER=rehearsal
 POSTGRES_PASSWORD=$(rand 24)
 POSTGRES_DB=$3
-REDIS_PASSWORD=$(rand 24)
 JWT_SECRET=$(rand 32)
 JWT_EXPIRES_IN=15m
 REMINDER_SCAN_MS=0
@@ -191,7 +190,7 @@ CERTBOT_DIGEST="$(docker image inspect --format '{{index .RepoDigests 0}}' "$CER
 CERTBOT_CERTS="$(certbot_run certificates 2>&1)" || fail "(status $?) certbot certificates: $CERTBOT_CERTS"
 has_text "No certificates found" "$CERTBOT_CERTS" || fail "(status $?) certbot certificates did not report the empty certificate store: $CERTBOT_CERTS"
 echo "    certbot: $(tail -n 1 <<<"$CERTBOT_VERSION"), image $CERTBOT_IMAGE ($CERTBOT_DIGEST); runs past the renewal loop and reads the certificate volume"
-src up -d --wait --wait-timeout 600 postgres redis backend frontend nginx db-backup || fail "(status $?) the stack did not become healthy"
+src up -d --wait --wait-timeout 600 postgres backend frontend nginx db-backup || fail "(status $?) the stack did not become healthy"
 src exec -T nginx nginx -t >/dev/null 2>&1 || fail "(status $?) nginx rejects the HTTPS configuration"
 
 RESOLVE=(--resolve "$DOMAIN:$HTTPS_PORT:127.0.0.1" --resolve "$DOMAIN:$HTTP_PORT:127.0.0.1")
@@ -317,7 +316,7 @@ dst run --rm --no-deps --user root --entrypoint sh -v "$REMOTE_SET:/set:ro" back
   'tar -xzf /set/uploads.tar.gz -C /app/uploads && chown -R node:node /app/uploads' || fail "(status $?) could not restore the uploads"
 # The application of the second stack, on the restored database.
 sed -i "s/^POSTGRES_DB=.*/POSTGRES_DB=$RESTORED_DB/" "$DST_ENV"
-dst up -d --wait --wait-timeout 600 redis backend || fail "(status $?) the application did not start on the restored copy"
+dst up -d --wait --wait-timeout 600 backend || fail "(status $?) the application did not start on the restored copy"
 RESTORE_S=$(( $(date +%s) - R0 ))
 DST_LOG="$(dst logs --no-color backend)" || fail "(status $?) reading the restored application's log"
 has_text "migrate: database is up to date" "$DST_LOG" || fail "(status $?) the restored copy needed migrations or the runner did not finish"

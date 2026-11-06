@@ -1,4 +1,4 @@
-import { Ip, Headers,
+import { Ip, Headers, Req,
   BadRequestException,
   Body,
   Controller,
@@ -83,11 +83,25 @@ export class PortalController {
     return this.service.parentAccountSessions(tenantId, userId);
   }
 
+  // Signing out of the cabinet: every child's cookie goes (session-cookie.ts).
+  @Post('auth/logout')
+  logout() {
+    return { ok: true };
+  }
+
+  // A cabinet opened before tokens left browser storage: the token it still
+  // holds becomes the cookie, once, so nobody is signed out by the change.
+  @UseGuards(PortalAuthGuard)
+  @Post('auth/adopt')
+  adopt(@PortalUser() user: PortalUserPayload, @Req() req: { portalToken?: string }) {
+    return { accessToken: req.portalToken, student: { id: user.studentId } };
+  }
+
   // Protected portal queries
   @UseGuards(PortalAuthGuard)
   @Get('me')
   async getMe(@PortalUser() user: PortalUserPayload) {
-    return { ...(await this.service.getMe(user.studentId, user.tenantId)), viewer: user.viewer };
+    return { ...(await this.service.getMe(user.studentId, user.tenantId)), viewer: user.viewer, parentAccount: !!user.parentUserId };
   }
 
   // The center's coming events for students (meetings, competitions).
@@ -221,7 +235,7 @@ export class PortalController {
   )
   async sendCardPayment(
     @PortalUser() user: PortalUserPayload,
-    @Body() body: { amount?: string; forMonth?: string; invoiceId?: string; note?: string },
+    @Body() body: { amount?: string; forMonth?: string; invoiceId?: string; note?: string; cardNumber?: string },
     @Headers('idempotency-key') idempotencyKey?: string,
     @UploadedFile() file?: Express.Multer.File,
   ) {
@@ -232,6 +246,7 @@ export class PortalController {
         forMonth: body.forMonth,
         invoiceId: body.invoiceId || undefined,
         note: body.note,
+        cardNumber: typeof body.cardNumber === 'string' ? body.cardNumber.slice(0, 32) : undefined,
         receiptFile: file.filename,
         receiptSha256: await sha256File(file.path),
         idempotencyKey,

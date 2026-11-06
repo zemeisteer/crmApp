@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { api, apiLogin, centerUrl, cleanUpStagingCenters, expectCenterDashboard, loginOnMainSite, newCenter, TARGET } from './support';
+import { api, apiLogin, centerUrl, cleanUpStagingCenters, expectCenterDashboard, loginOnMainSite, newCenter, PASSWORD, TARGET } from './support';
 
 // Paying the platform by card, through the pages: a new center picks a
 // tariff, sends a receipt; the platform admin opens it, rejects it with a
@@ -42,6 +42,61 @@ async function sendReceipt(page: Page, sub: string, planName: string, nextMonth:
   await page.keyboard.press('Escape');
   await expect(dialog).toHaveCount(0);
 }
+
+test('several cards: the admin adds a second card, a center pays to it, the admin sees which one', async ({ page, browser }) => {
+  test.skip(TARGET !== 'local', 'needs the disposable local database');
+  const admin = await newCenter('pcmany');
+  const customer = await newCenter('pcmanyc');
+  await sql(`update users set role = 'SUPERADMIN' where email = $1`, [admin.email]);
+  const plans = await api<Array<{ key: string; name: string; price: number }>>('GET', '/plans/public');
+  const paid = plans.find((p) => p.price > 0)!;
+  try {
+    await loginOnMainSite(page, admin.email);
+    await expectCenterDashboard(page, admin.sub);
+    await page.goto(centerUrl(admin.sub, '/admin/integrations'));
+    const tile = page.getByTestId('integration-platformCard');
+    await expect(tile.getByTestId('platform-card-row')).toHaveCount(1);
+    await tile.getByRole('button', { name: 'Sozlash' }).click();
+
+    const form = page.getByTestId('platform-cards-form');
+    await expect(form.getByLabel('Karta raqami').first()).toHaveValue('9860 0000 0000 0001');
+    await form.getByRole('button', { name: "Karta qo'shish" }).click();
+    await form.getByLabel('Karta raqami').nth(1).fill('8600 1234');
+    await form.locator('#cards-admin-password').fill(PASSWORD);
+    await form.getByRole('button', { name: 'Shifrlab saqlash' }).click();
+    await expect(form.getByRole('alert')).toBeVisible();
+    await form.getByLabel('Karta raqami').nth(1).fill('8600123412341234');
+    await expect(form.getByLabel('Karta raqami').nth(1)).toHaveValue('8600 1234 1234 1234');
+    await form.getByLabel('Karta egasi').nth(1).fill('Ikkinchi Egasi');
+    await form.getByRole('button', { name: 'Shifrlab saqlash' }).click();
+    await expect(tile.getByTestId('platform-card-row')).toHaveCount(2);
+    await expect(tile).toContainText('8600 1234 1234 1234');
+
+    const ctx = await browser.newContext();
+    const center = await ctx.newPage();
+    await loginOnMainSite(center, customer.email);
+    await expectCenterDashboard(center, customer.sub);
+    await center.goto(centerUrl(customer.sub, '/pricing'));
+    const planCard = center.locator('div').filter({ has: center.getByText(paid.name, { exact: true }) }).filter({ has: center.getByRole('button') }).last();
+    await planCard.getByRole('button', { name: /Faollashtirish|To'lash \/ uzaytirish/ }).click();
+    const pay = center.getByRole('dialog').getByTestId('platform-card-pay');
+    await expect(pay).toContainText('9860 0000 0000 0001');
+    await pay.getByRole('radio').nth(1).check();
+    await expect(pay).toContainText('8600 1234 1234 1234');
+    await pay.locator('input[type="file"]').setInputFiles({ name: 'chek.png', mimeType: 'image/png', buffer: PNG });
+    await pay.getByRole('button', { name: 'Chekni yuborish' }).click();
+    await expect(center.getByRole('dialog').getByRole('status')).toContainText('Chek yuborildi');
+    await ctx.close();
+
+    await page.goto(centerUrl(admin.sub, '/admin/subscriptions?tab=cards'));
+    const row = page.getByTestId('platform-card-claims-admin').getByTestId('platform-card-claim').filter({ hasText: customer.sub });
+    await expect(row).toContainText('•••• 1234');
+    await row.getByRole('button', { name: 'Tekshirish' }).click();
+    await expect(page.getByTestId('claim-card')).toHaveText('8600 1234 1234 1234');
+  } finally {
+    await sql(`delete from platform_settings where key like 'PLATFORM_CARD%'`, []);
+  }
+});
 
 test('card payment: a center sends a receipt, the platform admin rejects then confirms, the center sees each result', async ({ page, browser }) => {
   test.skip(TARGET !== 'local', 'needs the disposable local database');

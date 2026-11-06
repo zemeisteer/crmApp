@@ -69,7 +69,6 @@ else
   set_env DOMAIN "$DOMAIN"
   set_env FRONTEND_URL "https://$DOMAIN"
   set_env POSTGRES_PASSWORD "$(openssl rand -hex 24)"
-  set_env REDIS_PASSWORD "$(openssl rand -hex 24)"
   set_env JWT_SECRET "$(openssl rand -hex 32)"
   set_env TELEGRAM_WEBHOOK_SECRET "$(openssl rand -hex 24)"
   set_env SMTP_FROM "\"TalimCRM <no-reply@$DOMAIN>\""

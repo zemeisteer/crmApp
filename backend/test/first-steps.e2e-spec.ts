@@ -39,16 +39,17 @@ describe('First steps checklist (e2e)', () => {
     const owner = reg.accessToken as string;
     const done = async () => Object.fromEntries(((await http().get('/api/onboarding/checklist').set(bearer(owner)).expect(200)).body.items as Array<{ key: string; done: boolean }>).map((i) => [i.key, i.done]));
 
-    expect(await done()).toEqual({ group: false, students: false, attendance: false, payment: false, team: false, telegram: false, site: false });
+    expect(await done()).toEqual({ teacher: false, group: false, students: false, attendance: false, payment: false, team: false, telegram: false, site: false });
 
     await http().post('/api/students').set(bearer(owner)).send({ fullName: 'FS Student', phone: `+99893${tail}11` }).expect(201);
     await http().post('/api/staff').set(bearer(owner)).send({ email: `fs-staff-${suffix}@test.uz`, fullName: 'FS Staff', role: 'MANAGER', password: 'password12345' }).expect(201);
     await db.update(users).set({ telegramChatId: `9${tail}` }).where(eq(users.id, reg.user.id));
     await db.update(tenants).set({ siteContent: JSON.stringify({ about: 'Biz haqimizda' }) }).where(eq(tenants.id, reg.tenant.id));
+    await http().post('/api/teachers').set(bearer(owner)).send({ fullName: 'FS Teacher', subject: 'Math' }).expect(201);
 
-    expect(await done()).toMatchObject({ students: true, team: true, telegram: true, site: true, group: false, payment: false });
+    expect(await done()).toMatchObject({ teacher: true, students: true, team: true, telegram: true, site: true, group: false, payment: false });
     const body = (await http().get('/api/onboarding/checklist').set(bearer(owner)).expect(200)).body;
-    expect([body.done, body.total]).toEqual([4, 7]);
+    expect([body.done, body.total]).toEqual([5, 8]);
 
     // Staff who do not run the center do not get it.
     const manager = (await http().post('/api/auth/login').send({ email: `fs-staff-${suffix}@test.uz`, password: 'password12345' }).expect(201)).body.accessToken;

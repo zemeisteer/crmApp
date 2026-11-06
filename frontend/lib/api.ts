@@ -59,29 +59,75 @@ export async function freshToken(): Promise<string | null> {
   return accessToken;
 }
 
-const PORTAL_TOKEN_KEY = "talimcrm_portal_token";
+// The cabinet's sessions are httpOnly cookies, one per child signed in: a
+// script on the page cannot read them. Kept here is only which child is
+// shown and the list to switch between - names, never tokens.
+const PORTAL_ACTIVE_KEY = "talimcrm_portal_active";
+const LEGACY_PORTAL_TOKEN_KEY = "talimcrm_portal_token";
 
-export function getPortalToken(): string | null {
+/** The child shown (whose session the requests use), or null when signed out. */
+export function getPortalStudent(): string | null {
   if (typeof window === "undefined") return null;
-  return localStorage.getItem(PORTAL_TOKEN_KEY);
+  return localStorage.getItem(PORTAL_ACTIVE_KEY);
 }
 
-export function setPortalToken(token: string) {
+export function setPortalStudent(studentId: string) {
   if (typeof window === "undefined") return;
-  localStorage.setItem(PORTAL_TOKEN_KEY, token);
+  localStorage.setItem(PORTAL_ACTIVE_KEY, studentId);
 }
 
 export function clearPortalToken() {
   if (typeof window === "undefined") return;
-  localStorage.removeItem(PORTAL_TOKEN_KEY);
+  localStorage.removeItem(PORTAL_ACTIVE_KEY);
   localStorage.removeItem(PORTAL_SESSIONS_KEY);
+  localStorage.removeItem(LEGACY_PORTAL_TOKEN_KEY);
+}
+
+/** Signs every child out on the server (their cookies go), then here. */
+export async function portalLogout() {
+  await fetch(`${API_URL}/portal/auth/logout`, { method: "POST", credentials: "include", headers: SESSION_TRANSPORT }).catch(() => undefined);
+  clearPortalToken();
+}
+
+/** What a cabinet request carries: the cookie transport and the child it is for. */
+function portalHeaders(): Record<string, string> {
+  const id = getPortalStudent();
+  return id ? { ...SESSION_TRANSPORT, "X-Portal-Student": id } : { ...SESSION_TRANSPORT };
+}
+
+/**
+ * A cabinet opened before tokens left browser storage: each token it still
+ * holds becomes its cookie, once, and then no token is left in storage.
+ * Nobody is signed out by the change.
+ */
+export async function adoptLegacyPortalTokens(): Promise<void> {
+  if (typeof window === "undefined") return;
+  let listed: Array<{ accessToken?: unknown; student?: { id?: unknown } }> = [];
+  try {
+    const raw = JSON.parse(localStorage.getItem(PORTAL_SESSIONS_KEY) || "[]");
+    if (Array.isArray(raw)) listed = raw;
+  } catch {
+    // unreadable: nothing to adopt from it
+  }
+  const legacy = localStorage.getItem(LEGACY_PORTAL_TOKEN_KEY);
+  const tokens = [...new Set([legacy, ...listed.map((s) => s?.accessToken)].filter((t): t is string => typeof t === "string" && t.length > 0))];
+  if (tokens.length === 0) return;
+  for (const token of tokens) {
+    const res = await fetch(`${API_URL}/portal/auth/adopt`, { method: "POST", credentials: "include", headers: { ...SESSION_TRANSPORT, Authorization: `Bearer ${token}` } }).catch(() => null);
+    const body = res?.ok ? ((await res.json().catch(() => null)) as { student?: { id?: string } } | null) : null;
+    if (token === legacy && body?.student?.id) setPortalStudent(body.student.id);
+  }
+  localStorage.removeItem(LEGACY_PORTAL_TOKEN_KEY);
+  // Written again without the tokens.
+  addPortalSessions([]);
 }
 
 // A parent may have several children signed in at once: one session each,
 // switched without signing in again.
 export type PortalViewer = "student" | "parent";
 export interface PortalSession {
-  accessToken: string;
+  /** Never kept: the server answers the site with a cookie instead. */
+  accessToken?: string;
   viewer?: PortalViewer;
   student: { id: string; fullName: string };
   tenant: { id: string; name: string };
@@ -92,7 +138,7 @@ export function getPortalSessions(): PortalSession[] {
   if (typeof window === "undefined") return [];
   try {
     const list = JSON.parse(localStorage.getItem(PORTAL_SESSIONS_KEY) || "[]");
-    return Array.isArray(list) ? list.filter((s) => s?.accessToken && s?.student?.id) : [];
+    return Array.isArray(list) ? list.filter((s) => s?.student?.id) : [];
   } catch {
     return [];
   }
@@ -101,7 +147,7 @@ export function getPortalSessions(): PortalSession[] {
 export function addPortalSessions(list: PortalSession[]): PortalSession[] {
   const byId = new Map(getPortalSessions().map((s) => [s.student.id, s]));
   for (const s of list) byId.set(s.student.id, s);
-  const all = [...byId.values()];
+  const all = [...byId.values()].map(({ accessToken: _token, ...s }) => s);
   try {
     localStorage.setItem(PORTAL_SESSIONS_KEY, JSON.stringify(all));
   } catch {
@@ -187,10 +233,11 @@ async function request<T>(
   const callerToken = !!(options.headers as Record<string, string> | undefined)?.["Authorization"];
   const opensSession = NO_SESSION_NEEDED.test(path);
   const hadSession = !isPortal && !callerToken && !opensSession && hasSession();
-  const token = isPortal ? getPortalToken() : callerToken || opensSession ? getToken() : await freshToken();
+  const portalSession = isPortal && !!getPortalStudent();
+  const token = isPortal ? null : callerToken || opensSession ? getToken() : await freshToken();
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
-    ...(isPortal ? {} : SESSION_TRANSPORT),
+    ...(isPortal ? portalHeaders() : SESSION_TRANSPORT),
     ...(options.headers as Record<string, string> | undefined),
   };
   // A caller may pass its own token (e.g. a staff token to a /portal door).
@@ -198,7 +245,7 @@ async function request<T>(
 
   const res = await fetch(`${API_URL}${path}`, {
     ...options,
-    ...(isPortal ? {} : { credentials: "include" as const }),
+    credentials: "include",
     headers,
   });
 
@@ -208,7 +255,7 @@ async function request<T>(
   // A 401 while we were sending a token: try a silent refresh once before
   // giving up and bouncing to login. A 401 with no token attached (e.g. a
   // failed login attempt itself) is just a normal error to surface.
-  if (res.status === 401 && (token || hadSession)) {
+  if (res.status === 401 && (token || hadSession || portalSession)) {
     if (isPortal) {
       clearPortalToken();
       throw new ApiError("Portal sessiyasi eskirgan", 401);
@@ -933,6 +980,9 @@ export interface Payment {
   cardReceipt?: { claimId: string; receiptFile: string } | null;
   /** In the cabinet: paid to the center's card with a receipt. */
   viaCard?: boolean;
+  /** Taken back (status VOIDED): when and why. */
+  voidedAt?: string | null;
+  voidReason?: string | null;
   student?: {
     id: string;
     fullName: string;
@@ -1269,6 +1319,8 @@ export const placementApi = {
   }) => request<PlacementTestSummary & { source: "ai" | "bank" | "manual"; questions: PlacementQuestion[] }>("/placement-tests", { method: "POST", body: JSON.stringify(data) }),
   get: (id: string) => request<PlacementTestSummary & { questions: PlacementQuestion[] }>(`/placement-tests/${id}`),
   attempts: (id: string) => request<PlacementAttempt[]>(`/placement-tests/${id}/attempts`),
+  /** The test and its results. */
+  remove: (id: string) => request<{ id: string; deleted: true; attempts: number }>(`/placement-tests/${id}`, { method: "DELETE" }),
   setActive: (id: string, active: boolean) =>
     request<PlacementTestSummary>(`/placement-tests/${id}`, { method: "PATCH", body: JSON.stringify({ active }) }),
   rename: (id: string, title: string) =>
@@ -1708,6 +1760,9 @@ export const paymentsApi = {
   // One page and the total (pageSize up to 200), newest payment first.
   page: (q: PaymentFilters & { page: number; pageSize?: number }) =>
     request<PageOf<Payment>>(`/payments${paymentQuery(q, q)}`),
+  /** A payment entered by mistake, taken back with a reason: it stays in the list, its money leaves the invoices. */
+  voidPayment: (id: string, reason: string) =>
+    request<{ id: string; status: "VOIDED"; replay: boolean }>(`/payments/${id}/void`, { method: "POST", body: JSON.stringify({ reason }) }),
   get: (id: string) => request<Payment>(`/payments/${id}`),
   summary: () => request<PaymentsSummary>("/payments/summary"),
   debtors: (params?: { forMonth?: string; onlyDebtors?: boolean }) => {
@@ -2138,6 +2193,8 @@ export interface CardClaim {
   receiptFile: string;
   note: string | null;
   sentBy: "student" | "parent";
+  /** The card it says it was paid to. */
+  cardNumber: string | null;
   status: CardClaimStatus;
   rejectReason: string | null;
   reviewedBy: string | null;
@@ -2147,11 +2204,14 @@ export interface CardClaim {
 }
 export interface PortalCardPayment {
   card: { number: string; holder: string } | null;
+  cards?: Array<{ number: string; holder: string }>;
   claims: Array<{ id: string; amount: number; forMonth: string; status: CardClaimStatus; rejectReason: string | null; createdAt: string; reviewedAt: string | null }>;
 }
 
 export const cardPaymentsApi = {
-  getCard: () => request<{ card: { number: string; holder: string } | null }>("/card-payments/card"),
+  getCard: () => request<{ card: { number: string; holder: string } | null; cards: Array<{ number: string; holder: string }> }>("/card-payments/card"),
+  setCards: (cards: Array<{ cardNumber: string; cardHolder: string }>) =>
+    request<{ card: { number: string; holder: string } | null; cards: Array<{ number: string; holder: string }> }>("/card-payments/cards", { method: "PUT", body: JSON.stringify({ cards }) }),
   setCard: (data: { cardNumber: string; cardHolder: string }) =>
     request<{ card: { number: string; holder: string } | null }>("/card-payments/card", { method: "PUT", body: JSON.stringify(data) }),
   claims: (status?: CardClaimStatus) => request<{ pending: number; items: CardClaim[] }>(`/card-payments/claims${status ? `?status=${status}` : ""}`),
@@ -2200,6 +2260,7 @@ export const billingApi = {
 /** The platform's card (when set) and this center's receipts sent for it. */
 export interface PlatformCardView {
   card: { number: string; holder: string } | null;
+  cards: Array<{ number: string; holder: string }>;
   /** The month a new payment would be for (the server decides it). */
   nextMonth: string;
   /** Every paid month of the subscription, and how it was paid. */
@@ -2216,6 +2277,7 @@ export interface PlatformCardClaim {
   amount: number;
   receiptFile: string;
   note: string | null;
+  cardNumber: string | null;
   status: "PENDING" | "CONFIRMED" | "REJECTED";
   rejectReason: string | null;
   reviewedBy: string | null;
@@ -2230,10 +2292,11 @@ export const platformBillingApi = {
    * key names this one send: a retry with it (after a timeout, a double
    * click) returns the same receipt instead of a second one.
    */
-  sendCardClaim: async (data: { plan: string; note?: string; file: File; idempotencyKey: string }) => {
+  sendCardClaim: async (data: { plan: string; note?: string; cardNumber?: string; file: File; idempotencyKey: string }) => {
     const form = new FormData();
     form.append("plan", data.plan);
     if (data.note) form.append("note", data.note);
+    if (data.cardNumber) form.append("cardNumber", data.cardNumber);
     form.append("file", data.file);
     const res = await authedFetch("/platform-billing/card", { method: "POST", headers: { "Idempotency-Key": data.idempotencyKey }, body: form });
     if (!res.ok) throw await apiErrorOf(res, "Yuborilmadi");
@@ -2513,6 +2576,8 @@ export interface PlatformIntegration {
   /** Read once at start-up: a change takes effect after the server restarts. */
   restart: boolean;
   detail: string | null;
+  /** Only on the subscription card integration: the cards centers can pay to. */
+  cards?: Array<{ number: string; holder: string }>;
   keys: PlatformIntegrationKey[];
 }
 
@@ -2580,7 +2645,7 @@ export const platformApi = {
 
 // ---- First steps (dashboard checklist) ----
 
-export type ChecklistKey = "group" | "students" | "attendance" | "payment" | "team" | "telegram" | "site";
+export type ChecklistKey = "teacher" | "group" | "students" | "attendance" | "payment" | "team" | "telegram" | "site";
 export const checklistApi = {
   get: () => request<{ items: Array<{ key: ChecklistKey; done: boolean }>; done: number; total: number }>("/onboarding/checklist"),
 };
@@ -2774,6 +2839,8 @@ export const leadsApi = {
   convert: (id: string, data: ConvertLeadInput) => postJson<ConvertLeadResult>(`/leads/${id}/convert`, data),
   archive: (id: string, reason?: string) => postJson<Lead>(`/leads/${id}/archive`, { reason }),
   restore: (id: string) => postJson<Lead>(`/leads/${id}/restore`),
+  /** An archived lead, for good. */
+  removeForGood: (id: string) => request<{ id: string; deleted: true }>(`/leads/${id}/permanent`, { method: "DELETE" }),
   exportCsv: (query?: LeadQuery) => download(`/leads/export${leadQueryString(query)}`, "leads.csv"),
 };
 
@@ -2788,6 +2855,8 @@ export const customFieldsApi = {
     request<CustomFieldDef & { unlinkedLeadFields?: Array<{ id: string; label: string }> }>(`/custom-fields/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
   archive: (id: string) => postJson<CustomFieldDef>(`/custom-fields/${id}/archive`),
   restore: (id: string) => postJson<CustomFieldDef>(`/custom-fields/${id}/restore`),
+  /** An archived field, for good, with its values. */
+  remove: (id: string) => request<{ id: string; deleted: true }>(`/custom-fields/${id}`, { method: "DELETE" }),
 };
 
 // ---- Reports (server-side monthly overview) ----
@@ -3161,6 +3230,8 @@ export interface PortalMe {
   id: string;
   fullName: string;
   viewer?: PortalViewer;
+  /** Opened from a parent's own account (not a phone and PIN): that parent also has their own calendar. */
+  parentAccount?: boolean;
   phone?: string | null;
   parentPhone?: string | null;
   tenant: {
@@ -3357,7 +3428,7 @@ export type PortalTutorAnswer =
 
 export const portalApi = {
   loginWithToken: (token: string) =>
-    request<{ accessToken: string; student: unknown; tenant: unknown }>("/portal/auth/token", {
+    request<PortalSession>("/portal/auth/token", {
       method: "POST",
       body: JSON.stringify({ token }),
     }),
@@ -3389,10 +3460,10 @@ export const portalApi = {
     const form = new FormData();
     if (data.text) form.append("text", data.text);
     if (data.file) form.append("file", data.file);
-    const token = getPortalToken();
     const res = await fetch(`${API_URL}/portal/homework/${homeworkId}/submit`, {
       method: "POST",
-      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      credentials: "include",
+      headers: portalHeaders(),
       body: form,
     });
     const body = await res.json().catch(() => null);
@@ -3412,17 +3483,18 @@ export const portalApi = {
   getPayments: () => request<PortalPayments>("/portal/payments"),
   getCardPayment: () => request<PortalCardPayment>("/portal/card-payment"),
   // "I paid by card": the amount, and a picture (or PDF) of the receipt.
-  sendCardPayment: async (data: { amount: number; forMonth?: string; invoiceId?: string; note?: string; file: File; idempotencyKey?: string }) => {
+  sendCardPayment: async (data: { amount: number; forMonth?: string; invoiceId?: string; note?: string; cardNumber?: string; file: File; idempotencyKey?: string }) => {
     const form = new FormData();
     form.append("amount", String(data.amount));
     if (data.forMonth) form.append("forMonth", data.forMonth);
     if (data.invoiceId) form.append("invoiceId", data.invoiceId);
     if (data.note) form.append("note", data.note);
+    if (data.cardNumber) form.append("cardNumber", data.cardNumber);
     form.append("file", data.file);
-    const token = getPortalToken();
     const res = await fetch(`${API_URL}/portal/card-payment`, {
       method: "POST",
-      headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}), ...(data.idempotencyKey ? { "Idempotency-Key": data.idempotencyKey } : {}) },
+      credentials: "include",
+      headers: { ...portalHeaders(), ...(data.idempotencyKey ? { "Idempotency-Key": data.idempotencyKey } : {}) },
       body: form,
     });
     const body = await res.json().catch(() => null);
@@ -3928,8 +4000,10 @@ export interface PortalPractice {
   }>;
 }
 
-async function postForm<T>(path: string, form: FormData, token: string | null): Promise<T> {
-  const res = await fetch(`${API_URL}${path}`, { method: "POST", headers: token ? { Authorization: `Bearer ${token}` } : undefined, body: form });
+/** A staff token, or "cabinet" for the cabinet's cookie session. */
+async function postForm<T>(path: string, form: FormData, token: string | null | "cabinet"): Promise<T> {
+  const headers = token === "cabinet" ? portalHeaders() : token ? { Authorization: `Bearer ${token}` } : undefined;
+  const res = await fetch(`${API_URL}${path}`, { method: "POST", credentials: "include", headers, body: form });
   const body = await res.json().catch(() => null);
   if (!res.ok) throw new ApiError(body?.message || "Yuklanmadi", res.status, body);
   return body as T;
@@ -4026,7 +4100,7 @@ export const portalMockApi = {
     if (data.audio) form.append("audio", data.audio, `answer.${data.audio.type.includes("mp4") ? "m4a" : data.audio.type.includes("ogg") ? "ogg" : "webm"}`);
     if (data.transcript) form.append("transcript", data.transcript);
     if (data.seconds !== undefined) form.append("seconds", String(Math.round(data.seconds)));
-    return postForm<{ saved: boolean }>(`/portal/mock-tests/attempts/${attemptId}/speaking/${key}`, form, getPortalToken());
+    return postForm<{ saved: boolean }>(`/portal/mock-tests/attempts/${attemptId}/speaking/${key}`, form, "cabinet");
   },
 };
 
@@ -4352,7 +4426,7 @@ function makeChatClient(side: "staff" | "cabinet"): ChatClient {
       connectChatStream({
         ...opts,
         url: `${API_URL}${base}/stream`,
-        getToken: side === "staff" ? freshToken : getPortalToken,
+        ...(side === "staff" ? { getToken: freshToken } : { authHeaders: () => (getPortalStudent() ? portalHeaders() : null) }),
         // Staff: an expired access token is renewed once, as request() does.
         refresh: side === "staff" ? tryRefresh : undefined,
       }),

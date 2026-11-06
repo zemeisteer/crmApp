@@ -9,7 +9,7 @@ The design reference (mockup, reference frames, brief) is in `design-reference/`
 - **Canvas:** a soft pastel gradient (lavender, sky, blush), never a flat gray: `--canvas-gradient` on `body`.
 - **Frame:** the staff app and the cabinet sit in a floating, rounded, slightly glassy frame (`.app-frame`, `.ptl-body`).
 - **Cards:** white, `--radius-lg` (22px), a hairline border and a very soft shadow (`--shadow-card`). Dashboard widgets lift 3px on hover (`.card-lift`).
-- **Ink:** primary actions and active states (active menu item, active tab, primary button) are ink black (`--primary`, which is `--ink`).
+- **Ink:** primary actions and active states (active menu item, active tab, primary button) are ink, a deep indigo in the light theme (`--primary`, which is `--ink`).
 - **Accent:** orange, used for **one hero card per page**, a few highlights and chart accents.
 - **Pastels:** `--lav`, `--sky`, `--mint`, `--peach` for grouped cards (groups, courses, cabinet tiles).
 - **Status:** chips in soft fill + strong text: success, danger, warning, info.

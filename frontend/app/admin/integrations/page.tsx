@@ -99,7 +99,14 @@ function IntegrationsContent() {
                         <div style={{ fontSize: 13, color: "var(--text-muted)", lineHeight: 1.55 }}>{t(`pf.int.${i.id}.d` as TranslationKey)}</div>
                         {i.configured && i.detail && <div style={{ fontSize: 12.5, fontWeight: 700, color: "var(--text)" }}>{i.id === "translate" ? TRANSLATOR[i.detail] ?? i.detail : i.detail}</div>}
                         <div style={{ display: "flex", flexDirection: "column", gap: 5, marginTop: 2 }}>
-                          {i.keys.map((k) => (
+                          {i.cards && i.cards.length === 0 && <span style={{ fontSize: 12.5, color: "var(--text-muted)" }}>{t("pf.int.cards.none")}</span>}
+                          {i.cards?.map((c) => (
+                            <div key={c.number} data-testid="platform-card-row" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, flexWrap: "wrap", fontSize: 12.5 }}>
+                              <span style={{ fontFamily: "ui-monospace, monospace", fontWeight: 700 }}>{c.number}</span>
+                              <span style={{ color: "var(--text-muted)" }}>{c.holder}</span>
+                            </div>
+                          ))}
+                          {!i.cards && i.keys.map((k) => (
                             <div key={k.name} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                               <code style={code}>{k.name}</code>
                               <KeyState k={k} />
@@ -124,7 +131,18 @@ function IntegrationsContent() {
         )}
       </div>
 
-      {editing && (
+      {editing && (editing.cards ? (
+        <EditPlatformCards
+          key={editing.id}
+          item={editing}
+          onClose={() => setEditing(null)}
+          onSaved={() => {
+            setEditing(null);
+            setNotice(`${t(`pf.int.${editing.id}` as TranslationKey)}: ${t("pf.int.saved")}`);
+            load();
+          }}
+        />
+      ) : (
         <EditIntegration
           key={editing.id}
           item={editing}
@@ -135,8 +153,76 @@ function IntegrationsContent() {
             load();
           }}
         />
-      )}
+      ))}
     </>
+  );
+}
+
+const MAX_CARDS = 10;
+/** "8600123412341234" -> "8600 1234 1234 1234" as it is typed. */
+const formatCard = (v: string) => v.replace(/\D/g, "").slice(0, 16).replace(/(\d{4})(?=\d)/g, "$1 ");
+
+/** The cards centers pay the subscription to: as many rows as there are cards. */
+function EditPlatformCards({ item, onClose, onSaved }: { item: PlatformIntegration; onClose: () => void; onSaved: () => void }) {
+  const { t } = useLanguage();
+  const [rows, setRows] = useState(() => (item.cards?.length ? item.cards : [{ number: "", holder: "" }]).map((c) => ({ ...c })));
+  const [password, setPassword] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const change = (at: number, patch: Partial<{ number: string; holder: string }>) => setRows((prev) => prev.map((r, i) => (i === at ? { ...r, ...patch } : r)));
+
+  async function save(e: React.FormEvent) {
+    e.preventDefault();
+    const cards = rows.map((r) => ({ number: r.number.trim(), holder: r.holder.trim() })).filter((r) => r.number || r.holder);
+    const good = cards.every((c) => c.number.replace(/\D/g, "").length === 16 && c.holder) && new Set(cards.map((c) => c.number)).size === cards.length;
+    if (!good) return setError(t("pf.int.cards.bad"));
+    setSaving(true);
+    setError(null);
+    try {
+      // The list replaces the single card of an older setup, so only one place says where money goes.
+      await platformApi.saveIntegration(item.id, password, { PLATFORM_CARDS: cards.length ? JSON.stringify(cards) : null, PLATFORM_CARD_NUMBER: null, PLATFORM_CARD_HOLDER: null });
+      onSaved();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : t("common.errorGeneric"));
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Modal open onClose={onClose} title={`${t("pf.int.editTitle")}: ${t(`pf.int.${item.id}` as TranslationKey)}`} width={540}>
+      <form onSubmit={save} style={{ display: "flex", flexDirection: "column", gap: 14 }} autoComplete="off" data-testid="platform-cards-form">
+        {rows.map((r, i) => (
+          <div key={i} style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+            <input className="field-input" aria-label={t("pf.int.cards.number")} placeholder={t("pf.int.cards.number")} inputMode="numeric" autoComplete="off" value={r.number} onChange={(e) => change(i, { number: formatCard(e.target.value) })} style={{ flex: "1 1 190px", fontFamily: "ui-monospace, monospace", fontSize: 13 }} />
+            <input className="field-input" aria-label={t("pf.int.cards.holder")} placeholder={t("pf.int.cards.holder")} autoComplete="off" maxLength={100} value={r.holder} onChange={(e) => change(i, { holder: e.target.value })} style={{ flex: "1 1 150px", fontSize: 13 }} />
+            <button type="button" className="btn" onClick={() => setRows((prev) => prev.filter((_, at) => at !== i))} style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", padding: "8px 10px", fontSize: 12.5, fontWeight: 700, color: "var(--danger)", cursor: "pointer" }}>
+              {t("pf.int.cards.remove")}
+            </button>
+          </div>
+        ))}
+        {rows.length < MAX_CARDS && (
+          <button type="button" className="btn" onClick={() => setRows((prev) => [...prev, { number: "", holder: "" }])} style={{ alignSelf: "flex-start", background: "var(--primary-soft)", color: "var(--primary)", border: "1px solid var(--primary-border)", borderRadius: "var(--radius-sm)", padding: "8px 12px", fontSize: 12.5, fontWeight: 700, cursor: "pointer" }}>
+            + {t("pf.int.cards.add")}
+          </button>
+        )}
+
+        <div style={{ borderTop: "1px solid var(--border)", paddingTop: 14 }}>
+          <label htmlFor="cards-admin-password" style={{ display: "block", fontSize: 12.5, fontWeight: 700, color: "var(--text-soft)", marginBottom: 6 }}>{t("pf.int.password")}</label>
+          <input id="cards-admin-password" className="field-input" type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} />
+          <div style={{ fontSize: 11.5, color: "var(--text-muted)", marginTop: 6, lineHeight: 1.5 }}>{t("pf.int.passwordHint")}</div>
+        </div>
+
+        {error && <div role="alert" style={{ fontSize: 13, fontWeight: 600, padding: "9px 12px", borderRadius: "var(--radius-sm)", background: "var(--danger-soft)", color: "var(--danger)" }}>{error}</div>}
+
+        <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+          <button type="button" className="btn" onClick={onClose} style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", padding: "9px 16px", fontSize: 13.5, fontWeight: 700, cursor: "pointer" }}>{t("common.cancel")}</button>
+          <button type="submit" className="btn" disabled={saving} style={{ background: saving ? "var(--text-faint)" : ACCENT, color: "var(--on-ink)", border: "none", borderRadius: "var(--radius-sm)", padding: "9px 16px", fontSize: 13.5, fontWeight: 700, cursor: saving ? "wait" : "pointer" }}>
+            {saving ? t("common.loading") : t("pf.int.save")}
+          </button>
+        </div>
+      </form>
+    </Modal>
   );
 }
 

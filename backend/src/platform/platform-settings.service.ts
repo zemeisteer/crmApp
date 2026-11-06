@@ -8,6 +8,7 @@ import { AuditService } from '../audit/audit.service';
 import { TranslateService } from '../plans/translate.service';
 import { SettingsCrypto } from './settings-crypto';
 import { applySettings, INTEGRATIONS, openRows, sourceOf } from './stored-settings';
+import { cleanPlatformCards, MAX_PLATFORM_CARDS, platformCards } from './platform-cards';
 
 const RELOAD_MS = 60_000;
 const MAX_VALUE_LENGTH = 4000;
@@ -74,6 +75,7 @@ export class PlatformSettingsService implements OnModuleInit, OnModuleDestroy {
         // Translation always has someone to answer (the public endpoint).
         configured: i.id === 'translate' ? !!this.translate.provider() : i.need.some((set) => set.every((name) => !!this.value(name))),
         detail: detail[i.id] ?? null,
+        ...(i.id === 'platformCard' ? { cards: platformCards(this.value('PLATFORM_CARDS'), this.value('PLATFORM_CARD_NUMBER'), this.value('PLATFORM_CARD_HOLDER')) } : {}),
         keys: i.keys.map((k) => {
           const value = this.value(k.name);
           return {
@@ -109,12 +111,17 @@ export class PlatformSettingsService implements OnModuleInit, OnModuleDestroy {
     const remove: string[] = [];
     for (const [name, raw] of Object.entries(values)) {
       if (!allowed.has(name)) throw new BadRequestException(`"${name}" bu integratsiyaga tegishli emas`);
-      const value = typeof raw === 'string' ? raw.trim() : '';
+      let value = typeof raw === 'string' ? raw.trim() : '';
       if (!value) {
         remove.push(name);
         continue;
       }
       if (value.length > MAX_VALUE_LENGTH || /[\r\n\0]/.test(value)) throw new BadRequestException(`"${name}" qiymati noto'g'ri`);
+      if (name === 'PLATFORM_CARDS') {
+        const clean = cleanPlatformCards(value);
+        if (!clean) throw new BadRequestException(`Har bir kartada 16 raqam va egasining ismi bo'lsin, kartalar takrorlanmasin (ko'pi bilan ${MAX_PLATFORM_CARDS} ta)`);
+        value = clean;
+      }
       set.push({ key: name, value: crypto.seal(name, value) });
     }
     if (set.length === 0 && remove.length === 0) throw new BadRequestException("O'zgarish yo'q");

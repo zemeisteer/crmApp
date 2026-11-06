@@ -101,7 +101,9 @@ export type ChatStreamState = "connecting" | "open" | "waiting" | "stopped";
 export interface ChatStreamOptions {
   url: string;
   /** Read before every attempt: a refreshed token is picked up on reconnect. */
-  getToken: () => string | null | Promise<string | null>;
+  getToken?: () => string | null | Promise<string | null>;
+  /** Instead of a token: the headers of a cookie session (the cabinet); null when signed out. */
+  authHeaders?: () => Record<string, string> | null;
   /** `ready` (also after every reconnect: catch up then) and `message` frames. */
   onEvent: (e: SseEvent) => void;
   /** The server ended it for good: not reconnected. */
@@ -170,16 +172,22 @@ export function connectChatStream(opts: ChatStreamOptions): ChatStreamHandle {
 
   async function connect(): Promise<void> {
     if (stopped) return;
-    const token = await opts.getToken();
+    let auth: Record<string, string> | null = null;
+    if (opts.authHeaders) auth = opts.authHeaders();
+    else {
+      const token = await opts.getToken?.();
+      auth = token ? { Authorization: `Bearer ${token}` } : null;
+    }
     if (stopped) return;
-    if (!token) return finish("unauthorized");
+    if (!auth) return finish("unauthorized");
     const mine = new AbortController();
     ctl = mine;
     setState("connecting");
     let res: Response;
     try {
       res = await doFetch(opts.url, {
-        headers: { Authorization: `Bearer ${token}`, Accept: "text/event-stream" },
+        headers: { ...auth, Accept: "text/event-stream" },
+        credentials: "include",
         signal: mine.signal,
         cache: "no-store",
       });

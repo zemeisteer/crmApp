@@ -204,6 +204,18 @@ export default function PlacementTestModal({ groups, onClose, audience = "STUDEN
     if (updated) setTests((list) => list && list.map((x) => (x.id === test.id ? { ...x, title: updated.title } : x)));
   }
 
+  // The test and every attempt at it: asked first, with how many results go.
+  async function remove(test: PlacementTestSummary) {
+    const n = test.attempts ?? 0;
+    if (!window.confirm(t("placement.deleteConfirm").replace("{title}", test.title).replace("{n}", String(n)))) return;
+    try {
+      await placementApi.remove(test.id);
+      setTests((list) => list && list.filter((x) => x.id !== test.id));
+    } catch (err) {
+      window.alert(err instanceof ApiError ? err.message : t("common.errorGeneric"));
+    }
+  }
+
   async function toggleActive(test: PlacementTestSummary) {
     const updated = await placementApi.setActive(test.id, !test.active).catch(() => null);
     if (updated) setTests((list) => list && list.map((x) => (x.id === test.id ? { ...x, active: updated.active } : x)));
@@ -428,6 +440,9 @@ export default function PlacementTestModal({ groups, onClose, audience = "STUDEN
                   )}
                   <button type="button" className="btn" onClick={() => toggleActive(x)} style={{ ...ghost, padding: "6px 10px", color: x.active ? "var(--danger)" : "var(--success)" }}>
                     {x.active ? t("placement.close") : t("placement.reopen")}
+                  </button>
+                  <button type="button" className="btn" onClick={() => void remove(x)} aria-label={`${t("common.delete")}: ${x.title}`} style={{ ...ghost, padding: "6px 10px", color: "var(--danger)" }}>
+                    {t("common.delete")}
                   </button>
                 </div>
                 {openTest === x.id && (

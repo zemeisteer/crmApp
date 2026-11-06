@@ -5,7 +5,7 @@ import { TrialGuard } from '../common/trial.guard';
 import { Roles } from '../common/roles.decorator';
 import { CurrentUser } from '../common/current-user.decorator';
 import { PaymentsService } from './payments.service';
-import { CreatePaymentDto } from './dto/payment.dto';
+import { CreatePaymentDto, VoidPaymentDto } from './dto/payment.dto';
 
 @UseGuards(JwtAuthGuard, RolesGuard, TrialGuard)
 @Controller('payments')
@@ -74,5 +74,17 @@ export class PaymentsController {
     @Headers('idempotency-key') idempotencyKey?: string,
   ) {
     return this.service.create(tenantId, dto, userId, idempotencyKey);
+  }
+
+  // A payment entered by mistake, taken back with a reason (the row stays).
+  @Roles('ADMIN', 'OWNER', 'ACCOUNTANT')
+  @Post(':id/void')
+  voidPayment(
+    @CurrentUser('tenantId') tenantId: string,
+    @CurrentUser('sub') userId: string,
+    @Param('id') id: string,
+    @Body() dto: VoidPaymentDto,
+  ) {
+    return this.service.voidPayment(tenantId, userId, id, dto.reason);
   }
 }

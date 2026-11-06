@@ -22,6 +22,7 @@ class ClaimBody {
   // Ignored: the month is the server's (the next month to pay).
   @IsOptional() @IsString() @MaxLength(7) forMonth?: string;
   @IsOptional() @IsString() @MaxLength(500) note?: string;
+  @IsOptional() @IsString() @MaxLength(32) cardNumber?: string;
 }
 
 // The center's side: the platform's card and "we paid" with a receipt.
@@ -55,7 +56,7 @@ export class PlatformCardController {
     try {
       // The receipt's own content, not its random stored name: a retry of the same picture is the same send.
       const receiptSha256 = await sha256File(file.path);
-      const { claim, replay } = await this.service.submit(tenantId, userId, { plan: body.plan, note: body.note, receiptFile: file.filename, receiptSha256, idempotencyKey });
+      const { claim, replay } = await this.service.submit(tenantId, userId, { plan: body.plan, note: body.note, cardNumber: body.cardNumber, receiptFile: file.filename, receiptSha256, idempotencyKey });
       // A retried send: the first upload is the receipt; this copy goes (never the one in use).
       if (replay && claim.receiptFile !== file.filename) await unlink(file.path).catch(() => undefined);
       return { ...claim, idempotencyKey: undefined, requestHash: undefined, receiptSha256: undefined, replay };

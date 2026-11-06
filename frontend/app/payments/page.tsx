@@ -102,6 +102,7 @@ const STATUS_LABEL_KEYS: Record<string, TranslationKey> = {
   PAID: "payment.statusPaid",
   PENDING: "payment.statusPending",
   FAILED: "payment.statusFailed",
+  VOIDED: "payment.statusVoided",
 };
 
 const METHOD_LABEL_KEYS: Record<string, TranslationKey> = {
@@ -115,6 +116,7 @@ const STATUS_CLASS: Record<string, string> = {
   PAID: "badge-success",
   PENDING: "badge-neutral",
   FAILED: "badge-danger",
+  VOIDED: "badge-neutral",
 };
 
 const EXPENSE_CATEGORIES: { value: ExpenseCategory; labelKey: TranslationKey; color: string }[] = [
@@ -648,6 +650,20 @@ function PaymentsContent() {
   // request used to fail the whole load and leave the page empty for
   // managers and reception. A failed load is shown, with a retry.
   const seesExpenses = can(user, "expenses.view");
+  // Taking back a payment entered by mistake: whoever takes payments, for
+  // ones taken here (online ones are refunded at Click/Payme; a card
+  // receipt's is refused by the server too, as are the rare cases it names).
+  const canVoid = (p: Payment) => can(user, "payments.take") && p.status === "PAID" && p.method !== "CLICK" && p.method !== "PAYME" && !p.cardReceipt;
+  async function voidPayment(p: Payment) {
+    const reason = window.prompt(t("payment.voidPrompt").replace("{amount}", formatMoney(p.amount)).replace("{student}", p.student?.fullName ?? ""))?.trim();
+    if (!reason) return;
+    try {
+      await paymentsApi.voidPayment(p.id, reason);
+      setReloadKey((k) => k + 1);
+    } catch (err) {
+      window.alert(err instanceof ApiError ? err.message : t("common.errorGeneric"));
+    }
+  }
   const seesInvoices = can(user, "invoices.manage");
   // The yearly chart (GET /reports/revenue-by-year) is open to whoever
   // reads payments, like the rest of this page.
@@ -1698,13 +1714,24 @@ function PaymentsContent() {
                               ) : p.method ? t(METHOD_LABEL_KEYS[p.method] || "payment.methodCash") : "—"}
                             </td>
                             <td>
-                              <span className={`badge ${STATUS_CLASS[p.status] || "badge-neutral"}`}>
+                              <span className={`badge ${STATUS_CLASS[p.status] || "badge-neutral"}`} title={p.voidReason ?? undefined}>
                                 {STATUS_LABEL_KEYS[p.status]
                                   ? t(STATUS_LABEL_KEYS[p.status])
                                   : p.status}
                               </span>
+                              {p.status === "VOIDED" && p.voidReason && <div style={{ fontSize: 11.5, color: "var(--text-muted)", marginTop: 3, maxWidth: 220 }}>{p.voidReason}</div>}
                             </td>
-                            <td style={{ textAlign: "right" }}>
+                            <td style={{ textAlign: "right", whiteSpace: "nowrap" }}>
+                              {canVoid(p) && (
+                                <button
+                                  type="button"
+                                  onClick={() => void voidPayment(p)}
+                                  aria-label={`${t("payment.void")}: ${p.student?.fullName ?? ""}`}
+                                  style={{ background: "var(--danger-soft)", color: "var(--danger)", border: "none", padding: "6px 12px", borderRadius: "var(--radius-xs)", fontSize: 12, fontWeight: 700, cursor: "pointer", marginRight: 6 }}
+                                >
+                                  {t("payment.void")}
+                                </button>
+                              )}
                               <button
                                 type="button"
                                 onClick={() => setReceiptPayment(p)}
