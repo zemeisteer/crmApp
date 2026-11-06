@@ -1647,6 +1647,9 @@ export const groupsApi = {
   // `makeups`: make-ups booked into the group's coming lessons, released with it.
   remove: (id: string) => request<{ success: boolean; makeups?: MakeupReconcile }>(`/groups/${id}`, { method: "DELETE" }),
   restore: (id: string) => request<Group>(`/groups/${id}/restore`, { method: "POST" }),
+  /** Every teacher, busy (with which groups) or free for the planned days and time. */
+  teacherAvailability: (params: { days: string; startTime: string; endTime?: string; excludeId?: string }) =>
+    request<Array<{ teacherId: string; busyWith: string[] }>>(`/groups/teacher-availability?${new URLSearchParams({ days: params.days, startTime: params.startTime, ...(params.endTime ? { endTime: params.endTime } : {}), ...(params.excludeId ? { excludeId: params.excludeId } : {}) })}`),
   scheduleConflicts: (params: { teacherId: string; days: string; startTime: string; endTime?: string; excludeId?: string }) => {
     const qs = new URLSearchParams({
       teacherId: params.teacherId,

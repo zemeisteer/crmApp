@@ -547,4 +547,21 @@ export class GroupsService {
     }
     return [...seen.values()];
   }
+
+  /**
+   * Every teacher of the center for a planned slot: busy (with what) or
+   * free, so the group form can say it next to each name before one is
+   * picked. Same check, same redaction as findScheduleConflicts.
+   */
+  async teacherAvailability(tenantId: string, scheduleDays: string, startTime: string, excludeGroupId?: string, endTime?: string, viewer?: ConflictViewer) {
+    const list = await this.db.select({ id: teachers.id }).from(teachers)
+      .where(and(eq(teachers.tenantId, tenantId), isNull(teachers.deletedAt)))
+      .limit(200);
+    const out: Array<{ teacherId: string; busyWith: string[] }> = [];
+    for (const t of list) {
+      const conflicts = await this.findScheduleConflicts(tenantId, t.id, scheduleDays, startTime, excludeGroupId, endTime, viewer);
+      out.push({ teacherId: t.id, busyWith: conflicts.map((c) => c.name) });
+    }
+    return out;
+  }
 }

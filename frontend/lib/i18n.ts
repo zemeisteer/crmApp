@@ -3840,6 +3840,8 @@ export const dict = {
   "shell.noAccessBack": { UZ: "Bosh sahifaga qaytish", RU: "На главную", EN: "Back to the dashboard" },
   "common.sumUnit": { UZ: "so'm", RU: "сум", EN: "sum" },
 
+  "groups.teacherBusy": { UZ: "band", RU: "занят", EN: "busy" },
+  "groups.teacherFree": { UZ: "bo'sh", RU: "свободен", EN: "free" },
   "groups.scheduleConflictWarning": {
     UZ: "Diqqat: bu o'qituvchi shu kun/vaqtda boshqa guruh(lar)da ham band:",
     RU: "Внимание: этот учитель уже занят в это время в других группах:",

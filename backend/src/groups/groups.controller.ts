@@ -55,6 +55,19 @@ export class GroupsController {
     return this.service.findScheduleConflicts(user.tenantId!, teacherId, days ?? '', startTime ?? '', excludeId, endTime, { role: user.role, userId: user.sub, access: user.access });
   }
 
+  // Each teacher, busy or free for the planned days and time (the group form's list).
+  @Roles('ADMIN')
+  @Get('teacher-availability')
+  teacherAvailability(
+    @CurrentUser() user: JwtPayload,
+    @Query('days') days: string,
+    @Query('startTime') startTime: string,
+    @Query('excludeId') excludeId?: string,
+    @Query('endTime') endTime?: string,
+  ) {
+    return this.service.teacherAvailability(user.tenantId!, days ?? '', startTime ?? '', excludeId, endTime, { role: user.role, userId: user.sub, access: user.access });
+  }
+
   // Who can be marked for a lesson of this group on a date (those in the group then).
   @Get(':id/roster')
   roster(

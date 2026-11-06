@@ -105,6 +105,8 @@ function GroupsContent() {
   const [durationMonths, setDurationMonths] = useState("");
   const [description, setDescription] = useState("");
   const [scheduleConflicts, setScheduleConflicts] = useState<{ id: string; name: string }[]>([]);
+  // Busy or free for the chosen days and time, per teacher (null: not asked yet).
+  const [availability, setAvailability] = useState<Map<string, string[]> | null>(null);
   // A failed check is said, not shown as "no clash".
   const [conflictCheckError, setConflictCheckError] = useState<string | null>(null);
   const [conflictRetry, setConflictRetry] = useState(0);
@@ -112,6 +114,24 @@ function GroupsContent() {
   // names it come first (and alone), unless the user asks for everyone.
   const [allTeachers, setAllTeachers] = useState(false);
   const teacherChoice = pickTeachers(teachers, subject === OTHER_SUBJECT ? customSubject : subject, teacherId, allTeachers, t);
+
+  useEffect(() => {
+    if (days.length === 0 || !startTime) {
+      setAvailability(null);
+      return;
+    }
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      groupsApi
+        .teacherAvailability({ days: days.join(","), startTime, endTime: endTime || undefined, excludeId: editingId ?? undefined })
+        .then((res) => !cancelled && setAvailability(new Map(res.map((r) => [r.teacherId, r.busyWith]))))
+        .catch(() => !cancelled && setAvailability(null));
+    }, 300);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [days, startTime, endTime, editingId]);
 
   useEffect(() => {
     if (!teacherId || days.length === 0 || !startTime) {
@@ -537,7 +557,17 @@ function GroupsContent() {
           ) : (
             <Field label={t("groups.fieldTeacher")} required error={fieldErrors.teacher}>
               <Select
-                options={[{ value: "", label: t("groups.notSelected") }, ...teacherChoice.list.map((tc) => ({ value: tc.id, label: tc.subject ? `${tc.fullName} · ${tc.subject}` : tc.fullName }))]}
+                options={[
+                  { value: "", label: t("groups.notSelected") },
+                  // Free ones first once the days and time are chosen; each says which.
+                  ...[...teacherChoice.list]
+                    .sort((a, b) => (availability ? Number((availability.get(a.id)?.length ?? 0) > 0) - Number((availability.get(b.id)?.length ?? 0) > 0) : 0))
+                    .map((tc) => {
+                      const base = tc.subject ? `${tc.fullName} · ${tc.subject}` : tc.fullName;
+                      const busy = availability?.get(tc.id);
+                      return { value: tc.id, label: !availability ? base : busy && busy.length ? `🔴 ${base} — ${t("groups.teacherBusy")}: ${busy.join(", ")}` : `🟢 ${base} — ${t("groups.teacherFree")}` };
+                    }),
+                ]}
                 value={teacherId}
                 onChange={setTeacherId}
               />
