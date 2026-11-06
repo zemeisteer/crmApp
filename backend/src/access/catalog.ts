@@ -194,7 +194,7 @@ export const ACCESS_CATALOG: AccessKey[] = [
   // ---- Center ----
   { key: 'announcements.view', area: 'center', template: [T], routes: ['GET /api/announcements', 'GET /api/announcements/:id'] },
   { key: 'announcements.manage', area: 'center', template: [], routes: ['POST /api/announcements', 'DELETE /api/announcements/:id'] },
-  { key: 'import.run', area: 'center', template: [], routes: ['GET /api/import/:kind/template.xlsx', 'POST /api/import/:kind'] },
+  { key: 'import.run', area: 'center', template: [], routes: ['GET /api/import/:kind/template.xlsx', 'POST /api/import/:kind', 'GET /api/import/bundle/template.xlsx', 'POST /api/import/bundle'] },
   {
     key: 'signals.manage', area: 'center', template: [M],
     routes: ['GET /api/signals', 'PATCH /api/signals/:id'],

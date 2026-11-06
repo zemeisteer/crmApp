@@ -2749,6 +2749,13 @@ export interface ImportReport {
   unknownColumns: string[];
 }
 
+export interface BundleImportResult {
+  ok: boolean;
+  steps: Array<{ kind: ImportKind; created: number; skipped: number; report: ImportReport }>;
+  failed: { kind: ImportKind; message: string; report: ImportReport | null } | null;
+  notRun: ImportKind[];
+}
+
 async function importUpload<T>(kind: ImportKind, file: File, dryRun: boolean): Promise<T> {
   const token = await freshToken();
   const form = new FormData();
@@ -2769,6 +2776,18 @@ export const importApi = {
   preview: (kind: ImportKind, file: File) => importUpload<ImportReport>(kind, file, true),
   // All rows valid, or nothing is saved (400 with the report).
   run: (kind: ImportKind, file: File) => importUpload<{ created: number; skipped: number; report: ImportReport }>(kind, file, false),
+  /** One workbook with a sheet per kind (teachers, groups, students). */
+  bundleTemplate: () => download("/import/bundle/template.xlsx", "import-hammasi.xlsx"),
+  /** That workbook, or a .zip of the single templates: kinds in order, each all-or-nothing. */
+  runBundle: async (file: File) => {
+    const token = await freshToken();
+    const form = new FormData();
+    form.append("file", file);
+    const res = await fetch(`${API_URL}/import/bundle`, { method: "POST", headers: token ? { Authorization: `Bearer ${token}` } : undefined, body: form });
+    const body = await res.json().catch(() => null);
+    if (!res.ok) throw new ApiError(body?.message || "Import xato", res.status, body);
+    return body as BundleImportResult;
+  },
 };
 
 // ---- Admissions / Leads CRM ----

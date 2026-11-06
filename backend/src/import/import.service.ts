@@ -1,5 +1,6 @@
 import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import ExcelJS from 'exceljs';
+import { BUNDLE_ORDER, BUNDLE_SHEETS, bundleParts } from './import-bundle';
 import { and, eq, isNull } from 'drizzle-orm';
 import { DB, Database } from '../db/db.module';
 import { branches, groups, students, teachers } from '../db/schema';
@@ -62,7 +63,45 @@ export class ImportService {
 
   async template(kind: ImportKind, tenantId?: string) {
     const wb = new ExcelJS.Workbook();
-    const ws = wb.addWorksheet('Import');
+    await this.addTemplateSheets(wb, kind, tenantId, 'Import', 'Izoh');
+    return wb.xlsx.writeBuffer();
+  }
+
+  /** One workbook for everything: a sheet per kind, in the order they are imported. */
+  async bundleTemplate(tenantId: string) {
+    const wb = new ExcelJS.Workbook();
+    for (const kind of BUNDLE_ORDER) await this.addTemplateSheets(wb, kind, tenantId, BUNDLE_SHEETS[kind], `${BUNDLE_SHEETS[kind]} (izoh)`);
+    return wb.xlsx.writeBuffer();
+  }
+
+  /**
+   * Everything at once: one workbook with a sheet per kind, or a .zip of
+   * the single templates. Kinds go in order (teachers, groups, students: a
+   * group names its teacher, a student its group), each all-or-nothing as
+   * a single import. A kind with an error stops the rest; what came before
+   * stays saved, and the same file again skips it ("exists").
+   */
+  async runBundle(tenantId: string, userId: string, buffer: Buffer) {
+    const parts = await bundleParts(buffer);
+    const found = BUNDLE_ORDER.filter((k) => parts[k]);
+    if (found.length === 0) {
+      throw new BadRequestException(`Faylda tanish varaq topilmadi. Varaq (yoki ZIP ichidagi fayl) nomlari: ${BUNDLE_ORDER.map((k) => BUNDLE_SHEETS[k]).join(', ')}`);
+    }
+    const steps: Array<{ kind: ImportKind; created: number; skipped: number; report: ImportReport }> = [];
+    for (const kind of found) {
+      try {
+        const r = await this.run(tenantId, userId, kind, parts[kind]!);
+        steps.push({ kind, created: r.created, skipped: r.skipped, report: r.report });
+      } catch (err) {
+        const body = (err as { getResponse?: () => unknown }).getResponse?.() as { message?: string; report?: ImportReport } | undefined;
+        return { ok: false as const, steps, failed: { kind, message: body?.message ?? (err as Error).message, report: body?.report ?? null }, notRun: found.slice(found.indexOf(kind) + 1) };
+      }
+    }
+    return { ok: true as const, steps, failed: null, notRun: [] as ImportKind[] };
+  }
+
+  private async addTemplateSheets(wb: ExcelJS.Workbook, kind: ImportKind, tenantId: string | undefined, sheetName: string, helpName: string) {
+    const ws = wb.addWorksheet(sheetName);
     // Students: the center's own fields are columns too (by their label).
     const custom = kind === 'students' && tenantId ? await this.customFields.list(tenantId, 'STUDENT') : [];
     const cols = [
@@ -75,11 +114,10 @@ export class ImportService {
     ws.columns = cols.map((c) => ({ header: c.required ? `${c.title} *` : c.title, key: c.key, width: Math.max(14, c.title.length + 4, c.example.length + 2) }));
     ws.addRow(Object.fromEntries(cols.map((c) => [c.key, c.example])));
     ws.getRow(1).font = { bold: true };
-    const help = wb.addWorksheet('Izoh');
+    const help = wb.addWorksheet(helpName);
     help.columns = [{ header: 'Ustun', key: 'c', width: 22 }, { header: 'Majburiy', key: 'r', width: 10 }, { header: 'Qiymat', key: 'h', width: 50 }];
     for (const c of cols) help.addRow({ c: c.title, r: c.required ? 'ha' : '', h: c.hint ?? '' });
     help.getRow(1).font = { bold: true };
-    return wb.xlsx.writeBuffer();
   }
 
   private async read(kind: ImportKind, buffer: Buffer) {

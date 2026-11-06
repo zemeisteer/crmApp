@@ -26,6 +26,21 @@ const XLSX = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
 export class ImportController {
   constructor(private readonly service: ImportService) {}
 
+  // Everything at once: one workbook (a sheet per kind) or a .zip of the single templates.
+  @Get('bundle/template.xlsx')
+  async bundleTemplate(@CurrentUser('tenantId') tenantId: string, @Res() res: Response) {
+    const buffer = await this.service.bundleTemplate(tenantId);
+    res.set({ 'Content-Type': XLSX, 'Content-Disposition': 'attachment; filename="import-hammasi.xlsx"' });
+    res.send(Buffer.from(buffer));
+  }
+
+  @Post('bundle')
+  @UseInterceptors(FileInterceptor('file', { storage: memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } }))
+  async bundle(@CurrentUser('tenantId') tenantId: string, @CurrentUser('sub') userId: string, @UploadedFile() file: Express.Multer.File | undefined) {
+    if (!file?.buffer?.length) throw new BadRequestException('Excel yoki ZIP fayl yuklang (maydon nomi: file)');
+    return this.service.runBundle(tenantId, userId, file.buffer);
+  }
+
   @Get(':kind/template.xlsx')
   async template(@CurrentUser('tenantId') tenantId: string, @Param('kind') kind: string, @Res() res: Response) {
     const k = kindOf(kind);

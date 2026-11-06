@@ -9,6 +9,7 @@ import SiteContentEditor from "@/components/settings/SiteContentEditor";
 import CustomDomains from "@/components/settings/CustomDomains";
 import PaymentAccounts from "@/components/settings/PaymentAccounts";
 import TelephonySettings from "@/components/settings/TelephonySettings";
+import BundleImport from "@/components/settings/BundleImport";
 import BranchesManager from "@/components/settings/BranchesManager";
 import CustomFieldsManager from "@/components/settings/CustomFieldsManager";
 import MakeupPolicyCard from "@/components/settings/MakeupPolicyCard";
@@ -832,6 +833,11 @@ function SettingsContent() {
             </div>
           )}
 
+          {tab === "data" && isAdminRole(user?.role) && (
+            <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 22, maxWidth: 640, marginBottom: 16 }}>
+              <BundleImport />
+            </div>
+          )}
           {tab === "data" && (
             <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 22, maxWidth: 640 }}>
               <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 15, marginBottom: 14 }}>{t("settings.myData")}</div>
