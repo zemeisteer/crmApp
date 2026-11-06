@@ -17,11 +17,11 @@ env_value() { grep -E "^$1=" .env 2>/dev/null | tail -n1 | cut -d '=' -f2- | tr 
 
 echo "== .env"
 if [ ! -f .env ]; then bad ".env yo'q (cp .env.production.example .env)"; echo; exit 1; fi
-for k in DOMAIN POSTGRES_PASSWORD REDIS_PASSWORD JWT_SECRET; do
+for k in DOMAIN POSTGRES_PASSWORD JWT_SECRET; do
   [ -n "$(env_value $k)" ] && ok "$k" || bad "$k bo'sh"
 done
 # Namunadagi qiymat maxfiy emas: u repozitoriyda hammaga ochiq.
-for k in POSTGRES_PASSWORD REDIS_PASSWORD JWT_SECRET; do
+for k in POSTGRES_PASSWORD JWT_SECRET; do
   example="$(grep -E "^$k=" .env.production.example 2>/dev/null | tail -n1 | cut -d '=' -f2- | tr -d ' "' || true)"
   if [ -n "$example" ] && [ "$(env_value $k)" = "$example" ]; then bad "$k hali namunadagi qiymat — almashtiring (openssl rand -hex 32)"; fi
 done

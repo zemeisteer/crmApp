@@ -55,7 +55,7 @@ LATEST="$(basename "${MIGRATIONS[$((TOTAL - 1))]}")"
 echo "1/6 building production images"
 compose build || fail "the images did not build"
 
-echo "2/6 starting the stack (waits for the health checks of postgres, redis, backend and frontend)"
+echo "2/6 starting the stack (waits for the health checks of postgres, backend and frontend)"
 compose up -d --wait || fail "the stack did not become healthy"
 
 echo "3/6 migrations ran, and finished before the API started"

@@ -15,6 +15,9 @@ import { isUniqueViolation } from '../common/db-errors';
 export const MAX_PENDING_CLAIMS = 5;
 
 const KEY_RE = /^[A-Za-z0-9_-]{8,80}$/;
+/** Cards a center may show at once. */
+export const MAX_CARDS = 10;
+const cardDigits = (v: string) => v.replace(/\D/g, '');
 
 const money = (n: number) => new Intl.NumberFormat('uz-UZ').format(n);
 const escape = (v: string) => v.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -40,24 +43,41 @@ export class CardPaymentsService {
 
   // ---- the center's card ----
 
-  async card(tenantId: string) {
-    const [t] = await this.db.select({ number: tenants.cardNumber, holder: tenants.cardHolder }).from(tenants).where(eq(tenants.id, tenantId));
-    return t?.number && t.holder ? { number: groupCard(t.number), holder: t.holder } : null;
+  /** The center's cards in its order: the list, or the one card of a center set up before there could be several. */
+  async cards(tenantId: string): Promise<Array<{ number: string; holder: string }>> {
+    const [t] = await this.db.select({ list: tenants.cardList, number: tenants.cardNumber, holder: tenants.cardHolder }).from(tenants).where(eq(tenants.id, tenantId));
+    if (!t) return [];
+    const list = Array.isArray(t.list) && t.list.length ? t.list : t.number && t.holder ? [{ number: t.number, holder: t.holder }] : [];
+    return list.map((c) => ({ number: groupCard(c.number), holder: c.holder }));
   }
 
-  async setCard(tenantId: string, userId: string, dto: { cardNumber?: string; cardHolder?: string }) {
-    const digits = (dto.cardNumber ?? '').replace(/\D/g, '');
-    const holder = (dto.cardHolder ?? '').trim().replace(/\s+/g, ' ');
-    // Both empty: the card is taken off the cabinet.
-    if (!digits && !holder) {
-      await this.db.update(tenants).set({ cardNumber: null, cardHolder: null, updatedAt: new Date() }).where(eq(tenants.id, tenantId));
-    } else {
-      if (digits.length !== 16) throw new BadRequestException("Karta raqami 16 ta raqamdan iborat bo'lishi kerak");
-      if (!holder) throw new BadRequestException('Karta egasining ismini yozing');
-      await this.db.update(tenants).set({ cardNumber: digits, cardHolder: holder, updatedAt: new Date() }).where(eq(tenants.id, tenantId));
+  async card(tenantId: string) {
+    return (await this.cards(tenantId))[0] ?? null;
+  }
+
+  /** The whole list at once; empty takes card payments off the cabinet. */
+  async setCards(tenantId: string, userId: string, list: Array<{ cardNumber?: string; cardHolder?: string }>) {
+    const cards = list
+      .map((c) => ({ number: cardDigits(c.cardNumber ?? ''), holder: (c.cardHolder ?? '').trim().replace(/\s+/g, ' ') }))
+      .filter((c) => c.number || c.holder);
+    if (cards.length > MAX_CARDS) throw new BadRequestException(`Ko'pi bilan ${MAX_CARDS} ta karta`);
+    for (const c of cards) {
+      if (c.number.length !== 16) throw new BadRequestException("Karta raqami 16 ta raqamdan iborat bo'lishi kerak");
+      if (!c.holder) throw new BadRequestException('Karta egasining ismini yozing');
     }
+    if (new Set(cards.map((c) => c.number)).size !== cards.length) throw new BadRequestException('Bir karta ikki marta yozilgan');
+    const first = cards[0];
+    await this.db
+      .update(tenants)
+      .set({ cardList: cards.length ? cards : null, cardNumber: first?.number ?? null, cardHolder: first?.holder ?? null, updatedAt: new Date() })
+      .where(eq(tenants.id, tenantId));
     this.audit.log({ tenantId, userId, action: 'update', entityType: 'tenant_card', entityId: tenantId });
-    return { card: await this.card(tenantId) };
+    return { card: await this.card(tenantId), cards: await this.cards(tenantId) };
+  }
+
+  /** One card (the form before there could be several); both empty takes it off. */
+  async setCard(tenantId: string, userId: string, dto: { cardNumber?: string; cardHolder?: string }) {
+    return this.setCards(tenantId, userId, [dto]);
   }
 
   // ---- the cabinet ----
@@ -77,7 +97,8 @@ export class CardPaymentsService {
       .where(and(eq(paymentClaims.tenantId, tenantId), eq(paymentClaims.studentId, studentId)))
       .orderBy(desc(paymentClaims.createdAt))
       .limit(20);
-    return { card: await this.card(tenantId), claims };
+    const cards = await this.cards(tenantId);
+    return { card: cards[0] ?? null, cards, claims };
   }
 
   /**
@@ -91,20 +112,26 @@ export class CardPaymentsService {
     tenantId: string,
     studentId: string,
     sentBy: 'student' | 'parent',
-    dto: { amount: number; forMonth?: string; invoiceId?: string; note?: string; receiptFile: string; receiptSha256: string; idempotencyKey?: string },
+    dto: { amount: number; forMonth?: string; invoiceId?: string; note?: string; cardNumber?: string; receiptFile: string; receiptSha256: string; idempotencyKey?: string },
   ): Promise<{ claim: typeof paymentClaims.$inferSelect; replay: boolean }> {
-    if (!(await this.card(tenantId))) throw new BadRequestException("Markaz karta orqali to'lovni yoqmagan");
+    const cards = await this.cards(tenantId);
+    if (!cards.length) throw new BadRequestException("Markaz karta orqali to'lovni yoqmagan");
+    // Not naming a card means the first one, the only one a cabinet could show before.
+    const digits = cardDigits(dto.cardNumber || cards[0].number);
     const amount = Math.round(Number(dto.amount));
     if (!Number.isFinite(amount) || amount < 1000 || amount > MAX_MONEY) throw new BadRequestException("To'lov summasini to'g'ri yozing (kamida 1 000 so'm)");
     const key = dto.idempotencyKey?.trim() || null;
     if (key && !KEY_RE.test(key)) throw new BadRequestException("Idempotency-Key noto'g'ri");
     const note = dto.note?.trim().slice(0, 500) || null;
-    const requestHash = createHash('sha256').update(JSON.stringify([amount, dto.forMonth ?? null, dto.invoiceId ?? null, note, dto.receiptSha256])).digest('hex');
+    const requestHash = createHash('sha256').update(JSON.stringify([amount, dto.forMonth ?? null, dto.invoiceId ?? null, note, dto.receiptSha256, digits])).digest('hex');
     // Before the limit below: a retry of a receipt already made adds nothing.
     if (key) {
       const prior = await this.byKey(tenantId, studentId, key);
       if (prior) return { claim: this.sameSend(prior, requestHash), replay: true };
     }
+    // After the replay check: a card removed since the first try does not undo a receipt already made.
+    const paidTo = cards.find((c) => cardDigits(c.number) === digits);
+    if (!paidTo) throw new BadRequestException("Bu karta endi ishlatilmaydi: sahifani yangilab, boshqa kartani tanlang");
     const [student] = await this.db
       .select({ id: students.id, fullName: students.fullName })
       .from(students)
@@ -134,10 +161,10 @@ export class CardPaymentsService {
       claim = await this.db.transaction(async (tx) => {
         const [row] = await tx
           .insert(paymentClaims)
-          .values({ tenantId, studentId, invoiceId, amount, forMonth, receiptFile: dto.receiptFile, note, sentBy, idempotencyKey: key, requestHash })
+          .values({ tenantId, studentId, invoiceId, amount, forMonth, receiptFile: dto.receiptFile, note, sentBy, cardNumber: paidTo.number, idempotencyKey: key, requestHash })
           .returning();
         await this.files.register(tenantId, dto.receiptFile, 'PAYMENT_RECEIPT', row.id, studentId, tx);
-        await this.outbox.enqueue(tx, await this.staffNotices(tx, tenantId, row.id, student.fullName, amount, forMonth, sentBy));
+        await this.outbox.enqueue(tx, await this.staffNotices(tx, tenantId, row.id, student.fullName, amount, forMonth, sentBy, paidTo.number));
         return row;
       });
     } catch (err) {
@@ -172,7 +199,7 @@ export class CardPaymentsService {
   }
 
   /** Owners, admins and accountants linked to the bot hear of a new receipt (one message each). */
-  private async staffNotices(tx: LedgerTx, tenantId: string, claimId: string, studentName: string, amount: number, forMonth: string, sentBy: string): Promise<Notice[]> {
+  private async staffNotices(tx: LedgerTx, tenantId: string, claimId: string, studentName: string, amount: number, forMonth: string, sentBy: string, cardNumber: string): Promise<Notice[]> {
     const staff = await tx
       .select({ chat: users.telegramChatId })
       .from(users)
@@ -182,6 +209,7 @@ export class CardPaymentsService {
       `💳 <b>Karta orqali to'lov keldi</b>`,
       `${escape(studentName)}${sentBy === 'parent' ? ' (ota-onasi yubordi)' : ''}`,
       `Summa: <b>${money(amount)} so'm</b> · ${forMonth}`,
+      `Karta: •••• ${cardNumber.slice(-4)}`,
       '',
       `Chekni tekshirib tasdiqlang: TalimCRM → To'lovlar → "Karta to'lovlari".`,
     ].join('\n');

@@ -13,20 +13,19 @@ import { LedgerTx as Tx } from '../payments/allocation';
 import { UPLOAD_DIR } from '../common/upload.util';
 import { isUniqueViolation } from '../common/db-errors';
 import { applyPayment, nextPaymentMonth, openMonthInvoice } from './billing-period';
+import { cardDigits, platformCards } from '../platform/platform-cards';
 
 const money = (n: number) => new Intl.NumberFormat('uz-UZ').format(n);
 const escape = (v: string) => v.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-/** "8600123412341234" -> "8600 1234 1234 1234". */
-const groupCard = (digits: string) => digits.replace(/(\d{4})(?=\d)/g, '$1 ');
 const KEY_RE = /^[A-Za-z0-9_-]{8,80}$/;
 
 type Claim = typeof platformPaymentClaims.$inferSelect;
 
 /**
  * A center paying the platform by card transfer, for while the platform has
- * no Click/Payme contract (or besides it): the platform admin's card (set in
- * the panel: PLATFORM_CARD_NUMBER, PLATFORM_CARD_HOLDER) is shown on the
- * plans page, the center's owner sends a receipt for a tariff, the platform
+ * no Click/Payme contract (or besides it): the platform admin's cards (set in
+ * the panel: PLATFORM_CARDS) are shown on the plans page, the center's owner
+ * picks one and sends a receipt for a tariff, the platform
  * admins hear of it, and their "confirm" records the month paid exactly as
  * a Click/Payme payment does (billing-period.ts). Nothing is extended until
  * a person has checked the money arrived.
@@ -47,10 +46,12 @@ export class PlatformCardService {
     private readonly outbox: NoticeOutboxService,
   ) {}
 
+  cards() {
+    return platformCards(this.config.get<string>('PLATFORM_CARDS'), this.config.get<string>('PLATFORM_CARD_NUMBER'), this.config.get<string>('PLATFORM_CARD_HOLDER'));
+  }
+
   card() {
-    const digits = (this.config.get<string>('PLATFORM_CARD_NUMBER') ?? '').replace(/\D/g, '');
-    const holder = (this.config.get<string>('PLATFORM_CARD_HOLDER') ?? '').trim();
-    return digits.length === 16 && holder ? { number: groupCard(digits), holder } : null;
+    return this.cards()[0] ?? null;
   }
 
   // ---- the center ----
@@ -87,7 +88,7 @@ export class PlatformCardService {
       .orderBy(desc(platformSubscriptions.paidAt))
       .limit(24);
     // What a new payment would be for: shown before sending, decided here.
-    return { card: this.card(), nextMonth: await nextPaymentMonth(this.db, tenantId), claims, history };
+    return { card: this.card(), cards: this.cards(), nextMonth: await nextPaymentMonth(this.db, tenantId), claims, history };
   }
 
   /**
@@ -103,17 +104,23 @@ export class PlatformCardService {
   async submit(
     tenantId: string,
     userId: string,
-    dto: { plan: string; note?: string; receiptFile: string; receiptSha256: string; idempotencyKey?: string },
+    dto: { plan: string; note?: string; cardNumber?: string; receiptFile: string; receiptSha256: string; idempotencyKey?: string },
   ): Promise<{ claim: Claim; replay: boolean }> {
-    if (!this.card()) throw new BadRequestException("Karta orqali to'lov hozircha yoqilmagan");
+    const cards = this.cards();
+    if (!cards.length) throw new BadRequestException("Karta orqali to'lov hozircha yoqilmagan");
+    // Not naming a card means the first one, the only one a center could see before.
+    const digits = dto.cardNumber ? cardDigits(dto.cardNumber) : cardDigits(cards[0].number);
     const key = dto.idempotencyKey?.trim() || null;
     if (key && !KEY_RE.test(key)) throw new BadRequestException("Idempotency-Key noto'g'ri");
     const note = dto.note?.trim().slice(0, 500) || null;
-    const requestHash = createHash('sha256').update(JSON.stringify([dto.plan, note, dto.receiptSha256])).digest('hex');
+    const requestHash = createHash('sha256').update(JSON.stringify([dto.plan, note, dto.receiptSha256, digits])).digest('hex');
     if (key) {
       const prior = await this.byKey(tenantId, key);
       if (prior) return { claim: this.sameSend(prior, dto.plan, requestHash), replay: true };
     }
+    // After the replay check: a card removed since the first try does not undo a receipt already made.
+    const paidTo = cards.find((c) => cardDigits(c.number) === digits);
+    if (!paidTo) throw new BadRequestException("Bu karta endi ishlatilmaydi: sahifani yangilab, boshqa kartani tanlang");
     const plan = await this.plans.getByKey(dto.plan).catch(() => null);
     if (!plan) throw new NotFoundException('Tarif topilmadi');
     if (plan.price <= 0) throw new BadRequestException("Bepul tarif uchun to'lov kerak emas");
@@ -124,10 +131,10 @@ export class PlatformCardService {
       claim = await this.db.transaction(async (tx) => {
         const [row] = await tx
           .insert(platformPaymentClaims)
-          .values({ tenantId, plan: plan.key, forMonth, amount: plan.price, receiptFile: dto.receiptFile, note, sentByUserId: userId, idempotencyKey: key, requestHash, receiptSha256: dto.receiptSha256 })
+          .values({ tenantId, plan: plan.key, forMonth, amount: plan.price, receiptFile: dto.receiptFile, note, sentByUserId: userId, idempotencyKey: key, requestHash, receiptSha256: dto.receiptSha256, cardNumber: paidTo.number })
           .returning();
         await this.audit.record(tx, { tenantId, userId, action: 'create', entityType: 'platform_payment_claim', entityId: row.id, meta: { plan: plan.key, forMonth, amount: plan.price } });
-        await this.outbox.enqueue(tx, await this.platformNotices(tx, tenantId, row.id, plan.name, plan.price, forMonth));
+        await this.outbox.enqueue(tx, await this.platformNotices(tx, tenantId, row.id, plan.name, plan.price, forMonth, paidTo.number));
         return row;
       });
     } catch (err) {
@@ -168,10 +175,10 @@ export class PlatformCardService {
   }
 
   /** The platform admins: in Telegram when linked, else by mail - one outbox row each. */
-  private async platformNotices(tx: Tx, tenantId: string, claimId: string, planName: string, amount: number, forMonth: string): Promise<Notice[]> {
+  private async platformNotices(tx: Tx, tenantId: string, claimId: string, planName: string, amount: number, forMonth: string, cardNumber: string): Promise<Notice[]> {
     const [t] = await tx.select({ name: tenants.name, subdomain: tenants.subdomain }).from(tenants).where(eq(tenants.id, tenantId));
     const admins = await tx.select({ email: users.email, chat: users.telegramChatId }).from(users).where(eq(users.role, 'SUPERADMIN'));
-    const text = `💳 Obuna uchun karta to'lovi keldi\n${t?.name ?? ''} (${t?.subdomain ?? ''})\n${planName} · ${forMonth} · ${money(amount)} so'm\n\nTekshirib tasdiqlang: Platforma → Obunalar → "Karta to'lovlari".`;
+    const text = `💳 Obuna uchun karta to'lovi keldi\n${t?.name ?? ''} (${t?.subdomain ?? ''})\n${planName} · ${forMonth} · ${money(amount)} so'm\nKarta: •••• ${cardNumber.slice(-4)}\n\nTekshirib tasdiqlang: Platforma → Obunalar → "Karta to'lovlari".`;
     const kind = 'platform_claim.new';
     return admins.map((a): Notice => a.chat
       ? { tenantId, kind, channel: 'TELEGRAM', recipient: a.chat, body: escape(text), dedupeKey: `${kind}:${claimId}:tg:${a.chat}` }
@@ -212,6 +219,7 @@ export class PlatformCardService {
       total,
       pending,
       card: this.card(),
+      cards: this.cards(),
       items: rows.map((r) => ({ ...r.c, idempotencyKey: undefined, centerName: r.centerName, subdomain: r.subdomain, reviewedBy: r.reviewedBy })),
     };
   }

@@ -89,6 +89,9 @@ export const paymentStatusEnum = pgEnum('payment_status', [
   'PAID',
   'PENDING',
   'FAILED',
+  // Entered by mistake and taken back by staff (payments.service.ts voidPayment):
+  // the row stays for the record, its money left the invoices.
+  'VOIDED',
 ]);
 export const attendanceStatusEnum = pgEnum('attendance_status', [
   'PRESENT',
@@ -274,6 +277,9 @@ export const tenants = pgTable('tenants', {
   // besides them): shown in the cabinet; the receipt is checked by staff.
   cardNumber: text('card_number'),
   cardHolder: text('card_holder'),
+  // Several cards, in the center's order (the first is also in card_number /
+  // card_holder). Null for a center that set one card before there could be more.
+  cardList: jsonb('card_list').$type<Array<{ number: string; holder: string }>>(),
   // The phone confirmed with a code when the center signed up: one free
   // trial per number (null for centers made before, or by the platform).
   signupPhone: text('signup_phone'),
@@ -761,6 +767,9 @@ export const paymentAllocations = pgTable('payment_allocations', {
   paymentId: text('payment_id').notNull().references(() => payments.id, { onDelete: 'cascade' }),
   invoiceId: text('invoice_id').notNull().references(() => invoices.id, { onDelete: 'cascade' }),
   amount: integer('amount').notNull(),
+  // The part of the payment's discount this invoice was let off: what a void
+  // puts back (0 for allocations made before 0082, which did not record it).
+  waived: integer('waived').notNull().default(0),
   createdAt: timestamp('created_at').notNull().defaultNow(),
 }, (t) => ({
   tenantIdx: index('payment_allocations_tenant_idx').on(t.tenantId),
@@ -789,6 +798,10 @@ export const payments = pgTable('payments', {
   // The staff member who took it at the desk (null: online, or recorded
   // before 0037).
   recordedById: text('recorded_by_id').references(() => users.id, { onDelete: 'set null' }),
+  // A payment taken back (status VOIDED): when, by whom and why.
+  voidedAt: timestamp('voided_at'),
+  voidedById: text('voided_by_id').references(() => users.id, { onDelete: 'set null' }),
+  voidReason: text('void_reason'),
   paidAt: timestamp('paid_at').notNull().defaultNow(),
   createdAt: timestamp('created_at').notNull().defaultNow(),
 }, (t) => ({
@@ -925,6 +938,8 @@ export const paymentClaims = pgTable('payment_claims', {
   note: text('note'),
   // Who sent it from the cabinet: the student or a parent.
   sentBy: text('sent_by').notNull().default('student'),
+  // The center's card it says it was paid to, as shown then: where staff look for the money.
+  cardNumber: text('card_number'),
   status: text('status').notNull().default('PENDING'), // PENDING | CONFIRMED | REJECTED
   rejectReason: text('reject_reason'),
   reviewedByUserId: text('reviewed_by_user_id').references(() => users.id, { onDelete: 'set null' }),
@@ -1118,6 +1133,8 @@ export const platformPaymentClaims = pgTable('platform_payment_claims', {
   requestHash: text('request_hash'),
   // sha256 of the receipt file's bytes (not of its random stored name).
   receiptSha256: text('receipt_sha256'),
+  // The card the center says it paid to, as shown then: where the admin looks for the money.
+  cardNumber: text('card_number'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
 }, (t) => ({
   statusIdx: index('platform_payment_claims_status_idx').on(t.status, t.createdAt),

@@ -50,7 +50,10 @@ export const PASSWORD = `Br-${randomBytes(6).toString('hex')}-9`;
 const AUTH_LIMIT = 7; // one below the server's 8, for clock skew
 const AUTH_WINDOW_MS = 61_000;
 const PACE_FILE = join(tmpdir(), `talimcrm-browser-auth-pace-${TARGET}.json`);
-export async function authSlot(kind: 'register' | 'login') {
+// The cabinet's phone step allows 5 a minute (portal.controller.ts).
+const CABINET_LIMIT = 4;
+
+export async function authSlot(kind: 'register' | 'login' | 'cabinet') {
   for (;;) {
     const now = Date.now();
     let used: Record<string, number[]> = {};
@@ -60,7 +63,7 @@ export async function authSlot(kind: 'register' | 'login') {
       used = {};
     }
     const recent = (used[kind] ?? []).filter((t) => now - t < AUTH_WINDOW_MS).sort((x, y) => x - y);
-    if (recent.length < AUTH_LIMIT) {
+    if (recent.length < (kind === 'cabinet' ? CABINET_LIMIT : AUTH_LIMIT)) {
       used[kind] = [...recent, now];
       writeFileSync(PACE_FILE, JSON.stringify(used));
       return;

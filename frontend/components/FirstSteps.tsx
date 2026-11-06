@@ -10,6 +10,7 @@ import type { TranslationKey } from "@/lib/i18n";
 const ACCENT = "var(--primary)";
 // Where each step is done.
 const HREF: Record<ChecklistKey, string> = {
+  teacher: "/teachers",
   group: "/groups",
   students: "/students",
   attendance: "/groups",

@@ -4,7 +4,8 @@ import { and, count, eq, ilike, inArray, isNull, like, or, sql } from 'drizzle-o
 import { DB, Database } from '../db/db.module';
 import { STUDENT_LIST_COLUMNS } from '../common/teacher-scope';
 import { containsPattern, enrolledInGroup, queryText } from '../common/list-filters';
-import { expenses, invoices, paymentClaims, payments, salaryPayments, students } from '../db/schema';
+import { cashClosings, expenses, invoices, paymentAllocations, paymentClaims, payments, salaryPayments, students } from '../db/schema';
+import { formatZoned } from '../common/timezone';
 import { LedgerService } from '../ledger/ledger.service';
 import { allocateToInvoices, LedgerTx, lockInvoice, lockOpenInvoices, lockStudentLedger } from './allocation';
 import { CreatePaymentDto } from './dto/payment.dto';
@@ -363,6 +364,68 @@ export class PaymentsService {
     }
     const { idempotencyKey: _k, requestHash: _h, ...publicPayment } = payment;
     void this.webhooks.dispatch(tenantId, 'payment.created', publicPayment);
+  }
+
+  /**
+   * Takes back a payment entered by mistake. Nothing is deleted: the payment
+   * stays, marked VOIDED with the reason and who did it, and in the same
+   * transaction (under the student's ledger lock) every sum it put on an
+   * invoice comes off again, so the debt is what it was before it. Counted
+   * only as PAID, it leaves revenue, cash and reports at once.
+   *
+   * Refused where taking it back here would leave something else wrong:
+   * online payments (the money is with Click/Payme: refunded there), a card
+   * receipt's payment (the receipt says confirmed), one with a discount
+   * recorded before 0082 (where the waived part was not kept per invoice),
+   * and cash on a day whose cash was already counted and closed.
+   */
+  async voidPayment(tenantId: string, userId: string, id: string, reason: string) {
+    const why = (reason ?? '').trim().slice(0, 300);
+    if (!why) throw new BadRequestException('Bekor qilish sababini yozing');
+    return this.db.transaction(async (tx) => {
+      const [found] = await tx.select({ studentId: payments.studentId }).from(payments).where(and(eq(payments.id, id), eq(payments.tenantId, tenantId)));
+      if (!found) throw new NotFoundException("To'lov topilmadi");
+      await lockStudentLedger(tx, found.studentId);
+      const [p] = await tx.select().from(payments).where(eq(payments.id, id)).for('update');
+      if (p.status === 'VOIDED') return { id, status: 'VOIDED' as const, replay: true };
+      if (p.status !== 'PAID') throw new ConflictException({ code: 'NOT_PAID', message: "Faqat to'langan to'lovni bekor qilish mumkin" });
+      if (p.method === 'CLICK' || p.method === 'PAYME') {
+        throw new ConflictException({ code: 'ONLINE', message: `${p.method} orqali kelgan to'lov u yerning o'zida qaytariladi` });
+      }
+      const [claim] = await tx.select({ id: paymentClaims.id }).from(paymentClaims).where(eq(paymentClaims.paymentId, id));
+      if (claim) throw new ConflictException({ code: 'CARD_RECEIPT', message: "Bu to'lov karta cheki orqali tasdiqlangan: uni bu yerdan bekor qilib bo'lmaydi" });
+      if (p.method === 'CASH') {
+        const day = formatZoned(p.paidAt, await this.ledger.timezone(tenantId)).slice(0, 10);
+        const [closed] = await tx.select({ id: cashClosings.id }).from(cashClosings).where(and(eq(cashClosings.tenantId, tenantId), eq(cashClosings.date, day)));
+        if (closed) throw new ConflictException({ code: 'CASH_DAY_CLOSED', message: `${day} kunining kassasi yopilgan: bu kundagi naqd to'lovni bekor qilib bo'lmaydi` });
+      }
+
+      const allocations = await tx.select().from(paymentAllocations).where(eq(paymentAllocations.paymentId, id));
+      // A discount is put back where it was given; one from before 0082 has no such record.
+      if (p.discount > 0 && allocations.length > 0 && allocations.every((a) => a.waived === 0)) {
+        throw new ConflictException({ code: 'DISCOUNT', message: "Bu chegirmali to'lov eski tartibda kiritilgan: chegirma qaysi hisob-fakturaga tushgani yozilmagan, uni bekor qilib bo'lmaydi" });
+      }
+      for (const a of allocations) {
+        const inv = await lockInvoice(tx, tenantId, p.studentId, a.invoiceId);
+        if (!inv) continue;
+        const amountPaid = Math.max(0, inv.amountPaid - a.amount);
+        const remaining = Math.min(inv.amount, inv.remainingAmount + a.amount + a.waived);
+        await tx.update(invoices).set({
+          amountPaid,
+          remainingAmount: remaining,
+          status: inv.status === 'CANCELLED' ? inv.status : remaining <= 0 ? 'PAID' : amountPaid > 0 || remaining < inv.amount ? 'PARTIALLY_PAID' : 'OPEN',
+          paidAt: remaining <= 0 ? inv.paidAt : null,
+          updatedAt: new Date(),
+        }).where(eq(invoices.id, inv.id));
+      }
+      await tx.delete(paymentAllocations).where(eq(paymentAllocations.paymentId, id));
+      await tx.update(payments).set({ status: 'VOIDED', voidedAt: new Date(), voidedById: userId, voidReason: why }).where(eq(payments.id, id));
+      await this.audit.record(tx, {
+        tenantId, userId, action: 'void', entityType: 'payment', entityId: id,
+        meta: { amount: p.amount, method: p.method, forMonth: p.forMonth, studentId: p.studentId, reason: why, invoices: allocations.map((a) => ({ id: a.invoiceId, amount: a.amount, waived: a.waived })) },
+      });
+      return { id, status: 'VOIDED' as const, replay: false };
+    });
   }
 
   async summary(tenantId: string) {

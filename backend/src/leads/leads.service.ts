@@ -1035,6 +1035,21 @@ export class LeadsService {
     return updated;
   }
 
+  /**
+   * For good, with its history (activities, trials, field values): only a
+   * lead already archived. Placement attempts filed under it stay, unlinked.
+   */
+  async removeForGood(tenantId: string, actor: Actor, id: string) {
+    const lead = await this.db.transaction(async (tx) => {
+      const row = await this.getLeadRow(tx, tenantId, id, { lock: true });
+      if (!row.archivedAt) throw new ConflictException({ code: 'NOT_ARCHIVED', message: "Avval lidni arxivlang: faqat arxivdagi lid butunlay o'chiriladi" });
+      await tx.delete(leads).where(and(eq(leads.id, id), eq(leads.tenantId, tenantId)));
+      return row;
+    });
+    this.audit.log({ tenantId, userId: actor.userId, action: 'delete', entityType: 'lead', entityId: id, meta: { fullName: lead.fullName, phone: lead.phone } });
+    return { id, deleted: true };
+  }
+
   async restore(tenantId: string, actor: Actor, id: string) {
     try {
       const updated = await this.db.transaction(async (tx) => {

@@ -26,6 +26,7 @@ async function cabinetOnMessages(browser: Browser, sub: string, local: string, p
   const cab = await ctx.newPage();
   await cab.goto(centerUrl(sub, '/portal'));
   await cab.getByRole('textbox').first().pressSequentially(local);
+  await authSlot('cabinet');
   await cab.getByRole('button', { name: 'Davom etish' }).click();
   await cab.getByPlaceholder('••••••').fill(String(pin));
   await cab.getByRole('button', { name: 'Kabinetga kirish' }).click();
@@ -71,6 +72,7 @@ test('a teacher and a student write to each other live; unread clears; one messa
   const cab = await ctxB.newPage();
   await cab.goto(centerUrl(a.sub, '/portal'));
   await cab.getByRole('textbox').first().pressSequentially(local);
+  await authSlot('cabinet');
   await cab.getByRole('button', { name: 'Davom etish' }).click();
   await cab.getByPlaceholder('••••••').fill(String(pin));
   await cab.getByRole('button', { name: 'Kabinetga kirish' }).click();
@@ -207,6 +209,7 @@ test("the cabinet writes to the center; the center's inbox answers on a phone (l
   const cab = await ctxB.newPage();
   await cab.goto(centerUrl(a.sub, '/portal'));
   await cab.getByRole('textbox').first().pressSequentially(local);
+  await authSlot('cabinet');
   await cab.getByRole('button', { name: 'Davom etish' }).click();
   await cab.getByPlaceholder('••••••').fill(String(pin));
   await cab.getByRole('button', { name: 'Kabinetga kirish' }).click();

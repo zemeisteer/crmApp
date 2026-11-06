@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { api, centerUrl, cleanUpStagingCenters, newCenter } from './support';
+import { authSlot, api, centerUrl, cleanUpStagingCenters, newCenter } from './support';
 
 // Parent portal: a parent signs in with their phone and the child's PIN,
 // sees their child as a parent - read-only, without the child's AI tutor.
@@ -14,6 +14,7 @@ test("a parent signs in with the child's PIN and only watches", async ({ page })
 
   await page.goto(centerUrl(a.sub, '/portal'));
   await page.getByRole('textbox').first().pressSequentially('941112233');
+  await authSlot('cabinet');
   await page.getByRole('button', { name: 'Davom etish' }).click();
   await page.getByPlaceholder('••••••').fill(String(pin));
   await page.getByRole('button', { name: 'Kabinetga kirish' }).click();

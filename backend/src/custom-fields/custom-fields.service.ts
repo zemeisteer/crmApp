@@ -241,6 +241,18 @@ export class CustomFieldsService {
     return row;
   }
 
+  /**
+   * For good, with every value recorded in it: only a field already archived
+   * (archiving keeps the values and is undone in one click; this is not).
+   */
+  async remove(tenantId: string, userId: string, id: string) {
+    const def = await this.row(tenantId, id);
+    if (!def.archivedAt) throw new ConflictException({ code: 'NOT_ARCHIVED', message: "Avval maydonni arxivlang: faqat arxivdagi maydon butunlay o'chiriladi" });
+    await this.db.delete(customFieldDefinitions).where(and(eq(customFieldDefinitions.id, id), eq(customFieldDefinitions.tenantId, tenantId)));
+    this.audit.log({ tenantId, userId, action: 'custom_field.delete', entityType: 'custom_field', entityId: id, meta: { key: def.key, label: def.label, entityType: def.entityType } });
+    return { id, deleted: true };
+  }
+
   async restore(tenantId: string, userId: string, id: string) {
     return this.db.transaction(async (tx) => {
       const def = await this.row(tenantId, id, tx);

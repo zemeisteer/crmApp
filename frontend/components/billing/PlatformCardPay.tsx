@@ -16,14 +16,14 @@ const money = (n: number) => new Intl.NumberFormat("uz-UZ").format(n);
  * paid time is extended; until then it shows as being checked.
  */
 export default function PlatformCardPay({
-  card,
+  cards,
   plan,
   planName,
   amount,
   forMonth,
   onSent,
 }: {
-  card: NonNullable<PlatformCardView["card"]>;
+  cards: PlatformCardView["cards"];
   plan: string;
   planName: string;
   amount: number;
@@ -31,6 +31,9 @@ export default function PlatformCardPay({
   onSent: () => void;
 }) {
   const { t } = useLanguage();
+  const [chosen, setChosen] = useState(cards[0].number);
+  // The list may have changed under an open page: what is shown is always one of today's cards.
+  const card = cards.find((c) => c.number === chosen) ?? cards[0];
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [note, setNote] = useState("");
@@ -66,9 +69,9 @@ export default function PlatformCardPay({
     setBusy(true);
     setError(null);
     try {
-      const fingerprint = JSON.stringify([plan, note.trim(), await fileFingerprint(file)]);
+      const fingerprint = JSON.stringify([plan, note.trim(), card.number, await fileFingerprint(file)]);
       if (sendKey.current?.fingerprint !== fingerprint) sendKey.current = { fingerprint, key: newKey() };
-      const r = await platformBillingApi.sendCardClaim({ plan, note: note.trim() || undefined, file, idempotencyKey: sendKey.current.key });
+      const r = await platformBillingApi.sendCardClaim({ plan, note: note.trim() || undefined, cardNumber: card.number, file, idempotencyKey: sendKey.current.key });
       // The same send replayed after it was decided (an old tab): say so, never "sent".
       if (r.status === "REJECTED") {
         sendKey.current = null;
@@ -93,6 +96,18 @@ export default function PlatformCardPay({
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }} data-testid="platform-card-pay">
+      {cards.length > 1 && (
+        <div role="radiogroup" aria-label={t("pcp.chooseCard")} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          <div style={{ fontSize: 12.5, fontWeight: 700, color: "var(--text-soft)" }}>{t("pcp.chooseCard")}</div>
+          {cards.map((c) => (
+            <label key={c.number} style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13, cursor: "pointer", padding: "9px 12px", borderRadius: "var(--radius-sm)", border: `1.5px solid ${c.number === card.number ? "var(--primary)" : "var(--border)"}`, background: c.number === card.number ? "var(--primary-soft)" : "var(--surface)" }}>
+              <input type="radio" name="platform-card" checked={c.number === card.number} onChange={() => setChosen(c.number)} />
+              <span style={{ fontFamily: "ui-monospace, monospace", fontWeight: 700 }}>•••• {c.number.slice(-4)}</span>
+              <span style={{ color: "var(--text-muted)", textTransform: "uppercase", fontSize: 12 }}>{c.holder}</span>
+            </label>
+          ))}
+        </div>
+      )}
       <div style={{ borderRadius: "var(--radius-lg)", padding: 16, color: "var(--on-ink)", background: "linear-gradient(135deg, var(--ink), var(--ink))" }}>
         <div style={{ fontSize: 12, opacity: 0.75 }}>{t("ct.cardNumber")}</div>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>

@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Throttle } from '@nestjs/throttler';
 import { memoryStorage } from 'multer';
@@ -54,6 +54,13 @@ export class PlacementController {
   @Get(':id/attempts')
   attempts(@CurrentUser('tenantId') tenantId: string, @Param('id') id: string) {
     return this.service.attempts(tenantId, id);
+  }
+
+  // Its results go with it: owners and admins only.
+  @Roles('ADMIN', 'OWNER')
+  @Delete(':id')
+  remove(@CurrentUser('tenantId') tenantId: string, @CurrentUser('sub') userId: string, @Param('id') id: string) {
+    return this.service.remove(tenantId, userId, id);
   }
 
   @Roles(...STAFF)

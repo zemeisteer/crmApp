@@ -111,14 +111,46 @@ describe('Paying the platform by card (e2e)', () => {
     return { auth: { Authorization: `Bearer ${reg.accessToken}` }, tenantId };
   }
 
-  const send = (auth: Record<string, string>, opts: { plan?: string; key?: string; file?: boolean; forMonth?: string; v?: string; note?: string } = {}) => {
+  const send = (auth: Record<string, string>, opts: { plan?: string; key?: string; file?: boolean; forMonth?: string; v?: string; note?: string; cardNumber?: string } = {}) => {
     let r = http().post('/api/platform-billing/card').set(auth).field('plan', opts.plan ?? 'STANDARD');
     if (opts.forMonth) r = r.field('forMonth', opts.forMonth);
     if (opts.note) r = r.field('note', opts.note);
+    if (opts.cardNumber) r = r.field('cardNumber', opts.cardNumber);
     if (opts.key) r = r.set('Idempotency-Key', opts.key);
     return opts.file === false ? r : r.attach('file', receipt(opts.v), { filename: 'chek.png', contentType: 'image/png' });
   };
   const confirm = (id: string) => http().post(`/api/platform/card-claims/${id}/confirm`).set(sa);
+
+  it('several cards: the center picks one, the admin sees which; a card not on the list is refused', async () => {
+    process.env.PLATFORM_CARDS = JSON.stringify([{ number: '9860 1111 1111 1111', holder: 'Birinchi' }, { number: '8600 2222 2222 2222', holder: 'Ikkinchi' }]);
+    try {
+      const a = await center();
+      const view = (await http().get('/api/platform-billing/card').set(a.auth).expect(200)).body;
+      expect(view.cards.map((c: { holder: string }) => c.holder)).toEqual(['Birinchi', 'Ikkinchi']);
+      expect(view.card.holder).toBe('Birinchi');
+
+      await send(a.auth, { cardNumber: '5555 5555 5555 5555', v: 'cards-1' }).expect(400);
+      const sent = (await send(a.auth, { cardNumber: '8600 2222 2222 2222', key: `cards-${suffix}`, v: 'cards-2' }).expect(201)).body;
+      const row = (await db.select().from(platformPaymentClaims).where(eq(platformPaymentClaims.id, sent.id)))[0];
+      expect(row.cardNumber).toBe('8600 2222 2222 2222');
+
+      // The same send retried after the card left the list: the receipt already made, not an error.
+      process.env.PLATFORM_CARDS = JSON.stringify([{ number: '9860 1111 1111 1111', holder: 'Birinchi' }]);
+      const again = (await send(a.auth, { cardNumber: '8600 2222 2222 2222', key: `cards-${suffix}`, v: 'cards-2' }).expect(201)).body;
+      expect(again.id).toBe(sent.id);
+
+      const list = (await http().get('/api/platform/card-claims?status=PENDING&pageSize=100').set(sa).expect(200)).body;
+      expect(list.items.find((c: { id: string }) => c.id === sent.id).cardNumber).toBe('8600 2222 2222 2222');
+
+      // No card named: the first one.
+      const b = await center();
+      const plain = (await send(b.auth, { v: 'cards-3' }).expect(201)).body;
+      expect((await db.select().from(platformPaymentClaims).where(eq(platformPaymentClaims.id, plain.id)))[0].cardNumber).toBe('9860 1111 1111 1111');
+    } finally {
+      delete process.env.PLATFORM_CARDS;
+    }
+  });
+
   const reject = (id: string, reason = 'Pul kelmadi') => http().post(`/api/platform/card-claims/${id}/reject`).set(sa).send({ reason });
   const tenantRow = async (id: string) => (await db.select().from(tenants).where(eq(tenants.id, id)))[0];
   const invoices = (tenantId: string) => db.select().from(platformSubscriptions).where(eq(platformSubscriptions.tenantId, tenantId));

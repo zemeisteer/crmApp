@@ -186,7 +186,10 @@ export default function CustomFieldsManager() {
                   <span style={{ fontWeight: 700, overflowWrap: "anywhere" }}>{d.label}</span>{" "}
                   <span style={{ fontSize: 12 }}>· {t(typeKey(d.fieldType))}</span>
                 </div>
-                <button type="button" style={small} disabled={busy || full} onClick={() => void act(() => customFieldsApi.restore(d.id))} aria-label={`${t("cf.restore")}: ${d.label}`}>{t("cf.restore")}</button>
+                <div style={{ display: "flex", gap: 6 }}>
+                  <button type="button" style={small} disabled={busy || full} onClick={() => void act(() => customFieldsApi.restore(d.id))} aria-label={`${t("cf.restore")}: ${d.label}`}>{t("cf.restore")}</button>
+                  <button type="button" style={{ ...small, color: "var(--danger)" }} disabled={busy} onClick={() => window.confirm(t("cf.confirmDelete").replace("{label}", d.label)) && void act(() => customFieldsApi.remove(d.id))} aria-label={`${t("common.deleteForGood")}: ${d.label}`}>{t("common.deleteForGood")}</button>
+                </div>
               </li>
             ))}
           </ul>

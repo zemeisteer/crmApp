@@ -140,7 +140,7 @@ export const ACCESS_CATALOG: AccessKey[] = [
   },
   { key: 'leads.assign', area: 'admissions', template: [M], routes: ['POST /api/leads/:id/assign'] },
   { key: 'leads.convert', area: 'admissions', template: [M], routes: ['GET /api/leads/:id/student-match', 'POST /api/leads/:id/convert'] },
-  { key: 'leads.manage', area: 'admissions', template: [M], routes: ['POST /api/leads/:id/reopen', 'POST /api/leads/:id/archive', 'POST /api/leads/:id/restore', 'DELETE /api/leads/:id'] },
+  { key: 'leads.manage', area: 'admissions', template: [M], routes: ['POST /api/leads/:id/reopen', 'POST /api/leads/:id/archive', 'DELETE /api/leads/:id/permanent', 'POST /api/leads/:id/restore', 'DELETE /api/leads/:id'] },
   { key: 'leads.analytics', area: 'admissions', template: [M], routes: ['GET /api/leads/funnel', 'GET /api/leads/analytics'] },
   { key: 'leads.export', area: 'admissions', template: [M], routes: ['GET /api/leads/export'] },
   // IP telephony (telephony/). What a member then sees inside the center is
@@ -154,7 +154,7 @@ export const ACCESS_CATALOG: AccessKey[] = [
     key: 'payments.view', area: 'finance', template: [M, R, A],
     routes: ['GET /api/card-payments/claims', 'GET /api/payments', 'GET /api/payments/:id', 'GET /api/payments/summary', 'GET /api/payments/debtors', 'GET /api/payments/finance-summary', 'GET /api/reports/revenue-by-year'],
   },
-  { key: 'payments.take', area: 'finance', template: [A], routes: ['POST /api/payments', 'POST /api/card-payments/claims/:id/confirm', 'POST /api/card-payments/claims/:id/reject'] },
+  { key: 'payments.take', area: 'finance', template: [A], routes: ['POST /api/payments', 'POST /api/payments/:id/void', 'POST /api/card-payments/claims/:id/confirm', 'POST /api/card-payments/claims/:id/reject'] },
   { key: 'payments.onlineLink', area: 'finance', template: [M, R, A], routes: ['POST /api/billing/click/link', 'POST /api/billing/payme/link'] },
   {
     key: 'invoices.manage', area: 'finance', template: [A],

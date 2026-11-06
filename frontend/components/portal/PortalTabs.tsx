@@ -837,7 +837,7 @@ export function PaymentsTab({ payments, checkoutLoading, onPay, payError }: { pa
               </div>
               <div style={{ textAlign: "right" }}>
                 <div style={{ fontFamily: "var(--font-display)", fontSize: 15, fontWeight: 800 }}>{money(p.amount)}</div>
-                <div style={{ fontSize: 11.5, color: p.status === "PAID" ? "var(--success)" : "var(--danger)", fontWeight: 700 }}>{p.status === "PAID" ? t("ptl.paidStatus") : p.status}</div>
+                <div style={{ fontSize: 11.5, color: p.status === "PAID" ? "var(--success)" : "var(--danger)", fontWeight: 700 }}>{p.status === "PAID" ? t("ptl.paidStatus") : p.status === "VOIDED" ? t("payment.statusVoided") : p.status}</div>
               </div>
             </div>
           ))

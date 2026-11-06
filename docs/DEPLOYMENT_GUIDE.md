@@ -92,7 +92,6 @@ nano .env
 1. `DOMAIN`: O'zingizning domeningiz (masalan, `crmapp.uz`).
 2. `POSTGRES_PASSWORD`: Murakkab maxfiy parol.
 3. `JWT_SECRET`: Kuchli tasodifiy kalit (`openssl rand -hex 32` orqali generatsiya qiling).
-4. `REDIS_PASSWORD`: Redis maxfiy paroli.
 5. Agar Click, Payme, Eskiz SMS yoki Telegram bot ishlatmoqchi bo'lsangiz, ularning kalitlarini kiriting.
 
 ---

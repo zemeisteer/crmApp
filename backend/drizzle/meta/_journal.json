@@ -561,6 +561,34 @@
       "when": 1798000000000,
       "tag": "0079_telephony",
       "breakpoints": true
+    },
+    {
+      "idx": 80,
+      "version": "7",
+      "when": 1798000001000,
+      "tag": "0080_platform_claim_card",
+      "breakpoints": true
+    },
+    {
+      "idx": 81,
+      "version": "7",
+      "when": 1798000002000,
+      "tag": "0081_center_card_list",
+      "breakpoints": true
+    },
+    {
+      "idx": 82,
+      "version": "7",
+      "when": 1798000003000,
+      "tag": "0082_payment_void",
+      "breakpoints": true
+    },
+    {
+      "idx": 83,
+      "version": "7",
+      "when": 1798000004000,
+      "tag": "0083_allocation_waived",
+      "breakpoints": true
     }
   ]
 }

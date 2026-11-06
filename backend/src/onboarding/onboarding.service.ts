@@ -14,13 +14,15 @@ import {
   payments,
   students,
   subjects,
+  teachers,
   tenants,
   users,
 } from '../db/schema';
 import { parseSiteContent } from '../tenants/site-content';
 
 /** The first things a new center does, in the order the checklist shows them. */
-export const CHECKLIST = ['group', 'students', 'attendance', 'payment', 'team', 'telegram', 'site'] as const;
+// A teacher comes first: a group's form asks for its teacher.
+export const CHECKLIST = ['teacher', 'group', 'students', 'attendance', 'payment', 'team', 'telegram', 'site'] as const;
 export type ChecklistKey = (typeof CHECKLIST)[number];
 import {
   BranchStepDto,
@@ -79,7 +81,7 @@ export class OnboardingService {
 
   /**
    * The "first steps" checklist on the dashboard, read from what the center
-   * has actually done (nothing to mark by hand): a group, students, an
+   * has actually done (nothing to mark by hand): a teacher, a group, students, an
    * attendance mark, a payment, a colleague, Telegram linked, the site
    * filled in.
    */
@@ -89,6 +91,7 @@ export class OnboardingService {
     const [tenant] = await this.db.select({ siteContent: tenants.siteContent, logoUrl: tenants.logoUrl }).from(tenants).where(eq(tenants.id, tenantId));
     const site = parseSiteContent(tenant?.siteContent ?? null);
     const done: Record<ChecklistKey, boolean> = {
+      teacher: await one(this.db.select({ n }).from(teachers).where(and(eq(teachers.tenantId, tenantId), isNull(teachers.deletedAt)))),
       group: await one(this.db.select({ n }).from(groups).where(and(eq(groups.tenantId, tenantId), isNull(groups.deletedAt)))),
       students: await one(this.db.select({ n }).from(students).where(and(eq(students.tenantId, tenantId), isNull(students.deletedAt)))),
       attendance: await one(this.db.select({ n }).from(attendance).where(eq(attendance.tenantId, tenantId))),

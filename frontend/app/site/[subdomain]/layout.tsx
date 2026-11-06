@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
+import { headers } from "next/headers";
 import type { PublicShowcaseData } from "@/lib/api";
 import { ROOT_DOMAIN } from "@/lib/domain";
 import { serverGet } from "@/lib/server-api";
@@ -33,11 +34,13 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
 export default async function SiteLayout({ children, params }: { children: ReactNode; params: Params }) {
   const { subdomain } = await params;
   const data = await showcase(subdomain);
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
   return (
     <>
       {data && (
         <script
           type="application/ld+json"
+          nonce={nonce}
           // Our own JSON (no user HTML): "<" is escaped so no text can close the tag.
           dangerouslySetInnerHTML={{ __html: JSON.stringify(siteJsonLd(data, ROOT_DOMAIN)).replace(/</g, "\\u003c") }}
         />

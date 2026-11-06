@@ -350,4 +350,31 @@ describe('Card transfer payments (e2e)', () => {
     await expect(direct({ idempotencyKey: 'bad' })).rejects.toMatchObject({ status: 400 });
     await http().post(`/api/card-payments/claims/${a.body.id}/reject`).set(owner).send({ reason: 'test' }).expect(201);
   });
+
+  it('several cards: the cabinet shows each, the student picks one, staff see which; a card not on the list is refused', async () => {
+    const two = [{ cardNumber: '8600 1234 5678 9012', cardHolder: 'Ali Valiyev' }, { cardNumber: '9860 5555 6666 7777', cardHolder: 'Vali Aliyev' }];
+    await http().put('/api/card-payments/cards').set(owner).send({ cards: [two[0], two[0]] }).expect(400);
+    await http().put('/api/card-payments/cards').set(owner).send({ cards: [two[0], { cardNumber: '9860', cardHolder: 'X' }] }).expect(400);
+    const set = (await http().put('/api/card-payments/cards').set(owner).send({ cards: two }).expect(200)).body;
+    expect(set.cards.map((c: { holder: string }) => c.holder)).toEqual(['Ali Valiyev', 'Vali Aliyev']);
+    const view = (await http().get('/api/portal/card-payment').set(portal).expect(200)).body;
+    expect(view.cards).toHaveLength(2);
+    expect(view.card.number).toBe('8600 1234 5678 9012');
+
+    // Directly: the cabinet's limit (10 a minute) is not what this is about.
+    const [{ tenantId }] = await db.select({ tenantId: paymentClaims.tenantId }).from(paymentClaims).where(eq(paymentClaims.studentId, studentId)).limit(1);
+    const pay = (cardNumber: string) =>
+      app.get(CardPaymentsService).submit(tenantId, studentId, 'student', { amount: 300000, forMonth: '2026-11', cardNumber, receiptFile: `cards-${cardNumber.slice(-4)}.png`, receiptSha256: cardNumber });
+    await expect(pay('5555 0000 0000 0000')).rejects.toMatchObject({ status: 400 });
+    const { claim } = await pay('9860 5555 6666 7777');
+    await outbox.drain();
+    expect(delivered.at(-1)!.text).toContain('•••• 7777');
+    const listed = (await http().get('/api/card-payments/claims?status=PENDING').set(owner).expect(200)).body.items.find((c: { id: string }) => c.id === claim.id);
+    expect(listed.cardNumber).toBe('9860 5555 6666 7777');
+
+    // Back to one card: the first is what a cabinet that names none pays to.
+    await http().put('/api/card-payments/card').set(owner).send(two[0]).expect(200);
+    expect((await http().get('/api/portal/card-payment').set(portal).expect(200)).body.cards).toHaveLength(1);
+    await http().post(`/api/card-payments/claims/${claim.id}/reject`).set(owner).send({ reason: 'test' }).expect(201);
+  });
 });
