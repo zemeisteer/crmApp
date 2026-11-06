@@ -344,6 +344,24 @@ describe('Admissions & Sales CRM Suite (e2e)', () => {
   });
 
   // 16
+  it('15b. "Kelmadi" pressed by mistake is undone: the trial is booked again and can be marked', async () => {
+    const lead = await createLead(tokenA, { fullName: 'Undo Lead', phone: '+998901000077' }).expect(201);
+    await move(tokenA, lead.body.id, 'CONTACTED');
+    const when = new Date(Date.now() + 3 * 86_400_000).toISOString().slice(0, 10);
+    const trial = (await http().post(`/api/leads/${lead.body.id}/trials`).set(auth(tokenA)).send({ scheduledAt: `${when}T11:00:00+05:00` }).expect(201)).body;
+    // Only a missed one can be undone.
+    expect((await http().post(`/api/leads/${lead.body.id}/trials/${trial.id}/reopen`).set(auth(tokenA)).expect(409)).body.code).toBe('TRIAL_NOT_MISSED');
+    await http().post(`/api/leads/${lead.body.id}/trials/${trial.id}/miss`).set(auth(tokenA)).send({}).expect(201);
+    const back = (await http().post(`/api/leads/${lead.body.id}/trials/${trial.id}/reopen`).set(auth(tokenA)).expect(201)).body;
+    expect(back.status).toBe('BOOKED');
+    await http().post(`/api/leads/${lead.body.id}/trials/${trial.id}/attend`).set(auth(tokenA)).send({}).expect(201);
+    const after = (await http().get(`/api/leads/${lead.body.id}`).set(auth(tokenA)).expect(200)).body;
+    expect(after.status).toBe('TRIAL_ATTENDED');
+    expect(after.trials.map((t: { status: string }) => t.status)).toEqual(['ATTENDED']);
+    // Another center cannot.
+    await http().post(`/api/leads/${lead.body.id}/trials/${trial.id}/reopen`).set(auth(tokenB)).expect(404);
+  });
+
   it('16. marks a lead LOST only with a valid reason; reopen is permissioned and audited', async () => {
     const lead = await createLead(tokenA, { fullName: 'Lost Lead', phone: '+998901000016' }).expect(201);
     const id = lead.body.id;

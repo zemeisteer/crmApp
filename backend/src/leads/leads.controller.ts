@@ -242,6 +242,14 @@ export class LeadsController {
     return this.trials.close(tenantId, actor, id, trialId, 'MISSED', dto.note);
   }
 
+  // "Kelmadi" pressed by mistake: booked again, to be marked.
+  @Post(':id/trials/:trialId/reopen')
+  @RequirePermissions(Permission.ADMISSIONS_UPDATE)
+  reopenTrial(@CurrentUser() user: JwtPayload, @Param('id') id: string, @Param('trialId') trialId: string) {
+    const { tenantId, actor } = this.ctx(user);
+    return this.trials.reopen(tenantId, actor, id, trialId);
+  }
+
   @Post(':id/trials/:trialId/cancel')
   @RequirePermissions(Permission.ADMISSIONS_UPDATE)
   cancelTrial(@CurrentUser() user: JwtPayload, @Param('id') id: string, @Param('trialId') trialId: string, @Body() dto: TrialOutcomeDto) {

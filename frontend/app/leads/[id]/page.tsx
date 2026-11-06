@@ -82,6 +82,7 @@ function activityTitle(a: LeadActivity, t: (k: TranslationKey) => string) {
     RESTORED: "adm.activity.restored",
     TRIAL_MISSED: "adm.activity.trialMissed",
     TRIAL_CANCELLED: "adm.activity.trialCancelled",
+    TRIAL_REOPENED: "adm.activity.trialReopened",
     RESCHEDULED: "adm.activity.rescheduled",
     PUBLIC_REAPPLY: "adm.activity.reapply",
     PLACEMENT_TEST: "adm.activity.placement",
@@ -234,6 +235,8 @@ function LeadProfile() {
   const simpleMoves = (SIMPLE_MOVES[lead.status] ?? []).filter((s) => allowed.includes(s));
   const bookedTrial = lead.trials?.find((tr) => tr.status === "BOOKED");
   const canBookTrial = editable && !bookedTrial && (lead.status === "CONTACTED" || lead.status === "TRIAL_BOOKED");
+  // After a trial the lead did not come to, the next one is a second try.
+  const bookTrialLabel = lead.trials?.some((tr) => tr.status === "MISSED") ? t("adm.bookTrialAgain") : t("adm.bookTrial");
   const isOpen = OPEN_STATUSES.includes(lead.status);
 
   // Level test -> trial lesson in a matching group -> enrolment. A new lead
@@ -297,7 +300,7 @@ function LeadProfile() {
               </button>
             )}
             {canBookTrial && (
-              <button type="button" className="btn" style={primaryBtn} onClick={() => openDialog({ kind: "trial" })}>{t("adm.bookTrial")}</button>
+              <button type="button" className="btn" style={primaryBtn} onClick={() => openDialog({ kind: "trial" })}>{bookTrialLabel}</button>
             )}
             {lead.status === "QUALIFIED" && can("admissions.convert") && (
               <button type="button" className="btn" style={{ ...primaryBtn, background: "var(--success)" }} onClick={() => setConvertOpen(true)}>{t("adm.convert")}</button>
@@ -552,6 +555,11 @@ function LeadProfile() {
                           <button type="button" className="btn" style={{ ...ghostBtn, padding: "6px 12px", fontSize: 12 }} disabled={busy} onClick={() => { if (trialHappened(tr.scheduledAt, t("adm.trialNotYet"))) run(() => leadsApi.missTrial(lead.id, tr.id)); }}>{t("adm.trialMiss")}</button>
                           <button type="button" className="btn" style={{ ...ghostBtn, padding: "6px 12px", fontSize: 12 }} onClick={() => openDialog({ kind: "trial", reschedule: tr })}>{t("adm.trialReschedule")}</button>
                           <button type="button" className="btn" style={{ ...dangerBtn, padding: "6px 12px", fontSize: 12 }} disabled={busy} onClick={() => run(() => leadsApi.cancelTrial(lead.id, tr.id))}>{t("adm.trialCancel")}</button>
+                        </div>
+                      )}
+                      {editable && tr.status === "MISSED" && !bookedTrial && (
+                        <div className="adm-actions">
+                          <button type="button" className="btn" style={{ ...ghostBtn, padding: "6px 12px", fontSize: 12 }} disabled={busy} onClick={() => run(() => leadsApi.reopenTrial(lead.id, tr.id))}>↩ {t("adm.trialReopen")}</button>
                         </div>
                       )}
                     </li>

@@ -96,7 +96,11 @@ function GroupDetailContent() {
   }
 
   const [attendanceDate, setAttendanceDate] = useState(() => clock.today());
-  const [draft, setDraft] = useState<Record<string, AttendanceStatus>>({});
+  // A student's mark as it stands here (undefined: not marked yet) and as it
+  // is saved: nothing is picked for the teacher, and an unsaved change shows.
+  const [draft, setDraft] = useState<Record<string, AttendanceStatus | undefined>>({});
+  const [savedMarks, setSavedMarks] = useState<Record<string, AttendanceStatus | undefined>>({});
+  const [markSaved, setMarkSaved] = useState(false);
   const [markSaving, setMarkSaving] = useState(false);
   const [topics, setTopics] = useState<Array<{ date: string; topic: string; scheduleId: string | null }>>([]);
   const [topic, setTopic] = useState("");
@@ -178,15 +182,16 @@ function GroupDetailContent() {
   useEffect(load, [id, seesPay, thisMonth]);
 
   useEffect(() => {
-    const next: Record<string, AttendanceStatus> = {};
+    const next: Record<string, AttendanceStatus | undefined> = {};
     for (const m of markList ?? []) {
       const e = { student: { id: m.studentId } };
       const onDay = attendance.filter((a) => a.studentId === e.student.id && a.date === attendanceDate);
       // This lesson's mark; failing that, an old mark for the day as a whole (saving makes it this lesson's).
       const existing = lessonPick ? onDay.find((a) => a.scheduleId === lessonPick) ?? onDay.find((a) => !a.scheduleId) : onDay.find((a) => !a.scheduleId);
-      next[e.student.id] = existing?.status || "PRESENT";
+      next[e.student.id] = existing?.status;
     }
     setDraft(next);
+    setSavedMarks(next);
     // The picked lesson's own topic, else the one for the day as a whole.
     const onDayTopics = topics.filter((x) => x.date === attendanceDate);
     setTopic((lessonPick ? onDayTopics.find((x) => x.scheduleId === lessonPick) : undefined)?.topic ?? onDayTopics.find((x) => !x.scheduleId)?.topic ?? "");
@@ -239,16 +244,20 @@ function GroupDetailContent() {
   async function onSaveAttendance() {
     const enrolled = (markList ?? []).map((m) => ({ student: { id: m.studentId } }));
     if (enrolled.length === 0) return;
+    const unmarked = enrolled.filter((e) => !draft[e.student.id]).length;
+    if (unmarked > 0) return setMarkError(t("groupDetail.attUnmarked").replace("{n}", String(unmarked)));
     setMarkSaving(true);
     setMarkError(null);
+    setMarkSaved(false);
     try {
       await attendanceApi.mark({
         groupId: id,
         date: attendanceDate,
         scheduleId: lessonPick || undefined,
-        entries: enrolled.map((e) => ({ studentId: e.student.id, status: draft[e.student.id] || "PRESENT" })),
+        entries: enrolled.map((e) => ({ studentId: e.student.id, status: draft[e.student.id]! })),
         topic,
       });
+      setMarkSaved(true);
       load();
     } catch (err) {
       // Nothing was saved (all marks or none): say why.
@@ -464,10 +473,26 @@ function GroupDetailContent() {
             <div style={{ color: "var(--text-muted)", fontSize: 13.5 }}>{t("groupDetail.noStudentsForAttendance")}</div>
           ) : (
             <>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
+                <span style={{ fontSize: 12.5, color: "var(--text-muted)" }}>
+                  {t("groupDetail.attMarkedCount").replace("{n}", String(markList.filter((m) => draft[m.studentId]).length)).replace("{total}", String(markList.length))}
+                </span>
+                <button
+                  type="button"
+                  className="btn"
+                  onClick={() => {
+                    setMarkSaved(false);
+                    setDraft((prev) => Object.fromEntries(markList.map((m) => [m.studentId, prev[m.studentId] ?? "PRESENT"])));
+                  }}
+                  style={{ fontSize: 12, fontWeight: 700, padding: "6px 12px", borderRadius: "var(--radius-xs)", border: "1px solid var(--success)", background: "var(--success-soft)", color: "var(--success)" }}
+                >
+                  ✓ {t("groupDetail.attAllPresent")}
+                </button>
+              </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 {markList.map((m) => {
                   const e = { student: { id: m.studentId, fullName: m.fullName } };
-                  const status = draft[e.student.id] || "PRESENT";
+                  const status = draft[e.student.id];
                   return (
                     <div
                       key={m.studentId}
@@ -484,7 +509,11 @@ function GroupDetailContent() {
                             key={s}
                             type="button"
                             className="btn"
-                            onClick={() => setDraft((prev) => ({ ...prev, [e.student.id]: s }))}
+                            aria-pressed={status === s}
+                            onClick={() => {
+                              setMarkSaved(false);
+                              setDraft((prev) => ({ ...prev, [e.student.id]: s }));
+                            }}
                             style={{
                               fontSize: 12,
                               fontWeight: 700,
@@ -523,6 +552,11 @@ function GroupDetailContent() {
               >
                 {markSaving ? t("groupDetail.savingAttendance") : t("groupDetail.saveAttendance")}
               </button>
+              {markList.some((m) => draft[m.studentId] !== savedMarks[m.studentId]) && !markSaving ? (
+                <span role="status" style={{ marginLeft: 10, fontSize: 12.5, fontWeight: 600, color: "var(--warning)" }}>{t("groupDetail.attUnsaved")}</span>
+              ) : markSaved ? (
+                <span role="status" style={{ marginLeft: 10, fontSize: 12.5, fontWeight: 700, color: "var(--success)" }}>✓ {t("groupDetail.attSaved")}</span>
+              ) : null}
             </>
           )}
         </div>

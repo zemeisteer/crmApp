@@ -319,6 +319,30 @@ export class LeadTrialsService {
     return trial;
   }
 
+  /**
+   * "Kelmadi" pressed by mistake: the trial is booked again, so its result
+   * can be marked. Only a missed one, on a lead still open, and only while
+   * no other trial is booked for it (one booked trial per lead).
+   */
+  async reopen(tenantId: string, actor: Actor, leadId: string, trialId: string) {
+    const trial = await this.db.transaction(async (tx) => {
+      const lead = await this.leadsService.getLeadRow(tx, tenantId, leadId, { lock: true });
+      if (lead.archivedAt) throw new ConflictException({ code: 'LEAD_ARCHIVED', message: 'Lid arxivlangan' });
+      const t = await this.getTrial(tx, tenantId, leadId, trialId);
+      if (t.status !== 'MISSED') throw new ConflictException({ code: 'TRIAL_NOT_MISSED', message: "Faqat \"Kelmadi\" deb belgilangan sinovni qaytarish mumkin" });
+      const [other] = await tx.select({ id: leadTrials.id }).from(leadTrials)
+        .where(and(eq(leadTrials.tenantId, tenantId), eq(leadTrials.leadId, leadId), eq(leadTrials.status, 'BOOKED')));
+      if (other) throw new ConflictException({ code: 'TRIAL_ALREADY_BOOKED', message: 'Bu lidda boshqa sinov darsi belgilangan' });
+      const [updated] = await tx.update(leadTrials).set({ status: 'BOOKED', updatedAt: new Date() }).where(eq(leadTrials.id, t.id)).returning();
+      await this.leadsService.recordActivity(tx, {
+        tenantId, leadId, actorUserId: actor.userId, type: 'NOTE', body: null, metadata: { kind: 'TRIAL_REOPENED', trialId: t.id },
+      });
+      return updated;
+    });
+    this.audit.log({ tenantId, userId: actor.userId, action: 'trial_reopen', entityType: 'lead_trial', entityId: trialId, meta: { leadId } });
+    return trial;
+  }
+
   // Exposed so callers can pre-check a slot before booking.
   async check(tenantId: string, leadId: string, dto: BookTrialDto) {
     return this.db.transaction(async (tx) => {

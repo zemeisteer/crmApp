@@ -2837,6 +2837,8 @@ export const leadsApi = {
   attendTrial: (id: string, trialId: string, note?: string) => postJson<LeadTrial>(`/leads/${id}/trials/${trialId}/attend`, { note }),
   missTrial: (id: string, trialId: string, note?: string) => postJson<LeadTrial>(`/leads/${id}/trials/${trialId}/miss`, { note }),
   cancelTrial: (id: string, trialId: string, note?: string) => postJson<LeadTrial>(`/leads/${id}/trials/${trialId}/cancel`, { note }),
+  /** "Kelmadi" pressed by mistake: booked again. */
+  reopenTrial: (id: string, trialId: string) => postJson<LeadTrial>(`/leads/${id}/trials/${trialId}/reopen`),
   studentMatch: (id: string) => request<{ candidates: StudentMatchCandidate[] }>(`/leads/${id}/student-match`),
   convert: (id: string, data: ConvertLeadInput) => postJson<ConvertLeadResult>(`/leads/${id}/convert`, data),
   archive: (id: string, reason?: string) => postJson<Lead>(`/leads/${id}/archive`, { reason }),

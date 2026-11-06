@@ -135,7 +135,7 @@ export const ACCESS_CATALOG: AccessKey[] = [
     routes: [
       'POST /api/leads', 'PATCH /api/leads/:id', 'POST /api/leads/:id/transition', 'POST /api/leads/:id/lose', 'POST /api/leads/:id/follow-up', 'POST /api/leads/:id/activities',
       'POST /api/leads/:id/trials/check', 'POST /api/leads/:id/trials', 'POST /api/leads/:id/trials/:trialId/reschedule', 'POST /api/leads/:id/trials/:trialId/attend',
-      'POST /api/leads/:id/trials/:trialId/miss', 'POST /api/leads/:id/trials/:trialId/cancel',
+      'POST /api/leads/:id/trials/:trialId/miss', 'POST /api/leads/:id/trials/:trialId/cancel', 'POST /api/leads/:id/trials/:trialId/reopen',
     ],
   },
   { key: 'leads.assign', area: 'admissions', template: [M], routes: ['POST /api/leads/:id/assign'] },

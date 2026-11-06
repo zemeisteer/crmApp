@@ -38,6 +38,8 @@ test("a teacher marks attendance for their own group, on the center's today", as
 
   const row = page.locator('div').filter({ hasText: /^Absent Pupil/ }).filter({ has: page.getByRole('button', { name: "Yo'q" }) }).last();
   await row.getByRole('button', { name: "Yo'q" }).click();
+  // Nothing is picked for the teacher: the rest are marked present here.
+  await page.getByRole('button', { name: '✓ Hammasi keldi' }).click();
   await page.getByRole('button', { name: 'Davomatni saqlash' }).click();
   await expect(page.getByRole('button', { name: 'Davomatni saqlash' })).toBeEnabled();
 
