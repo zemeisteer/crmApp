@@ -2837,6 +2837,8 @@ export const leadsApi = {
   attendTrial: (id: string, trialId: string, note?: string) => postJson<LeadTrial>(`/leads/${id}/trials/${trialId}/attend`, { note }),
   missTrial: (id: string, trialId: string, note?: string) => postJson<LeadTrial>(`/leads/${id}/trials/${trialId}/miss`, { note }),
   cancelTrial: (id: string, trialId: string, note?: string) => postJson<LeadTrial>(`/leads/${id}/trials/${trialId}/cancel`, { note }),
+  /** A teacher's own coming trial lessons (their groups, or booked with them). */
+  mineAsTeacher: () => request<Array<{ id: string; scheduledAt: string; durationMinutes: number; name: string; group: { id: string; name: string } | null; room: string | null }>>("/trials/mine"),
   /** "Kelmadi" pressed by mistake: booked again. */
   reopenTrial: (id: string, trialId: string) => postJson<LeadTrial>(`/leads/${id}/trials/${trialId}/reopen`),
   studentMatch: (id: string) => request<{ candidates: StudentMatchCandidate[] }>(`/leads/${id}/student-match`),

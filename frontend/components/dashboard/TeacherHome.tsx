@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { salaryApi, type DashboardData, type TeacherPayrollItem } from "@/lib/api";
+import { leadsApi, salaryApi, type DashboardData, type TeacherPayrollItem } from "@/lib/api";
+import { formatDateTime } from "@/lib/format-date";
 import { useLanguage } from "@/lib/i18n-context";
 import { Card, CardHeader, CountUp, Stat } from "@/components/ui";
 
@@ -13,12 +14,14 @@ const initials = (name: string) => name.split(/\s+/).filter(Boolean).slice(0, 2)
 // Home page for a signed-in teacher: today's lessons with a shortcut to
 // marking attendance, their groups, hand-ins to grade and this month's pay.
 export default function TeacherHome({ data }: { data: DashboardData }) {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const [pay, setPay] = useState<TeacherPayrollItem | null | undefined>(undefined);
+  const [trials, setTrials] = useState<Awaited<ReturnType<typeof leadsApi.mineAsTeacher>>>([]);
 
   useEffect(() => {
     // No month: the server uses the center's current month.
     salaryApi.mine().then(setPay).catch(() => setPay(null));
+    leadsApi.mineAsTeacher().then(setTrials).catch(() => setTrials([]));
   }, []);
 
   const studentsTotal = data.groupFill.reduce((s, g) => s + g.students, 0);
@@ -67,6 +70,25 @@ export default function TeacherHome({ data }: { data: DashboardData }) {
           </div>
         )}
       </Card>
+
+      {/* Trial lessons coming to this teacher: who, when, which group. */}
+      {trials.length > 0 && (
+        <Card index={1} lift className="c12" data-testid="teacher-trials">
+          <CardHeader title={`🎓 ${t("th.trials")}`} />
+          <div style={{ fontSize: 12.5, color: "var(--text-muted)", marginBottom: 8 }}>{t("th.trialsHint")}</div>
+          <div className="dash-list">
+            {trials.map((tr) => (
+              <div key={tr.id} className="dash-row" style={{ flexWrap: "wrap" }}>
+                <span style={{ flex: 1, minWidth: 160 }}>
+                  <span className="dash-row-title">{tr.name}</span>
+                  <span className="dash-row-sub">{[formatDateTime(tr.scheduledAt, lang), `${tr.durationMinutes}′`, tr.group?.name, tr.room].filter(Boolean).join(" · ")}</span>
+                </span>
+                <span className="badge badge-warning">{t("th.trialBadge")}</span>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
 
       {/* The hero: what is next today. */}
       <Card tone="accent" index={2} lift className="c4 dash-hero">

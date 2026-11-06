@@ -1,5 +1,5 @@
 import { BadRequestException, ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { and, asc, eq, gte, isNull, lt, ne, sql } from 'drizzle-orm';
+import { and, asc, eq, gte, inArray, isNull, lt, ne, or, sql } from 'drizzle-orm';
 import { DB, Database } from '../db/db.module';
 import { branches, courses, groups, leadTrials, rooms, schedules, subjects, teachers } from '../db/schema';
 import { AuditService } from '../audit/audit.service';
@@ -59,6 +59,40 @@ export class LeadTrialsService {
       orderBy: asc(leadTrials.scheduledAt),
       limit: 500,
     });
+  }
+
+  /**
+   * A teacher's coming trial lessons: booked with them by name or in one of
+   * their groups, from a few hours ago (a lesson under way) for two weeks.
+   * Who comes and when only - no phone, no admissions history.
+   */
+  async forTeacher(tenantId: string, userId: string) {
+    const [teacher] = await this.db.select({ id: teachers.id }).from(teachers)
+      .where(and(eq(teachers.tenantId, tenantId), eq(teachers.userId, userId), isNull(teachers.deletedAt)));
+    if (!teacher) return [];
+    const own = await this.db.select({ id: groups.id }).from(groups)
+      .where(and(eq(groups.tenantId, tenantId), eq(groups.teacherId, teacher.id), isNull(groups.deletedAt)));
+    const now = Date.now();
+    const rows = await this.db.query.leadTrials.findMany({
+      where: and(
+        eq(leadTrials.tenantId, tenantId),
+        eq(leadTrials.status, 'BOOKED'),
+        gte(leadTrials.scheduledAt, new Date(now - 6 * 3_600_000)),
+        lt(leadTrials.scheduledAt, new Date(now + 14 * 86_400_000)),
+        own.length ? or(eq(leadTrials.teacherId, teacher.id), inArray(leadTrials.groupId, own.map((g) => g.id))) : eq(leadTrials.teacherId, teacher.id),
+      ),
+      with: { lead: { columns: { fullName: true } }, group: { columns: { id: true, name: true } }, room: { columns: { name: true } } },
+      orderBy: asc(leadTrials.scheduledAt),
+      limit: 50,
+    });
+    return rows.map((r) => ({
+      id: r.id,
+      scheduledAt: r.scheduledAt,
+      durationMinutes: r.durationMinutes,
+      name: r.lead?.fullName ?? '',
+      group: r.group ? { id: r.group.id, name: r.group.name } : null,
+      room: r.room?.name ?? null,
+    }));
   }
 
   // ---- validation ----
