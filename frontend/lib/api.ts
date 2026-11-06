@@ -1355,7 +1355,9 @@ export const PLAN_FEATURES = ["AI_TOOLS", "AI_TUTOR", "MOCK_EXAMS", "CERTIFICATE
 export const PLAN_LIMITS = ["MAX_STUDENTS", "MAX_STAFF", "MAX_BRANCHES"] as const;
 export type Entitlements = Partial<Record<(typeof PLAN_FEATURES)[number], boolean> & Record<(typeof PLAN_LIMITS)[number], number | null>>;
 /** A feature the center's plan does not leave out (missing means included). */
-export const planAllows = (e: Entitlements | undefined, f: (typeof PLAN_FEATURES)[number]) => e?.[f] !== false;
+/** Included only where ticked (it costs money per use); every other feature is included unless unticked. */
+export const PLAN_OPT_IN: ReadonlyArray<(typeof PLAN_FEATURES)[number]> = ["TELEPHONY"];
+export const planAllows = (e: Entitlements | undefined, f: (typeof PLAN_FEATURES)[number]) => (PLAN_OPT_IN.includes(f) ? e?.[f] === true : e?.[f] !== false);
 
 export interface Plan {
   id: string;
@@ -2672,7 +2674,7 @@ export const customDomainsApi = {
 
 // ---- Platform switches (feature flags) ----
 
-export type FlagKey = "ai" | "sms" | "telegram" | "signups";
+export type FlagKey = "ai" | "sms" | "telegram" | "signups" | "telephony";
 export interface FlagOverview {
   key: FlagKey;
   enabled: boolean;

@@ -6,7 +6,8 @@ import { randomBytes } from 'crypto';
 import { and, eq } from 'drizzle-orm';
 import { AppModule } from '../src/app.module.js';
 import { DB, type Database } from '../src/db/db.module.js';
-import { callEvents, calls, leadActivities, leads, telephonyAccounts } from '../src/db/schema.js';
+import { callEvents, calls, featureFlags, leadActivities, leads, telephonyAccounts } from '../src/db/schema.js';
+import { clearFlagCache } from '../src/feature-flags/flags.js';
 import { zadarmaWebhookSignature } from '../src/telephony/providers/zadarma.provider.js';
 
 // The call webhook (telephony/): each center's events reach it under that
@@ -62,7 +63,10 @@ describe('Telephony webhook (e2e)', () => {
         .send({ centerName: `Tel ${k} ${suffix}`, subdomain: `tel-${k.toLowerCase()}-${suffix}`, email: `tel-${k}-${suffix}@test.uz`, password: 'password123', fullName: `Owner ${k}` })
         .expect(201)).body;
       center[k] = { token: reg.accessToken, tenantId: reg.tenant?.id ?? reg.user.tenantId, ownerId: reg.user.id, hook: '', secret: `${k}-secret-${suffix}` };
+      // Telephony is off until the platform turns it on for the center.
+      await db.insert(featureFlags).values({ tenantId: center[k].tenantId, key: 'telephony', enabled: true });
     }
+    clearFlagCache();
     studentA = (await http().post('/api/students').set(as('A')).send({ fullName: 'Talaba Bir', phone: num(1), parentPhone: num(2) }).expect(201)).body.id;
     leadA = (await http().post('/api/leads').set(as('A')).send({ fullName: 'Lid Bir', phone: num(3) }).expect(201)).body.id;
   });

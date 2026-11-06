@@ -65,10 +65,10 @@ describe('Platform switches (e2e)', () => {
     await app?.close();
   });
 
-  it('every switch is on until turned off; only the platform admin turns them, and it is logged', async () => {
+  it('every switch has its default until set (telephony off, the rest on); only the platform admin turns them, and it is logged', async () => {
     const c = await center();
     const view = (await http().get('/api/feature-flags').set(bearer(c.token)).expect(200)).body;
-    expect(view).toEqual([{ key: 'ai', enabled: true }, { key: 'sms', enabled: true }, { key: 'telegram', enabled: true }, { key: 'signups', enabled: true }]);
+    expect(view).toEqual([{ key: 'ai', enabled: true }, { key: 'sms', enabled: true }, { key: 'telegram', enabled: true }, { key: 'signups', enabled: true }, { key: 'telephony', enabled: false }]);
     await http().post('/api/feature-flags/global').set(bearer(c.token)).send({ key: 'ai', enabled: false }).expect(403);
     await setGlobal('nonsense', false).expect(400);
     // "On" is the default: setting it changes nothing for the other suites.

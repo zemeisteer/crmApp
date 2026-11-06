@@ -5,7 +5,7 @@ import DashboardShell from "@/components/DashboardShell";
 import Modal from "@/components/Modal";
 import Select from "@/components/Select";
 import { useAuth } from "@/lib/auth-context";
-import { platformBillingApi, plansApi, Plan, ApiError, PLAN_FEATURES, PLAN_LIMITS, type Entitlements, type PlatformCardView } from "@/lib/api";
+import { platformBillingApi, plansApi, Plan, ApiError, PLAN_FEATURES, PLAN_LIMITS, planAllows, type Entitlements, type PlatformCardView } from "@/lib/api";
 import PlatformCardPay from "@/components/billing/PlatformCardPay";
 import type { TranslationKey } from "@/lib/i18n";
 import { useCenterClock } from "@/lib/use-center-clock";
@@ -612,7 +612,7 @@ function SuperadminPlans() {
             <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
               {PLAN_FEATURES.map((f) => (
                 <label key={f} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 600 }}>
-                  <input type="checkbox" checked={ent[f] !== false} onChange={(e) => setEnt({ ...ent, [f]: e.target.checked })} /> {t(`pricing.ent.${f}` as TranslationKey)}
+                  <input type="checkbox" checked={planAllows(ent, f)} onChange={(e) => setEnt({ ...ent, [f]: e.target.checked })} /> {t(`pricing.ent.${f}` as TranslationKey)}
                 </label>
               ))}
             </div>
