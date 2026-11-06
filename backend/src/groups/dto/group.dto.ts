@@ -1,4 +1,4 @@
-import { IsIn, IsInt, IsOptional, IsString, Matches, MaxLength, Min, Max } from 'class-validator';
+import { IsBoolean, IsIn, IsInt, IsOptional, IsString, Matches, MaxLength, Min, Max } from 'class-validator';
 import { MAX_MONEY } from '../../common/money';
 
 export class CreateGroupDto {
@@ -43,6 +43,11 @@ export class CreateGroupDto {
   @IsInt()
   @Min(1)
   maxStudents?: number;
+
+  // One student; days and time may be left to agree with the teacher.
+  @IsOptional()
+  @IsBoolean()
+  isIndividual?: boolean;
 
   @IsOptional()
   @IsString()
@@ -91,6 +96,7 @@ export class UpdateGroupDto {
   @IsOptional() @IsString() branchId?: string;
   @IsOptional() @IsString() startDate?: string;
   @IsOptional() @IsInt() @Min(1) maxStudents?: number;
+  @IsOptional() @IsBoolean() isIndividual?: boolean;
   @IsOptional() @IsString() schedule?: string;
   @IsOptional() @IsString() scheduleDays?: string;
   @IsOptional() @IsString() startTime?: string;

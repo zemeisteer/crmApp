@@ -419,6 +419,9 @@ export interface PublicShowcaseGroup {
   branchName?: string | null;
   // null when the group has no seat limit.
   seatsLeft?: number | null;
+  startDate?: string | null;
+  /** Opened in the last 30 days or not started yet: "our new groups". */
+  isNew?: boolean;
 }
 
 export interface PublicShowcaseTeacher {
@@ -595,6 +598,8 @@ export interface Group {
   subject: string;
   level: string | null;
   teacherId: string | null;
+  /** One student, own price; days and time may be agreed with the teacher. */
+  isIndividual?: boolean;
   startDate: string | null;
   maxStudents: number;
   schedule: string | null;
@@ -2951,6 +2956,8 @@ export interface DashboardData {
     marked: number | null;
   }>;
   groupFill: Array<{ id: string; name: string; students: number; maxStudents: number }>;
+  /** Opened lately or not started yet: shown on the center's site as new. */
+  newGroups?: Array<{ id: string; name: string; startDate: string | null; students: number; maxStudents: number }>;
   // null for roles that may not see payments (and for teachers).
   finance: null | {
     monthRevenue: number;

@@ -594,6 +594,9 @@ export const groups = pgTable('groups', {
   status: text('status').notNull().default('ACTIVE'), // 'PLANNED' | 'ACTIVE' | 'COMPLETED' | 'ARCHIVED'
   startDate: timestamp('start_date'),
   maxStudents: integer('max_students').notNull().default(20),
+  // One student, a price of its own, the times agreed with the teacher (days
+  // and time may stay empty). Kept to one seat; not advertised on the site.
+  isIndividual: boolean('is_individual').notNull().default(false),
   schedule: text('schedule'),
   scheduleDays: text('schedule_days'), // comma-separated: "MON,WED,FRI"
   startTime: text('start_time'), // "16:00"

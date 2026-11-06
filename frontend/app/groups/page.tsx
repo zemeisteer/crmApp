@@ -102,6 +102,7 @@ function GroupsContent() {
   const [startDate, setStartDate] = useState("");
   const [monthlyPrice, setMonthlyPrice] = useState("");
   const [maxStudents, setMaxStudents] = useState("");
+  const [isIndividual, setIsIndividual] = useState(false);
   const [durationMonths, setDurationMonths] = useState("");
   const [description, setDescription] = useState("");
   const [scheduleConflicts, setScheduleConflicts] = useState<{ id: string; name: string }[]>([]);
@@ -217,6 +218,7 @@ function GroupsContent() {
     setStartDate("");
     setMonthlyPrice("");
     setMaxStudents("");
+    setIsIndividual(false);
     setDurationMonths("");
     setDescription("");
     setScheduleConflicts([]);
@@ -237,6 +239,7 @@ function GroupsContent() {
     setStartDate(g.startDate ? g.startDate.slice(0, 10) : "");
     setMonthlyPrice(g.monthlyPrice ? String(g.monthlyPrice) : "");
     setMaxStudents(g.maxStudents ? String(g.maxStudents) : "");
+    setIsIndividual(!!g.isIndividual);
     setDurationMonths(g.durationMonths ? String(g.durationMonths) : "");
     setDescription(g.description ?? "");
     setModalOpen(true);
@@ -259,11 +262,12 @@ function GroupsContent() {
     } else if (teachers.length === 0) errs.teacher = t("groups.errNoTeachers");
     else if (!teacherId) errs.teacher = t("groups.errTeacher");
     if (branches.length > 0 && !branchId) errs.branch = req;
-    if (days.length === 0) errs.days = t("groups.errDays");
-    if (!startTime) errs.startTime = req;
+    // An individual lesson: the times may be agreed with the teacher later.
+    if (days.length === 0 && !isIndividual) errs.days = t("groups.errDays");
+    if (!startTime && !isIndividual) errs.startTime = req;
     if (!startDate) errs.startDate = req;
     if (!monthlyPrice || Number(monthlyPrice) <= 0) errs.monthlyPrice = t("groups.errPrice");
-    if (!maxStudents || Number(maxStudents) <= 0) errs.maxStudents = t("groups.errSeats");
+    if (!isIndividual && (!maxStudents || Number(maxStudents) <= 0)) errs.maxStudents = t("groups.errSeats");
     return errs;
   }
 
@@ -298,7 +302,8 @@ function GroupsContent() {
         schedule: scheduleDays && startTime ? `${scheduleDays}, ${startTime}-${lessonEnd}` : undefined,
         startDate: startDate || undefined,
         monthlyPrice: monthlyPrice ? Number(monthlyPrice) : undefined,
-        maxStudents: maxStudents ? Number(maxStudents) : undefined,
+        maxStudents: isIndividual ? 1 : maxStudents ? Number(maxStudents) : undefined,
+        isIndividual,
         durationMonths: durationMonths ? Number(durationMonths) : undefined,
         description: description || undefined,
       };
@@ -426,7 +431,14 @@ function GroupsContent() {
               <tbody>
                 {pageItems.map((g) => (
                   <tr key={g.id}>
-                    <td style={{ fontWeight: 600 }}>{g.name}</td>
+                    <td style={{ fontWeight: 600 }}>
+                      {g.name}
+                      {g.isIndividual && (
+                        <span data-testid="individual-badge" style={{ marginLeft: 8, fontSize: 11, fontWeight: 700, color: "var(--primary)", background: "var(--primary-soft)", padding: "2px 8px", borderRadius: "var(--radius-pill)", whiteSpace: "nowrap" }}>
+                          👤 {t("groups.individualBadge")}
+                        </span>
+                      )}
+                    </td>
                     <td>
                       {g.teacher ? (
                         <Link
@@ -592,7 +604,14 @@ function GroupsContent() {
               />
             </Field>
           )}
-          <Field label={t("groups.fieldDays")} required error={fieldErrors.days}>
+          <label style={{ display: "flex", gap: 10, alignItems: "flex-start", fontSize: 13.5, cursor: "pointer", background: "var(--surface-muted)", padding: "10px 12px", borderRadius: "var(--radius-sm)" }}>
+            <input type="checkbox" checked={isIndividual} onChange={(e) => setIsIndividual(e.target.checked)} style={{ marginTop: 3 }} />
+            <span>
+              <b>{t("groups.individual")}</b>
+              <span style={{ display: "block", fontSize: 12.5, color: "var(--text-muted)", marginTop: 2 }}>{t("groups.individualHint")}</span>
+            </span>
+          </label>
+          <Field label={t("groups.fieldDays")} required={!isIndividual} error={fieldErrors.days}>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
               {WEEKDAYS.map((d, i) => (
                 <button
@@ -637,8 +656,8 @@ function GroupsContent() {
             <Field label={t("groups.fieldMonthlyPrice")} required error={fieldErrors.monthlyPrice}>
               <input className="field-input" type="number" min={0} value={monthlyPrice} onChange={(e) => setMonthlyPrice(e.target.value)} placeholder="500000" />
             </Field>
-            <Field label={t("groups.fieldMaxSeats")} required error={fieldErrors.maxStudents}>
-              <input className="field-input" type="number" min={1} value={maxStudents} onChange={(e) => setMaxStudents(e.target.value)} placeholder="15" />
+            <Field label={t("groups.fieldMaxSeats")} required={!isIndividual} error={fieldErrors.maxStudents}>
+              <input className="field-input" type="number" min={1} value={isIndividual ? "1" : maxStudents} disabled={isIndividual} onChange={(e) => setMaxStudents(e.target.value)} placeholder="15" />
             </Field>
           </div>
           <Field label={t("groups.fieldDuration")}>

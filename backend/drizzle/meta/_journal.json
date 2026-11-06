@@ -589,6 +589,13 @@
       "when": 1798000004000,
       "tag": "0083_allocation_waived",
       "breakpoints": true
+    },
+    {
+      "idx": 84,
+      "version": "7",
+      "when": 1798000005000,
+      "tag": "0084_group_individual",
+      "breakpoints": true
     }
   ]
 }

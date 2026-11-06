@@ -406,6 +406,33 @@ export default function PublicSitePage() {
         </section>
       )}
 
+      {/* NEW GROUPS: opened lately or not started yet */}
+      {data.groups.some((g) => g.isNew) && (
+        <section id="new-groups" data-testid="site-new-groups" className="ps-wrap" style={{ padding: "56px 32px 0", display: "flex", flexDirection: "column", gap: 20 }}>
+          <div className="ps-head">
+            <span style={label}>{L.newGroupsLabel}</span>
+            <h2 style={{ fontSize: 28, fontWeight: 800, letterSpacing: "-0.02em" }}>{L.newGroupsTitle}</h2>
+          </div>
+          <div className="ps-cards">
+            {data.groups.filter((g) => g.isNew).slice(0, 6).map((g) => (
+              <div key={g.id} style={{ ...card, padding: 20, display: "flex", flexDirection: "column", gap: 10, borderColor: accent }}>
+                <span style={{ alignSelf: "flex-start", fontSize: 12, fontWeight: 800, color: "var(--on-ink)", background: accent, padding: "3px 10px", borderRadius: "var(--radius-pill)" }}>🆕 {L.newBadge}</span>
+                <h3 style={{ fontSize: 17, fontWeight: 700 }}>{g.name}</h3>
+                <div style={{ display: "flex", flexDirection: "column", gap: 5, fontSize: 13.5, color: "var(--text-2)" }}>
+                  <div>📚 {g.subject}{g.level ? ` · ${g.level}` : ""}</div>
+                  {g.startDate && <div>🚀 {L.startsOn} {g.startDate.slice(0, 10)}</div>}
+                  {(g.scheduleDays || g.startTime) && (
+                    <div>🗓 {[shortDays(g.scheduleDays), g.startTime ? `${g.startTime}${g.endTime ? `–${g.endTime}` : ""}` : ""].filter(Boolean).join(", ")}</div>
+                  )}
+                  {g.teacherName && <div>👩‍🏫 {g.teacherName}</div>}
+                </div>
+                <button type="button" className="ps-btn ps-primary" onClick={() => scrollToApply(g.subject)} style={{ marginTop: "auto", fontSize: 13.5, padding: "0 16px", minHeight: 40 }}>{L.enroll} →</button>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
       {/* COURSES */}
       <section id="courses" style={{ background: "var(--surface)", borderTop: "1px solid var(--border)", borderBottom: "1px solid var(--border)", padding: "72px 0" }}>
         <div className="ps-wrap" style={{ display: "flex", flexDirection: "column", gap: 28 }}>
@@ -431,6 +458,7 @@ export default function PublicSitePage() {
                   <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                     <span style={{ fontSize: 12, fontWeight: 700, color: accent, background: `color-mix(in srgb, ${accent} 12%, white)`, padding: "3px 10px", borderRadius: "var(--radius-pill)" }}>{g.subject}</span>
                     {g.level && <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)", background: "var(--chip)", padding: "3px 10px", borderRadius: "var(--radius-pill)" }}>{g.level}</span>}
+                    {g.isNew && <span style={{ fontSize: 12, fontWeight: 800, color: "var(--on-ink)", background: accent, padding: "3px 10px", borderRadius: "var(--radius-pill)" }}>🆕 {L.newBadge}</span>}
                   </div>
                   <h3 style={{ fontSize: 17, fontWeight: 700 }}>{g.name}</h3>
                   {g.seatsLeft !== null && g.seatsLeft !== undefined && (

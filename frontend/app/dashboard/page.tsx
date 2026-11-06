@@ -203,6 +203,23 @@ function DashboardContent() {
               </Card>
             )}
 
+            {seesGroups && (data?.newGroups?.length ?? 0) > 0 && (
+              <div data-testid="dash-new-groups" style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: "14px 18px", marginBottom: 16, display: "flex", flexDirection: "column", gap: 10 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "baseline" }}>
+                  <b style={{ fontFamily: "var(--font-display)", fontSize: 15 }}>{t("dash.newGroups")}</b>
+                  <span style={{ fontSize: 12.5, color: "var(--text-muted)" }}>{t("dash.newGroupsHint")}</span>
+                </div>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  {data!.newGroups!.map((g) => (
+                    <Link key={g.id} href={`/groups/${g.id}`} style={{ fontSize: 13, fontWeight: 600, color: "var(--text)", background: "var(--surface-muted)", padding: "7px 12px", borderRadius: "var(--radius-pill)", textDecoration: "none" }}>
+                      {g.name} · {g.students}/{g.maxStudents}
+                      {g.startDate && new Date(g.startDate).getTime() > Date.now() ? ` · ${t("dash.newGroupsStarts")} ${g.startDate.slice(0, 10)}` : ""}
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div className="dash-grid">
               {/* Groups, as pastel cards with how full each is. */}
               <Card index={1} lift className="c3 r2">
