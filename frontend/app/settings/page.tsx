@@ -20,8 +20,8 @@ import { useAuth } from "@/lib/auth-context";
 import { useLanguage } from "@/lib/i18n-context";
 import type { TranslationKey } from "@/lib/i18n";
 import {
-  tenantsApi, telegramApi, authApi, webhooksApi, staffApi, notificationsApi, accessApi,
-  Session, Webhook, StaffMember, ApiError, Role, fileUrl, type AccessCatalog,
+  tenantsApi, telegramApi, authApi, staffApi, notificationsApi, accessApi,
+  Session, StaffMember, ApiError, Role, fileUrl, type AccessCatalog,
   NotificationLog, NotificationSettings, NotificationStats, planAllows,
 } from "@/lib/api";
 import { PHONE_PATTERN, PHONE_TITLE, NAME_PATTERN, NAME_TITLE } from "@/lib/validation";
@@ -169,11 +169,6 @@ function SettingsContent() {
   const [twoFaCurrent, setTwoFaCurrent] = useState("");
   const [twoFaRecovery, setTwoFaRecovery] = useState<string[] | null>(null);
 
-  const [webhooks, setWebhooks] = useState<Webhook[]>([]);
-  const [webhookUrl, setWebhookUrl] = useState("");
-  const [webhookEvent, setWebhookEvent] = useState("payment.created");
-  const [savingWebhook, setSavingWebhook] = useState(false);
-
   const [staff, setStaff] = useState<StaffMember[]>([]);
   const [staffName, setStaffName] = useState("");
   const [staffEmail, setStaffEmail] = useState("");
@@ -193,15 +188,11 @@ function SettingsContent() {
   useEffect(() => {
     telegramApi.status().then(setTelegramStatus).catch(() => setTelegramStatus(null));
     loadSessions();
-    loadWebhooks();
     loadStaff();
   }, []);
 
   function loadSessions() {
     authApi.sessions().then(setSessions).catch(() => undefined);
-  }
-  function loadWebhooks() {
-    webhooksApi.list().then(setWebhooks).catch(() => undefined);
   }
   function loadStaff() {
     staffApi.list().then(setStaff).catch(() => undefined);
@@ -263,24 +254,6 @@ function SettingsContent() {
     } finally {
       setTwoFaBusy(false);
     }
-  }
-
-  async function onAddWebhook(e: React.FormEvent) {
-    e.preventDefault();
-    if (!webhookUrl.trim()) return;
-    setSavingWebhook(true);
-    try {
-      await webhooksApi.create({ url: webhookUrl, event: webhookEvent });
-      setWebhookUrl("");
-      loadWebhooks();
-    } finally {
-      setSavingWebhook(false);
-    }
-  }
-
-  async function onRemoveWebhook(id: string) {
-    await webhooksApi.remove(id);
-    loadWebhooks();
   }
 
   async function onAddStaff(e: React.FormEvent) {
@@ -752,45 +725,6 @@ function SettingsContent() {
                 </div>
               </div>
 
-              <div>
-                <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 14, marginBottom: 12 }}>{t("settings.webhooks")}</div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 14 }}>
-                  {webhooks.length === 0 ? (
-                    <div style={{ fontSize: 13, color: "var(--text-muted)" }}>{t("settings.noWebhooks")}</div>
-                  ) : (
-                    webhooks.map((w) => (
-                      <div key={w.id} style={{ border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", padding: "8px 12px" }}>
-                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                          <div style={{ fontSize: 12.5, fontWeight: 600, wordBreak: "break-all" }}>{w.url}</div>
-                          <button className="btn" onClick={() => onRemoveWebhook(w.id)} style={{ background: "transparent", color: "var(--danger)", fontSize: 11.5, fontWeight: 600, padding: "4px 8px", borderRadius: "var(--radius-xs)", flexShrink: 0 }}>
-                            {t("common.delete")}
-                          </button>
-                        </div>
-                        <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 2 }}>
-                          {t("settings.eventLabel")}: {w.event} · {t("settings.secretLabel")}: <code>{w.secret.slice(0, 12)}...</code>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-                <form onSubmit={onAddWebhook} style={{ display: "flex", gap: 8 }}>
-                  <input className="field-input" placeholder="https://sizning-tizim.uz/webhook" value={webhookUrl} onChange={(e) => setWebhookUrl(e.target.value)} style={{ flex: 2 }} />
-                  <Select
-                    options={[
-                      { value: "*", label: t("settings.eventAll") },
-                      { value: "payment.created", label: t("settings.eventPaymentCreated") },
-                      { value: "attendance.marked", label: t("settings.eventAttendanceMarked") },
-                      { value: "student.created", label: t("settings.eventStudentCreated") },
-                    ]}
-                    value={webhookEvent}
-                    onChange={setWebhookEvent}
-                    style={{ flex: 1 }}
-                  />
-                  <button className="btn" type="submit" disabled={savingWebhook} style={{ background: ACCENT, color: "var(--on-ink)", border: "none", fontSize: 13, fontWeight: 700, padding: "0 16px", borderRadius: "var(--radius-sm)", whiteSpace: "nowrap" }}>
-                    {t("common.add")}
-                  </button>
-                </form>
-              </div>
             </div>
           )}
 

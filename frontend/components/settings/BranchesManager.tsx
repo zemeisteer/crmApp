@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { ApiError, branchesApi, type Branch } from "@/lib/api";
 import { useLanguage } from "@/lib/i18n-context";
+import PhoneInput from "@/components/PhoneInput";
+import { isCompleteUzPhone, phoneOrEmpty } from "@/lib/validation";
 
 const ACCENT = "var(--primary)";
 const empty = { name: "", address: "", phone: "", mapUrl: "" };
@@ -40,13 +42,18 @@ export default function BranchesManager() {
       setError(t("br.nameRequired"));
       return;
     }
+    // An Uzbek number: +998 and all 9 digits, or nothing.
+    if (phoneOrEmpty(form.phone) && !isCompleteUzPhone(form.phone)) {
+      setError(t("br.badPhone"));
+      return;
+    }
     if (form.mapUrl.trim() && !/^https?:\/\//i.test(form.mapUrl.trim())) {
       setError(t("br.badUrl"));
       return;
     }
     setSaving(true);
     setError(null);
-    const data = { name: form.name.trim(), address: form.address.trim(), phone: form.phone.trim(), mapUrl: form.mapUrl.trim() };
+    const data = { name: form.name.trim(), address: form.address.trim(), phone: phoneOrEmpty(form.phone), mapUrl: form.mapUrl.trim() };
     try {
       if (editingId) await branchesApi.update(editingId, data);
       else await branchesApi.create(data);
@@ -113,7 +120,10 @@ export default function BranchesManager() {
         <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 12 }}>{editingId ? `✏️ ${t("br.edit")}` : `+ ${t("br.add")}`}</div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 10 }}>
           {input("name", `${t("settings.branchName")} *`, t("onb.branchNamePh"))}
-          {input("phone", t("onb.branchPhone"), "+998 71 123 45 67", "tel")}
+          <div>
+            <div style={lbl}>{t("onb.branchPhone")}</div>
+            <PhoneInput className="field-input" value={form.phone} onChange={(v) => setForm((f) => ({ ...f, phone: v }))} placeholder="+998 71 123 45 67" aria-label={t("onb.branchPhone")} />
+          </div>
         </div>
         <div style={{ marginTop: 10 }}>{input("address", t("onb.address"), t("set.addressPh"))}</div>
         <div style={{ marginTop: 10 }}>{input("mapUrl", t("settings.locationUrl"), "https://maps.google.com/...", "url")}</div>
