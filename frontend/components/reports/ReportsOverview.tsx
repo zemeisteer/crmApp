@@ -44,11 +44,9 @@ function Bar({ value, max, color = ACCENT }: { value: number; max: number; color
 export default function ReportsOverview({
   report,
   view,
-  onSms,
 }: {
   report: Report;
   view: "overview" | "retention";
-  onSms: (s: { id: string; fullName: string; phone: string | null }) => void;
 }) {
   const { t } = useLanguage();
   const { students, groups, attendance, finance, admissions, atRisk } = report;
@@ -99,12 +97,6 @@ export default function ReportsOverview({
                         {s.overdueAmount > 0 ? `${money(s.overdueAmount)} ${sum}` : "—"}
                       </td>
                       <td style={{ textAlign: "right", whiteSpace: "nowrap" }}>
-                        {s.phone && (
-                          <button type="button" className="btn" onClick={() => onSms({ id: s.studentId, fullName: s.fullName, phone: s.phone })}
-                            style={{ background: "var(--primary-soft)", color: ACCENT, border: "1px solid var(--primary-border)", padding: "5px 10px", borderRadius: "var(--radius-xs)", fontSize: 12, fontWeight: 700, marginRight: 6 }}>
-                            SMS
-                          </button>
-                        )}
                         <Link href={`/students/${s.studentId}`} style={{ fontSize: 12, fontWeight: 700, color: "var(--text)" }}>{t("common.viewProfile")} →</Link>
                       </td>
                     </tr>

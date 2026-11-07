@@ -11,12 +11,14 @@ test('an accountant pays a month in installments, once each, with one expense ea
   const email = `zzbr-staff-acc-${run}@example.test`;
   await addStaff(a.token, email, 'ACCOUNTANT');
   const accountant = await apiLogin(email);
-  await api('POST', '/teachers', { token: a.token, body: { fullName: 'Paid Teacher', subject: 'Math', salaryType: 'FIXED', salaryValue: 1000000 } });
+  // Working here since before this month, with a group: the whole fixed salary is owed.
+  const paid = await api('POST', '/teachers', { token: a.token, body: { fullName: 'Paid Teacher', subject: 'Math', salaryType: 'FIXED', salaryValue: 1000000, startDate: '2024-01-01' } });
+  await api('POST', '/groups', { token: a.token, body: { name: 'Paid Teacher Group', subject: 'Math', teacherId: paid.id } });
   const month = centerMonth();
 
   await loginOnMainSite(page, email);
   await expectCenterDashboard(page, a.sub);
-  await page.goto(centerUrl(a.sub, '/reports?tab=payroll'));
+  await page.goto(centerUrl(a.sub, '/payments?tab=payroll'));
   const row = page.getByRole('row').filter({ hasText: 'Paid Teacher' });
   await expect(row).toContainText(money(1000000));
 

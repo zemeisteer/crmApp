@@ -22,9 +22,7 @@ import {
   notificationsApi,
   billingApi,
   cardPaymentsApi,
-  invoicesApi,
   reportsApi,
-  Invoice,
   Payment,
   Student,
   Branch,
@@ -42,6 +40,7 @@ import { useCenterClock } from "@/lib/use-center-clock";
 import CashDayPanel from "@/components/payments/CashDay";
 import { PrivateLink } from "@/components/PrivateFile";
 import DebtorRemindersDialog from "@/components/payments/DebtorReminders";
+import PayrollPanel from "@/components/payments/PayrollPanel";
 import { centerWallClock } from "@/lib/center-time";
 import { useLanguage } from "@/lib/i18n-context";
 import { useAuth } from "@/lib/auth-context";
@@ -129,8 +128,9 @@ const EXPENSE_CATEGORIES: { value: ExpenseCategory; labelKey: TranslationKey; co
   { value: "OTHER", labelKey: "payments.expenses.catOther", color: "var(--text-muted)" },
 ];
 
-type TabType = "history" | "debtors" | "invoices" | "expenses" | "cash" | "cards";
-const TABS: TabType[] = ["history", "debtors", "invoices", "expenses", "cash", "cards"];
+// Invoices are made automatically (and debts follow from them): no tab of their own.
+type TabType = "history" | "debtors" | "payroll" | "expenses" | "cash" | "cards";
+const TABS: TabType[] = ["history", "debtors", "payroll", "expenses", "cash", "cards"];
 const MONTH_PARAM = /^\d{4}-(0[1-9]|1[0-2])$/;
 type Period = "day" | "week" | "month" | "year";
 
@@ -604,10 +604,6 @@ function PaymentsContent() {
   const [debtorStatusFilter, setDebtorStatusFilter] = useState<string>("ALL");
 
   // Invoices state
-  const [invoices, setInvoices] = useState<Invoice[]>([]);
-  const [invoiceSearch, setInvoiceSearch] = useState("");
-  const [invoiceStatusFilter, setInvoiceStatusFilter] = useState("ALL");
-  const [generatingInvoices, setGeneratingInvoices] = useState(false);
 
   // Expenses & P&L state
   const [expenses, setExpenses] = useState<Expense[]>([]);
@@ -664,7 +660,6 @@ function PaymentsContent() {
       window.alert(err instanceof ApiError ? err.message : t("common.errorGeneric"));
     }
   }
-  const seesInvoices = can(user, "invoices.manage");
   // The yearly chart (GET /reports/revenue-by-year) is open to whoever
   // reads payments, like the rest of this page.
   const seesYearly = can(user, "payments.view");
@@ -679,9 +674,8 @@ function PaymentsContent() {
       paymentsApi.debtors({ forMonth: selectedMonth }),
       paymentsApi.financeSummary(selectedMonth),
       seesExpenses ? expensesApi.list({ forMonth: selectedMonth }) : Promise.resolve([]),
-      seesInvoices ? invoicesApi.list({ forMonth: selectedMonth }).catch(() => [] as Invoice[]) : Promise.resolve([] as Invoice[]),
     ])
-      .then(([p, s, b, d, fs, exp, invs]) => {
+      .then(([p, s, b, d, fs, exp]) => {
         setAllCount(p.total);
         setStudentsTotal(s[0].total);
         setGroupList(s[1].map((g) => ({ id: g.id, name: g.name })));
@@ -689,7 +683,6 @@ function PaymentsContent() {
         setDebtorsData(d);
         setFinanceSummary(fs);
         setExpenses(exp);
-        setInvoices(invs);
         setLoadError(null);
       })
       .catch((err) => setLoadError(err instanceof ApiError ? err.message : t("common.errorGeneric")))
@@ -893,7 +886,6 @@ function PaymentsContent() {
   useEffect(() => {
     const want = new Set<string>();
     for (const p of pageItems) want.add(p.studentId);
-    for (const inv of invoices) want.add(inv.studentId);
     if (studentId) want.add(studentId);
     const missing = [...want].filter((id) => id && !asked.current.has(id));
     if (missing.length === 0) return;
@@ -907,7 +899,7 @@ function PaymentsContent() {
         .catch(() => chunk.forEach((id) => asked.current.delete(id)));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pageData, invoices, studentId]);
+  }, [pageData, studentId]);
 
   // Months for the month filter: from two months ahead (paid in advance)
   // back two years.
@@ -938,17 +930,6 @@ function PaymentsContent() {
     });
   }, [debtorsData, debtorStatusFilter, debtorSearch, debtorGroupFilter]);
 
-  const filteredInvoices = useMemo(() => {
-    return invoices.filter((inv) => {
-      if (invoiceStatusFilter !== "ALL" && inv.status !== invoiceStatusFilter) return false;
-      if (invoiceSearch) {
-        const q = invoiceSearch.toLowerCase();
-        const sName = (inv.student?.fullName || studentName(inv.studentId)).toLowerCase();
-        if (!sName.includes(q) && !(inv.forMonth || "").includes(q)) return false;
-      }
-      return true;
-    });
-  }, [invoices, invoiceStatusFilter, invoiceSearch, studentName]);
 
   // Filtered expenses
   const filteredExpenses = useMemo(() => {
@@ -1233,9 +1214,9 @@ function PaymentsContent() {
                 </span>
               )}
             </button>
-            {can(user, "invoices.manage") && (
+            {can(user, "payroll.view") && (
             <button
-              onClick={() => setActiveTab("invoices")}
+              onClick={() => setActiveTab("payroll")}
               style={{
                 fontSize: 13,
                 fontWeight: 700,
@@ -1243,13 +1224,13 @@ function PaymentsContent() {
                 borderRadius: "var(--radius-pill)",
                 cursor: "pointer",
                 border: "none",
-                background: activeTab === "invoices" ? "var(--ink)" : "transparent",
-                color: activeTab === "invoices" ? "var(--on-ink)" : "var(--text-muted)",
+                background: activeTab === "payroll" ? "var(--ink)" : "transparent",
+                color: activeTab === "payroll" ? "var(--on-ink)" : "var(--text-muted)",
                 boxShadow: "none",
                 transition: "all 0.15s ease",
               }}
             >
-              {t("pay.tabInvoices")}
+              {t("rep3.tabPayroll")}
             </button>
             )}
             {can(user, "expenses.view") && (
@@ -1318,48 +1299,13 @@ function PaymentsContent() {
 
         {/* Header Right Actions */}
         <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-          {(activeTab === "debtors" || activeTab === "expenses" || activeTab === "invoices") && (
+          {(activeTab === "debtors" || activeTab === "expenses") && (
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <span style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 600 }}>{t("pay.month")}</span>
               <MonthPicker value={selectedMonth} onChange={setSelectedMonth} />
             </div>
           )}
 
-          {activeTab === "invoices" && (
-            <button
-              className="btn"
-              onClick={async () => {
-                if (!confirm(t("msg.generateInvoicesConfirm").replace("{month}", selectedMonth))) return;
-                setGeneratingInvoices(true);
-                try {
-                  const res = await invoicesApi.generateMonthly(selectedMonth);
-                  alert(t("msg.invoicesGenerated").replace("{count}", String(res.generatedCount)));
-                  loadAll();
-                } catch (err) {
-                  alert(err instanceof ApiError ? err.message : "Xatolik");
-                } finally {
-                  setGeneratingInvoices(false);
-                }
-              }}
-              disabled={generatingInvoices}
-              style={{
-                background: ACCENT,
-                color: "var(--on-ink)",
-                border: "none",
-                fontSize: 13,
-                fontWeight: 700,
-                padding: "8px 16px",
-                borderRadius: "var(--radius-sm)",
-                display: "flex",
-                alignItems: "center",
-                gap: 6,
-                cursor: "pointer",
-              }}
-            >
-              <span>⚡</span>
-              <span>{generatingInvoices ? t("pay.generating") : t("pay.monthlyInvoices")}</span>
-            </button>
-          )}
 
           {activeTab === "history" && (
             <>
@@ -1404,7 +1350,9 @@ function PaymentsContent() {
             </>
           )}
 
-          {activeTab === "expenses" && (
+          {activeTab === "payroll" && can(user, "payroll.view") && <PayrollPanel initialMonth={selectedMonth} />}
+
+        {activeTab === "expenses" && (
             <button
               className="btn"
               onClick={() => {
@@ -2150,129 +2098,6 @@ function PaymentsContent() {
         {/* ========================================================================= */}
         {/* TAB 3: INVOICES (Billing & Tuition Ledger)                                */}
         {/* ========================================================================= */}
-        {activeTab === "invoices" && (
-          <>
-            <details style={{ background: "var(--primary-soft)", border: "1px solid var(--primary-border)", borderRadius: "var(--radius-md)", padding: "10px 14px", fontSize: 13, color: "var(--text-soft)" }}>
-              <summary style={{ cursor: "pointer", fontWeight: 700, color: "var(--violet)" }}>ℹ️ {t("pay.invHelpTitle")}</summary>
-              <div style={{ marginTop: 8, lineHeight: 1.6 }}>{t("pay.invHelp")}</div>
-            </details>
-            {/* Top Invoices Cards */}
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0,1fr))", gap: 16 }}>
-              <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 18 }}>
-                <div style={{ fontSize: 12, color: "var(--text-muted)" }}>{t("pay.invTotal")}</div>
-                <div style={{ fontSize: 22, fontWeight: 800, fontFamily: "var(--font-display)", marginTop: 4 }}>
-                  {formatMoney(invoices.reduce((s, inv) => s + inv.amount, 0))} {t("common.sumUnit")}
-                </div>
-              </div>
-              <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 18 }}>
-                <div style={{ fontSize: 12, color: "var(--text-muted)" }}>{t("pay.invPaid")}</div>
-                <div style={{ fontSize: 22, fontWeight: 800, fontFamily: "var(--font-display)", marginTop: 4, color: "var(--success)" }}>
-                  {formatMoney(invoices.reduce((s, inv) => s + inv.amountPaid, 0))} {t("common.sumUnit")}
-                </div>
-              </div>
-              <div style={{ background: invoices.some((i) => i.remainingAmount > 0) ? "var(--danger-soft)" : "var(--surface)", border: `1px solid ${invoices.some((i) => i.remainingAmount > 0) ? "var(--danger-border)" : "var(--border)"}`, borderRadius: "var(--radius-lg)", padding: 18 }}>
-                <div style={{ fontSize: 12, color: invoices.some((i) => i.remainingAmount > 0) ? "var(--danger)" : "var(--text-muted)" }}>{t("pay.invRemaining")}</div>
-                <div style={{ fontSize: 22, fontWeight: 800, fontFamily: "var(--font-display)", marginTop: 4, color: "var(--danger)" }}>
-                  {formatMoney(invoices.reduce((s, inv) => s + (inv.status !== "CANCELLED" ? inv.remainingAmount : 0), 0))} {t("common.sumUnit")}
-                </div>
-              </div>
-              <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 18 }}>
-                <div style={{ fontSize: 12, color: "var(--text-muted)" }}>{t("pay.invOverdue")}</div>
-                <div style={{ fontSize: 22, fontWeight: 800, fontFamily: "var(--font-display)", marginTop: 4, color: "var(--warning)" }}>
-                  {invoices.filter((i) => i.status === "OVERDUE").length} ta
-                </div>
-              </div>
-            </div>
-
-            {/* Filter Bar */}
-            <div style={{ display: "flex", gap: 12, alignItems: "center", marginTop: 20, marginBottom: 16 }}>
-              <input
-                type="text"
-                placeholder={t("pay.invSearch")}
-                className="field-input"
-                value={invoiceSearch}
-                onChange={(e) => setInvoiceSearch(e.target.value)}
-                style={{ maxWidth: 300 }}
-              />
-              <Select
-                options={[
-                  { value: "ALL", label: t("pay.allStatuses") },
-                  { value: "OPEN", label: t("pay.stPending") },
-                  { value: "PARTIALLY_PAID", label: t("pay.stPartial") },
-                  { value: "PAID", label: t("pay.stPaid") },
-                  { value: "OVERDUE", label: t("pay.stOverdue") },
-                  { value: "CANCELLED", label: t("pay.stCancelled") },
-                ]}
-                value={invoiceStatusFilter}
-                onChange={setInvoiceStatusFilter}
-                style={{ width: 190 }}
-              />
-            </div>
-
-            {/* Invoices Table */}
-            {filteredInvoices.length === 0 ? (
-              <div style={{ color: "var(--text-muted)", fontSize: 14, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 32, textAlign: "center" }}>
-                {t("pay.noInvoices")}
-              </div>
-            ) : (
-              <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", overflowX: "auto" }}>
-                <table>
-                  <thead>
-                    <tr>
-                      <th style={{ paddingTop: 16 }}>{t("pay.student")}</th>
-                      <th style={{ paddingTop: 16 }}>{t("pay.groupDesc")}</th>
-                      <th style={{ paddingTop: 16 }}>{t("pay.monthCol")}</th>
-                      <th style={{ paddingTop: 16 }}>{t("pay.totalAmount")}</th>
-                      <th style={{ paddingTop: 16 }}>{t("pay.paid")}</th>
-                      <th style={{ paddingTop: 16 }}>{t("pay.remaining")}</th>
-                      <th style={{ paddingTop: 16 }}>{t("pay.due")}</th>
-                      <th style={{ paddingTop: 16 }}>{t("pay.status")}</th>
-                      <th style={{ paddingTop: 16, textAlign: "right" }}>{t("pay.action")}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredInvoices.map((inv) => (
-                      <tr key={inv.id}>
-                        <td style={{ fontWeight: 700 }}>{inv.student?.fullName || studentName(inv.studentId)}</td>
-                        <td>{inv.enrollment?.group?.name || inv.description || "—"}</td>
-                        <td>{inv.forMonth}</td>
-                        <td style={{ fontWeight: 700 }}>{formatMoney(inv.amount)} {t("common.sumUnit")}</td>
-                        <td style={{ fontWeight: 600, color: inv.amountPaid > 0 ? "var(--success)" : "var(--text-muted)" }}>
-                          {formatMoney(inv.amountPaid)} {t("common.sumUnit")}
-                        </td>
-                        <td style={{ fontWeight: 800, color: inv.remainingAmount > 0 ? "var(--danger)" : "var(--text-muted)" }}>
-                          {formatMoney(inv.remainingAmount)} {t("common.sumUnit")}
-                        </td>
-                        <td>{formatDate(inv.dueDate, lang, "dayMonth")}</td>
-                        <td>
-                          <span className={`badge ${inv.status === "PAID" ? "badge-success" : inv.status === "OVERDUE" ? "badge-danger" : inv.status === "PARTIALLY_PAID" ? "badge-warning" : "badge-neutral"}`}>
-                            {inv.status === "PAID" ? t("pay.stPaid") : inv.status === "PARTIALLY_PAID" ? t("pay.stPartial") : inv.status === "OVERDUE" ? t("pay.stOverdue") : inv.status === "CANCELLED" ? t("pay.stCancelled") : t("pay.stOpen")}
-                          </span>
-                        </td>
-                        <td style={{ textAlign: "right" }}>
-                          {inv.status !== "PAID" && inv.status !== "CANCELLED" && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setStudentId(inv.studentId);
-                                setAmount(String(inv.remainingAmount));
-                                setForMonth(inv.forMonth);
-                                setModalOpen(true);
-                              }}
-                              style={{ background: "var(--success)", color: "var(--on-ink)", border: "none", padding: "6px 12px", borderRadius: "var(--radius-xs)", fontSize: 12, fontWeight: 700, cursor: "pointer" }}
-                            >
-                              {t("pay.pay")}
-                            </button>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </>
-        )}
 
         {/* ========================================================================= */}
         {/* TAB 4: EXPENSES & CASH FLOW (P&L) (Master Spec Section 24)                 */}

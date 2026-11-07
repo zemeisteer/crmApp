@@ -13,7 +13,8 @@ test("the director's report counts a payroll payout once", async ({ page }) => {
   await api('POST', '/payments', { token: a.token, body: { studentId: kid.id, amount: 400000, forMonth: month, method: 'CASH' } });
   const email = `zzbr-staff-rep-${run}@example.test`;
   await addStaff(a.token, email, 'ACCOUNTANT');
-  const teacher = await api('POST', '/teachers', { token: a.token, body: { fullName: 'Report Teacher', salaryType: 'FIXED', salaryValue: 500000 } });
+  const teacher = await api('POST', '/teachers', { token: a.token, body: { fullName: 'Report Teacher', salaryType: 'FIXED', salaryValue: 500000, startDate: '2024-01-01' } });
+  await api('POST', '/groups', { token: a.token, body: { name: 'Report Teacher Group', subject: 'English', teacherId: teacher.id } });
   await api('POST', '/salary-payments/disburse', { token: await apiLogin(email), body: { teacherId: teacher.id, amount: 150000, forMonth: month } });
 
   await loginOnMainSite(page, a.email);

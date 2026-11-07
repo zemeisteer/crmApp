@@ -324,7 +324,7 @@ function TeacherDetailContent() {
                 <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                   {payrollLine.paidAmount > 0 && <span className="badge badge-warning">{t("teacherDetail.partPaid")}</span>}
                   <Link
-                    href="/reports?tab=payroll"
+                    href="/payments?tab=payroll"
                     className="btn"
                     style={{ background: ACCENT, color: "var(--on-ink)", border: "none", fontSize: 11.5, fontWeight: 700, padding: "6px 12px", borderRadius: "var(--radius-xs)" }}
                   >
