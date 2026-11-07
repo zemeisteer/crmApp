@@ -5,6 +5,7 @@ import { useAuth } from "@/lib/auth-context";
 import { useLanguage } from "@/lib/i18n-context";
 import { useChatUnread } from "@/lib/chat-unread";
 import { canOpenPath, isPlatformMode } from "./Sidebar";
+import ThemeToggle from "./ThemeToggle";
 
 /**
  * The bar across the top of the staff app: the menu button (phones), the
@@ -48,6 +49,7 @@ export default function AppTopBar({ onMenu }: { onMenu: () => void }) {
             </button>
           ))}
         </div>
+        <ThemeToggle />
         {seesChat && (
           <Link href="/messages" className="app-round" aria-label={t("chat.nav")} title={t("chat.nav")}>
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
