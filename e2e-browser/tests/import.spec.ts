@@ -27,6 +27,7 @@ test('a new center is filled from Excel: teachers, groups, students', async ({ p
     await page.getByRole('button', { name: "Excel'dan import" }).click();
     const dialog = page.getByRole('dialog');
     await dialog.getByLabel('Faylni tanlash (.xlsx)').setInputFiles(file);
+    await dialog.getByRole('button', { name: /^Tekshirish/ }).click();
     await expect(dialog.getByText(`${expectNew} yangi`)).toBeVisible();
     await dialog.getByRole('button', { name: `Import qilish (${expectNew})` }).click();
     await expect(dialog.getByRole('status')).toContainText(`${expectNew} ta qo'shildi`);
@@ -52,10 +53,12 @@ test('a new center is filled from Excel: teachers, groups, students', async ({ p
   await page.getByRole('button', { name: "Excel'dan import" }).click();
   const dialog = page.getByRole('dialog');
   await dialog.getByLabel('Faylni tanlash (.xlsx)').setInputFiles(students);
+  await dialog.getByRole('button', { name: /^Tekshirish/ }).click();
   await expect(dialog.getByText("Yangi qator yo'q: hammasi tizimda bor.")).toBeVisible();
 
   // A row with an error: shown, and nothing can be imported.
   await dialog.getByLabel('Faylni tanlash (.xlsx)').setInputFiles(await sheet([['F.I.O', 'Guruh'], ['New Kid', 'No Such Group']]));
+  await dialog.getByRole('button', { name: /^Tekshirish/ }).click();
   await expect(dialog.getByText('Guruh topilmadi: No Such Group')).toBeVisible();
   await expect(dialog.getByRole('button', { name: /Import qilish/ })).toHaveCount(0);
 

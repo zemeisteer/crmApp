@@ -13,7 +13,7 @@ import { AuditService } from '../audit/audit.service';
 import { CustomFieldsService } from '../custom-fields/custom-fields.service';
 import { type FieldDef, fieldForHeader, parseCell, validateForm } from '../custom-fields/custom-field-values';
 import {
-  COLUMNS, MAX_ROWS, cellText, mapHeader, nameKey, parseGroup, parseStudent, parseTeacher, slotsOverlap,
+  COLUMNS, MAX_ROWS, cellText, mapHeader, type ColumnMapping, nameKey, parseGroup, parseStudent, parseTeacher, slotsOverlap,
   type GroupRow, type ImportKind, type StudentRow,
 } from './import-sheet';
 import { assertNotTrialImport } from '../trial/trial-limits';
@@ -120,7 +120,11 @@ export class ImportService {
     help.getRow(1).font = { bold: true };
   }
 
-  private async read(kind: ImportKind, buffer: Buffer) {
+  /**
+   * The first sheet and its header row: the first of the top rows with two
+   * or more filled cells (a center's own file may have a title above it).
+   */
+  private async sheet(buffer: Buffer) {
     const wb = new ExcelJS.Workbook();
     try {
       await wb.xlsx.load(buffer as unknown as ArrayBuffer);
@@ -129,15 +133,76 @@ export class ImportService {
     }
     const ws = wb.worksheets[0];
     if (!ws) throw new BadRequestException("Faylda varaq yo'q");
+    let headerRow = 1;
+    for (let n = 1; n <= Math.min(10, ws.rowCount); n++) {
+      let filled = 0;
+      ws.getRow(n).eachCell({ includeEmpty: false }, (cell) => { if (cellText(cell.value)) filled++; });
+      if (filled >= 2) { headerRow = n; break; }
+    }
     const header: string[] = [];
-    ws.getRow(1).eachCell({ includeEmpty: true }, (cell, col) => { header[col] = cellText(cell.value).replace(/\s*\*$/, ''); });
-    const { at, unknown, missing } = mapHeader(kind, header);
+    ws.getRow(headerRow).eachCell({ includeEmpty: true }, (cell, col) => { header[col] = cellText(cell.value).replace(/\s*\*$/, '').trim(); });
+    return { ws, headerRow, header };
+  }
+
+  /**
+   * The file's columns and what each seems to be, so the person can confirm
+   * or change it before anything is checked: the headers, a few rows as a
+   * sample, the fields there are (the center's own student fields too), and
+   * the suggested choice for each field.
+   */
+  async columns(tenantId: string, kind: ImportKind, buffer: Buffer) {
+    const { ws, headerRow, header } = await this.sheet(buffer);
+    const headers = header.filter(Boolean);
+    const { at, unknown } = mapHeader(kind, header);
+    const suggested: Record<string, string> = {};
+    for (const [key, col] of Object.entries(at)) suggested[key] = header[col];
+    const defs = kind === 'students' ? ((await this.customFields.list(tenantId, 'STUDENT')) as (FieldDef & { key: string })[]) : [];
+    for (const u of unknown) {
+      const d = defs.length ? fieldForHeader(defs, u) : null;
+      if (d && !Object.values(suggested).includes(u)) suggested[`cf:${d.id}`] = u;
+    }
+    const sample: Array<Record<string, string>> = [];
+    for (let n = headerRow + 1; n <= ws.rowCount && sample.length < 3; n++) {
+      const r = ws.getRow(n);
+      const vals: Record<string, string> = {};
+      header.forEach((h, col) => { if (h) vals[h] = cellText(r.getCell(col).value).trim(); });
+      if (Object.values(vals).some(Boolean)) sample.push(vals);
+    }
+    const fields = [
+      ...COLUMNS[kind].map((c) => ({ key: c.key, title: c.title, required: !!c.required, hint: c.hint ?? null })),
+      ...defs.map((d) => ({ key: `cf:${d.id}`, title: d.label, required: !!(d as { required?: boolean }).required, hint: null })),
+    ];
+    return { headers, sample, fields, suggested };
+  }
+
+  private async read(kind: ImportKind, buffer: Buffer, mapping?: ColumnMapping) {
+    const { ws, headerRow, header } = await this.sheet(buffer);
+    let at: Record<string, number>;
+    let unknown: string[];
+    let missing: string[];
+    // The center's own fields chosen for a column: header -> field id.
+    const chosenCustom = new Map<string, string>();
+    if (mapping) {
+      // The person's own choice: field -> the header of its column.
+      at = {};
+      for (const [key, h] of Object.entries(mapping)) {
+        const col = header.findIndex((x) => x === h);
+        if (col < 0) throw new BadRequestException(`Faylda bunday ustun yo'q: ${h}`);
+        if (key.startsWith('cf:')) chosenCustom.set(h, key.slice(3));
+        else at[key] = col;
+      }
+      const used = new Set(Object.values(mapping));
+      unknown = header.filter((h) => h && !used.has(h));
+      missing = COLUMNS[kind].filter((c) => c.required && at[c.key] === undefined).map((c) => c.title);
+    } else {
+      ({ at, unknown, missing } = mapHeader(kind, header));
+    }
     // Columns no built-in field claims: kept by their header, for the center's own fields.
     const extra = header.map((h, col) => ({ h, col })).filter(({ h, col }) => h && !Object.values(at).includes(col));
-    if (missing.length) throw new BadRequestException(`Majburiy ustun yo'q: ${missing.join(', ')}. Shablonni yuklab oling.`);
+    if (missing.length) throw new BadRequestException(`Majburiy ustun yo'q: ${missing.join(', ')}. Ustunlarni moslang yoki shablonni yuklab oling.`);
     const rows: Array<{ row: number; values: Record<string, string> }> = [];
     ws.eachRow({ includeEmpty: false }, (r, n) => {
-      if (n === 1) return;
+      if (n <= headerRow) return;
       const values: Record<string, string> = {};
       for (const [key, col] of Object.entries(at)) values[key] = cellText(r.getCell(col).value).trim();
       for (const { h, col } of extra) values[`@${h}`] = cellText(r.getCell(col).value).trim();
@@ -145,11 +210,11 @@ export class ImportService {
     });
     if (rows.length === 0) throw new BadRequestException("Faylda ma'lumot qatori yo'q");
     if (rows.length > MAX_ROWS) throw new BadRequestException(`Bir faylda ko'pi bilan ${MAX_ROWS} qator`);
-    return { rows, unknown: unknown.filter(Boolean) };
+    return { rows, unknown: unknown.filter(Boolean), chosenCustom: mapping ? chosenCustom : null };
   }
 
-  private async plan(tenantId: string, kind: ImportKind, buffer: Buffer): Promise<{ report: ImportReport; plans: Plan[] }> {
-    const { rows, unknown } = await this.read(kind, buffer);
+  private async plan(tenantId: string, kind: ImportKind, buffer: Buffer, mapping?: ColumnMapping): Promise<{ report: ImportReport; plans: Plan[] }> {
+    const { rows, unknown, chosenCustom } = await this.read(kind, buffer, mapping);
     const out: ImportRow[] = [];
     const plans: Plan[] = [];
     const seen = new Map<string, number>(); // key -> first row in the file
@@ -227,11 +292,20 @@ export class ImportService {
       // Custom-field columns by label or "cf:<key>"; they are no longer "unknown".
       const defs = (await this.customFields.list(tenantId, 'STUDENT')) as (FieldDef & { key: string })[];
       const customCols = new Map<string, FieldDef & { key: string }>();
-      for (const u of unknown) {
-        const d = fieldForHeader(defs, u);
-        if (d) customCols.set(u, d);
+      if (chosenCustom) {
+        // Chosen by the person: those columns and no others.
+        for (const [header, id] of chosenCustom) {
+          const d = defs.find((x) => x.id === id);
+          if (!d) throw new BadRequestException("Tanlangan qo'shimcha maydon topilmadi");
+          customCols.set(header, d);
+        }
+      } else {
+        for (const u of unknown) {
+          const d = fieldForHeader(defs, u);
+          if (d) customCols.set(u, d);
+        }
+        for (const u of customCols.keys()) unknown.splice(unknown.indexOf(u), 1);
       }
-      for (const u of customCols.keys()) unknown.splice(unknown.indexOf(u), 1);
       const gs = await this.db.select({ id: groups.id, name: groups.name, maxStudents: groups.maxStudents }).from(groups).where(and(eq(groups.tenantId, tenantId), isNull(groups.deletedAt)));
       const ss = await this.db.select({ fullName: students.fullName, phone: students.phone, parentPhone: students.parentPhone }).from(students).where(and(eq(students.tenantId, tenantId), isNull(students.deletedAt)));
       const key = (s: { fullName: string; phone?: string | null; parentPhone?: string | null }) => `${nameKey(s.fullName)}|${normalizePhone(s.phone) ?? ''}|${normalizePhone(s.parentPhone) ?? ''}`;
@@ -287,13 +361,13 @@ export class ImportService {
     return { report: { kind, rows: out, counts, unknownColumns: unknown }, plans: plans.filter((p) => p.row.status === 'create') };
   }
 
-  preview(tenantId: string, kind: ImportKind, buffer: Buffer) {
-    return this.plan(tenantId, kind, buffer).then((p) => p.report);
+  preview(tenantId: string, kind: ImportKind, buffer: Buffer, mapping?: ColumnMapping) {
+    return this.plan(tenantId, kind, buffer, mapping).then((p) => p.report);
   }
 
-  async run(tenantId: string, userId: string, kind: ImportKind, buffer: Buffer) {
+  async run(tenantId: string, userId: string, kind: ImportKind, buffer: Buffer, mapping?: ColumnMapping) {
     await assertNotTrialImport(this.db, tenantId);
-    const { report, plans } = await this.plan(tenantId, kind, buffer);
+    const { report, plans } = await this.plan(tenantId, kind, buffer, mapping);
     if (report.counts.error > 0) {
       throw new BadRequestException({ message: `${report.counts.error} ta qatorda xato: hech narsa saqlanmadi. Tuzatib, qayta yuklang.`, report });
     }

@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import Modal from "@/components/Modal";
-import { ApiError, importApi, type ImportKind, type ImportReport } from "@/lib/api";
+import { ApiError, importApi, type ImportColumns, type ImportKind, type ImportReport } from "@/lib/api";
 import { useLanguage } from "@/lib/i18n-context";
 import type { TranslationKey } from "@/lib/i18n";
 
@@ -26,13 +26,48 @@ export default function ImportDialog({ kind, open, onClose, onDone }: { kind: Im
   const [busy, setBusy] = useState<"check" | "run" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<string | null>(null);
+  // Which column of the file is which field (suggested, remembered per kind).
+  const [cols, setCols] = useState<ImportColumns | null>(null);
+  const [mapping, setMapping] = useState<Record<string, string>>({});
 
   function reset() {
     setFile(null);
     setReport(null);
     setError(null);
     setDone(null);
+    setCols(null);
+    setMapping({});
     if (fileRef.current) fileRef.current.value = "";
+  }
+
+  const memoryKey = `talimcrm-import-map-${kind}`;
+  function remembered(c: ImportColumns): Record<string, string> {
+    try {
+      const saved = JSON.parse(localStorage.getItem(memoryKey) ?? "{}") as Record<string, string>;
+      // Only choices whose column this file has too.
+      const usable = Object.fromEntries(Object.entries(saved).filter(([k, h]) => c.headers.includes(h) && c.fields.some((f) => f.key === k)));
+      return Object.keys(usable).length ? { ...c.suggested, ...usable } : c.suggested;
+    } catch {
+      return c.suggested;
+    }
+  }
+
+  async function onCheck() {
+    if (!file) return;
+    setBusy("check");
+    setError(null);
+    try {
+      setReport(await importApi.preview(kind, file, mapping));
+      try {
+        localStorage.setItem(memoryKey, JSON.stringify(mapping));
+      } catch {
+        // Not kept: next time the suggestion is used.
+      }
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : t("common.errorGeneric"));
+    } finally {
+      setBusy(null);
+    }
   }
 
   async function onChoose(e: React.ChangeEvent<HTMLInputElement>) {
@@ -42,7 +77,9 @@ export default function ImportDialog({ kind, open, onClose, onDone }: { kind: Im
     setFile(f);
     setBusy("check");
     try {
-      setReport(await importApi.preview(kind, f));
+      const c = await importApi.columns(kind, f);
+      setCols(c);
+      setMapping(remembered(c));
     } catch (err) {
       setError(err instanceof ApiError ? err.message : t("common.errorGeneric"));
     } finally {
@@ -56,7 +93,7 @@ export default function ImportDialog({ kind, open, onClose, onDone }: { kind: Im
     setBusy("run");
     setError(null);
     try {
-      const res = await importApi.run(kind, file);
+      const res = await importApi.run(kind, file, mapping);
       setReport(res.report);
       setDone(t("imp.done").replace("{n}", String(res.created)).replace("{m}", String(res.skipped)));
       onDone();
@@ -91,6 +128,51 @@ export default function ImportDialog({ kind, open, onClose, onDone }: { kind: Im
 
         {error && <div role="alert" style={{ background: "var(--danger-soft)", color: "var(--danger)", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: "var(--radius-sm)" }}>{error}</div>}
         {done && <div role="status" style={{ background: "var(--success-soft)", color: "var(--success)", fontSize: 13, fontWeight: 700, padding: "10px 14px", borderRadius: "var(--radius-sm)" }}>{done}</div>}
+
+        {cols && !done && (
+          <div data-testid="import-mapping" style={{ border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", padding: 12, display: "flex", flexDirection: "column", gap: 8 }}>
+            <div style={{ fontSize: 13, fontWeight: 700 }}>{t("imp.mapTitle")}</div>
+            <div style={{ fontSize: 12, color: "var(--text-muted)" }}>{t("imp.mapHint")}</div>
+            {cols.fields.map((f) => {
+              const missing = f.required && !mapping[f.key];
+              return (
+                <label key={f.key} style={{ display: "grid", gridTemplateColumns: "minmax(110px, 1fr) minmax(130px, 1.3fr) minmax(0, 1.2fr)", gap: 8, alignItems: "center", fontSize: 13 }}>
+                  <span style={{ fontWeight: 600, color: missing ? "var(--danger)" : undefined }}>{f.title}{f.required ? " *" : ""}</span>
+                  <select
+                    className="field-input"
+                    aria-label={f.title}
+                    value={mapping[f.key] ?? ""}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setReport(null);
+                      setMapping((m) => {
+                        const n = { ...m };
+                        if (v) n[f.key] = v;
+                        else delete n[f.key];
+                        return n;
+                      });
+                    }}
+                    style={{ padding: "6px 8px", fontSize: 13 }}
+                  >
+                    <option value="">{t("imp.mapNone")}</option>
+                    {cols.headers.map((h) => (
+                      <option key={h} value={h} disabled={Object.entries(mapping).some(([k, v]) => v === h && k !== f.key)}>{h}</option>
+                    ))}
+                  </select>
+                  <span style={{ fontSize: 12, color: "var(--text-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {mapping[f.key] ? cols.sample.map((r) => r[mapping[f.key]]).filter(Boolean).slice(0, 2).join(", ") : f.hint ?? ""}
+                  </span>
+                </label>
+              );
+            })}
+            {cols.headers.some((h) => !Object.values(mapping).includes(h)) && (
+              <div style={{ fontSize: 12, color: "var(--warning)" }}>{t("imp.unknownCols").replace("{c}", cols.headers.filter((h) => !Object.values(mapping).includes(h)).join(", "))}</div>
+            )}
+            <button type="button" className="btn" disabled={busy !== null || cols.fields.some((f) => f.required && !mapping[f.key])} onClick={() => void onCheck()} style={{ background: ACCENT, color: "var(--on-ink)", border: "none", fontSize: 13.5, fontWeight: 700, padding: 10, borderRadius: "var(--radius-sm)" }}>
+              {busy === "check" ? t("imp.checking") : t("imp.mapCheck")}
+            </button>
+          </div>
+        )}
 
         {report && (
           <>

@@ -150,7 +150,7 @@ export default function PayrollPanel({ initialMonth }: { initialMonth: string })
 
   return (
     <>
-          <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 18, minWidth: 0, maxWidth: "100%" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
               <div>
                 <h2 style={{ fontSize: 17, fontWeight: 800, margin: 0 }}>
@@ -166,7 +166,7 @@ export default function PayrollPanel({ initialMonth }: { initialMonth: string })
             </div>
 
             {/* KPI Cards */}
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0,1fr))", gap: 16 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(200px, 100%), 1fr))", gap: 16 }}>
               <StatCard label={t("rep3.totalCalculated")} value={`${formatMoney(payrollData?.totalCalculated || 0)} ${t("common.sumUnit")}`} />
               <StatCard label={t("rep2.paidSalary")} value={`${formatMoney(payrollData?.totalPaid || 0)} ${t("common.sumUnit")}`} delta={payrollData?.totalPaid ? t("rep2.paidDelta") : undefined} />
               <StatCard label={t("rep3.pendingTotal")} value={`${formatMoney(payrollData?.totalPending || 0)} ${t("common.sumUnit")}`} danger={(payrollData?.totalPending || 0) > 0} />
@@ -174,7 +174,7 @@ export default function PayrollPanel({ initialMonth }: { initialMonth: string })
             </div>
 
             {/* Payroll Table */}
-            <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", overflow: "hidden" }}>
+            <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", overflowX: "auto", minWidth: 0 }}>
               <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--border)", fontSize: 14, fontWeight: 700 }}>
                 {t("rep3.sheetTitle").replace("{m}", selectedPayrollMonth)}
               </div>

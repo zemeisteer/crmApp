@@ -1350,8 +1350,6 @@ function PaymentsContent() {
             </>
           )}
 
-          {activeTab === "payroll" && can(user, "payroll.view") && <PayrollPanel initialMonth={selectedMonth} />}
-
         {activeTab === "expenses" && (
             <button
               className="btn"
@@ -1722,6 +1720,8 @@ function PaymentsContent() {
         {/* ========================================================================= */}
         {/* TAB 2: DEBTORS (Master Spec Section 24)                                   */}
         {/* ========================================================================= */}
+        {activeTab === "payroll" && can(user, "payroll.view") && <PayrollPanel initialMonth={selectedMonth} />}
+
         {activeTab === "debtors" && (
           <>
             {/* Top Debtors Cards */}

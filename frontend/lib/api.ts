@@ -2771,11 +2771,20 @@ export interface BundleImportResult {
   notRun: ImportKind[];
 }
 
-async function importUpload<T>(kind: ImportKind, file: File, dryRun: boolean): Promise<T> {
+export interface ImportColumns {
+  headers: string[];
+  sample: Array<Record<string, string>>;
+  fields: Array<{ key: string; title: string; required: boolean; hint: string | null }>;
+  /** field key -> header */
+  suggested: Record<string, string>;
+}
+
+async function importUpload<T>(kind: ImportKind, file: File, dryRun: boolean, mapping?: Record<string, string>, path = ""): Promise<T> {
   const token = await freshToken();
   const form = new FormData();
+  if (mapping) form.append("mapping", JSON.stringify(mapping));
   form.append("file", file);
-  const res = await fetch(`${API_URL}/import/${kind}${dryRun ? "?dryRun=1" : ""}`, {
+  const res = await fetch(`${API_URL}/import/${kind}${path}${dryRun ? "?dryRun=1" : ""}`, {
     method: "POST",
     headers: token ? { Authorization: `Bearer ${token}` } : undefined,
     body: form,
@@ -2788,9 +2797,11 @@ async function importUpload<T>(kind: ImportKind, file: File, dryRun: boolean): P
 export const importApi = {
   template: (kind: ImportKind) => download(`/import/${kind}/template.xlsx`, `import-${kind}.xlsx`),
   // Reads and checks every row; writes nothing.
-  preview: (kind: ImportKind, file: File) => importUpload<ImportReport>(kind, file, true),
+  preview: (kind: ImportKind, file: File, mapping?: Record<string, string>) => importUpload<ImportReport>(kind, file, true, mapping),
+  /** The file's columns and the suggested field for each. */
+  columns: (kind: ImportKind, file: File) => importUpload<ImportColumns>(kind, file, false, undefined, "/columns"),
   // All rows valid, or nothing is saved (400 with the report).
-  run: (kind: ImportKind, file: File) => importUpload<{ created: number; skipped: number; report: ImportReport }>(kind, file, false),
+  run: (kind: ImportKind, file: File, mapping?: Record<string, string>) => importUpload<{ created: number; skipped: number; report: ImportReport }>(kind, file, false, mapping),
   /** One workbook with a sheet per kind (teachers, groups, students). */
   bundleTemplate: () => download("/import/bundle/template.xlsx", "import-hammasi.xlsx"),
   /** That workbook, or a .zip of the single templates: kinds in order, each all-or-nothing. */
