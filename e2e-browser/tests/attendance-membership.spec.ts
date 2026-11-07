@@ -57,8 +57,9 @@ test('two lessons of one day: different marks, one corrected, a credit for that 
   await lesson.click();
   await expect(page.getByRole('option')).toHaveCount(2);
   await page.getByRole('option', { name: /15:00–16:00/ }).click();
-  // Nothing is marked for this lesson yet: everyone starts as present.
+  // Nothing is marked for this lesson yet: Two is absent, the rest present in one click.
   await attRow(page, 'Att Two').getByRole('button', { name: "Yo'q", exact: true }).click();
+  await page.getByRole('button', { name: '✓ Hammasi keldi' }).click();
   // The keyboard saves too.
   await save.focus();
   await page.keyboard.press('Enter');

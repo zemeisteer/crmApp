@@ -1,4 +1,4 @@
-import { IsArray, Equals, IsEmail, IsIn, IsInt, IsOptional, IsString, Max, MaxLength, Min, MinLength } from 'class-validator';
+import { IsArray, IsBoolean, Equals, IsEmail, IsIn, IsInt, IsOptional, IsString, Max, MaxLength, Min, MinLength } from 'class-validator';
 
 export class CreateTenantDto {
   @IsString()
@@ -29,6 +29,11 @@ export class UpdateTenantDto {
   @Min(1)
   @Max(365)
   makeupCreditDays?: number | null;
+
+  // Absent -> a make-up credit right away.
+  @IsOptional()
+  @IsBoolean()
+  makeupAutoIssue?: boolean;
 
   @IsOptional()
   @IsString()

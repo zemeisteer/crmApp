@@ -12,6 +12,7 @@ import GroupInfoCard from "@/components/groups/GroupInfoCard";
 import GroupAttendanceHistory from "@/components/groups/GroupAttendanceHistory";
 import GroupTutorReport from "@/components/groups/GroupTutorReport";
 import GroupLessonCancellations from "@/components/groups/GroupLessonCancellations";
+import GroupMakeupGuests from "@/components/groups/GroupMakeupGuests";
 import { groupsApi, studentsApi, paymentsApi, attendanceApi, lessonsApi, Group, Student, Gender, AttendanceRecord, AttendanceStatus, ApiError, retryKey, type DebtorItem, type LessonOccurrence, type UnboundAttendance } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { can } from "@/lib/access";
@@ -558,6 +559,9 @@ function GroupDetailContent() {
                 <span role="status" style={{ marginLeft: 10, fontSize: 12.5, fontWeight: 700, color: "var(--success)" }}>✓ {t("groupDetail.attSaved")}</span>
               ) : null}
             </>
+          )}
+          {can(user, "makeups.attend") && (
+            <GroupMakeupGuests groupId={id} date={attendanceDate} startTime={lessonPick ? dayLessons?.find((l) => l.scheduleId === lessonPick)?.startTime : undefined} />
           )}
         </div>
 

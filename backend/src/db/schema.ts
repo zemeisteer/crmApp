@@ -252,6 +252,8 @@ export const tenants = pgTable('tenants', {
   timezone: text('timezone').notNull().default('Asia/Tashkent'),
   // Make-up credits expire this many days after they are issued; null: never.
   makeupCreditDays: integer('makeup_credit_days'),
+  // A student marked absent gets a make-up credit at once (off: staff issue each one).
+  makeupAutoIssue: boolean('makeup_auto_issue').notNull().default(false),
   // Public site content written by the center (JSON, see tenants/site-content.ts).
   siteContent: text('site_content'),
   // Questions a student may ask the AI tutor in Telegram per day (0 = off).

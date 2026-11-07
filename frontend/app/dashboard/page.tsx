@@ -12,6 +12,7 @@ import { reportsApi, type DashboardData, type ReportsOverview } from "@/lib/api"
 import { buildInsights } from "@/lib/insights";
 import TeacherHome from "@/components/dashboard/TeacherHome";
 import AnnouncementBanners from "@/components/dashboard/AnnouncementBanners";
+import MakeupsDue from "@/components/dashboard/MakeupsDue";
 import { MONTH_KEYS, MONTH_SHORT_KEYS, type TranslationKey } from "@/lib/i18n";
 import { formatDate } from "@/lib/format-date";
 import FirstSteps from "@/components/FirstSteps";
@@ -203,6 +204,7 @@ function DashboardContent() {
               </Card>
             )}
 
+            {can(user, "makeups.view") && <MakeupsDue />}
             {seesGroups && (data?.newGroups?.length ?? 0) > 0 && (
               <div data-testid="dash-new-groups" style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: "14px 18px", marginBottom: 16, display: "flex", flexDirection: "column", gap: 10 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "baseline" }}>

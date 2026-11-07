@@ -1,0 +1,1 @@
+ALTER TABLE "tenants" ADD COLUMN IF NOT EXISTS "makeup_auto_issue" boolean DEFAULT false NOT NULL;

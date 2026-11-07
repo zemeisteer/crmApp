@@ -18,6 +18,8 @@ export default function MakeupPolicyCard() {
   // Untouched fields show the saved policy (null: not edited).
   const [expiresDraft, setExpires] = useState<boolean | null>(null);
   const [daysDraft, setDays] = useState<string | null>(null);
+  const [autoDraft, setAuto] = useState<boolean | null>(null);
+  const auto = autoDraft ?? !!tenant?.makeupAutoIssue;
   const expires = expiresDraft ?? current !== null;
   const days = daysDraft ?? String(current ?? 30);
   const [saving, setSaving] = useState(false);
@@ -37,8 +39,9 @@ export default function MakeupPolicyCard() {
     }
     setSaving(true);
     try {
-      await tenantsApi.updateMe({ makeupCreditDays: expires ? n : null });
+      await tenantsApi.updateMe({ makeupCreditDays: expires ? n : null, makeupAutoIssue: auto });
       await refreshMe();
+      setAuto(null);
       setExpires(null);
       setDays(null);
       setSaved(true);
@@ -57,6 +60,13 @@ export default function MakeupPolicyCard() {
       <form onSubmit={save} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         {error && <div role="alert" style={{ background: "var(--danger-soft)", color: "var(--danger)", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: "var(--radius-sm)" }}>{error}</div>}
         {saved && <div role="status" style={{ background: "var(--success-soft)", color: "var(--success)", fontSize: 13, fontWeight: 600, padding: "10px 14px", borderRadius: "var(--radius-sm)" }}>{t("common.saved")}</div>}
+        <label style={{ ...radio, alignItems: "flex-start", background: "var(--surface-muted)", padding: "10px 12px", borderRadius: "var(--radius-sm)" }}>
+          <input type="checkbox" checked={auto} onChange={(e) => { setAuto(e.target.checked); setSaved(false); }} style={{ marginTop: 3 }} />
+          <span>
+            {t("mk.autoIssue")}
+            <span style={{ display: "block", fontSize: 12, fontWeight: 500, color: "var(--text-muted)", marginTop: 2 }}>{t("mk.autoIssueHint")}</span>
+          </span>
+        </label>
         <fieldset style={{ border: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 10 }}>
           <legend style={{ position: "absolute", width: 1, height: 1, overflow: "hidden", clip: "rect(0 0 0 0)" }}>{t("mk.policyTitle")}</legend>
           <label style={radio}>

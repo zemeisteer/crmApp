@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Modal from "@/components/Modal";
 import LoadError from "@/components/LoadError";
-import { makeupsApi, type MakeupEligible } from "@/lib/api";
+import { makeupsApi, type MakeupCredit, type MakeupEligible } from "@/lib/api";
+import BookModal from "./BookModal";
 import { useLanguage } from "@/lib/i18n-context";
 import { useCenterClock } from "@/lib/use-center-clock";
 import { addDays, rangeProblem } from "@/lib/makeups";
@@ -34,6 +35,9 @@ export default function MissedTab({ canManage, onIssued }: { canManage: boolean;
   const [busy, setBusy] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [done, setDone] = useState<string | null>(null);
+  // Issued with "and book a lesson": the booking form opens on it at once.
+  const [booking, setBooking] = useState<MakeupCredit | null>(null);
+  const bookNext = useRef(false);
 
   const badRange = rangeProblem(from, to) !== null;
   useEffect(() => {
@@ -54,8 +58,15 @@ export default function MissedTab({ canManage, onIssued }: { canManage: boolean;
     setBusy(true);
     setFormError(null);
     try {
-      await makeupsApi.issue({ studentId: issuing.studentId, groupId: issuing.groupId, date: issuing.date, reason: issuing.reason, scheduleId: issuing.scheduleId ?? undefined, note: note.trim() || undefined });
+      const made = await makeupsApi.issue({ studentId: issuing.studentId, groupId: issuing.groupId, date: issuing.date, reason: issuing.reason, scheduleId: issuing.scheduleId ?? undefined, note: note.trim() || undefined });
       setDone(t("mk.issued").replace("{name}", issuing.studentName));
+      if (bookNext.current) {
+        setBooking({
+          ...made, expired: false, bookings: [],
+          student: { id: issuing.studentId, fullName: issuing.studentName, phone: null },
+          originGroup: { id: issuing.groupId, name: issuing.groupName },
+        });
+      }
       setIssuing(null);
       setNote("");
       setNonce((n) => n + 1);
@@ -140,12 +151,22 @@ export default function MissedTab({ canManage, onIssued }: { canManage: boolean;
               <span style={lbl}>{t("mk.noteOptional")}</span>
               <textarea className="field-input" value={note} onChange={(e) => setNote(e.target.value)} maxLength={500} rows={2} style={{ width: "100%", resize: "vertical", fontFamily: "inherit" }} />
             </label>
-            <button type="submit" className="btn" disabled={busy} style={{ ...primaryBtn, background: ACCENT, fontSize: 14, padding: "11px 16px", borderRadius: "var(--radius-sm)" }}>
-              {busy ? t("common.saving") : t("mk.issueConfirm")}
+            <button type="submit" className="btn" disabled={busy} onClick={() => { bookNext.current = true; }} style={{ ...primaryBtn, background: ACCENT, fontSize: 14, padding: "11px 16px", borderRadius: "var(--radius-sm)" }}>
+              {busy ? t("common.saving") : t("mk.issueAndBook")}
+            </button>
+            <button type="submit" className="btn" disabled={busy} onClick={() => { bookNext.current = false; }} style={{ background: "var(--surface-muted)", color: "var(--text)", border: "none", fontWeight: 700, fontSize: 13.5, padding: "10px 16px", borderRadius: "var(--radius-sm)" }}>
+              {t("mk.issueConfirm")}
             </button>
           </form>
         )}
       </Modal>
+      {booking && (
+        <BookModal
+          credit={booking}
+          onClose={() => setBooking(null)}
+          onBooked={(msg) => { setBooking(null); setDone(msg); setNonce((n) => n + 1); onIssued(); }}
+        />
+      )}
     </div>
   );
 }

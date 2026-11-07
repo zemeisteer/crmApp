@@ -267,3 +267,57 @@ test('a credit is booked as a separate session, cancelled, forfeited and reinsta
   await expect(missedRows.filter({ hasText: 'Void Student' }).getByRole('button', { name: /^Kredit berish: Void Student/ })).toBeVisible();
   await expect(missedRows.filter({ hasText: 'Session Student' })).toContainText('Foydalanilmagan');
 });
+
+test('simpler make-ups: credits issued with the absence, issue-and-book in one go, the guest marked on the host group page', async ({ page }) => {
+  const a = await newCenter('mkeasy');
+  const t1 = await api('POST', '/teachers', { token: a.token, body: { fullName: 'Easy Origin T', subject: 'English' } });
+  const t2 = await api('POST', '/teachers', { token: a.token, body: { fullName: 'Easy Host T', subject: 'English' } });
+  const origin = await api('POST', '/groups', { token: a.token, body: { name: 'Easy Origin', subject: 'English', teacherId: t1.id, scheduleDays: EVERY_DAY, startTime: '09:00', endTime: '10:00', maxStudents: 10 } });
+  const host = await api('POST', '/groups', { token: a.token, body: { name: 'Easy Host', subject: 'English', teacherId: t2.id, scheduleDays: EVERY_DAY, startTime: '23:00', endTime: '23:50', maxStudents: 10 } });
+  const auto = await api('POST', '/students', { token: a.token, body: { fullName: 'Auto Absent', groupIds: [origin.id] } });
+  const manual = await api('POST', '/students', { token: a.token, body: { fullName: 'Manual Absent', groupIds: [origin.id] } });
+  const today = centerDay();
+  const tashkentNow = new Date(Date.now() + 5 * 3_600_000).toISOString().slice(11, 16);
+  test.skip(tashkentNow >= '23:00', 'the host lesson today has begun');
+  // Before the setting: an absence issues nothing.
+  await api('POST', '/attendance', { token: a.token, body: { groupId: origin.id, date: addDays(today, -3), entries: [{ studentId: manual.id, status: 'ABSENT' }] } });
+
+  await loginOnMainSite(page, a.email);
+  await expectCenterDashboard(page, a.sub);
+  await page.goto(centerUrl(a.sub, '/settings'));
+  const policy = page.getByRole('region', { name: 'Qoplash kreditining muddati' });
+  await policy.getByRole('checkbox', { name: /avtomatik berish/ }).check();
+  await policy.getByRole('button', { name: 'Saqlash' }).click();
+  await expect(policy.getByRole('status')).toHaveText('Saqlandi.');
+
+  // Marked absent: the credit is there at once.
+  await api('POST', '/attendance', { token: a.token, body: { groupId: origin.id, date: addDays(today, -2), entries: [{ studentId: auto.id, status: 'ABSENT' }] } });
+  const credits = await api<Credit[]>('GET', '/makeups/credits', { token: a.token });
+  expect(credits.map((c) => [c.status, c.note])).toEqual([['ISSUED', 'Avtomatik']]);
+
+  // The dashboard counts what is not used yet.
+  await page.goto(centerUrl(a.sub, '/dashboard'));
+  await expect(page.getByTestId('dash-makeups')).toContainText('Ishlatilmagan qoplash kreditlari: 1 ta');
+
+  // Issue and book in one go.
+  await page.goto(centerUrl(a.sub, '/makeups'));
+  const row = page.getByRole('list', { name: 'Qoldirilgan darslar' }).getByRole('listitem').filter({ hasText: 'Manual Absent' });
+  await row.getByRole('button', { name: /^Kredit berish: Manual Absent/ }).click();
+  await page.getByRole('dialog', { name: 'Qoplash krediti berish' }).getByRole('button', { name: 'Kredit berib, darsga yozish' }).click();
+  const book = page.getByRole('dialog', { name: 'Qoplash darsiga yozish' });
+  await book.getByRole('button', { name: 'Guruh', exact: true }).click();
+  await page.getByRole('option', { name: /Easy Host/ }).click();
+  await book.getByRole('button', { name: 'Dars kuni', exact: true }).click();
+  await page.getByRole('option').first().click();
+  await book.getByRole('button', { name: 'Yozish', exact: true }).click();
+  await expect(book).toHaveCount(0);
+  await expect.poll(async () => (await api<Credit[]>('GET', '/makeups/credits', { token: a.token })).find((c) => c.bookings.some((b) => b.targetGroupId === host.id))?.status).toBe('BOOKED');
+
+  // The host group's page lists the guest with today's lesson; "came" uses the credit.
+  await page.goto(centerUrl(a.sub, `/groups/${host.id}`));
+  const guests = page.getByTestId('makeup-guests');
+  await expect(guests).toContainText('Manual Absent');
+  await expect(guests).toContainText('mehmon');
+  await guests.getByRole('button', { name: 'Keldi' }).click();
+  await expect.poll(async () => (await api<Credit[]>('GET', '/makeups/credits', { token: a.token })).find((c) => c.bookings.some((b) => b.targetGroupId === host.id))?.status).toBe('USED');
+});

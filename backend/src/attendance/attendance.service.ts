@@ -174,6 +174,20 @@ export class AttendanceService {
           .returning());
       }
       await settleAbsenceCredits(tx, tenantId, dto.groupId, dto.date, dto.entries.filter((e) => e.status !== 'ABSENT').map((e) => e.studentId), userId ?? null, scheduleId);
+      // The center gives a make-up for every absence: issued with the mark.
+      // One live credit per missed lesson (the unique indexes): marking the
+      // same absence again issues nothing new.
+      const absent = dto.entries.filter((e) => e.status === 'ABSENT').map((e) => e.studentId);
+      if (absent.length) {
+        const [center] = await tx.select({ auto: tenants.makeupAutoIssue, days: tenants.makeupCreditDays }).from(tenants).where(eq(tenants.id, tenantId));
+        if (center?.auto) {
+          const expiresAt = center.days ? new Date(Date.now() + center.days * 86_400_000) : null;
+          await tx.insert(makeupCredits).values(absent.map((studentId) => ({
+            tenantId, studentId, originGroupId: dto.groupId, originDate: dto.date, originScheduleId: scheduleId, reason: 'ABSENT',
+            note: 'Avtomatik', issuedByUserId: userId ?? null, expiresAt,
+          }))).onConflictDoNothing();
+        }
+      }
       // The topic is the lesson's, saved with its marks or not at all.
       if (dto.topic !== undefined) await this.saveTopic(tx, tenantId, dto.groupId, dto.date, scheduleId, dto.topic);
       return { rows: saved, scheduleId, group };

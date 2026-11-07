@@ -403,6 +403,8 @@ export interface Tenant {
   studentAiDailyLimit?: number;
   /** Make-up credits expire this many days after issue; null: never. */
   makeupCreditDays?: number | null;
+  /** A student marked absent gets a make-up credit at once. */
+  makeupAutoIssue?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -2089,7 +2091,7 @@ export const tenantsApi = {
     name?: string; accentColor?: string; category?: TenantCategory; phone?: string; address?: string;
     email?: string; telegramUsername?: string; website?: string; websiteLabel?: string;
     language?: "UZ" | "RU" | "EN"; currency?: "UZS" | "USD" | "RUB"; teachingCategories?: string[];
-    studentAiDailyLimit?: number; makeupCreditDays?: number | null;
+    studentAiDailyLimit?: number; makeupCreditDays?: number | null; makeupAutoIssue?: boolean;
   }) => request<Tenant>("/tenants/me", { method: "PATCH", body: JSON.stringify(data) }),
   uploadLogo: (file: File) => uploadFile<Tenant>("/tenants/me/logo", file),
   getSite: () => request<SiteContent>("/tenants/me/site"),
