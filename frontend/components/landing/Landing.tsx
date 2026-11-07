@@ -166,8 +166,9 @@ export default function Landing() {
         items: planFeatureLines(p, lang),
         highlight: p.popular,
         cta: L.choose,
+        href: `/plans/${encodeURIComponent(p.key.toLowerCase())}`,
       }))
-    : L.plans.map(([sub, ...items], i) => ({ name: planNames[i], price: planPrices[i], monthly: i < 2, sub, items, highlight: i === 1, cta: i === 2 ? L.contact : L.choose }));
+    : L.plans.map(([sub, ...items], i) => ({ name: planNames[i], price: planPrices[i], monthly: i < 2, sub, items, highlight: i === 1, cta: i === 2 ? L.contact : L.choose, href: "/register" }));
 
   const navLinks: [string, string][] = [
     ["#features", L.navFeatures],
@@ -406,7 +407,7 @@ export default function Landing() {
             <h2 style={{ fontSize: 34, fontWeight: 800, letterSpacing: "-0.02em" }}>{L.pricingTitle}</h2>
           </div>
           <div className="lp-grid3 lp-group" style={{ gap: 24, width: "100%" }}>
-            {cards.map(({ name, price, monthly, sub, items, highlight, cta }, i) => {
+            {cards.map(({ name, price, monthly, sub, items, highlight, cta, href }, i) => {
               const pro = highlight;
               return (
                 <div key={i} className="lp-reveal" style={{ border: pro ? `2px solid ${ACCENT}` : "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 28, display: "flex", flexDirection: "column", gap: 18, position: "relative" }}>
@@ -417,7 +418,7 @@ export default function Landing() {
                     {monthly && <span style={{ fontSize: 14, color: "var(--muted)" }}>{L.perMonth}</span>}
                   </div>
                   {sub && <div style={{ fontSize: 13, color: "var(--muted)" }}>{sub}</div>}
-                  <Link href="/register" className="lp-btn" style={{ background: pro ? ACCENT : "var(--chip)", color: pro ? "var(--on-ink)" : "var(--text)", fontSize: 14.5, fontWeight: 700, padding: 12, borderRadius: "var(--radius-sm)", marginTop: 6 }}>
+                  <Link href={href} className="lp-btn" style={{ background: pro ? ACCENT : "var(--chip)", color: pro ? "var(--on-ink)" : "var(--text)", fontSize: 14.5, fontWeight: 700, padding: 12, borderRadius: "var(--radius-sm)", marginTop: 6 }}>
                     {cta}
                   </Link>
                   <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 4 }}>
