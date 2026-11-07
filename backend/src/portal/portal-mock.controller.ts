@@ -80,6 +80,7 @@ export class PortalMockController {
       if (!file && !transcript) throw new BadRequestException('Javob yozib olinmadi');
       return await this.service.saveSpeaking(user.studentId, user.tenantId, id, key, {
         audio: file?.filename,
+        audioMime: file?.mimetype,
         transcript: typeof transcript === 'string' ? transcript : undefined,
         seconds: seconds !== undefined ? Number(seconds) : undefined,
       });

@@ -95,7 +95,7 @@ export class AiService {
   // growing pauses, then on the lighter model. A dropped connection or a
   // request that hangs counts the same. The person sees a plain "busy, try
   // again" message, never the provider's raw error; the details go to the log.
-  private async completeGemini(apiKey: string, prompt: string, maxTokens: number, pdf?: Buffer): Promise<string> {
+  private async completeGemini(apiKey: string, prompt: string, maxTokens: number, pdf?: Buffer, fileMime = 'application/pdf'): Promise<string> {
     const primary = this.config.get<string>('GEMINI_MODEL') || 'gemini-flash-latest';
     const attempts = [
       { model: primary, wait: 0 },
@@ -115,7 +115,7 @@ export class AiService {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
           body: JSON.stringify({
-            contents: [{ role: 'user', parts: [...(pdf ? [{ inline_data: { mime_type: 'application/pdf', data: pdf.toString('base64') } }] : []), { text: prompt }] }],
+            contents: [{ role: 'user', parts: [...(pdf ? [{ inline_data: { mime_type: fileMime, data: pdf.toString('base64') } }] : []), { text: prompt }] }],
             generationConfig: { maxOutputTokens: Math.max(maxTokens, 2048) },
           }),
           signal: AbortSignal.timeout(pdf ? GEMINI_PDF_TIMEOUT_MS : GEMINI_TIMEOUT_MS),
@@ -267,6 +267,28 @@ Javobni FAQAT quyidagi JSON formatida ber (boshqa hech qanday so'z qo'shma):
   }
 
   // Completion with an optional PDF attached (mock test imports).
+  /**
+   * What a student said in a Speaking recording, word for word (Gemini
+   * listens to the audio itself: far closer than the browser's live
+   * recognition, which often mishears accents). Null when there is no
+   * Gemini key, the file is too big, or the AI could not do it: the
+   * browser's transcript is kept then.
+   */
+  async transcribeAudio(audio: Buffer, mime: string): Promise<string | null> {
+    const key = this.config.get<string>('GEMINI_API_KEY');
+    if (!key || audio.length === 0 || audio.length > 14 * 1024 * 1024) return null;
+    const prompt = `Transcribe this recording of a student answering an IELTS Speaking question in English.
+Write exactly what is said, word for word, in English. Keep hesitations ("um", "uh") and repeated words as spoken; do not correct grammar.
+Output only the transcript, nothing else. If there is no speech, output nothing.`;
+    try {
+      const text = (await this.completeGemini(key, prompt, 4000, audio, mime.split(';')[0].trim() || 'audio/webm')).trim();
+      return text || null;
+    } catch (err) {
+      this.logger.warn(`Speaking transcription failed: ${err instanceof Error ? err.message : String(err)}`);
+      return null;
+    }
+  }
+
   async completeWithPdf(prompt: string, maxTokens: number, pdf?: Buffer): Promise<string> {
     if (!this.aiConfigured()) throw new ServiceUnavailableException('AI yoqilmagan');
     return this.complete(prompt, maxTokens, pdf);

@@ -6,6 +6,9 @@ import { and, count, desc, eq, inArray, isNull, or, sql } from 'drizzle-orm';
 import { DB, Database } from '../db/db.module';
 import { aiUsage, enrollments, mockAttempts, mockTests, students, tenants } from '../db/schema';
 import { AiService } from '../ai/ai.service';
+import { readFile } from 'fs/promises';
+import { join } from 'path';
+import { UPLOAD_DIR } from '../common/upload.util';
 import {
   bandToLevel,
   isLevel,
@@ -507,9 +510,16 @@ export class MockTestsService {
   }
 
   // One recorded Speaking answer (audio file and/or the browser transcript).
-  async saveSpeaking(studentId: string, tenantId: string, attemptId: string, key: string, data: { audio?: string; transcript?: string; seconds?: number }) {
+  async saveSpeaking(studentId: string, tenantId: string, attemptId: string, key: string, data: { audio?: string; audioMime?: string; transcript?: string; seconds?: number }) {
     if (!/^\d{1,2}\.\d{1,2}$/.test(key)) throw new BadRequestException("Savol raqami noto'g'ri");
     await this.assertSectionOf(studentId, tenantId, attemptId, 'speaking');
+    // The recording itself, transcribed by the AI: the browser's own live
+    // text often mishears a clear speaker. Kept as it is when that fails.
+    if (data.audio) {
+      const bytes = await readFile(join(UPLOAD_DIR, data.audio)).catch(() => null);
+      const heard = bytes ? await this.ai.transcribeAudio(bytes, data.audioMime ?? 'audio/webm') : null;
+      if (heard) data = { ...data, transcript: heard };
+    }
     await this.mutate(attemptId, tenantId, studentId, (a) => {
       if (parse<Record<string, string>>(a.sectionDone, {}).speaking) throw new ConflictException({ code: 'SECTION_DONE', message: "Bu bo'lim topshirilgan" });
       const all = parse<Answers>(a.answers, {});

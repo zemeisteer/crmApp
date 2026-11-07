@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import QuestionInput from "@/components/tests/QuestionInput";
 import { ApiError, portalMockApi, type MockSection, type PortalMockAttempt } from "@/lib/api";
 import { useLanguage } from "@/lib/i18n-context";
@@ -111,8 +112,58 @@ export default function ExamMode(props: ExamProps) {
     props.onBegin().then(() => setStarted(true)).catch(() => undefined);
   }
 
-  return (
+  // Leaving the test window (another tab or app, or out of full screen)
+  // stops the test on a locked screen until the student comes back; the
+  // third time the section is handed in as it is. The clock does not stop.
+  const [left_, setLeft_] = useState(0);
+  const [locked, setLocked] = useState(false);
+  const leaveSent = useRef(false);
+  useEffect(() => {
+    if (!started || section === "speaking") return;
+    const leave = () => {
+      setLocked((was) => {
+        if (!was) setLeft_((n) => n + 1);
+        return true;
+      });
+    };
+    const onVis = () => { if (document.visibilityState === "hidden") leave(); };
+    const onFs = () => { if (!document.fullscreenElement && document.fullscreenEnabled) leave(); };
+    document.addEventListener("visibilitychange", onVis);
+    window.addEventListener("blur", leave);
+    document.addEventListener("fullscreenchange", onFs);
+    return () => {
+      document.removeEventListener("visibilitychange", onVis);
+      window.removeEventListener("blur", leave);
+      document.removeEventListener("fullscreenchange", onFs);
+    };
+  }, [started, section]);
+  useEffect(() => {
+    if (left_ >= MAX_LEAVES && !leaveSent.current && !sent.current) {
+      leaveSent.current = true;
+      sent.current = true;
+      props.onSubmit(true);
+    }
+  }, [left_, props]);
+
+  // On the page itself, not inside the cabinet's frame: a blurred frame
+  // would hold a fixed screen (and its dropdowns) inside it.
+  const [host, setHost] = useState<HTMLElement | null>(null);
+  useEffect(() => setHost(document.body), []);
+  if (!host) return null;
+
+  return createPortal(
     <div className="exm-root" style={{ color: INK, fontFamily: "Arial, Helvetica, sans-serif", fontSize: font }}>
+      {locked && started && left_ < MAX_LEAVES && (
+        <div role="alertdialog" aria-modal="true" data-testid="exam-locked" style={{ position: "fixed", inset: 0, zIndex: 400, background: "rgba(10,10,20,0.92)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
+          <div style={{ maxWidth: 460, textAlign: "center", display: "flex", flexDirection: "column", gap: 14 }}>
+            <div style={{ fontSize: 22, fontWeight: 800 }}>{t("exm.lockedTitle")}</div>
+            <div style={{ fontSize: 15, lineHeight: 1.6 }}>{t("exm.lockedText").replace("{n}", String(left_)).replace("{max}", String(MAX_LEAVES))}</div>
+            <button type="button" onClick={() => { fs.enter(); setLocked(false); }} style={{ background: "#fff", color: INK, border: "none", fontSize: 16, fontWeight: 800, padding: "12px 20px", borderRadius: 8, cursor: "pointer" }}>
+              {t("exm.lockedBack")}
+            </button>
+          </div>
+        </div>
+      )}
       <style>{EXAM_CSS}</style>
       <ExamHeader
         brand="IELTS"
@@ -142,9 +193,13 @@ export default function ExamMode(props: ExamProps) {
       ) : (
         <SpeakingExam {...props} />
       )}
-    </div>
+    </div>,
+    host,
   );
 }
+
+/** Leaving the test window this many times hands the section in. */
+const MAX_LEAVES = 3;
 
 export const smallBtn: React.CSSProperties = { border: `1px solid ${LINE}`, background: "var(--surface)", borderRadius: "var(--radius-xs)", padding: "5px 8px", fontSize: 13, fontWeight: 700, cursor: "pointer", color: INK };
 
@@ -662,7 +717,14 @@ function WritingExam(props: ExamProps) {
         <main className="exm-q" style={{ display: "flex", flexDirection: "column", padding: 16, borderLeft: `1px solid ${LINE}`, minHeight: 320 }}>
           <textarea value={text} onChange={(e) => onAnswer(String(task), e.target.value)} spellCheck={false} autoCorrect="off" autoCapitalize="off"
             style={{ flex: 1, minHeight: 280, width: "100%", boxSizing: "border-box", border: `1px solid var(--text-faint)`, borderRadius: 4, padding: 12, fontSize: "inherit", fontFamily: "inherit", lineHeight: 1.7, resize: "none" }} />
-          <div style={{ marginTop: 6, fontSize: 14, fontWeight: 700, color: words >= (tk?.minWords ?? 0) ? "var(--success)" : "var(--warning)" }}>{t("exm.wordCount")}: {words}</div>
+          <div style={{ marginTop: 6, display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+            <span style={{ fontSize: 14, fontWeight: 700, color: words >= (tk?.minWords ?? 0) ? "var(--success)" : "var(--warning)" }}>{t("exm.wordCount")}: {words}</span>
+            {task < W.tasks.length - 1 && (
+              <button type="button" data-testid="writing-next" onClick={() => { setTask(task + 1); setPane("text"); }} style={{ ...smallBtn, marginLeft: "auto", background: "var(--info-soft)", padding: "6px 14px" }}>
+                {W.tasks[task + 1].title} →
+              </button>
+            )}
+          </div>
         </main>
       </div>
       <nav style={{ borderTop: `1px solid ${LINE}`, background: "var(--surface-muted)", padding: "6px 10px", display: "flex", gap: 8, alignItems: "center" }}>
@@ -671,7 +733,22 @@ function WritingExam(props: ExamProps) {
             {x.title} <span style={{ fontWeight: 500 }}>({wordsOf(answers[String(i)] ?? "")})</span>
           </button>
         ))}
-        <button type="button" onClick={() => { if (confirm(t("exm.confirm"))) props.onSubmit(false); }} style={{ marginLeft: "auto", background: "var(--success)", color: "var(--on-ink)", border: "none", borderRadius: "var(--radius-xs)", padding: "8px 16px", fontWeight: 800, cursor: "pointer" }}>✓ {t("exm.submit")}</button>
+        <button
+          type="button"
+          onClick={() => {
+            // A task left empty or short is named before handing in.
+            const short = W.tasks
+              .map((x, i) => ({ title: x.title, n: wordsOf(answers[String(i)] ?? ""), min: x.minWords }))
+              .filter((x) => x.n < x.min);
+            const ask = short.length
+              ? `${t("exm.writingShort")}\n${short.map((x) => `- ${x.title}: ${x.n} / ${x.min}`).join("\n")}\n\n${t("exm.confirm")}`
+              : t("exm.confirm");
+            if (confirm(ask)) props.onSubmit(false);
+          }}
+          style={{ marginLeft: "auto", background: "var(--success)", color: "var(--on-ink)", border: "none", borderRadius: "var(--radius-xs)", padding: "8px 16px", fontWeight: 800, cursor: "pointer" }}
+        >
+          ✓ {t("exm.submit")}
+        </button>
       </nav>
     </>
   );
