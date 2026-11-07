@@ -924,6 +924,8 @@ function PaymentsContent() {
   const filteredDebtors = useMemo(() => {
     if (!debtorsData) return [];
     return debtorsData.debtors.filter((d) => {
+      // Only those who owe (or whose payment is still being checked): a student paid in full is not a debtor.
+      if (d.status === "PAID") return false;
       if (debtorStatusFilter !== "ALL" && d.status !== debtorStatusFilter) return false;
       if (debtorGroupFilter && !d.groups.some((g) => g.id === debtorGroupFilter)) return false;
       if (debtorSearch) {
@@ -1931,7 +1933,6 @@ function PaymentsContent() {
                   { value: "UNPAID", label: t("payments.debtors.statusUnpaid") },
                   { value: "PARTIAL", label: t("payments.debtors.statusPartial") },
                   ...((debtorsData?.unverifiedCount || 0) > 0 ? [{ value: "UNVERIFIED", label: t("pay.unverified.status") }] : []),
-                  { value: "PAID", label: t("payments.debtors.statusPaid") },
                 ]}
                 value={debtorStatusFilter}
                 onChange={setDebtorStatusFilter}
