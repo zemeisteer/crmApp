@@ -37,7 +37,7 @@ function phoneValid(raw: string) {
 }
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
-type FieldErrors = Partial<Record<"fullName" | "phone" | "secondaryPhone" | "email" | "overrideReason", string>>;
+type FieldErrors = Partial<Record<"fullName" | "phone" | "secondaryPhone" | "email" | "overrideReason" | "subject", string>>;
 
 function FieldError({ msg }: { msg?: string }) {
   if (!msg) return null;
@@ -122,6 +122,8 @@ export default function LeadFormModal({ open, onClose, onSaved, lead, managers =
     else if (!phoneValid(phone)) errs.phone = t("leadForm.errPhone");
     if (phoneOrEmpty(secondaryPhone) && !phoneValid(secondaryPhone)) errs.secondaryPhone = t("leadForm.errPhone");
     if (email.trim() && !EMAIL_RE.test(email.trim())) errs.email = t("leadForm.errEmail");
+    // What they want to learn: the trial lessons offered follow it.
+    if (!editing && subjects.length > 0 && !subjectId) errs.subject = t("leadForm.errInterest");
     if (override && overrideReason.trim().length < 3) errs.overrideReason = t("leadForm.errReason");
     return errs;
   }
@@ -206,6 +208,20 @@ export default function LeadFormModal({ open, onClose, onSaved, lead, managers =
             <FieldError msg={fieldErrors.phone} />
           </div>
           <div>
+            <label style={{ ...label, color: "var(--primary)" }}>{t("leadForm.interest")}{!editing && subjects.length > 0 ? " *" : ""}</label>
+            <div data-testid="lead-interest" style={{ borderRadius: "var(--radius-sm)", outline: fieldErrors.subject ? "1px solid var(--danger)" : "none" }}>
+              <Select
+                ariaLabel={t("leadForm.interest")}
+                value={subjectId}
+                onChange={(v) => { setSubjectId(v); setCourseId(""); setExtraIds((prev) => prev.filter((id) => id !== v)); clearErr("subject"); }}
+                placeholder={t("leadForm.interestPlaceholder")}
+                options={[{ value: "", label: t("leadForm.interestPlaceholder") }, ...subjects.map((s) => ({ value: s.id, label: s.name }))]}
+              />
+            </div>
+            <FieldError msg={fieldErrors.subject} />
+            {subjects.length === 0 && <div style={{ marginTop: 5, fontSize: 12, color: "var(--text-muted)" }}>{t("leadForm.noSubjectsHint")}</div>}
+          </div>
+          <div>
             <label style={label}>{t("adm.fieldSecondaryPhone")}</label>
             <PhoneInput className="field-input" style={errBorder(!!fieldErrors.secondaryPhone)} value={secondaryPhone} onChange={(v) => { setSecondaryPhone(v); clearErr("secondaryPhone"); }} />
             <FieldError msg={fieldErrors.secondaryPhone} />
@@ -231,17 +247,6 @@ export default function LeadFormModal({ open, onClose, onSaved, lead, managers =
               placeholder={t("common.notSelected")}
               options={[{ value: "", label: t("common.notSelected") }, ...branches.map((b) => ({ value: b.id, label: b.name }))]}
             />
-          </div>
-          <div>
-            <label style={label}>{t("adm.fieldSubject")}</label>
-            <Select
-              ariaLabel={t("adm.fieldSubject")}
-              value={subjectId}
-              onChange={(v) => { setSubjectId(v); setCourseId(""); setExtraIds((prev) => prev.filter((id) => id !== v)); }}
-              placeholder={t("common.notSelected")}
-              options={[{ value: "", label: t("common.notSelected") }, ...subjects.map((s) => ({ value: s.id, label: s.name }))]}
-            />
-            {subjects.length === 0 && <div style={{ marginTop: 5, fontSize: 12, color: "var(--text-muted)" }}>{t("leadForm.noSubjectsHint")}</div>}
           </div>
           {((subjectId && subjects.length > 1) || extraIds.length > 0) && (
             <div style={{ gridColumn: "1 / -1" }}>
