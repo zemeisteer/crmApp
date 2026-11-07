@@ -1,7 +1,10 @@
-import { Body, Controller, Get, Param, Post, Query, Req, Res, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query, Req, Res, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { attachmentStorage, ATTACHMENT_MAX_SIZE } from '../common/upload.util';
 import { SkipThrottle, Throttle } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
 import { IsIn, IsInt, IsOptional, IsString, MaxLength, Min } from 'class-validator';
+import { BadRequestException } from '@nestjs/common';
 import { JwtAuthGuard } from '../common/jwt-auth.guard';
 import { RolesGuard } from '../common/roles.guard';
 import { Roles } from '../common/roles.decorator';
@@ -25,6 +28,18 @@ export class SendMessageDto {
   @IsString() @MaxLength(4000) body!: string;
   @IsString() @MaxLength(64) clientMessageId!: string;
 }
+
+/** A file with an optional caption (multipart: file, body, clientMessageId). */
+export class SendFileDto {
+  @IsOptional() @IsString() @MaxLength(4000) body?: string;
+  @IsString() @MaxLength(64) clientMessageId!: string;
+}
+
+const CHAT_FILE = FileInterceptor('file', { storage: attachmentStorage, limits: { fileSize: ATTACHMENT_MAX_SIZE } });
+const needFile = (file?: Express.Multer.File) => {
+  if (!file) throw new BadRequestException('Fayl tanlang (maydon nomi: file)');
+  return file;
+};
 
 export class ReadDto {
   @IsInt() @Min(0) seq!: number;
@@ -66,6 +81,14 @@ export class ChatController {
   @Post('chat/conversations/:id/messages')
   send(@CurrentUser() u: JwtPayload, @Param('id') id: string, @Body() dto: SendMessageDto) {
     return this.chat.send(staff(u), id, dto);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard) @Roles(...STAFF)
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @Post('chat/conversations/:id/files')
+  @UseInterceptors(CHAT_FILE)
+  sendFile(@CurrentUser() u: JwtPayload, @Param('id') id: string, @Body() dto: SendFileDto, @UploadedFile() file?: Express.Multer.File) {
+    return this.chat.send(staff(u), id, { body: dto.body ?? '', clientMessageId: dto.clientMessageId }, needFile(file));
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard) @Roles(...STAFF)
@@ -118,6 +141,14 @@ export class ChatController {
   @Post('portal/chat/conversations/:id/messages')
   cSend(@PortalUser() u: PortalUserPayload, @Param('id') id: string, @Body() dto: SendMessageDto) {
     return this.chat.send(cabinet(u), id, dto);
+  }
+
+  @UseGuards(PortalAuthGuard)
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @Post('portal/chat/conversations/:id/files')
+  @UseInterceptors(CHAT_FILE)
+  cSendFile(@PortalUser() u: PortalUserPayload, @Param('id') id: string, @Body() dto: SendFileDto, @UploadedFile() file?: Express.Multer.File) {
+    return this.chat.send(cabinet(u), id, { body: dto.body ?? '', clientMessageId: dto.clientMessageId }, needFile(file));
   }
 
   @UseGuards(PortalAuthGuard)

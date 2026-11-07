@@ -1,4 +1,8 @@
 import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { unlink } from 'fs/promises';
+import { join } from 'path';
+import { FilesService } from '../files/files.service';
+import { UPLOAD_DIR } from '../common/upload.util';
 import { and, asc, desc, eq, gt, ilike, inArray, isNull, lt, ne, or, sql } from 'drizzle-orm';
 import { AuditService } from '../audit/audit.service';
 import { DB, Database } from '../db/db.module';
@@ -11,6 +15,14 @@ import {
 export const MAX_BODY = 2000;
 const PAGE = 50;
 const CLIENT_ID_RE = /^[A-Za-z0-9_-]{8,64}$/;
+
+/** The name a file was sent with: multer reads it as latin1; kept short and on one line. */
+function fileName(raw: string | undefined) {
+  let name = raw ?? 'fayl';
+  const utf8 = Buffer.from(name, 'latin1').toString('utf8');
+  if (!utf8.includes('\uFFFD')) name = utf8;
+  return name.replace(/[\r\n\t\/\\]/g, ' ').trim().slice(0, 200) || 'fayl';
+}
 
 /** staff, the student, or a parent (with their own account or the child's PIN). */
 function senderRole(m: { senderType: string; senderViewer: string | null }): 'staff' | 'student' | 'parent' {
@@ -35,6 +47,7 @@ export class ChatService {
   constructor(
     @Inject(DB) private readonly db: Database,
     private readonly audit: AuditService,
+    private readonly files: FilesService,
   ) {}
 
   onMessage(fn: Notify) {
@@ -173,6 +186,7 @@ export class ChatService {
     const cols = {
       id: chatMessages.id, seq: chatMessages.seq, senderType: chatMessages.senderType, senderUserId: chatMessages.senderUserId, senderStudentId: chatMessages.senderStudentId,
       senderViewer: chatMessages.senderViewer, senderName: chatMessages.senderName, senderPerson: chatMessages.senderPerson, senderAbout: chatMessages.senderAbout, body: chatMessages.body, clientMessageId: chatMessages.clientMessageId, createdAt: chatMessages.createdAt,
+      attachmentPath: chatMessages.attachmentPath, attachmentName: chatMessages.attachmentName, attachmentMime: chatMessages.attachmentMime, attachmentSize: chatMessages.attachmentSize,
     };
     let rows;
     if (after !== null) {
@@ -189,10 +203,15 @@ export class ChatService {
 
   private out(actor: ChatActor) {
     const me = participantKey(actor);
-    return (m: { id: string; seq: number; senderType: string; senderUserId: string | null; senderStudentId: string | null; senderViewer: string | null; senderName: string; senderPerson: string | null; senderAbout: string | null; body: string; clientMessageId: string; createdAt: Date }) => ({
+    const now = Date.now();
+    return (m: { id: string; seq: number; senderType: string; senderUserId: string | null; senderStudentId: string | null; senderViewer: string | null; senderName: string; senderPerson: string | null; senderAbout: string | null; body: string; clientMessageId: string; createdAt: Date; attachmentPath?: string | null; attachmentName?: string | null; attachmentMime?: string | null; attachmentSize?: number | null }) => ({
       id: m.id, seq: Number(m.seq), senderType: m.senderType, senderViewer: m.senderViewer, senderName: m.senderName,
       senderRole: senderRole(m), senderPerson: m.senderPerson, senderAbout: m.senderAbout, body: m.body,
       clientMessageId: m.clientMessageId, createdAt: m.createdAt,
+      // Only callers that passed the conversation check reach this: the link is theirs.
+      attachment: m.attachmentPath
+        ? { name: m.attachmentName ?? 'fayl', mime: m.attachmentMime ?? '', size: m.attachmentSize ?? 0, url: this.files.signedPath(m.attachmentPath, now) }
+        : null,
       mine: (m.senderType === 'USER' ? `u:${m.senderUserId}` : `c:${m.senderStudentId}`) === me,
     });
   }
@@ -202,9 +221,20 @@ export class ChatService {
    * same clientMessageId from the same sender returns the message already
    * stored (a retry after a lost answer is not a second message).
    */
-  async send(actor: ChatActor, conversationId: string, dto: { body: string; clientMessageId: string }) {
+  async send(actor: ChatActor, conversationId: string, dto: { body: string; clientMessageId: string }, file?: Express.Multer.File) {
+    try {
+      return await this.store(actor, conversationId, dto, file);
+    } catch (err) {
+      // Refused (no access, a bad body, ...): the upload is not kept.
+      if (file?.filename) await unlink(join(UPLOAD_DIR, file.filename)).catch(() => undefined);
+      throw err;
+    }
+  }
+
+  private async store(actor: ChatActor, conversationId: string, dto: { body: string; clientMessageId: string }, file?: Express.Multer.File) {
     const body = (dto.body ?? '').replace(/\r\n/g, '\n').trim();
-    if (!body) throw new BadRequestException("Xabar bo'sh");
+    // A file may go alone; a message with neither is empty.
+    if (!body && !file) throw new BadRequestException("Xabar bo'sh");
     if (body.length > MAX_BODY) throw new BadRequestException(`Xabar ${MAX_BODY} belgidan oshmasin`);
     if (!CLIENT_ID_RE.test(dto.clientMessageId ?? '')) throw new BadRequestException("clientMessageId noto'g'ri");
     const { c, access } = await this.conversation(actor, conversationId);
@@ -218,12 +248,16 @@ export class ChatService {
       senderStudentId: actor.kind === 'cabinet' ? actor.studentId : null,
       senderViewer: actor.kind === 'cabinet' ? actor.viewer : null,
       ...who, body, clientMessageId: dto.clientMessageId,
+      ...(file ? { attachmentPath: file.filename, attachmentName: fileName(file.originalname), attachmentMime: file.mimetype, attachmentSize: file.size } : {}),
     }).onConflictDoNothing().returning();
     if (!made) {
+      // The same message again: the copy of the file just sent is not needed.
+      if (file?.filename) await unlink(join(UPLOAD_DIR, file.filename)).catch(() => undefined);
       const [prior] = await this.db.select().from(chatMessages)
         .where(and(eq(chatMessages.conversationId, conversationId), eq(chatMessages.senderKey, key), eq(chatMessages.clientMessageId, dto.clientMessageId)));
       return { message: this.out(actor)(prior), duplicate: true };
     }
+    if (file) await this.files.register(actor.tenantId, file.filename, 'CHAT_ATTACHMENT', conversationId);
     await this.db.update(chatConversations).set({ lastMessageAt: made.createdAt }).where(eq(chatConversations.id, c.id));
     // The sender has read their own message.
     await this.markRead(actor, conversationId, Number(made.seq), true);

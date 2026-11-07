@@ -183,7 +183,7 @@ export const ACCESS_CATALOG: AccessKey[] = [
   {
     key: 'chat.use', area: 'center', template: ALL,
     routes: [
-      'GET /api/chat/conversations', 'POST /api/chat/conversations', 'GET /api/chat/conversations/:id/messages', 'POST /api/chat/conversations/:id/messages',
+      'GET /api/chat/conversations', 'POST /api/chat/conversations', 'GET /api/chat/conversations/:id/messages', 'POST /api/chat/conversations/:id/messages', 'POST /api/chat/conversations/:id/files',
       'POST /api/chat/conversations/:id/read', 'GET /api/chat/unread', 'GET /api/chat/contacts', 'GET /api/chat/stream',
     ],
   },

@@ -240,6 +240,8 @@ async function request<T>(
     ...(isPortal ? portalHeaders() : SESSION_TRANSPORT),
     ...(options.headers as Record<string, string> | undefined),
   };
+  // A file upload: the browser sets the multipart type with its boundary.
+  if (typeof FormData !== "undefined" && options.body instanceof FormData) delete headers["Content-Type"];
   // A caller may pass its own token (e.g. a staff token to a /portal door).
   if (token && !headers["Authorization"]) headers["Authorization"] = `Bearer ${token}`;
 
@@ -4398,6 +4400,8 @@ export interface ChatMessage {
   /** When a parent writes: the child. */
   senderAbout?: string | null;
   body: string;
+  /** A file sent with the message; `url` is a signed link that works for about 30 minutes. */
+  attachment?: { name: string; mime: string; size: number; url: string } | null;
   clientMessageId: string;
   createdAt: string;
   mine: boolean;
@@ -4430,6 +4434,8 @@ export interface ChatClient {
   open: (dto: ChatOpenDto) => Promise<ChatConversation>;
   messages: (id: string, q?: { before?: number; after?: number; limit?: number }) => Promise<ChatPage>;
   send: (id: string, body: string, clientMessageId: string) => Promise<{ message: ChatMessage; duplicate: boolean }>;
+  /** A file, with an optional caption. */
+  sendFile: (id: string, file: File, body: string, clientMessageId: string) => Promise<{ message: ChatMessage; duplicate: boolean }>;
   read: (id: string, seq: number) => Promise<{ lastReadSeq: number }>;
   unread: () => Promise<{ unread: number }>;
   contacts: (q?: string) => Promise<ChatContacts>;
@@ -4454,6 +4460,13 @@ function makeChatClient(side: "staff" | "cabinet"): ChatClient {
     },
     send: (id, body, clientMessageId) =>
       request<{ message: ChatMessage; duplicate: boolean }>(`${base}/conversations/${enc(id)}/messages`, { method: "POST", body: JSON.stringify({ body, clientMessageId }) }),
+    sendFile: (id, file, body, clientMessageId) => {
+      const form = new FormData();
+      form.append("body", body);
+      form.append("clientMessageId", clientMessageId);
+      form.append("file", file);
+      return request<{ message: ChatMessage; duplicate: boolean }>(`${base}/conversations/${enc(id)}/files`, { method: "POST", body: form });
+    },
     read: (id, seq) => request<{ lastReadSeq: number }>(`${base}/conversations/${enc(id)}/read`, { method: "POST", body: JSON.stringify({ seq }) }),
     unread: () => request<{ unread: number }>(`${base}/unread`),
     contacts: (q) => request<ChatContacts>(`${base}/contacts${q ? `?q=${enc(q)}` : ""}`),

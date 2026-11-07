@@ -2532,6 +2532,13 @@ export const chatMessages = pgTable('chat_messages', {
   senderPerson: text('sender_person'),
   senderAbout: text('sender_about'),
   body: text('body').notNull(),
+  // A file sent with the message (stored name, the name it was sent with,
+  // its type and size). Opened only through a signed link handed out with
+  // the message list, i.e. after the reader's access was checked.
+  attachmentPath: text('attachment_path'),
+  attachmentName: text('attachment_name'),
+  attachmentMime: text('attachment_mime'),
+  attachmentSize: integer('attachment_size'),
   clientMessageId: text('client_message_id').notNull(),
   createdAt: timestamp('created_at').notNull().defaultNow(),
 }, (t) => ({

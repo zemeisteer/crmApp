@@ -330,4 +330,43 @@ describe('Chat (e2e)', () => {
     expect(text).not.toContain('dars jadvali');
     expect(text).not.toContain('Ota-onadan salom');
   });
+
+  it('a file goes with a message: who may read the conversation gets a working link; others cannot send or see it', async () => {
+    const pdf = Buffer.from('%PDF-1.4\n1 0 obj<<>>endobj\ntrailer<<>>\n%%EOF\n');
+    // The cabinet sends a file with a caption; the name keeps its letters.
+    const sent = (await http().post(`/api/portal/chat/conversations/${center}/files`).set(bearer(s1Cab))
+      .field('body', 'Uy vazifam').field('clientMessageId', cid()).attach('file', pdf, { filename: "vazifa o'quvchi.pdf", contentType: 'application/pdf' })
+      .expect(201)).body.message;
+    expect(sent).toMatchObject({ body: 'Uy vazifam', attachment: { name: "vazifa o'quvchi.pdf", mime: 'application/pdf', size: pdf.length } });
+
+    // The center reads it: the link opens the file.
+    const seen = (await msgs(ownerA, center)).body.messages.find((m: { id: string }) => m.id === sent.id);
+    const got = await http().get(seen.attachment.url).buffer(true).expect(200);
+    expect(Buffer.from(got.body).subarray(0, 5).toString()).toBe('%PDF-');
+    // The link is signed: changed, it does not open.
+    await http().get(seen.attachment.url.replace(/s=[^&]+/, 's=AAAA')).expect(403);
+
+    // Staff may send a file alone (no caption).
+    const alone = (await http().post(`/api/chat/conversations/${center}/files`).set(bearer(ownerA))
+      .field('clientMessageId', cid()).attach('file', Buffer.from('jadval'), { filename: 'jadval.txt', contentType: 'text/plain' }).expect(201)).body.message;
+    expect(alone).toMatchObject({ body: '', attachment: { name: 'jadval.txt' } });
+
+    // Not their conversation: another student, a teacher outside it, another center.
+    // (A new PIN was issued earlier in this suite: sign in again.)
+    const s2Now = await cabinetOf(s2, s2Phone);
+    await http().post(`/api/portal/chat/conversations/${center}/files`).set(bearer(s2Now))
+      .field('clientMessageId', cid()).attach('file', pdf, { filename: 'x.pdf', contentType: 'application/pdf' }).expect((r) => expect([403, 404], 's2 send').toContain(r.status));
+    await http().post(`/api/chat/conversations/${center}/files`).set(bearer(t1))
+      .field('clientMessageId', cid()).attach('file', pdf, { filename: 'x.pdf', contentType: 'application/pdf' }).expect((r) => expect([403, 404], 't1 send').toContain(r.status));
+    await http().post(`/api/chat/conversations/${center}/files`).set(bearer(ownerB))
+      .field('clientMessageId', cid()).attach('file', pdf, { filename: 'x.pdf', contentType: 'application/pdf' }).expect((r) => expect([403, 404], 'ownerB send').toContain(r.status));
+    await msgs(s2Now, center, '', true).expect((r) => expect([403, 404], 's2 read').toContain(r.status));
+
+    // A picture that is not one is refused; no file is no message.
+    await http().post(`/api/chat/conversations/${center}/files`).set(bearer(ownerA))
+      .field('clientMessageId', cid()).attach('file', Buffer.from('<html>'), { filename: 'a.png', contentType: 'image/png' }).expect(400);
+    await http().post(`/api/chat/conversations/${center}/files`).set(bearer(ownerA)).field('clientMessageId', cid()).expect(400);
+    // A text message still needs text.
+    await send(ownerA, center, '   ').expect(400);
+  });
 });

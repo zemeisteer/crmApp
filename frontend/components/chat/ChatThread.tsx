@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
-import { ApiError, type ChatClient, type ChatConversation, type ChatMessage } from "@/lib/api";
+import { ApiError, apiHref, type ChatClient, type ChatConversation, type ChatMessage } from "@/lib/api";
 import {
   MAX_CHAT_BODY, checkBody, dropConfirmed, failPending, firstSeq, lastSeq, mergeMessages, newClientMessageId, removePending, senderLabel, upsertPending, type PendingMessage,
 } from "@/lib/chat";
@@ -55,6 +55,11 @@ export default function ChatThread({
   const [olderError, setOlderError] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
   const [text, setText] = useState("");
+  // A file to go with the next message, and its upload.
+  const [file, setFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [fileError, setFileError] = useState<string | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
   // The text and its client id, read synchronously: a second click before
   // the page re-renders finds the composer already empty.
   const textRef = useRef("");
@@ -240,7 +245,46 @@ export default function ChatThread({
       });
   }
 
+  function pickFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files?.[0] ?? null;
+    if (fileRef.current) fileRef.current.value = "";
+    setFileError(null);
+    if (f && f.size > MAX_CHAT_FILE) {
+      setFileError(t("chat.fileTooBig"));
+      return;
+    }
+    setFile(f);
+  }
+
+  /** The chosen file, with what is typed as its caption. */
+  function sendWithFile(f: File) {
+    const caption = textRef.current.replace(/\r\n/g, "\n").trim();
+    if (caption.length > MAX_CHAT_BODY) return;
+    const clientMessageId = draftIdRef.current ?? newClientMessageId();
+    setUploading(true);
+    setFileError(null);
+    stickToBottom.current = true;
+    client
+      .sendFile(conversationId, f, caption, clientMessageId)
+      .then((r) => {
+        if (!aliveRef.current) return;
+        commit([r.message]);
+        textRef.current = "";
+        draftIdRef.current = null;
+        setText("");
+        setFile(null);
+        onSent(conversationId);
+      })
+      .catch((err) => {
+        if (!aliveRef.current) return;
+        setFileError(err instanceof ApiError ? (err.status === 429 ? t("chat.tooFast") : err.status === 413 ? t("chat.fileTooBig") : err.status >= 500 ? t("chat.sendFailed") : err.message) : t("chat.sendFailed"));
+      })
+      .finally(() => aliveRef.current && setUploading(false));
+  }
+
   function send() {
+    if (uploading) return;
+    if (file) return sendWithFile(file);
     const checked = checkBody(textRef.current);
     if (!checked.ok) return;
     const clientMessageId = draftIdRef.current ?? newClientMessageId();
@@ -324,7 +368,7 @@ export default function ChatThread({
                 <div role="log" aria-live="polite" aria-relevant="additions" aria-label={t("chat.messagesLabel")}>
                 <ol style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 8 }}>
                   {messages.map((m) => (
-                    <Bubble key={m.id} mine={m.mine} name={m.mine ? t("chat.you") : senderLabel(m, { parentOf: t("chat.parentOf"), parentNamed: t("chat.parentNamed") })} time={messageTime(m.createdAt, lang)} body={m.body} />
+                    <Bubble key={m.id} mine={m.mine} name={m.mine ? t("chat.you") : senderLabel(m, { parentOf: t("chat.parentOf"), parentNamed: t("chat.parentNamed") })} time={messageTime(m.createdAt, lang)} body={m.body} attachment={m.attachment} />
                   ))}
                   {visiblePending.map((p) => (
                     <Bubble
@@ -354,7 +398,25 @@ export default function ChatThread({
               }}
               style={{ borderTop: "1px solid var(--border)", padding: "10px 12px", background: "var(--surface)", display: "flex", gap: 8, alignItems: "flex-end" }}
             >
+              <label className="btn" title={t("chat.attach")} style={{ background: "var(--surface-muted)", color: "var(--text)", fontSize: 18, padding: "8px 11px", borderRadius: "var(--radius-sm)", marginBottom: 20, flexShrink: 0, cursor: uploading || status !== "ready" ? "not-allowed" : "pointer" }}>
+                📎
+                <input ref={fileRef} type="file" onChange={pickFile} disabled={uploading || status !== "ready"} aria-label={t("chat.attach")} accept="image/*,application/pdf,audio/*,video/mp4,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip" style={{ display: "none" }} />
+              </label>
               <div style={{ flex: 1, minWidth: 0 }}>
+                {(file || fileError) && (
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6, fontSize: 12.5, flexWrap: "wrap" }}>
+                    {file && (
+                      <span data-testid="chat-file-chip" style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "var(--surface-muted)", padding: "4px 10px", borderRadius: "var(--radius-pill)", maxWidth: "100%", minWidth: 0 }}>
+                        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>📄 {file.name} · {fileSize(file.size)}</span>
+                        {!uploading && (
+                          <button type="button" onClick={() => setFile(null)} aria-label={t("chat.removeFile")} style={{ border: "none", background: "none", cursor: "pointer", color: "var(--text-muted)", fontSize: 14, padding: 0 }}>✕</button>
+                        )}
+                      </span>
+                    )}
+                    {uploading && <span style={{ color: "var(--text-muted)" }}>{t("chat.uploading")}</span>}
+                    {fileError && <span role="alert" style={{ color: "var(--danger)", fontWeight: 600 }}>{fileError}</span>}
+                  </div>
+                )}
                 <label htmlFor={`${uid}-text`} style={srOnly}>{t("chat.composerLabel")}</label>
                 <textarea
                   id={`${uid}-text`}
@@ -383,7 +445,7 @@ export default function ChatThread({
                   </span>
                 </div>
               </div>
-              <button type="submit" className="btn" disabled={!checked.ok || status !== "ready"} style={{ background: ACCENT, color: "var(--on-ink)", fontWeight: 700, fontSize: 14, padding: "10px 16px", borderRadius: "var(--radius-sm)", marginBottom: 20, flexShrink: 0 }}>
+              <button type="submit" className="btn" disabled={status !== "ready" || uploading || (file ? tooLong : !checked.ok)} style={{ background: ACCENT, color: "var(--on-ink)", fontWeight: 700, fontSize: 14, padding: "10px 16px", borderRadius: "var(--radius-sm)", marginBottom: 20, flexShrink: 0 }}>
                 {t("chat.send")}
               </button>
             </form>
@@ -394,7 +456,16 @@ export default function ChatThread({
   );
 }
 
-function Bubble({ mine, name, time, body, failed }: { mine: boolean; name: string; time: string; body: string; failed?: { error: string; retry: () => void; retryLabel: string } }) {
+const MAX_CHAT_FILE = 15 * 1024 * 1024;
+
+function fileSize(n: number) {
+  if (n >= 1024 * 1024) return `${(n / 1024 / 1024).toFixed(1)} MB`;
+  return `${Math.max(1, Math.round(n / 1024))} KB`;
+}
+
+function Bubble({ mine, name, time, body, failed, attachment }: { mine: boolean; name: string; time: string; body: string; failed?: { error: string; retry: () => void; retryLabel: string }; attachment?: ChatMessage["attachment"] }) {
+  const isImage = !!attachment && /^image\/(jpeg|png|webp|gif)$/.test(attachment.mime);
+  const href = attachment ? apiHref(attachment.url) : "";
   return (
     <li style={{ display: "flex", flexDirection: "column", alignItems: mine ? "flex-end" : "flex-start", minWidth: 0 }}>
       <div
@@ -407,7 +478,19 @@ function Bubble({ mine, name, time, body, failed }: { mine: boolean; name: strin
         }}
       >
         <div style={{ fontSize: 11.5, fontWeight: 700, opacity: mine && !failed ? 0.9 : 1, color: mine ? undefined : "var(--text-soft)", marginBottom: 2, overflowWrap: "anywhere" }}>{name}</div>
-        <div style={{ fontSize: 14, lineHeight: 1.45, whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{body}</div>
+        {attachment && (
+          isImage ? (
+            <a href={href} target="_blank" rel="noopener noreferrer" style={{ display: "block", marginTop: 4 }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={href} alt={attachment.name} style={{ display: "block", maxWidth: "100%", maxHeight: 260, borderRadius: "var(--radius-sm)" }} />
+            </a>
+          ) : (
+            <a data-testid="chat-attachment" href={href} target="_blank" rel="noopener noreferrer" download={attachment.name} style={{ display: "inline-flex", alignItems: "center", gap: 6, marginTop: 4, fontSize: 13.5, fontWeight: 600, color: "inherit", textDecoration: "underline", overflowWrap: "anywhere" }}>
+              📎 {attachment.name} <span style={{ fontWeight: 400, opacity: 0.8 }}>({fileSize(attachment.size)})</span>
+            </a>
+          )
+        )}
+        {body && <div style={{ fontSize: 14, lineHeight: 1.45, whiteSpace: "pre-wrap", overflowWrap: "anywhere", marginTop: attachment ? 4 : 0 }}>{body}</div>}
         {time && <div style={{ fontSize: 11, marginTop: 3, textAlign: "right", color: mine && !failed ? "var(--primary-soft)" : "var(--text-muted)" }}>{time}</div>}
       </div>
       {failed && (

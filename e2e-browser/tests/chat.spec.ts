@@ -361,3 +361,50 @@ test("a parent's messages carry the parent's name and the child in the reader's 
   await expect(log).toContainText("Dilnoza Parent (Label Kid's parent)");
   await expect(log).not.toContainText('ota-ona');
 });
+
+test('a file in a message: the student attaches one with a caption; the teacher sees it live and opens it', async ({ page, browser }) => {
+  const a = await newCenter('chatfile');
+  const teacherEmail = `zzbr-chatfile-t-${run}@example.test`;
+  const t = await api('POST', '/teachers', { token: a.token, body: { fullName: 'File Teacher', subject: 'English' } });
+  await api('POST', `/teachers/${t.id}/account`, { token: a.token, body: { email: teacherEmail, password: PASSWORD } });
+  const group = await api('POST', '/groups', { token: a.token, body: { name: 'File Group', subject: 'English', teacherId: t.id, maxStudents: 10 } });
+  const local = `94${String(Date.now()).slice(-7)}`;
+  const kid = await api('POST', '/students', { token: a.token, body: { fullName: 'File Kid', phone: `+998${local}`, groupIds: [group.id] } });
+  const { pin } = await api('POST', `/students/${kid.id}/portal-pin`, { token: a.token });
+
+  await loginOnMainSite(page, teacherEmail);
+  await expectCenterDashboard(page, a.sub);
+  await page.goto(centerUrl(a.sub, '/messages'));
+  await expect(page.locator('[data-chat-live="open"]')).toHaveCount(1);
+
+  const { ctx, cab } = await cabinetOnMessages(browser, a.sub, local, String(pin), 'File Kid');
+  await cab.getByRole('button', { name: '+ Yangi suhbat' }).click();
+  await cab.getByRole('region', { name: 'Kimga yozasiz?' }).getByRole('button', { name: 'Yozish: File Teacher' }).click();
+  await expect(cab.getByRole('heading', { name: 'File Teacher', level: 2 })).toBeVisible();
+
+  // Pick a file: its name shows; it can be taken back and picked again.
+  const pdf = { name: 'uy-vazifa.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4\n%%EOF\n') };
+  await cab.getByLabel('Fayl biriktirish').setInputFiles(pdf);
+  await expect(cab.getByTestId('chat-file-chip')).toContainText('uy-vazifa.pdf');
+  await cab.getByRole('button', { name: 'Faylni olib tashlash' }).click();
+  await expect(cab.getByTestId('chat-file-chip')).toHaveCount(0);
+  await cab.getByLabel('Fayl biriktirish').setInputFiles(pdf);
+  await cab.getByRole('textbox', { name: 'Xabar matni' }).fill('Mana vazifam');
+  await cab.getByRole('button', { name: 'Yuborish', exact: true }).click();
+  const cabLog = cab.getByRole('log', { name: 'Xabarlar' });
+  await expect(cabLog.getByTestId('chat-attachment')).toContainText('uy-vazifa.pdf');
+  await expect(cab.getByTestId('chat-file-chip')).toHaveCount(0);
+
+  // The teacher gets it live and the link opens the file.
+  const row = page.getByRole('list', { name: 'Suhbatlar' }).getByRole('button', { name: /File Kid/ });
+  await row.click();
+  const log = page.getByRole('log', { name: 'Xabarlar' });
+  const link = log.getByTestId('chat-attachment');
+  await expect(link).toContainText('uy-vazifa.pdf');
+  await expect(log).toContainText('Mana vazifam');
+  const href = await link.getAttribute('href');
+  const res = await page.request.get(href!);
+  expect(res.status()).toBe(200);
+  expect((await res.body()).subarray(0, 5).toString()).toBe('%PDF-');
+  await ctx.close();
+});

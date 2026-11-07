@@ -20,7 +20,9 @@ export type FileKind =
   | 'MOCK_ASSET'
   | 'MOCK_IMPORT'
   | 'MOCK_SPEAKING'
-  | 'PAYMENT_RECEIPT';
+  | 'PAYMENT_RECEIPT'
+  // Owner: the conversation. Its links come with the message list (chat/).
+  | 'CHAT_ATTACHMENT';
 
 export const PUBLIC_KINDS: ReadonlySet<string> = new Set(['PUBLIC_LOGO', 'PUBLIC_SITE']);
 
