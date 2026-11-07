@@ -8,7 +8,7 @@ import { TEACHER_PUBLIC_COLUMNS } from '../common/teacher-columns';
 import { GenerateMaterialDto, PlacementTestDto } from './dto/ai.dto';
 import { bankFor, pickFromBank } from './placement-bank';
 import { normalizeQuestion, type TestQuestion } from '../common/test-questions';
-import { essayGradePrompt, generateTestPrompt, parseJsonArray, pdfExtractPrompt, textExtractPrompt } from './test-prompts';
+import { essayGradePrompt, generateTestPrompt, parseJsonArray, parseLooseJson, pdfExtractPrompt, textExtractPrompt } from './test-prompts';
 import { tutorPrompt, type TutorContext } from './tutor-prompt';
 
 
@@ -183,14 +183,17 @@ ${studentSummaries.join('\n') || 'Guruhda o\'quvchi yo\'q.'}`;
     const typeLabel =
       dto.type === 'LESSON_PLAN' ? 'dars rejasi' : dto.type === 'HOMEWORK' ? 'uy vazifasi' : 'test (quiz)';
 
-    const prompt = `Sen tajribali o'qituvchisan. Quyidagi mavzu uchun ${typeLabel} tayyorla, o'zbek tilida, aniq va amaliy formatda (sarlavhalar va ro'yxatlar bilan):
+    const prompt = `Sen tajribali o'qituvchisan. Quyidagi mavzu uchun ${typeLabel} tayyorla, aniq va amaliy formatda (sarlavhalar va ro'yxatlar bilan).
+Til: o'qituvchi talabi qaysi tilda yozilgan bo'lsa, o'sha tilda; talab bo'lmasa - o'zbek tilida.
+Salomlashma, o'zingni tanishtirma, "tayyorlab berdim" kabi gaplar yozma: darhol materialning o'zidan boshla.
+O'qituvchi talabi bo'lsa, uni so'zma-so'z bajar (savollar soni, turi, mavzusi).
 
 Fan: ${dto.subject}
 Daraja: ${dto.level || "belgilanmagan"}
-Mavzu: ${dto.topic}${dto.customInstructions ? `\nO'qituvchi maxsus talabi / tafsifi: ${dto.customInstructions}` : ''}`;
+Mavzu: ${dto.topic}${dto.customInstructions ? `\nO'qituvchi talabi (eng muhimi): ${dto.customInstructions}` : ''}`;
 
     if (!this.aiConfigured()) throw aiOff();
-    const text = await this.complete(prompt, 1500);
+    const text = await this.complete(prompt, 8000);
     if (!text.trim()) throw new ServiceUnavailableException(AI_BUSY);
     return { material: text };
   }
@@ -204,13 +207,19 @@ Mavzu: ${dto.topic}${dto.customInstructions ? `\nO'qituvchi maxsus talabi / tafs
 
     if (!this.aiConfigured()) throw aiOff();
     const prompt = `Sen o'quv markazi uchun tajribali o'qituvchi yordamchisisan.
-Quyidagi guruh va fan uchun aniq, qiziqarli va professional uyga vazifa (homework) tavsiya et.
+Quyidagi guruh va fan uchun uyga vazifa (homework) TAYYORLA.
 Fan: ${subject}
 Guruh nomi: ${groupName || "umumiy"}
 Mavzu (agar ko'rsatilgan bo'lsa): ${topic || "navbatdagi mavzu"}
 Daraja: ${dto.level || "ko'rsatilmagan"}
-O'qituvchining talabi (eng muhimi, aynan shunga mos vazifa tuz): ${request || "yo'q"}
-Vazifa matni o'qituvchi talabidagi tilda bo'lsin.
+O'qituvchining talabi (ENG MUHIMI): ${request || "yo'q"}
+
+Qoidalar:
+- O'qituvchi talabini so'zma-so'z bajar: nechta savol/mashq so'ragan bo'lsa, aynan shuncha savol/mashqni O'ZING to'liq yozib ber (masalan "12 ta savol" - 12 ta tayyor savol, javob variantlari bilan). O'quvchiga "savol tuzing" deb topshirma, agar o'qituvchi aniq shuni so'ramagan bo'lsa.
+- Turli savol turlari so'ralgan bo'lsa (test, bo'sh joyni to'ldirish, to'g'ri/noto'g'ri, gap tuzish...), har birini ishlat va har bir savol oldida turini yoz.
+- Matn o'qituvchi talabi yozilgan tilda bo'lsin (inglizcha yozgan bo'lsa - inglizcha).
+- Salomlashish, o'zingni tanishtirish va keraksiz izoh yozma: faqat vazifaning o'zi.
+- Oxirida "## Answer key" (yoki talab tilida "Javoblar") bo'limi bo'lsin.
 
 Vazifaning o'zi (mashqlar, gaplar, misollar, matn) o'quvchiga PDF fayl bo'lib beriladi — uni "content" ga to'liq yoz:
 sarlavhalar "## " bilan, mashqlar raqamlangan, har bir mashqda aniq ko'rsatma va barcha gaplar/misollar bo'lsin (o'quvchi faqat shu faylga qarab bajara olsin).
@@ -223,14 +232,9 @@ Javobni FAQAT quyidagi JSON formatida ber (boshqa hech qanday so'z qo'shma):
 "content": "Vazifaning to'liq matni (qatorlar \\n bilan)",
 "dueDays": 3
 }`;
-    const text = await this.complete(prompt, 4000);
-    const match = text.match(/\{[\s\S]*\}/);
-    let parsed: { title?: unknown; description?: unknown; content?: unknown; dueDays?: number } | null = null;
-    try {
-      parsed = match ? JSON.parse(match[0]) : null;
-    } catch {
-      parsed = null; // not the JSON asked for: "busy, try again" below
-    }
+    const text = await this.complete(prompt, 8000);
+    // A model often puts raw line breaks inside the JSON strings: read it leniently.
+    const parsed = parseLooseJson(text) as { title?: unknown; description?: unknown; content?: unknown; dueDays?: number } | null;
     if (parsed) {
       return {
         title: String(parsed.title ?? '').slice(0, 160),
