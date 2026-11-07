@@ -4081,6 +4081,7 @@ export const dict = {
   "adm.trialDuration": { UZ: "Davomiyligi (daqiqa)", RU: "Длительность (мин)", EN: "Duration (min)" },
   "adm.trialGroup": { UZ: "Guruh (ixtiyoriy)", RU: "Группа (необязательно)", EN: "Group (optional)" },
   "adm.trialTeacher": { UZ: "O'qituvchi (ixtiyoriy)", RU: "Учитель (необязательно)", EN: "Teacher (optional)" },
+  "adm.trialResultLater": { UZ: "Keldi/kelmadi dars boshlangandan keyin belgilanadi", RU: "Пришёл/не пришёл отмечается после начала урока", EN: "Came or missed is marked once the lesson starts" },
   "adm.trialNotYet": { UZ: "Bu sinov darsi hali bo'lmagan. Natijani baribir hozir belgilaysizmi?", RU: "Это пробное занятие ещё не прошло. Всё равно отметить результат сейчас?", EN: "This trial lesson has not taken place yet. Record its outcome now anyway?" },
   "adm.trialAttend": { UZ: "Qatnashdi", RU: "Пришёл", EN: "Attended" },
   "adm.trialMiss": { UZ: "Kelmadi", RU: "Не пришёл", EN: "Missed" },

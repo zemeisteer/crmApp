@@ -551,8 +551,15 @@ function LeadProfile() {
                       {tr.outcomeNote && <div style={{ fontSize: 12.5, color: "var(--text-muted)" }}>{tr.outcomeNote}</div>}
                       {editable && tr.status === "BOOKED" && (
                         <div className="adm-actions">
-                          <button type="button" className="btn" style={{ ...primaryBtn, padding: "6px 12px", fontSize: 12 }} disabled={busy} onClick={() => { if (trialHappened(tr.scheduledAt, t("adm.trialNotYet"))) run(() => leadsApi.attendTrial(lead.id, tr.id)); }}>{t("adm.trialAttend")}</button>
-                          <button type="button" className="btn" style={{ ...ghostBtn, padding: "6px 12px", fontSize: 12 }} disabled={busy} onClick={() => { if (trialHappened(tr.scheduledAt, t("adm.trialNotYet"))) run(() => leadsApi.missTrial(lead.id, tr.id)); }}>{t("adm.trialMiss")}</button>
+                          {/* Came or missed: only once the trial has begun (the server refuses earlier too). */}
+                          {new Date(tr.scheduledAt).getTime() <= Date.now() ? (
+                            <>
+                              <button type="button" className="btn" style={{ ...primaryBtn, padding: "6px 12px", fontSize: 12 }} disabled={busy} onClick={() => run(() => leadsApi.attendTrial(lead.id, tr.id))}>{t("adm.trialAttend")}</button>
+                              <button type="button" className="btn" style={{ ...ghostBtn, padding: "6px 12px", fontSize: 12 }} disabled={busy} onClick={() => run(() => leadsApi.missTrial(lead.id, tr.id))}>{t("adm.trialMiss")}</button>
+                            </>
+                          ) : (
+                            <span style={{ fontSize: 12, color: "var(--text-muted)", alignSelf: "center" }}>{t("adm.trialResultLater")}</span>
+                          )}
                           <button type="button" className="btn" style={{ ...ghostBtn, padding: "6px 12px", fontSize: 12 }} onClick={() => openDialog({ kind: "trial", reschedule: tr })}>{t("adm.trialReschedule")}</button>
                           <button type="button" className="btn" style={{ ...dangerBtn, padding: "6px 12px", fontSize: 12 }} disabled={busy} onClick={() => run(() => leadsApi.cancelTrial(lead.id, tr.id))}>{t("adm.trialCancel")}</button>
                         </div>
@@ -774,11 +781,6 @@ function LeadProfile() {
 
 // The outcome of a trial is normally recorded after it took place: for one
 // that is still ahead, ask before marking it attended or missed.
-function trialHappened(scheduledAt: string, question: string) {
-  if (new Date(scheduledAt).getTime() <= Date.now()) return true;
-  return window.confirm(question);
-}
-
 export default function LeadProfilePage() {
   return (
     <DashboardShell>

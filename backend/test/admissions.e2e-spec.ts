@@ -5,6 +5,7 @@ import { App } from 'supertest/types';
 import { AppModule } from '../src/app.module.js';
 import { LeadsService } from '../src/leads/leads.service.js';
 import { AdmissionsEventsService, type AdmissionsEvent } from '../src/leads/admissions-events.service.js';
+import { trialStarted } from './trial-started';
 
 // Admissions & Sales CRM — the 25 mandatory cases from the sprint spec.
 // Every run registers fresh tenants, so phone numbers can be fixed literals:
@@ -78,6 +79,7 @@ describe('Admissions & Sales CRM Suite (e2e)', () => {
     const { date } = futureTashkentDay(20);
     const hour = String(trialHour++ % 24).padStart(2, '0');
     const t = await http().post(`/api/leads/${id}/trials`).set(auth(token)).send({ scheduledAt: `${date}T${hour}:00:00+05:00` }).expect(201);
+    await trialStarted(t.body.id);
     await http().post(`/api/leads/${id}/trials/${t.body.id}/attend`).set(auth(token)).send({}).expect(201);
   }
 
@@ -334,12 +336,15 @@ describe('Admissions & Sales CRM Suite (e2e)', () => {
 
   // 15
   it('15. records trial attendance (TRIAL_BOOKED -> TRIAL_ATTENDED) without touching student attendance', async () => {
+    await trialStarted(trialId);
     const res = await http().post(`/api/leads/${trialLeadId}/trials/${trialId}/attend`).set(auth(tokenA)).send({ note: 'Liked it' }).expect(201);
     expect(res.body.status).toBe('ATTENDED');
     const l = await http().get(`/api/leads/${trialLeadId}`).set(auth(tokenA)).expect(200);
     expect(l.body.status).toBe('TRIAL_ATTENDED');
+    await trialStarted(trialId);
     await http().post(`/api/leads/${trialLeadId}/trials/${trialId}/attend`).set(auth(tokenA)).send({}).expect(409);
     // A cross-tenant caller cannot touch the trial.
+    await trialStarted(trialId);
     await http().post(`/api/leads/${trialLeadId}/trials/${trialId}/attend`).set(auth(tokenB)).send({}).expect(404);
   });
 
@@ -351,9 +356,11 @@ describe('Admissions & Sales CRM Suite (e2e)', () => {
     const trial = (await http().post(`/api/leads/${lead.body.id}/trials`).set(auth(tokenA)).send({ scheduledAt: `${when}T11:00:00+05:00` }).expect(201)).body;
     // Only a missed one can be undone.
     expect((await http().post(`/api/leads/${lead.body.id}/trials/${trial.id}/reopen`).set(auth(tokenA)).expect(409)).body.code).toBe('TRIAL_NOT_MISSED');
+    await trialStarted(trial.id);
     await http().post(`/api/leads/${lead.body.id}/trials/${trial.id}/miss`).set(auth(tokenA)).send({}).expect(201);
     const back = (await http().post(`/api/leads/${lead.body.id}/trials/${trial.id}/reopen`).set(auth(tokenA)).expect(201)).body;
     expect(back.status).toBe('BOOKED');
+    await trialStarted(trial.id);
     await http().post(`/api/leads/${lead.body.id}/trials/${trial.id}/attend`).set(auth(tokenA)).send({}).expect(201);
     const after = (await http().get(`/api/leads/${lead.body.id}`).set(auth(tokenA)).expect(200)).body;
     expect(after.status).toBe('TRIAL_ATTENDED');
@@ -542,6 +549,7 @@ describe('Admissions & Sales CRM Suite (e2e)', () => {
     await move(tokenC, trial, 'CONTACTED');
     const { date } = futureTashkentDay(10);
     const t = await http().post(`/api/leads/${trial}/trials`).set(auth(tokenC)).send({ scheduledAt: `${date}T10:00:00+05:00` }).expect(201);
+    await trialStarted(t.body.id);
     await http().post(`/api/leads/${trial}/trials/${t.body.id}/attend`).set(auth(tokenC)).send({}).expect(201);
 
     const from = new Date(suffix - 60_000).toISOString();

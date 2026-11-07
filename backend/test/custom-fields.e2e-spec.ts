@@ -5,6 +5,7 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from '../src/app.module.js';
 import { configureApp } from '../src/app.setup.js';
+import { trialStarted } from './trial-started';
 
 // Custom fields for students and leads: definitions (owner/admin), values
 // through the student and lead routes, lead -> student mapping, exports,
@@ -35,6 +36,7 @@ describe('Custom fields (e2e)', () => {
   const qualify = async (leadId: string) => {
     await http().post(`/api/leads/${leadId}/transition`).set(bearer(ownerA)).send({ toStatus: 'CONTACTED' }).expect(201);
     const t = await http().post(`/api/leads/${leadId}/trials`).set(bearer(ownerA)).send({ scheduledAt: `${futureDay(25)}T${String(trialHour++ % 24).padStart(2, '0')}:00:00+05:00` }).expect(201);
+    await trialStarted(t.body.id);
     await http().post(`/api/leads/${leadId}/trials/${t.body.id}/attend`).set(bearer(ownerA)).send({}).expect(201);
     await http().post(`/api/leads/${leadId}/transition`).set(bearer(ownerA)).send({ toStatus: 'QUALIFIED' }).expect(201);
   };

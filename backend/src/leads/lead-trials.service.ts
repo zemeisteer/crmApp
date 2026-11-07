@@ -223,6 +223,13 @@ export class LeadTrialsService {
     }
   }
 
+  /** Came or missed is known only once the trial has begun. */
+  private requireStarted(trial: TrialRow) {
+    if (trial.scheduledAt.getTime() > Date.now()) {
+      throw new ConflictException({ code: 'TRIAL_NOT_STARTED', message: "Sinov darsi hali boshlanmagan: natijani dars boshlangandan keyin belgilang" });
+    }
+  }
+
   // ---- commands ----
 
   async book(tenantId: string, actor: Actor, leadId: string, dto: BookTrialDto) {
@@ -316,6 +323,7 @@ export class LeadTrialsService {
       if (lead.archivedAt) throw new ConflictException({ code: 'LEAD_ARCHIVED', message: 'Lid arxivlangan' });
       const t = await this.getTrial(tx, tenantId, leadId, trialId);
       this.requireBooked(t);
+      this.requireStarted(t);
       const [updated] = await tx.update(leadTrials)
         .set({ status: 'ATTENDED', outcomeNote: note?.trim() || t.outcomeNote, updatedAt: new Date() })
         .where(and(eq(leadTrials.id, t.id), eq(leadTrials.status, 'BOOKED')))
@@ -339,6 +347,7 @@ export class LeadTrialsService {
       await this.leadsService.getLeadRow(tx, tenantId, leadId, { lock: true });
       const t = await this.getTrial(tx, tenantId, leadId, trialId);
       this.requireBooked(t);
+      if (status === 'MISSED') this.requireStarted(t);
       const [updated] = await tx.update(leadTrials)
         .set({ status, outcomeNote: note?.trim() || t.outcomeNote, updatedAt: new Date() })
         .where(eq(leadTrials.id, t.id))
