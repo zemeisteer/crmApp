@@ -21,9 +21,13 @@ describe('Payroll disbursement (e2e)', () => {
   const auth = (t = owner) => ({ Authorization: `Bearer ${t}` });
   const month = '2031-05';
 
-  // A FIXED teacher with no groups: the month's pay is the whole rate.
-  const teacher = async (salaryValue: number, fullName = `Teacher ${Math.random()}`) =>
-    (await http().post('/api/teachers').set(auth()).send({ fullName, salaryType: 'FIXED', salaryValue }).expect(201)).body.id as string;
+  // A FIXED teacher with a group (no start date): the month's pay is the whole rate.
+  // (A teacher with no group and no lesson in the month has nothing to be paid yet.)
+  const teacher = async (salaryValue: number, fullName = `Teacher ${Math.random()}`, token = owner) => {
+    const id = (await http().post('/api/teachers').set(auth(token)).send({ fullName, salaryType: 'FIXED', salaryValue }).expect(201)).body.id as string;
+    await http().post('/api/groups').set(auth(token)).send({ name: `G ${fullName}`, subject: 'English', teacherId: id }).expect(201);
+    return id;
+  };
   const disburse = (body: Record<string, unknown>, key?: string, token = owner) => {
     const r = http().post('/api/salary-payments/disburse').set(auth(token));
     if (key) r.set('Idempotency-Key', key);
@@ -99,7 +103,7 @@ describe('Payroll disbursement (e2e)', () => {
 
     await disburse({ teacherId: t, amount: 200_000 }, key).expect(409);
     // Keys belong to a center: another center's payout with the same key is its own.
-    const otherTeacher = (await http().post('/api/teachers').set(auth(other)).send({ fullName: 'Other', salaryType: 'FIXED', salaryValue: 100_000 }).expect(201)).body.id;
+    const otherTeacher = await teacher(100_000, 'Other', other);
     await disburse({ teacherId: otherTeacher, amount: 100_000 }, key, other).expect(201);
     expect(await payoutsOf(t)).toHaveLength(1);
   });

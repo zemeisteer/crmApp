@@ -308,6 +308,12 @@ function TeacherDetailContent() {
                   estimate of our own that could disagree with it. */}
               {payrollLine ? `${formatMoney(payrollLine.calculatedSalary)} ${t("common.sumUnit")}` : "—"}
             </div>
+            {/* Why the amount is what it is: a fixed salary counts from the start day, and only once there are lessons. */}
+            {payrollLine?.details?.noLessons ? (
+              <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 4 }}>{t("teacherDetail.salaryNoLessons")}</div>
+            ) : payrollLine?.details?.workedFromDay ? (
+              <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 4 }}>{t("teacherDetail.salaryFromDay").replace("{day}", String(payrollLine.details.workedFromDay))}</div>
+            ) : null}
             {/* Payouts are made in Reports -> Payroll (installments, one expense each). */}
             {payrollLine && payrollLine.calculatedSalary > 0 ? (
               payrollLine.isPaid ? (

@@ -2700,6 +2700,8 @@ export const dict = {
   "teacherDetail.statTotalStudents": { UZ: "Jami o'quvchilar", RU: "Всего учащихся", EN: "Total students" },
   "teacherDetail.statMonthGroupRevenue": { UZ: "Bu oy guruh tushumi", RU: "Доход группы за месяц", EN: "Group revenue this month" },
   "teacherDetail.statMonthCalculatedSalary": { UZ: "Bu oy hisoblangan maosh", RU: "Начисленная зарплата за месяц", EN: "Calculated salary this month" },
+  "teacherDetail.salaryNoLessons": { UZ: "Bu oy guruhi va darsi yo'q: hozircha to'lanadigan narsa yo'q", RU: "В этом месяце нет групп и уроков: пока платить не за что", EN: "No group or lesson this month: nothing to pay yet" },
+  "teacherDetail.salaryFromDay": { UZ: "Ishga kirgan kunidan ({day}-sana) hisoblangan", RU: "Посчитано с даты начала работы ({day}-го)", EN: "Counted from the start day (the {day}th)" },
   "teacherDetail.paidThisMonth": { UZ: "Bu oy to'landi", RU: "Оплачено в этом месяце", EN: "Paid this month" },
   "teacherDetail.markPaid": { UZ: "To'landi deb belgilash", RU: "Отметить как оплачено", EN: "Mark as paid" },
   "teacherDetail.aboutTeacher": { UZ: "O'qituvchi haqida", RU: "Об учителе", EN: "About the teacher" },

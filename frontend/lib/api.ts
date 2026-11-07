@@ -1939,6 +1939,10 @@ export interface TeacherPayrollItem {
     lateLessons?: number;
     substitutedLessons?: number;
     deduction?: number;
+    /** FIXED: paid from this day of the month (started mid-month). */
+    workedFromDay?: number | null;
+    /** FIXED: no group and no lesson this month: nothing to pay yet. */
+    noLessons?: boolean;
   };
 }
 
