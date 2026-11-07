@@ -112,7 +112,8 @@ export default function PublicSitePage() {
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("+998 ");
   const [parentPhone, setParentPhone] = useState("");
-  const [selectedCourse, setSelectedCourse] = useState("");
+  // Subjects the applicant is interested in (several may be chosen; none: "not sure yet").
+  const [selectedCourses, setSelectedCourses] = useState<string[]>([]);
   const [selectedBranch, setSelectedBranch] = useState("");
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -130,7 +131,6 @@ export default function PublicSitePage() {
       .getPublicShowcase(params.subdomain)
       .then((res) => {
         setData(res);
-        if (res.subjects.length > 0) setSelectedCourse(res.subjects[0].subject);
         if (res.branches.length > 0) setSelectedBranch(res.branches[0].id);
       })
       .catch(() => setNotFound(true))
@@ -143,7 +143,7 @@ export default function PublicSitePage() {
   }, [data, selectedSubject]);
 
   function scrollToApply(subject?: string) {
-    if (subject) setSelectedCourse(subject);
+    if (subject) setSelectedCourses((list) => (list.includes(subject) ? list : [...list, subject]));
     applyRef.current?.scrollIntoView({ behavior: "smooth" });
   }
 
@@ -175,7 +175,8 @@ export default function PublicSitePage() {
         fullName: fullName.trim(),
         phone: phone.trim(),
         parentPhone: phoneOrEmpty(parentPhone) || undefined,
-        subject: selectedCourse || undefined,
+        subject: selectedCourses[0] || undefined,
+        subjects: selectedCourses.length ? selectedCourses : undefined,
         branchId: selectedBranch || undefined,
         notes: notes.trim() || undefined,
         consent,
@@ -660,11 +661,13 @@ export default function PublicSitePage() {
               {/* Choices as buttons, not dropdowns: every option is visible
                   and works the same on phones and computers. */}
               {subjects.length > 0 && (
-                <ChipGroup
+                <MultiChipGroup
                   label={L.course}
-                  value={selectedCourse}
-                  onChange={setSelectedCourse}
-                  options={[...subjects.map((x) => ({ value: x.subject, label: x.subject })), { value: "", label: L.courseUnsure }]}
+                  hint={L.courseMany}
+                  values={selectedCourses}
+                  onChange={setSelectedCourses}
+                  options={subjects.map((x) => ({ value: x.subject, label: x.subject }))}
+                  noneLabel={L.courseUnsure}
                 />
               )}
               {branches.length > 1 && (
@@ -753,6 +756,28 @@ function ChipGroup({ label, value, onChange, options }: { label: string; value: 
             {o.label}
           </button>
         ))}
+      </div>
+    </div>
+  );
+}
+
+/** Several choices (checkboxes as buttons); the last one, "not sure yet", clears the rest. */
+function MultiChipGroup({ label, hint, values, onChange, options, noneLabel }: { label: string; hint: string; values: string[]; onChange: (v: string[]) => void; options: Array<{ value: string; label: string }>; noneLabel: string }) {
+  const toggle = (v: string) => onChange(values.includes(v) ? values.filter((x) => x !== v) : [...values, v]);
+  return (
+    <div role="group" aria-label={label} style={{ display: "flex", flexDirection: "column", gap: 8, minWidth: 0 }}>
+      <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-2)" }}>
+        {label} <span style={{ fontWeight: 500, color: "var(--muted)" }}>· {hint}</span>
+      </span>
+      <div className="ps-chips">
+        {options.map((o) => (
+          <button key={o.value} type="button" role="checkbox" aria-checked={values.includes(o.value)} className="ps-chip" onClick={() => toggle(o.value)}>
+            {values.includes(o.value) ? "✓ " : ""}{o.label}
+          </button>
+        ))}
+        <button type="button" role="checkbox" aria-checked={values.length === 0} className="ps-chip" onClick={() => onChange([])}>
+          {noneLabel}
+        </button>
       </div>
     </div>
   );

@@ -508,6 +508,8 @@ export interface PublicApplyDto {
   phone: string;
   parentPhone?: string;
   subject?: string;
+  /** All subjects chosen; the first is the main one. */
+  subjects?: string[];
   branchId?: string;
   notes?: string;
   consent: boolean;

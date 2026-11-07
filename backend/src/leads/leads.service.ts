@@ -593,6 +593,8 @@ export class LeadsService {
       phone: string;
       secondaryPhone?: string;
       subjectText?: string;
+      /** More subjects the applicant chose (beyond the main one). */
+      extraSubjectTexts?: string[];
       branchId?: string;
       notes?: string;
       utm?: { source?: string; medium?: string; campaign?: string };
@@ -638,6 +640,13 @@ export class LeadsService {
       );
       if (matches.length === 1) desiredSubjectId = matches[0].id;
     }
+    // The other subjects chosen, as the center's own subjects (by name).
+    const extraNames = [...new Set((dto.extraSubjectTexts ?? []).map((x) => x.trim().toLowerCase()).filter(Boolean))].slice(0, 10);
+    const extraSubjectIds = extraNames.length
+      ? (await this.db.select({ id: subjects.id }).from(subjects).where(
+        and(eq(subjects.tenantId, tenantId), eq(subjects.status, 'ACTIVE'), inArray(sql`lower(trim(${subjects.name}))`, extraNames)),
+      )).map((r) => r.id).filter((id) => id !== desiredSubjectId)
+      : [];
 
     try {
       const lead = await this.db.transaction(async (tx) => {
@@ -649,6 +658,7 @@ export class LeadsService {
           secondaryPhone: dto.secondaryPhone?.trim() || null,
           source,
           desiredSubjectId,
+          extraSubjectIds,
           legacySubject: desiredSubjectId ? null : subjectText,
           preferredBranchId: branchId,
           // Only what the person wrote: where it came from is shown as the

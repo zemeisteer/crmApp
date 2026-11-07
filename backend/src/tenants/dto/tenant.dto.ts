@@ -1,4 +1,4 @@
-import { IsArray, IsBoolean, Equals, IsEmail, IsIn, IsInt, IsOptional, IsString, Max, MaxLength, Min, MinLength } from 'class-validator';
+import { ArrayMaxSize, IsArray, IsBoolean, Equals, IsEmail, IsIn, IsInt, IsOptional, IsString, Max, MaxLength, Min, MinLength } from 'class-validator';
 
 export class CreateTenantDto {
   @IsString()
@@ -134,6 +134,15 @@ export class PublicApplyDto {
   @IsString()
   @MaxLength(120)
   subject?: string;
+
+  // Everything the applicant is interested in (the first is the main one;
+  // `subject` alone is still accepted from older pages).
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(10)
+  @IsString({ each: true })
+  @MaxLength(120, { each: true })
+  subjects?: string[];
 
   @IsOptional()
   @IsString()
