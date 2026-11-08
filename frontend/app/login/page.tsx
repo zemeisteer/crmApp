@@ -35,6 +35,9 @@ const ROLE_LABELS: Record<string, Record<"UZ" | "RU" | "EN", string>> = {
 export default function LoginPage() {
   const { login, completeTwoFactorLogin, selectWorkspace, user, loading: authLoading } = useAuth();
   const { t, lang, setLang } = useLanguage();
+  // On a center's own address (bilimdon.<root>): known after mount, as the host is.
+  const [onCenterSite, setOnCenterSite] = useState(false);
+  useEffect(() => setOnCenterSite(!!subdomainFromHost(window.location.host)), []);
   const [emailOrPhone, setEmailOrPhone] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -630,14 +633,21 @@ export default function LoginPage() {
               color: "var(--text-muted)",
             }}
           >
-            {t("auth.noAccount")}{" "}
-            <Link
-              href="/register"
-              id="start-free-link"
-              style={{ color: ACCENT, fontWeight: 700, textDecoration: "none" }}
-            >
-              {t("auth.tryFree")}
-            </Link>
+            {/* A center's own address signs its people in; new centers start on the main site. */}
+            {onCenterSite ? (
+              <span data-testid="center-login-hint">{t("auth.centerAccountHint")}</span>
+            ) : (
+              <>
+                {t("auth.noAccount")}{" "}
+                <Link
+                  href="/register"
+                  id="start-free-link"
+                  style={{ color: ACCENT, fontWeight: 700, textDecoration: "none" }}
+                >
+                  {t("auth.tryFree")}
+                </Link>
+              </>
+            )}
           </div>
         </form>
       </div>

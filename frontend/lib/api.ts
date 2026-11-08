@@ -433,6 +433,9 @@ export interface PublicShowcaseTeacher {
   fullName: string;
   subject?: string | null;
   startDate?: string | null;
+  score?: string | null;
+  experienceYears?: number | null;
+  photoPath?: string | null;
 }
 
 export interface PublicShowcaseBranch {
@@ -920,6 +923,10 @@ export interface CustomFieldError {
 export type CustomFieldPayload = Record<string, CustomFieldValue | null>;
 
 export interface Teacher {
+  /** Shown on the center's site. */
+  score?: string | null;
+  experienceYears?: number | null;
+  photoPath?: string | null;
   id: string;
   tenantId: string;
   userId: string | null;

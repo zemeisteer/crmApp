@@ -1,5 +1,6 @@
 "use client";
 
+import TeacherProfileFields, { emptyProfile, profileBody, type TeacherProfile } from "@/components/teachers/TeacherProfileFields";
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import DashboardShell from "@/components/DashboardShell";
@@ -56,6 +57,7 @@ function TeachersContent() {
   const [startDate, setStartDate] = useState("");
   const [salaryType, setSalaryType] = useState("FIXED");
   const [salaryValue, setSalaryValue] = useState("");
+  const [profile, setProfile] = useState<TeacherProfile>(emptyProfile);
 
   const usedSubjects = useMemo(() => Array.from(new Set(groups.map((g) => g.subject))).sort(), [groups]);
   // The form offers the center's own directions (saved subjects and group
@@ -123,6 +125,7 @@ function TeachersContent() {
     setStartDate("");
     setSalaryType("FIXED");
     setSalaryValue("");
+    setProfile(emptyProfile);
     setError(null);
   }
 
@@ -145,6 +148,7 @@ function TeachersContent() {
         startDate: startDate || undefined,
         salaryType: salaryValue ? salaryType : undefined,
         salaryValue: salaryValue ? Number(salaryValue) : undefined,
+        ...profileBody(profile, false),
       };
       // The key covers the groups too: a retry after a failed group update
       // gets the same teacher back and assigns the groups again.
@@ -463,6 +467,7 @@ function TeachersContent() {
           <Field label={tr("tch.startDate")}>
             <DatePicker value={startDate} onChange={setStartDate} />
           </Field>
+          <TeacherProfileFields subject={[...selectedDirections, customDirection].join(" ")} value={profile} onChange={setProfile} />
           <Field label={tr("teachers.fieldSalaryType")}>
             <Select
               options={[

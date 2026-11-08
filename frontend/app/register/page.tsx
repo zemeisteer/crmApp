@@ -1,6 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { subdomainFromHost } from "@/lib/domain";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
 import { useLanguage } from "@/lib/i18n-context";
@@ -12,6 +14,12 @@ const ACCENT = "var(--primary)";
 export default function RegisterPage() {
   const { register } = useAuth();
   const { t, lang, setLang } = useLanguage();
+  // A new center is created on the main site; a center's own address only
+  // signs its people in (their logins come from the center's admin).
+  const router = useRouter();
+  useEffect(() => {
+    if (subdomainFromHost(window.location.host)) router.replace("/login");
+  }, [router]);
   const [centerName, setCenterName] = useState("");
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");

@@ -149,7 +149,7 @@ export class TenantsService {
     // 2. Teachers (active teachers without deletedAt, only safe public info)
     const activeTeachers = await this.db.query.teachers.findMany({
       where: and(eq(teachers.tenantId, tenant.id), isNull(teachers.deletedAt)),
-      columns: { id: true, fullName: true, subject: true, startDate: true },
+      columns: { id: true, fullName: true, subject: true, startDate: true, score: true, experienceYears: true, photoPath: true },
     });
 
     // 3. Branches

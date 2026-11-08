@@ -1,5 +1,6 @@
 "use client";
 
+import TeacherProfileFields, { emptyProfile, profileBody, type TeacherProfile } from "@/components/teachers/TeacherProfileFields";
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
@@ -58,6 +59,7 @@ function TeacherDetailContent() {
   const [startDate, setStartDate] = useState("");
   const [salaryType, setSalaryType] = useState("FIXED");
   const [salaryValue, setSalaryValue] = useState("");
+  const [profile, setProfile] = useState<TeacherProfile>(emptyProfile);
   const [editError, setEditError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -198,6 +200,7 @@ function TeacherDetailContent() {
     setStartDate(teacher!.startDate ? String(teacher!.startDate).slice(0, 10) : "");
     setSalaryType(teacher!.salaryType || "FIXED");
     setSalaryValue(teacher!.salaryValue != null ? String(teacher!.salaryValue) : "");
+    setProfile({ score: teacher!.score ?? "", experienceYears: teacher!.experienceYears != null ? String(teacher!.experienceYears) : "", photoPath: teacher!.photoPath ?? "" });
     setEditError(null);
     setEditOpen(true);
   }
@@ -216,6 +219,7 @@ function TeacherDetailContent() {
         startDate: startDate || undefined,
         salaryType: salaryValue ? salaryType : undefined,
         salaryValue: salaryValue ? Number(salaryValue) : undefined,
+        ...profileBody(profile, true),
       });
       setEditOpen(false);
       load();
@@ -497,6 +501,7 @@ function TeacherDetailContent() {
           <Field label={t("tch.startDate")}>
             <DatePicker value={startDate} onChange={setStartDate} />
           </Field>
+          <TeacherProfileFields subject={subject} value={profile} onChange={setProfile} />
           <Field label={t("teachers.fieldSalaryType")}>
             <Select
               options={[

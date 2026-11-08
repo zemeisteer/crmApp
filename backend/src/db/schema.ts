@@ -569,6 +569,12 @@ export const teachers = pgTable('teachers', {
   email: text('email'),
   birthDate: timestamp('birth_date'),
   startDate: timestamp('start_date'),
+  // Shown on the center's site: the teacher's own result in what they teach
+  // ("IELTS 8.0", "SAT 1520", "TORFL C1"), years of teaching, and a photo
+  // (a public site picture, uploaded like the gallery's).
+  score: text('score'),
+  experienceYears: integer('experience_years'),
+  photoPath: text('photo_path'),
   salaryType: text('salary_type'),
   salaryValue: integer('salary_value'),
   // Retry protection for the create form (the same pattern as payments):

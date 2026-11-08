@@ -9,6 +9,8 @@ import { useLanguage } from "@/lib/i18n-context";
 import type { TranslationKey } from "@/lib/i18n";
 import { SITE_TEXT, type SiteLang } from "@/components/site/site-text";
 import PhoneInput from "@/components/PhoneInput";
+import ThemeToggle from "@/components/ThemeToggle";
+import HeroSlides, { type Slide } from "@/components/site/HeroSlides";
 import { isCompleteUzPhone, phoneOrEmpty } from "@/lib/validation";
 
 // A center's public site: calm and editorial (white, one accent colour, the
@@ -99,7 +101,9 @@ const CSS = `
   .ps-gallery img{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:12px;display:block;}
   .ps-gallery img:first-child{grid-column:span 2;grid-row:span 2;aspect-ratio:auto;height:100%;}
   .ps-person{display:flex;flex-direction:column;gap:4px;}
-  .ps-avatar{width:100%;aspect-ratio:1;border-radius:16px;background:var(--surface-muted);display:flex;align-items:center;justify-content:center;font-family:var(--ps-display);font-weight:700;font-size:40px;color:var(--text-2);margin-bottom:10px;}
+  .ps-avatar img{width:100%;height:100%;object-fit:cover;border-radius:16px;display:block;}
+  .ps-tag-muted{color:var(--text-2);}
+  .ps-avatar{width:100%;aspect-ratio:1;overflow:hidden;border-radius:16px;background:var(--surface-muted);display:flex;align-items:center;justify-content:center;font-family:var(--ps-display);font-weight:700;font-size:40px;color:var(--text-2);margin-bottom:10px;}
   .ps-faq-list{border-top:1px solid var(--border);}
   .ps-faq{border-bottom:1px solid var(--border);padding:20px 0;}
   .ps-faq summary{list-style:none;cursor:pointer;display:flex;justify-content:space-between;gap:16px;font-weight:600;font-size:16px;}
@@ -120,12 +124,39 @@ const CSS = `
   .ps-footer a:hover{color:var(--text);}
   .ps-float{position:fixed;right:16px;bottom:16px;z-index:30;display:none;gap:8px;}
   .ps-span2{grid-column:1/-1;}
+  .ps a.ps-primary{color:#fff;}
+  .ps a.ps-dark{color:var(--surface);}
+  .ps-icon-btn{width:34px;height:34px;border-radius:10px;border:1px solid var(--border);background:var(--surface);color:var(--text);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;}
+  .ps-hero-carousel{min-width:0;}
+  .ps-grid1{display:grid;grid-template-columns:minmax(0,1fr);gap:20px;}
+  .ps-result{padding:22px;height:100%;box-sizing:border-box;}
+  .ps-marquee{overflow:hidden;-webkit-mask-image:linear-gradient(90deg,transparent,#000 6%,#000 94%,transparent);mask-image:linear-gradient(90deg,transparent,#000 6%,#000 94%,transparent);}
+  .ps-marquee-track{display:flex;gap:20px;width:max-content;animation:psMarquee linear infinite;}
+  .ps-marquee:hover .ps-marquee-track{animation-play-state:paused;}
+  .ps-marquee-item{width:260px;flex:0 0 260px;}
+  @keyframes psMarquee{from{transform:translateX(0);}to{transform:translateX(calc(-50% - 10px));}}
+  @media (prefers-reduced-motion:reduce){.ps-marquee-track{animation:none;}.ps-marquee{overflow-x:auto;}}
+  .ps-pages{display:flex;gap:6px;justify-content:center;margin-top:32px;}
+  .ps-pages button{min-width:40px;height:40px;border-radius:10px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;}
+  .ps-pages button[aria-current="page"]{background:var(--text);border-color:var(--text);color:var(--surface);}
+  .ps-pages button:disabled{opacity:.4;cursor:default;}
+  .ps-branch{overflow:hidden;display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);}
+  .ps-grid2 .ps-branch,.ps-grid3 .ps-branch{grid-template-columns:minmax(0,1fr);}
+  .ps-map{width:100%;height:100%;min-height:260px;border:0;display:block;background:var(--surface-muted);}
+  .ps-news{padding:24px;display:flex;gap:20px;align-items:flex-start;}
+  .ps-news-date{flex:0 0 64px;height:64px;border-radius:14px;background:var(--surface-muted);display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.1;}
+  .ps-news-date b{font-family:var(--ps-display);font-size:24px;}
+  .ps-news-date span{font-size:12px;color:var(--muted);}
+  .ps-steps{list-style:none;margin:10px 0 0;padding:0;display:flex;flex-direction:column;gap:18px;}
+  .ps-steps li{display:flex;gap:14px;align-items:flex-start;font-size:15.5px;}
+  .ps-step-n{flex:0 0 32px;height:32px;border-radius:50%;border:1px solid var(--border);background:var(--surface);display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;}
   @media (max-width:980px){
     .ps-nav{display:none!important;}
     .ps-hero{grid-template-columns:minmax(0,1fr);gap:40px;padding-top:48px;}
     .ps-hero-media{aspect-ratio:auto;max-height:none;}
     .ps-hero-media img{aspect-ratio:16/10;}
     .ps-split,.ps-apply{grid-template-columns:minmax(0,1fr);gap:28px;}
+    .ps-branch{grid-template-columns:minmax(0,1fr);}
     .ps-grid3{grid-template-columns:repeat(2,minmax(0,1fr));}
     .ps-grid4{grid-template-columns:repeat(2,minmax(0,1fr));}
   }
@@ -160,6 +191,7 @@ export default function PublicSitePage() {
   const [notFound, setNotFound] = useState(false);
   const [loading, setLoading] = useState(true);
   const [selectedSubject, setSelectedSubject] = useState<string>("ALL");
+  const [coursePage, setCoursePage] = useState(1);
 
   // Application form
   const [fullName, setFullName] = useState("");
@@ -287,8 +319,16 @@ export default function PublicSitePage() {
   const video = youtubeEmbed(site?.videoUrl);
   const socials = site ? (Object.entries(site.socials).filter(([, v]) => v) as Array<[string, string]>) : [];
   const telegramLink = tenant.telegramUsername ? `https://t.me/${tenant.telegramUsername.replace(/^@/, "")}` : site?.socials.telegram ?? null;
-  // The center's own first photo; without one, its initial on a quiet panel.
-  const heroPhoto = site?.gallery?.[0] ? fileUrl(site.gallery[0]) : null;
+  // The hero carousel: the center's own photos first, then three drawn scenes
+  // (a lesson in class, practising with the AI helper, a graduate).
+  const slides: Slide[] = [
+    ...(site?.gallery ?? []).slice(0, 5).map((g): Slide => ({ kind: "photo", title: tenant.name, text: L.slidePhoto, src: fileUrl(g) ?? "" })),
+    { kind: "teacher", title: L.slideTeacherTitle, text: L.slideTeacherText },
+    { kind: "ai", title: L.slideAiTitle, text: L.slideAiText },
+    { kind: "results", title: L.slideResultsTitle, text: L.slideResultsText },
+  ];
+  const pageCount = Math.max(1, Math.ceil(filteredGroups.length / COURSES_PER_PAGE));
+  const shownGroups = filteredGroups.slice((Math.min(coursePage, pageCount) - 1) * COURSES_PER_PAGE, Math.min(coursePage, pageCount) * COURSES_PER_PAGE);
   // Questions every visitor asks, answered from the center's real data when
   // it has not written its own.
   const fill = (text: string, vars: Record<string, string>) => text.replace(/\{(\w+)\}/g, (_, k: string) => vars[k] ?? "");
@@ -338,6 +378,7 @@ export default function PublicSitePage() {
               ))}
             </div>
             {/* The cabinet lives on the same address: <sub>.<ROOT_DOMAIN>/portal */}
+            <ThemeToggle className="ps-icon-btn" />
             <Link href="/portal" className="ps-link">{L.cabinet}</Link>
             <Link href="/login" className="ps-link ps-hide-sm">{L.login}</Link>
             <button type="button" className="ps-btn ps-primary ps-hide-sm" onClick={() => scrollToApply()}>{L.apply}</button>
@@ -360,26 +401,8 @@ export default function PublicSitePage() {
           </div>
           {tenant.phone && <a href={`tel:${tenant.phone}`} style={{ fontSize: 14, color: "var(--text-2)" }}>{L.call}: <b style={{ color: "var(--text)", fontWeight: 600 }}>{tenant.phone}</b></a>}
         </div>
-        <div className="ps-hero-media">
-          {heroPhoto ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={heroPhoto} alt={tenant.name} />
-          ) : (
-            // No photo yet: the groups a visitor can join soonest.
-            <div className="ps-hero-list">
-              <div style={{ fontSize: 13, fontWeight: 600, color: "var(--muted)" }}>{L.coursesTitle}</div>
-              {[...data.groups].sort((x, y) => Number(!!y.isNew) - Number(!!x.isNew)).slice(0, 4).map((g) => (
-                <button key={g.id} type="button" onClick={() => scrollToApply(g.subject)} className="ps-hero-row">
-                  <span style={{ minWidth: 0 }}>
-                    <b style={{ fontWeight: 600, display: "block" }}>{g.name}</b>
-                    <span style={{ fontSize: 13, color: "var(--muted)" }}>{[shortDays(g.scheduleDays), g.startTime].filter(Boolean).join(" · ") || g.subject}</span>
-                  </span>
-                  <span style={{ fontSize: 14, whiteSpace: "nowrap" }}>{g.monthlyPrice > 0 ? money(g.monthlyPrice) : ""} →</span>
-                </button>
-              ))}
-              {data.groups.length === 0 && <div style={{ fontSize: 14, color: "var(--muted)" }}>{L.noCourses}</div>}
-            </div>
-          )}
+        <div className="ps-hero-carousel">
+          <HeroSlides slides={slides} accent={accent} />
         </div>
       </section>
 
@@ -450,27 +473,13 @@ export default function PublicSitePage() {
         <section className="ps-muted">
           <div className="ps-wrap ps-sec">
             <SectionHead label={L.resultsLabel} title={L.resultsTitle} />
-            <div className="ps-grid4">
-              {site!.results.map((r, i) => (
-                <div key={i} className="ps-card" style={{ padding: 22 }}>
-                  <div style={{ fontFamily: "var(--ps-display)", fontWeight: 700, fontSize: 30, letterSpacing: "-0.02em" }}>{r.result}</div>
-                  <div style={{ fontWeight: 600, fontSize: 15, marginTop: 10 }}>{r.name}</div>
-                  {r.detail && <div style={{ fontSize: 13.5, color: "var(--muted)", marginTop: 2 }}>{r.detail}</div>}
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* NEW GROUPS: opened lately or not started yet */}
-      {data.groups.some((g) => g.isNew) && (
-        <section id="new-groups" data-testid="site-new-groups" className="ps-wrap ps-sec">
-          <SectionHead label={L.newGroupsLabel} title={L.newGroupsTitle} />
-          <div className="ps-grid3">
-            {data.groups.filter((g) => g.isNew).slice(0, 6).map((g) => (
-              <GroupCard key={g.id} g={g} isNew L={L} shortDays={shortDays} onApply={() => scrollToApply(g.subject)} />
-            ))}
+            <Marquee items={site!.results} min={5} render={(r) => (
+              <div className="ps-card ps-result">
+                <div style={{ fontFamily: "var(--ps-display)", fontWeight: 700, fontSize: 30, letterSpacing: "-0.02em" }}>{r.result}</div>
+                <div style={{ fontWeight: 600, fontSize: 15, marginTop: 10 }}>{r.name}</div>
+                {r.detail && <div style={{ fontSize: 13.5, color: "var(--muted)", marginTop: 2 }}>{r.detail}</div>}
+              </div>
+            )} />
           </div>
         </section>
       )}
@@ -482,18 +491,29 @@ export default function PublicSitePage() {
           {subjects.length > 1 && (
             <div className="ps-tabs" role="tablist" aria-label={L.coursesLabel}>
               {[{ key: "ALL", name: `${L.all} (${data.groups.length})` }, ...subjects.map((s) => ({ key: s.subject, name: `${s.subject} (${s.groupCount})` }))].map((f) => (
-                <button key={f.key} type="button" role="tab" aria-selected={selectedSubject === f.key} onClick={() => setSelectedSubject(f.key)}>{f.name}</button>
+                <button key={f.key} type="button" role="tab" aria-selected={selectedSubject === f.key} onClick={() => { setSelectedSubject(f.key); setCoursePage(1); }}>{f.name}</button>
               ))}
             </div>
           )}
           {filteredGroups.length === 0 ? (
             <div className="ps-card" style={{ padding: 32, textAlign: "center", color: "var(--muted)", fontSize: 14 }}>{L.noCourses}</div>
           ) : (
-            <div className="ps-grid3">
-              {filteredGroups.map((g) => (
-                <GroupCard key={g.id} g={g} isNew={!!g.isNew} L={L} shortDays={shortDays} onApply={() => scrollToApply(g.subject)} />
-              ))}
-            </div>
+            <>
+              <div className="ps-grid3">
+                {shownGroups.map((g) => (
+                  <GroupCard key={g.id} g={g} isNew={!!g.isNew} L={L} shortDays={shortDays} onApply={() => scrollToApply(g.subject)} />
+                ))}
+              </div>
+              {pageCount > 1 && (
+                <nav className="ps-pages" aria-label={L.coursesLabel}>
+                  <button type="button" disabled={coursePage <= 1} onClick={() => setCoursePage((p) => Math.max(1, p - 1))} aria-label="prev">←</button>
+                  {Array.from({ length: pageCount }, (_, i) => i + 1).map((n) => (
+                    <button key={n} type="button" aria-current={n === Math.min(coursePage, pageCount) ? "page" : undefined} onClick={() => setCoursePage(n)}>{n}</button>
+                  ))}
+                  <button type="button" disabled={coursePage >= pageCount} onClick={() => setCoursePage((p) => Math.min(pageCount, p + 1))} aria-label="next">→</button>
+                </nav>
+              )}
+            </>
           )}
         </div>
       </section>
@@ -522,15 +542,24 @@ export default function PublicSitePage() {
       {teachers.length > 0 && (
         <section id="teachers" className="ps-wrap ps-sec">
           <SectionHead label={L.teachersLabel} title={L.teachersTitle} />
-          <div className="ps-grid4">
-            {teachers.map((tc) => (
-              <div key={tc.id} className="ps-person">
-                <div className="ps-avatar">{tc.fullName.split(/\s+/).slice(0, 2).map((w) => w[0]).join("").toUpperCase()}</div>
-                <div style={{ fontWeight: 600, fontSize: 15 }}>{tc.fullName}</div>
-                <div style={{ fontSize: 13.5, color: "var(--muted)" }}>{tc.subject || L.teacherFallback}</div>
+          <Marquee items={teachers} min={5} render={(tc) => (
+            <div className="ps-person">
+              <div className="ps-avatar">
+                {tc.photoPath ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={fileUrl(tc.photoPath) ?? ""} alt={tc.fullName} loading="lazy" />
+                ) : tc.fullName.split(/\s+/).slice(0, 2).map((w) => w[0]).join("").toUpperCase()}
               </div>
-            ))}
-          </div>
+              <div style={{ fontWeight: 600, fontSize: 15.5 }}>{tc.fullName}</div>
+              <div style={{ fontSize: 14, color: "var(--text-2)" }}>{tc.subject ? L.teacherOf.replace("{s}", tc.subject.split(",")[0].trim()) : L.teacherFallback}</div>
+              {(tc.score || tc.experienceYears) && (
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 6 }}>
+                  {tc.score && <span className="ps-tag">{tc.score}</span>}
+                  {tc.experienceYears ? <span className="ps-tag ps-tag-muted">{L.yearsExp.replace("{n}", String(tc.experienceYears))}</span> : null}
+                </div>
+              )}
+            </div>
+          )} />
         </section>
       )}
 
@@ -581,14 +610,24 @@ export default function PublicSitePage() {
       {branches.length > 0 && (
         <section id="branches" className="ps-muted">
           <div className="ps-wrap ps-sec">
-            <SectionHead label={L.branchesLabel} title={L.branchesTitle} note={site?.workingHours ? `${L.hours}: ${site.workingHours}` : undefined} />
-            <div className="ps-grid3">
+            <SectionHead label={L.branchesLabel} title={L.branchesTitle} />
+            <div className={branches.length === 1 ? "ps-grid1" : "ps-grid2"}>
               {branches.map((b) => (
-                <div key={b.id} className="ps-card" style={{ padding: 22, display: "flex", flexDirection: "column", gap: 6 }}>
-                  <h3 className="ps-h4">{b.name}</h3>
-                  <div style={{ fontSize: 14.5, color: "var(--text-2)" }}>{b.address || L.noAddress}</div>
-                  {b.phone && <a href={`tel:${b.phone}`} style={{ fontSize: 14.5 }}>{b.phone}</a>}
-                  {b.mapUrl && <a href={b.mapUrl} target="_blank" rel="noreferrer" className="ps-link-accent" style={{ marginTop: 6 }}>{L.openMap} →</a>}
+                <div key={b.id} className="ps-card ps-branch">
+                  {mapEmbed(b) && (
+                    <iframe className="ps-map" src={mapEmbed(b)!} title={b.name} loading="lazy" referrerPolicy="no-referrer-when-downgrade" />
+                  )}
+                  <div style={{ padding: 22, display: "flex", flexDirection: "column", gap: 8 }}>
+                    <h3 className="ps-h4">{b.name}</h3>
+                    <div className="ps-dl" style={{ fontSize: 14.5 }}>
+                      <dt>{L.addressLabel}</dt><dd>{b.address || L.noAddress}</dd>
+                      {b.phone && (<><dt>{L.phoneLabel}</dt><dd><a href={`tel:${b.phone}`}>{b.phone}</a></dd></>)}
+                      {site?.workingHours && (<><dt>{L.hours}</dt><dd>{site.workingHours}</dd></>)}
+                    </div>
+                    {(b.mapUrl || b.address) && (
+                      <a href={b.mapUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(b.address!)}`} target="_blank" rel="noreferrer" className="ps-btn ps-ghost" style={{ alignSelf: "flex-start", marginTop: 6 }}>{L.openMap} →</a>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
@@ -600,12 +639,18 @@ export default function PublicSitePage() {
       {announcements.length > 0 && (
         <section id="news" className="ps-wrap ps-sec">
           <SectionHead label={L.newsLabel} title={L.newsTitle} />
-          <div className="ps-list">
-            {announcements.map((a) => (
-              <article key={a.id}>
-                <div style={{ fontSize: 13, color: "var(--muted)" }}>{formatDate(a.publishedAt, lang, "dayMonth")}</div>
-                <h3 className="ps-h4" style={{ margin: "4px 0 6px" }}>{a.title}</h3>
-                <div style={{ fontSize: 15, color: "var(--text-2)", lineHeight: 1.65, whiteSpace: "pre-wrap" }}>{a.content}</div>
+          <div className={announcements.length === 1 ? "ps-grid1" : announcements.length === 2 ? "ps-grid2" : "ps-grid3"}>
+            {announcements.slice(0, 6).map((a) => (
+              <article key={a.id} className="ps-card ps-news">
+                <div className="ps-news-date">
+                  <b>{new Date(a.publishedAt).getDate()}</b>
+                  <span>{formatDate(a.publishedAt, lang, "dayMonth").replace(/^\d+\s*/, "")}</span>
+                </div>
+                <div style={{ minWidth: 0 }}>
+                  <h3 className="ps-h4">{a.title}</h3>
+                  <div style={{ fontSize: 15, color: "var(--text-2)", lineHeight: 1.65, whiteSpace: "pre-wrap", marginTop: 8 }}>{a.content}</div>
+                  <button type="button" className="ps-link-accent" onClick={() => scrollToApply()} style={{ background: "none", border: "none", padding: 0, marginTop: 14, cursor: "pointer", fontFamily: "inherit" }}>{L.apply} →</button>
+                </div>
               </article>
             ))}
           </div>
@@ -619,11 +664,22 @@ export default function PublicSitePage() {
             <div className="ps-label">{L.formLabel}</div>
             <h2 className="ps-h2">{L.formTitle}</h2>
             <p style={{ fontSize: 16, color: "var(--text-2)", margin: 0, lineHeight: 1.65 }}>{L.formDesc}</p>
-            <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 10, fontSize: 15 }}>
-              {tenant.phone && <a href={`tel:${tenant.phone}`}>{tenant.phone}</a>}
-              {telegramLink && <a href={telegramLink} target="_blank" rel="noreferrer">Telegram</a>}
-              {site?.workingHours && <span style={{ color: "var(--muted)" }}>{L.hours}: {site.workingHours}</span>}
-            </div>
+            <ol className="ps-steps">
+              {[[L.step1Title, L.step1Text], [L.step2Title, L.step2Text], [L.step3Title, L.step3Text]].map(([title, text], i) => (
+                <li key={i}>
+                  <span className="ps-step-n">{i + 1}</span>
+                  <div><b>{title}</b><div style={{ color: "var(--text-2)", fontSize: 14.5, marginTop: 2 }}>{text}</div></div>
+                </li>
+              ))}
+            </ol>
+            {(tenant.phone || telegramLink || branches[0]?.phone) && (
+              <div className="ps-card" style={{ padding: "16px 18px", display: "flex", flexDirection: "column", gap: 6, fontSize: 15, marginTop: 6 }}>
+                <div style={{ fontSize: 13, color: "var(--muted)" }}>{L.orContact}</div>
+                {(tenant.phone || branches[0]?.phone) && <a href={`tel:${tenant.phone || branches[0]?.phone}`} style={{ fontWeight: 600 }}>{tenant.phone || branches[0]?.phone}</a>}
+                {telegramLink && <a href={telegramLink} target="_blank" rel="noreferrer">Telegram</a>}
+                {site?.workingHours && <span style={{ color: "var(--muted)" }}>{L.hours}: {site.workingHours}</span>}
+              </div>
+            )}
           </div>
           <div className="ps-card" style={{ padding: "28px 26px", position: "relative" }}>
             {submitSuccess ? (
@@ -725,6 +781,42 @@ export default function PublicSitePage() {
           {tenant.phone && <a href={`tel:${tenant.phone}`} className="ps-btn ps-primary">{L.call}</a>}
         </div>
       )}
+    </div>
+  );
+}
+
+const COURSES_PER_PAGE = 6;
+
+/**
+ * A map for a branch: the Google Maps link's own coordinates or place when it
+ * carries them, otherwise the branch address. Short links (maps.app.goo.gl)
+ * carry neither, so the address is used. Null with neither.
+ */
+function mapEmbed(b: { mapUrl?: string | null; address?: string | null }) {
+  const url = b.mapUrl ?? "";
+  const at = url.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/) ?? url.match(/[?&]q=(-?\d+\.\d+),(-?\d+\.\d+)/);
+  if (at) return `https://maps.google.com/maps?q=${at[1]},${at[2]}&z=16&output=embed`;
+  const place = url.match(/\/maps\/place\/([^/@?]+)/);
+  if (place) return `https://maps.google.com/maps?q=${place[1]}&z=16&output=embed`;
+  if (b.address?.trim()) return `https://maps.google.com/maps?q=${encodeURIComponent(b.address)}&z=15&output=embed`;
+  return null;
+}
+
+/**
+ * A row of cards: still when they fit, otherwise moving right to left without
+ * end (paused under the pointer; still for people who ask for less motion).
+ */
+function Marquee<T>({ items, render, min }: { items: T[]; render: (x: T) => React.ReactNode; min: number }) {
+  if (items.length < min) {
+    return <div className="ps-grid4">{items.map((x, i) => <div key={i}>{render(x)}</div>)}</div>;
+  }
+  return (
+    <div className="ps-marquee">
+      <div className="ps-marquee-track" style={{ animationDuration: `${Math.max(20, items.length * 6)}s` }}>
+        {[...items, ...items].map((x, i) => (
+          <div key={i} className="ps-marquee-item" aria-hidden={i >= items.length || undefined}>{render(x)}</div>
+        ))}
+      </div>
     </div>
   );
 }
