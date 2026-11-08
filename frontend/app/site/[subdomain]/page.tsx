@@ -8,12 +8,11 @@ import { formatDate } from "@/lib/format-date";
 import { useLanguage } from "@/lib/i18n-context";
 import type { TranslationKey } from "@/lib/i18n";
 import { SITE_TEXT, type SiteLang } from "@/components/site/site-text";
-import HeroSlides, { type Slide } from "@/components/site/HeroSlides";
 import PhoneInput from "@/components/PhoneInput";
 import { isCompleteUzPhone, phoneOrEmpty } from "@/lib/validation";
 
-// A center's public site, in the style of the TalimCRM demo: light, the
-// center's own accent colour, three languages, phone-ready. Visitors see
+// A center's public site: calm and editorial (white, one accent colour, the
+// center's own photos and numbers), three languages, phone-ready. Visitors see
 // real groups, teachers and branches, and leave an application (a lead).
 
 const money = (n: number) => new Intl.NumberFormat("uz-UZ").format(n);
@@ -34,68 +33,122 @@ function youtubeEmbed(url?: string | null) {
 // Reviews are shown only once there are enough of them to be convincing.
 const MIN_TESTIMONIALS = 10;
 
-const SOCIAL_ICON: Record<string, string> = { instagram: "📸", telegram: "✈️", youtube: "▶️", facebook: "📘", tiktok: "🎵" };
 
 const CSS = `
-  .ps{--bg:var(--surface-muted);--text-2:var(--text-soft);--muted:var(--text-muted);--chip:var(--surface-muted);background:var(--bg);color:var(--text);min-height:100vh;font-family:'Inter',system-ui,sans-serif;}
-  .ps h1,.ps h2,.ps h3{font-family:'Manrope',system-ui,sans-serif;margin:0;}
+  .ps{--bg:var(--surface);--text-2:var(--text-soft);--muted:var(--text-muted);--ps-display:'Manrope',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-family:'Inter',system-ui,sans-serif;-webkit-font-smoothing:antialiased;}
+  .ps h1,.ps h2,.ps h3{font-family:var(--ps-display);margin:0;}
   .ps a{color:inherit;text-decoration:none;}
-  .ps-wrap{max-width:1160px;margin:0 auto;padding:0 32px;box-sizing:border-box;}
-  .ps-grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;}
-  .ps-grid4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;}
-  .ps-grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;}
-  /* Card rows: a short row (2 reviews, 3 teachers...) sits in the middle
-     instead of hugging the left edge. */
-  .ps-cards{display:flex;flex-wrap:wrap;justify-content:center;gap:18px;}
-  .ps-cards>*{box-sizing:border-box;min-width:0;flex:0 1 calc((100% - 36px) / 3);}
-  .ps-cards.c4{gap:16px;}
-  .ps-cards.c4>*{flex-basis:calc((100% - 48px) / 4);}
-  .ps-cards.c2{gap:16px;}
-  .ps-cards.c2>*{flex-basis:calc((100% - 16px) / 2);}
-  .ps-head{display:flex;flex-direction:column;gap:10px;align-items:center;text-align:center;}
-  .ps-chips{display:flex;gap:8px;flex-wrap:wrap;}
-  .ps-chip{border:1.5px solid var(--border);background:var(--surface);color:var(--text-2);font-size:13.5px;font-weight:600;padding:9px 14px;border-radius:100px;cursor:pointer;font-family:inherit;text-align:left;line-height:1.3;}
-  .ps-chip:hover{border-color:var(--accent);}
-  .ps-chip[aria-pressed="true"],.ps-chip[aria-checked="true"]{background:var(--accent);border-color:var(--accent);color:var(--on-ink);}
-  .ps-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:none;cursor:pointer;font-weight:700;font-family:inherit;border-radius:12px;min-height:44px;white-space:nowrap;transition:transform .15s, box-shadow .15s, background .15s, opacity .15s;}
-  .ps-btn:hover{transform:translateY(-1px);}
-  .ps-btn:active{transform:translateY(0);}
-  .ps-btn:disabled{cursor:default;transform:none;}
-  .ps-primary{background:var(--accent);color:var(--on-ink);box-shadow:0 10px 22px -10px color-mix(in srgb, var(--accent) 70%, transparent);}
-  .ps-primary:hover{box-shadow:0 14px 28px -10px color-mix(in srgb, var(--accent) 80%, transparent);}
-  .ps-outline{background:var(--surface);color:var(--text);border:1.5px solid var(--border);}
-  .ps-outline:hover{border-color:var(--accent);color:var(--accent);}
-  .ps-soft{background:color-mix(in srgb, var(--accent) 10%, white);color:var(--accent);}
-  .ps-hero{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:48px;align-items:center;}
-  .ps-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;width:100%;max-width:520px;}
-  .ps-span2{grid-column:1/-1;}
+  .ps-wrap{max-width:1180px;margin:0 auto;padding:0 32px;box-sizing:border-box;}
+  .ps-header{position:sticky;top:0;z-index:20;background:color-mix(in srgb,var(--surface) 94%,transparent);backdrop-filter:saturate(1.4) blur(8px);border-bottom:1px solid var(--border);}
+  .ps-nav{display:flex;gap:28px;font-size:14px;color:var(--text-2);}
+  .ps-nav a:hover,.ps-link:hover{color:var(--text);}
+  .ps-link{font-size:14px;color:var(--text-2);white-space:nowrap;}
+  .ps-link-accent{font-size:14px;font-weight:600;color:var(--accent)!important;}
+  .ps-lang{display:flex;gap:2px;}
+  .ps-lang button{border:none;background:none;cursor:pointer;font-size:12px;font-weight:600;color:var(--muted);padding:4px 6px;border-radius:6px;font-family:inherit;}
+  .ps-lang button[aria-pressed="true"]{color:var(--text);background:var(--surface-muted);}
+  .ps-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:1px solid transparent;cursor:pointer;font-weight:600;font-size:14px;font-family:inherit;border-radius:10px;min-height:40px;padding:0 16px;white-space:nowrap;transition:background .15s,border-color .15s,color .15s;}
+  .ps-btn-lg{min-height:48px;padding:0 22px;font-size:15px;}
+  .ps-btn:disabled{cursor:default;}
+  .ps-primary{background:var(--accent);color:#fff;}
+  .ps-primary:hover{background:color-mix(in srgb,var(--accent) 88%,#000);}
+  .ps-ghost{background:transparent;color:var(--text);border-color:var(--border);}
+  .ps-ghost:hover{border-color:var(--text);}
+  .ps-dark{background:var(--text);color:var(--surface);}
+  .ps-hero{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,0.9fr);gap:64px;align-items:center;padding-top:72px;padding-bottom:56px;}
+  .ps-eyebrow{font-size:14px;color:var(--muted);}
+  .ps-h1{font-size:56px;line-height:1.05;font-weight:700;letter-spacing:-0.035em;max-width:640px;}
+  .ps-lead{font-size:19px;line-height:1.6;color:var(--text-2);max-width:540px;margin:0;}
+  .ps-h2{font-size:36px;line-height:1.15;font-weight:700;letter-spacing:-0.025em;}
+  .ps-h3{font-size:22px;font-weight:700;letter-spacing:-0.015em;}
+  .ps-h4{font-size:17px;font-weight:700;letter-spacing:-0.01em;margin:0;}
+  .ps-label{font-size:13px;font-weight:600;color:var(--accent);margin-bottom:10px;}
   .ps-cta{display:flex;gap:12px;flex-wrap:wrap;align-items:center;}
-  .ps-slide{animation:psFade .5s ease;}
-  @keyframes psFade{from{opacity:0;transform:scale(.985);}to{opacity:1;transform:none;}}
-  .ps-field{width:100%;box-sizing:border-box;border:1px solid var(--border);border-radius:11px;padding:11px 13px;font-size:14px;background:var(--surface);color:var(--text);font-family:inherit;}
-  .ps-field:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb, var(--accent) 15%, transparent);}
-  .ps-faq summary{list-style:none;cursor:pointer;display:flex;justify-content:space-between;gap:12px;font-weight:700;font-size:15px;}
+  .ps-hero-media{aspect-ratio:4/5;max-height:520px;border-radius:20px;overflow:hidden;background:var(--surface-muted);}
+  .ps-hero-media img{width:100%;height:100%;object-fit:cover;display:block;}
+  .ps-hero-list{height:100%;box-sizing:border-box;padding:28px;display:flex;flex-direction:column;gap:4px;justify-content:center;}
+  .ps-hero-row{display:flex;justify-content:space-between;align-items:center;gap:12px;text-align:left;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-top:8px;cursor:pointer;font-family:inherit;color:var(--text);font-size:15px;}
+  .ps-hero-row:hover{border-color:var(--text);}
+  .ps-facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));border-top:1px solid var(--border);border-bottom:1px solid var(--border);}
+  .ps-facts>div{padding:26px 24px 26px 0;}
+  .ps-facts>div+div{border-left:1px solid var(--border);padding-left:24px;}
+  .ps-fact-v{font-family:var(--ps-display);font-size:26px;white-space:nowrap;font-weight:700;letter-spacing:-0.02em;}
+  .ps-fact-l{font-size:14px;color:var(--muted);margin-top:4px;}
+  .ps-sec{padding-top:96px;padding-bottom:96px;}
+  .ps-sec-sm{padding-top:48px;}
+  .ps-muted{background:var(--surface-muted);}
+  .ps-band{border:1px solid var(--border);border-radius:16px;padding:28px 32px;display:flex;align-items:center;justify-content:space-between;gap:24px;flex-wrap:wrap;}
+  .ps-section-head{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;margin-bottom:36px;}
+  .ps-split{display:grid;grid-template-columns:minmax(0,0.8fr) minmax(0,1.2fr);gap:64px;align-items:start;}
+  .ps-grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;}
+  .ps-grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px;}
+  .ps-grid4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:20px;}
+  .ps-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;}
+  .ps-feature{display:flex;flex-direction:column;gap:10px;padding-top:20px;border-top:1px solid var(--text);}
+  .ps-index{font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums;}
+  .ps-group{padding:24px;display:flex;flex-direction:column;gap:12px;}
+  .ps-tag{font-size:12px;font-weight:600;color:var(--accent);border:1px solid currentColor;border-radius:999px;padding:2px 9px;}
+  .ps-dl{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;margin:0;font-size:14px;}
+  .ps-dl dt{color:var(--muted);}
+  .ps-dl dd{margin:0;color:var(--text);}
+  .ps-group-foot{margin-top:auto;padding-top:16px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;}
+  .ps-tabs{display:flex;gap:4px;flex-wrap:wrap;margin:-12px 0 28px;}
+  .ps-tabs button{border:1px solid var(--border);background:var(--surface);color:var(--text-2);font-size:14px;font-weight:500;padding:8px 14px;border-radius:999px;cursor:pointer;font-family:inherit;}
+  .ps-tabs button[aria-selected="true"]{background:var(--text);border-color:var(--text);color:var(--surface);}
+  .ps-gallery{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;}
+  .ps-gallery img{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:12px;display:block;}
+  .ps-gallery img:first-child{grid-column:span 2;grid-row:span 2;aspect-ratio:auto;height:100%;}
+  .ps-person{display:flex;flex-direction:column;gap:4px;}
+  .ps-avatar{width:100%;aspect-ratio:1;border-radius:16px;background:var(--surface-muted);display:flex;align-items:center;justify-content:center;font-family:var(--ps-display);font-weight:700;font-size:40px;color:var(--text-2);margin-bottom:10px;}
+  .ps-faq-list{border-top:1px solid var(--border);}
+  .ps-faq{border-bottom:1px solid var(--border);padding:20px 0;}
+  .ps-faq summary{list-style:none;cursor:pointer;display:flex;justify-content:space-between;gap:16px;font-weight:600;font-size:16px;}
   .ps-faq summary::-webkit-details-marker{display:none;}
-  .ps-faq[open] summary .ps-plus{transform:rotate(45deg);}
-  .ps-plus{transition:transform .2s;color:var(--accent);font-size:20px;line-height:1;}
+  .ps-faq[open] .ps-plus{transform:rotate(45deg);}
+  .ps-plus{transition:transform .2s;color:var(--muted);font-size:22px;line-height:1;}
+  .ps-list{display:flex;flex-direction:column;}
+  .ps-list article{padding:22px 0;border-top:1px solid var(--border);}
+  .ps-apply{display:grid;grid-template-columns:minmax(0,0.85fr) minmax(0,1.15fr);gap:64px;align-items:start;}
+  .ps-chips{display:flex;gap:8px;flex-wrap:wrap;}
+  .ps-chip{border:1px solid var(--border);background:var(--surface);color:var(--text-2);font-size:14px;font-weight:500;padding:8px 14px;border-radius:999px;cursor:pointer;font-family:inherit;text-align:left;line-height:1.3;}
+  .ps-chip:hover{border-color:var(--text);}
+  .ps-chip[aria-pressed="true"],.ps-chip[aria-checked="true"]{background:var(--text);border-color:var(--text);color:var(--surface);}
+  .ps-field{width:100%;box-sizing:border-box;border:1px solid var(--border);border-radius:10px;padding:11px 13px;font-size:15px;background:var(--surface);color:var(--text);font-family:inherit;}
+  .ps-field:focus{outline:none;border-color:var(--text);}
+  .ps-footer{border-top:1px solid var(--border);padding:48px 0 32px;font-size:14px;color:var(--muted);}
+  .ps-footer-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:24px;}
+  .ps-footer a:hover{color:var(--text);}
   .ps-float{position:fixed;right:16px;bottom:16px;z-index:30;display:none;gap:8px;}
-  @media (max-width:980px){.ps-cards>*,.ps-cards.c4>*{flex-basis:calc((100% - 18px) / 2);}.ps-hero{grid-template-columns:minmax(0,1fr);gap:32px;}.ps-grid3{grid-template-columns:repeat(2,minmax(0,1fr));}.ps-grid4{grid-template-columns:repeat(2,minmax(0,1fr));}.ps-nav{display:none!important;}}
+  .ps-span2{grid-column:1/-1;}
+  @media (max-width:980px){
+    .ps-nav{display:none!important;}
+    .ps-hero{grid-template-columns:minmax(0,1fr);gap:40px;padding-top:48px;}
+    .ps-hero-media{aspect-ratio:auto;max-height:none;}
+    .ps-hero-media img{aspect-ratio:16/10;}
+    .ps-split,.ps-apply{grid-template-columns:minmax(0,1fr);gap:28px;}
+    .ps-grid3{grid-template-columns:repeat(2,minmax(0,1fr));}
+    .ps-grid4{grid-template-columns:repeat(2,minmax(0,1fr));}
+  }
   @media (max-width:640px){
     .ps-wrap{padding:0 16px;}
+    .ps-h1{font-size:38px;}
+    .ps-h2{font-size:28px;}
+    .ps-lead{font-size:17px;}
+    .ps-sec{padding-top:64px;padding-bottom:64px;}
     .ps-grid3,.ps-grid2,.ps-grid4{grid-template-columns:minmax(0,1fr);}
-    .ps-cards>*,.ps-cards.c4>*,.ps-cards.c2>*{flex-basis:100%;}
-    .ps h1{font-size:32px!important;}
-    .ps h2{font-size:24px!important;}
+    .ps-gallery{grid-template-columns:repeat(2,minmax(0,1fr));}
+    .ps-facts{grid-template-columns:repeat(2,minmax(0,1fr));}
+    .ps-facts>div,.ps-facts>div+div{padding:18px 12px;border-left:none;}
+    .ps-facts>div:nth-child(even){border-left:1px solid var(--border);}
+    .ps-facts>div:nth-child(n+3){border-top:1px solid var(--border);}
     .ps-hide-sm{display:none!important;}
     .ps-field{font-size:16px;}
     .ps-float{display:flex;}
-    .ps-footer{padding-bottom:88px!important;}
-    .ps-cta{flex-direction:column;align-items:stretch;}
+    .ps-footer{padding-bottom:96px;}
+    .ps-cta{flex-direction:column;align-items:stretch;width:100%;}
     .ps-cta .ps-btn{width:100%;}
     .ps-full-sm{width:100%;}
-    .ps-hero-sec{padding:36px 16px 40px!important;}
-    .ps-stats{gap:8px;}
-    .ps-stats>div{min-width:0!important;padding:12px 14px!important;}
+    .ps-band{padding:22px;}
   }
 `;
 
@@ -234,12 +287,8 @@ export default function PublicSitePage() {
   const video = youtubeEmbed(site?.videoUrl);
   const socials = site ? (Object.entries(site.socials).filter(([, v]) => v) as Array<[string, string]>) : [];
   const telegramLink = tenant.telegramUsername ? `https://t.me/${tenant.telegramUsername.replace(/^@/, "")}` : site?.socials.telegram ?? null;
-  const slides: Slide[] = [
-    ...(site?.gallery ?? []).slice(0, 3).map((g): Slide => ({ kind: "photo", title: tenant.name, text: L.slidePhoto, src: fileUrl(g) ?? "" })),
-    { kind: "teacher", title: L.slideTeacherTitle, text: L.slideTeacherText },
-    { kind: "ai", title: L.slideAiTitle, text: L.slideAiText },
-    { kind: "results", title: L.slideResultsTitle, text: L.slideResultsText },
-  ];
+  // The center's own first photo; without one, its initial on a quiet panel.
+  const heroPhoto = site?.gallery?.[0] ? fileUrl(site.gallery[0]) : null;
   // Questions every visitor asks, answered from the center's real data when
   // it has not written its own.
   const fill = (text: string, vars: Record<string, string>) => text.replace(/\{(\w+)\}/g, (_, k: string) => vars[k] ?? "");
@@ -258,148 +307,155 @@ export default function PublicSitePage() {
   ];
   const faq = (site?.faq.length ?? 0) > 0 ? site!.faq : autoFaq;
   const testimonials = (site?.testimonials.length ?? 0) >= MIN_TESTIMONIALS ? site!.testimonials : [];
-  const label: React.CSSProperties = { fontSize: 13, fontWeight: 700, color: accent, textTransform: "uppercase", letterSpacing: "0.04em" };
-  const card: React.CSSProperties = { background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)" };
 
   return (
     <div className="ps" style={{ ["--accent" as string]: accent }}>
       <style>{CSS}</style>
 
       {/* HEADER */}
-      <header style={{ position: "sticky", top: 0, zIndex: 20, background: "rgba(247,247,245,0.92)", backdropFilter: "blur(6px)", borderBottom: "1px solid var(--border)" }}>
-        <div className="ps-wrap" style={{ height: 66, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+      <header className="ps-header">
+        <div className="ps-wrap" style={{ height: 64, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
           <a href="#" style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
             {logo ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={logo} alt={tenant.name} style={{ width: 36, height: 36, borderRadius: "var(--radius-sm)", objectFit: "cover", border: "1px solid var(--border)" }} />
+              <img src={logo} alt={tenant.name} style={{ width: 32, height: 32, borderRadius: 8, objectFit: "cover" }} />
             ) : (
-              <div style={{ width: 36, height: 36, borderRadius: "var(--radius-sm)", background: accent, color: "var(--on-ink)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800 }}>{tenant.name.slice(0, 1).toUpperCase()}</div>
+              <div style={{ width: 32, height: 32, borderRadius: 8, background: "var(--text)", color: "var(--surface)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 15 }}>{tenant.name.slice(0, 1).toUpperCase()}</div>
             )}
-            <span style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 17, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{tenant.name}</span>
+            <span style={{ fontFamily: "var(--ps-display)", fontWeight: 700, fontSize: 16, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{tenant.name}</span>
           </a>
-          <nav className="ps-nav" style={{ display: "flex", gap: 28, fontSize: 14, fontWeight: 500, color: "var(--text-2)" }}>
+          <nav className="ps-nav">
             <a href="#courses">{L.navCourses}</a>
             {teachers.length > 0 && <a href="#teachers">{L.navTeachers}</a>}
             {branches.length > 0 && <a href="#branches">{L.navBranches}</a>}
             <a href="#faq">{L.faqLabel}</a>
             {announcements.length > 0 && <a href="#news">{L.navNews}</a>}
           </nav>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
-            <div style={{ display: "flex", background: "var(--chip)", borderRadius: "var(--radius-sm)", padding: 3 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 14, flexShrink: 0 }}>
+            <div className="ps-lang" role="group" aria-label="Language">
               {(["UZ", "RU", "EN"] as const).map((l) => (
-                <button key={l} type="button" onClick={() => setLang(l)} style={{ border: "none", cursor: "pointer", fontSize: 11, fontWeight: 700, padding: "5px 8px", borderRadius: "var(--radius-xs)", background: lang === l ? "var(--surface)" : "transparent", color: lang === l ? "var(--text)" : "var(--muted)" }}>
-                  {l}
-                </button>
+                <button key={l} type="button" onClick={() => setLang(l)} aria-pressed={lang === l}>{l}</button>
               ))}
             </div>
             {/* The cabinet lives on the same address: <sub>.<ROOT_DOMAIN>/portal */}
-            <Link href="/portal" style={{ fontSize: 14, fontWeight: 600, padding: "0 6px", whiteSpace: "nowrap" }}>🎓 {L.cabinet}</Link>
-            <Link href="/login" className="ps-hide-sm" style={{ fontSize: 14, fontWeight: 600, padding: "0 6px" }}>{L.login}</Link>
-            <button type="button" className="ps-btn ps-primary ps-hide-sm" onClick={() => scrollToApply()} style={{ fontSize: 14, padding: "0 18px", minHeight: 40 }}>{L.apply}</button>
+            <Link href="/portal" className="ps-link">{L.cabinet}</Link>
+            <Link href="/login" className="ps-link ps-hide-sm">{L.login}</Link>
+            <button type="button" className="ps-btn ps-primary ps-hide-sm" onClick={() => scrollToApply()}>{L.apply}</button>
           </div>
         </div>
       </header>
 
       {/* HERO */}
-      <section className="ps-wrap ps-hero ps-hero-sec" style={{ padding: "64px 32px 56px" }}>
-        <div style={{ display: "flex", flexDirection: "column", gap: 20, alignItems: "flex-start", minWidth: 0 }}>
-        <span style={{ display: "inline-flex", alignItems: "center", gap: 8, background: `color-mix(in srgb, ${accent} 12%, white)`, color: accent, fontSize: 13, fontWeight: 700, padding: "7px 14px", borderRadius: "var(--radius-pill)" }}>
-          <span style={{ width: 6, height: 6, borderRadius: "50%", background: accent }} />
-          {L.category[tenant.category] ?? L.category.BOSHQA}
-        </span>
-        {site?.trialLesson && (
-          <span style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "var(--success-soft)", color: "var(--success)", fontSize: 13, fontWeight: 700, padding: "6px 12px", borderRadius: "var(--radius-pill)" }}>
-            🎁 {L.trialBadge}{site.trialText ? ` — ${site.trialText}` : ""}
-          </span>
-        )}
-        <h1 style={{ fontSize: 48, lineHeight: 1.1, fontWeight: 800, letterSpacing: "-0.02em", maxWidth: 760 }}>{site?.heroTitle || L.heroTitle.replace("{name}", tenant.name)}</h1>
-        <p style={{ fontSize: 17, lineHeight: 1.6, color: "var(--text-2)", maxWidth: 560, margin: 0 }}>{site?.heroSubtitle || L.heroDesc}</p>
-        <div className="ps-cta" style={{ width: "100%" }}>
-          <button type="button" className="ps-btn ps-primary" onClick={() => scrollToApply()} style={{ fontSize: 15, padding: "0 24px", minHeight: 50 }}>{site?.trialLesson ? L.trialCta : L.apply} →</button>
-          <a href="#courses" className="ps-btn ps-outline" style={{ fontSize: 15, padding: "0 22px", minHeight: 50 }}>{L.seeCourses}</a>
+      <section className="ps-wrap ps-hero">
+        <div style={{ display: "flex", flexDirection: "column", gap: 22, alignItems: "flex-start", minWidth: 0 }}>
+          <div className="ps-eyebrow">
+            {L.category[tenant.category] ?? L.category.BOSHQA}
+            {site?.trialLesson && <> · <span style={{ color: "var(--text)" }}>{L.trialBadge}{site.trialText ? ` — ${site.trialText}` : ""}</span></>}
+          </div>
+          <h1 className="ps-h1">{site?.heroTitle || L.heroTitle.replace("{name}", tenant.name)}</h1>
+          <p className="ps-lead">{site?.heroSubtitle || L.heroDesc}</p>
+          <div className="ps-cta">
+            <button type="button" className="ps-btn ps-primary ps-btn-lg" onClick={() => scrollToApply()}>{site?.trialLesson ? L.trialCta : L.apply}</button>
+            <a href="#courses" className="ps-btn ps-ghost ps-btn-lg">{L.seeCourses} →</a>
+          </div>
+          {tenant.phone && <a href={`tel:${tenant.phone}`} style={{ fontSize: 14, color: "var(--text-2)" }}>{L.call}: <b style={{ color: "var(--text)", fontWeight: 600 }}>{tenant.phone}</b></a>}
         </div>
-        {tenant.phone && (
-          <a href={`tel:${tenant.phone}`} style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 14.5, fontWeight: 600, color: "var(--text-2)" }}>
-            <span style={{ width: 32, height: 32, borderRadius: "50%", display: "inline-flex", alignItems: "center", justifyContent: "center", background: `color-mix(in srgb, ${accent} 12%, white)` }}>📞</span>
-            {tenant.phone}
-          </a>
-        )}
-        {(statItems.length > 0 || priceText) && (
-          <div className="ps-stats" style={{ marginTop: 8 }}>
+        <div className="ps-hero-media">
+          {heroPhoto ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={heroPhoto} alt={tenant.name} />
+          ) : (
+            // No photo yet: the groups a visitor can join soonest.
+            <div className="ps-hero-list">
+              <div style={{ fontSize: 13, fontWeight: 600, color: "var(--muted)" }}>{L.coursesTitle}</div>
+              {[...data.groups].sort((x, y) => Number(!!y.isNew) - Number(!!x.isNew)).slice(0, 4).map((g) => (
+                <button key={g.id} type="button" onClick={() => scrollToApply(g.subject)} className="ps-hero-row">
+                  <span style={{ minWidth: 0 }}>
+                    <b style={{ fontWeight: 600, display: "block" }}>{g.name}</b>
+                    <span style={{ fontSize: 13, color: "var(--muted)" }}>{[shortDays(g.scheduleDays), g.startTime].filter(Boolean).join(" · ") || g.subject}</span>
+                  </span>
+                  <span style={{ fontSize: 14, whiteSpace: "nowrap" }}>{g.monthlyPrice > 0 ? money(g.monthlyPrice) : ""} →</span>
+                </button>
+              ))}
+              {data.groups.length === 0 && <div style={{ fontSize: 14, color: "var(--muted)" }}>{L.noCourses}</div>}
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* KEY FACTS */}
+      {(statItems.length > 0 || priceText) && (
+        <section className="ps-wrap">
+          <div className="ps-facts">
             {priceText && (
-              <div className="ps-span2" style={{ ...card, padding: "14px 20px", minWidth: 120 }}>
-                <div style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 20 }}>{priceText}</div>
-                <div style={{ fontSize: 13, color: "var(--muted)" }}>{L.priceFrom}, so&apos;m / {L.perMonth}</div>
+              <div>
+                <div className="ps-fact-v">{priceText}</div>
+                <div className="ps-fact-l">{L.priceFrom}, so&apos;m / {L.perMonth}</div>
               </div>
             )}
             {statItems.map((i) => (
-              <div key={i.label} style={{ ...card, padding: "14px 20px", minWidth: 120 }}>
-                <div style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 26 }}>{i.value}</div>
-                <div style={{ fontSize: 13, color: "var(--muted)" }}>{i.label}</div>
+              <div key={i.label}>
+                <div className="ps-fact-v">{i.value}</div>
+                <div className="ps-fact-l">{i.label}</div>
               </div>
             ))}
           </div>
-        )}
-        </div>
-        <HeroSlides slides={slides} accent={accent} />
-      </section>
+        </section>
+      )}
 
       {/* PLACEMENT TEST */}
       {placement && (
-        <section className="ps-wrap" style={{ paddingBottom: 48 }}>
-          <div style={{ background: `linear-gradient(135deg, ${accent}, #1B1440)`, color: "var(--on-ink)", borderRadius: "var(--radius-lg)", padding: "28px 28px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 20, flexWrap: "wrap" }}>
-            <div style={{ maxWidth: 560 }}>
-              <div style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 22 }}>🧭 {L.placementTitle}</div>
-              <div style={{ fontSize: 14.5, opacity: 0.85, marginTop: 6 }}>{L.placementDesc}</div>
+        <section className="ps-wrap ps-sec-sm">
+          <div className="ps-band">
+            <div style={{ maxWidth: 620 }}>
+              <h2 className="ps-h3">{L.placementTitle}</h2>
+              <p style={{ fontSize: 15, color: "var(--text-2)", margin: "6px 0 0", lineHeight: 1.6 }}>{L.placementDesc}</p>
             </div>
-            <Link href={`/t/${placement.token}`} className="ps-btn ps-full-sm" style={{ background: "var(--surface)", color: accent, fontSize: 15, padding: "0 22px", minHeight: 48, boxShadow: "0 10px 24px -12px rgba(0,0,0,0.4)" }}>{L.placementCta} →</Link>
+            <Link href={`/t/${placement.token}`} className="ps-btn ps-dark ps-full-sm">{L.placementCta} →</Link>
           </div>
         </section>
       )}
 
       {/* ABOUT + WHY US */}
       {(site?.about || (site?.advantages.length ?? 0) > 0) && (
-        <section className="ps-wrap" style={{ padding: "24px 32px 72px", display: "flex", flexDirection: "column", gap: 28 }}>
+        <section className="ps-wrap ps-sec">
           {site?.about && (
-            <div className="ps-head" style={{ maxWidth: 760, margin: "0 auto" }}>
-              <span style={label}>{L.aboutLabel}</span>
-              <p style={{ fontSize: 16, lineHeight: 1.75, color: "var(--text-2)", margin: 0, whiteSpace: "pre-wrap" }}>{site.about}</p>
+            <div className="ps-split">
+              <div>
+                <div className="ps-label">{L.aboutLabel}</div>
+                <h2 className="ps-h2">{tenant.name}</h2>
+              </div>
+              <p style={{ fontSize: 17, lineHeight: 1.75, color: "var(--text-2)", margin: 0, whiteSpace: "pre-wrap" }}>{site.about}</p>
             </div>
           )}
           {(site?.advantages.length ?? 0) > 0 && (
-            <>
-              <div className="ps-head">
-                <span style={label}>{L.whyLabel}</span>
-                <h2 style={{ fontSize: 32, fontWeight: 800, letterSpacing: "-0.02em" }}>{L.whyTitle}</h2>
-              </div>
-              <div className="ps-cards c4">
+            <div style={{ marginTop: site?.about ? 64 : 0 }}>
+              <SectionHead label={L.whyLabel} title={L.whyTitle} />
+              <div className="ps-grid4">
                 {site!.advantages.map((a, i) => (
-                  <div key={i} style={{ ...card, padding: 22, display: "flex", flexDirection: "column", gap: 10 }}>
-                    <div style={{ width: 44, height: 44, borderRadius: "var(--radius-md)", background: `color-mix(in srgb, ${accent} 12%, white)`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22 }}>{a.icon}</div>
-                    <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 16 }}>{a.title}</div>
-                    {a.text && <div style={{ fontSize: 14, lineHeight: 1.6, color: "var(--text-2)" }}>{a.text}</div>}
+                  <div key={i} className="ps-feature">
+                    <div className="ps-index">{String(i + 1).padStart(2, "0")}</div>
+                    <h3 className="ps-h4">{a.title}</h3>
+                    {a.text && <p style={{ fontSize: 14.5, lineHeight: 1.65, color: "var(--text-2)", margin: 0 }}>{a.text}</p>}
                   </div>
                 ))}
               </div>
-            </>
+            </div>
           )}
         </section>
       )}
 
       {/* RESULTS */}
       {(site?.results.length ?? 0) > 0 && (
-        <section style={{ background: "linear-gradient(135deg,#0F0B29,#1B1440)", padding: "72px 0" }}>
-          <div className="ps-wrap" style={{ display: "flex", flexDirection: "column", gap: 28 }}>
-            <div className="ps-head">
-              <span style={{ ...label, color: "var(--primary-border)" }}>{L.resultsLabel}</span>
-              <h2 style={{ fontSize: 32, fontWeight: 800, letterSpacing: "-0.02em", color: "var(--on-ink)" }}>{L.resultsTitle}</h2>
-            </div>
-            <div className="ps-cards c4">
+        <section className="ps-muted">
+          <div className="ps-wrap ps-sec">
+            <SectionHead label={L.resultsLabel} title={L.resultsTitle} />
+            <div className="ps-grid4">
               {site!.results.map((r, i) => (
-                <div key={i} style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: "var(--radius-lg)", padding: 20, color: "var(--on-ink)" }}>
-                  <div style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 24, color: "var(--primary-border)" }}>{r.result}</div>
-                  <div style={{ fontWeight: 700, fontSize: 15, marginTop: 6 }}>{r.name}</div>
-                  {r.detail && <div style={{ fontSize: 13, color: "var(--primary-border)", marginTop: 4 }}>{r.detail}</div>}
+                <div key={i} className="ps-card" style={{ padding: 22 }}>
+                  <div style={{ fontFamily: "var(--ps-display)", fontWeight: 700, fontSize: 30, letterSpacing: "-0.02em" }}>{r.result}</div>
+                  <div style={{ fontWeight: 600, fontSize: 15, marginTop: 10 }}>{r.name}</div>
+                  {r.detail && <div style={{ fontSize: 13.5, color: "var(--muted)", marginTop: 2 }}>{r.detail}</div>}
                 </div>
               ))}
             </div>
@@ -409,85 +465,33 @@ export default function PublicSitePage() {
 
       {/* NEW GROUPS: opened lately or not started yet */}
       {data.groups.some((g) => g.isNew) && (
-        <section id="new-groups" data-testid="site-new-groups" className="ps-wrap" style={{ padding: "56px 32px 0", display: "flex", flexDirection: "column", gap: 20 }}>
-          <div className="ps-head">
-            <span style={label}>{L.newGroupsLabel}</span>
-            <h2 style={{ fontSize: 28, fontWeight: 800, letterSpacing: "-0.02em" }}>{L.newGroupsTitle}</h2>
-          </div>
-          <div className="ps-cards">
+        <section id="new-groups" data-testid="site-new-groups" className="ps-wrap ps-sec">
+          <SectionHead label={L.newGroupsLabel} title={L.newGroupsTitle} />
+          <div className="ps-grid3">
             {data.groups.filter((g) => g.isNew).slice(0, 6).map((g) => (
-              <div key={g.id} style={{ ...card, padding: 20, display: "flex", flexDirection: "column", gap: 10, borderColor: accent }}>
-                <span style={{ alignSelf: "flex-start", fontSize: 12, fontWeight: 800, color: "var(--on-ink)", background: accent, padding: "3px 10px", borderRadius: "var(--radius-pill)" }}>🆕 {L.newBadge}</span>
-                <h3 style={{ fontSize: 17, fontWeight: 700 }}>{g.name}</h3>
-                <div style={{ display: "flex", flexDirection: "column", gap: 5, fontSize: 13.5, color: "var(--text-2)" }}>
-                  <div>📚 {g.subject}{g.level ? ` · ${g.level}` : ""}</div>
-                  {g.startDate && <div>🚀 {L.startsOn} {g.startDate.slice(0, 10)}</div>}
-                  {(g.scheduleDays || g.startTime) && (
-                    <div>🗓 {[shortDays(g.scheduleDays), g.startTime ? `${g.startTime}${g.endTime ? `–${g.endTime}` : ""}` : ""].filter(Boolean).join(", ")}</div>
-                  )}
-                  {g.teacherName && <div>👩‍🏫 {g.teacherName}</div>}
-                </div>
-                <button type="button" className="ps-btn ps-primary" onClick={() => scrollToApply(g.subject)} style={{ marginTop: "auto", fontSize: 13.5, padding: "0 16px", minHeight: 40 }}>{L.enroll} →</button>
-              </div>
+              <GroupCard key={g.id} g={g} isNew L={L} shortDays={shortDays} onApply={() => scrollToApply(g.subject)} />
             ))}
           </div>
         </section>
       )}
 
       {/* COURSES */}
-      <section id="courses" style={{ background: "var(--surface)", borderTop: "1px solid var(--border)", borderBottom: "1px solid var(--border)", padding: "72px 0" }}>
-        <div className="ps-wrap" style={{ display: "flex", flexDirection: "column", gap: 28 }}>
-          <div className="ps-head">
-            <span style={label}>{L.coursesLabel}</span>
-            <h2 style={{ fontSize: 32, fontWeight: 800, letterSpacing: "-0.02em" }}>{L.coursesTitle}</h2>
-          </div>
+      <section id="courses" className="ps-muted">
+        <div className="ps-wrap ps-sec">
+          <SectionHead label={L.coursesLabel} title={L.coursesTitle} />
           {subjects.length > 1 && (
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "center" }}>
+            <div className="ps-tabs" role="tablist" aria-label={L.coursesLabel}>
               {[{ key: "ALL", name: `${L.all} (${data.groups.length})` }, ...subjects.map((s) => ({ key: s.subject, name: `${s.subject} (${s.groupCount})` }))].map((f) => (
-                <button key={f.key} type="button" onClick={() => setSelectedSubject(f.key)} style={{ border: `1px solid ${selectedSubject === f.key ? accent : "var(--border)"}`, background: selectedSubject === f.key ? accent : "var(--surface)", color: selectedSubject === f.key ? "var(--on-ink)" : "var(--text-2)", fontSize: 13, fontWeight: 700, padding: "7px 14px", borderRadius: "var(--radius-pill)", cursor: "pointer" }}>
-                  {f.name}
-                </button>
+                <button key={f.key} type="button" role="tab" aria-selected={selectedSubject === f.key} onClick={() => setSelectedSubject(f.key)}>{f.name}</button>
               ))}
             </div>
           )}
           {filteredGroups.length === 0 ? (
-            <div style={{ ...card, padding: 32, textAlign: "center", color: "var(--muted)", fontSize: 14 }}>{L.noCourses}</div>
+            <div className="ps-card" style={{ padding: 32, textAlign: "center", color: "var(--muted)", fontSize: 14 }}>{L.noCourses}</div>
           ) : (
-            <div className="ps-cards">
+            <div className="ps-grid3">
               {filteredGroups.map((g) => (
-                <div key={g.id} style={{ ...card, background: "var(--bg)", padding: 22, display: "flex", flexDirection: "column", gap: 12 }}>
-                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                    <span style={{ fontSize: 12, fontWeight: 700, color: accent, background: `color-mix(in srgb, ${accent} 12%, white)`, padding: "3px 10px", borderRadius: "var(--radius-pill)" }}>{g.subject}</span>
-                    {g.level && <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)", background: "var(--chip)", padding: "3px 10px", borderRadius: "var(--radius-pill)" }}>{g.level}</span>}
-                    {g.isNew && <span style={{ fontSize: 12, fontWeight: 800, color: "var(--on-ink)", background: accent, padding: "3px 10px", borderRadius: "var(--radius-pill)" }}>🆕 {L.newBadge}</span>}
-                  </div>
-                  <h3 style={{ fontSize: 17, fontWeight: 700 }}>{g.name}</h3>
-                  {g.seatsLeft !== null && g.seatsLeft !== undefined && (
-                    <span style={{ alignSelf: "flex-start", fontSize: 12, fontWeight: 700, padding: "3px 10px", borderRadius: "var(--radius-pill)", ...(g.seatsLeft === 0 ? { color: "var(--danger)", background: "var(--danger-soft)" } : g.seatsLeft <= 3 ? { color: "var(--warning)", background: "var(--warning-soft)" } : { color: "var(--success)", background: "var(--success-soft)" }) }}>
-                      {g.seatsLeft === 0 ? L.seatsFull : L.seatsLeft.replace("{n}", String(g.seatsLeft))}
-                    </span>
-                  )}
-                  <div style={{ display: "flex", flexDirection: "column", gap: 5, fontSize: 13.5, color: "var(--text-2)" }}>
-                    {(g.scheduleDays || g.startTime) && (
-                      <div>🗓 {[shortDays(g.scheduleDays), g.startTime ? `${g.startTime}${g.endTime ? `–${g.endTime}` : ""}` : ""].filter(Boolean).join(", ")}</div>
-                    )}
-                    {g.teacherName && <div>👩‍🏫 {g.teacherName}</div>}
-                    {g.branchName && <div>📍 {g.branchName}</div>}
-                  </div>
-                  <div style={{ marginTop: "auto", paddingTop: 12, borderTop: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-                    <div>
-                      {g.monthlyPrice > 0 ? (
-                        <>
-                          <span style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 18 }}>{money(g.monthlyPrice)}</span>
-                          <span style={{ fontSize: 12.5, color: "var(--muted)" }}> so&apos;m / {L.perMonth}</span>
-                        </>
-                      ) : (
-                        <span style={{ fontSize: 13.5, fontWeight: 700, color: "var(--text-2)" }}>{L.priceOnRequest}</span>
-                      )}
-                    </div>
-                    <button type="button" className="ps-btn ps-primary" onClick={() => scrollToApply(g.subject)} style={{ fontSize: 13.5, padding: "0 16px", minHeight: 40 }}>{L.enroll} →</button>
-                  </div>
-                </div>
+                <GroupCard key={g.id} g={g} isNew={!!g.isNew} L={L} shortDays={shortDays} onApply={() => scrollToApply(g.subject)} />
               ))}
             </div>
           )}
@@ -496,21 +500,18 @@ export default function PublicSitePage() {
 
       {/* GALLERY + VIDEO */}
       {((site?.gallery.length ?? 0) > 0 || video) && (
-        <section className="ps-wrap" style={{ padding: "72px 32px 0", display: "flex", flexDirection: "column", gap: 24 }}>
-          <div className="ps-head">
-            <span style={label}>{L.galleryLabel}</span>
-            <h2 style={{ fontSize: 32, fontWeight: 800, letterSpacing: "-0.02em" }}>{L.galleryTitle}</h2>
-          </div>
+        <section className="ps-wrap ps-sec">
+          <SectionHead label={L.galleryLabel} title={L.galleryTitle} />
           {video && (
-            <div style={{ position: "relative", paddingTop: "56.25%", borderRadius: "var(--radius-lg)", overflow: "hidden", background: "#000" }}>
+            <div style={{ position: "relative", paddingTop: "56.25%", borderRadius: 16, overflow: "hidden", background: "#000", marginBottom: 16 }}>
               <iframe src={video} title={L.videoTitle} allow="accelerometer; encrypted-media; picture-in-picture" allowFullScreen style={{ position: "absolute", inset: 0, width: "100%", height: "100%", border: 0 }} />
             </div>
           )}
           {(site?.gallery.length ?? 0) > 0 && (
-            <div className="ps-cards">
+            <div className="ps-gallery">
               {site!.gallery.map((g) => (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img key={g} src={fileUrl(g) ?? ""} alt="" loading="lazy" style={{ width: "100%", aspectRatio: "4 / 3", objectFit: "cover", borderRadius: "var(--radius-lg)", border: "1px solid var(--border)" }} />
+                <img key={g} src={fileUrl(g) ?? ""} alt="" loading="lazy" />
               ))}
             </div>
           )}
@@ -519,21 +520,14 @@ export default function PublicSitePage() {
 
       {/* TEACHERS */}
       {teachers.length > 0 && (
-        <section id="teachers" className="ps-wrap" style={{ padding: "72px 32px", display: "flex", flexDirection: "column", gap: 28 }}>
-          <div className="ps-head">
-            <span style={label}>{L.teachersLabel}</span>
-            <h2 style={{ fontSize: 32, fontWeight: 800, letterSpacing: "-0.02em" }}>{L.teachersTitle}</h2>
-          </div>
-          <div className="ps-cards c4">
+        <section id="teachers" className="ps-wrap ps-sec">
+          <SectionHead label={L.teachersLabel} title={L.teachersTitle} />
+          <div className="ps-grid4">
             {teachers.map((tc) => (
-              <div key={tc.id} style={{ ...card, padding: 20, display: "flex", alignItems: "center", gap: 12 }}>
-                <div style={{ width: 46, height: 46, borderRadius: "50%", background: accent, color: "var(--on-ink)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, flexShrink: 0 }}>
-                  {tc.fullName.split(/\s+/).slice(0, 2).map((w) => w[0]).join("").toUpperCase()}
-                </div>
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ fontWeight: 700, fontSize: 14.5 }}>{tc.fullName}</div>
-                  <div style={{ fontSize: 13, color: "var(--muted)" }}>{tc.subject || L.teacherFallback}</div>
-                </div>
+              <div key={tc.id} className="ps-person">
+                <div className="ps-avatar">{tc.fullName.split(/\s+/).slice(0, 2).map((w) => w[0]).join("").toUpperCase()}</div>
+                <div style={{ fontWeight: 600, fontSize: 15 }}>{tc.fullName}</div>
+                <div style={{ fontSize: 13.5, color: "var(--muted)" }}>{tc.subject || L.teacherFallback}</div>
               </div>
             ))}
           </div>
@@ -542,22 +536,18 @@ export default function PublicSitePage() {
 
       {/* TESTIMONIALS */}
       {testimonials.length > 0 && (
-        <section style={{ background: "var(--surface)", borderTop: "1px solid var(--border)", borderBottom: "1px solid var(--border)", padding: "72px 0" }}>
-          <div className="ps-wrap" style={{ display: "flex", flexDirection: "column", gap: 28 }}>
-            <div className="ps-head">
-              <span style={label}>{L.testimonialsLabel}</span>
-              <h2 style={{ fontSize: 32, fontWeight: 800, letterSpacing: "-0.02em" }}>{L.testimonialsTitle}</h2>
-            </div>
-            <div className="ps-cards">
+        <section className="ps-muted">
+          <div className="ps-wrap ps-sec">
+            <SectionHead label={L.testimonialsLabel} title={L.testimonialsTitle} />
+            <div className="ps-grid3">
               {testimonials.map((r, i) => (
-                <div key={i} style={{ ...card, background: "var(--bg)", padding: 22, display: "flex", flexDirection: "column", gap: 14 }}>
-                  <div style={{ fontSize: 28, lineHeight: 1, color: accent }}>“</div>
-                  <div style={{ fontSize: 14.5, lineHeight: 1.65, color: "var(--text-2)", whiteSpace: "pre-wrap" }}>{r.text}</div>
-                  <div style={{ marginTop: "auto" }}>
-                    <div style={{ fontWeight: 700 }}>{r.name}</div>
-                    {r.role && <div style={{ fontSize: 13, color: "var(--muted)" }}>{r.role}</div>}
-                  </div>
-                </div>
+                <figure key={i} className="ps-card" style={{ padding: 24, margin: 0, display: "flex", flexDirection: "column", gap: 18 }}>
+                  <blockquote style={{ margin: 0, fontSize: 15.5, lineHeight: 1.7, whiteSpace: "pre-wrap" }}>“{r.text}”</blockquote>
+                  <figcaption style={{ marginTop: "auto", fontSize: 14 }}>
+                    <b style={{ fontWeight: 600 }}>{r.name}</b>
+                    {r.role && <span style={{ color: "var(--muted)" }}> · {r.role}</span>}
+                  </figcaption>
+                </figure>
               ))}
             </div>
           </div>
@@ -566,41 +556,39 @@ export default function PublicSitePage() {
 
       {/* FAQ */}
       {faq.length > 0 && (
-        <section id="faq" className="ps-wrap" style={{ padding: "72px 32px", maxWidth: 860, display: "flex", flexDirection: "column", gap: 20 }}>
-          <div className="ps-head">
-            <span style={label}>{L.faqLabel}</span>
-            <h2 style={{ fontSize: 30, fontWeight: 800, letterSpacing: "-0.02em" }}>{L.faqTitle}</h2>
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {faq.map((f, i) => (
-              <details key={i} className="ps-faq" style={{ ...card, padding: "16px 20px" }}>
-                <summary>
-                  <span>{f.q}</span>
-                  <span className="ps-plus">+</span>
-                </summary>
-                <div style={{ fontSize: 14.5, lineHeight: 1.7, color: "var(--text-2)", marginTop: 10, whiteSpace: "pre-wrap" }}>{f.a}</div>
-              </details>
-            ))}
+        <section id="faq" className="ps-wrap ps-sec">
+          <div className="ps-split">
+            <div>
+              <div className="ps-label">{L.faqLabel}</div>
+              <h2 className="ps-h2">{L.faqTitle}</h2>
+            </div>
+            <div className="ps-faq-list">
+              {faq.map((f, i) => (
+                <details key={i} className="ps-faq">
+                  <summary>
+                    <span>{f.q}</span>
+                    <span className="ps-plus" aria-hidden="true">+</span>
+                  </summary>
+                  <div style={{ fontSize: 15, lineHeight: 1.7, color: "var(--text-2)", paddingTop: 10, whiteSpace: "pre-wrap" }}>{f.a}</div>
+                </details>
+              ))}
+            </div>
           </div>
         </section>
       )}
 
       {/* BRANCHES */}
       {branches.length > 0 && (
-        <section id="branches" style={{ background: "var(--ink)", padding: "72px 0" }}>
-          <div className="ps-wrap" style={{ display: "flex", flexDirection: "column", gap: 28 }}>
-            <div className="ps-head">
-              <span style={{ ...label, color: "var(--primary-border)" }}>{L.branchesLabel}</span>
-              <h2 style={{ fontSize: 32, fontWeight: 800, letterSpacing: "-0.02em", color: "var(--on-ink)" }}>{L.branchesTitle}</h2>
-              {site?.workingHours && <div style={{ color: "var(--primary-border)", fontSize: 14.5 }}>🕒 {L.hours}: {site.workingHours}</div>}
-            </div>
-            <div className="ps-cards c2">
+        <section id="branches" className="ps-muted">
+          <div className="ps-wrap ps-sec">
+            <SectionHead label={L.branchesLabel} title={L.branchesTitle} note={site?.workingHours ? `${L.hours}: ${site.workingHours}` : undefined} />
+            <div className="ps-grid3">
               {branches.map((b) => (
-                <div key={b.id} style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "var(--radius-lg)", padding: 20, color: "var(--on-ink)", display: "flex", flexDirection: "column", gap: 6 }}>
-                  <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 16 }}>📍 {b.name}</div>
-                  <div style={{ fontSize: 14, color: "var(--primary-border)" }}>{b.address || L.noAddress}</div>
-                  {b.phone && <a href={`tel:${b.phone}`} style={{ fontSize: 14, color: "var(--on-ink)" }}>📞 {b.phone}</a>}
-                  {b.mapUrl && <a href={b.mapUrl} target="_blank" rel="noreferrer" style={{ fontSize: 13.5, color: "var(--primary-border)", fontWeight: 600 }}>🗺 {L.openMap} →</a>}
+                <div key={b.id} className="ps-card" style={{ padding: 22, display: "flex", flexDirection: "column", gap: 6 }}>
+                  <h3 className="ps-h4">{b.name}</h3>
+                  <div style={{ fontSize: 14.5, color: "var(--text-2)" }}>{b.address || L.noAddress}</div>
+                  {b.phone && <a href={`tel:${b.phone}`} style={{ fontSize: 14.5 }}>{b.phone}</a>}
+                  {b.mapUrl && <a href={b.mapUrl} target="_blank" rel="noreferrer" className="ps-link-accent" style={{ marginTop: 6 }}>{L.openMap} →</a>}
                 </div>
               ))}
             </div>
@@ -610,141 +598,179 @@ export default function PublicSitePage() {
 
       {/* NEWS */}
       {announcements.length > 0 && (
-        <section id="news" className="ps-wrap" style={{ padding: "72px 32px", display: "flex", flexDirection: "column", gap: 24, maxWidth: 860 }}>
-          <div className="ps-head">
-            <span style={label}>{L.newsLabel}</span>
-            <h2 style={{ fontSize: 30, fontWeight: 800, letterSpacing: "-0.02em" }}>{L.newsTitle}</h2>
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        <section id="news" className="ps-wrap ps-sec">
+          <SectionHead label={L.newsLabel} title={L.newsTitle} />
+          <div className="ps-list">
             {announcements.map((a) => (
-              <div key={a.id} style={{ ...card, padding: 20 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", gap: 10, marginBottom: 6 }}>
-                  <div style={{ fontWeight: 700, fontSize: 15.5 }}>{a.title}</div>
-                  <div style={{ fontSize: 12.5, color: "var(--muted)", whiteSpace: "nowrap" }}>{formatDate(a.publishedAt, lang, "dayMonth")}</div>
-                </div>
-                <div style={{ fontSize: 14, color: "var(--text-2)", lineHeight: 1.6, whiteSpace: "pre-wrap" }}>{a.content}</div>
-              </div>
+              <article key={a.id}>
+                <div style={{ fontSize: 13, color: "var(--muted)" }}>{formatDate(a.publishedAt, lang, "dayMonth")}</div>
+                <h3 className="ps-h4" style={{ margin: "4px 0 6px" }}>{a.title}</h3>
+                <div style={{ fontSize: 15, color: "var(--text-2)", lineHeight: 1.65, whiteSpace: "pre-wrap" }}>{a.content}</div>
+              </article>
             ))}
           </div>
         </section>
       )}
 
       {/* APPLICATION */}
-      <section ref={applyRef} id="apply" style={{ padding: "72px 16px", borderTop: "1px solid var(--border)" }}>
-        <div style={{ maxWidth: 640, margin: "0 auto", ...card, padding: "32px 28px", position: "relative", boxShadow: "0 24px 48px -28px rgba(18,19,26,0.25)" }}>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 22 }}>
-            <span style={label}>{L.formLabel}</span>
-            <h2 style={{ fontSize: 28, fontWeight: 800, letterSpacing: "-0.02em" }}>{L.formTitle}</h2>
-            <p style={{ fontSize: 14.5, color: "var(--text-2)", margin: 0 }}>{L.formDesc}</p>
-          </div>
-          {submitSuccess ? (
-            <div style={{ textAlign: "center", padding: "20px 0", display: "flex", flexDirection: "column", gap: 10, alignItems: "center" }}>
-              <div style={{ width: 56, height: 56, borderRadius: "50%", background: "var(--success-soft)", color: "var(--success)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26, fontWeight: 800 }}>✓</div>
-              <h3 style={{ fontSize: 19, fontWeight: 800 }}>{L.successTitle}</h3>
-              <p style={{ fontSize: 14, color: "var(--text-2)", margin: 0 }}>{L.successText}</p>
-              <button type="button" className="ps-btn ps-soft" onClick={() => setSubmitSuccess(false)} style={{ fontSize: 13.5, padding: "0 18px", marginTop: 6 }}>{L.again}</button>
+      <section ref={applyRef} id="apply" className="ps-muted">
+        <div className="ps-wrap ps-sec ps-apply">
+          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <div className="ps-label">{L.formLabel}</div>
+            <h2 className="ps-h2">{L.formTitle}</h2>
+            <p style={{ fontSize: 16, color: "var(--text-2)", margin: 0, lineHeight: 1.65 }}>{L.formDesc}</p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 10, fontSize: 15 }}>
+              {tenant.phone && <a href={`tel:${tenant.phone}`}>{tenant.phone}</a>}
+              {telegramLink && <a href={telegramLink} target="_blank" rel="noreferrer">Telegram</a>}
+              {site?.workingHours && <span style={{ color: "var(--muted)" }}>{L.hours}: {site.workingHours}</span>}
             </div>
-          ) : (
-            <form onSubmit={handleApply} noValidate style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-              {submitError && <div role="alert" style={{ background: "var(--danger-soft)", color: "var(--danger)", fontSize: 13.5, fontWeight: 600, padding: "10px 14px", borderRadius: "var(--radius-sm)" }}>{submitError}</div>}
-              <Field label={`${L.fullName} *`}>
-                <input className="ps-field" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder={L.fullNamePh} autoComplete="name" />
-              </Field>
-              <div className="ps-grid2" style={{ gap: 12 }}>
-                <Field label={`${L.phone} *`}>
-                  <PhoneInput className="ps-field" value={phone} onChange={setPhone} />
-                </Field>
-                <Field label={L.parentPhone}>
-                  <PhoneInput className="ps-field" value={parentPhone} onChange={setParentPhone} placeholder="+998 90 987 65 43" autoComplete="off" />
-                </Field>
+          </div>
+          <div className="ps-card" style={{ padding: "28px 26px", position: "relative" }}>
+            {submitSuccess ? (
+              <div style={{ textAlign: "center", padding: "20px 0", display: "flex", flexDirection: "column", gap: 10, alignItems: "center" }}>
+                <div style={{ width: 52, height: 52, borderRadius: "50%", background: "var(--success-soft)", color: "var(--success)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24, fontWeight: 700 }}>✓</div>
+                <h3 className="ps-h4">{L.successTitle}</h3>
+                <p style={{ fontSize: 14.5, color: "var(--text-2)", margin: 0 }}>{L.successText}</p>
+                <button type="button" className="ps-btn ps-ghost" onClick={() => setSubmitSuccess(false)} style={{ marginTop: 6 }}>{L.again}</button>
               </div>
-              {/* Choices as buttons, not dropdowns: every option is visible
-                  and works the same on phones and computers. */}
-              {subjects.length > 0 && (
-                <MultiChipGroup
-                  label={L.course}
-                  hint={L.courseMany}
-                  values={selectedCourses}
-                  onChange={setSelectedCourses}
-                  options={subjects.map((x) => ({ value: x.subject, label: x.subject }))}
-                  noneLabel={L.courseUnsure}
-                />
-              )}
-              {branches.length > 1 && (
-                <ChipGroup
-                  label={L.branchPick}
-                  value={selectedBranch}
-                  onChange={setSelectedBranch}
-                  options={branches.map((b) => ({ value: b.id, label: b.name }))}
-                />
-              )}
-              <Field label={L.notes}>
-                <textarea className="ps-field" rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder={L.notesPh} style={{ resize: "vertical" }} />
-              </Field>
-              {/* Honeypot: hidden from people and screen readers; bots fill it. */}
-              <div aria-hidden="true" style={{ position: "absolute", left: "-10000px", width: 1, height: 1, overflow: "hidden" }}>
-                <label>
-                  Website
-                  <input type="text" tabIndex={-1} autoComplete="off" value={honeypot} onChange={(e) => setHoneypot(e.target.value)} />
+            ) : (
+              <form onSubmit={handleApply} noValidate style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                {submitError && <div role="alert" style={{ background: "var(--danger-soft)", color: "var(--danger)", fontSize: 13.5, fontWeight: 600, padding: "10px 14px", borderRadius: 10 }}>{submitError}</div>}
+                <Field label={`${L.fullName} *`}>
+                  <input className="ps-field" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder={L.fullNamePh} autoComplete="name" />
+                </Field>
+                <div className="ps-grid2" style={{ gap: 12 }}>
+                  <Field label={`${L.phone} *`}>
+                    <PhoneInput className="ps-field" value={phone} onChange={setPhone} />
+                  </Field>
+                  <Field label={L.parentPhone}>
+                    <PhoneInput className="ps-field" value={parentPhone} onChange={setParentPhone} placeholder="+998 90 987 65 43" autoComplete="off" />
+                  </Field>
+                </div>
+                {/* Choices as buttons, not dropdowns: every option is visible
+                    and works the same on phones and computers. */}
+                {subjects.length > 0 && (
+                  <MultiChipGroup
+                    label={L.course}
+                    hint={L.courseMany}
+                    values={selectedCourses}
+                    onChange={setSelectedCourses}
+                    options={subjects.map((x) => ({ value: x.subject, label: x.subject }))}
+                    noneLabel={L.courseUnsure}
+                  />
+                )}
+                {branches.length > 1 && (
+                  <ChipGroup
+                    label={L.branchPick}
+                    value={selectedBranch}
+                    onChange={setSelectedBranch}
+                    options={branches.map((b) => ({ value: b.id, label: b.name }))}
+                  />
+                )}
+                <Field label={L.notes}>
+                  <textarea className="ps-field" rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder={L.notesPh} style={{ resize: "vertical" }} />
+                </Field>
+                {/* Honeypot: hidden from people and screen readers; bots fill it. */}
+                <div aria-hidden="true" style={{ position: "absolute", left: "-10000px", width: 1, height: 1, overflow: "hidden" }}>
+                  <label>
+                    Website
+                    <input type="text" tabIndex={-1} autoComplete="off" value={honeypot} onChange={(e) => setHoneypot(e.target.value)} />
+                  </label>
+                </div>
+                <label style={{ display: "flex", gap: 10, alignItems: "flex-start", fontSize: 13, color: "var(--text-2)", lineHeight: 1.5, cursor: "pointer" }}>
+                  <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} style={{ marginTop: 3, accentColor: accent, width: 16, height: 16 }} />
+                  <span>
+                    {L.consent}{" "}
+                    <a href="/privacy" target="_blank" rel="noreferrer" style={{ textDecoration: "underline" }}>{L.privacy}</a>
+                  </span>
                 </label>
-              </div>
-              <label style={{ display: "flex", gap: 10, alignItems: "flex-start", fontSize: 13, color: "var(--text-2)", lineHeight: 1.5, cursor: "pointer" }}>
-                <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} style={{ marginTop: 3, accentColor: accent, width: 16, height: 16 }} />
-                <span>
-                  {L.consent}{" "}
-                  <a href="/privacy" target="_blank" rel="noreferrer" style={{ color: accent, textDecoration: "underline" }}>{L.privacy}</a>
-                </span>
-              </label>
-              <button type="submit" className="ps-btn ps-primary" disabled={submitting} style={{ width: "100%", fontSize: 15, minHeight: 52, opacity: submitting ? 0.7 : 1 }}>
-                {submitting ? L.sending : `${L.send} →`}
-              </button>
-            </form>
-          )}
+                <button type="submit" className="ps-btn ps-primary ps-btn-lg" disabled={submitting} style={{ width: "100%", opacity: submitting ? 0.7 : 1 }}>
+                  {submitting ? L.sending : L.send}
+                </button>
+              </form>
+            )}
+          </div>
         </div>
       </section>
 
       {/* FOOTER */}
-      <footer className="ps-footer" style={{ borderTop: "1px solid var(--border)", padding: "32px 0" }}>
-        <div className="ps-wrap" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 14, flexWrap: "wrap", fontSize: 13, color: "var(--muted)" }}>
+      <footer className="ps-footer">
+        <div className="ps-wrap ps-footer-grid">
           <div>
-            <div style={{ fontWeight: 700, color: "var(--text)" }}>{tenant.name}</div>
-            <div>{branches[0]?.address || tenant.address || ""}</div>
+            <div style={{ fontFamily: "var(--ps-display)", fontWeight: 700, fontSize: 16, color: "var(--text)" }}>{tenant.name}</div>
+            <div style={{ marginTop: 6 }}>{branches[0]?.address || tenant.address || ""}</div>
           </div>
-          <div style={{ display: "flex", gap: 18, flexWrap: "wrap" }}>
-            {tenant.telegramUsername && (
-              <a href={`https://t.me/${tenant.telegramUsername.replace(/^@/, "")}`} target="_blank" rel="noreferrer">Telegram: @{tenant.telegramUsername.replace(/^@/, "")}</a>
-            )}
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             {tenant.phone && <a href={`tel:${tenant.phone}`}>{tenant.phone}</a>}
             {tenant.email && <a href={`mailto:${tenant.email}`}>{tenant.email}</a>}
+            {tenant.telegramUsername && (
+              <a href={`https://t.me/${tenant.telegramUsername.replace(/^@/, "")}`} target="_blank" rel="noreferrer">@{tenant.telegramUsername.replace(/^@/, "")}</a>
+            )}
           </div>
-          <div>© {new Date().getFullYear()} {tenant.name} · {L.poweredBy}</div>
+          {socials.length > 0 && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              {socials.map(([k, v]) => (
+                <a key={k} href={v} target="_blank" rel="noreferrer">{k[0].toUpperCase() + k.slice(1)}</a>
+              ))}
+            </div>
+          )}
         </div>
-        {socials.length > 0 && (
-          <div className="ps-wrap" style={{ marginTop: 16, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center", fontSize: 13, color: "var(--muted)" }}>
-            <span>{L.followUs}:</span>
-            {socials.map(([k, v]) => (
-              <a key={k} href={v} target="_blank" rel="noreferrer" style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-pill)", padding: "6px 12px", fontWeight: 600, color: "var(--text)" }}>
-                {SOCIAL_ICON[k]} {k[0].toUpperCase() + k.slice(1)}
-              </a>
-            ))}
-          </div>
-        )}
+        <div className="ps-wrap" style={{ marginTop: 28, paddingTop: 18, borderTop: "1px solid var(--border)" }}>© {new Date().getFullYear()} {tenant.name} · {L.poweredBy}</div>
       </footer>
 
       {/* Phones: quick call / message buttons */}
       {(tenant.phone || telegramLink) && (
         <div className="ps-float">
-          {telegramLink && (
-            <a href={telegramLink} target="_blank" rel="noreferrer" className="ps-btn" style={{ background: "#229ED9", color: "var(--on-ink)", padding: "0 18px", minHeight: 48, borderRadius: "var(--radius-pill)", fontSize: 14, boxShadow: "0 10px 24px rgba(0,0,0,0.18)" }}>✈️ {L.write}</a>
-          )}
-          {tenant.phone && (
-            <a href={`tel:${tenant.phone}`} className="ps-btn ps-primary" style={{ padding: "0 18px", minHeight: 48, borderRadius: "var(--radius-pill)", fontSize: 14 }}>📞 {L.call}</a>
-          )}
+          {telegramLink && <a href={telegramLink} target="_blank" rel="noreferrer" className="ps-btn ps-ghost" style={{ background: "var(--surface)" }}>{L.write}</a>}
+          {tenant.phone && <a href={`tel:${tenant.phone}`} className="ps-btn ps-primary">{L.call}</a>}
         </div>
       )}
     </div>
   );
 }
+
+/** A section's small label, its title, and an optional note at the right. */
+function SectionHead({ label, title, note }: { label: string; title: string; note?: string }) {
+  return (
+    <div className="ps-section-head">
+      <div>
+        <div className="ps-label">{label}</div>
+        <h2 className="ps-h2">{title}</h2>
+      </div>
+      {note && <div style={{ fontSize: 14.5, color: "var(--muted)" }}>{note}</div>}
+    </div>
+  );
+}
+
+/** One group as visitors see it: what, when, who, how much, and "enrol". */
+function GroupCard({ g, isNew, L, shortDays, onApply }: { g: PublicShowcaseData["groups"][number]; isNew: boolean; L: (typeof SITE_TEXT)[SiteLang]; shortDays: (d?: string | null) => string; onApply: () => void }) {
+  const when = [shortDays(g.scheduleDays), g.startTime ? `${g.startTime}${g.endTime ? `–${g.endTime}` : ""}` : ""].filter(Boolean).join(", ");
+  return (
+    <div className="ps-card ps-group">
+      <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center" }}>
+        <span style={{ fontSize: 13, color: "var(--muted)" }}>{g.subject}{g.level ? ` · ${g.level}` : ""}</span>
+        {isNew && <span className="ps-tag">{L.newBadge}</span>}
+      </div>
+      <h3 className="ps-h4">{g.name}</h3>
+      <dl className="ps-dl">
+        {when && (<><dt>{L.scheduleLabel}</dt><dd>{when}</dd></>)}
+        {g.teacherName && (<><dt>{L.teacherLabel}</dt><dd>{g.teacherName}</dd></>)}
+        {g.branchName && (<><dt>{L.branchLabel}</dt><dd>{g.branchName}</dd></>)}
+        {isNew && g.startDate && (<><dt>{L.startsOn.replace(":", "")}</dt><dd>{g.startDate.slice(0, 10)}</dd></>)}
+        {g.seatsLeft !== null && g.seatsLeft !== undefined && (<><dt>{L.seatsLabel}</dt><dd style={{ color: g.seatsLeft === 0 ? "var(--danger)" : g.seatsLeft <= 3 ? "var(--warning)" : undefined }}>{g.seatsLeft === 0 ? L.seatsFull : L.seatsLeft.replace("{n}", String(g.seatsLeft))}</dd></>)}
+      </dl>
+      <div className="ps-group-foot">
+        {g.monthlyPrice > 0 ? (
+          <div><span style={{ fontFamily: "var(--ps-display)", fontWeight: 700, fontSize: 19 }}>{money(g.monthlyPrice)}</span><span style={{ fontSize: 13, color: "var(--muted)" }}> so&apos;m / {L.perMonth}</span></div>
+        ) : (
+          <span style={{ fontSize: 14, color: "var(--text-2)" }}>{L.priceOnRequest}</span>
+        )}
+        <button type="button" className="ps-btn ps-ghost" onClick={onApply}>{L.enroll}</button>
+      </div>
+    </div>
+  );
+}
+
 
 function ChipGroup({ label, value, onChange, options }: { label: string; value: string; onChange: (v: string) => void; options: Array<{ value: string; label: string }> }) {
   return (
