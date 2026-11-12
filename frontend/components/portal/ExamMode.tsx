@@ -121,6 +121,7 @@ export default function ExamMode(props: ExamProps) {
   useEffect(() => {
     if (!started || section === "speaking") return;
     const leave = () => {
+      if (quiet()) return;
       setLocked((was) => {
         if (!was) setLeft_((n) => n + 1);
         return true;
@@ -128,12 +129,15 @@ export default function ExamMode(props: ExamProps) {
     };
     const onVis = () => { if (document.visibilityState === "hidden") leave(); };
     const onFs = () => { if (!document.fullscreenElement && document.fullscreenEnabled) leave(); };
+    // Focus moving into a frame on the page (a player, an embed) blurs the
+    // window too: that is still the test.
+    const onBlur = () => { setTimeout(() => { if (!(document.activeElement instanceof HTMLIFrameElement)) leave(); }, 0); };
     document.addEventListener("visibilitychange", onVis);
-    window.addEventListener("blur", leave);
+    window.addEventListener("blur", onBlur);
     document.addEventListener("fullscreenchange", onFs);
     return () => {
       document.removeEventListener("visibilitychange", onVis);
-      window.removeEventListener("blur", leave);
+      window.removeEventListener("blur", onBlur);
       document.removeEventListener("fullscreenchange", onFs);
     };
   }, [started, section]);
@@ -201,6 +205,22 @@ export default function ExamMode(props: ExamProps) {
 /** Leaving the test window this many times hands the section in. */
 const MAX_LEAVES = 3;
 
+// The exam's own dialogs and its full-screen button are not leaving: a
+// browser confirm() blurs the window, and the button leaves full screen.
+// While `quietUntil` is ahead, the leave lock ignores blur and full-screen
+// changes.
+let quietUntil = 0;
+const QUIET_MS = 800;
+export function examConfirm(text: string): boolean {
+  quietUntil = Infinity;
+  try {
+    return confirm(text);
+  } finally {
+    quietUntil = Date.now() + QUIET_MS;
+  }
+}
+const quiet = () => Date.now() < quietUntil;
+
 export const smallBtn: React.CSSProperties = { border: `1px solid ${LINE}`, background: "var(--surface)", borderRadius: "var(--radius-xs)", padding: "5px 8px", fontSize: 13, fontWeight: 700, cursor: "pointer", color: INK };
 
 // Full screen while a section runs, like the test centre's computer. Enter
@@ -219,8 +239,11 @@ export function useFullscreen() {
     if (!document.fullscreenElement) void document.documentElement.requestFullscreen?.().catch(() => undefined);
   };
   const toggle = () => {
-    if (document.fullscreenElement) void document.exitFullscreen().catch(() => undefined);
-    else enter();
+    if (document.fullscreenElement) {
+      // The student's own choice: not a leave (see examConfirm).
+      quietUntil = Date.now() + QUIET_MS;
+      void document.exitFullscreen().catch(() => undefined);
+    } else enter();
   };
   return { full, enter, toggle };
 }
@@ -450,7 +473,7 @@ export function useFlags() {
 
 export function confirmSubmit(t: (k: import("@/lib/i18n").TranslationKey) => string, questions: PQ[], answers: Text) {
   const missing = questions.reduce((n, q) => n + q.span - answeredMarks(q, answers[q.id]), 0);
-  return confirm(missing > 0 ? t("exm.confirmMissing").replace("{n}", String(missing)) : t("exm.confirm"));
+  return examConfirm(missing > 0 ? t("exm.confirmMissing").replace("{n}", String(missing)) : t("exm.confirm"));
 }
 
 // ------------------------------------------------------------ Listening
@@ -849,7 +872,7 @@ function WritingExam(props: ExamProps) {
             const ask = short.length
               ? `${t("exm.writingShort")}\n${short.map((x) => `- ${x.title}: ${x.n} / ${x.min}`).join("\n")}\n\n${t("exm.confirm")}`
               : t("exm.confirm");
-            if (confirm(ask)) props.onSubmit(false);
+            if (examConfirm(ask)) props.onSubmit(false);
           }}
           style={{ marginLeft: "auto", background: "var(--success)", color: "var(--on-ink)", border: "none", borderRadius: "var(--radius-xs)", padding: "8px 16px", fontWeight: 800, cursor: "pointer" }}
         >
