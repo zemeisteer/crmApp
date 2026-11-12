@@ -9,6 +9,8 @@ import { Roles } from '../common/roles.decorator';
 import { CurrentUser } from '../common/current-user.decorator';
 import { attachmentStorage } from '../common/upload.util';
 import { MockTestsService } from './mock-tests.service';
+import { MockSessionsService } from './mock-sessions.service';
+import { CreateMockSessionDto } from './dto/mock-tests.dto';
 import { CreateMockTestDto, GenerateMockQuestionsDto, RegradeMockAttemptDto, ReviewMockAttemptDto, ReviewPracticeDto, UpdateMockTestDto } from './dto/mock-tests.dto';
 import { AiService } from '../ai/ai.service';
 import { FilesService } from '../files/files.service';
@@ -24,6 +26,7 @@ const ASSET_TYPES = /^(audio\/(mpeg|mp3|mp4|x-m4a|aac|wav|x-wav|ogg|webm)|image\
 export class MockTestsController {
   constructor(
     private readonly service: MockTestsService,
+    private readonly sessions: MockSessionsService,
     private readonly imports: MockImportService,
     private readonly ai: AiService,
     private readonly files: FilesService,
@@ -63,6 +66,33 @@ export class MockTestsController {
   @Get('imports/:importId')
   importOne(@CurrentUser('tenantId') tenantId: string, @Param('importId') importId: string) {
     return this.imports.get(tenantId, importId);
+  }
+
+  // Mock days (a whole group sits one test at a set time).
+  @Get('sessions')
+  sessionList(@CurrentUser('tenantId') tenantId: string, @CurrentUser('sub') userId: string, @CurrentUser('role') role: string) {
+    return this.sessions.list(tenantId, { userId, role });
+  }
+
+  @Post('sessions')
+  sessionCreate(@CurrentUser('tenantId') tenantId: string, @CurrentUser('sub') userId: string, @CurrentUser('role') role: string, @Body() dto: CreateMockSessionDto) {
+    return this.sessions.create(tenantId, { userId, role }, dto);
+  }
+
+  @Get('sessions/:sessionId')
+  sessionResults(@CurrentUser('tenantId') tenantId: string, @CurrentUser('sub') userId: string, @CurrentUser('role') role: string, @Param('sessionId') id: string) {
+    return this.sessions.results(tenantId, { userId, role }, id);
+  }
+
+  @Delete('sessions/:sessionId')
+  sessionRemove(@CurrentUser('tenantId') tenantId: string, @CurrentUser('sub') userId: string, @CurrentUser('role') role: string, @Param('sessionId') id: string) {
+    return this.sessions.remove(tenantId, { userId, role }, id);
+  }
+
+  // One student's bands over time and their weakest question types.
+  @Get('students/:studentId/progress')
+  studentProgress(@CurrentUser('tenantId') tenantId: string, @Param('studentId') studentId: string) {
+    return this.service.progress(tenantId, studentId);
   }
 
   @Get()

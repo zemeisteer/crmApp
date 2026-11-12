@@ -1758,6 +1758,22 @@ export const aiUsage = pgTable('ai_usage', {
   tenantIdx: index('ai_usage_tenant_idx').on(t.tenantId),
 }));
 
+// A mock day: one test sat by a whole group at a set time. Before
+// `startsAt` the group's students see it coming but cannot open it; the
+// teacher follows the group's sittings in one table.
+export const mockSessions = pgTable('mock_sessions', {
+  id: text('id').primaryKey().$defaultFn(() => createId()),
+  tenantId: text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  testId: text('test_id').notNull().references(() => mockTests.id, { onDelete: 'cascade' }),
+  groupId: text('group_id').notNull().references(() => groups.id, { onDelete: 'cascade' }),
+  startsAt: timestamp('starts_at').notNull(),
+  createdBy: text('created_by').references(() => users.id, { onDelete: 'set null' }),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+}, (t) => ({
+  tenantIdx: index('mock_sessions_tenant_idx').on(t.tenantId, t.startsAt),
+  groupIdx: index('mock_sessions_group_idx').on(t.groupId),
+}));
+
 // One student's sitting of a mock test. JSON columns: answers per section,
 // when each section started/finished, and results (bands, AI feedback).
 export const mockAttempts = pgTable('mock_attempts', {

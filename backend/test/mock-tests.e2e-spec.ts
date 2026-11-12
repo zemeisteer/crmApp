@@ -127,6 +127,9 @@ describe('IELTS mock tests (e2e)', () => {
       const { s } = await studentIn(english, 3);
       const att = (await http().post(`/api/portal/mock-tests/${testId}/start`).set(s).expect(201)).body;
       const base = `/api/portal/mock-tests/attempts/${att.id}`;
+      // Writing comes after Listening and Reading, as in the exam.
+      await http().post(`${base}/sections/writing/start`).set(s).expect(409);
+      for (const sec of ['listening', 'reading']) await http().post(`${base}/sections/${sec}/submit`).set(s).send({ answers: {} }).expect(201);
       const res = (await http().post(`${base}/sections/writing/submit`).set(s).send({ answers: { 0: 'The chart shows growth. '.repeat(40), 1: 'Education matters a lot. '.repeat(60) } }).expect(201)).body;
       expect(res.aiFeedback).toBe(true);
       expect(res.results.writing.status).toBe('PENDING');
@@ -241,5 +244,65 @@ describe('IELTS mock tests (e2e)', () => {
     expect(tests.find((t) => t.id === hard)).toMatchObject({ open: false });
     await http().post(`/api/portal/mock-tests/${hard}/start`).set(s).expect(403);
     await http().post(`/api/portal/mock-tests/${next}/start`).set(s).expect(201);
+  });
+
+  it('keeps the exam order, explains answers, counts question types and tracks progress', async () => {
+    const { kid, s } = await studentIn(english, 5);
+    const t = (await http().get(`/api/mock-tests/${testId}`).set(auth()).expect(200)).body;
+    t.content.listening.parts[0].questions[0].explanation = 'The speaker spells C-A-R-T-E-R.';
+    await http().patch(`/api/mock-tests/${testId}`).set(auth()).send({ content: t.content }).expect(200);
+    const att = (await http().post(`/api/portal/mock-tests/${testId}/start`).set(s).expect(201)).body;
+    const base = `/api/portal/mock-tests/attempts/${att.id}`;
+    const refused = (await http().post(`${base}/sections/reading/start`).set(s).expect(409)).body;
+    expect(refused).toMatchObject({ code: 'SECTION_ORDER', section: 'listening' });
+    await http().post(`${base}/sections/reading/submit`).set(s).send({ answers: {} }).expect(409);
+    // Speaking is a separate appointment: open any time.
+    await http().post(`${base}/sections/speaking/start`).set(s).expect(201);
+    const res = (await http().post(`${base}/sections/listening/submit`).set(s).send({ answers: { 0: 'carter' } }).expect(201)).body;
+    expect(res.explanations.listening[0]).toBe('The speaker spells C-A-R-T-E-R.');
+    const kinds = res.results.listening.kinds as Array<{ kind: string; right: number; total: number }>;
+    expect(kinds.reduce((n, k) => n + k.total, 0)).toBe(res.keys.listening.length);
+    expect(kinds[0].right / kinds[0].total).toBeLessThanOrEqual(kinds[kinds.length - 1].right / kinds[kinds.length - 1].total);
+    await http().post(`${base}/sections/reading/start`).set(s).expect(201);
+
+    const mine = (await http().get('/api/portal/mock-tests/progress').set(s).expect(200)).body;
+    expect(mine.points).toHaveLength(1);
+    expect(mine.points[0]).toMatchObject({ attemptId: att.id, listening: res.results.listening.band, reading: null });
+    expect(mine.weak.listening.length).toBeGreaterThan(0);
+    const staff = (await http().get(`/api/mock-tests/students/${kid}/progress`).set(auth()).expect(200)).body;
+    expect(staff.points[0].attemptId).toBe(att.id);
+  });
+
+  it('a mock day: the group sees it coming, it opens at its time, the teacher follows one table', async () => {
+    const group = (await http().post('/api/groups').set(auth()).send({ name: 'IELTS mock day', subject: 'Ingliz tili' }).expect(201)).body.id;
+    const a = await studentIn(group, 6);
+    // The second student never signs in (sign-ins are rate limited).
+    const bKid = (await http().post('/api/students').set(auth()).send({ fullName: 'Mock Kid 7', phone: `+99891${String(suffix + 7).slice(-7)}` }).expect(201)).body.id as string;
+    await http().post(`/api/students/${bKid}/enroll/${group}`).set(auth()).expect(201);
+    const day = (await http().post('/api/mock-tests').set(auth()).send({ sample: true, title: 'Mock day test' }).expect(201)).body.id;
+    // A draft cannot be booked.
+    await http().post('/api/mock-tests/sessions').set(auth()).send({ testId: day, groupId: group, startsAt: new Date(Date.now() + 3600_000).toISOString() }).expect(409);
+    await http().patch(`/api/mock-tests/${day}`).set(auth()).send({ status: 'PUBLISHED' }).expect(200);
+    const later = (await http().post('/api/mock-tests/sessions').set(auth()).send({ testId: day, groupId: group, startsAt: new Date(Date.now() + 3600_000).toISOString() }).expect(201)).body;
+    const seen = (await http().get('/api/portal/mock-tests').set(a.s).expect(200)).body;
+    expect(seen.mockDays).toEqual([expect.objectContaining({ id: later.id, testId: day, testTitle: 'Mock day test', groupName: 'IELTS mock day' })]);
+    expect((await http().post(`/api/portal/mock-tests/${day}/start`).set(a.s).expect(403)).body.code).toBe('MOCK_DAY_NOT_YET');
+
+    // The teacher moves it to now: it opens.
+    await http().delete(`/api/mock-tests/sessions/${later.id}`).set(auth()).expect(200);
+    const now = (await http().post('/api/mock-tests/sessions').set(auth()).send({ testId: day, groupId: group, startsAt: new Date(Date.now() - 60_000).toISOString() }).expect(201)).body;
+    const att = (await http().post(`/api/portal/mock-tests/${day}/start`).set(a.s).expect(201)).body;
+    await http().post(`/api/portal/mock-tests/attempts/${att.id}/sections/listening/submit`).set(a.s).send({ answers: { 0: 'carter' } }).expect(201);
+
+    const table = (await http().get(`/api/mock-tests/sessions/${now.id}`).set(auth()).expect(200)).body;
+    expect(table).toMatchObject({ testTitle: 'Mock day test', groupName: 'IELTS mock day' });
+    expect(table.rows).toHaveLength(2);
+    const rowA = table.rows.find((r: { studentId: string }) => r.studentId === a.kid);
+    expect(rowA).toMatchObject({ attemptId: att.id, status: 'IN_PROGRESS' });
+    expect(rowA.sections.listening).toMatchObject({ done: true });
+    expect(table.rows.find((r: { studentId: string }) => r.studentId === bKid)).toMatchObject({ attemptId: null, status: 'NOT_STARTED' });
+    const list = (await http().get('/api/mock-tests/sessions').set(auth()).expect(200)).body;
+    expect(list.map((x: { id: string }) => x.id)).toContain(now.id);
+    await http().post('/api/mock-tests/sessions').set(auth()).send({ testId: day, groupId: group, startsAt: 'soon' }).expect(400);
   });
 });

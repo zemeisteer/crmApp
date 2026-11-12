@@ -1,4 +1,4 @@
-import { ArrayMaxSize, IsArray, IsBoolean, IsIn, IsInt, IsNumber, IsObject, IsOptional, IsString, Matches, Max, MaxLength, Min } from 'class-validator';
+import { ArrayMaxSize, IsArray, IsBoolean, IsIn, IsInt, IsISO8601, IsNumber, IsObject, IsOptional, IsString, Matches, Max, MaxLength, Min } from 'class-validator';
 
 export class CreateMockTestDto {
   @IsOptional() @IsString() @MaxLength(200) title?: string;
@@ -55,4 +55,10 @@ export class GenerateMockQuestionsDto {
   @IsOptional() @IsString() @MaxLength(300) topic?: string;
   @IsOptional() @IsInt() @Min(1) @Max(30) count?: number;
   @IsOptional() @IsString() @MaxLength(1000) request?: string;
+}
+
+export class CreateMockSessionDto {
+  @IsString() @MaxLength(64) testId!: string;
+  @IsString() @MaxLength(64) groupId!: string;
+  @IsISO8601() startsAt!: string;
 }

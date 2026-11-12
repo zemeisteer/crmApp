@@ -72,3 +72,26 @@ describe('examiner reply', () => {
     expect(parseExaminerReply('{"criteria":{"FC":6}}', ['FC', 'LR'])).toBeNull();
   });
 });
+
+import { blockedBy, kindStats, mergeKindStats, normalizeContent as nc } from './ielts';
+
+describe('after the test', () => {
+  const content = nc({
+    listening: { parts: [{ questions: [{ type: 'FILL_BLANK', prompt: 'Name ____', correctAnswer: 'Ann' }, { type: 'MCQ', prompt: 'Q', options: ['a', 'b'], correctAnswer: 'A' }] }] },
+    reading: { passages: [{ text: 'x', questions: [{ type: 'TRUE_FALSE_NG', prompt: 'S', correctAnswer: 'true' }] }] },
+    writing: { tasks: [{ prompt: 'w' }] },
+  });
+  it('counts right answers per question type, weakest first', () => {
+    expect(kindStats(content, 'listening', [true, false])).toEqual([{ kind: 'MCQ', right: 0, total: 1 }, { kind: 'FORM_COMPLETION', right: 1, total: 1 }]);
+    expect(mergeKindStats([[{ kind: 'MCQ', right: 0, total: 1 }], [{ kind: 'MCQ', right: 1, total: 1 }]])).toEqual([{ kind: 'MCQ', right: 1, total: 2 }]);
+  });
+  it('keeps Listening, Reading, Writing in order; Speaking is free', () => {
+    expect(blockedBy(content, 'listening', {})).toBeNull();
+    expect(blockedBy(content, 'reading', {})).toBe('listening');
+    expect(blockedBy(content, 'writing', { listening: 'x' })).toBe('reading');
+    expect(blockedBy(content, 'writing', { listening: 'x', reading: 'y' })).toBeNull();
+    expect(blockedBy(content, 'speaking', {})).toBeNull();
+    // A test without Listening starts with Reading.
+    expect(blockedBy(nc({ reading: content.reading }), 'reading', {})).toBeNull();
+  });
+});

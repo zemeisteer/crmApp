@@ -271,3 +271,63 @@ export function overallBand(bands: Partial<Record<Section, number | null>>): num
 export function wordCount(text: string): number {
   return (text.trim().match(/[\p{L}\p{N}'’-]+/gu) ?? []).length;
 }
+
+// ------------------------------------------------------ after the test
+
+// IELTS names for the question types, as a student meets them in a book.
+export function questionKind(q: TestQuestion, section: 'listening' | 'reading'): string {
+  switch (q.type) {
+    case 'TRUE_FALSE_NG': return /yes|no|writer|author|claim/i.test(`${q.instruction ?? ''} ${q.prompt}`) ? 'YES_NO_NG' : 'TFNG';
+    case 'TRUE_FALSE': return 'TFNG';
+    case 'MCQ': return 'MCQ';
+    case 'MCQ_MULTI': return 'MCQ_MULTI';
+    case 'MATCHING': return /heading/i.test(`${q.instruction ?? ''} ${q.prompt}`) ? 'HEADINGS' : 'MATCHING';
+    case 'FILL_BLANK': return section === 'listening' ? 'FORM_COMPLETION' : 'SENTENCE_COMPLETION';
+    default: return 'SHORT_ANSWER';
+  }
+}
+
+export interface KindStat { kind: string; right: number; total: number }
+
+// Right / total per question type: what to practise next. Weakest first.
+export function kindStats(content: MockContent, section: 'listening' | 'reading', marks: boolean[]): KindStat[] {
+  const by = new Map<string, KindStat>();
+  sectionQuestions(content, section).forEach((q, i) => {
+    const k = questionKind(q, section);
+    const s = by.get(k) ?? { kind: k, right: 0, total: 0 };
+    s.total += 1;
+    if (marks[i]) s.right += 1;
+    by.set(k, s);
+  });
+  return [...by.values()].sort((a, b) => a.right / a.total - b.right / b.total || b.total - a.total);
+}
+
+// Adds several sittings' stats together.
+export function mergeKindStats(lists: KindStat[][]): KindStat[] {
+  const by = new Map<string, KindStat>();
+  for (const s of lists.flat()) {
+    const m = by.get(s.kind) ?? { kind: s.kind, right: 0, total: 0 };
+    m.right += s.right;
+    m.total += s.total;
+    by.set(s.kind, m);
+  }
+  return [...by.values()].sort((a, b) => a.right / a.total - b.right / b.total || b.total - a.total);
+}
+
+// The real exam: Listening, Reading and Writing in that order, with no
+// going back; Speaking is a separate appointment. A section with no
+// questions is skipped.
+export const ORDERED: Section[] = ['listening', 'reading', 'writing'];
+
+export function sectionHasWork(content: MockContent, s: Section): boolean {
+  if (s === 'listening' || s === 'reading') return sectionQuestions(content, s).length > 0;
+  if (s === 'writing') return content.writing.tasks.length > 0;
+  return content.speaking.parts.some((p) => p.questions.length > 0);
+}
+
+// The section that must be handed in before `s` may start, or null.
+export function blockedBy(content: MockContent, s: Section, done: Record<string, string>): Section | null {
+  const i = ORDERED.indexOf(s);
+  if (i <= 0) return null;
+  return ORDERED.slice(0, i).find((p) => sectionHasWork(content, p) && !done[p]) ?? null;
+}
