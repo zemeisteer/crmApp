@@ -618,7 +618,7 @@ function ReadingExam(props: ExamProps) {
       </div>
       <PaneTabs pane={pane} onPane={setPane} textLabel={`📄 ${t("exm.paneText")}`} qLabel={`✏️ ${t("exm.paneQuestions")}`} />
       <div className="exm-split" data-pane={pane}>
-        <Passage key={part} title={p?.title ?? ""} text={p?.text ?? ""} imagePath={p?.imagePath ?? null} />
+        <Passage key={part} title={p?.title ?? ""} text={p?.text ?? ""} imagePath={p?.imagePath ?? null} store={`exam-marks:${attempt.id}:reading:${part}`} />
         <main className="exm-q" style={{ overflowY: "auto", padding: "8px 20px 40px", borderLeft: `1px solid ${LINE}` }}>
           {p?.questions.map((q, i, list) => (
             <QuestionBlock key={q.id} q={q} prev={list[i - 1]} value={answers[q.id] ?? ""} onAnswer={(v) => onAnswer(q.id, v)} flagged={flags.has(q.id)} onFlag={() => toggle(q.id)} sectionKey="reading" />
@@ -631,64 +631,170 @@ function ReadingExam(props: ExamProps) {
   );
 }
 
-// The passage with highlighting: select text, press "Highlight"; click a
-// highlight to remove it (as in the computer exam).
-export function Passage({ title, text, imagePath }: { title: string; text: string; imagePath: string | null }) {
+// The passage as in the computer exam: select text, then "Highlight" or
+// "Note"; click a highlight to see its note or remove it. Highlights and
+// notes stay on this device for the sitting (`store` names it), across
+// parts and a reload.
+export interface Mark { para: number; start: number; end: number; note?: string }
+
+function loadMarks(store: string | undefined): Mark[] {
+  if (!store) return [];
+  try {
+    const v = JSON.parse(localStorage.getItem(store) ?? "[]");
+    return Array.isArray(v) ? v.filter((m) => Number.isInteger(m?.para) && Number.isInteger(m?.start) && m.end > m.start) : [];
+  } catch {
+    return [];
+  }
+}
+
+// Splits a paragraph into plain and marked pieces (marks do not overlap).
+export function pieces<M extends Mark>(text: string, marks: M[]) {
+  const out: Array<{ text: string; mark: M | null }> = [];
+  let at = 0;
+  for (const m of [...marks].sort((a, b) => a.start - b.start)) {
+    const s = Math.max(at, m.start);
+    const e = Math.min(text.length, m.end);
+    if (e <= s) continue;
+    if (s > at) out.push({ text: text.slice(at, s), mark: null });
+    out.push({ text: text.slice(s, e), mark: m });
+    at = e;
+  }
+  if (at < text.length) out.push({ text: text.slice(at), mark: null });
+  return out;
+}
+
+export function Passage({ title, text, imagePath, store }: { title: string; text: string; imagePath: string | null; store?: string }) {
   const { t } = useLanguage();
   const box = useRef<HTMLDivElement>(null);
-  const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
-  const range = useRef<Range | null>(null);
+  const paras = useMemo(() => text.split(/\n\s*\n/), [text]);
+  const [marks, setMarks] = useState<Mark[]>(() => loadMarks(store));
+  const [menu, setMenu] = useState<{ x: number; y: number; sel: Mark } | null>(null);
+  const [open, setOpen] = useState<{ x: number; y: number; i: number } | null>(null);
+  const [noteDraft, setNoteDraft] = useState<string | null>(null);
+  const [showNotes, setShowNotes] = useState(false);
+  useEffect(() => {
+    if (!store) return;
+    try { localStorage.setItem(store, JSON.stringify(marks)); } catch { /* private mode: kept for this page only */ }
+  }, [marks, store]);
+
+  const offsetIn = (p: HTMLElement, node: Node, off: number) => {
+    const r = document.createRange();
+    r.selectNodeContents(p);
+    r.setEnd(node, off);
+    return r.toString().length;
+  };
 
   function onUp() {
     const sel = window.getSelection();
     if (!sel || sel.isCollapsed || !box.current || !box.current.contains(sel.anchorNode)) { setMenu(null); return; }
-    range.current = sel.getRangeAt(0).cloneRange();
-    const rect = sel.getRangeAt(0).getBoundingClientRect();
-    setMenu({ x: rect.left + rect.width / 2, y: rect.top - 8 });
+    const r = sel.getRangeAt(0);
+    const node = r.startContainer.nodeType === 1 ? (r.startContainer as HTMLElement) : r.startContainer.parentElement;
+    const startP = node?.closest<HTMLElement>("[data-para]");
+    if (!startP) { setMenu(null); return; }
+    const para = Number(startP.dataset.para);
+    const start = offsetIn(startP, r.startContainer, r.startOffset);
+    // A selection running into the next paragraph stops at this one's end.
+    const end = startP.contains(r.endContainer) ? offsetIn(startP, r.endContainer, r.endOffset) : paras[para].length;
+    if (end <= start) { setMenu(null); return; }
+    const rect = r.getBoundingClientRect();
+    setOpen(null);
+    setMenu({ x: rect.left + rect.width / 2, y: rect.top - 8, sel: { para, start, end } });
   }
 
-  function highlight() {
-    const r = range.current;
-    if (!r) return;
-    const mark = document.createElement("mark");
-    mark.style.background = "var(--warning-border)";
-    mark.style.cursor = "pointer";
-    mark.dataset.hl = "1";
-    try {
-      mark.appendChild(r.extractContents());
-      r.insertNode(mark);
-    } catch {
-      /* selection across blocks: ignore */
-    }
+  function add(withNote: boolean) {
+    if (!menu) return;
+    const m = menu.sel;
+    // A new mark replaces the older ones it touches.
+    const next = [...marks.filter((x) => x.para !== m.para || x.end <= m.start || x.start >= m.end), m];
+    setMarks(next);
     window.getSelection()?.removeAllRanges();
+    if (withNote) {
+      setNoteDraft("");
+      setOpen({ x: menu.x, y: menu.y + 30, i: next.length - 1 });
+    }
     setMenu(null);
   }
 
-  function onClick(e: React.MouseEvent) {
-    const el = e.target as HTMLElement;
-    if (el.dataset.hl && window.getSelection()?.isCollapsed) {
-      el.replaceWith(...Array.from(el.childNodes));
-    }
+  const indexed = marks.map((m, i) => ({ ...m, i }));
+  const current = open ? marks[open.i] ?? null : null;
+  const notes = indexed.filter((m) => m.note);
+
+  function saveNote(v: string) {
+    if (!open) return;
+    setMarks((list) => list.map((m, i) => (i === open.i ? { ...m, note: v.trim() || undefined } : m)));
+    setOpen(null);
+    setNoteDraft(null);
   }
 
   return (
     <section className="exm-text" style={{ overflowY: "auto", padding: "8px 24px 40px", position: "relative" }} onMouseUp={onUp} onTouchEnd={onUp}>
-      <div ref={box} onClick={onClick}>
-        <h2 style={{ fontSize: "1.2em", margin: "10px 0 14px" }}>{title}</h2>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "10px 0 14px" }}>
+        <h2 style={{ fontSize: "1.2em", margin: 0, flex: 1 }}>{title}</h2>
+        {notes.length > 0 && (
+          <button type="button" onClick={() => setShowNotes((v) => !v)} aria-expanded={showNotes} style={smallBtn}>📝 {t("exm.myNotes")} ({notes.length})</button>
+        )}
+      </div>
+      {showNotes && notes.length > 0 && (
+        <ul data-testid="exam-notes" style={{ margin: "0 0 14px", padding: 10, listStyle: "none", border: `1px solid ${LINE}`, background: "var(--surface-muted)", display: "flex", flexDirection: "column", gap: 6, fontSize: "0.9em" }}>
+          {notes.map((n) => (
+            <li key={n.i}><i>“{paras[n.para]?.slice(n.start, n.end)}”</i> — {n.note}</li>
+          ))}
+        </ul>
+      )}
+      <div ref={box}>
         {imagePath && (
           <PrivateImg name={imagePath} scope="portal" alt="" style={{ maxWidth: "100%", marginBottom: 12, border: `1px solid ${LINE}` }} />
         )}
-        {text.split(/\n\s*\n/).map((para, i) => <p key={i} style={{ lineHeight: 1.75, margin: "0 0 14px", whiteSpace: "pre-wrap" }}>{para}</p>)}
+        {paras.map((para, pi) => (
+          <p key={pi} data-para={pi} style={{ lineHeight: 1.75, margin: "0 0 14px", whiteSpace: "pre-wrap" }}>
+            {pieces(para, indexed.filter((m) => m.para === pi)).map((x, k) => x.mark ? (
+              <mark key={k} data-hl="1" title={x.mark.note || undefined}
+                onClick={(e) => {
+                  if (!window.getSelection()?.isCollapsed) return;
+                  const r = (e.target as HTMLElement).getBoundingClientRect();
+                  setMenu(null);
+                  setNoteDraft(null);
+                  setOpen({ x: r.left + r.width / 2, y: r.bottom + 6, i: x.mark!.i });
+                }}
+                style={{ background: "var(--warning-border)", cursor: "pointer", borderBottom: x.mark.note ? "2px dotted var(--text)" : undefined }}>{x.text}</mark>
+            ) : <span key={k}>{x.text}</span>)}
+          </p>
+        ))}
       </div>
       {menu && (
-        <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={highlight}
-          style={{ position: "fixed", left: menu.x, top: menu.y, transform: "translate(-50%, -100%)", zIndex: 300, background: INK, color: "var(--on-ink)", border: "none", borderRadius: "var(--radius-xs)", padding: "6px 10px", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
-          🖍 {t("exm.highlight")}
-        </button>
+        <div style={{ position: "fixed", left: menu.x, top: menu.y, transform: "translate(-50%, -100%)", zIndex: 300, display: "flex", gap: 2, background: INK, borderRadius: "var(--radius-xs)", padding: 2 }}>
+          <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => add(false)} style={menuBtn}>🖍 {t("exm.highlight")}</button>
+          <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => add(true)} style={menuBtn}>📝 {t("exm.note")}</button>
+        </div>
+      )}
+      {open && current && (
+        <div role="dialog" aria-label={t("exm.note")} style={{ position: "fixed", left: open.x, top: open.y, transform: "translateX(-50%)", zIndex: 300, width: 260, background: "var(--surface)", border: `1px solid ${LINE}`, borderRadius: "var(--radius-xs)", boxShadow: "0 6px 20px rgba(0,0,0,.18)", padding: 10, display: "flex", flexDirection: "column", gap: 8 }}>
+          {noteDraft !== null ? (
+            <>
+              <textarea autoFocus value={noteDraft} onChange={(e) => setNoteDraft(e.target.value)} rows={3} maxLength={500} placeholder={t("exm.notePlaceholder")}
+                style={{ width: "100%", boxSizing: "border-box", fontFamily: "inherit", fontSize: 14, padding: 6, border: `1px solid ${LINE}`, borderRadius: 4 }} />
+              <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
+                <button type="button" style={smallBtn} onClick={() => { setOpen(null); setNoteDraft(null); }}>{t("exm.cancel")}</button>
+                <button type="button" style={{ ...smallBtn, background: BLUE, color: "var(--on-ink)", borderColor: BLUE }} onClick={() => saveNote(noteDraft)}>{t("exm.saveNote")}</button>
+              </div>
+            </>
+          ) : (
+            <>
+              {current.note && <div style={{ fontSize: 14, whiteSpace: "pre-wrap" }}>{current.note}</div>}
+              <div style={{ display: "flex", gap: 6, justifyContent: "flex-end", flexWrap: "wrap" }}>
+                <button type="button" style={smallBtn} onClick={() => setNoteDraft(current.note ?? "")}>📝 {current.note ? t("exm.editNote") : t("exm.note")}</button>
+                <button type="button" style={smallBtn} onClick={() => { setMarks((list) => list.filter((_, i) => i !== open.i)); setOpen(null); }}>✕ {t("exm.removeHighlight")}</button>
+                <button type="button" style={smallBtn} onClick={() => setOpen(null)} aria-label="close">×</button>
+              </div>
+            </>
+          )}
+        </div>
       )}
     </section>
   );
 }
+
+const menuBtn: React.CSSProperties = { background: "transparent", color: "var(--on-ink)", border: "none", padding: "6px 10px", fontSize: 13, fontWeight: 700, cursor: "pointer" };
 
 // -------------------------------------------------------------- Writing
 

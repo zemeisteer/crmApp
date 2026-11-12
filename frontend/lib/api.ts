@@ -3949,6 +3949,22 @@ export interface MockSectionResult {
   teacherComment?: string | null;
   gradedBy?: "AUTO" | "AI" | "TEACHER";
   late?: boolean;
+  // Listening/Reading: right / total per question type, weakest first.
+  kinds?: MockKindStat[];
+}
+export interface MockKindStat { kind: string; right: number; total: number }
+export interface MockProgress {
+  points: Array<{ attemptId: string; title: string; date: string; overall: number | null } & Partial<Record<MockSection, number | null>>>;
+  weak: { listening: MockKindStat[]; reading: MockKindStat[] };
+}
+export interface MockDay { id: string; testId: string; startsAt: string; groupName: string; testTitle: string }
+export interface MockSessionRow { id: string; startsAt: string; testId: string; groupId: string; testTitle: string; groupName: string }
+export interface MockSessionTable extends MockSessionRow {
+  rows: Array<{
+    studentId: string; fullName: string; attemptId: string | null; status: "NOT_STARTED" | "IN_PROGRESS" | "COMPLETED";
+    sections: Record<MockSection, { band: number | null; status: string | null; done: boolean }>;
+    overall: number | null;
+  }>;
 }
 export type MockResults = Partial<Record<MockSection, MockSectionResult>> & { overall?: number | null };
 
@@ -4027,6 +4043,8 @@ export interface PortalMockAttempt {
   sectionDone: Record<string, string>;
   results: MockResults;
   keys: Partial<Record<"listening" | "reading", string[]>>;
+  // Why each answer is right (finished Listening/Reading; null when none written).
+  explanations?: Partial<Record<"listening" | "reading", Array<string | null>>>;
   serverNow: string;
   aiFeedback: boolean;
 }
@@ -4039,6 +4057,8 @@ export interface PortalPractice {
   level: MockLevel | null;
   // AI-made practice sets left today (null when the AI is off).
   aiPractice: { limit: number; used: number; left: number } | null;
+  // Mock days of the student's groups (from a week back).
+  mockDays?: MockDay[];
   directions: Array<{
     subject: string;
     english: boolean;
@@ -4137,10 +4157,17 @@ export const mockTestsApi = {
   // Practice tests: points (0-10) per writing task of a section.
   reviewPractice: (attemptId: string, data: { section: string; scores: number[]; comment?: string }) =>
     request<MockAttemptDetail>(`/mock-tests/attempts/${attemptId}/review-practice`, { method: "POST", body: JSON.stringify(data) }),
+  sessions: () => request<MockSessionRow[]>("/mock-tests/sessions"),
+  createSession: (data: { testId: string; groupId: string; startsAt: string }) =>
+    request<MockSessionRow>("/mock-tests/sessions", { method: "POST", body: JSON.stringify(data) }),
+  session: (id: string) => request<MockSessionTable>(`/mock-tests/sessions/${id}`),
+  removeSession: (id: string) => request<{ ok: boolean }>(`/mock-tests/sessions/${id}`, { method: "DELETE" }),
+  studentProgress: (studentId: string) => request<MockProgress>(`/mock-tests/students/${studentId}/progress`),
 };
 
 export const portalMockApi = {
   list: () => request<PortalPractice>("/portal/mock-tests"),
+  progress: () => request<MockProgress>("/portal/mock-tests/progress"),
   start: (testId: string) => request<PortalAnyAttempt>(`/portal/mock-tests/${testId}/start`, { method: "POST" }),
   get: (attemptId: string) => request<PortalMockAttempt>(`/portal/mock-tests/attempts/${attemptId}`),
   getAny: (attemptId: string) => request<PortalAnyAttempt>(`/portal/mock-tests/attempts/${attemptId}`),

@@ -322,6 +322,10 @@ export function QuestionsEditor({ questions, onChange, start = 0 }: { questions:
           {open === i && (
             <div style={{ padding: 10, borderTop: "1px solid var(--border)" }}>
               <QuestionEditor value={q} onChange={(nq) => set(i, nq)} excludeTypes={["ESSAY"]} />
+              <label style={{ display: "block", marginTop: 10 }}>
+                <span style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--text-soft)", marginBottom: 4 }}>💡 {t("mock.explanation")}</span>
+                <textarea className="field-input" data-testid="question-explanation" value={q.explanation ?? ""} onChange={(e) => set(i, { ...q, explanation: e.target.value || null })} rows={2} maxLength={2000} style={{ height: "auto", resize: "vertical" }} />
+              </label>
             </div>
           )}
         </div>

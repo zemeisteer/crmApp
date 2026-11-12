@@ -19,6 +19,8 @@ describe('IELTS mock tests (e2e)', () => {
   let testId: string;
   let english: string;
   let math: string;
+  // Student 5, signed in once and reused (portal sign-ins are rate limited).
+  let five: { kid: string; s: { Authorization: string } };
 
   async function studentIn(groupId: string, n: number) {
     const phone = `+99891${String(suffix + n).slice(-7)}`;
@@ -247,7 +249,8 @@ describe('IELTS mock tests (e2e)', () => {
   });
 
   it('keeps the exam order, explains answers, counts question types and tracks progress', async () => {
-    const { kid, s } = await studentIn(english, 5);
+    five = await studentIn(english, 5);
+    const { kid, s } = five;
     const t = (await http().get(`/api/mock-tests/${testId}`).set(auth()).expect(200)).body;
     t.content.listening.parts[0].questions[0].explanation = 'The speaker spells C-A-R-T-E-R.';
     await http().patch(`/api/mock-tests/${testId}`).set(auth()).send({ content: t.content }).expect(200);
@@ -275,7 +278,8 @@ describe('IELTS mock tests (e2e)', () => {
 
   it('a mock day: the group sees it coming, it opens at its time, the teacher follows one table', async () => {
     const group = (await http().post('/api/groups').set(auth()).send({ name: 'IELTS mock day', subject: 'Ingliz tili' }).expect(201)).body.id;
-    const a = await studentIn(group, 6);
+    const a = five;
+    await http().post(`/api/students/${a.kid}/enroll/${group}`).set(auth()).expect(201);
     // The second student never signs in (sign-ins are rate limited).
     const bKid = (await http().post('/api/students').set(auth()).send({ fullName: 'Mock Kid 7', phone: `+99891${String(suffix + 7).slice(-7)}` }).expect(201)).body.id as string;
     await http().post(`/api/students/${bKid}/enroll/${group}`).set(auth()).expect(201);

@@ -5,7 +5,8 @@ import QuestionInput from "@/components/tests/QuestionInput";
 import ExamMode from "@/components/portal/ExamMode";
 import FeedbackView, { bandColor } from "@/components/mock-tests/FeedbackView";
 import { SECTION_ICON, sectionKey } from "@/components/mock-tests/sections";
-import { ApiError, MOCK_SECTIONS, portalMockApi, type MockSection, type PortalMockAttempt } from "@/lib/api";
+import { ApiError, MOCK_SECTIONS, portalMockApi, type MockKindStat, type MockSection, type PortalMockAttempt } from "@/lib/api";
+import type { TranslationKey } from "@/lib/i18n";
 import { useLanguage } from "@/lib/i18n-context";
 import { PORTAL_ACCENT as ACCENT, portalCard as card } from "@/components/portal/PortalTabs";
 import { PrivateImg, PrivateAudio } from "@/components/PrivateFile";
@@ -139,6 +140,15 @@ export default function MockRunner({ initial, readOnly, onExit }: { initial: Por
   }, [a.id, answers, apply, t]);
 
   const overall = a.results.overall;
+  // Listening, Reading, Writing in order (as the server enforces); a
+  // section with nothing in it is skipped. Speaking is free.
+  const hasWork = (s: MockSection) => s === "listening" ? content.listening.parts.some((p) => p.questions.length) : s === "reading" ? content.reading.passages.some((p) => p.questions.length) : s === "writing" ? content.writing.tasks.length > 0 : true;
+  const blocker = (s: MockSection): MockSection | null => {
+    const order: MockSection[] = ["listening", "reading", "writing"];
+    const i = order.indexOf(s);
+    if (i <= 0 || started(s)) return null;
+    return order.slice(0, i).find((p) => hasWork(p) && !done(p)) ?? null;
+  };
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
@@ -189,7 +199,8 @@ export default function MockRunner({ initial, readOnly, onExit }: { initial: Por
                       {r?.status === "PENDING" ? t("pmk.aiMarking") : r?.status === "REVIEW" ? t("pmk.teacherMarks") : r?.raw !== undefined ? `${r.raw}/${r.max} ${t("pmk.correct")}` : t("pmk.marked")}
                     </div>
                   ) : null}
-                  <button type="button" disabled={busy || (readOnly && !done(s) && !started(s))} onClick={() => setSection(s)}
+                  {!done(s) && blocker(s) && <div data-testid={`order-${s}`} style={{ fontSize: 12.5, color: "var(--text-muted)", fontWeight: 700 }}>🔒 {t("pmk.orderLocked").replace("{s}", t(sectionKey(blocker(s)!)))}</div>}
+                  <button type="button" disabled={busy || (readOnly && !done(s) && !started(s)) || (!readOnly && !done(s) && !!blocker(s))} onClick={() => setSection(s)}
                     style={{ marginTop: "auto", background: done(s) ? "var(--surface)" : ACCENT, color: done(s) ? "var(--text)" : "var(--on-ink)", border: done(s) ? "1px solid var(--border)" : "none", borderRadius: "var(--radius-sm)", padding: "10px 14px", fontWeight: 700, cursor: "pointer" }}>
                     {done(s) ? `📊 ${t("pmk.review")}` : started(s) ? `▶ ${t("pmk.continue")}` : `▶ ${t("pmk.startSection")}`}
                   </button>
@@ -197,7 +208,7 @@ export default function MockRunner({ initial, readOnly, onExit }: { initial: Por
               );
             })}
           </div>
-          <div style={{ fontSize: 12.5, color: "var(--text-muted)", lineHeight: 1.5 }}>ℹ️ {t("pmk.rules")}</div>
+          <div style={{ fontSize: 12.5, color: "var(--text-muted)", lineHeight: 1.5 }}>ℹ️ {t("pmk.rules")} {t("pmk.orderHint")}</div>
         </>
       )}
 
@@ -276,6 +287,7 @@ function ObjectiveSection({ a, section, answers, onAnswer, readOnly, children }:
   const { t } = useLanguage();
   const r = a.results[section];
   const keys = a.keys[section];
+  const why = a.explanations?.[section];
   const groups = section === "listening"
     ? a.test.content.listening.parts.map((p) => ({ title: p.title, instruction: p.instruction, text: null as string | null, questions: p.questions }))
     : a.test.content.reading.passages.map((p) => ({ title: p.title, instruction: null as string | null, text: p.text, questions: p.questions }));
@@ -294,6 +306,7 @@ function ObjectiveSection({ a, section, answers, onAnswer, readOnly, children }:
             <QuestionInput q={q} value={answers[q.id] ?? ""} onChange={(v) => onAnswer(q.id, v)} disabled={readOnly} exam />
             {keys && mark === false && !(answers[q.id] ?? "").trim() && <div style={{ marginTop: 8, fontSize: 12.5, color: "var(--warning)", fontWeight: 700 }}>— {t("exm.noAnswer")}</div>}
             {keys && mark === false && <div style={{ marginTop: 6, fontSize: 12.5, color: "var(--success)", fontWeight: 700 }}>✓ {t("pmk.answer")}: {keys[Number(q.id)]}</div>}
+            {why?.[Number(q.id)] && <div data-testid="explanation" style={{ marginTop: 6, fontSize: 13, lineHeight: 1.5, color: "var(--text-soft)", background: "var(--surface-muted)", borderRadius: "var(--radius-sm)", padding: "8px 10px" }}>💡 <b>{t("pmk.explanation")}:</b> {why[Number(q.id)]}</div>}
           </div>
         );
       })}
@@ -311,6 +324,7 @@ function ObjectiveSection({ a, section, answers, onAnswer, readOnly, children }:
           <div style={{ fontSize: 13.5 }}><b>{r.raw}/{r.max}</b> {t("pmk.correct")}{r.late ? ` · ${t("pmk.late")}` : ""}</div>
         </div>
       )}
+      {r?.kinds && r.kinds.length > 0 && <KindTable title={t("pmk.byType")} kinds={r.kinds} />}
       {groups.map((g, gi) => (
         <section key={gi} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           <div style={{ fontSize: 15, fontWeight: 800 }}>{g.title}</div>
@@ -554,6 +568,27 @@ function SpeakingQuestion({ attemptId, k, question, prep, limit, saved, readOnly
         </div>
       )}
       {error && <div role="alert" style={{ fontSize: 12.5, color: "var(--danger)" }}>{error}</div>}
+    </div>
+  );
+}
+
+// Right / total per IELTS question type, weakest first.
+export function KindTable({ title, kinds }: { title: string; kinds: MockKindStat[] }) {
+  const { t } = useLanguage();
+  return (
+    <div data-testid="kind-table" style={{ ...card, display: "flex", flexDirection: "column", gap: 8 }}>
+      <div style={{ fontSize: 14, fontWeight: 800 }}>{title}</div>
+      {kinds.map((k) => {
+        const pct = k.total ? Math.round((k.right / k.total) * 100) : 0;
+        const color = pct >= 75 ? "var(--success)" : pct >= 50 ? "var(--warning)" : "var(--danger)";
+        return (
+          <div key={k.kind} style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) 90px 52px", gap: 10, alignItems: "center", fontSize: 13 }}>
+            <span>{t(`qk.${k.kind}` as TranslationKey) || k.kind}</span>
+            <span style={{ height: 8, borderRadius: 4, background: "var(--surface-muted)", overflow: "hidden" }}><span style={{ display: "block", height: "100%", width: `${pct}%`, background: color }} /></span>
+            <b style={{ textAlign: "right", color }}>{k.right}/{k.total}</b>
+          </div>
+        );
+      })}
     </div>
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import MockDaysPanel from "@/components/mock-tests/MockDaysPanel";
 import DashboardShell from "@/components/DashboardShell";
 import MockTestEditor from "@/components/mock-tests/MockTestEditor";
 import MockAttempts from "@/components/mock-tests/MockAttempts";
@@ -31,6 +32,7 @@ function MockTestsContent() {
   const [importing, setImporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [picking, setPicking] = useState(false);
+  const [days, setDays] = useState(false);
 
   const load = useCallback(() => {
     mockTestsApi.list().then(setTests).catch((e) => setError(e instanceof ApiError ? e.message : t("common.errorGeneric")));
@@ -105,10 +107,12 @@ function MockTestsContent() {
           <p style={{ fontSize: 13, color: "var(--text-muted)", margin: "4px 0 0", maxWidth: 640 }}>{t("mock.intro")}</p>
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <button type="button" className="btn" onClick={() => setDays((v) => !v)} aria-expanded={days} style={{ background: "var(--surface)", color: "var(--text)", border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", padding: "10px 16px", fontWeight: 700, cursor: "pointer" }}>🗓 {t("mock.days")}</button>
           <button type="button" className="btn" onClick={() => setImporting(true)} style={{ background: "var(--ink)", color: "var(--on-ink)", border: "none", borderRadius: "var(--radius-sm)", padding: "10px 16px", fontWeight: 700, cursor: "pointer" }}>📥 {t("mimp.button")}</button>
           <button type="button" className="btn" disabled={busy} onClick={() => setPicking((v) => !v)} aria-expanded={picking} style={{ background: ACCENT, color: "var(--on-ink)", border: "none", borderRadius: "var(--radius-sm)", padding: "10px 16px", fontWeight: 700, cursor: "pointer" }}>+ {t("mock.newTest")}</button>
         </div>
       </div>
+      {days && tests && <MockDaysPanel tests={tests} onClose={() => setDays(false)} />}
       {picking && <NewTestPanel busy={busy} onCreate={create} onClose={() => setPicking(false)} />}
       {error && <div role="alert" style={{ background: "var(--danger-soft)", color: "var(--danger)", padding: "10px 14px", borderRadius: "var(--radius-sm)", fontSize: 13, fontWeight: 600 }}>{error}</div>}
       {importing && <ImportPanel onClose={() => { setImporting(false); load(); }} onOpenTest={(id) => { setImporting(false); load(); openTest(id); }} />}

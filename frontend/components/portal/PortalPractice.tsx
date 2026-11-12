@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { ApiError, isPracticeAttempt, MOCK_SECTIONS, portalMockApi, practiceResult, type PortalAnyAttempt, type PortalPractice as Practice } from "@/lib/api";
+import { ApiError, isPracticeAttempt, MOCK_SECTIONS, portalMockApi, practiceResult, type MockProgress, type PortalAnyAttempt, type PortalPractice as Practice } from "@/lib/api";
+import ProgressChart from "@/components/mock-tests/ProgressChart";
 import { useLanguage } from "@/lib/i18n-context";
 import { bandColor } from "@/components/mock-tests/FeedbackView";
 import { SECTION_ICON, sectionKey } from "@/components/mock-tests/sections";
@@ -25,10 +26,18 @@ export default function PortalPractice({ readOnly = false }: { readOnly?: boolea
   const [error, setError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState<PortalAnyAttempt | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
+  const [progress, setProgress] = useState<MockProgress | null>(null);
 
   const load = useCallback(() => {
     portalMockApi.list().then(setData).catch((e) => setError(e instanceof ApiError ? e.message : t("common.errorGeneric")));
+    portalMockApi.progress().then(setProgress).catch(() => setProgress(null));
   }, [t]);
+  // Ticks so a mock day opens on the page when its time comes.
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 30_000);
+    return () => clearInterval(id);
+  }, []);
   useEffect(load, [load]);
 
   async function open(testId: string, attemptId?: string) {
@@ -72,6 +81,23 @@ export default function PortalPractice({ readOnly = false }: { readOnly?: boolea
         </div>
       )}
       {error && <div role="alert" style={{ ...card, color: "var(--danger)", fontSize: 13 }}>{error}</div>}
+      {data?.mockDays?.map((m) => {
+        const openNow = Date.parse(m.startsAt) <= now;
+        return (
+          <div key={m.id} data-testid="mock-day" style={{ ...card, display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap", borderColor: openNow ? "var(--success-border)" : "var(--primary-border)", background: openNow ? "var(--success-soft)" : "var(--primary-soft)" }}>
+            <span style={{ fontSize: 24 }} aria-hidden>🗓</span>
+            <div style={{ flex: 1, minWidth: 200 }}>
+              <div style={{ fontSize: 12, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.04em", color: "var(--text-soft)" }}>{t("pmk.mockDay")} · {m.groupName}</div>
+              <div style={{ fontSize: 15, fontWeight: 800 }}>{m.testTitle}</div>
+              <div style={{ fontSize: 13, color: "var(--text-soft)" }}>{openNow ? t("pmk.mockDayOpen") : t("pmk.mockDayOpens").replace("{d}", new Date(m.startsAt).toLocaleString(undefined, { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }))}</div>
+            </div>
+            {openNow && !readOnly && (
+              <button type="button" disabled={busy === m.testId} onClick={() => open(m.testId)} style={{ background: ACCENT, color: "var(--on-ink)", border: "none", borderRadius: "var(--radius-sm)", padding: "10px 16px", fontWeight: 700, cursor: "pointer" }}>▶ {t("pmk.startSection")}</button>
+            )}
+          </div>
+        );
+      })}
+      {progress && progress.points.length > 0 && <ProgressChart data={progress} card={card} />}
       {!data ? (
         <div style={{ ...card, color: "var(--text-muted)" }}>{t("common.loading")}</div>
       ) : data.directions.length === 0 ? (
