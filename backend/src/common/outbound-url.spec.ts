@@ -1,6 +1,6 @@
 import { describe, it, expect, afterEach } from 'vitest';
 import { execFileSync } from 'child_process';
-import { mkdtempSync, readFileSync } from 'fs';
+import { existsSync, mkdtempSync, readFileSync } from 'fs';
 import * as http from 'http';
 import * as https from 'https';
 import type { AddressInfo } from 'net';
@@ -208,7 +208,11 @@ describe('postToPublicUrl', () => {
 
   it('keeps verifying the TLS certificate against the host name', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'outbound-tls-'));
-    execFileSync('openssl', ['req', '-x509', '-newkey', 'rsa:2048', '-nodes', '-days', '1', '-subj', '/CN=hook.example', '-keyout', join(dir, 'k.pem'), '-out', join(dir, 'c.pem')], { stdio: 'ignore' });
+    execFileSync('openssl', ['req', '-x509', '-newkey', 'rsa:2048', '-nodes', '-days', '1', '-subj', '/CN=hook.example', '-keyout', join(dir, 'k.pem'), '-out', join(dir, 'c.pem')], {
+      stdio: 'ignore',
+      // A machine-wide OPENSSL_CONF pointing at a missing file (some installers leave one) breaks openssl req.
+      env: Object.fromEntries(Object.entries(process.env).filter(([k, v]) => k !== 'OPENSSL_CONF' || (v && existsSync(v)))),
+    });
     let reached = false;
     const server = https.createServer({ key: readFileSync(join(dir, 'k.pem')), cert: readFileSync(join(dir, 'c.pem')) }, (_req, res) => {
       reached = true;
