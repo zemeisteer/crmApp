@@ -5,6 +5,9 @@ import { App } from 'supertest/types';
 import { AppModule } from '../src/app.module.js';
 import { AiService } from '../src/ai/ai.service.js';
 import { MockTestsService } from '../src/mock-tests/mock-tests.service.js';
+import { eq } from 'drizzle-orm';
+import { DB, Database } from '../src/db/db.module.js';
+import { tenants } from '../src/db/schema.js';
 
 // IELTS mock tests: the center builds and publishes a test, a student of an
 // English group sits it in the cabinet section by section, Listening and
@@ -308,5 +311,45 @@ describe('IELTS mock tests (e2e)', () => {
     const list = (await http().get('/api/mock-tests/sessions').set(auth()).expect(200)).body;
     expect(list.map((x: { id: string }) => x.id)).toContain(now.id);
     await http().post('/api/mock-tests/sessions').set(auth()).send({ testId: day, groupId: group, startsAt: 'soon' }).expect(400);
+  });
+
+  it('saves a Speaking answer at once and puts the AI transcript in after, only where the center has AI on', async () => {
+    const ai = app.get(AiService);
+    const service = app.get(MockTestsService);
+    const calls: string[] = [];
+    let release!: () => void;
+    const gate = new Promise<void>((r) => { release = r; });
+    ai.transcribeAudio = async (_b: Buffer, mime: string) => { calls.push(mime); await gate; return 'Well, I live in Tashkent.'; };
+    const webm = Buffer.from([0x1a, 0x45, 0xdf, 0xa3, 0, 0, 0, 0]);
+    try {
+      // AI off: the browser's text stays and nothing is sent.
+      const off = five;
+      const attOff = (await http().post(`/api/portal/mock-tests/${testId}/start`).set(off.s).expect(201)).body;
+      await http().post(`/api/portal/mock-tests/attempts/${attOff.id}/speaking/0.1`).set(off.s).field('transcript', 'well i leave in tash kent')
+        .attach('audio', webm, { filename: 'a.webm', contentType: 'audio/webm' }).expect(201);
+      expect(calls).toHaveLength(0);
+
+      // AI on: the upload does not wait for the transcript.
+      Object.defineProperty(ai, 'isConfigured', { get: () => true, configurable: true });
+      await app.get<Database>(DB).update(tenants).set({ studentAiDailyLimit: 5 }).where(eq(tenants.subdomain, `mock-${suffix}`));
+      const base = `/api/portal/mock-tests/attempts/${attOff.id}`;
+      const started = Date.now();
+      await http().post(`${base}/speaking/0.2`).set(off.s).field('transcript', 'well i leave in tash kent')
+        .attach('audio', webm, { filename: 'a.webm', contentType: 'audio/webm' }).expect(201);
+      expect(Date.now() - started).toBeLessThan(5000);
+      await expect.poll(() => calls).toEqual(['audio/webm']);
+      let seen = (await http().get(base).set(off.s).expect(200)).body;
+      expect(seen.answers.speaking['0.2'].transcript).toBe('well i leave in tash kent');
+      release();
+      await service.transcriptsSettled(attOff.id);
+      seen = (await http().get(base).set(off.s).expect(200)).body;
+      expect(seen.answers.speaking['0.2'].transcript).toBe('Well, I live in Tashkent.');
+      expect(seen.answers.speaking['0.1'].transcript).toBe('well i leave in tash kent');
+    } finally {
+      release();
+      await app.get<Database>(DB).update(tenants).set({ studentAiDailyLimit: 0 }).where(eq(tenants.subdomain, `mock-${suffix}`));
+      delete (ai as unknown as Record<string, unknown>).isConfigured;
+      delete (ai as unknown as Record<string, unknown>).transcribeAudio;
+    }
   });
 });

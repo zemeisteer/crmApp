@@ -565,13 +565,6 @@ export class MockTestsService {
   async saveSpeaking(studentId: string, tenantId: string, attemptId: string, key: string, data: { audio?: string; audioMime?: string; transcript?: string; seconds?: number }) {
     if (!/^\d{1,2}\.\d{1,2}$/.test(key)) throw new BadRequestException("Savol raqami noto'g'ri");
     await this.assertSectionOf(studentId, tenantId, attemptId, 'speaking');
-    // The recording itself, transcribed by the AI: the browser's own live
-    // text often mishears a clear speaker. Kept as it is when that fails.
-    if (data.audio) {
-      const bytes = await readFile(join(UPLOAD_DIR, data.audio)).catch(() => null);
-      const heard = bytes ? await this.ai.transcribeAudio(bytes, data.audioMime ?? 'audio/webm') : null;
-      if (heard) data = { ...data, transcript: heard };
-    }
     await this.mutate(attemptId, tenantId, studentId, (a) => {
       if (parse<Record<string, string>>(a.sectionDone, {}).speaking) throw new ConflictException({ code: 'SECTION_DONE', message: "Bu bo'lim topshirilgan" });
       const all = parse<Answers>(a.answers, {});
@@ -586,8 +579,53 @@ export class MockTestsService {
       };
       return { answers: all };
     });
-    if (data.audio) await this.files.register(tenantId, data.audio, 'MOCK_SPEAKING', attemptId, studentId);
+    if (data.audio) {
+      await this.files.register(tenantId, data.audio, 'MOCK_SPEAKING', attemptId, studentId);
+      // The recording is transcribed by the AI after the answer is saved, so
+      // the student never waits on it: the browser's live text often mishears
+      // a clear speaker. Only where the center has AI on.
+      if (await this.aiAvailable(tenantId)) this.track(attemptId, this.transcribeLater(tenantId, attemptId, key, data.audio, data.audioMime ?? 'audio/webm'));
+    }
     return { saved: true };
+  }
+
+  // Transcriptions still running, per attempt: the AI examiner waits for them.
+  private readonly transcribing = new Map<string, Set<Promise<void>>>();
+
+  private track(attemptId: string, job: Promise<void>) {
+    const set = this.transcribing.get(attemptId) ?? new Set<Promise<void>>();
+    set.add(job);
+    this.transcribing.set(attemptId, set);
+    void job.finally(() => {
+      set.delete(job);
+      if (set.size === 0) this.transcribing.delete(attemptId);
+    });
+  }
+
+  // Waits (up to `ms`) for this attempt's transcriptions to land.
+  async transcriptsSettled(attemptId: string, ms = 90_000) {
+    const set = this.transcribing.get(attemptId);
+    if (!set?.size) return;
+    await Promise.race([Promise.allSettled([...set]), new Promise((r) => setTimeout(r, ms))]);
+  }
+
+  // Replaces the browser's text with the AI's, if the answer still holds
+  // this recording (not re-recorded meanwhile). Failure keeps the browser's.
+  private async transcribeLater(tenantId: string, attemptId: string, key: string, audio: string, mime: string): Promise<void> {
+    try {
+      const bytes = await readFile(join(UPLOAD_DIR, audio)).catch(() => null);
+      const heard = bytes ? await this.ai.transcribeAudio(bytes, mime) : null;
+      if (!heard) return;
+      await this.mutate(attemptId, tenantId, null, (a) => {
+        const all = parse<Answers>(a.answers, {});
+        const cur = all.speaking?.[key];
+        if (!cur || cur.audio !== audio) return null;
+        all.speaking = { ...all.speaking, [key]: { ...cur, transcript: heard.trim().slice(0, 5000) } };
+        return { answers: all };
+      });
+    } catch (err) {
+      this.logger.warn(`speaking transcript not saved: ${(err as Error).message}`);
+    }
   }
 
   // Hands in a section: Listening/Reading are scored at once, Writing and
@@ -810,6 +848,7 @@ export class MockTestsService {
   // ------------------------------------------------------------ AI marking
 
   async gradeWithAi(attemptId: string, section: 'writing' | 'speaking', charged = false) {
+    if (section === 'speaking') await this.transcriptsSettled(attemptId);
     const [a] = await this.db.select().from(mockAttempts).where(eq(mockAttempts.id, attemptId));
     if (!a) return;
     const [test] = await this.db.select().from(mockTests).where(eq(mockTests.id, a.testId));
