@@ -293,8 +293,33 @@ Output only the transcript, nothing else. If there is no speech, output nothing.
   // to learn what IELTS topics and task types are current before writing a test.
   async completeSearch(prompt: string, maxTokens: number): Promise<{ text: string; sources: Array<{ title: string; url: string }> }> {
     if (!this.aiConfigured()) throw new ServiceUnavailableException('AI yoqilmagan');
+    // Claude's own web search first; Gemini's Google search when that fails or is off.
+    const claudeKey = this.config.get<string>('ANTHROPIC_API_KEY');
+    if (claudeKey) {
+      try {
+        const res = await new Anthropic({ apiKey: claudeKey }).messages.create({
+          model: MODEL,
+          max_tokens: Math.max(maxTokens, 2048),
+          tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 4 }] as never,
+          messages: [{ role: 'user', content: prompt }],
+        });
+        const seen = new Set<string>();
+        const sources: Array<{ title: string; url: string }> = [];
+        for (const block of res.content as Array<{ type: string; text?: string; content?: unknown }>) {
+          if (block.type === 'web_search_tool_result' && Array.isArray(block.content)) {
+            for (const r of block.content as Array<{ url?: string; title?: string }>) {
+              if (r.url && !seen.has(r.url)) { seen.add(r.url); sources.push({ title: r.title ?? '', url: r.url }); }
+            }
+          }
+        }
+        const text = (res.content as Array<{ type: string; text?: string }>).filter((b) => b.type === 'text').map((b) => b.text ?? '').join('');
+        if (text.trim()) return { text, sources };
+      } catch (err) {
+        this.logger.warn(`Claude web search unavailable: ${err instanceof Error ? err.message : String(err)}`);
+      }
+    }
     const key = this.config.get<string>('GEMINI_API_KEY');
-    if (!key) throw new ServiceUnavailableException('AI qidiruvi faqat Gemini bilan ishlaydi');
+    if (!key) throw new ServiceUnavailableException('AI qidiruvi mavjud emas');
     const model = this.config.get<string>('GEMINI_MODEL') || 'gemini-flash-latest';
     for (let i = 0; i < 3; i++) {
       if (i) await this.sleep(2000 * i);
