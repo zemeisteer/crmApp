@@ -4140,6 +4140,9 @@ export const mockTestsApi = {
   update: (id: string, data: { title?: string; subject?: string; status?: "DRAFT" | "PUBLISHED"; content?: MockContent | PracticeContent; level?: MockLevel | null; module?: "ACADEMIC" | "GENERAL" }) =>
     request<MockTest>(`/mock-tests/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
   remove: (id: string) => request<{ success: boolean }>(`/mock-tests/${id}`, { method: "DELETE" }),
+  // A whole test written by the AI for a band level (null: mixed); ready in a few minutes.
+  generate: (data: { level: MockLevel | null; module?: "ACADEMIC" | "GENERAL" }) =>
+    request<MockTestSummary>("/mock-tests/generate", { method: "POST", body: JSON.stringify(data) }),
   uploadAsset: (id: string, file: File) => {
     const form = new FormData();
     form.append("file", file);

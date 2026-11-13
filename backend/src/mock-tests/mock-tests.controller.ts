@@ -10,6 +10,8 @@ import { CurrentUser } from '../common/current-user.decorator';
 import { attachmentStorage } from '../common/upload.util';
 import { MockTestsService } from './mock-tests.service';
 import { MockSessionsService } from './mock-sessions.service';
+import { MockGenerateService } from './mock-generate.service';
+import { GenerateMockTestDto } from './dto/mock-tests.dto';
 import { CreateMockSessionDto } from './dto/mock-tests.dto';
 import { CreateMockTestDto, GenerateMockQuestionsDto, RegradeMockAttemptDto, ReviewMockAttemptDto, ReviewPracticeDto, UpdateMockTestDto } from './dto/mock-tests.dto';
 import { AiService } from '../ai/ai.service';
@@ -27,6 +29,7 @@ export class MockTestsController {
   constructor(
     private readonly service: MockTestsService,
     private readonly sessions: MockSessionsService,
+    private readonly generator: MockGenerateService,
     private readonly imports: MockImportService,
     private readonly ai: AiService,
     private readonly files: FilesService,
@@ -38,6 +41,14 @@ export class MockTestsController {
   @Post('generate-questions')
   generateQuestions(@Body() dto: GenerateMockQuestionsDto) {
     return this.ai.generateExamQuestions({ subject: dto.subject, topic: dto.topic?.trim() || dto.subject, count: dto.count ?? 8, request: dto.request ?? null });
+  }
+
+  // A whole new test written by the AI for a band level (or mixed), from
+  // what a web search finds is current. It is ready after a few minutes.
+  @UsesAi()
+  @Post('generate')
+  generateTest(@CurrentUser('tenantId') tenantId: string, @Body() dto: GenerateMockTestDto) {
+    return this.generator.start(tenantId, dto);
   }
 
   // Materials -> tests: PDF books/booklets (answer keys, audioscripts) and

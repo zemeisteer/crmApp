@@ -106,7 +106,7 @@ export const ACCESS_CATALOG: AccessKey[] = [
     key: 'mockTests.manage', area: 'teaching', template: [M, T],
     routes: [
       'GET /api/mock-tests', 'POST /api/mock-tests', 'GET /api/mock-tests/:id', 'PATCH /api/mock-tests/:id', 'POST /api/mock-tests/:id/asset', 'GET /api/mock-tests/:id/attempts',
-      'POST /api/mock-tests/generate-questions', 'POST /api/mock-tests/import', 'GET /api/mock-tests/imports', 'GET /api/mock-tests/imports/:importId',
+      'POST /api/mock-tests/generate-questions', 'POST /api/mock-tests/generate', 'POST /api/mock-tests/import', 'GET /api/mock-tests/imports', 'GET /api/mock-tests/imports/:importId',
       'GET /api/mock-tests/attempts/:attemptId', 'POST /api/mock-tests/attempts/:attemptId/review', 'POST /api/mock-tests/attempts/:attemptId/review-practice', 'POST /api/mock-tests/attempts/:attemptId/regrade',
       'GET /api/mock-tests/sessions', 'POST /api/mock-tests/sessions', 'GET /api/mock-tests/sessions/:sessionId', 'DELETE /api/mock-tests/sessions/:sessionId',
       'GET /api/mock-tests/students/:studentId/progress',

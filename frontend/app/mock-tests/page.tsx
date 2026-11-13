@@ -10,7 +10,7 @@ import PracticeEditor from "@/components/mock-tests/PracticeEditor";
 import PracticeAttempts from "@/components/mock-tests/PracticeAttempts";
 import NewTestPanel, { type NewTestChoice } from "@/components/mock-tests/NewTestPanel";
 import { levelKey } from "@/components/mock-tests/levels";
-import { ApiError, isPracticeTest, mockTestsApi, type MockTest, type MockTestSummary, type PracticeTest } from "@/lib/api";
+import { ApiError, isPracticeTest, mockTestsApi, type MockLevel, type MockTest, type MockTestSummary, type PracticeTest } from "@/lib/api";
 import { useLanguage } from "@/lib/i18n-context";
 import { useAuth } from "@/lib/auth-context";
 import { can } from "@/lib/access";
@@ -50,6 +50,30 @@ function MockTestsContent() {
         : await mockTestsApi.create({ sample, subject });
       setOpen(created);
       setTab("edit");
+      load();
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : t("common.errorGeneric"));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  // A test the AI is writing: the list checks back until it is ready.
+  const writing = (x: MockTestSummary) => x.source === "__GENERATING__" && Date.now() - Date.parse(x.updatedAt) < 20 * 60_000;
+  const failed = (x: MockTestSummary) => !!x.source && (x.source.startsWith("__FAILED__") || (x.source === "__GENERATING__" && !writing(x)));
+  useEffect(() => {
+    if (!tests?.some(writing)) return;
+    const id = setInterval(load, 6000);
+    return () => clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tests, load]);
+
+  async function generate(level: MockLevel | null, module: "ACADEMIC" | "GENERAL") {
+    setBusy(true);
+    setError(null);
+    setPicking(false);
+    try {
+      await mockTestsApi.generate({ level, module });
       load();
     } catch (e) {
       setError(e instanceof ApiError ? e.message : t("common.errorGeneric"));
@@ -113,7 +137,7 @@ function MockTestsContent() {
         </div>
       </div>
       {days && tests && <MockDaysPanel tests={tests} onClose={() => setDays(false)} />}
-      {picking && <NewTestPanel busy={busy} onCreate={create} onClose={() => setPicking(false)} />}
+      {picking && <NewTestPanel busy={busy} onCreate={create} onGenerate={generate} onClose={() => setPicking(false)} />}
       {error && <div role="alert" style={{ background: "var(--danger-soft)", color: "var(--danger)", padding: "10px 14px", borderRadius: "var(--radius-sm)", fontSize: 13, fontWeight: 600 }}>{error}</div>}
       {importing && <ImportPanel onClose={() => { setImporting(false); load(); }} onOpenTest={(id) => { setImporting(false); load(); openTest(id); }} />}
 
@@ -128,7 +152,20 @@ function MockTestsContent() {
         </div>
       ) : (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 12 }}>
-          {tests.map((x) => (
+          {tests.map((x) => writing(x) ? (
+            <div key={x.id} data-testid="generating" style={{ ...card, display: "flex", flexDirection: "column", gap: 8, borderColor: "var(--primary-border)", background: "var(--primary-soft)" }}>
+              <div style={{ fontWeight: 800, fontSize: 15 }}>✨ {x.title}</div>
+              <div style={{ fontSize: 13, color: "var(--text-soft)" }}>{t("mock.gen.writing")}</div>
+              <div style={{ height: 6, borderRadius: 3, background: "var(--surface)", overflow: "hidden" }}><div style={{ height: "100%", width: "40%", background: "var(--primary)", animation: "mkgen 1.4s ease-in-out infinite alternate" }} /></div>
+              <style>{"@keyframes mkgen{from{margin-left:0}to{margin-left:60%}}"}</style>
+            </div>
+          ) : failed(x) ? (
+            <div key={x.id} style={{ ...card, display: "flex", flexDirection: "column", gap: 8, borderColor: "var(--danger-border)" }}>
+              <div style={{ fontWeight: 800, fontSize: 15 }}>⚠️ {x.title}</div>
+              <div style={{ fontSize: 13, color: "var(--danger)" }}>{t("mock.gen.failed")} {x.source?.replace("__FAILED__", "")}</div>
+              {canDelete && <button type="button" className="btn" onClick={() => remove(x)} style={{ ...btn, color: "var(--danger)", justifySelf: "start" }}>🗑 {t("common.delete")}</button>}
+            </div>
+          ) : (
             <div key={x.id} style={{ ...card, display: "flex", flexDirection: "column", gap: 10 }}>
               <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "flex-start" }}>
                 <div style={{ minWidth: 0 }}>
@@ -141,6 +178,7 @@ function MockTestsContent() {
                   {x.status === "PUBLISHED" ? t("mock.published") : t("mock.draft")}
                 </span>
               </div>
+              {x.source?.startsWith("AI yozdi") && <div style={{ fontSize: 11.5, color: "var(--text-muted)", lineHeight: 1.4 }}>✨ {x.source}</div>}
               <div style={{ display: "grid", gridTemplateColumns: `repeat(${"sections" in x.summary ? 3 : 4}, 1fr)`, gap: 6, fontSize: 12, textAlign: "center" }}>
                 {("sections" in x.summary
                   ? [["🗂", x.summary.sections], ["❓", x.summary.questions], ["✍️", x.summary.tasks]]

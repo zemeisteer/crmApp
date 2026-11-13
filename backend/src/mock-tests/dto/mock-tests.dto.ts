@@ -1,5 +1,11 @@
 import { ArrayMaxSize, IsArray, IsBoolean, IsIn, IsInt, IsISO8601, IsNumber, IsObject, IsOptional, IsString, Matches, Max, MaxLength, Min } from 'class-validator';
 
+export class GenerateMockTestDto {
+  // Band level B4..B8, or empty for a mixed test with the difficulty of the real exam.
+  @IsOptional() @IsIn(['B4', 'B5', 'B6', 'B7', 'B8', null]) level?: string | null;
+  @IsOptional() @IsIn(['ACADEMIC', 'GENERAL']) module?: string;
+}
+
 export class CreateMockTestDto {
   @IsOptional() @IsString() @MaxLength(200) title?: string;
   @IsOptional() @IsString() @MaxLength(120) subject?: string;

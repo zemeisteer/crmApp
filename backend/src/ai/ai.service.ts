@@ -289,6 +289,38 @@ Output only the transcript, nothing else. If there is no speech, output nothing.
     }
   }
 
+  // A reply grounded in a Google search, with the pages it relied on. Used
+  // to learn what IELTS topics and task types are current before writing a test.
+  async completeSearch(prompt: string, maxTokens: number): Promise<{ text: string; sources: Array<{ title: string; url: string }> }> {
+    if (!this.aiConfigured()) throw new ServiceUnavailableException('AI yoqilmagan');
+    const key = this.config.get<string>('GEMINI_API_KEY');
+    if (!key) throw new ServiceUnavailableException('AI qidiruvi faqat Gemini bilan ishlaydi');
+    const model = this.config.get<string>('GEMINI_MODEL') || 'gemini-flash-latest';
+    for (let i = 0; i < 3; i++) {
+      if (i) await this.sleep(2000 * i);
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
+        body: JSON.stringify({
+          contents: [{ role: 'user', parts: [{ text: prompt }] }],
+          tools: [{ google_search: {} }],
+          generationConfig: { maxOutputTokens: Math.max(maxTokens, 2048) },
+        }),
+        signal: AbortSignal.timeout(GEMINI_TIMEOUT_MS),
+      }).catch(() => null);
+      if (!res || res.status === 503 || res.status === 429 || res.status === 500) continue;
+      if (!res.ok) break;
+      const data = (await res.json()) as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> }; groundingMetadata?: { groundingChunks?: Array<{ web?: { uri?: string; title?: string } }> } }> };
+      const c = data.candidates?.[0];
+      const seen = new Set<string>();
+      const sources = (c?.groundingMetadata?.groundingChunks ?? [])
+        .map((g) => ({ title: g.web?.title ?? '', url: g.web?.uri ?? '' }))
+        .filter((x) => x.url && !seen.has(x.url) && !!seen.add(x.url));
+      return { text: c?.content?.parts?.map((p) => p.text ?? '').join('') ?? '', sources };
+    }
+    throw new ServiceUnavailableException(AI_BUSY);
+  }
+
   async completeWithPdf(prompt: string, maxTokens: number, pdf?: Buffer): Promise<string> {
     if (!this.aiConfigured()) throw new ServiceUnavailableException('AI yoqilmagan');
     return this.complete(prompt, maxTokens, pdf);

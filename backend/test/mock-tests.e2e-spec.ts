@@ -352,4 +352,40 @@ describe('IELTS mock tests (e2e)', () => {
       delete (ai as unknown as Record<string, unknown>).transcribeAudio;
     }
   });
+
+  it('writes a whole mock test for a level from current trends, as a draft, in the background', async () => {
+    const ai = app.get(AiService);
+    Object.defineProperty(ai, 'isConfigured', { get: () => true, configurable: true });
+    const qs = (from: number, n: number) => Array.from({ length: n }, (_, i) => ({ no: from + i, type: 'FILL_BLANK', prompt: `Item ${from + i}: ______`, correctAnswer: 'answer', explanation: 'It is said in the text.' }));
+    const prompts: string[] = [];
+    ai.completeSearch = async () => { throw new Error('quota'); };
+    ai.completeText = async (prompt: string) => {
+      prompts.push(prompt);
+      const m = prompt.match(/numbered (\d+)-(\d+)/);
+      if (prompt.includes('Listening')) return JSON.stringify({ title: 'Part', transcript: 'A: Hello. B: Hi.', questions: qs(Number(m![1]), 10) });
+      if (prompt.includes('Reading test')) return JSON.stringify({ title: 'Passage', text: 'A\nText one.\n\nB\nText two.', questions: qs(Number(m![1]), Number(m![2]) - Number(m![1]) + 1) });
+      if (prompt.includes('Writing section')) return JSON.stringify({ tasks: [{ title: 'Task 1', prompt: 'Describe.', minWords: 150 }, { title: 'Task 2', prompt: 'Discuss.', minWords: 250 }] });
+      return JSON.stringify({ parts: [{ title: 'Part 1', questions: ['a?'] }, { title: 'Part 2', questions: ['b'] }, { title: 'Part 3', questions: ['c?'] }] });
+    };
+    try {
+      const started = (await http().post('/api/mock-tests/generate').set(auth()).send({ level: 'B6' }).expect(201)).body;
+      expect(started.source).toBe('__GENERATING__');
+      await expect.poll(async () => (await http().get('/api/mock-tests').set(auth()).expect(200)).body.find((x: { id: string }) => x.id === started.id).source, { timeout: 20_000 }).not.toBe('__GENERATING__');
+      const done = (await http().get('/api/mock-tests').set(auth()).expect(200)).body.find((x: { id: string }) => x.id === started.id);
+      expect(done).toMatchObject({ status: 'DRAFT', level: 'B6', summary: { listening: 40, reading: 40, writing: 2, speaking: 3 } });
+      expect(done.source).toMatch(/^AI yozdi.*cathoven\.com/);
+      // The level steers every part.
+      expect(prompts.every((x) => x.includes('band 6.0-6.5'))).toBe(true);
+      // Ready for the teacher: the keys and explanations are there.
+      const t = (await http().get(`/api/mock-tests/${started.id}`).set(auth()).expect(200)).body;
+      expect(t.content.listening.parts[0].questions[0].explanation).toBe('It is said in the text.');
+      await http().patch(`/api/mock-tests/${started.id}`).set(auth()).send({ status: 'PUBLISHED' }).expect(200);
+      // A bad level is refused.
+      await http().post('/api/mock-tests/generate').set(auth()).send({ level: 'B9' }).expect(400);
+    } finally {
+      delete (ai as unknown as Record<string, unknown>).isConfigured;
+      delete (ai as unknown as Record<string, unknown>).completeText;
+      delete (ai as unknown as Record<string, unknown>).completeSearch;
+    }
+  });
 });
