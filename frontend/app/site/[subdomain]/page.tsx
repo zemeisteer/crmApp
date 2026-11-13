@@ -150,6 +150,33 @@ const CSS = `
   .ps-steps{list-style:none;margin:10px 0 0;padding:0;display:flex;flex-direction:column;gap:18px;}
   .ps-steps li{display:flex;gap:14px;align-items:flex-start;font-size:15.5px;}
   .ps-step-n{flex:0 0 32px;height:32px;border-radius:50%;border:1px solid var(--border);background:var(--surface);display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;}
+  /* Dashboard feel: soft glow behind the hero, tiles with depth, a floating bar. */
+  .ps{background:radial-gradient(1100px 520px at 12% -8%,color-mix(in srgb,var(--accent) 16%,transparent),transparent 60%),radial-gradient(900px 480px at 100% 0%,color-mix(in srgb,var(--accent) 9%,transparent),transparent 55%),var(--bg);background-attachment:fixed;}
+  .ps-header{margin:12px auto 0;max-width:1180px;border:1px solid var(--border);border-radius:16px;top:12px;background:color-mix(in srgb,var(--surface) 78%,transparent);backdrop-filter:blur(14px) saturate(1.5);box-shadow:0 8px 30px rgba(0,0,0,.18);}
+  .ps-card{background:linear-gradient(180deg,color-mix(in srgb,var(--surface) 92%,#fff 8%),var(--surface));border-radius:18px;box-shadow:0 1px 0 color-mix(in srgb,#fff 6%,transparent) inset,0 10px 30px rgba(0,0,0,.14);transition:transform .2s,border-color .2s;}
+  .ps-group:hover,.ps-result:hover,.ps-news:hover{transform:translateY(-3px);border-color:color-mix(in srgb,var(--accent) 55%,var(--border));}
+  .ps-hero-media{border-radius:24px;border:1px solid var(--border);box-shadow:0 24px 60px rgba(0,0,0,.35);}
+  .ps-h1{background:linear-gradient(180deg,var(--text),color-mix(in srgb,var(--text) 70%,var(--accent)));-webkit-background-clip:text;background-clip:text;color:transparent;}
+  .ps-facts{border:none;gap:14px;}
+  .ps-facts>div,.ps-facts>div+div{border:1px solid var(--border);border-radius:18px;padding:22px 24px;background:linear-gradient(180deg,color-mix(in srgb,var(--surface) 90%,#fff 10%),var(--surface));}
+  .ps-fact-v{white-space:normal!important;font-size:22px!important;line-height:1.2;background:linear-gradient(90deg,var(--accent),color-mix(in srgb,var(--accent) 60%,var(--text)));-webkit-background-clip:text;background-clip:text;color:transparent;}
+  .ps-feature{border:1px solid var(--border);border-radius:18px;padding:22px;background:linear-gradient(180deg,color-mix(in srgb,var(--surface) 92%,#fff 8%),var(--surface));}
+  .ps-index{display:inline-flex;width:34px;height:34px;border-radius:10px;align-items:center;justify-content:center;background:color-mix(in srgb,var(--accent) 16%,transparent);color:var(--accent);font-weight:700;}
+  .ps-muted{background:color-mix(in srgb,var(--surface-muted) 70%,transparent);}
+  .ps-tabs button,.ps-chip{transition:border-color .15s,background .15s;}
+  .ps-tabs button[aria-selected="true"],.ps-chip[aria-pressed="true"],.ps-chip[aria-checked="true"]{background:var(--accent);border-color:var(--accent);color:#fff;}
+  .ps-btn{border-radius:12px;}
+  .ps-primary{box-shadow:0 6px 18px color-mix(in srgb,var(--accent) 40%,transparent);}
+  .ps-progress{height:6px;border-radius:3px;background:var(--surface-muted);overflow:hidden;}
+  .ps-progress span{display:block;height:100%;background:var(--accent);border-radius:3px;transition:width .3s;}
+  .ps-tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;}
+  .ps-tile{display:flex;align-items:center;gap:10px;text-align:left;border:1.5px solid var(--border);background:var(--surface);color:var(--text);border-radius:14px;padding:14px;cursor:pointer;font-family:inherit;font-size:14.5px;font-weight:600;line-height:1.3;transition:border-color .15s,background .15s,transform .15s;}
+  .ps-tile:hover{border-color:var(--accent);transform:translateY(-1px);}
+  .ps-tile[aria-pressed="true"]{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 14%,var(--surface));}
+  .ps-tile-check{flex:0 0 22px;height:22px;border-radius:7px;border:1.5px solid var(--border);display:inline-flex;align-items:center;justify-content:center;font-size:13px;color:#fff;}
+  .ps-tile[aria-pressed="true"] .ps-tile-check{background:var(--accent);border-color:var(--accent);}
+  .ps-linkbtn{border:none;background:none;color:var(--accent);font-weight:600;font-size:14px;cursor:pointer;padding:0;text-align:left;font-family:inherit;}
+  @media (max-width:640px){.ps-header{margin:8px 8px 0;border-radius:14px;}}
   @media (max-width:980px){
     .ps-nav{display:none!important;}
     .ps-hero{grid-template-columns:minmax(0,1fr);gap:40px;padding-top:48px;}
@@ -240,6 +267,10 @@ export default function PublicSitePage() {
       .map((d) => (DAY_KEYS[d.toLowerCase()] ? t(DAY_KEYS[d.toLowerCase()]) : d))
       .join("/");
 
+  // The application is two small steps: what to study, then who to call.
+  const [step, setStep] = useState(0);
+  const [more, setMore] = useState(false);
+
   async function handleApply(e: React.FormEvent) {
     e.preventDefault();
     if (!data) return;
@@ -277,6 +308,8 @@ export default function PublicSitePage() {
       setPhone("+998 ");
       setParentPhone("");
       setNotes("");
+      setStep(0);
+      setMore(false);
     } catch (err) {
       if (err instanceof ApiError && err.status === 429) setSubmitError(L.errTooMany);
       else setSubmitError(err instanceof ApiError ? err.message : L.errGeneric);
@@ -690,59 +723,86 @@ export default function PublicSitePage() {
                 <button type="button" className="ps-btn ps-ghost" onClick={() => setSubmitSuccess(false)} style={{ marginTop: 6 }}>{L.again}</button>
               </div>
             ) : (
-              <form onSubmit={handleApply} noValidate style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              <form onSubmit={handleApply} noValidate style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+                <div>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5, color: "var(--muted)", marginBottom: 8 }}>
+                    <span>{L.stepOf.replace("{n}", String(step + 1)).replace("{m}", "2")}</span>
+                  </div>
+                  <div className="ps-progress" aria-hidden="true"><span style={{ width: step === 0 ? "50%" : "100%" }} /></div>
+                </div>
                 {submitError && <div role="alert" style={{ background: "var(--danger-soft)", color: "var(--danger)", fontSize: 13.5, fontWeight: 600, padding: "10px 14px", borderRadius: 10 }}>{submitError}</div>}
-                <Field label={`${L.fullName} *`}>
-                  <input className="ps-field" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder={L.fullNamePh} autoComplete="name" />
-                </Field>
-                <div className="ps-grid2" style={{ gap: 12 }}>
-                  <Field label={`${L.phone} *`}>
-                    <PhoneInput className="ps-field" value={phone} onChange={setPhone} />
-                  </Field>
-                  <Field label={L.parentPhone}>
-                    <PhoneInput className="ps-field" value={parentPhone} onChange={setParentPhone} placeholder="+998 90 987 65 43" autoComplete="off" />
-                  </Field>
-                </div>
-                {/* Choices as buttons, not dropdowns: every option is visible
-                    and works the same on phones and computers. */}
-                {subjects.length > 0 && (
-                  <MultiChipGroup
-                    label={L.course}
-                    hint={L.courseMany}
-                    values={selectedCourses}
-                    onChange={setSelectedCourses}
-                    options={subjects.map((x) => ({ value: x.subject, label: x.subject }))}
-                    noneLabel={L.courseUnsure}
-                  />
+
+                {step === 0 && (
+                  <>
+                    <h3 className="ps-h3" style={{ margin: 0 }}>{L.stepCourse}</h3>
+                    {subjects.length > 0 ? (
+                      <div className="ps-tiles" role="group" aria-label={L.course}>
+                        {subjects.map((x) => {
+                          const on = selectedCourses.includes(x.subject);
+                          return (
+                            <button key={x.subject} type="button" className="ps-tile" aria-pressed={on}
+                              onClick={() => setSelectedCourses(on ? selectedCourses.filter((c) => c !== x.subject) : [...selectedCourses, x.subject])}>
+                              <span className="ps-tile-check" aria-hidden="true">{on ? "✓" : ""}</span>
+                              <span>{x.subject}</span>
+                            </button>
+                          );
+                        })}
+                        <button type="button" className="ps-tile" aria-pressed={selectedCourses.length === 0} onClick={() => setSelectedCourses([])}>
+                          <span className="ps-tile-check" aria-hidden="true">{selectedCourses.length === 0 ? "✓" : ""}</span>
+                          <span>{L.courseUnsure}</span>
+                        </button>
+                      </div>
+                    ) : null}
+                    {branches.length > 1 && (
+                      <ChipGroup label={L.branchPick} value={selectedBranch} onChange={setSelectedBranch} options={branches.map((b) => ({ value: b.id, label: b.name }))} />
+                    )}
+                    <button type="button" className="ps-btn ps-primary ps-btn-lg" onClick={() => { setSubmitError(null); setStep(1); }} style={{ width: "100%" }}>{L.next} →</button>
+                  </>
                 )}
-                {branches.length > 1 && (
-                  <ChipGroup
-                    label={L.branchPick}
-                    value={selectedBranch}
-                    onChange={setSelectedBranch}
-                    options={branches.map((b) => ({ value: b.id, label: b.name }))}
-                  />
+
+                {step === 1 && (
+                  <>
+                    <h3 className="ps-h3" style={{ margin: 0 }}>{L.stepContact}</h3>
+                    <Field label={`${L.fullName} *`}>
+                      <input className="ps-field" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder={L.fullNamePh} autoComplete="name" autoFocus />
+                    </Field>
+                    <Field label={`${L.phone} *`}>
+                      <PhoneInput className="ps-field" value={phone} onChange={setPhone} />
+                    </Field>
+                    {more ? (
+                      <>
+                        <Field label={L.parentPhone}>
+                          <PhoneInput className="ps-field" value={parentPhone} onChange={setParentPhone} placeholder="+998 90 987 65 43" autoComplete="off" />
+                        </Field>
+                        <Field label={L.notes}>
+                          <textarea className="ps-field" rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder={L.notesPh} style={{ resize: "vertical" }} />
+                        </Field>
+                      </>
+                    ) : (
+                      <button type="button" className="ps-linkbtn" onClick={() => setMore(true)}>+ {L.moreInfo}</button>
+                    )}
+                    {/* Honeypot: hidden from people and screen readers; bots fill it. */}
+                    <div aria-hidden="true" style={{ position: "absolute", left: "-10000px", width: 1, height: 1, overflow: "hidden" }}>
+                      <label>
+                        Website
+                        <input type="text" tabIndex={-1} autoComplete="off" value={honeypot} onChange={(e) => setHoneypot(e.target.value)} />
+                      </label>
+                    </div>
+                    <label style={{ display: "flex", gap: 10, alignItems: "flex-start", fontSize: 13, color: "var(--text-2)", lineHeight: 1.5, cursor: "pointer" }}>
+                      <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} style={{ marginTop: 3, accentColor: accent, width: 16, height: 16 }} />
+                      <span>
+                        {L.consent}{" "}
+                        <a href="/privacy" target="_blank" rel="noreferrer" style={{ textDecoration: "underline" }}>{L.privacy}</a>
+                      </span>
+                    </label>
+                    <div style={{ display: "flex", gap: 10 }}>
+                      <button type="button" className="ps-btn ps-ghost ps-btn-lg" onClick={() => setStep(0)}>← {L.back}</button>
+                      <button type="submit" className="ps-btn ps-primary ps-btn-lg" disabled={submitting} style={{ flex: 1, opacity: submitting ? 0.7 : 1 }}>
+                        {submitting ? L.sending : L.send}
+                      </button>
+                    </div>
+                  </>
                 )}
-                <Field label={L.notes}>
-                  <textarea className="ps-field" rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder={L.notesPh} style={{ resize: "vertical" }} />
-                </Field>
-                {/* Honeypot: hidden from people and screen readers; bots fill it. */}
-                <div aria-hidden="true" style={{ position: "absolute", left: "-10000px", width: 1, height: 1, overflow: "hidden" }}>
-                  <label>
-                    Website
-                    <input type="text" tabIndex={-1} autoComplete="off" value={honeypot} onChange={(e) => setHoneypot(e.target.value)} />
-                  </label>
-                </div>
-                <label style={{ display: "flex", gap: 10, alignItems: "flex-start", fontSize: 13, color: "var(--text-2)", lineHeight: 1.5, cursor: "pointer" }}>
-                  <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} style={{ marginTop: 3, accentColor: accent, width: 16, height: 16 }} />
-                  <span>
-                    {L.consent}{" "}
-                    <a href="/privacy" target="_blank" rel="noreferrer" style={{ textDecoration: "underline" }}>{L.privacy}</a>
-                  </span>
-                </label>
-                <button type="submit" className="ps-btn ps-primary ps-btn-lg" disabled={submitting} style={{ width: "100%", opacity: submitting ? 0.7 : 1 }}>
-                  {submitting ? L.sending : L.send}
-                </button>
               </form>
             )}
           </div>
@@ -880,27 +940,6 @@ function ChipGroup({ label, value, onChange, options }: { label: string; value: 
 }
 
 /** Several choices (checkboxes as buttons); the last one, "not sure yet", clears the rest. */
-function MultiChipGroup({ label, hint, values, onChange, options, noneLabel }: { label: string; hint: string; values: string[]; onChange: (v: string[]) => void; options: Array<{ value: string; label: string }>; noneLabel: string }) {
-  const toggle = (v: string) => onChange(values.includes(v) ? values.filter((x) => x !== v) : [...values, v]);
-  return (
-    <div role="group" aria-label={label} style={{ display: "flex", flexDirection: "column", gap: 8, minWidth: 0 }}>
-      <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-2)" }}>
-        {label} <span style={{ fontWeight: 500, color: "var(--muted)" }}>· {hint}</span>
-      </span>
-      <div className="ps-chips">
-        {options.map((o) => (
-          <button key={o.value} type="button" role="checkbox" aria-checked={values.includes(o.value)} className="ps-chip" onClick={() => toggle(o.value)}>
-            {values.includes(o.value) ? "✓ " : ""}{o.label}
-          </button>
-        ))}
-        <button type="button" role="checkbox" aria-checked={values.length === 0} className="ps-chip" onClick={() => onChange([])}>
-          {noneLabel}
-        </button>
-      </div>
-    </div>
-  );
-}
-
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label style={{ display: "flex", flexDirection: "column", gap: 6, minWidth: 0 }}>
