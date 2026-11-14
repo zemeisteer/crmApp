@@ -158,11 +158,11 @@ export default function ExamMode(props: ExamProps) {
   return createPortal(
     <div className="exm-root" style={{ color: INK, fontFamily: "Arial, Helvetica, sans-serif", fontSize: font }}>
       {locked && started && left_ < MAX_LEAVES && (
-        <div role="alertdialog" aria-modal="true" data-testid="exam-locked" style={{ position: "fixed", inset: 0, zIndex: 400, background: "rgba(10,10,20,0.92)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
+        <div role="alertdialog" aria-modal="true" data-testid="exam-locked" style={{ position: "fixed", inset: 0, zIndex: 400, background: "rgba(10,10,20,0.92)", color: "var(--on-ink)", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
           <div style={{ maxWidth: 460, textAlign: "center", display: "flex", flexDirection: "column", gap: 14 }}>
             <div style={{ fontSize: 22, fontWeight: 800 }}>{t("exm.lockedTitle")}</div>
             <div style={{ fontSize: 15, lineHeight: 1.6 }}>{t("exm.lockedText").replace("{n}", String(left_)).replace("{max}", String(MAX_LEAVES))}</div>
-            <button type="button" onClick={() => { fs.enter(); setLocked(false); }} style={{ background: "#fff", color: INK, border: "none", fontSize: 16, fontWeight: 800, padding: "12px 20px", borderRadius: 8, cursor: "pointer" }}>
+            <button type="button" onClick={() => { fs.enter(); setLocked(false); }} style={{ background: "var(--surface)", color: INK, border: "none", fontSize: 16, fontWeight: 800, padding: "12px 20px", borderRadius: 8, cursor: "pointer" }}>
               {t("exm.lockedBack")}
             </button>
           </div>
