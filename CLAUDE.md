@@ -51,4 +51,4 @@ Ports 4300/3300, database `<db>_browser_e2e` (recreated). Takes minutes (sign-up
 
 - `.claude/settings.json` hooks: `guard-protected-files.cjs` (blocks the files above) and `format-and-lint.cjs` (after Edit/Write: backend Prettier + oxlint, frontend `eslint --fix`; Prettier only on files already Prettier-clean at HEAD, since most backend files are not).
 - Skills: `/db-migration <change>`, `/sprint-report`. Agents: `tenant-security-reviewer`, `e2e-test-writer`.
-- MCP (`.mcp.json`): `context7` (library docs), `postgres-dev` (read-only, local dev DB via `CRM_DEV_DATABASE_URL`; setup in SETUP.md).
+- MCP (`.mcp.json`): `context7` (library docs), `postgres-dev` (Google MCP Toolbox, role `crm_mcp_readonly` on `talimcrm_dev`; password from the `CRM_DEV_DB_PASSWORD` user variable, other `CRM_DEV_DB_*` have defaults; setup in SETUP.md §5). The first start downloads the packages and can exceed the 30 s MCP timeout: reconnect once in `/mcp`.
