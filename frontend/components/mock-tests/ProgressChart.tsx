@@ -9,7 +9,7 @@ import { KindTable } from "@/components/portal/MockRunner";
 // Bands over a student's mock sittings: the overall band as the main line,
 // one skill at a time on top of it (picked below the chart), and the
 // question types they miss most.
-const SKILL_COLOR: Record<MockSection, string> = { listening: "#2a78c8", reading: "#1f9d6b", writing: "#c77c1e", speaking: "#a24bb8" };
+const SKILL_COLOR: Record<MockSection, string> = { listening: "var(--info)", reading: "var(--success)", writing: "var(--warning)", speaking: "var(--violet)" };
 
 export default function ProgressChart({ data, card }: { data: MockProgress; card: React.CSSProperties }) {
   const { t } = useLanguage();
@@ -69,7 +69,7 @@ export default function ProgressChart({ data, card }: { data: MockProgress; card
               <span style={{ fontWeight: 800, padding: "4px 8px" }}>— {t("mock.overall")}</span>
               {(["listening", "reading", "writing", "speaking"] as const).map((s) => (
                 <button key={s} type="button" aria-pressed={skill === s} onClick={() => setSkill((v) => (v === s ? null : s))}
-                  style={{ border: `1.5px solid ${SKILL_COLOR[s]}`, background: skill === s ? SKILL_COLOR[s] : "transparent", color: skill === s ? "#fff" : "var(--text)", borderRadius: 999, padding: "4px 10px", fontWeight: 700, cursor: "pointer" }}>
+                  style={{ border: `1.5px solid ${SKILL_COLOR[s]}`, background: skill === s ? SKILL_COLOR[s] : "transparent", color: skill === s ? "var(--on-color)" : "var(--text)", borderRadius: 999, padding: "4px 10px", fontWeight: 700, cursor: "pointer" }}>
                   {t(sectionKey(s))}
                 </button>
               ))}
