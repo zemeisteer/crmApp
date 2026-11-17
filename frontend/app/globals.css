@@ -252,6 +252,32 @@
   box-sizing: border-box;
 }
 
+/* Native controls follow the theme: the browser draws scrollbars, date
+   pickers and the open list of a <select> in the page's scheme, and every
+   select and its options take the theme's colors (a select left without a
+   background showed white options with light text in the dark theme).
+   In the base layer, so a utility class or an inline style still wins. */
+:root {
+  color-scheme: light;
+}
+.dark {
+  color-scheme: dark;
+}
+@layer base {
+  select {
+    background-color: var(--surface);
+    color: var(--text);
+  }
+  select option,
+  select optgroup {
+    background-color: var(--surface);
+    color: var(--text);
+  }
+  select option:disabled {
+    color: var(--text-muted);
+  }
+}
+
 /* ========================================================================= */
 /* Modern Sleek Scrollbars                                                   */
 /* ========================================================================= */
