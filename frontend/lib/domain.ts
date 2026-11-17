@@ -128,3 +128,18 @@ export function customHost(host: string | null | undefined, root: string = ROOT_
   if (/^[\d.]+$/.test(name) || name.startsWith("[")) return null;
   return name;
 }
+
+/**
+ * The public check page of a certificate, on the subdomain of the center
+ * that issued it. (A center's own domain sends every path but its home page
+ * to the subdomain, see proxy.ts, so the subdomain is the lasting address.)
+ * Without a center it stays on this site. Old links on the main site keep
+ * working: /verify/<code> renders on any host.
+ */
+export function certificateVerifyUrl(code: string, subdomain: string | null | undefined, fallbackOrigin?: string): string {
+  const path = `/verify/${encodeURIComponent(code)}`;
+  const sub = subdomain?.trim().toLowerCase();
+  if (sub && LABEL.test(sub) && !RESERVED_SUBDOMAINS.has(sub)) return `${centerSiteUrl(sub)}${path}`;
+  const origin = fallbackOrigin ?? (typeof window !== "undefined" ? window.location.origin : mainSiteUrl());
+  return `${origin}${path}`;
+}

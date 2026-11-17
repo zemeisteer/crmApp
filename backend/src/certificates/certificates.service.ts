@@ -131,7 +131,7 @@ export class CertificatesService {
       with: {
         student: { columns: { fullName: true } },
         group: { columns: { name: true, subject: true } },
-        tenant: { columns: { name: true } },
+        tenant: { columns: { name: true, subdomain: true } },
       },
     });
 
@@ -150,6 +150,8 @@ export class CertificatesService {
       grade: cert.grade,
       issueDate: cert.issueDate,
       organizationName: cert.tenant?.name || "O'quv markazi",
+      // Public already (the center's site): the check page moves old main-site links there.
+      organizationSubdomain: cert.tenant?.subdomain ?? null,
       courseName: cert.group?.name,
       subject: cert.group?.subject,
       signatoryName: cert.signatoryName,

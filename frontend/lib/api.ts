@@ -1537,6 +1537,8 @@ export interface PublicCertificate {
   grade?: string | null;
   issueDate?: string;
   organizationName?: string;
+  /** The issuing center's subdomain: its own address for this page. */
+  organizationSubdomain?: string | null;
   courseName?: string | null;
   subject?: string | null;
   signatoryName?: string;
