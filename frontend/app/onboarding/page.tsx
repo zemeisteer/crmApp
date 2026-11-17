@@ -14,7 +14,7 @@ import {
 import { useLanguage } from "@/lib/i18n-context";
 import type { TranslationKey } from "@/lib/i18n";
 import PhoneInput from "@/components/PhoneInput";
-import { centerHost, ROOT_DOMAIN } from "@/lib/domain";
+import { useCenterAddress } from "@/lib/use-center-host";
 
 const ACCENT = "var(--primary)";
 
@@ -62,7 +62,8 @@ const STEPS = [
 export default function OnboardingPage() {
   const { t } = useLanguage();
   const router = useRouter();
-  const { refreshMe } = useAuth();
+  const { refreshMe, openCenter } = useAuth();
+  const centerAt = useCenterAddress();
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [initialLoading, setInitialLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -104,7 +105,7 @@ export default function OnboardingPage() {
   const [manualStudentPhone, setManualStudentPhone] = useState("");
   const [manualStudentsList, setManualStudentsList] = useState<{ name: string; phone: string }[]>([]);
 
-  // Completion
+  // Completion (finalWorkspaceUrl holds the center's subdomain)
   const [isCompleted, setIsCompleted] = useState(false);
   const [finalWorkspaceUrl, setFinalWorkspaceUrl] = useState("");
 
@@ -129,7 +130,7 @@ export default function OnboardingPage() {
         const stepName = t.onboardingStep || "PROFILE";
         if (stepName === "COMPLETED") {
           setIsCompleted(true);
-          setFinalWorkspaceUrl(centerHost(t.subdomain));
+          setFinalWorkspaceUrl(t.subdomain);
         } else {
           const step = stepName === "SUBJECTS" || stepName === "COURSES" ? "CATEGORIES" : stepName;
           const idx = STEPS.findIndex((s) => s.id === step);
@@ -320,9 +321,9 @@ export default function OnboardingPage() {
     setError(null);
     setSubmitting(true);
     try {
-      const res = await onboardingApi.complete();
+      await onboardingApi.complete();
       setIsCompleted(true);
-      setFinalWorkspaceUrl(res.workspaceUrl);
+      setFinalWorkspaceUrl(workspaceSlug);
       await refreshMe();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : t("common.errorGeneric"));
@@ -406,13 +407,13 @@ export default function OnboardingPage() {
                 {t("onb.wsUrl")}
               </span>
               <span style={{ fontSize: 16, fontWeight: 700, color: ACCENT }}>
-                {finalWorkspaceUrl || centerHost(workspaceSlug)}
+                {centerAt.host(finalWorkspaceUrl || workspaceSlug)}
               </span>
             </div>
             <button
               type="button"
               onClick={() => {
-                navigator.clipboard.writeText(`https://${finalWorkspaceUrl || centerHost(workspaceSlug)}`);
+                navigator.clipboard.writeText(centerAt.url(finalWorkspaceUrl || workspaceSlug));
                 alert(t("msg.urlCopied"));
               }}
               style={{
@@ -433,7 +434,7 @@ export default function OnboardingPage() {
           <button
             id="open-dashboard-btn"
             type="button"
-            onClick={() => router.push("/dashboard")}
+            onClick={() => void openCenter(finalWorkspaceUrl || workspaceSlug, "/dashboard")}
             style={{
               width: "100%",
               height: 50,
@@ -926,7 +927,7 @@ export default function OnboardingPage() {
                       whiteSpace: "nowrap",
                     }}
                   >
-                    .{ROOT_DOMAIN}
+                    {centerAt.suffix}
                   </span>
                 </div>
 
@@ -960,7 +961,7 @@ export default function OnboardingPage() {
                 <div>
                   <div style={{ fontSize: 12, color: "var(--text-muted)" }}>{t("onb.preview")}</div>
                   <div style={{ fontSize: 14.5, fontWeight: 700, color: ACCENT }}>
-                    {centerHost(workspaceSlug || "bilimdon")}
+                    {centerAt.host(workspaceSlug || "bilimdon")}
                   </div>
                 </div>
               </div>

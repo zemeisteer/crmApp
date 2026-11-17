@@ -5,7 +5,8 @@ import { ApiError, fileUrl, placementApi, tenantsApi, type PlacementTestSummary,
 import { useAuth } from "@/lib/auth-context";
 import { useLanguage } from "@/lib/i18n-context";
 import Select from "@/components/Select";
-import { centerHost, centerSiteUrl } from "@/lib/domain";
+import { centerSiteUrl } from "@/lib/domain";
+import { useCenterAddress } from "@/lib/use-center-host";
 
 const ACCENT = "var(--primary)";
 const ICONS = ["✅", "🎯", "👩‍🏫", "📚", "🏆", "💡", "🕒", "💬", "📈", "🧑‍🎓", "🏫", "💳", "🌍", "🤝", "⭐", "🎓"];
@@ -18,6 +19,7 @@ const xBtn: React.CSSProperties = { width: 32, height: 32, flexShrink: 0, border
 // empty are simply not shown there.
 export default function SiteContentEditor() {
   const { t } = useLanguage();
+  const centerAt = useCenterAddress();
   const { tenant } = useAuth();
   const [site, setSite] = useState<SiteContent | null>(null);
   const [tests, setTests] = useState<PlacementTestSummary[]>([]);
@@ -98,7 +100,7 @@ export default function SiteContentEditor() {
       <div style={{ ...card, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap", background: "var(--violet-soft)", borderColor: "var(--primary-border)" }}>
         <div style={{ fontSize: 13.5, color: "var(--text-soft)", lineHeight: 1.5, flex: 1, minWidth: 220 }}>
           {t("site.intro")}
-          {tenant?.subdomain && <div style={{ marginTop: 4, fontWeight: 700, color: ACCENT, overflowWrap: "anywhere" }}>{centerHost(tenant.subdomain)}</div>}
+          {tenant?.subdomain && <div style={{ marginTop: 4, fontWeight: 700, color: ACCENT, overflowWrap: "anywhere" }}>{centerAt.host(tenant.subdomain)}</div>}
         </div>
         {siteUrl && (
           <a href={siteUrl} target="_blank" rel="noreferrer" className="btn" style={{ background: "var(--surface)", border: "1px solid var(--primary-border)", color: ACCENT, fontSize: 13, fontWeight: 700, padding: "9px 14px", borderRadius: "var(--radius-sm)", textDecoration: "none" }}>

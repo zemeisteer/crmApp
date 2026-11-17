@@ -8,7 +8,7 @@ import { authApi, fileUrl, planAllows, type PLAN_FEATURES } from "@/lib/api";
 import { useLanguage } from "@/lib/i18n-context";
 import type { TranslationKey } from "@/lib/i18n";
 import type { Role, WorkspaceItem } from "@/lib/api";
-import { centerHost } from "@/lib/domain";
+import { useCenterAddress } from "@/lib/use-center-host";
 import { useChatUnread, useChatUnreadRefresh } from "@/lib/chat-unread";
 
 
@@ -482,6 +482,7 @@ const GROUP_OF: Record<string, (typeof NAV_GROUPS)[number]["id"]> = {
 export default function Sidebar({ open, onClose }: { open?: boolean; onClose?: () => void }) {
   const pathname = usePathname();
   const { user, tenant, logout, selectWorkspace } = useAuth();
+  const centerAt = useCenterAddress();
   // Other centers this person works in: switching moves the session there
   // (no second login). Empty for most people, so nothing is shown.
   const [otherCenters, setOtherCenters] = useState<WorkspaceItem[]>([]);
@@ -658,7 +659,7 @@ export default function Sidebar({ open, onClose }: { open?: boolean; onClose?: (
                   onClick={() => switchTo(w.tenantId)}
                   disabled={switching !== null}
                   className="nav-item rail-item btn"
-                  title={centerHost(w.subdomain)}
+                  title={centerAt.host(w.subdomain)}
                   style={{ opacity: switching && switching !== w.tenantId ? 0.5 : 1 }}
                 >
                   <span className="rail-icon" aria-hidden="true">⇄</span>

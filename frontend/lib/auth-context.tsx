@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { centerRedirectBase, rememberCenter } from "./domain";
+import { centerAddress, centerRedirectBase, isLocalHost, rememberCenter, subdomainFromHost } from "./domain";
 import {
   authApi,
   hasSession,
@@ -39,6 +39,8 @@ interface AuthContextValue {
   }) => Promise<void>;
   logout: () => void;
   refreshMe: () => Promise<void>;
+  /** After onboarding: on to the center's own address (on a dev machine), else `path` here. */
+  openCenter: (subdomain: string, path: string) => Promise<void>;
 }
 
 const DEFAULT_ROLE_PERMISSIONS: Record<string, string[]> = {
@@ -207,6 +209,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     router.push("/onboarding");
   }
 
+  // The end of a new center's onboarding. On a dev machine the center runs
+  // on <sub>.localhost:<port>, so the session is carried there (whatever the
+  // account's platform role: this session is the new center's). Elsewhere
+  // nothing changes: the dashboard opens here, as before.
+  async function openCenter(subdomain: string, path: string) {
+    const host = window.location.host;
+    const sub = subdomain.toLowerCase();
+    if (sub && isLocalHost(host) && subdomainFromHost(host) !== sub) {
+      try {
+        const { code } = await authApi.handoff();
+        markLeavingForCenter();
+        authApi.logout().catch(() => undefined);
+        clearToken();
+        rememberCenter(sub);
+        window.location.replace(`${centerAddress(sub, host).url}/auth/handoff?next=${encodeURIComponent(path)}#code=${code}`);
+        return;
+      } catch {
+        // stay here: the app still works on this address
+      }
+    }
+    router.push(path);
+  }
+
   function can(permission: string): boolean {
     if (!user) return false;
     if (user.role === "SUPERADMIN" || user.role === "OWNER" || user.role === "ADMIN") return true;
@@ -238,6 +263,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         register,
         logout,
         refreshMe: loadMe,
+        openCenter,
       }}
     >
       {children}

@@ -15,6 +15,33 @@ export function centerHost(subdomain: string) {
   return `${subdomain}.${ROOT_DOMAIN}`;
 }
 
+/** localhost, *.localhost or 127.0.0.1 (a dev machine), port ignored. */
+export function isLocalHost(host: string | null | undefined): boolean {
+  const name = (host ?? "").toLowerCase().replace(/:\d+$/, "");
+  return name === "localhost" || name.endsWith(".localhost") || name === "127.0.0.1";
+}
+
+/**
+ * Where a center really runs, as seen from the page's host (`here`, e.g.
+ * window.location.host): on a dev machine `<sub>.localhost:<port>` (the same
+ * port the app is opened on), everywhere else `<sub>.<ROOT_DOMAIN>`. Without
+ * `here` (server render) it is always the configured domain.
+ */
+export function centerAddress(subdomain: string, here?: string | null, root: string = ROOT_DOMAIN): { host: string; url: string } {
+  if (here && isLocalHost(here)) {
+    const port = here.match(/:(\d+)$/)?.[1];
+    const host = `${subdomain}.localhost${port ? `:${port}` : ""}`;
+    return { host, url: `http://${host}` };
+  }
+  const host = `${subdomain}.${root}`;
+  return { host, url: `https://${host}` };
+}
+
+/** What follows a center's label in its address: ".localhost:3100" on a dev machine, ".<ROOT_DOMAIN>" elsewhere. */
+export function centerDomainSuffix(here?: string | null, root: string = ROOT_DOMAIN): string {
+  return centerAddress("x", here, root).host.slice(1);
+}
+
 /**
  * The center subdomain a request host points at, or null for the main site.
  * "ilm.talimcrm.uz" -> "ilm", "ilm.localhost:3000" -> "ilm",
