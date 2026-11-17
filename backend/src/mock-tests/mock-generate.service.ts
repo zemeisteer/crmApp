@@ -1,15 +1,20 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
-import { eq } from 'drizzle-orm';
+import { BadRequestException, ConflictException, Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { and, eq } from 'drizzle-orm';
 import { DB, Database } from '../db/db.module';
 import { mockTests } from '../db/schema';
 import { AiService } from '../ai/ai.service';
-import { isLevel, normalizeContent, sectionQuestions } from './ielts';
-import { listeningPartPrompt, readingPassagePrompt, speakingGenPrompt, trendsPrompt, writingGenPrompt } from './generate-prompts';
+import { FilesService } from '../files/files.service';
+import { saveGeneratedFile } from '../common/upload.util';
+import { isLevel, normalizeContent, type MockContent } from './ielts';
+import { trendsPrompt } from './generate-prompts';
 import { parseJsonObject } from './import/import-prompts';
 import { bundledTrends, TREND_SOURCES } from './trends';
+import { applyResults, emptyMeta, isPartKey, PART_KEYS, partLabel, partsWithoutAudio, pool, runPart, specFor, type PartKey, type PartResult, type Topics } from './generation';
 
 export const GENERATING = '__GENERATING__';
 export const FAILED = '__FAILED__';
+// A retry that has not finished after this long is treated as lost (server restart).
+const RUNNING_STALE_MS = 15 * 60_000;
 
 const asStrings = (v: unknown, n: number) => (Array.isArray(v) ? v.map((x) => String(x)).filter(Boolean).slice(0, n) : []);
 const host = (url: string) => {
@@ -19,15 +24,30 @@ const host = (url: string) => {
     return url;
   }
 };
+const parse = (s: string): unknown => {
+  try {
+    return JSON.parse(s);
+  } catch {
+    return {};
+  }
+};
 
 // Writes a whole new IELTS mock test (Listening, Reading, Writing, Speaking)
 // for a chosen band level, or a mixed one: a web search finds the topics and
-// task types in current use, then every part is written fresh with answer
-// keys and explanations. The result is a DRAFT for the teacher to check.
+// task types in current use, then every part is written in its own AI call,
+// checked, and asked for again when it comes back short or cut off (see
+// generation.ts). A part that still fails is recorded in the content, shown
+// in the editor with a retry button, and blocks publishing; so does a
+// Listening part without audio. Audio is read aloud by Gemini TTS when a
+// Gemini key is set. The result is a DRAFT for the teacher to check.
 @Injectable()
 export class MockGenerateService {
   private readonly logger = new Logger(MockGenerateService.name);
-  constructor(@Inject(DB) private readonly db: Database, private readonly ai: AiService) {}
+  constructor(
+    @Inject(DB) private readonly db: Database,
+    private readonly ai: AiService,
+    private readonly files: FilesService,
+  ) {}
 
   // Creates the placeholder test and starts writing it in the background.
   async start(tenantId: string, dto: { level?: string | null; module?: string }) {
@@ -36,87 +56,180 @@ export class MockGenerateService {
     const [row] = await this.db.insert(mockTests).values({
       tenantId, title: `AI mock · ${level ?? 'aralash'}`, subject: 'Ingliz tili', level, module, source: GENERATING, content: JSON.stringify(normalizeContent({})),
     }).returning();
-    void this.write(row.id, level, module).catch(async (err) => {
+    void this.write(tenantId, row.id, level, module).catch(async (err) => {
       this.logger.error(`mock generation failed: ${(err as Error).message}`);
       await this.db.update(mockTests).set({ source: `${FAILED}${(err as Error).message.slice(0, 200)}`, updatedAt: new Date() }).where(eq(mockTests.id, row.id));
     });
     return row;
   }
 
-  private async json(prompt: string, tokens = 12_000): Promise<Record<string, any> | null> {
-    for (let i = 0; i < 2; i++) {
-      const parsed = parseJsonObject(await this.ai.completeText(prompt, tokens));
-      if (parsed) return parsed;
-    }
-    return null;
-  }
-
-  // Runs the jobs three at a time (the AI is rate limited).
-  private async pool<T>(jobs: Array<() => Promise<T>>, size = 3): Promise<T[]> {
-    const out: T[] = new Array(jobs.length);
-    let next = 0;
-    await Promise.all(Array.from({ length: size }, async () => {
-      while (next < jobs.length) {
-        const i = next++;
-        out[i] = await jobs[i]();
-      }
-    }));
-    return out;
-  }
-
-  private async write(id: string, level: string | null, module: string) {
-    // 1. What is current, from the web.
-    let topics: Record<string, any> = {};
+  private async topics(level: string | null, module: string): Promise<{ topics: Topics; sources: Array<{ title: string; url: string }> }> {
+    let found: Record<string, any> = {};
     let sources: Array<{ title: string; url: string }> = [];
     let live = false;
     try {
-      const found = await this.ai.completeSearch(trendsPrompt(level, module), 3000);
-      topics = parseJsonObject(found.text) ?? {};
-      sources = found.sources;
-      live = sources.length > 0 && asStrings(topics.reading, 3).length > 0;
+      const res = await this.ai.completeSearch(trendsPrompt(level, module), 3000);
+      found = parseJsonObject(res.text) ?? {};
+      sources = res.sources;
+      live = sources.length > 0 && asStrings(found.reading, 3).length > 0;
     } catch (err) {
       this.logger.warn(`live trend search unavailable, using the bundled trends: ${(err as Error).message}`);
     }
     if (!live) {
-      topics = bundledTrends(module);
+      found = bundledTrends(module);
       sources = TREND_SOURCES;
     }
-    const lt = asStrings(topics.listening, 4);
-    const rt = asStrings(topics.reading, 3);
-    const pick = (list: string[], i: number, fallback: string) => list[i] ?? fallback;
-    const sp = {
-      part1: asStrings(topics.speaking?.part1, 3).length ? asStrings(topics.speaking?.part1, 3) : ['hometown', 'work or study', 'free time'],
-      part2: String(topics.speaking?.part2 ?? 'a place you visited that you liked'),
-      part3: String(topics.speaking?.part3 ?? 'travel and tourism'),
+    const part1 = asStrings(found.speaking?.part1, 3);
+    return {
+      sources,
+      topics: {
+        listening: asStrings(found.listening, 4),
+        reading: asStrings(found.reading, 3),
+        writing: { task1: String(found.writing?.task1 ?? 'changes over time in a chart'), task2: String(found.writing?.task2 ?? 'technology and education') },
+        speaking: {
+          part1: part1.length ? part1 : ['hometown', 'work or study', 'free time'],
+          part2: String(found.speaking?.part2 ?? 'a place you visited that you liked'),
+          part3: String(found.speaking?.part3 ?? 'travel and tourism'),
+        },
+      },
     };
+  }
 
-    // 2. Every part, three at a time.
-    const lcount = [10, 10, 10, 10];
-    const rcount = [13, 13, 14];
-    const lfrom = [1, 11, 21, 31];
-    const rfrom = [1, 14, 27];
-    const jobs: Array<() => Promise<Record<string, any> | null>> = [
-      ...lcount.map((c, i) => () => this.json(listeningPartPrompt(i + 1, pick(lt, i, ['booking a hotel room', 'a local museum tour', 'a university project', 'urban wildlife'][i]), level, lfrom[i], c))),
-      ...rcount.map((c, i) => () => this.json(readingPassagePrompt(i + 1, pick(rt, i, ['the history of a common invention', 'how cities adapt to climate', 'memory and learning'][i]), level, rfrom[i], c, module))),
-      () => this.json(writingGenPrompt(String(topics.writing?.task1 ?? 'changes over time in a chart'), String(topics.writing?.task2 ?? 'technology and education'), level, module), 5000),
-      () => this.json(speakingGenPrompt(sp, level), 5000),
-    ];
-    const res = await this.pool(jobs);
-    const [l1, l2, l3, l4, r1, r2, r3, w, s] = res;
-    const content = normalizeContent({
-      listening: { durationMin: 30, parts: [l1, l2, l3, l4].filter(Boolean).map((p) => ({ ...p, questions: p!.questions })) },
-      reading: { durationMin: 60, passages: [r1, r2, r3].filter(Boolean) },
-      writing: { durationMin: 60, tasks: w?.tasks ?? [] },
-      speaking: { parts: s?.parts ?? [] },
-    });
-    const total = sectionQuestions(content, 'listening').length + sectionQuestions(content, 'reading').length;
-    if (total === 0) throw new Error("AI savollar yoza olmadi — keyinroq qayta urinib ko'ring");
+  /** The whole test: every part, then the audio. Exported for tests through `writeContent`. */
+  async writeContent(tenantId: string, id: string, topics: Topics, level: string | null, module: string): Promise<MockContent> {
+    const specs = PART_KEYS.map((k) => specFor(k, topics, level, module));
+    const results = await pool(specs.map((s) => () => runPart(this.ai, s)));
+    for (const r of results) {
+      if (!r.ok) this.logger.warn(`mock ${id}: ${partLabel(r.key)} failed after ${r.attempts} tries: ${r.error}`);
+    }
+    if (results.every((r) => !r.ok)) {
+      const first = results.find((r): r is Extract<PartResult, { ok: false }> => !r.ok);
+      throw new Error(`AI test yoza olmadi (${first?.error.slice(0, 120) ?? 'javob yo\'q'}) — keyinroq qayta urinib ko'ring`);
+    }
+    let content = applyResults(normalizeContent({ generation: emptyMeta() }), results);
+    content.generation!.plan = topics;
+    content = await this.addAudio(tenantId, id, content);
+    return content;
+  }
 
+  private async write(tenantId: string, id: string, level: string | null, module: string) {
+    const { topics, sources } = await this.topics(level, module);
+    const content = await this.writeContent(tenantId, id, topics, level, module);
     const domains = [...new Set(sources.map((x) => host(x.url)))].slice(0, 6);
     const note = `AI yozdi (yangi matn). Mavzular hozirgi IELTS trendlaridan: ${domains.join(', ')}`;
     await this.db.update(mockTests).set({
       title: `AI mock · ${level ?? 'aralash'} · ${new Date().toLocaleDateString('en-GB')}`,
       content: JSON.stringify(content), source: note, updatedAt: new Date(),
     }).where(eq(mockTests.id, id));
+  }
+
+  /**
+   * Reads every Listening part that has an audioscript but no recording
+   * aloud and stores it like an upload of this test. Without a Gemini key
+   * the parts stay silent and are marked "audio kerak" (publishing waits).
+   */
+  async addAudio(tenantId: string, id: string, content: MockContent): Promise<MockContent> {
+    const c = structuredClone(content);
+    const gen = c.generation ?? emptyMeta();
+    c.generation = gen;
+    const todo = partsWithoutAudio(c).filter((i) => c.listening.parts[i].transcript);
+    if (!todo.length) {
+      if (!partsWithoutAudio(c).length) { gen.tts = 'DONE'; gen.ttsError = null; }
+      return c;
+    }
+    if (!this.ai.canSynthesizeSpeech) {
+      gen.tts = 'UNAVAILABLE';
+      gen.ttsError = null;
+      return c;
+    }
+    let error: string | null = null;
+    for (const i of todo) {
+      try {
+        const audio = await this.ai.synthesizeSpeech(c.listening.parts[i].transcript!);
+        if (!audio) continue;
+        const name = await saveGeneratedFile(audio.bytes, audio.ext);
+        await this.files.register(tenantId, name, 'MOCK_ASSET', id);
+        c.listening.parts[i].audioPath = name;
+      } catch (err) {
+        error = (err as Error).message;
+        this.logger.warn(`mock ${id}: audio for Listening Part ${i + 1} failed: ${error}`);
+      }
+    }
+    gen.tts = partsWithoutAudio(c).length ? 'FAILED' : 'DONE';
+    gen.ttsError = gen.tts === 'FAILED' ? (error ?? 'audio yaratilmadi').slice(0, 300) : null;
+    return c;
+  }
+
+  /**
+   * Writes the failed parts of an AI test again (or the ones named; "audio"
+   * re-reads the Listening parts without a recording). Runs in the
+   * background; the editor polls until `generation.running` is empty.
+   */
+  async retry(tenantId: string, id: string, requested: string[] | undefined) {
+    const [row] = await this.db.select().from(mockTests).where(and(eq(mockTests.id, id), eq(mockTests.tenantId, tenantId)));
+    if (!row) throw new NotFoundException('Test topilmadi');
+    const content = normalizeContent(parse(row.content));
+    const gen = content.generation;
+    if (!gen) throw new BadRequestException("Bu test AI bilan yozilmagan");
+    const since = gen.runningSince ? Date.parse(gen.runningSince) : 0;
+    if (gen.running.length && Date.now() - since < RUNNING_STALE_MS) throw new ConflictException('AI hali yozmoqda — biroz kuting');
+    const failed = gen.failed.map((f) => f.key).filter(isPartKey);
+    const wanted = requested?.length ? requested : [...failed, ...(partsWithoutAudio(content).length ? ['audio'] : [])];
+    const parts = wanted.filter((k): k is PartKey => isPartKey(k));
+    const audio = wanted.includes('audio');
+    if (!parts.length && !audio) throw new BadRequestException("Qayta yoziladigan qism yo'q");
+    gen.running = [...parts, ...(audio ? ['audio'] : [])];
+    gen.runningSince = new Date().toISOString();
+    await this.save(id, content);
+    void this.rewrite(tenantId, id, row.level, row.module, parts, audio).catch(async (err) => {
+      this.logger.error(`mock ${id}: retry failed: ${(err as Error).message}`);
+      await this.merge(id, (c) => {
+        c.generation!.running = [];
+        return c;
+      });
+    });
+    return { ...row, content };
+  }
+
+  private async rewrite(tenantId: string, id: string, level: string | null, module: string, parts: PartKey[], audio: boolean) {
+    const [row] = await this.db.select({ content: mockTests.content }).from(mockTests).where(eq(mockTests.id, id));
+    // The parts are written again on the topics they had.
+    const plan = normalizeContent(parse(row?.content ?? '{}')).generation?.plan;
+    const topics = parts.length ? plan ?? (await this.topics(level, module)).topics : null;
+    const results = topics ? await pool(parts.map((k) => () => runPart(this.ai, specFor(k, topics, level, module)))) : [];
+    // The teacher may have edited other parts meanwhile: only these slots change.
+    let updated = await this.merge(id, (c) => applyResults(c, results));
+    if (audio || results.some((r) => r.ok && r.key.startsWith('listening'))) {
+      const withAudio = await this.addAudio(tenantId, id, updated);
+      updated = await this.merge(id, (c) => {
+        withAudio.listening.parts.forEach((p, i) => {
+          if (c.listening.parts[i] && !c.listening.parts[i].audioPath && p.audioPath) c.listening.parts[i].audioPath = p.audioPath;
+        });
+        c.generation!.tts = withAudio.generation!.tts;
+        c.generation!.ttsError = withAudio.generation!.ttsError;
+        return c;
+      });
+    }
+    await this.merge(id, (c) => {
+      c.generation!.running = [];
+      c.generation!.runningSince = null;
+      return c;
+    });
+    return updated;
+  }
+
+  // Applies `fn` to the test's current content and saves it.
+  private async merge(id: string, fn: (c: MockContent) => MockContent): Promise<MockContent> {
+    const [row] = await this.db.select({ content: mockTests.content }).from(mockTests).where(eq(mockTests.id, id));
+    if (!row) throw new NotFoundException('Test topilmadi');
+    const c = normalizeContent(parse(row.content));
+    c.generation ??= emptyMeta();
+    const next = fn(c);
+    await this.save(id, next);
+    return next;
+  }
+
+  private async save(id: string, content: MockContent) {
+    await this.db.update(mockTests).set({ content: JSON.stringify(content), updatedAt: new Date() }).where(eq(mockTests.id, id));
   }
 }
