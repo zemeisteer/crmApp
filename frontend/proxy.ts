@@ -65,6 +65,13 @@ async function route(request: NextRequest, headers?: Headers) {
   }
 
   if (sub) {
+    // The platform panel lives on the main domain only, never under a center.
+    if (pathname === "/admin" || pathname.startsWith("/admin/")) {
+      const local = (host ?? "").toLowerCase().replace(/:\d+$/, "").endsWith(".localhost");
+      const port = (host ?? "").match(/:(\d+)$/)?.[1];
+      const main = local ? `${request.nextUrl.protocol}//localhost${port ? `:${port}` : ""}/` : `https://${ROOT_DOMAIN}/`;
+      return NextResponse.redirect(new URL(pathname, main), 307);
+    }
     if (pathname === "/") {
       const url = request.nextUrl.clone();
       url.pathname = `/site/${sub}`;

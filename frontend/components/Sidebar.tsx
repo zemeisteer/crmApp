@@ -9,6 +9,7 @@ import { useLanguage } from "@/lib/i18n-context";
 import type { TranslationKey } from "@/lib/i18n";
 import type { Role, WorkspaceItem } from "@/lib/api";
 import { useCenterAddress } from "@/lib/use-center-host";
+import { subdomainFromHost } from "@/lib/domain";
 import { useChatUnread, useChatUnreadRefresh } from "@/lib/chat-unread";
 
 
@@ -422,6 +423,9 @@ export function isPlatformMode(role?: Role, hasCenter?: boolean) {
  */
 export function canOpenPath(pathname: string, role?: Role, hasCenter = true, access?: string[]) {
   const under = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
+  // The platform panel never opens on a center's address (proxy.ts sends
+  // /admin there to the main domain; the API refuses it too).
+  if (under(SUPERADMIN_ITEM.href) && typeof window !== "undefined" && subdomainFromHost(window.location.host)) return false;
   if (isPlatformMode(role, hasCenter)) return PLATFORM_ITEMS.some((i) => under(i.href));
   if (under(SUPERADMIN_ITEM.href)) return role === "SUPERADMIN";
   const item = NAV_ITEMS.find((i) => under(i.href));
@@ -641,12 +645,8 @@ export default function Sidebar({ open, onClose }: { open?: boolean; onClose?: (
               </div>
             ))}
 
-            {user?.role === "SUPERADMIN" && tenant && (
-              <div className="rail-group">
-                <div className="rail-heading">{t("nav.groupPlatform")}</div>
-                {link(SUPERADMIN_ITEM.href, t(SUPERADMIN_ITEM.labelKey), SUPERADMIN_ITEM.icon, isActive(SUPERADMIN_ITEM.href))}
-              </div>
-            )}
+            {/* No platform section inside a center: the platform panel is
+                only on the main domain's /admin (also for a superadmin). */}
           </div>
 
           {otherCenters.length > 0 && (
