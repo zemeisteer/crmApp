@@ -17,7 +17,7 @@ import { hashPassword, needsRehash } from '../common/password';
 import { recordSignInFailure } from '../common/security-events';
 import { eq, and, gt, isNull, lt, ne, sql } from 'drizzle-orm';
 import { DB, Database } from '../db/db.module';
-import { tenants, users, sessions, organizationMemberships, authHandoffCodes } from '../db/schema';
+import { tenants, users, sessions, organizationMemberships, authHandoffCodes, plans } from '../db/schema';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { EmailService } from '../email/email.service';
@@ -181,6 +181,7 @@ export class AuthService {
       codeId = await this.signupPhone.verify(signupPhone!, dto.phoneCode, attemptId);
     }
 
+    const plan = await this.signupPlan(dto.plan);
     const passwordHash = await hashPassword(dto.password);
     const verifyToken = randomBytes(32).toString('hex');
     const trialEndsAt = new Date();
@@ -195,7 +196,7 @@ export class AuthService {
           throw new ConflictException({ code: 'CODE_USED', message: "Bu kod bilan ro'yxatdan o'tilgan. Tizimga kiring." });
         }
         const tenant = await this.createTenant(tx, {
-          name: dto.centerName.trim(), subdomain: subdomain!, category: (dto.category as never) ?? 'BOSHQA', status: 'TRIAL', plan: 'STARTER',
+          name: dto.centerName.trim(), subdomain: subdomain!, category: (dto.category as never) ?? 'BOSHQA', status: 'TRIAL', plan,
           trialEndsAt, onboardingStep: 'PROFILE', signupPhone: right === 'FREE_TRIAL' ? signupPhone : null, signupAttemptId: attemptId,
         });
         const user = await this.createOwner(tx, {
@@ -230,6 +231,17 @@ export class AuthService {
       tenant: { ...tenant, signupPhone: undefined },
       onboardingStep: 'PROFILE',
     };
+  }
+
+  /** The plan a new center starts its trial on: the active plan the pricing page passed, else STARTER. */
+  private async signupPlan(wanted: string | undefined): Promise<string> {
+    const key = wanted?.trim();
+    if (!key) return 'STARTER';
+    const row = await this.db.query.plans.findFirst({
+      where: and(sql`lower(${plans.key}) = lower(${key})`, eq(plans.active, true)),
+      columns: { key: true },
+    });
+    return row?.key ?? 'STARTER';
   }
 
   // The sign-up's writes, each its own step (tests make one of them fail).

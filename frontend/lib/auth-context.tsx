@@ -35,6 +35,7 @@ interface AuthContextValue {
     phone?: string;
     phoneCode?: string;
     signupAttemptId?: string;
+    plan?: string;
   }) => Promise<void>;
   logout: () => void;
   refreshMe: () => Promise<void>;
@@ -196,6 +197,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     phone?: string;
     phoneCode?: string;
     signupAttemptId?: string;
+    plan?: string;
   }) {
     const res = await authApi.register(data);
     setToken(res.accessToken);

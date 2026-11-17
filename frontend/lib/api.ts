@@ -1577,6 +1577,8 @@ export const authApi = {
     phone?: string;
     phoneCode?: string;
     signupAttemptId?: string;
+    /** plans.key chosen on the pricing page: the trial runs on it. */
+    plan?: string;
   }) => request<AuthResponse>("/auth/register", { method: "POST", body: JSON.stringify(data) }),
   /** A code to the phone a new center signs up with; DEV: shown here (never in production). */
   // The attempt id comes back with the code and goes with the sign-up.

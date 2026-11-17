@@ -245,6 +245,16 @@ export const dict = {
     RU: "Настройте рабочее пространство и начните управлять центром за пару минут.",
     EN: "Set up your workspace and start managing your center.",
   },
+  "register.trialOfPlan": {
+    UZ: "7 kunlik bepul sinov — {plan}",
+    RU: "7 дней бесплатно — тариф {plan}",
+    EN: "7-day free trial — {plan}",
+  },
+  "register.trialOfPlanNote": {
+    UZ: "Sinov davri shu tarifda boshlanadi; to'lov keyin. Tarifni sozlamalarda o'zgartirish mumkin.",
+    RU: "Пробный период начнётся на этом тарифе; оплата позже. Тариф можно сменить в настройках.",
+    EN: "Your trial starts on this plan; you pay later. You can change the plan in settings.",
+  },
   "register.heroFeature1": {
     UZ: "Har qanday yo'nalish: tillar, matematika, IT, maktab fanlari",
     RU: "Любые направления: языки, математика, IT, школьные предметы",
