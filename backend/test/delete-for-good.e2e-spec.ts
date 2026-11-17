@@ -31,6 +31,10 @@ describe('Delete for good (e2e)', () => {
     return (await http().post(`/api/invitations/${inv.token}/accept`).send({ fullName: role, password: 'password12345' }).expect(201)).body.accessToken as string;
   };
   const audited = async (entityId: string) => (await db.select().from(auditLogs).where(eq(auditLogs.entityId, entityId))).map((r) => r.action);
+  // AuditService.log writes in the background, after the request has
+  // answered: wait for the row rather than read once.
+  const expectAudited = (entityId: string, action: string) =>
+    vi.waitFor(async () => expect(await audited(entityId)).toContain(action), { timeout: 10_000 });
 
   beforeAll(async () => {
     const mod: TestingModule = await Test.createTestingModule({ imports: [AppModule] }).compile();
@@ -61,7 +65,7 @@ describe('Delete for good (e2e)', () => {
     expect(await db.select().from(customFieldValues).where(eq(customFieldValues.definitionId, f.id))).toHaveLength(0);
     // The lead itself stays.
     await http().get(`/api/leads/${lead.id}`).set(bearer(owner)).expect(200);
-    expect(await audited(f.id)).toContain('custom_field.delete');
+    await expectAudited(f.id, 'custom_field.delete');
   });
 
   it('a lead: refused while active; once archived, gone with its history', async () => {
@@ -73,7 +77,7 @@ describe('Delete for good (e2e)', () => {
     await http().delete(`/api/leads/${lead.id}/permanent`).set(bearer(owner)).expect(200);
     await http().get(`/api/leads/${lead.id}`).set(bearer(owner)).expect(404);
     expect(await db.select().from(leadActivities).where(eq(leadActivities.leadId, lead.id))).toHaveLength(0);
-    expect(await audited(lead.id)).toContain('delete');
+    await expectAudited(lead.id, 'delete');
   });
 
   it('a placement test: gone with its results; only owners and admins', async () => {
@@ -89,6 +93,6 @@ describe('Delete for good (e2e)', () => {
     await http().get(`/api/placement-tests/${t.id}`).set(bearer(owner)).expect(404);
     expect(await db.select().from(placementAttempts).where(eq(placementAttempts.testId, t.id))).toHaveLength(0);
     await http().get(`/api/public/placement/${t.token}`).expect(404);
-    expect(await audited(t.id)).toContain('delete');
+    await expectAudited(t.id, 'delete');
   });
 });
