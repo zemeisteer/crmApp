@@ -64,10 +64,13 @@ const RESERVED_SUBDOMAINS = new Set([
   'demo',
 ]);
 
+// Directions and subjects are one step (CATEGORIES); courses are added
+// later in the app. SUBJECTS and COURSES stay as names only for centers
+// that stopped mid-wizard before this change: both lead on to WORKSPACE.
 const STEP_TRANSITIONS: Record<string, string> = {
   PROFILE: 'CATEGORIES',
-  CATEGORIES: 'SUBJECTS',
-  SUBJECTS: 'COURSES',
+  CATEGORIES: 'WORKSPACE',
+  SUBJECTS: 'WORKSPACE',
   COURSES: 'WORKSPACE',
   WORKSPACE: 'BRANCH',
   BRANCH: 'TEAM',
@@ -223,13 +226,13 @@ export class OnboardingService {
       .update(tenants)
       .set({
         teachingCategories: dto.categories,
-        onboardingStep: 'SUBJECTS',
+        onboardingStep: 'WORKSPACE',
         updatedAt: new Date(),
       })
       .where(eq(tenants.id, tenantId))
       .returning();
 
-    return { success: true, nextStep: 'SUBJECTS', tenant: updated };
+    return { success: true, nextStep: 'WORKSPACE', tenant: updated };
   }
 
   async updateWorkspace(tenantId: string, dto: WorkspaceStepDto) {
