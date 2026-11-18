@@ -6,6 +6,13 @@ export class GenerateMockTestDto {
   @IsOptional() @IsIn(['ACADEMIC', 'GENERAL']) module?: string;
 }
 
+export class RetryMockGenerationDto {
+  // Part keys ("listening.0".."listening.3", "reading.0".."reading.2", "writing", "speaking") and/or "audio"; empty: every failed part and the missing audio.
+  @IsOptional() @IsArray() @ArrayMaxSize(10)
+  @IsIn(['listening.0', 'listening.1', 'listening.2', 'listening.3', 'reading.0', 'reading.1', 'reading.2', 'writing', 'speaking', 'audio'], { each: true })
+  parts?: string[];
+}
+
 export class CreateMockTestDto {
   @IsOptional() @IsString() @MaxLength(200) title?: string;
   @IsOptional() @IsString() @MaxLength(120) subject?: string;

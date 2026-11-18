@@ -29,3 +29,13 @@ test("a center's address follows the dev machine's host and port, else the confi
   assert.equal(isLocalHost("alpha.localhost:3100"), true);
   assert.equal(isLocalHost("crmapp.com"), false);
 });
+
+test("a certificate's check link is on the subdomain of the center that issued it", async () => {
+  const { certificateVerifyUrl, ROOT_DOMAIN } = await import("./domain.ts");
+  assert.equal(certificateVerifyUrl("CERT-2026-AB12", "Ilm"), `https://ilm.${ROOT_DOMAIN}/verify/CERT-2026-AB12`);
+  assert.equal(certificateVerifyUrl("a b/c", "ilm"), `https://ilm.${ROOT_DOMAIN}/verify/a%20b%2Fc`);
+  // No center, or a label that is never a center: the link stays on this site.
+  assert.equal(certificateVerifyUrl("CERT-1", null, "https://example.test"), "https://example.test/verify/CERT-1");
+  assert.equal(certificateVerifyUrl("CERT-1", "www", "https://example.test"), "https://example.test/verify/CERT-1");
+  assert.equal(certificateVerifyUrl("CERT-1", "bad.label", "https://example.test"), "https://example.test/verify/CERT-1");
+});

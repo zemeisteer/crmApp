@@ -1537,6 +1537,8 @@ export interface PublicCertificate {
   grade?: string | null;
   issueDate?: string;
   organizationName?: string;
+  /** The issuing center's subdomain: its own address for this page. */
+  organizationSubdomain?: string | null;
   courseName?: string | null;
   subject?: string | null;
   signatoryName?: string;
@@ -3869,6 +3871,8 @@ export interface MockContent {
   reading: { durationMin: number; passages: Array<{ title: string; text: string; imagePath: string | null; questions: import("./tests").TestQuestion[] }> };
   writing: { durationMin: number; tasks: Array<{ title: string; prompt: string; minWords: number; imagePath: string | null }> };
   speaking: { parts: Array<{ title: string; instruction: string | null; prepSeconds: number; answerSeconds: number; questions: string[] }> };
+  // Only on a test the AI wrote; set by the server (see lib/mock-generation.ts).
+  generation?: import("./mock-generation").MockGeneration;
 }
 
 export type MockLevel = "B4" | "B5" | "B6" | "B7" | "B8";
@@ -4145,6 +4149,10 @@ export const mockTestsApi = {
   // A whole test written by the AI for a band level (null: mixed); ready in a few minutes.
   generate: (data: { level: MockLevel | null; module?: "ACADEMIC" | "GENERAL" }) =>
     request<MockTestSummary>("/mock-tests/generate", { method: "POST", body: JSON.stringify(data) }),
+  // Writes the failed parts of an AI test again ("audio": reads the Listening
+  // parts without a recording aloud); no parts: everything still missing.
+  retryGeneration: (id: string, parts?: string[]) =>
+    request<MockTest>(`/mock-tests/${id}/generate/retry`, { method: "POST", body: JSON.stringify(parts?.length ? { parts } : {}) }),
   uploadAsset: (id: string, file: File) => {
     const form = new FormData();
     form.append("file", file);

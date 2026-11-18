@@ -11,7 +11,7 @@ import { attachmentStorage } from '../common/upload.util';
 import { MockTestsService } from './mock-tests.service';
 import { MockSessionsService } from './mock-sessions.service';
 import { MockGenerateService } from './mock-generate.service';
-import { GenerateMockTestDto } from './dto/mock-tests.dto';
+import { GenerateMockTestDto, RetryMockGenerationDto } from './dto/mock-tests.dto';
 import { CreateMockSessionDto } from './dto/mock-tests.dto';
 import { CreateMockTestDto, GenerateMockQuestionsDto, RegradeMockAttemptDto, ReviewMockAttemptDto, ReviewPracticeDto, UpdateMockTestDto } from './dto/mock-tests.dto';
 import { AiService } from '../ai/ai.service';
@@ -49,6 +49,14 @@ export class MockTestsController {
   @Post('generate')
   generateTest(@CurrentUser('tenantId') tenantId: string, @Body() dto: GenerateMockTestDto) {
     return this.generator.start(tenantId, dto);
+  }
+
+  // Writes the parts of an AI test that failed again (or the ones named;
+  // "audio" reads the Listening parts without a recording aloud).
+  @UsesAi()
+  @Post(':id/generate/retry')
+  retryGeneration(@CurrentUser('tenantId') tenantId: string, @Param('id') id: string, @Body() dto: RetryMockGenerationDto) {
+    return this.generator.retry(tenantId, id, dto.parts);
   }
 
   // Materials -> tests: PDF books/booklets (answer keys, audioscripts) and
