@@ -162,9 +162,10 @@ describe('Platform admin (e2e)', () => {
       expect(r.value).not.toContain(SECRET);
       expect(r.updatedBy).toBe(saId);
     }
-    const logs = await db.select().from(auditLogs).where(eq(auditLogs.entityType, 'platform_setting'));
-    expect(JSON.stringify(logs)).not.toContain(SECRET);
-    expect(logs.some((l) => (l.meta ?? '').includes('GEMINI_API_KEY'))).toBe(true);
+    // The audit row is written after the answer (fire-and-forget): wait for it.
+    const auditRows = () => db.select().from(auditLogs).where(eq(auditLogs.entityType, 'platform_setting'));
+    await expect.poll(async () => (await auditRows()).some((l) => (l.meta ?? '').includes('GEMINI_API_KEY')), { timeout: 10_000 }).toBe(true);
+    expect(JSON.stringify(await auditRows())).not.toContain(SECRET);
     // The server uses it from that moment.
     expect(process.env.GEMINI_API_KEY).toBe(SECRET);
 
