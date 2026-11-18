@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useBrowserHost } from "@/lib/use-center-host";
+import { subdomainFromHost } from "@/lib/domain";
 import DashboardShell from "@/components/DashboardShell";
 import Modal from "@/components/Modal";
 import Select from "@/components/Select";
@@ -660,7 +662,10 @@ function SuperadminPlans() {
 
 function PricingContent() {
   const { user } = useAuth();
-  if (user?.role === "SUPERADMIN") return <SuperadminPlans />;
+  // The platform's plan editor is part of the platform panel: main site only.
+  // On a center's address a superadmin sees that center's own pricing.
+  const host = useBrowserHost();
+  if (user?.role === "SUPERADMIN" && host !== null && !subdomainFromHost(host)) return <SuperadminPlans />;
   return <TenantPricing />;
 }
 

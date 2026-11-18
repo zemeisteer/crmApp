@@ -65,6 +65,21 @@ async function route(request: NextRequest, headers?: Headers) {
   }
 
   if (sub) {
+    // The platform panel lives on the main domain only, never under a center.
+    if (pathname === "/admin" || pathname.startsWith("/admin/")) {
+      const local = (host ?? "").toLowerCase().replace(/:\d+$/, "").endsWith(".localhost");
+      if (!local) return NextResponse.redirect(new URL(`${pathname}${request.nextUrl.search}`, `https://${ROOT_DOMAIN}/`), 307);
+      // A dev machine: the main site is localhost:<port>, the server's own
+      // origin, and Next.js shortens a redirect there to a bare path (which
+      // would send <sub>.localhost back to itself). A page that moves on.
+      const port = (host ?? "").match(/:(\d+)$/)?.[1];
+      const target = new URL(`${pathname}${request.nextUrl.search}`, `${request.nextUrl.protocol}//localhost${port ? `:${port}` : ""}/`).toString();
+      const safe = target.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
+      return new NextResponse(`<!doctype html><meta charset="utf-8"><meta http-equiv="refresh" content="0;url=${safe}"><a href="${safe}">${safe}</a>`, {
+        status: 200,
+        headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" },
+      });
+    }
     if (pathname === "/") {
       const url = request.nextUrl.clone();
       url.pathname = `/site/${sub}`;

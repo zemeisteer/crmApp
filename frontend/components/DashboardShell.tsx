@@ -125,9 +125,12 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!loading && !user) {
-      router.replace("/login");
+      // The platform panel comes back to the page asked for after sign-in
+      // (and stays on the main site: lib/auth-context.tsx platformTarget).
+      const admin = pathname === "/admin" || pathname.startsWith("/admin/");
+      router.replace(admin ? `/login?next=${encodeURIComponent(pathname + window.location.search)}` : "/login");
     }
-  }, [loading, user, router]);
+  }, [loading, user, router, pathname]);
 
   useEffect(() => {
     setMenuOpen(false);

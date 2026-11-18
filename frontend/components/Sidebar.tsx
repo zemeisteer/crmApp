@@ -8,7 +8,8 @@ import { authApi, fileUrl, planAllows, type PLAN_FEATURES } from "@/lib/api";
 import { useLanguage } from "@/lib/i18n-context";
 import type { TranslationKey } from "@/lib/i18n";
 import type { Role, WorkspaceItem } from "@/lib/api";
-import { centerHost } from "@/lib/domain";
+import { useCenterAddress } from "@/lib/use-center-host";
+import { subdomainFromHost } from "@/lib/domain";
 import { useChatUnread, useChatUnreadRefresh } from "@/lib/chat-unread";
 
 
@@ -422,6 +423,9 @@ export function isPlatformMode(role?: Role, hasCenter?: boolean) {
  */
 export function canOpenPath(pathname: string, role?: Role, hasCenter = true, access?: string[]) {
   const under = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
+  // The platform panel never opens on a center's address (proxy.ts sends
+  // /admin there to the main domain; the API refuses it too).
+  if (under(SUPERADMIN_ITEM.href) && typeof window !== "undefined" && subdomainFromHost(window.location.host)) return false;
   if (isPlatformMode(role, hasCenter)) return PLATFORM_ITEMS.some((i) => under(i.href));
   if (under(SUPERADMIN_ITEM.href)) return role === "SUPERADMIN";
   const item = NAV_ITEMS.find((i) => under(i.href));
@@ -482,6 +486,7 @@ const GROUP_OF: Record<string, (typeof NAV_GROUPS)[number]["id"]> = {
 export default function Sidebar({ open, onClose }: { open?: boolean; onClose?: () => void }) {
   const pathname = usePathname();
   const { user, tenant, logout, selectWorkspace } = useAuth();
+  const centerAt = useCenterAddress();
   // Other centers this person works in: switching moves the session there
   // (no second login). Empty for most people, so nothing is shown.
   const [otherCenters, setOtherCenters] = useState<WorkspaceItem[]>([]);
@@ -640,12 +645,8 @@ export default function Sidebar({ open, onClose }: { open?: boolean; onClose?: (
               </div>
             ))}
 
-            {user?.role === "SUPERADMIN" && tenant && (
-              <div className="rail-group">
-                <div className="rail-heading">{t("nav.groupPlatform")}</div>
-                {link(SUPERADMIN_ITEM.href, t(SUPERADMIN_ITEM.labelKey), SUPERADMIN_ITEM.icon, isActive(SUPERADMIN_ITEM.href))}
-              </div>
-            )}
+            {/* No platform section inside a center: the platform panel is
+                only on the main domain's /admin (also for a superadmin). */}
           </div>
 
           {otherCenters.length > 0 && (
@@ -658,7 +659,7 @@ export default function Sidebar({ open, onClose }: { open?: boolean; onClose?: (
                   onClick={() => switchTo(w.tenantId)}
                   disabled={switching !== null}
                   className="nav-item rail-item btn"
-                  title={centerHost(w.subdomain)}
+                  title={centerAt.host(w.subdomain)}
                   style={{ opacity: switching && switching !== w.tenantId ? 0.5 : 1 }}
                 >
                   <span className="rail-icon" aria-hidden="true">⇄</span>

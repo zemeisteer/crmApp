@@ -14,6 +14,22 @@ test("the platform's own hosts, localhost and addresses are not", () => {
   }
 });
 
+test("a center's address follows the dev machine's host and port, else the configured domain", async () => {
+  const { centerAddress, centerDomainSuffix, isLocalHost } = await import("./domain.ts");
+  assert.deepEqual(centerAddress("alpha", "localhost:3100", "crmapp.com"), { host: "alpha.localhost:3100", url: "http://alpha.localhost:3100" });
+  assert.deepEqual(centerAddress("alpha", "bilimdon.localhost:3000", "crmapp.com"), { host: "alpha.localhost:3000", url: "http://alpha.localhost:3000" });
+  assert.equal(centerAddress("alpha", "localhost", "crmapp.com").host, "alpha.localhost");
+  assert.equal(centerAddress("alpha", "127.0.0.1:3100", "crmapp.com").host, "alpha.localhost:3100");
+  // Production and the server render: the configured root domain, as before.
+  assert.deepEqual(centerAddress("alpha", "crmapp.com", "crmapp.com"), { host: "alpha.crmapp.com", url: "https://alpha.crmapp.com" });
+  assert.deepEqual(centerAddress("alpha", "ilm.talimcrm.uz", "talimcrm.uz"), { host: "alpha.talimcrm.uz", url: "https://alpha.talimcrm.uz" });
+  assert.equal(centerAddress("alpha", null, "talimcrm.uz").host, "alpha.talimcrm.uz");
+  assert.equal(centerDomainSuffix("localhost:3100", "crmapp.com"), ".localhost:3100");
+  assert.equal(centerDomainSuffix(null, "talimcrm.uz"), ".talimcrm.uz");
+  assert.equal(isLocalHost("alpha.localhost:3100"), true);
+  assert.equal(isLocalHost("crmapp.com"), false);
+});
+
 test("a certificate's check link is on the subdomain of the center that issued it", async () => {
   const { certificateVerifyUrl, ROOT_DOMAIN } = await import("./domain.ts");
   assert.equal(certificateVerifyUrl("CERT-2026-AB12", "Ilm"), `https://ilm.${ROOT_DOMAIN}/verify/CERT-2026-AB12`);

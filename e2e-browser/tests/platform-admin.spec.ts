@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { api, apiLogin, centerUrl, cleanUpStagingCenters, expectCenterDashboard, loginOnMainSite, newCenter, PASSWORD, TARGET } from './support';
+import { api, apiLogin, centerUrl, cleanUpStagingCenters, loginOnMainSite, mainUrl, newCenter, PASSWORD, TARGET } from './support';
 
 // The platform owner's pages: the overview, a center's subscription (plan,
 // a payment recorded by hand) and the integration keys (saved encrypted,
@@ -32,13 +32,13 @@ test('platform admin: overview, a subscription moved to a paid plan with a payme
   const paid = plans.find((p) => Number(p.price ?? p.monthlyPrice ?? p.priceMonthly ?? 0) > 0);
   expect(paid, 'a paid plan exists').toBeTruthy();
 
-  await loginOnMainSite(page, admin.email);
-  // The account also owns a center: it lands there, and the platform pages are on the same address.
-  await expectCenterDashboard(page, admin.sub);
-  const origin = centerUrl(admin.sub);
+  // The account also owns a center, but the platform panel is on the main
+  // site only: a sign-in asked for by the panel stays there.
+  await loginOnMainSite(page, admin.email, '/admin/overview');
+  await expect(page).toHaveURL(mainUrl('/admin/overview'));
+  const origin = mainUrl();
 
   // --- Overview ------------------------------------------------------------
-  await page.goto(`${origin}/admin/overview`);
   await expect(page.getByRole('heading', { name: 'Platforma holati' })).toBeVisible();
   // Figures are there (how many depends on what else this run made): the centers card and the plans.
   await expect(page.getByText('Faol markazlar', { exact: true })).toBeVisible();
@@ -77,8 +77,11 @@ test('platform admin: overview, a subscription moved to a paid plan with a payme
   const res = await fetch(`http://127.0.0.1:${process.env.BROWSER_API_PORT || 4300}/api/platform/subscriptions`, { headers: { Authorization: `Bearer ${client.token}` } });
   expect(res.status).toBe(403);
 
+  // A center's address never shows the panel: /admin there moves to the main site.
+  await page.goto(centerUrl(admin.sub, '/admin/integrations'));
+  await expect(page).toHaveURL(mainUrl('/admin/integrations'));
+
   // --- Integrations: a key is saved behind the password and never shown ------
-  await page.goto(`${origin}/admin/integrations`);
   await expect(page.getByRole('heading', { name: 'API va integratsiyalar' })).toBeVisible();
   const card = page.getByTestId('integration-translate');
   await expect(card).toContainText('GOOGLE_TRANSLATE_API_KEY');

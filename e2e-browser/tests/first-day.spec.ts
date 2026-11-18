@@ -27,10 +27,8 @@ test('sign up, the setup wizard, the first-steps list, the first group', async (
   // --- The setup wizard --------------------------------------------------------
   await expect(page).toHaveURL(/\/onboarding/, { timeout: 30_000 });
   await page.getByRole('button', { name: "Keyingi: yo'nalishlar" }).click();
-  await page.getByRole('button', { name: 'Keyingi: fanlar' }).click();
   await page.getByPlaceholder('Yangi fan nomi (masalan, Fizika yoki SAT)').fill('Ingliz tili');
   await page.getByRole('button', { name: "+ Fan qo'shish" }).click();
-  await page.getByRole('button', { name: 'Keyingi: kurslar' }).click();
   await page.getByRole('button', { name: 'Keyingi: workspace manzili' }).click();
   await page.getByRole('button', { name: 'Keyingi: birinchi filial' }).click();
   await page.getByRole('button', { name: 'Keyinroq' }).first().click();

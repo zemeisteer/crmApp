@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { centerRedirectBase, rememberCenter } from "./domain";
+import { centerAddress, centerRedirectBase, isLocalHost, rememberCenter, safeNextPath, subdomainFromHost } from "./domain";
 import {
   authApi,
   hasSession,
@@ -35,9 +35,12 @@ interface AuthContextValue {
     phone?: string;
     phoneCode?: string;
     signupAttemptId?: string;
+    plan?: string;
   }) => Promise<void>;
   logout: () => void;
   refreshMe: () => Promise<void>;
+  /** After onboarding: on to the center's own address (on a dev machine), else `path` here. */
+  openCenter: (subdomain: string, path: string) => Promise<void>;
 }
 
 const DEFAULT_ROLE_PERMISSIONS: Record<string, string[]> = {
@@ -128,10 +131,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     loadMe().finally(() => setLoading(false));
   }, []);
 
+  // A sign-in on the main site asked for by the platform panel
+  // (/login?next=/admin/...): it stays on the main site, where the panel is,
+  // instead of moving to the account's center. The page itself still opens
+  // for a superadmin only (canOpenPath), and the API decides the data.
+  function platformTarget(): string | null {
+    if (typeof window === "undefined" || subdomainFromHost(window.location.host)) return null;
+    const wanted = new URLSearchParams(window.location.search).get("next");
+    if (!wanted) return null;
+    const next = safeNextPath(wanted);
+    return next === "/admin" || next.startsWith("/admin/") || next.startsWith("/admin?") ? next : null;
+  }
+
   function setAuthSession(res: AuthResponse, redirectUrl?: string) {
     setToken(res.accessToken);
     setUser(res.user);
     setTenant(res.tenant);
+
+    const platform = redirectUrl ? null : platformTarget();
+    if (platform) {
+      // The sign-in answer carries the center's role; /auth/me has the
+      // account's own (a superadmin's), which decides whether the panel opens.
+      void authApi
+        .me()
+        .then((me) => {
+          setUser(me.user);
+          setTenant(me.tenant);
+        })
+        .catch(() => undefined)
+        .finally(() => router.push(platform));
+      return;
+    }
 
     const destination =
       redirectUrl ||
@@ -196,6 +226,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     phone?: string;
     phoneCode?: string;
     signupAttemptId?: string;
+    plan?: string;
   }) {
     const res = await authApi.register(data);
     setToken(res.accessToken);
@@ -203,6 +234,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setTenant(res.tenant);
     // Directly start center onboarding wizard
     router.push("/onboarding");
+  }
+
+  // The end of a new center's onboarding. On a dev machine the center runs
+  // on <sub>.localhost:<port>, so the session is carried there (whatever the
+  // account's platform role: this session is the new center's). Elsewhere
+  // nothing changes: the dashboard opens here, as before.
+  async function openCenter(subdomain: string, path: string) {
+    const host = window.location.host;
+    const sub = subdomain.toLowerCase();
+    if (sub && isLocalHost(host) && subdomainFromHost(host) !== sub) {
+      try {
+        const { code } = await authApi.handoff();
+        markLeavingForCenter();
+        authApi.logout().catch(() => undefined);
+        clearToken();
+        rememberCenter(sub);
+        window.location.replace(`${centerAddress(sub, host).url}/auth/handoff?next=${encodeURIComponent(path)}#code=${code}`);
+        return;
+      } catch {
+        // stay here: the app still works on this address
+      }
+    }
+    router.push(path);
   }
 
   function can(permission: string): boolean {
@@ -236,6 +290,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         register,
         logout,
         refreshMe: loadMe,
+        openCenter,
       }}
     >
       {children}

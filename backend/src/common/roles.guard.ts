@@ -4,6 +4,7 @@ import { Reflector } from '@nestjs/core';
 import { ROLES_KEY } from './roles.decorator';
 import { routeIdOf } from './route-id';
 import { accessDecides } from '../access/catalog';
+import { fromCenterHost } from './platform-host';
 
 export const END_USER_ROLES = ['STUDENT', 'PARENT'];
 
@@ -16,7 +17,13 @@ export class RolesGuard implements CanActivate {
       context.getHandler(),
       context.getClass(),
     ]);
-    const { user } = context.switchToHttp().getRequest();
+    const req = context.switchToHttp().getRequest();
+    const { user } = req;
+    // Platform-only routes (@Roles('SUPERADMIN') alone) answer on the main
+    // domain only: never to a page open on a center's address.
+    if (requiredRoles?.length === 1 && requiredRoles[0] === 'SUPERADMIN' && fromCenterHost(req.headers ?? {})) {
+      throw new ForbiddenException({ code: 'PLATFORM_MAIN_DOMAIN_ONLY', message: 'Platforma paneli faqat asosiy domenda ochiladi.' });
+    }
     // The platform admin's pages open only with two-step sign-in on
     // (SUPERADMIN_2FA, on in production); the 2FA setup itself is under
     // /auth, which this guard does not cover.

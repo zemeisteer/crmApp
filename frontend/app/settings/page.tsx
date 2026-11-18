@@ -26,7 +26,7 @@ import {
 } from "@/lib/api";
 import { PHONE_PATTERN, PHONE_TITLE, NAME_PATTERN, NAME_TITLE } from "@/lib/validation";
 import { formatDate, formatDateTime, formatTime } from "@/lib/format-date";
-import { centerHost } from "@/lib/domain";
+import { useCenterAddress } from "@/lib/use-center-host";
 
 const ACCENT = "var(--primary)";
 // Same ids as onboarding (tenants.teachingCategories).
@@ -106,6 +106,7 @@ const TAB_DEFS: { key: Tab; labelKey: TranslationKey; icon: React.ReactNode }[] 
 function SettingsContent() {
   const { tenant, user, logout, refreshMe } = useAuth();
   const { t, lang } = useLanguage();
+  const centerAt = useCenterAddress();
   const [tab, setTab] = useState<Tab>("profile");
 
   const ROLE_OPTIONS = [
@@ -425,7 +426,7 @@ function SettingsContent() {
                     </div>
                     <div>
                       <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-soft)", marginBottom: 6 }}>{t("settings.subdomain")}</div>
-                      <input className="field-input" aria-label={t("settings.subdomain")} value={tenant?.subdomain ? centerHost(tenant.subdomain) : ""} disabled style={{ opacity: 0.6 }} />
+                      <input className="field-input" aria-label={t("settings.subdomain")} value={tenant?.subdomain ? centerAt.host(tenant.subdomain) : ""} disabled style={{ opacity: 0.6 }} />
                     </div>
                   </div>
                   <div>
