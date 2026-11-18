@@ -10,6 +10,7 @@ import { bankFor, pickFromBank } from './placement-bank';
 import { normalizeQuestion, type TestQuestion } from '../common/test-questions';
 import { essayGradePrompt, generateTestPrompt, parseJsonArray, parseLooseJson, pdfExtractPrompt, textExtractPrompt } from './test-prompts';
 import { tutorPrompt, type TutorContext } from './tutor-prompt';
+import { DEFAULT_TTS_MODEL, pcmToWav, rateOf, speechConfigFor } from './tts';
 
 
 const MODEL = 'claude-sonnet-5';
@@ -287,6 +288,58 @@ Output only the transcript, nothing else. If there is no speech, output nothing.
       this.logger.warn(`Speaking transcription failed: ${err instanceof Error ? err.message : String(err)}`);
       return null;
     }
+  }
+
+  /** Whether an audioscript can be read aloud (Gemini TTS needs GEMINI_API_KEY). */
+  get canSynthesizeSpeech() {
+    return Boolean(this.config.get<string>('GEMINI_API_KEY'));
+  }
+
+  /**
+   * A Listening audioscript read aloud by Gemini TTS, as a WAV file (two
+   * voices for a two-person dialogue). Null when there is no Gemini key;
+   * throws when the provider does not deliver audio.
+   */
+  async synthesizeSpeech(transcript: string): Promise<{ bytes: Buffer; mime: string; ext: string } | null> {
+    const key = this.config.get<string>('GEMINI_API_KEY');
+    if (!key) return null;
+    const model = this.config.get<string>('GEMINI_TTS_MODEL') || DEFAULT_TTS_MODEL;
+    const text = transcript.trim().slice(0, 20_000);
+    let last = 'no audio';
+    for (let i = 0; i < 3; i++) {
+      if (i) await this.sleep(3000 * i);
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
+        body: JSON.stringify({
+          contents: [{ role: 'user', parts: [{ text: `Read this IELTS Listening audioscript aloud at a natural, clear exam pace:\n\n${text}` }] }],
+          generationConfig: { responseModalities: ['AUDIO'], speechConfig: speechConfigFor(text) },
+        }),
+        signal: AbortSignal.timeout(GEMINI_PDF_TIMEOUT_MS),
+      }).catch((err: Error) => {
+        last = err.message;
+        return null;
+      });
+      if (!res) continue;
+      if (!res.ok) {
+        last = `${res.status}: ${(await res.text().catch(() => '')).slice(0, 200)}`;
+        if (res.status === 503 || res.status === 429 || res.status === 500) continue;
+        break;
+      }
+      const data = (await res.json()) as { candidates?: Array<{ content?: { parts?: Array<{ inlineData?: { mimeType?: string; data?: string } }> } }> };
+      const audio = data.candidates?.[0]?.content?.parts?.find((p) => p.inlineData?.data)?.inlineData;
+      if (!audio?.data) {
+        last = 'the reply had no audio';
+        continue;
+      }
+      const raw = Buffer.from(audio.data, 'base64');
+      const mime = (audio.mimeType ?? '').toLowerCase();
+      if (mime.startsWith('audio/mpeg') || mime.startsWith('audio/mp3')) return { bytes: raw, mime: 'audio/mpeg', ext: '.mp3' };
+      if (mime.startsWith('audio/wav') || mime.startsWith('audio/x-wav')) return { bytes: raw, mime: 'audio/wav', ext: '.wav' };
+      return { bytes: pcmToWav(raw, rateOf(mime)), mime: 'audio/wav', ext: '.wav' };
+    }
+    this.logger.warn(`Gemini TTS (${model}) failed: ${last}`);
+    throw new ServiceUnavailableException(`Audio yaratilmadi (${last.slice(0, 120)})`);
   }
 
   // A reply grounded in a Google search, with the pages it relied on. Used

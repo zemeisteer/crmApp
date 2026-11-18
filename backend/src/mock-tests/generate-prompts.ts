@@ -22,7 +22,9 @@ Reply with JSON only:
 const RULES = `Question JSON, one object per NUMBERED question, in order:
 {"no": 1, "type": "...", "prompt": "...", "options": [...], "correctAnswer": "...", "section": "Questions 1-5", "instruction": "...", "explanation": "one sentence: where the answer is and why"}
 Types: "FILL_BLANK" (prompt has the gap as ______; correctAnswer = the word(s), alternatives joined with |), "SHORT_ANSWER", "MCQ" (options [{"id":"A","text":"..."}], correctAnswer = the letter), "MCQ_MULTI" (ONE object for "choose TWO", correctAnswer "B,E"), "TRUE_FALSE_NG" (correctAnswer "true" | "false" | "ng"), matching: ONE "MCQ" per item with the full list as options.
-"section" = the range heading, "instruction" = the task instruction with the word limit, repeated for each question of the group. Every question MUST have a correct answer that the text/audio really supports, and an "explanation". Use a variety of question types as in a real exam.`;
+"section" = the range heading, "instruction" = the task instruction with the word limit, repeated for each question of the group. Every question MUST have a non-empty "correctAnswer" that the text/audio really supports, and a short "explanation" (at most 20 words). Use a variety of question types as in a real exam.
+Numbering: a "choose TWO" MCQ_MULTI uses two numbers, so the numbers of the range must be covered EXACTLY (no more, no fewer).
+JSON: valid JSON only, no markdown fences; line breaks inside strings written as \\n.`;
 
 export function listeningPartPrompt(part: number, topic: string, level: string | null, from: number, count: number) {
   const kind = [
@@ -47,12 +49,13 @@ Reply with JSON only: {"title": "...", "text": "the passage, paragraphs separate
 export function writingGenPrompt(task1: string, task2: string, level: string | null, module: string) {
   return `Write the Writing section of an original IELTS ${module === 'GENERAL' ? 'General Training' : 'Academic'} test. Level: ${guideOf(level)}.
 Task 1 (${module === 'GENERAL' ? 'a letter: situation and three bullet points to cover' : 'describe a chart, table, graph, map or process'}), theme: ${task1}. ${module === 'GENERAL' ? '' : 'After the instruction line write "[Chart]" and a precise description of the data in English, with every label, year and number, so a candidate can write without the picture.'}
-Task 2: an essay question on: ${task2}.
-Reply with JSON only: {"tasks": [{"title": "Task 1", "prompt": "...", "minWords": 150}, {"title": "Task 2", "prompt": "...", "minWords": 250}]}`;
+Task 2: an essay question on: ${task2}, with the full instruction ("Write at least 250 words...").
+Both tasks are required. Line breaks inside strings written as \\n. Reply with JSON only: {"tasks": [{"title": "Task 1", "prompt": "...", "minWords": 150}, {"title": "Task 2", "prompt": "...", "minWords": 250}]}`;
 }
 
 export function speakingGenPrompt(t: { part1: string[]; part2: string; part3: string }, level: string | null) {
   return `Write the Speaking section of an original IELTS test. Level: ${guideOf(level)}.
-Part 1: 8 short questions on these topics: ${t.part1.join(', ')}. Part 2: one cue card on: ${t.part2} (topic line, 3-4 "You should say" points, "and explain" line). Part 3: 5 abstract discussion questions on: ${t.part3}.
+Part 1: 9 short questions, 3 on each of these topics: ${t.part1.join(', ')}. Part 2: one cue card on: ${t.part2}, written as ONE string with \\n line breaks: "Describe ...\\nYou should say:\\n- point\\n- point\\n- point\\nand explain ..." (3-4 points). Part 3: 5 abstract discussion questions on: ${t.part3}.
+All three parts are required. Valid JSON only, no markdown fences.
 Reply with JSON only: {"parts": [{"title": "Part 1", "instruction": null, "questions": ["..."]}, {"title": "Part 2", "instruction": "You will have to talk about the topic for one to two minutes. You have one minute to think about what you are going to say.", "questions": ["the whole cue card as one string"]}, {"title": "Part 3", "instruction": null, "questions": ["..."]}]}`;
 }

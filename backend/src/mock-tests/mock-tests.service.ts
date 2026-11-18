@@ -15,6 +15,7 @@ import {
   LEVELS,
   levelOpen,
   missingKeys,
+  marksOf,
   parseLevel,
   type Level,
   normalizeContent,
@@ -35,6 +36,7 @@ import {
 } from './ielts';
 import { parseExaminerReply, speakingPrompt, writingPrompt, type ExaminerFeedback } from './examiner-prompts';
 import { SAMPLE_IELTS } from './sample-test';
+import { isPartKey, publishBlocker, slotComplete } from './generation';
 import { MockSessionsService } from './mock-sessions.service';
 import {
   normalizePractice,
@@ -156,8 +158,9 @@ export class MockTestsService {
         ...r,
         attempts,
         summary: {
-          listening: sectionQuestions(c, 'listening').length,
-          reading: sectionQuestions(c, 'reading').length,
+          // In IELTS marks: a "choose TWO" question is two of the 40.
+          listening: sectionQuestions(c, 'listening').reduce((n, q) => n + marksOf(q), 0),
+          reading: sectionQuestions(c, 'reading').reduce((n, q) => n + marksOf(q), 0),
           writing: c.writing.tasks.length,
           speaking: c.speaking.parts.reduce((s, p) => s + p.questions.length, 0),
         },
@@ -218,11 +221,26 @@ export class MockTestsService {
     }
     if (dto.level !== undefined) set.level = isLevel(dto.level) ? dto.level : null;
     if (dto.module !== undefined) set.module = dto.module === 'GENERAL' ? 'GENERAL' : 'ACADEMIC';
-    if (dto.content !== undefined) set.content = JSON.stringify(normalizeContent(dto.content));
+    // An AI test's generation state is the server's: the editor's copy is
+    // ignored, and a part that failed counts as done once the teacher has
+    // filled its slot in by hand.
+    const stored = normalizeContent(parse(current.content, {}));
+    let next: MockContent | null = null;
+    if (dto.content !== undefined) {
+      next = normalizeContent(dto.content);
+      delete next.generation;
+      if (stored.generation) {
+        const module = set.module ?? current.module;
+        next.generation = { ...stored.generation, failed: stored.generation.failed.filter((f) => !isPartKey(f.key) || !slotComplete(next!, f.key, module)) };
+      }
+      set.content = JSON.stringify(next);
+    }
     if (dto.status !== undefined) {
       if (!['DRAFT', 'PUBLISHED'].includes(dto.status)) throw new BadRequestException("Holat noto'g'ri");
       if (dto.status === 'PUBLISHED') {
-        const c = normalizeContent(dto.content ?? parse(current.content, {}));
+        const c = next ?? stored;
+        const blocker = publishBlocker(c);
+        if (blocker) throw new BadRequestException(blocker);
         const empty = sectionQuestions(c, 'listening').length + sectionQuestions(c, 'reading').length + c.writing.tasks.length + c.speaking.parts.length === 0;
         if (empty) throw new BadRequestException("Bo'sh testni e'lon qilib bo'lmaydi");
         const missing = missingKeys(c);

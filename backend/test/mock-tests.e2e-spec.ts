@@ -58,7 +58,8 @@ describe('IELTS mock tests (e2e)', () => {
     expect(created.status).toBe('DRAFT');
     expect(created.content.listening.parts[0].questions[0].correctAnswer).toBe('Carter');
     const list = (await http().get('/api/mock-tests').set(auth()).expect(200)).body;
-    expect(list.find((t: { id: string }) => t.id === testId).summary).toEqual({ listening: 12, reading: 9, writing: 2, speaking: 8 });
+    expect(list.find((t: { id: string }) => t.id === testId).summary).toEqual({ listening: 12, reading: 12, writing: 2, speaking: 8 });
+    // (In IELTS marks: the four-heading matching task counts four.)
     await http().patch(`/api/mock-tests/${testId}`).set(auth()).send({ status: 'PUBLISHED' }).expect(200);
     // An empty test cannot be published.
     const empty = (await http().post('/api/mock-tests').set(auth()).send({ title: 'Empty' }).expect(201)).body.id;
@@ -357,29 +358,70 @@ describe('IELTS mock tests (e2e)', () => {
     const ai = app.get(AiService);
     Object.defineProperty(ai, 'isConfigured', { get: () => true, configurable: true });
     const qs = (from: number, n: number) => Array.from({ length: n }, (_, i) => ({ no: from + i, type: 'FILL_BLANK', prompt: `Item ${from + i}: ______`, correctAnswer: 'answer', explanation: 'It is said in the text.' }));
+    const words = (n: number) => 'The new library opened near the old station last spring. '.repeat(Math.ceil(n / 10));
     const prompts: string[] = [];
+    // Reading Passage 2 comes back cut off (the token limit) until `fixed`.
+    let fixed = false;
     ai.completeSearch = async () => { throw new Error('quota'); };
     ai.completeText = async (prompt: string) => {
       prompts.push(prompt);
       const m = prompt.match(/numbered (\d+)-(\d+)/);
-      if (prompt.includes('Listening')) return JSON.stringify({ title: 'Part', transcript: 'A: Hello. B: Hi.', questions: qs(Number(m![1]), 10) });
-      if (prompt.includes('Reading test')) return JSON.stringify({ title: 'Passage', text: 'A\nText one.\n\nB\nText two.', questions: qs(Number(m![1]), Number(m![2]) - Number(m![1]) + 1) });
-      if (prompt.includes('Writing section')) return JSON.stringify({ tasks: [{ title: 'Task 1', prompt: 'Describe.', minWords: 150 }, { title: 'Task 2', prompt: 'Discuss.', minWords: 250 }] });
-      return JSON.stringify({ parts: [{ title: 'Part 1', questions: ['a?'] }, { title: 'Part 2', questions: ['b'] }, { title: 'Part 3', questions: ['c?'] }] });
+      if (prompt.includes('Listening')) return JSON.stringify({ title: 'Part', transcript: `Anna: ${words(150)}\nTom: ${words(150)}`, questions: qs(Number(m![1]), 10) });
+      if (prompt.includes('Reading test')) {
+        const reply = JSON.stringify({ title: 'Passage', text: `A\n${words(300)}\n\nB\n${words(300)}`, questions: qs(Number(m![1]), Number(m![2]) - Number(m![1]) + 1) });
+        return prompt.includes('Passage 2') && !fixed ? reply.slice(0, 900) : reply;
+      }
+      if (prompt.includes('Writing section')) return JSON.stringify({ tasks: [{ title: 'Task 1', prompt: `The chart shows library visits.\n[Chart]\n${words(50)}`, minWords: 150 }, { title: 'Task 2', prompt: 'Some say libraries are no longer needed. Discuss both views and give your opinion.', minWords: 250 }] });
+      return JSON.stringify({ parts: [
+        { title: 'Part 1', questions: ['Where do you live?', 'Do you like it?', 'Do you work?', 'What do you study?', 'Do you read?', 'What do you do at weekends?'] },
+        { title: 'Part 2', questions: ['Describe a library you know.\nYou should say:\n- where it is\n- when you go\n- what you do there\nand explain why you like it.'] },
+        { title: 'Part 3', questions: ['Why read?', 'Are books dying?', 'Should libraries be free?', 'How will reading change?'] },
+      ] });
     };
     try {
       const started = (await http().post('/api/mock-tests/generate').set(auth()).send({ level: 'B6' }).expect(201)).body;
       expect(started.source).toBe('__GENERATING__');
       await expect.poll(async () => (await http().get('/api/mock-tests').set(auth()).expect(200)).body.find((x: { id: string }) => x.id === started.id).source, { timeout: 20_000 }).not.toBe('__GENERATING__');
       const done = (await http().get('/api/mock-tests').set(auth()).expect(200)).body.find((x: { id: string }) => x.id === started.id);
-      expect(done).toMatchObject({ status: 'DRAFT', level: 'B6', summary: { listening: 40, reading: 40, writing: 2, speaking: 3 } });
+      // Passage 2 failed: its slot is empty (27 of 40) and the failure is recorded, not dropped.
+      expect(done).toMatchObject({ status: 'DRAFT', level: 'B6', summary: { listening: 40, reading: 27, writing: 2, speaking: 11 } });
       expect(done.source).toMatch(/^AI yozdi.*cathoven\.com/);
+      // It was asked for three times, the later tries saying it was cut off.
+      expect(prompts.filter((x) => x.includes('Passage 2'))).toHaveLength(3);
+      expect(prompts.filter((x) => x.includes('Passage 2') && x.includes('cut off'))).toHaveLength(2);
       // The level steers every part.
       expect(prompts.every((x) => x.includes('band 6.0-6.5'))).toBe(true);
-      // Ready for the teacher: the keys and explanations are there.
-      const t = (await http().get(`/api/mock-tests/${started.id}`).set(auth()).expect(200)).body;
+      let t = (await http().get(`/api/mock-tests/${started.id}`).set(auth()).expect(200)).body;
       expect(t.content.listening.parts[0].questions[0].explanation).toBe('It is said in the text.');
-      await http().patch(`/api/mock-tests/${started.id}`).set(auth()).send({ status: 'PUBLISHED' }).expect(200);
+      expect(t.content.generation.failed).toEqual([{ key: 'reading.1', label: 'Reading Passage 2', error: 'the reply was cut off before the end' }]);
+      // No Gemini key here: no speech, the audioscripts are kept and the parts need audio.
+      expect(t.content.generation.tts).toBe('UNAVAILABLE');
+      expect(t.content.listening.parts.every((x: { transcript: string; audioPath: null }) => x.transcript.startsWith('Anna:') && x.audioPath === null)).toBe(true);
+      let refused = (await http().patch(`/api/mock-tests/${started.id}`).set(auth()).send({ status: 'PUBLISHED' }).expect(400)).body;
+      expect(refused.message).toMatch(/Reading Passage 2 yaratilmadi/);
+      // The editor's copy of the generation state is ignored.
+      const forged = { ...t.content, generation: { failed: [], running: [], tts: 'DONE' } };
+      await http().patch(`/api/mock-tests/${started.id}`).set(auth()).send({ content: forged }).expect(200);
+      t = (await http().get(`/api/mock-tests/${started.id}`).set(auth()).expect(200)).body;
+      expect(t.content.generation.failed).toHaveLength(1);
+
+      // Retrying the failed passage fills its slot.
+      fixed = true;
+      await http().post(`/api/mock-tests/${started.id}/generate/retry`).set(auth()).send({ parts: ['reading.9'] }).expect(400);
+      const retrying = (await http().post(`/api/mock-tests/${started.id}/generate/retry`).set(auth()).send({ parts: ['reading.1'] }).expect(201)).body;
+      expect(retrying.content.generation.running).toEqual(['reading.1']);
+      await expect.poll(async () => (await http().get(`/api/mock-tests/${started.id}`).set(auth()).expect(200)).body.content.generation.running, { timeout: 20_000 }).toEqual([]);
+      t = (await http().get(`/api/mock-tests/${started.id}`).set(auth()).expect(200)).body;
+      expect(t.content.generation.failed).toEqual([]);
+      expect(t.content.reading.passages[1].questions).toHaveLength(13);
+      expect(t.content.reading.passages[1].text.length).toBeGreaterThan(1000);
+
+      // Still no audio: publishing waits for it.
+      refused = (await http().patch(`/api/mock-tests/${started.id}`).set(auth()).send({ status: 'PUBLISHED' }).expect(400)).body;
+      expect(refused.message).toMatch(/Listening audio kerak: Part 1, Part 2, Part 3, Part 4/);
+      const withAudio = structuredClone(t.content);
+      withAudio.listening.audioPath = 'sectionaudio01.mp3';
+      await http().patch(`/api/mock-tests/${started.id}`).set(auth()).send({ content: withAudio, status: 'PUBLISHED' }).expect(200);
       // A bad level is refused.
       await http().post('/api/mock-tests/generate').set(auth()).send({ level: 'B9' }).expect(400);
     } finally {
