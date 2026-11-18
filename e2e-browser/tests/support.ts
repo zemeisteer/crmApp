@@ -131,14 +131,21 @@ export async function addStaff(ownerToken: string, email: string, role: 'ADMIN' 
   return list.find((s) => s.email === email)!.id;
 }
 
-/** Signs in through the main site's login form. */
-export async function loginOnMainSite(page: Page, email: string) {
+/** The main site (no center), where the platform admin's panel lives. */
+export const mainUrl = (path = '') => (TARGET === 'staging' ? `https://${ROOT}${path}` : `http://localhost:${WEB_PORT}${path}`);
+
+/**
+ * Signs in through the main site's login form. With `next` (a platform
+ * panel path, /admin/...) the sign-in stays on the main site and opens it,
+ * instead of moving to the account's center.
+ */
+export async function loginOnMainSite(page: Page, email: string, next?: string) {
   await authSlot('login');
   // Not "load": every page links a stylesheet from fonts.googleapis.com
   // (app/layout.tsx), and when that host answers slowly the load event comes
   // after the 30 s limit although the form has long been usable. The next
   // line waits for the form itself.
-  await page.goto('/login?main=1', { waitUntil: 'domcontentloaded' });
+  await page.goto(next ? `/login?main=1&next=${encodeURIComponent(next)}` : '/login?main=1', { waitUntil: 'domcontentloaded' });
   // On a busy machine the form can be typed into before React has taken
   // over the page, which then empties it: type until the values stay.
   const login = page.getByPlaceholder('azizbek@bilimdon.uz yoki +998901234567');

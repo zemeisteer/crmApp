@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { api, apiLogin, centerUrl, cleanUpStagingCenters, expectCenterDashboard, loginOnMainSite, newCenter, PASSWORD, TARGET } from './support';
+import { api, apiLogin, centerUrl, cleanUpStagingCenters, expectCenterDashboard, loginOnMainSite, mainUrl, newCenter, PASSWORD, TARGET } from './support';
 
 // Paying the platform by card, through the pages: a new center picks a
 // tariff, sends a receipt; the platform admin opens it, rejects it with a
@@ -51,9 +51,9 @@ test('several cards: the admin adds a second card, a center pays to it, the admi
   const plans = await api<Array<{ key: string; name: string; price: number }>>('GET', '/plans/public');
   const paid = plans.find((p) => p.price > 0)!;
   try {
-    await loginOnMainSite(page, admin.email);
-    await expectCenterDashboard(page, admin.sub);
-    await page.goto(centerUrl(admin.sub, '/admin/integrations'));
+    // The platform panel: on the main site only.
+    await loginOnMainSite(page, admin.email, '/admin/integrations');
+    await expect(page).toHaveURL(mainUrl('/admin/integrations'));
     const tile = page.getByTestId('integration-platformCard');
     await expect(tile.getByTestId('platform-card-row')).toHaveCount(1);
     await tile.getByRole('button', { name: 'Sozlash' }).click();
@@ -88,7 +88,7 @@ test('several cards: the admin adds a second card, a center pays to it, the admi
     await expect(center.getByRole('dialog').getByRole('status')).toContainText('Chek yuborildi');
     await ctx.close();
 
-    await page.goto(centerUrl(admin.sub, '/admin/subscriptions?tab=cards'));
+    await page.goto(mainUrl('/admin/subscriptions?tab=cards'));
     const row = page.getByTestId('platform-card-claims-admin').getByTestId('platform-card-claim').filter({ hasText: customer.sub });
     await expect(row).toContainText('•••• 1234');
     await row.getByRole('button', { name: 'Tekshirish' }).click();
@@ -117,9 +117,8 @@ test('card payment: a center sends a receipt, the platform admin rejects then co
   // --- The platform admin, in another browser: opens it and rejects it ------
   const adminCtx = await browser.newContext();
   const ap = await adminCtx.newPage();
-  await loginOnMainSite(ap, admin.email);
-  await expectCenterDashboard(ap, admin.sub);
-  await ap.goto(centerUrl(admin.sub, '/admin/subscriptions?tab=cards'));
+  await loginOnMainSite(ap, admin.email, '/admin/subscriptions?tab=cards');
+  await expect(ap).toHaveURL(mainUrl('/admin/subscriptions?tab=cards'));
   const list = ap.getByTestId('platform-card-claims-admin');
   const row = list.getByTestId('platform-card-claim').filter({ hasText: customer.sub });
   await expect(row).toHaveCount(1);

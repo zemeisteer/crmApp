@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { centerAddress, centerRedirectBase, isLocalHost, rememberCenter, subdomainFromHost } from "./domain";
+import { centerAddress, centerRedirectBase, isLocalHost, rememberCenter, safeNextPath, subdomainFromHost } from "./domain";
 import {
   authApi,
   hasSession,
@@ -131,10 +131,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     loadMe().finally(() => setLoading(false));
   }, []);
 
+  // A sign-in on the main site asked for by the platform panel
+  // (/login?next=/admin/...): it stays on the main site, where the panel is,
+  // instead of moving to the account's center. The page itself still opens
+  // for a superadmin only (canOpenPath), and the API decides the data.
+  function platformTarget(): string | null {
+    if (typeof window === "undefined" || subdomainFromHost(window.location.host)) return null;
+    const wanted = new URLSearchParams(window.location.search).get("next");
+    if (!wanted) return null;
+    const next = safeNextPath(wanted);
+    return next === "/admin" || next.startsWith("/admin/") || next.startsWith("/admin?") ? next : null;
+  }
+
   function setAuthSession(res: AuthResponse, redirectUrl?: string) {
     setToken(res.accessToken);
     setUser(res.user);
     setTenant(res.tenant);
+
+    const platform = redirectUrl ? null : platformTarget();
+    if (platform) {
+      // The sign-in answer carries the center's role; /auth/me has the
+      // account's own (a superadmin's), which decides whether the panel opens.
+      void authApi
+        .me()
+        .then((me) => {
+          setUser(me.user);
+          setTenant(me.tenant);
+        })
+        .catch(() => undefined)
+        .finally(() => router.push(platform));
+      return;
+    }
 
     const destination =
       redirectUrl ||
