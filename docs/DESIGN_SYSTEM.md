@@ -18,7 +18,7 @@ The design reference (mockup, reference frames, brief) is in `design-reference/`
 
 ## Tokens
 
-All tokens are defined on `:root` and redefined for dark under `.dark` (and the platform skin, below).
+All tokens are defined on `:root` and redefined for dark under `.dark`. `color-scheme` follows (`:root` light, `.dark` dark), and every `<select>`/`<option>` takes `--surface`/`--text` in the base layer, so native popups are readable in both themes.
 
 | Group | Tokens |
 |---|---|
@@ -43,7 +43,7 @@ Tailwind 4 utilities map to the same tokens (`@theme inline` in `globals.css`): 
 - **Never write a raw hex color** in a component. Pick the token by meaning: text → `--text*`, fills → `--surface*`, status → `--success`/`--danger`/…; white text on a colored fill → `--on-color`; text on ink → `--on-ink`.
 - **Contrast:** text must keep AA. White text never sits on the plain orange: use `--on-accent` (ink) on `--accent`, or `--accent-strong` behind white text.
 - **Genuine one-offs** (other companies' brand colors such as Click/Payme, print-only HTML, a center's own chosen site color) may stay raw; they are counted per file in `scripts/redesign/raw-colors-baseline.json`. After a reviewed change, refresh it with `node scripts/redesign/check-no-raw-colors.mjs --update`.
-- **Derived tokens** (`--primary: var(--ink)`, accent shades, gradients) resolve where they are declared. A theme applied on a nested element (like the platform skin) must redeclare them, as the `.dark, .theme-platform` block does.
+- **Derived tokens** (`--primary: var(--ink)`, accent shades, gradients) resolve where they are declared. A theme applied on a nested element must redeclare them (the `.dark` block does; the platform skin redeclares its accent shades).
 
 ## How to swap the accent
 
@@ -60,7 +60,7 @@ Change one line in `globals.css`:
 ## Themes
 
 - **Dark:** add `class="dark"` on `<html>`. Every token has a dark value. Tailwind's `dark:` variant is wired to the same class (`@custom-variant dark`). No toggle is shipped yet.
-- **Platform skin:** `DashboardShell` puts `theme-platform` on the shell in platform mode (a superadmin outside a center). It is the dark token set with a violet accent, so the platform never looks like a center's panel. No component is forked.
+- **Platform skin:** `DashboardShell` puts `theme-platform` on the shell in platform mode (a superadmin outside a center). It follows the page theme (light or dark, from the same theme toggle) and only swaps the accent for violet (`.theme-platform` / `.dark .theme-platform`), so the platform never looks like a center's panel. No component is forked.
 
 ## Primitives (`frontend/components/ui/`)
 
