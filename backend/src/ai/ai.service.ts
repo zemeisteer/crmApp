@@ -10,7 +10,7 @@ import { bankFor, pickFromBank } from './placement-bank';
 import { normalizeQuestion, type TestQuestion } from '../common/test-questions';
 import { essayGradePrompt, generateTestPrompt, parseJsonArray, parseLooseJson, pdfExtractPrompt, textExtractPrompt } from './test-prompts';
 import { tutorPrompt, type TutorContext } from './tutor-prompt';
-import { DEFAULT_TTS_MODEL, pcmToWav, rateOf, speechConfigFor } from './tts';
+import { pcmToWav, rateOf, speechRequest, ttsModels } from './tts';
 
 
 const MODEL = 'claude-sonnet-5';
@@ -303,42 +303,44 @@ Output only the transcript, nothing else. If there is no speech, output nothing.
   async synthesizeSpeech(transcript: string): Promise<{ bytes: Buffer; mime: string; ext: string } | null> {
     const key = this.config.get<string>('GEMINI_API_KEY');
     if (!key) return null;
-    const model = this.config.get<string>('GEMINI_TTS_MODEL') || DEFAULT_TTS_MODEL;
     const text = transcript.trim().slice(0, 20_000);
+    const models = ttsModels(this.config.get<string>('GEMINI_TTS_MODEL'));
     let last = 'no audio';
-    for (let i = 0; i < 3; i++) {
-      if (i) await this.sleep(3000 * i);
-      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
-        body: JSON.stringify({
-          contents: [{ role: 'user', parts: [{ text: `Read this IELTS Listening audioscript aloud at a natural, clear exam pace:\n\n${text}` }] }],
-          generationConfig: { responseModalities: ['AUDIO'], speechConfig: speechConfigFor(text) },
-        }),
-        signal: AbortSignal.timeout(GEMINI_PDF_TIMEOUT_MS),
-      }).catch((err: Error) => {
-        last = err.message;
-        return null;
-      });
-      if (!res) continue;
-      if (!res.ok) {
-        last = `${res.status}: ${(await res.text().catch(() => '')).slice(0, 200)}`;
-        if (res.status === 503 || res.status === 429 || res.status === 500) continue;
-        break;
+    for (const model of models) {
+      // A busy model gets one more try; a model that refuses the request
+      // (unknown, retired, a format it does not take) hands over at once.
+      for (let i = 0; i < 2; i++) {
+        if (i) await this.sleep(3000);
+        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
+          body: JSON.stringify(speechRequest(model, text)),
+          signal: AbortSignal.timeout(GEMINI_PDF_TIMEOUT_MS),
+        }).catch((err: Error) => {
+          last = `${model}: ${err.message}`;
+          return null;
+        });
+        if (!res) continue;
+        if (!res.ok) {
+          last = `${model} ${res.status}: ${(await res.text().catch(() => '')).slice(0, 200)}`;
+          if (res.status === 503 || res.status === 429 || res.status === 500) continue;
+          break;
+        }
+        const data = (await res.json()) as { candidates?: Array<{ content?: { parts?: Array<{ inlineData?: { mimeType?: string; data?: string } }> } }> };
+        const audio = data.candidates?.[0]?.content?.parts?.find((p) => p.inlineData?.data)?.inlineData;
+        if (!audio?.data) {
+          last = `${model}: the reply had no audio`;
+          break;
+        }
+        if (model !== models[0]) this.logger.warn(`Gemini TTS: ${models[0]} failed, ${model} read the audio`);
+        const raw = Buffer.from(audio.data, 'base64');
+        const mime = (audio.mimeType ?? '').toLowerCase();
+        if (mime.startsWith('audio/mpeg') || mime.startsWith('audio/mp3')) return { bytes: raw, mime: 'audio/mpeg', ext: '.mp3' };
+        if (mime.startsWith('audio/wav') || mime.startsWith('audio/x-wav')) return { bytes: raw, mime: 'audio/wav', ext: '.wav' };
+        return { bytes: pcmToWav(raw, rateOf(mime)), mime: 'audio/wav', ext: '.wav' };
       }
-      const data = (await res.json()) as { candidates?: Array<{ content?: { parts?: Array<{ inlineData?: { mimeType?: string; data?: string } }> } }> };
-      const audio = data.candidates?.[0]?.content?.parts?.find((p) => p.inlineData?.data)?.inlineData;
-      if (!audio?.data) {
-        last = 'the reply had no audio';
-        continue;
-      }
-      const raw = Buffer.from(audio.data, 'base64');
-      const mime = (audio.mimeType ?? '').toLowerCase();
-      if (mime.startsWith('audio/mpeg') || mime.startsWith('audio/mp3')) return { bytes: raw, mime: 'audio/mpeg', ext: '.mp3' };
-      if (mime.startsWith('audio/wav') || mime.startsWith('audio/x-wav')) return { bytes: raw, mime: 'audio/wav', ext: '.wav' };
-      return { bytes: pcmToWav(raw, rateOf(mime)), mime: 'audio/wav', ext: '.wav' };
+      this.logger.warn(`Gemini TTS (${model}) failed: ${last}`);
     }
-    this.logger.warn(`Gemini TTS (${model}) failed: ${last}`);
     throw new ServiceUnavailableException(`Audio yaratilmadi (${last.slice(0, 120)})`);
   }
 
