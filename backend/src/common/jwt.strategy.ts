@@ -64,7 +64,19 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     if (!session) throw new UnauthorizedException();
     // The account having 2FA on is not this session having passed it.
     const mfa = user.twoFactorEnabled && !!session.mfaAt && (!user.twoFactorChangedAt || session.mfaAt >= user.twoFactorChangedAt);
-    if (user.role === 'SUPERADMIN') return { ...payload, role: 'SUPERADMIN' as const, twoFactorEnabled: user.twoFactorEnabled, mfa };
+    if (user.role === 'SUPERADMIN') {
+      // Inside a center the platform admin is held to the same rule as anyone:
+      // an ACTIVE membership there, checked on every request (a token minted
+      // before a membership was removed, or before this rule, stops at once).
+      if (payload.tenantId) {
+        const [m] = await this.db
+          .select({ status: organizationMemberships.status })
+          .from(organizationMemberships)
+          .where(and(eq(organizationMemberships.userId, user.id), eq(organizationMemberships.tenantId, payload.tenantId)));
+        if (!m || m.status !== 'ACTIVE') throw new UnauthorizedException("Siz ushbu markazga a'zo emassiz");
+      }
+      return { ...payload, role: 'SUPERADMIN' as const, twoFactorEnabled: user.twoFactorEnabled, mfa };
+    }
     if (payload.role === 'SUPERADMIN') throw new UnauthorizedException();
     if (!payload.tenantId) return payload; // no workspace: nothing tenant-scoped can be read with it
 

@@ -8,7 +8,8 @@
 /* The brand accent is ONE value (--accent); its soft/strong shades are       */
 /* derived from it. Primary actions and active states use --primary (ink).   */
 /* ========================================================================= */
-:root {
+:root,
+.force-light {
   /* Brand. Swap the accent here (old indigo: #4F46E5). */
   --accent: #f26b3a;
   --accent-2: color-mix(in oklab, var(--accent) 78%, #ffd2b8);
@@ -266,7 +267,8 @@
    select and its options take the theme's colors (a select left without a
    background showed white options with light text in the dark theme).
    In the base layer, so a utility class or an inline style still wins. */
-:root {
+:root,
+.force-light {
   color-scheme: light;
 }
 .dark {

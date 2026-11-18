@@ -540,6 +540,7 @@ export interface User {
   id: string;
   email: string;
   fullName: string;
+  phone?: string | null;
   role: Role;
   permissions?: string[] | null;
   /** What this member may do (keys of the access catalog). */
@@ -1622,6 +1623,10 @@ export const authApi = {
   revokeSession: (id: string) => request<{ success: boolean }>(`/auth/sessions/${id}`, { method: "DELETE" }),
 
   me: () => request<{ user: User; tenant: Tenant }>("/auth/me"),
+  updateProfile: (data: { fullName?: string }) =>
+    request<{ id: string; fullName: string; phone: string | null; email: string }>("/auth/me", { method: "PATCH", body: JSON.stringify(data) }),
+  changePassword: (data: { currentPassword: string; newPassword: string; code?: string }) =>
+    request<{ message: string }>("/auth/change-password", { method: "POST", body: JSON.stringify(data) }),
 
   forgotPassword: (email: string) =>
     request<{ message: string }>("/auth/forgot-password", { method: "POST", body: JSON.stringify({ email }) }),

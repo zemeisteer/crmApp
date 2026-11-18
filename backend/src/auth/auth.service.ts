@@ -340,6 +340,15 @@ export class AuthService {
     if (user.role === 'SUPERADMIN') {
       const tenant = tenantId ? (await this.db.query.tenants.findFirst({ where: eq(tenants.id, tenantId) })) ?? null : null;
       if (tenantId && !tenant) throw new NotFoundException('Markaz topilmadi');
+      // The platform admin manages centers from the panel (plan, status,
+      // deletion) but never opens one it is not a member of: a center's
+      // students, payments and messages are that center's own.
+      if (tenant) {
+        const member = await this.db.query.organizationMemberships.findFirst({
+          where: and(eq(organizationMemberships.userId, user.id), eq(organizationMemberships.tenantId, tenant.id), eq(organizationMemberships.status, 'ACTIVE')),
+        });
+        if (!member) throw new UnauthorizedException("Siz ushbu markazga a'zo emassiz");
+      }
       return { role: 'SUPERADMIN', permissions: ['*'], access: effectiveAccess('SUPERADMIN', null), tenant };
     }
     const rows = await this.db.query.organizationMemberships.findMany({ where: eq(organizationMemberships.userId, user.id) });
@@ -563,21 +572,6 @@ export class AuthService {
   async listWorkspaces(userId: string) {
     const user = await this.db.query.users.findFirst({ where: eq(users.id, userId) });
     if (!user) throw new UnauthorizedException();
-
-    if (user.role === 'SUPERADMIN') {
-      const allTenants = await this.db.query.tenants.findMany({
-        columns: { id: true, name: true, subdomain: true, logoUrl: true, status: true, onboardingStep: true },
-        limit: 50,
-      });
-      return allTenants.map((t) => ({
-        tenantId: t.id,
-        name: t.name,
-        subdomain: t.subdomain,
-        role: 'SUPERADMIN',
-        logoUrl: t.logoUrl,
-        onboardingStep: t.onboardingStep,
-      }));
-    }
 
     const memberships = await this.db.query.organizationMemberships.findMany({
       where: and(
@@ -807,7 +801,50 @@ export class AuthService {
       .set({ passwordHash, resetTokenHash: null, resetTokenExpiresAt: null })
       .where(eq(users.id, user.id));
     await this.db.delete(sessions).where(eq(sessions.userId, user.id));
+    await this.db.delete(authHandoffCodes).where(eq(authHandoffCodes.userId, user.id));
     return { message: "Parol muvaffaqiyatli yangilandi. Barcha qurilmalardan chiqildi." };
+  }
+
+  // ---- The signed-in person's own account ----
+
+  // Only the name: the phone and e-mail identify a person elsewhere (linking
+  // a parent, accepting an invitation), so they are not changed from here.
+  async updateProfile(userId: string, dto: { fullName?: string }) {
+    const set: { fullName?: string } = {};
+    if (typeof dto.fullName === 'string') {
+      const name = dto.fullName.trim().replace(/\s+/g, ' ');
+      if (name.length < 2) throw new BadRequestException("Ism juda qisqa");
+      set.fullName = name;
+    }
+    if (Object.keys(set).length === 0) throw new BadRequestException("O'zgartirish yo'q");
+    const [row] = await this.db.update(users).set(set).where(eq(users.id, userId)).returning({ id: users.id, fullName: users.fullName, phone: users.phone, email: users.email });
+    if (!row) throw new UnauthorizedException();
+    return row;
+  }
+
+  // Needs the current password (and the 2FA code when 2FA is on); the other
+  // devices are signed out, this one stays.
+  async changePassword(userId: string, dto: { currentPassword: string; newPassword: string; code?: string }, sid?: string) {
+    const user = await this.db.query.users.findFirst({ where: eq(users.id, userId) });
+    if (!user) throw new UnauthorizedException();
+    if (user.twoFactorEnabled) {
+      // One answer for either part wrong: a held session cannot test passwords.
+      await this.reauthenticate(user, dto.currentPassword, dto.code);
+    } else {
+      const ok = typeof dto.currentPassword === 'string' && dto.currentPassword.length > 0 && (await bcrypt.compare(dto.currentPassword, user.passwordHash));
+      if (!ok) throw new ForbiddenException({ code: 'WRONG_PASSWORD', message: "Joriy parol noto'g'ri" });
+    }
+    const issue = isPasswordStrongEnough(dto.newPassword);
+    if (issue) throw new BadRequestException(issue);
+    if (await bcrypt.compare(dto.newPassword, user.passwordHash)) throw new BadRequestException("Yangi parol eskisi bilan bir xil");
+    const passwordHash = await hashPassword(dto.newPassword);
+    await this.db.transaction(async (tx) => {
+      await tx.update(users).set({ passwordHash, resetTokenHash: null, resetTokenExpiresAt: null }).where(eq(users.id, userId));
+      await tx.delete(sessions).where(sid ? and(eq(sessions.userId, userId), ne(sessions.id, sid)) : eq(sessions.userId, userId));
+      await tx.delete(authHandoffCodes).where(eq(authHandoffCodes.userId, userId));
+    });
+    this.audit.log({ tenantId: null, userId, action: 'password_changed', entityType: 'user', entityId: userId });
+    return { message: "Parol yangilandi. Boshqa qurilmalardan chiqildi." };
   }
 
   async verifyEmail(token: string) {
@@ -831,6 +868,7 @@ export class AuthService {
         id: user.id,
         email: user.email,
         fullName: user.fullName,
+        phone: user.phone,
         role: ws.role,
         permissions: ws.permissions,
         // What this member may do (access/catalog.ts keys), for the screens.

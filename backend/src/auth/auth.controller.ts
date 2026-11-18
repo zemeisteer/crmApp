@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Headers, Param, Post, Query, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Headers, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { refreshTokenFromCookie } from '../common/session-cookie';
 import type { Request } from 'express';
@@ -7,6 +7,7 @@ import { RegisterDto, SignupPhoneStartDto } from './dto/register.dto';
 import { SignupPhoneService } from './signup-phone.service';
 import { LoginDto } from './dto/login.dto';
 import { ForgotPasswordDto, RefreshTokenDto, ResetPasswordDto } from './dto/forgot-password.dto';
+import { ChangePasswordDto, UpdateProfileDto } from './dto/profile.dto';
 import { ConfirmTwoFactorDto, TwoFactorReauthDto, VerifyTwoFactorDto } from './dto/two-factor.dto';
 import { JwtAuthGuard } from '../common/jwt-auth.guard';
 import { RolesGuard } from '../common/roles.guard';
@@ -137,6 +138,19 @@ export class AuthController {
   ) {
     // A new session starts with the caller's own 2FA state, never more.
     return this.authService.selectWorkspace(userId, tenantId, meta(req, ua), refreshToken ?? refreshTokenFromCookie(req), await this.authService.sessionMfaAt(userId, sid));
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Patch('me')
+  updateProfile(@CurrentUser('sub') userId: string, @Body() dto: UpdateProfileDto) {
+    return this.authService.updateProfile(userId, dto);
+  }
+
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @UseGuards(JwtAuthGuard)
+  @Post('change-password')
+  changePassword(@CurrentUser('sub') userId: string, @CurrentUser('sid') sid: string, @Body() dto: ChangePasswordDto) {
+    return this.authService.changePassword(userId, dto, sid);
   }
 
   @UseGuards(JwtAuthGuard)
