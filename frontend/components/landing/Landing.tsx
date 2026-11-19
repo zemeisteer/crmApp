@@ -7,7 +7,6 @@ import { useLanguage } from "@/lib/i18n-context";
 import { planFeatureLines } from "@/lib/plans";
 import { LANDING_TEXT, type LandingLang } from "./landing-text";
 import { plansApi, type Plan } from "@/lib/api";
-import ThemeToggle from "@/components/ThemeToggle";
 
 // Public home page — a port of the original talimcrm-demo design
 // (Downloads/talimcrm-demo/index.html), in three languages and phone-ready.
@@ -21,12 +20,9 @@ const CSS = `
        a raised dark surface in the dark one, so the page never flips to a bright block at night. */
     --band-bg:var(--ink);--band-fg:var(--on-ink);--band-soft:color-mix(in oklab,var(--on-ink) 78%,var(--ink));--band-btn:var(--on-ink);--band-btn-fg:var(--ink);
     color:var(--text);background:var(--bg);font-family:'Inter',system-ui,sans-serif;min-height:100vh;display:flex;flex-direction:column;}
-  .dark .lp-root{--bg:var(--canvas);--chip:var(--surface-muted);--band-bg:var(--surface);--band-fg:var(--text);--band-soft:var(--text-soft);--band-btn:var(--ink);--band-btn-fg:var(--on-ink);}
   .lp-head{position:sticky;top:0;z-index:10;width:100%;background:color-mix(in oklab,var(--bg) 92%,transparent);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);border-bottom:1px solid var(--border);color:var(--text);}
   .lp-nav a{color:var(--text-2);transition:color .15s ease;}
   .lp-nav a:hover{color:var(--text);}
-  .lp-theme{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:var(--radius-sm);background:var(--chip);border:1px solid var(--border);color:var(--text);cursor:pointer;}
-  .lp-theme:hover{border-color:var(--border-strong);}
   .lp-root h1,.lp-root h2,.lp-root h3{font-family:'Manrope',system-ui,sans-serif;margin:0;}
   .lp-root a{color:inherit;text-decoration:none;}
   .lp-btn{cursor:pointer;border:none;transition:opacity .15s ease,transform .15s ease;display:inline-flex;align-items:center;justify-content:center;}
@@ -191,7 +187,7 @@ export default function Landing() {
   ];
 
   return (
-    <div className="lp-root" ref={rootRef}>
+    <div className="lp-root force-light" ref={rootRef}>
       <style>{CSS}</style>
 
       {/* HEADER */}
@@ -226,7 +222,6 @@ export default function Landing() {
                 </div>
               )}
             </div>
-            <ThemeToggle className="lp-theme" />
             <Link href="/login" className="lp-header-login" style={{ fontSize: 14.5, fontWeight: 600, color: "var(--text)" }}>{L.login}</Link>
             <Link href="/register" className="lp-btn lp-start" style={{ background: ACCENT, color: "var(--on-ink)", fontSize: 14.5, fontWeight: 600, padding: "10px 18px", borderRadius: "var(--radius-sm)", whiteSpace: "nowrap" }}>{L.start}</Link>
             <button

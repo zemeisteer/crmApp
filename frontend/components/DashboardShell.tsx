@@ -1,15 +1,16 @@
 "use client";
 
-import { useEffect, useState, ReactNode } from "react";
+import { useEffect, useRef, useState, ReactNode } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
 import { useLanguage } from "@/lib/i18n-context";
-import Sidebar, { canOpenPath, isPlatformMode, PLATFORM_HOME } from "./Sidebar";
+import Sidebar, { canOpenPath, isPlatformMode, pathNotInPlan, PLATFORM_HOME } from "./Sidebar";
 import TwoFactorGate from "./TwoFactorGate";
 import AppTopBar from "./AppTopBar";
 import CallPopup from "./telephony/CallPopup";
 import { formatDate } from "@/lib/format-date";
+import type { TranslationKey } from "@/lib/i18n";
 
 const ACCENT = "var(--primary)";
 
@@ -117,11 +118,24 @@ function TrialLocked({ purgeAt }: { purgeAt: string | null }) {
 }
 
 export default function DashboardShell({ children }: { children: ReactNode }) {
-  const { user, tenant, loading } = useAuth();
+  const { user, tenant, loading, refreshMe } = useAuth();
   const { t } = useLanguage();
   const router = useRouter();
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
+
+  // Coming back to the tab reads the account again (at most once a minute),
+  // so a plan the platform admin changed meanwhile shows without a reload.
+  const lastRefresh = useRef(Date.now());
+  useEffect(() => {
+    const onFocus = () => {
+      if (Date.now() - lastRefresh.current < 60_000) return;
+      lastRefresh.current = Date.now();
+      void refreshMe().catch(() => undefined);
+    };
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, [refreshMe]);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -168,7 +182,18 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
             <TwoFactorGate />
           ) : tenant?.trial?.stage === "LOCKED" && user.role !== "SUPERADMIN" && pathname !== "/pricing" ? (
             <TrialLocked purgeAt={tenant.trial.purgeAt} />
-          ) : misplaced ? null : canOpenPath(pathname, user.role, !!tenant, user.access) ? (
+          ) : misplaced ? null : tenant && pathNotInPlan(pathname, tenant.entitlements) ? (
+            <div role="alert" data-testid="not-in-plan" style={{ flex: 1, display: "grid", placeContent: "center", justifyItems: "center", gap: 10, padding: 24, textAlign: "center" }}>
+              <div style={{ fontFamily: "var(--font-display)", fontSize: 19, fontWeight: 600 }}>
+                {t("shell.notInPlanTitle").replace("{feature}", t(`pricing.ent.${pathNotInPlan(pathname, tenant.entitlements)}` as TranslationKey))}
+              </div>
+              <div style={{ fontSize: 13.5, color: "var(--text-muted)", maxWidth: 420 }}>{t("shell.notInPlanText")}</div>
+              <div style={{ display: "flex", gap: 8, marginTop: 6, flexWrap: "wrap", justifyContent: "center" }}>
+                <Link href="/pricing" className="btn-primary">{t("shell.notInPlanCta")}</Link>
+                <Link href="/dashboard" className="btn-ghost">{t("shell.noAccessBack")}</Link>
+              </div>
+            </div>
+          ) : canOpenPath(pathname, user.role, !!tenant, user.access) ? (
             // Keyed by the address: each page opened fades in.
             <div key={pathname} className="page-enter" style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
               {children}

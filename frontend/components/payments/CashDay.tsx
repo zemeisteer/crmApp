@@ -29,6 +29,9 @@ export default function CashDayPanel({ canClose }: { canClose: boolean }) {
   const [closeError, setCloseError] = useState<string | null>(null);
   // Only the answer for the day on screen is shown.
   const seq = useRef(0);
+  // The count starts at what the records say should be in the drawer; the
+  // cashier changes it only when the money in hand differs.
+  const countTouched = useRef(false);
 
   const load = useCallback(() => {
     const mine = ++seq.current;
@@ -38,6 +41,7 @@ export default function CashDayPanel({ canClose }: { canClose: boolean }) {
         if (mine !== seq.current) return;
         setData(d);
         setError(null);
+        if (!countTouched.current) setCounted(d.closed ? "" : String(d.expectedCash));
       })
       .catch((err) => {
         if (mine !== seq.current) return;
@@ -50,6 +54,9 @@ export default function CashDayPanel({ canClose }: { canClose: boolean }) {
       .catch(() => { if (mine === seq.current) setHistory([]); });
   }, [date, t]);
 
+  useEffect(() => {
+    countTouched.current = false;
+  }, [date]);
   useEffect(load, [load]);
 
   async function onClose(e: React.FormEvent) {
@@ -65,6 +72,7 @@ export default function CashDayPanel({ canClose }: { canClose: boolean }) {
       const d = await cashApi.close({ date, countedCash: n, note: note.trim() || undefined });
       setData(d);
       setCounted("");
+      countTouched.current = false;
       setNote("");
       load();
     } catch (err) {
@@ -127,7 +135,17 @@ export default function CashDayPanel({ canClose }: { canClose: boolean }) {
               <form onSubmit={onClose} style={{ display: "flex", flexDirection: "column", gap: 10, maxWidth: 420 }}>
                 <label style={{ fontSize: 12.5, fontWeight: 700, color: "var(--text-soft)" }}>
                   {t("cash.counted")}
-                  <input className="field-input" inputMode="numeric" value={counted} onChange={(e) => setCounted(e.target.value.replace(/\D/g, ""))} style={{ marginTop: 6 }} />
+                  <input
+                    className="field-input"
+                    inputMode="numeric"
+                    value={counted}
+                    onChange={(e) => {
+                      countTouched.current = true;
+                      setCounted(e.target.value.replace(/\D/g, ""));
+                    }}
+                    style={{ marginTop: 6 }}
+                  />
+                  <span style={{ display: "block", fontSize: 12, fontWeight: 500, color: "var(--text-muted)", marginTop: 4 }}>{t("cash.countedAuto")}</span>
                 </label>
                 {counted !== "" && Number.isInteger(Number(counted)) && (
                   <div style={{ fontSize: 13, fontWeight: 700, color: diffColor(Number(counted) - data.expectedCash) }}>

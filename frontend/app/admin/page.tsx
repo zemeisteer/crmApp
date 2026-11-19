@@ -7,7 +7,6 @@ import Select from "@/components/Select";
 import Link from "next/link";
 import Pagination, { usePagedSlice } from "@/components/Pagination";
 import { useAuth } from "@/lib/auth-context";
-import { useRouter } from "next/navigation";
 import { tenantsApi, plansApi, Plan, ApiError, type TenantsOverview } from "@/lib/api";
 import { useLanguage } from "@/lib/i18n-context";
 import type { TranslationKey } from "@/lib/i18n";
@@ -35,20 +34,9 @@ const STATUS_LABEL_KEYS: Record<string, TranslationKey> = {
 };
 
 function AdminContent() {
-  const { user, selectWorkspace } = useAuth();
-  const router = useRouter();
-
-  // Opens a center as the superadmin (logged in the center's audit log).
-  async function onOpen(id: string) {
-    setSavingId(id);
-    try {
-      await selectWorkspace(id);
-      router.push("/dashboard");
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : t("common.errorGeneric"));
-      setSavingId(null);
-    }
-  }
+  // No way into a center from here: the platform admin manages plans and
+  // statuses, a center's own data stays with its members (the API refuses it too).
+  const { user } = useAuth();
   const { t, lang } = useLanguage();
   const [overview, setOverview] = useState<TenantsOverview | null>(null);
   const [search, setSearch] = useState("");
@@ -284,9 +272,6 @@ function AdminContent() {
                         <div style={{ fontSize: 11.5, color: "var(--text-muted)" }}>{t("sa.since")} {formatDate(tn.createdAt, lang, "short")}</div>
                       </td>
                       <td style={{ textAlign: "right", whiteSpace: "nowrap" }}>
-                        <button className="btn" onClick={() => onOpen(tn.id)} disabled={savingId === tn.id} style={{ background: "var(--primary-soft)", color: ACCENT, border: "none", fontSize: 12, fontWeight: 700, padding: "6px 10px", borderRadius: "var(--radius-xs)", marginRight: 4 }}>
-                          👁 {t("sa.open")}
-                        </button>
                         <button className="btn" onClick={() => onDelete(tn.id, tn.name)} disabled={savingId === tn.id} style={{ background: "transparent", color: "var(--danger)", fontSize: 12, fontWeight: 600, padding: "4px 8px", borderRadius: "var(--radius-xs)" }}>
                           {t("admin.delete")}
                         </button>

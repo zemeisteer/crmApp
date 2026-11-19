@@ -4,7 +4,7 @@ import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } fr
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
-import { authApi, fileUrl, planAllows, type PLAN_FEATURES } from "@/lib/api";
+import { authApi, fileUrl, planAllows, type Entitlements, type PLAN_FEATURES } from "@/lib/api";
 import { useLanguage } from "@/lib/i18n-context";
 import type { TranslationKey } from "@/lib/i18n";
 import type { Role, WorkspaceItem } from "@/lib/api";
@@ -310,6 +310,18 @@ const NAV_ITEMS: NavItem[] = [
     ),
   },
   {
+    // The center's own plan, trial and payment (the plans page with Click/Payme/card).
+    href: "/pricing",
+    labelKey: "nav.billing" as TranslationKey,
+    roles: ["SUPERADMIN", "ADMIN", "ACCOUNTANT"],
+    icon: (
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="2" y="5" width="20" height="14" rx="2" />
+        <path d="M2 10h20M6 15h4" />
+      </svg>
+    ),
+  },
+  {
     href: "/settings",
     labelKey: "nav.settings" as TranslationKey,
     roles: ["SUPERADMIN", "ADMIN"],
@@ -421,11 +433,22 @@ export function isPlatformMode(role?: Role, hasCenter?: boolean) {
  * through its address either. Pages that are not in the menu stay open (the
  * server still decides what data they get).
  */
+/**
+ * The plan feature a page needs when the center's plan leaves it out, else
+ * null. The menu hides such pages; this keeps them shut when opened by link.
+ */
+export function pathNotInPlan(pathname: string, entitlements: Entitlements | undefined): (typeof PLAN_FEATURES)[number] | null {
+  const item = NAV_ITEMS.find((i) => i.feature && (pathname === i.href || pathname.startsWith(`${i.href}/`)));
+  return item?.feature && !planAllows(entitlements, item.feature) ? item.feature : null;
+}
+
 export function canOpenPath(pathname: string, role?: Role, hasCenter = true, access?: string[]) {
   const under = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
   // The platform panel never opens on a center's address (proxy.ts sends
   // /admin there to the main domain; the API refuses it too).
   if (under(SUPERADMIN_ITEM.href) && typeof window !== "undefined" && subdomainFromHost(window.location.host)) return false;
+  // One's own account opens for everyone signed in.
+  if (under("/profile")) return true;
   if (isPlatformMode(role, hasCenter)) return PLATFORM_ITEMS.some((i) => under(i.href));
   if (under(SUPERADMIN_ITEM.href)) return role === "SUPERADMIN";
   const item = NAV_ITEMS.find((i) => under(i.href));

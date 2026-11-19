@@ -13,6 +13,7 @@ import { buildInsights } from "@/lib/insights";
 import TeacherHome from "@/components/dashboard/TeacherHome";
 import AnnouncementBanners from "@/components/dashboard/AnnouncementBanners";
 import MakeupsDue from "@/components/dashboard/MakeupsDue";
+import PlanCard from "@/components/dashboard/PlanCard";
 import { MONTH_KEYS, MONTH_SHORT_KEYS, type TranslationKey } from "@/lib/i18n";
 import { formatDate } from "@/lib/format-date";
 import FirstSteps from "@/components/FirstSteps";
@@ -161,6 +162,7 @@ function DashboardContent() {
 
       <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
         <FirstSteps />
+        {!isTeacher && <PlanCard />}
         {loading ? (
           <DashboardSkeleton />
         ) : (

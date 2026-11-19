@@ -67,10 +67,10 @@ export default function AppTopBar({ onMenu }: { onMenu: () => void }) {
             </svg>
           </Link>
         )}
-        <div className="app-avatar" title={user?.fullName ?? ""}>
+        <Link href="/profile" className="app-avatar" title={`${t("profile.open")}: ${user?.fullName ?? ""}`} aria-label={t("profile.open")}>
           <span aria-hidden="true">{initials}</span>
           <span className="sr-only">{user?.fullName}</span>
-        </div>
+        </Link>
       </div>
     </div>
   );
