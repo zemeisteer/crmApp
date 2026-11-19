@@ -1782,7 +1782,6 @@ export const dict = {
   "sa.trialLeft": { UZ: "Sinov: {n} kun qoldi", RU: "Пробный: осталось {n} дн.", EN: "Trial: {n} days left" },
   "sa.trialEnded": { UZ: "Sinov muddati tugagan", RU: "Пробный период истёк", EN: "Trial ended" },
   "sa.since": { UZ: "Ro'yxatdan:", RU: "С", EN: "Since" },
-  "sa.open": { UZ: "Kirib ko'rish", RU: "Открыть", EN: "Open" },
   "pls.week": { UZ: "Haftalik jadval", RU: "Неделя", EN: "This week" },
   "pls.past": { UZ: "O'tgan darslar", RU: "Прошедшие уроки", EN: "Past lessons" },
   "pls.none": { UZ: "So'nggi kunlarda dars bo'lmagan", RU: "За последние дни уроков не было", EN: "No lessons in recent days" },

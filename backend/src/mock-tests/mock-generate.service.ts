@@ -166,8 +166,11 @@ export class MockGenerateService {
    * background; the editor polls until `generation.running` is empty.
    */
   async retry(tenantId: string, id: string, requested: string[] | undefined) {
-    const [row] = await this.db.select().from(mockTests).where(and(eq(mockTests.id, id), eq(mockTests.tenantId, tenantId)));
-    if (!row) throw new NotFoundException('Test topilmadi');
+    // Checked and marked "running" under a row lock: two retries sent
+    // together (a double click, two teachers) start one rewrite, not two.
+    const { row, content, parts, audio } = await this.db.transaction(async (tx) => {
+      const [row] = await tx.select().from(mockTests).where(and(eq(mockTests.id, id), eq(mockTests.tenantId, tenantId))).for('update');
+      if (!row) throw new NotFoundException('Test topilmadi');
     const content = normalizeContent(parse(row.content));
     const gen = content.generation;
     if (!gen) throw new BadRequestException("Bu test AI bilan yozilmagan");
@@ -180,7 +183,9 @@ export class MockGenerateService {
     if (!parts.length && !audio) throw new BadRequestException("Qayta yoziladigan qism yo'q");
     gen.running = [...parts, ...(audio ? ['audio'] : [])];
     gen.runningSince = new Date().toISOString();
-    await this.save(id, content);
+      await tx.update(mockTests).set({ content: JSON.stringify(content), updatedAt: new Date() }).where(eq(mockTests.id, id));
+      return { row, content, parts, audio };
+    });
     void this.rewrite(tenantId, id, row.level, row.module, parts, audio).catch(async (err) => {
       this.logger.error(`mock ${id}: retry failed: ${(err as Error).message}`);
       await this.merge(id, (c) => {

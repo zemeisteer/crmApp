@@ -25,3 +25,8 @@ test("the limits come from the plan's own numbers, never from the text", () => {
   // No limits set: unlimited, and the text's own limit lines are dropped.
   assert.deepEqual(planFeatureLines({ features: "Cheksiz o'quvchi\nAI tahlil", entitlements: {} }, "UZ"), ["Cheksiz filial", "Cheksiz o'quvchi", "Cheksiz xodim", "AI tahlil"]);
 });
+
+test("a feature line that only mentions students is not taken for a limit", () => {
+  const plan = { features: "50 tagacha o'quvchi\nO'quvchilar uchun AI ustoz 24/7\nTelegram xabarnomalar", entitlements: { MAX_STUDENTS: 50 } };
+  assert.deepEqual(planFeatureLines(plan, "UZ"), ["Cheksiz filial", "50 tagacha o'quvchi", "Cheksiz xodim", "O'quvchilar uchun AI ustoz 24/7", "Telegram xabarnomalar"]);
+});

@@ -326,7 +326,11 @@ Output only the transcript, nothing else. If there is no speech, output nothing.
           if (res.status === 503 || res.status === 429 || res.status === 500) continue;
           break;
         }
-        const data = (await res.json()) as { candidates?: Array<{ content?: { parts?: Array<{ inlineData?: { mimeType?: string; data?: string } }> } }> };
+        const data = (await res.json().catch(() => null)) as { candidates?: Array<{ content?: { parts?: Array<{ inlineData?: { mimeType?: string; data?: string } }> } }> } | null;
+        if (!data) {
+          last = `${model}: the reply was not JSON`;
+          break;
+        }
         const audio = data.candidates?.[0]?.content?.parts?.find((p) => p.inlineData?.data)?.inlineData;
         if (!audio?.data) {
           last = `${model}: the reply had no audio`;

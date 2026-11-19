@@ -34,11 +34,13 @@ const WORDS: Record<LimitKey, Record<Lang, { one?: string; upTo: (n: number) => 
   },
 };
 
-// A line that states a limit: names branches, students or staff and gives a
-// number or says "unlimited", in any of the three languages.
+// A line that states a limit: opens with the amount ("50 tagacha o'quvchi",
+// "Up to 5 branches", "Cheksiz filial", "До 500 учеников", "Без ограничения
+// филиалов") and names branches, students or staff. A feature line that only
+// mentions students ("O'quvchilar uchun AI ustoz 24/7") is kept.
 const LIMIT_SUBJECT = /(filial|o['‘’`ʻ]?quvchi|xodim|branch|student|staff|филиал|учени|сотрудник)/i;
-const LIMIT_AMOUNT = /(\d|cheksiz|unlimited|без\s+огранич|безлимит)/i;
-export const isLimitLine = (line: string) => LIMIT_SUBJECT.test(line) && LIMIT_AMOUNT.test(line);
+const LIMIT_START = /^(\d[\d\s.,]*|up to\s+\d|до\s+\d|cheksiz|unlimited|без\s+огранич|безлимит)/i;
+export const isLimitLine = (line: string) => LIMIT_START.test(line.trim()) && LIMIT_SUBJECT.test(line);
 
 /** The plan's limits in words, or [] when the plan carries no limits object. */
 export function planLimitLines(plan: Pick<PlanFeatureText, "entitlements">, lang: string): string[] {
