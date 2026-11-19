@@ -73,8 +73,11 @@ test('closing the cash desk: what should be in the drawer, the count, the differ
   await page.getByRole('button', { name: 'Kassani yopish' }).click();
   await expect(page.getByText(/Farq: -5[\s,.]?000 \(kam\)/)).toBeVisible();
   await expect(page.getByRole('button', { name: 'Kassani yopish' })).toHaveCount(0);
+  // The button's label turns to "saving" while the request is in flight, so
+  // its absence alone does not mean the day is closed: wait for the answer.
+  await expect(page.getByText(/Yopildi/).first()).toBeVisible();
 
-  const day = await api('GET', '/cash/day', { token: a.token });
+  const day =await api('GET', '/cash/day', { token: a.token });
   expect(day.closed).toMatchObject({ expectedCash: 350000, countedCash: 345000, difference: -5000, note: 'Qaytim berildi' });
   await expect(api('POST', '/cash/day/close', { token: a.token, body: { date: day.date, countedCash: 1 } })).rejects.toThrow(/409/);
 });
