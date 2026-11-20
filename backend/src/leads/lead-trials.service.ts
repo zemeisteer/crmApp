@@ -7,7 +7,20 @@ import { zonedParts } from '../common/timezone';
 import { ScheduleService, type ScheduleConflict } from '../schedule/schedule.service';
 import { AdmissionsEventsService } from './admissions-events.service';
 import { Actor, appTimestamps, isUniqueViolation, LeadRow, LeadsService, Tx } from './leads.service';
-import { BookTrialDto, RescheduleTrialDto } from './dto/lead.dto';
+import { BookTrialDto, RescheduleTrialDto, TrialFeedbackDto } from './dto/lead.dto';
+
+const ENGAGEMENT: Record<string, string> = { ACTIVE: 'faol', AVERAGE: "o'rtacha", PASSIVE: 'sust' };
+
+/** The teacher's feedback as the trial's outcome note (plain lines the lead page shows as is). */
+export function feedbackText(dto: TrialFeedbackDto): string {
+  const line = (label: string, v: string | undefined) => (v?.trim() ? `${label}: ${v.trim()}` : null);
+  return [
+    line('Bilim darajasi', dto.level),
+    line('Darsdagi faolligi', dto.engagement ? ENGAGEMENT[dto.engagement] : undefined),
+    line('Tavsiya', dto.recommendation),
+    line('Izoh', dto.note),
+  ].filter(Boolean).join('\n');
+}
 
 // Converts an instant to the center's wall-clock values the schedule engine
 // works with (lessons are stored as local "HH:MM" + weekday/date).
@@ -76,8 +89,9 @@ export class LeadTrialsService {
     const rows = await this.db.query.leadTrials.findMany({
       where: and(
         eq(leadTrials.tenantId, tenantId),
-        eq(leadTrials.status, 'BOOKED'),
-        gte(leadTrials.scheduledAt, new Date(now - 6 * 3_600_000)),
+        // Coming ones, and those of the last three days (feedback after the lesson).
+        inArray(leadTrials.status, ['BOOKED', 'ATTENDED']),
+        gte(leadTrials.scheduledAt, new Date(now - 3 * 86_400_000)),
         lt(leadTrials.scheduledAt, new Date(now + 14 * 86_400_000)),
         own.length ? or(eq(leadTrials.teacherId, teacher.id), inArray(leadTrials.groupId, own.map((g) => g.id))) : eq(leadTrials.teacherId, teacher.id),
       ),
@@ -92,7 +106,37 @@ export class LeadTrialsService {
       name: r.lead?.fullName ?? '',
       group: r.group ? { id: r.group.id, name: r.group.name } : null,
       room: r.room?.name ?? null,
-    }));
+      status: r.status,
+      outcomeNote: r.outcomeNote,
+    })).filter((r) => r.status === 'BOOKED' || new Date(r.scheduledAt).getTime() <= now);
+  }
+
+  /**
+   * The trial's teacher writes how it went. A trial still BOOKED is marked
+   * attended with it (the lead moves on, as when staff mark it); an attended
+   * one gets its note replaced. Only a trial booked with this teacher, or in
+   * one of their groups.
+   */
+  async teacherFeedback(tenantId: string, userId: string, trialId: string, dto: TrialFeedbackDto) {
+    const text = feedbackText(dto);
+    if (!text) throw new BadRequestException("Kamida bitta maydonni to'ldiring");
+    const [teacher] = await this.db.select({ id: teachers.id }).from(teachers)
+      .where(and(eq(teachers.tenantId, tenantId), eq(teachers.userId, userId), isNull(teachers.deletedAt)));
+    if (!teacher) throw new NotFoundException('Sinov darsi topilmadi');
+    const own = await this.db.select({ id: groups.id }).from(groups)
+      .where(and(eq(groups.tenantId, tenantId), eq(groups.teacherId, teacher.id), isNull(groups.deletedAt)));
+    const [t] = await this.db.select().from(leadTrials).where(and(
+      eq(leadTrials.tenantId, tenantId),
+      eq(leadTrials.id, trialId),
+      own.length ? or(eq(leadTrials.teacherId, teacher.id), inArray(leadTrials.groupId, own.map((g) => g.id))) : eq(leadTrials.teacherId, teacher.id),
+    ));
+    if (!t) throw new NotFoundException('Sinov darsi topilmadi');
+    if (t.status === 'BOOKED') return this.attend(tenantId, { userId, permissions: [] }, t.leadId, t.id, text);
+    if (t.status !== 'ATTENDED') throw new ConflictException({ code: 'TRIAL_NOT_ATTENDED', message: `Sinov darsi holati: ${t.status}` });
+    const [updated] = await this.db.update(leadTrials).set({ outcomeNote: text, updatedAt: new Date() })
+      .where(and(eq(leadTrials.id, t.id), eq(leadTrials.tenantId, tenantId))).returning();
+    await this.leadsService.recordActivity(this.db, { tenantId, leadId: t.leadId, actorUserId: userId, type: 'NOTE', body: text, metadata: { trialId: t.id } });
+    return updated;
   }
 
   // ---- validation ----

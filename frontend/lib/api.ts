@@ -636,6 +636,13 @@ export type LeadActivityType =
   | 'TRIAL_BOOKED' | 'TRIAL_ATTENDED' | 'CONVERTED' | 'LOST' | 'REOPENED';
 export type LeadTrialStatus = 'BOOKED' | 'ATTENDED' | 'MISSED' | 'CANCELLED' | 'RESCHEDULED';
 
+export interface TrialFeedback {
+  level?: string;
+  engagement?: "ACTIVE" | "AVERAGE" | "PASSIVE";
+  recommendation?: string;
+  note?: string;
+}
+
 export interface LeadTrial {
   id: string;
   leadId: string;
@@ -2902,7 +2909,9 @@ export const leadsApi = {
   missTrial: (id: string, trialId: string, note?: string) => postJson<LeadTrial>(`/leads/${id}/trials/${trialId}/miss`, { note }),
   cancelTrial: (id: string, trialId: string, note?: string) => postJson<LeadTrial>(`/leads/${id}/trials/${trialId}/cancel`, { note }),
   /** A teacher's own coming trial lessons (their groups, or booked with them). */
-  mineAsTeacher: () => request<Array<{ id: string; scheduledAt: string; durationMinutes: number; name: string; group: { id: string; name: string } | null; room: string | null }>>("/trials/mine"),
+  mineAsTeacher: () => request<Array<{ id: string; scheduledAt: string; durationMinutes: number; name: string; group: { id: string; name: string } | null; room: string | null; status: "BOOKED" | "ATTENDED"; outcomeNote: string | null }>>("/trials/mine"),
+  /** The trial's teacher: how it went (marks a booked trial attended). */
+  trialFeedback: (trialId: string, data: TrialFeedback) => postJson<LeadTrial>(`/trials/mine/${trialId}/feedback`, data),
   /** "Kelmadi" pressed by mistake: booked again. */
   reopenTrial: (id: string, trialId: string) => postJson<LeadTrial>(`/leads/${id}/trials/${trialId}/reopen`),
   studentMatch: (id: string) => request<{ candidates: StudentMatchCandidate[] }>(`/leads/${id}/student-match`),

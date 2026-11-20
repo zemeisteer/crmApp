@@ -530,3 +530,27 @@ export class ConvertLeadDto {
   @IsObject()
   customFields?: Record<string, unknown>;
 }
+
+// The teacher's word on a trial lesson: what the newcomer knows, how they
+// took part, which group fits them, and anything else. Kept as the trial's
+// outcome note, which the admissions manager reads on the lead.
+export class TrialFeedbackDto {
+  @IsOptional()
+  @IsString()
+  @MaxLength(60)
+  level?: string;
+
+  @IsOptional()
+  @IsIn(['ACTIVE', 'AVERAGE', 'PASSIVE'])
+  engagement?: 'ACTIVE' | 'AVERAGE' | 'PASSIVE';
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  recommendation?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  note?: string;
+}

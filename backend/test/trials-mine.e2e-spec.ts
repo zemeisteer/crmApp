@@ -5,6 +5,9 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from '../src/app.module.js';
 import { configureApp } from '../src/app.setup.js';
+import { eq } from 'drizzle-orm';
+import { DB, Database } from '../src/db/db.module.js';
+import { leadTrials } from '../src/db/schema.js';
 
 // A teacher sees the trial lessons coming to them: in one of their groups,
 // or booked with them by name. Who and when only, not the lead's phone.
@@ -28,7 +31,8 @@ describe("A teacher's trial lessons (e2e)", () => {
     const lead = (await http().post('/api/leads').set(bearer(owner)).send({ fullName: name, phone: `+99895${tail.slice(0, 5)}${n}${n}` }).expect(201)).body.id as string;
     await http().post(`/api/leads/${lead}/transition`).set(bearer(owner)).send({ toStatus: 'CONTACTED' }).expect(201);
     const when = new Date(Date.now() + 2 * 86_400_000).toISOString().slice(0, 10);
-    await http().post(`/api/leads/${lead}/trials`).set(bearer(owner)).send({ scheduledAt: `${when}T${10 + n}:00:00+05:00`, ...body }).expect(201);
+    const booked = (await http().post(`/api/leads/${lead}/trials`).set(bearer(owner)).send({ scheduledAt: `${when}T${10 + n}:00:00+05:00`, ...body }).expect(201)).body as { id: string };
+    return { lead, trialId: booked.id };
   };
 
   beforeAll(async () => {
@@ -61,5 +65,34 @@ describe("A teacher's trial lessons (e2e)", () => {
     // Someone with no teacher record: nothing (not the whole center's).
     expect((await http().get('/api/trials/mine').set(bearer(owner)).expect(200)).body).toEqual([]);
     await http().get('/api/trials/mine').expect(401);
+  });
+
+  it("the trial's teacher writes how it went: the lead is marked attended and the manager reads it", async () => {
+    const a = await teacherWithAccount('Feedback Teacher');
+    const b = await teacherWithAccount('Stranger Teacher');
+    const { lead, trialId } = await trial({ teacherId: a.id }, 'Feedback Visitor', 3);
+    const send = (token: string, body: object) => http().post(`/api/trials/mine/${trialId}/feedback`).set(bearer(token)).send(body);
+
+    // Not begun yet: nothing to say about it.
+    await send(a.token, { level: 'A2' }).expect(409);
+    await app.get<Database>(DB).update(leadTrials).set({ scheduledAt: new Date(Date.now() - 3_600_000) }).where(eq(leadTrials.id, trialId));
+
+    await send(b.token, { level: 'A2' }).expect(404);
+    await send(owner, { level: 'A2' }).expect(404);
+    await send(a.token, {}).expect(400);
+    await send(a.token, { engagement: 'BORED' }).expect(400);
+
+    const saved = (await send(a.token, { level: 'A2', engagement: 'ACTIVE', recommendation: 'General English A2', note: 'Speaks well, weak grammar' }).expect(201)).body;
+    expect(saved).toMatchObject({ status: 'ATTENDED' });
+    expect(saved.outcomeNote).toBe(['Bilim darajasi: A2', 'Darsdagi faolligi: faol', 'Tavsiya: General English A2', 'Izoh: Speaks well, weak grammar'].join('\n'));
+    const leadNow = (await http().get(`/api/leads/${lead}`).set(bearer(owner)).expect(200)).body;
+    expect(leadNow.status).toBe('TRIAL_ATTENDED');
+    expect(JSON.stringify(leadNow)).toContain('weak grammar');
+
+    // Corrected afterwards: the note is replaced, the trial stays attended.
+    const again = (await send(a.token, { level: 'B1' }).expect(201)).body;
+    expect(again).toMatchObject({ status: 'ATTENDED', outcomeNote: 'Bilim darajasi: B1' });
+    const mine = (await http().get('/api/trials/mine').set(bearer(a.token)).expect(200)).body as Array<{ id: string; status: string; outcomeNote: string }>;
+    expect(mine.find((x) => x.id === trialId)).toMatchObject({ status: 'ATTENDED', outcomeNote: 'Bilim darajasi: B1' });
   });
 });

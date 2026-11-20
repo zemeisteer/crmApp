@@ -19,21 +19,6 @@ const MATERIAL_TYPE_LABEL_KEYS: Record<string, TranslationKey> = {
   QUIZ: "aiMaterials.typeQuiz",
 };
 
-const STANDARD_LEVELS = [
-  "Beginner (A1)",
-  "Elementary (A2)",
-  "Pre-Intermediate",
-  "Intermediate (B1)",
-  "Upper-Intermediate (B2)",
-  "Advanced (C1)",
-  "IELTS Foundation",
-  "IELTS 5.5 - 6.5",
-  "IELTS 7.0+",
-  "CEFR B1 / B2",
-  "Boshlang'ich daraja",
-  "O'rta daraja",
-  "Murakkab / Olimpiada",
-];
 
 interface SavedAiMaterial {
   id: string;
@@ -45,6 +30,8 @@ interface SavedAiMaterial {
   customInstructions?: string;
   content: string;
   given?: MaterialGiven[];
+  /** The homework it was written for (the "link to homework" choice). */
+  homeworkId?: string;
 }
 
 const STORAGE_KEY = "talimcrm_saved_ai_materials_v1";
@@ -116,13 +103,20 @@ function AiMaterialsContent() {
     [groups],
   );
 
-  const levels = useMemo(() => {
-    const fromGroups = groups.map((g) => g.level).filter(Boolean) as string[];
-    return Array.from(new Set([...STANDARD_LEVELS, ...fromGroups]));
-  }, [groups]);
-
   const groupsInDirection = direction ? groups.filter((g) => g.subject === direction) : groups;
-  const groupsInScope = level !== "ALL" ? groupsInDirection.filter((g) => g.level === level) : groupsInDirection;
+  // The levels the center's own groups use in this direction (SAT shows SAT's,
+  // English shows English's); a direction with none gets three plain ones.
+  const levels = useMemo(() => {
+    const fromGroups = Array.from(new Set(groupsInDirection.map((g) => g.level?.trim()).filter(Boolean) as string[]));
+    return fromGroups.length ? fromGroups.sort((x, y) => x.localeCompare(y)) : [t("aiMaterials.lvlBasic"), t("aiMaterials.lvlMid"), t("aiMaterials.lvlHigh")];
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [groups, direction, t]);
+  // A level that is not in the new direction's list goes back to "all".
+  useEffect(() => {
+    if (level !== "ALL" && !levels.includes(level)) setLevel("ALL");
+  }, [levels, level]);
+  // A plain level (no group uses it) only tells the AI the level; it does not narrow the groups.
+  const groupsInScope = level !== "ALL" && groupsInDirection.some((g) => g.level === level) ? groupsInDirection.filter((g) => g.level === level) : groupsInDirection;
   const homeworkInScope = direction ? homework.filter((h) => h.group?.subject === direction) : homework;
 
   function selectAll() {
@@ -159,6 +153,7 @@ function AiMaterialsContent() {
         type,
         customInstructions: customPrompt.trim() || undefined,
         content: res.material,
+        homeworkId: relatedHomework?.id,
       };
 
       setActiveMaterial(newMaterial);
@@ -494,6 +489,7 @@ function AiMaterialsContent() {
                     material={activeMaterial}
                     groups={groups}
                     defaultGroupId={groupId !== "ALL" ? groupId : undefined}
+                    linkedHomework={activeMaterial.homeworkId ? homework.find((h) => h.id === activeMaterial.homeworkId) ?? null : null}
                     onGiven={(entry) => {
                       // Remembered with the material: to which groups, by whom, when.
                       const updated = { ...activeMaterial, given: [...(activeMaterial.given ?? []), entry] };
