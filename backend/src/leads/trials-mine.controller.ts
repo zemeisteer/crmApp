@@ -1,4 +1,6 @@
-import { Controller, Get, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
+import { TrialFeedbackDto } from './dto/lead.dto';
 import { JwtAuthGuard } from '../common/jwt-auth.guard';
 import { CurrentUser } from '../common/current-user.decorator';
 import { LeadTrialsService } from './lead-trials.service';
@@ -13,5 +15,13 @@ export class TrialsMineController {
   @Get('mine')
   mine(@CurrentUser('tenantId') tenantId: string, @CurrentUser('sub') userId: string) {
     return this.trials.forTeacher(tenantId, userId);
+  }
+
+  // How the trial went, from its teacher (knowledge, participation, which
+  // group fits): the admissions manager reads it on the lead.
+  @Throttle({ default: { limit: 30, ttl: 60_000 } })
+  @Post('mine/:trialId/feedback')
+  feedback(@CurrentUser('tenantId') tenantId: string, @CurrentUser('sub') userId: string, @Param('trialId') trialId: string, @Body() dto: TrialFeedbackDto) {
+    return this.trials.teacherFeedback(tenantId, userId, trialId, dto);
   }
 }

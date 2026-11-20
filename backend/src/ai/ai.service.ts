@@ -182,7 +182,13 @@ ${studentSummaries.join('\n') || 'Guruhda o\'quvchi yo\'q.'}`;
 
   async generateMaterial(dto: GenerateMaterialDto) {
     const typeLabel =
-      dto.type === 'LESSON_PLAN' ? 'dars rejasi' : dto.type === 'HOMEWORK' ? 'uy vazifasi' : 'test (quiz)';
+      dto.type === 'LESSON_PLAN'
+        ? 'dars rejasi'
+        : dto.type === 'HOMEWORK'
+          ? 'uy vazifasi'
+          : dto.type === 'EXAM_DESCRIPTION'
+            ? "imtihon tavsifi (qisqa: nimalarni qamrab oladi, bo'limlari va savol turlari, qanday baholanadi; savollarning o'zi emas)"
+            : 'test (quiz)';
 
     const prompt = `Sen tajribali o'qituvchisan. Quyidagi mavzu uchun ${typeLabel} tayyorla, aniq va amaliy formatda (sarlavhalar va ro'yxatlar bilan).
 Til: o'qituvchi talabi qaysi tilda yozilgan bo'lsa, o'sha tilda; talab bo'lmasa - o'zbek tilida.

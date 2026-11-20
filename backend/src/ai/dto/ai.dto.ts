@@ -34,7 +34,8 @@ export class GenerateMaterialDto {
   @MaxLength(50000)
   topic: string;
 
-  @IsIn(['LESSON_PLAN', 'HOMEWORK', 'QUIZ'])
+  // EXAM_DESCRIPTION: the "what it covers" text of a new exam (the exams page).
+  @IsIn(['LESSON_PLAN', 'HOMEWORK', 'QUIZ', 'EXAM_DESCRIPTION'])
   type: string;
 
   @IsOptional()

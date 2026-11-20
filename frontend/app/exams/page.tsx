@@ -144,10 +144,12 @@ function ExamsContent() {
     }
     setAiLoading(true);
     try {
+      // What the teacher already wrote in the field is their request.
       const res = await aiApi.generateMaterial({
         subject: direction || "Umumiy",
         topic: title,
-        type: "imtihon tavsifi",
+        type: "EXAM_DESCRIPTION",
+        ...(description.trim() ? { customInstructions: description.trim() } : {}),
       });
       setDescription(res.material);
     } catch (err) {

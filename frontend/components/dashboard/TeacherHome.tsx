@@ -6,6 +6,7 @@ import { leadsApi, salaryApi, type DashboardData, type TeacherPayrollItem } from
 import { formatDateTime } from "@/lib/format-date";
 import { useLanguage } from "@/lib/i18n-context";
 import { Card, CardHeader, CountUp, Stat } from "@/components/ui";
+import TrialFeedback from "./TrialFeedback";
 
 const PASTELS = ["var(--lav)", "var(--sky)", "var(--mint)", "var(--peach)"];
 const money = (n: number) => new Intl.NumberFormat("uz-UZ").format(n);
@@ -17,6 +18,7 @@ export default function TeacherHome({ data }: { data: DashboardData }) {
   const { t, lang } = useLanguage();
   const [pay, setPay] = useState<TeacherPayrollItem | null | undefined>(undefined);
   const [trials, setTrials] = useState<Awaited<ReturnType<typeof leadsApi.mineAsTeacher>>>([]);
+  const [writing, setWriting] = useState<string | null>(null);
 
   useEffect(() => {
     // No month: the server uses the center's current month.
@@ -83,7 +85,25 @@ export default function TeacherHome({ data }: { data: DashboardData }) {
                   <span className="dash-row-title">{tr.name}</span>
                   <span className="dash-row-sub">{[formatDateTime(tr.scheduledAt, lang), `${tr.durationMinutes}′`, tr.group?.name, tr.room].filter(Boolean).join(" · ")}</span>
                 </span>
-                <span className="badge badge-warning">{t("th.trialBadge")}</span>
+                {new Date(tr.scheduledAt).getTime() <= Date.now() ? (
+                  <button type="button" className="btn-primary btn-sm" onClick={() => setWriting(writing === tr.id ? null : tr.id)}>
+                    {tr.outcomeNote ? t("th.fbEdit") : t("th.fbWrite")}
+                  </button>
+                ) : (
+                  <span className="badge badge-warning">{t("th.trialBadge")}</span>
+                )}
+                {tr.outcomeNote && writing !== tr.id && (
+                  <div style={{ width: "100%", whiteSpace: "pre-line", fontSize: 12.5, color: "var(--text-soft)", marginTop: 4 }}>{tr.outcomeNote}</div>
+                )}
+                {writing === tr.id && (
+                  <TrialFeedback
+                    trialId={tr.id}
+                    onSaved={(note) => {
+                      setTrials((list) => list.map((x) => (x.id === tr.id ? { ...x, status: "ATTENDED", outcomeNote: note } : x)));
+                      setWriting(null);
+                    }}
+                  />
+                )}
               </div>
             ))}
           </div>
