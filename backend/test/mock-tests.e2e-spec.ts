@@ -408,7 +408,10 @@ describe('IELTS mock tests (e2e)', () => {
       // Retrying the failed passage fills its slot.
       fixed = true;
       await http().post(`/api/mock-tests/${started.id}/generate/retry`).set(auth()).send({ parts: ['reading.9'] }).expect(400);
-      const retrying = (await http().post(`/api/mock-tests/${started.id}/generate/retry`).set(auth()).send({ parts: ['reading.1'] }).expect(201)).body;
+      // Two retries sent together (a double click): one starts, the other is told to wait.
+      const pair = await Promise.all([0, 1].map(() => http().post(`/api/mock-tests/${started.id}/generate/retry`).set(auth()).send({ parts: ['reading.1'] })));
+      expect(pair.map((r) => r.status).sort()).toEqual([201, 409]);
+      const retrying = pair.find((r) => r.status === 201)!.body;
       expect(retrying.content.generation.running).toEqual(['reading.1']);
       await expect.poll(async () => (await http().get(`/api/mock-tests/${started.id}`).set(auth()).expect(200)).body.content.generation.running, { timeout: 20_000 }).toEqual([]);
       t = (await http().get(`/api/mock-tests/${started.id}`).set(auth()).expect(200)).body;

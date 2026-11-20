@@ -41,7 +41,8 @@ export default function CashDayPanel({ canClose }: { canClose: boolean }) {
         if (mine !== seq.current) return;
         setData(d);
         setError(null);
-        if (!countTouched.current) setCounted(d.closed ? "" : String(d.expectedCash));
+        // (Never below 0: a day whose cash expenses beat its cash takings.)
+        if (!countTouched.current) setCounted(d.closed ? "" : String(Math.max(0, d.expectedCash)));
       })
       .catch((err) => {
         if (mine !== seq.current) return;

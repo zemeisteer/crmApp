@@ -19,7 +19,8 @@ export default function PlanCard({ index = 0 }: { index?: number }) {
   const { t, lang } = useLanguage();
   const { user, tenant } = useAuth();
   const [plans, setPlans] = useState<Plan[] | null>(null);
-  const pays = user?.role === "OWNER" || user?.role === "ADMIN" || user?.role === "SUPERADMIN" || user?.role === "ACCOUNTANT";
+  // The people who may pay the platform (the billing API is @Roles('ADMIN'), the owner included).
+  const pays = user?.role === "OWNER" || user?.role === "ADMIN" || user?.role === "SUPERADMIN";
 
   useEffect(() => {
     if (!pays) return;

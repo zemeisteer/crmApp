@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { createHash } from 'crypto';
+import { createHash, timingSafeEqual } from 'crypto';
 import { PaymentGatewayProvider } from './payment-gateway.interface';
 
 export const CLICK_ERROR = {
@@ -11,6 +11,7 @@ export const CLICK_ERROR = {
   ALREADY_PAID: -4,
   TRANSACTION_NOT_FOUND: -6,
   FAILED_TO_UPDATE: -7,
+  CANCELLED: -9,
 };
 
 function md5(input: string): string {
@@ -65,8 +66,10 @@ export class ClickPaymentProvider implements PaymentGatewayProvider {
         ? `${click_trans_id}${service_id}${secret}${merchant_trans_id}${amount}${action}${sign_time}`
         : `${click_trans_id}${service_id}${secret}${merchant_trans_id}${merchant_prepare_id || ''}${amount}${action}${sign_time}`;
 
-    const expectedSign = md5(raw);
-    return expectedSign.toLowerCase() === (sign_string || '').toLowerCase();
+    // Constant time: the comparison does not tell how much of a guess was right.
+    const expected = Buffer.from(md5(raw).toLowerCase());
+    const given = Buffer.from((sign_string || '').toLowerCase());
+    return expected.length === given.length && timingSafeEqual(expected, given);
   }
 
   async handleWebhook(payload: ClickWebhookBody): Promise<any> {

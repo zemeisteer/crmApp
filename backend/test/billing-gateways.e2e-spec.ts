@@ -1202,4 +1202,72 @@ describe('Billing & Payment Gateways E2E Test Suite (25 Tests)', () => {
     expect(relatedPayment).toBeDefined();
     expect(relatedPayment.receiptNumber).toMatch(/^RCP-\d{6}-\d{6}$/);
   });
+  // ==========================================
+  // Gateway callbacks that must not record money (security review)
+  // ==========================================
+  const clickCall = (body: Record<string, string | number>) => {
+    const sign_string = createClickSign({
+      click_trans_id: String(body.click_trans_id),
+      service_id: CLICK_SERVICE_ID,
+      secret: CLICK_SECRET_KEY,
+      merchant_trans_id: String(body.merchant_trans_id),
+      merchant_prepare_id: body.merchant_prepare_id === undefined ? undefined : String(body.merchant_prepare_id),
+      amount: body.amount,
+      action: String(body.action),
+      sign_time: String(body.sign_time),
+    });
+    return request(app.getHttpServer()).post('/api/billing/click/webhook').send({ service_id: CLICK_SERVICE_ID, ...body, sign_string }).expect(200);
+  };
+  const newClickTx = async (amount: number) =>
+    (await request(app.getHttpServer()).post('/api/billing/click/link').set('Authorization', `Bearer ${tokenA}`).send({ studentId: studentA1Id, amount, forMonth: '2026-12' }).expect(201)).body.transactionId as string;
+  const paymentsFor = async (providerTxId: string) =>
+    ((await request(app.getHttpServer()).get('/api/payments').set('Authorization', `Bearer ${tokenA}`).expect(200)).body as Array<{ providerTxId?: string }>).filter((p) => p.providerTxId === providerTxId);
+
+  it('26. A Click Complete reporting a failed payment (error < 0) records nothing, and the transaction stays closed', async () => {
+    const txId = await newClickTx(120000);
+    const clickId = `clk_err_${suffix}`;
+    expect((await clickCall({ click_trans_id: clickId, merchant_trans_id: txId, amount: 120000, action: '0', sign_time: '2026-11-20 10:00:00' })).body.error).toBe(0);
+    const failed = await clickCall({ click_trans_id: clickId, merchant_trans_id: txId, merchant_prepare_id: txId, amount: 120000, action: '1', error: -5017, sign_time: '2026-11-20 10:00:05' });
+    expect(failed.body.error).toBe(-9);
+    expect(await paymentsFor(clickId)).toEqual([]);
+    // A later "success" for the same transaction is refused.
+    const again = await clickCall({ click_trans_id: clickId, merchant_trans_id: txId, merchant_prepare_id: txId, amount: 120000, action: '1', error: 0, sign_time: '2026-11-20 10:00:09' });
+    expect(again.body.error).toBe(-9);
+    expect(await paymentsFor(clickId)).toEqual([]);
+  });
+
+  it('27. A Click Complete must answer this merchant\'s Prepare (merchant_prepare_id)', async () => {
+    const txId = await newClickTx(130000);
+    const clickId = `clk_prep_${suffix}`;
+    await clickCall({ click_trans_id: clickId, merchant_trans_id: txId, amount: 130000, action: '0', sign_time: '2026-11-20 11:00:00' });
+    const wrong = await clickCall({ click_trans_id: clickId, merchant_trans_id: txId, merchant_prepare_id: 'not-ours', amount: 130000, action: '1', sign_time: '2026-11-20 11:00:05' });
+    expect(wrong.body.error).toBe(-6);
+    expect(await paymentsFor(clickId)).toEqual([]);
+  });
+
+  it('28. Payme cannot cancel a performed transaction: the student\'s payment and the transaction never disagree', async () => {
+    const res = await request(app.getHttpServer())
+      .post('/api/billing/payme/webhook')
+      .set('Authorization', paymeAuthHeader)
+      .send({ method: 'CancelTransaction', params: { id: paymeTransId, reason: 5 }, id: 281 })
+      .expect(200);
+    expect(res.body.error?.code).toBe(-31007);
+    expect(await paymentsFor(paymeTransId)).toHaveLength(1);
+    const check = await request(app.getHttpServer())
+      .post('/api/billing/payme/webhook')
+      .set('Authorization', paymeAuthHeader)
+      .send({ method: 'CheckTransaction', params: { id: paymeTransId }, id: 282 })
+      .expect(200);
+    expect(check.body.result?.state).toBe(2);
+  });
+
+  it('29. Payme cannot perform a cancelled transaction', async () => {
+    const res = await request(app.getHttpServer())
+      .post('/api/billing/payme/webhook')
+      .set('Authorization', paymeAuthHeader)
+      .send({ method: 'PerformTransaction', params: { id: `payme_cancel_${suffix}` }, id: 291 })
+      .expect(200);
+    expect(res.body.error?.code).toBe(-31008);
+    expect(await paymentsFor(`payme_cancel_${suffix}`)).toEqual([]);
+  });
 });
