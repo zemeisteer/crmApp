@@ -8,6 +8,7 @@ import {
   Matches,
   Max,
   Min, MaxLength } from 'class-validator';
+import { HttpUrl } from '../../common/http-url';
 
 const TIME_REGEX = /^([01]\d|2[0-3]):[0-5]\d$/;
 
@@ -58,6 +59,7 @@ export class CreateScheduleDto {
   @IsOptional()
   @IsString()
   @MaxLength(2000)
+  @HttpUrl()
   onlineMeetingUrl?: string;
 
   @IsOptional()
@@ -123,6 +125,7 @@ export class UpdateScheduleDto {
   @IsOptional()
   @IsString()
   @MaxLength(2000)
+  @HttpUrl()
   onlineMeetingUrl?: string;
 
   @IsOptional()
