@@ -4,8 +4,8 @@
 
 ## 1. Deploy oldidan
 
-1. **Migratsiyalar 0084–0088 qo'llanishi kerak.**
-   - Fayllar: `0084_group_individual`, `0085_chat_attachments`, `0086_makeup_auto_issue`, `0087_teacher_profile`, `0088_mock_sessions`.
+1. **Migratsiyalar 0084–0089 qo'llanishi kerak.**
+   - Fayllar: `0084_group_individual`, `0085_chat_attachments`, `0086_makeup_auto_issue`, `0087_teacher_profile`, `0088_mock_sessions`, `0089_portal_pin_failures`.
    - Buyruq: `npm run db:migrate` (Docker konteyneri ishga tushganda o'zi qiladi).
    - Tekshirish: `npm run db:migrate:status`.
    - Hech qachon `drizzle-kit migrate` yoki `db:push` ishlatmang.
@@ -23,7 +23,7 @@
   - Bekor qilingan tranzaksiyani bajarib bo'lmaydi (`-31008`).
   - To'langan tranzaksiyani bekor qilib bo'lmaydi (`-31007`): pulni markazning o'zi qaytaradi.
 - **Kabinet PIN**: bir telefon uchun 15 daqiqada 10 ta noto'g'ri PIN'dan keyin PIN bilan kirish yopiladi (429 `PIN_LOCKED`); Telegram kodi bilan kirish ishlayveradi.
-  - Hisob server xotirasida yuritiladi. Bir nechta API serveri bo'lsa, har biri alohida sanaydi; bunda bazadagi jadval kerak bo'ladi.
+  - Hisob bazada (`portal_pin_failures`) yuritiladi: bir nechta API serveri bo'lsa ham umumiy, server qayta ishga tushsa ham saqlanadi. Telefon raqamining o'zi emas, HMAC xeshi saqlanadi; to'g'ri PIN hisobni tozalaydi.
 - **Superadmin** faqat o'zi faol a'zo bo'lgan markaz ichida ishlaydi (kirishda, markaz almashtirishda, tokenni yangilashda va har bir so'rovda tekshiriladi). Platforma panelidan markazga "kirib ko'rish" tugmasi olib tashlangan.
 - Next.js 16.4.2 → 16.4.6 (xavfsizlik tuzatishi).
 
@@ -61,7 +61,7 @@
 ## 4. Nosozlikda
 | Belgi | Sabab | Nima qilish |
 |---|---|---|
-| Kabinetga PIN bilan kirishda 429 `PIN_LOCKED` | 15 daqiqada 10 ta noto'g'ri PIN | Kutish, yoki Telegram kodi bilan kirish. Server qayta ishga tushsa hisob tozalanadi. |
+| Kabinetga PIN bilan kirishda 429 `PIN_LOCKED` | 15 daqiqada 10 ta noto'g'ri PIN | Kutish, yoki Telegram kodi bilan kirish. Hisob bazada, shuning uchun qayta ishga tushirish uni tozalamaydi; 15 daqiqa kutish kerak. |
 | `/admin` markaz manzilida 403 `PLATFORM_MAIN_DOMAIN_ONLY` | Platforma paneli faqat asosiy domenda | `https://<ROOT_DOMAIN>/admin` dan kiring. |
 | Click to'lovi o'quvchiga yozilmadi, jurnalda `-9` | Click to'lov muvaffaqiyatsiz deb yubordi | Click kabinetida to'lovni tekshiring; pul olinmagan bo'lsa, qayta to'lash kerak. |
 | Payme bekor qilishga `-31007` javob beradi | To'lov allaqachon bajarilgan | Pulni markaz o'zi qaytaradi, so'ng to'lovni CRM'da bekor qiling. |
