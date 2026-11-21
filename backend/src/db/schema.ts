@@ -1297,6 +1297,18 @@ export const portalLoginCodes = pgTable('portal_login_codes', {
   phoneIdx: index('portal_login_codes_phone_idx').on(t.phone),
 }));
 
+// One row per wrong cabinet PIN, keyed by a hash of the phone typed (the
+// number itself is not stored). Sign-in before the account is known, so it
+// spans centers like portal_login_codes and carries no tenant_id. Rows past
+// the lockout window are deleted by the sign-in that notices them.
+export const portalPinFailures = pgTable('portal_pin_failures', {
+  id: text('id').primaryKey().$defaultFn(() => createId()),
+  phoneHash: text('phone_hash').notNull(),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+}, (t) => ({
+  phoneIdx: index('portal_pin_failures_phone_idx').on(t.phoneHash, t.createdAt),
+}));
+
 // Whether the teacher taught a given group's lesson on a date. ABSENT
 // lessons are taken off the payroll; a substitute gets the lesson instead
 // (per-lesson pay).
