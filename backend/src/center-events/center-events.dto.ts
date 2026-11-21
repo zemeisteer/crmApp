@@ -1,4 +1,5 @@
 import { IsIn, IsOptional, IsString, Matches, MaxLength, MinLength } from 'class-validator';
+import { HttpUrl } from '../common/http-url';
 
 export const EVENT_KINDS = ['MEETING', 'COMPETITION', 'EVENT', 'OTHER'] as const;
 export type EventKind = (typeof EVENT_KINDS)[number];
@@ -45,6 +46,7 @@ export class CreateCenterEventDto {
   @IsOptional()
   @IsString()
   @MaxLength(500)
+  @HttpUrl()
   meetingUrl?: string;
 
   @IsOptional()
@@ -97,6 +99,7 @@ export class UpdateCenterEventDto {
   @IsOptional()
   @IsString()
   @MaxLength(500)
+  @HttpUrl()
   meetingUrl?: string | null;
 
   @IsOptional()

@@ -20,6 +20,7 @@ import { useLanguage } from "@/lib/i18n-context";
 import { MONTH_KEYS, type TranslationKey } from "@/lib/i18n";
 import { formatDate as fmtDate } from "@/lib/format-date";
 import { useCenterAddress } from "@/lib/use-center-host";
+import QrCode from "@/components/QrCode";
 import { useAuth } from "@/lib/auth-context";
 import { can } from "@/lib/access";
 import { useCustomFieldDefs } from "@/components/custom-fields/CustomFieldInputs";
@@ -787,14 +788,8 @@ function StudentDetailContent() {
               </div>
 
               <div style={{ background: "var(--surface)", padding: 6, borderRadius: "var(--radius-md)", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 4px 6px -1px rgba(0,0,0,0.1)" }}>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={`https://api.qrserver.com/v1/create-qr-code/?size=120x120&margin=2&data=${encodeURIComponent(`CRMAPP:STUDENT:${student.id}`)}`}
-                  alt="Student QR Code"
-                  width={110}
-                  height={110}
-                  style={{ display: "block", borderRadius: "var(--radius-xs)" }}
-                />
+                {/* Drawn on this page: the student's id is not sent to an image service. */}
+                <QrCode value={`CRMAPP:STUDENT:${student.id}`} size={110} label={t("std.qrAlt")} />
               </div>
             </div>
 

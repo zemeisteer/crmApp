@@ -1,4 +1,5 @@
 import { IsOptional, IsString, Matches, MaxLength } from 'class-validator';
+import { HttpUrl } from '../../common/http-url';
 
 // An Uzbek number (+998 and 9 digits, spaces or dashes allowed) or nothing.
 const BRANCH_PHONE = /^(\+?998[\s-]?\d{2}[\s-]?\d{3}[\s-]?\d{2}[\s-]?\d{2})?$/;
@@ -22,6 +23,7 @@ export class CreateBranchDto {
   @IsOptional()
   @IsString()
   @MaxLength(2000)
+  @HttpUrl()
   mapUrl?: string;
 }
 
@@ -29,5 +31,5 @@ export class UpdateBranchDto {
   @IsOptional() @IsString() name?: string;
   @IsOptional() @IsString() address?: string;
   @IsOptional() @IsString() @Matches(BRANCH_PHONE, { message: BRANCH_PHONE_MSG }) phone?: string;
-  @IsOptional() @IsString() mapUrl?: string;
+  @IsOptional() @IsString() @MaxLength(2000) @HttpUrl() mapUrl?: string;
 }
