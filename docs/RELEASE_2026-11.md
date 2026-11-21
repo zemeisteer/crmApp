@@ -9,7 +9,9 @@
    - Buyruq: `npm run db:migrate` (Docker konteyneri ishga tushganda o'zi qiladi).
    - Tekshirish: `npm run db:migrate:status`.
    - Hech qachon `drizzle-kit migrate` yoki `db:push` ishlatmang.
-2. **`ROOT_DOMAIN` productionda belgilangan bo'lsin** (`backend/.env`). Platforma paneli (`/admin` va `@Roles('SUPERADMIN')` marshrutlari) markaz manzilidan (`<sub>.<ROOT_DOMAIN>`) kelgan so'rovga 403 `PLATFORM_MAIN_DOMAIN_ONLY` qaytaradi. `ROOT_DOMAIN` bo'sh bo'lsa, faqat `*.localhost` aniqlanadi va himoya productionda ishlamaydi.
+2. **`ROOT_DOMAIN`.** Platforma paneli (`/admin` va `@Roles('SUPERADMIN')` marshrutlari) markaz manzilidan (`<sub>.<ROOT_DOMAIN>`) kelgan so'rovga 403 `PLATFORM_MAIN_DOMAIN_ONLY` qaytaradi.
+   - `docker-compose.prod.yml` bilan deploy qilsangiz, hech narsa qilish shart emas: `ROOT_DOMAIN` u yerda `.env` dagi `DOMAIN` dan olinadi va `DOMAIN` bo'sh bo'lsa, compose ishga tushmaydi.
+   - Docker'siz ishga tushirsangiz (`backend/.env`), `ROOT_DOMAIN` ni asosiy domen qilib qo'ying. Bo'sh qolsa yoki `localhost` bo'lsa, faqat `*.localhost` aniqlanadi va bu himoya ishlamaydi.
 3. **Ixtiyoriy: `GEMINI_TTS_MODEL`.** Listening audiosi uchun Gemini TTS modeli. Bo'sh qoldirilsa, standart tartib ishlatiladi (`gemini-3.8-flash-tts`, keyin `gemini-2.5-flash-preview-tts`). Audio uchun `GEMINI_API_KEY` kerak.
 4. **Tarif limitlarini tekshiring** (Admin → Tariflar). Narxlar sahifasi endi tarif matnini emas, uning haqiqiy limitlarini (filial, o'quvchi, xodim) ko'rsatadi. Productiondagi tariflar saqlangan limitlarini saqlab qoladi; limit qo'yilmagan bo'lsa "Cheksiz" chiqadi.
 
