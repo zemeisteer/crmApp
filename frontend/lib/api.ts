@@ -240,6 +240,8 @@ async function request<T>(
     ...(isPortal ? portalHeaders() : SESSION_TRANSPORT),
     ...(options.headers as Record<string, string> | undefined),
   };
+  // A file upload: the browser sets the multipart type with its boundary.
+  if (typeof FormData !== "undefined" && options.body instanceof FormData) delete headers["Content-Type"];
   // A caller may pass its own token (e.g. a staff token to a /portal door).
   if (token && !headers["Authorization"]) headers["Authorization"] = `Bearer ${token}`;
 
@@ -401,6 +403,8 @@ export interface Tenant {
   studentAiDailyLimit?: number;
   /** Make-up credits expire this many days after issue; null: never. */
   makeupCreditDays?: number | null;
+  /** A student marked absent gets a make-up credit at once. */
+  makeupAutoIssue?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -419,6 +423,9 @@ export interface PublicShowcaseGroup {
   branchName?: string | null;
   // null when the group has no seat limit.
   seatsLeft?: number | null;
+  startDate?: string | null;
+  /** Opened in the last 30 days or not started yet: "our new groups". */
+  isNew?: boolean;
 }
 
 export interface PublicShowcaseTeacher {
@@ -426,6 +433,9 @@ export interface PublicShowcaseTeacher {
   fullName: string;
   subject?: string | null;
   startDate?: string | null;
+  score?: string | null;
+  experienceYears?: number | null;
+  photoPath?: string | null;
 }
 
 export interface PublicShowcaseBranch {
@@ -501,6 +511,8 @@ export interface PublicApplyDto {
   phone: string;
   parentPhone?: string;
   subject?: string;
+  /** All subjects chosen; the first is the main one. */
+  subjects?: string[];
   branchId?: string;
   notes?: string;
   consent: boolean;
@@ -528,6 +540,7 @@ export interface User {
   id: string;
   email: string;
   fullName: string;
+  phone?: string | null;
   role: Role;
   permissions?: string[] | null;
   /** What this member may do (keys of the access catalog). */
@@ -595,6 +608,8 @@ export interface Group {
   subject: string;
   level: string | null;
   teacherId: string | null;
+  /** One student, own price; days and time may be agreed with the teacher. */
+  isIndividual?: boolean;
   startDate: string | null;
   maxStudents: number;
   schedule: string | null;
@@ -620,6 +635,13 @@ export type LeadActivityType =
   | 'NOTE' | 'CALL' | 'MESSAGE' | 'MEETING' | 'STATUS_CHANGE' | 'FOLLOW_UP_SCHEDULED'
   | 'TRIAL_BOOKED' | 'TRIAL_ATTENDED' | 'CONVERTED' | 'LOST' | 'REOPENED';
 export type LeadTrialStatus = 'BOOKED' | 'ATTENDED' | 'MISSED' | 'CANCELLED' | 'RESCHEDULED';
+
+export interface TrialFeedback {
+  level?: string;
+  engagement?: "ACTIVE" | "AVERAGE" | "PASSIVE";
+  recommendation?: string;
+  note?: string;
+}
 
 export interface LeadTrial {
   id: string;
@@ -909,6 +931,10 @@ export interface CustomFieldError {
 export type CustomFieldPayload = Record<string, CustomFieldValue | null>;
 
 export interface Teacher {
+  /** Shown on the center's site. */
+  score?: string | null;
+  experienceYears?: number | null;
+  photoPath?: string | null;
   id: string;
   tenantId: string;
   userId: string | null;
@@ -1355,7 +1381,9 @@ export const PLAN_FEATURES = ["AI_TOOLS", "AI_TUTOR", "MOCK_EXAMS", "CERTIFICATE
 export const PLAN_LIMITS = ["MAX_STUDENTS", "MAX_STAFF", "MAX_BRANCHES"] as const;
 export type Entitlements = Partial<Record<(typeof PLAN_FEATURES)[number], boolean> & Record<(typeof PLAN_LIMITS)[number], number | null>>;
 /** A feature the center's plan does not leave out (missing means included). */
-export const planAllows = (e: Entitlements | undefined, f: (typeof PLAN_FEATURES)[number]) => e?.[f] !== false;
+/** Included only where ticked (it costs money per use); every other feature is included unless unticked. */
+export const PLAN_OPT_IN: ReadonlyArray<(typeof PLAN_FEATURES)[number]> = ["TELEPHONY"];
+export const planAllows = (e: Entitlements | undefined, f: (typeof PLAN_FEATURES)[number]) => (PLAN_OPT_IN.includes(f) ? e?.[f] === true : e?.[f] !== false);
 
 export interface Plan {
   id: string;
@@ -1517,6 +1545,8 @@ export interface PublicCertificate {
   grade?: string | null;
   issueDate?: string;
   organizationName?: string;
+  /** The issuing center's subdomain: its own address for this page. */
+  organizationSubdomain?: string | null;
   courseName?: string | null;
   subject?: string | null;
   signatoryName?: string;
@@ -1557,6 +1587,8 @@ export const authApi = {
     phone?: string;
     phoneCode?: string;
     signupAttemptId?: string;
+    /** plans.key chosen on the pricing page: the trial runs on it. */
+    plan?: string;
   }) => request<AuthResponse>("/auth/register", { method: "POST", body: JSON.stringify(data) }),
   /** A code to the phone a new center signs up with; DEV: shown here (never in production). */
   // The attempt id comes back with the code and goes with the sign-up.
@@ -1598,6 +1630,10 @@ export const authApi = {
   revokeSession: (id: string) => request<{ success: boolean }>(`/auth/sessions/${id}`, { method: "DELETE" }),
 
   me: () => request<{ user: User; tenant: Tenant }>("/auth/me"),
+  updateProfile: (data: { fullName?: string }) =>
+    request<{ id: string; fullName: string; phone: string | null; email: string }>("/auth/me", { method: "PATCH", body: JSON.stringify(data) }),
+  changePassword: (data: { currentPassword: string; newPassword: string; code?: string }) =>
+    request<{ message: string }>("/auth/change-password", { method: "POST", body: JSON.stringify(data) }),
 
   forgotPassword: (email: string) =>
     request<{ message: string }>("/auth/forgot-password", { method: "POST", body: JSON.stringify({ email }) }),
@@ -1645,6 +1681,9 @@ export const groupsApi = {
   // `makeups`: make-ups booked into the group's coming lessons, released with it.
   remove: (id: string) => request<{ success: boolean; makeups?: MakeupReconcile }>(`/groups/${id}`, { method: "DELETE" }),
   restore: (id: string) => request<Group>(`/groups/${id}/restore`, { method: "POST" }),
+  /** Every teacher, busy (with which groups) or free for the planned days and time. */
+  teacherAvailability: (params: { days: string; startTime: string; endTime?: string; excludeId?: string }) =>
+    request<Array<{ teacherId: string; busyWith: string[] }>>(`/groups/teacher-availability?${new URLSearchParams({ days: params.days, startTime: params.startTime, ...(params.endTime ? { endTime: params.endTime } : {}), ...(params.excludeId ? { excludeId: params.excludeId } : {}) })}`),
   scheduleConflicts: (params: { teacherId: string; days: string; startTime: string; endTime?: string; excludeId?: string }) => {
     const qs = new URLSearchParams({
       teacherId: params.teacherId,
@@ -1925,6 +1964,10 @@ export interface TeacherPayrollItem {
     lateLessons?: number;
     substitutedLessons?: number;
     deduction?: number;
+    /** FIXED: paid from this day of the month (started mid-month). */
+    workedFromDay?: number | null;
+    /** FIXED: no group and no lesson this month: nothing to pay yet. */
+    noLessons?: boolean;
   };
 }
 
@@ -2077,7 +2120,7 @@ export const tenantsApi = {
     name?: string; accentColor?: string; category?: TenantCategory; phone?: string; address?: string;
     email?: string; telegramUsername?: string; website?: string; websiteLabel?: string;
     language?: "UZ" | "RU" | "EN"; currency?: "UZS" | "USD" | "RUB"; teachingCategories?: string[];
-    studentAiDailyLimit?: number; makeupCreditDays?: number | null;
+    studentAiDailyLimit?: number; makeupCreditDays?: number | null; makeupAutoIssue?: boolean;
   }) => request<Tenant>("/tenants/me", { method: "PATCH", body: JSON.stringify(data) }),
   uploadLogo: (file: File) => uploadFile<Tenant>("/tenants/me/logo", file),
   getSite: () => request<SiteContent>("/tenants/me/site"),
@@ -2672,7 +2715,7 @@ export const customDomainsApi = {
 
 // ---- Platform switches (feature flags) ----
 
-export type FlagKey = "ai" | "sms" | "telegram" | "signups";
+export type FlagKey = "ai" | "sms" | "telegram" | "signups" | "telephony";
 export interface FlagOverview {
   key: FlagKey;
   enabled: boolean;
@@ -2744,11 +2787,27 @@ export interface ImportReport {
   unknownColumns: string[];
 }
 
-async function importUpload<T>(kind: ImportKind, file: File, dryRun: boolean): Promise<T> {
+export interface BundleImportResult {
+  ok: boolean;
+  steps: Array<{ kind: ImportKind; created: number; skipped: number; report: ImportReport }>;
+  failed: { kind: ImportKind; message: string; report: ImportReport | null } | null;
+  notRun: ImportKind[];
+}
+
+export interface ImportColumns {
+  headers: string[];
+  sample: Array<Record<string, string>>;
+  fields: Array<{ key: string; title: string; required: boolean; hint: string | null }>;
+  /** field key -> header */
+  suggested: Record<string, string>;
+}
+
+async function importUpload<T>(kind: ImportKind, file: File, dryRun: boolean, mapping?: Record<string, string>, path = ""): Promise<T> {
   const token = await freshToken();
   const form = new FormData();
+  if (mapping) form.append("mapping", JSON.stringify(mapping));
   form.append("file", file);
-  const res = await fetch(`${API_URL}/import/${kind}${dryRun ? "?dryRun=1" : ""}`, {
+  const res = await fetch(`${API_URL}/import/${kind}${path}${dryRun ? "?dryRun=1" : ""}`, {
     method: "POST",
     headers: token ? { Authorization: `Bearer ${token}` } : undefined,
     body: form,
@@ -2761,9 +2820,23 @@ async function importUpload<T>(kind: ImportKind, file: File, dryRun: boolean): P
 export const importApi = {
   template: (kind: ImportKind) => download(`/import/${kind}/template.xlsx`, `import-${kind}.xlsx`),
   // Reads and checks every row; writes nothing.
-  preview: (kind: ImportKind, file: File) => importUpload<ImportReport>(kind, file, true),
+  preview: (kind: ImportKind, file: File, mapping?: Record<string, string>) => importUpload<ImportReport>(kind, file, true, mapping),
+  /** The file's columns and the suggested field for each. */
+  columns: (kind: ImportKind, file: File) => importUpload<ImportColumns>(kind, file, false, undefined, "/columns"),
   // All rows valid, or nothing is saved (400 with the report).
-  run: (kind: ImportKind, file: File) => importUpload<{ created: number; skipped: number; report: ImportReport }>(kind, file, false),
+  run: (kind: ImportKind, file: File, mapping?: Record<string, string>) => importUpload<{ created: number; skipped: number; report: ImportReport }>(kind, file, false, mapping),
+  /** One workbook with a sheet per kind (teachers, groups, students). */
+  bundleTemplate: () => download("/import/bundle/template.xlsx", "import-hammasi.xlsx"),
+  /** That workbook, or a .zip of the single templates: kinds in order, each all-or-nothing. */
+  runBundle: async (file: File) => {
+    const token = await freshToken();
+    const form = new FormData();
+    form.append("file", file);
+    const res = await fetch(`${API_URL}/import/bundle`, { method: "POST", headers: token ? { Authorization: `Bearer ${token}` } : undefined, body: form });
+    const body = await res.json().catch(() => null);
+    if (!res.ok) throw new ApiError(body?.message || "Import xato", res.status, body);
+    return body as BundleImportResult;
+  },
 };
 
 // ---- Admissions / Leads CRM ----
@@ -2835,6 +2908,12 @@ export const leadsApi = {
   attendTrial: (id: string, trialId: string, note?: string) => postJson<LeadTrial>(`/leads/${id}/trials/${trialId}/attend`, { note }),
   missTrial: (id: string, trialId: string, note?: string) => postJson<LeadTrial>(`/leads/${id}/trials/${trialId}/miss`, { note }),
   cancelTrial: (id: string, trialId: string, note?: string) => postJson<LeadTrial>(`/leads/${id}/trials/${trialId}/cancel`, { note }),
+  /** A teacher's own coming trial lessons (their groups, or booked with them). */
+  mineAsTeacher: () => request<Array<{ id: string; scheduledAt: string; durationMinutes: number; name: string; group: { id: string; name: string } | null; room: string | null; status: "BOOKED" | "ATTENDED"; outcomeNote: string | null }>>("/trials/mine"),
+  /** The trial's teacher: how it went (marks a booked trial attended). */
+  trialFeedback: (trialId: string, data: TrialFeedback) => postJson<LeadTrial>(`/trials/mine/${trialId}/feedback`, data),
+  /** "Kelmadi" pressed by mistake: booked again. */
+  reopenTrial: (id: string, trialId: string) => postJson<LeadTrial>(`/leads/${id}/trials/${trialId}/reopen`),
   studentMatch: (id: string) => request<{ candidates: StudentMatchCandidate[] }>(`/leads/${id}/student-match`),
   convert: (id: string, data: ConvertLeadInput) => postJson<ConvertLeadResult>(`/leads/${id}/convert`, data),
   archive: (id: string, reason?: string) => postJson<Lead>(`/leads/${id}/archive`, { reason }),
@@ -2923,6 +3002,8 @@ export interface DashboardData {
     marked: number | null;
   }>;
   groupFill: Array<{ id: string; name: string; students: number; maxStudents: number }>;
+  /** Opened lately or not started yet: shown on the center's site as new. */
+  newGroups?: Array<{ id: string; name: string; startDate: string | null; students: number; maxStudents: number }>;
   // null for roles that may not see payments (and for teachers).
   finance: null | {
     monthRevenue: number;
@@ -3804,6 +3885,8 @@ export interface MockContent {
   reading: { durationMin: number; passages: Array<{ title: string; text: string; imagePath: string | null; questions: import("./tests").TestQuestion[] }> };
   writing: { durationMin: number; tasks: Array<{ title: string; prompt: string; minWords: number; imagePath: string | null }> };
   speaking: { parts: Array<{ title: string; instruction: string | null; prepSeconds: number; answerSeconds: number; questions: string[] }> };
+  // Only on a test the AI wrote; set by the server (see lib/mock-generation.ts).
+  generation?: import("./mock-generation").MockGeneration;
 }
 
 export type MockLevel = "B4" | "B5" | "B6" | "B7" | "B8";
@@ -3886,6 +3969,22 @@ export interface MockSectionResult {
   teacherComment?: string | null;
   gradedBy?: "AUTO" | "AI" | "TEACHER";
   late?: boolean;
+  // Listening/Reading: right / total per question type, weakest first.
+  kinds?: MockKindStat[];
+}
+export interface MockKindStat { kind: string; right: number; total: number }
+export interface MockProgress {
+  points: Array<{ attemptId: string; title: string; date: string; overall: number | null } & Partial<Record<MockSection, number | null>>>;
+  weak: { listening: MockKindStat[]; reading: MockKindStat[] };
+}
+export interface MockDay { id: string; testId: string; startsAt: string; groupName: string; testTitle: string }
+export interface MockSessionRow { id: string; startsAt: string; testId: string; groupId: string; testTitle: string; groupName: string }
+export interface MockSessionTable extends MockSessionRow {
+  rows: Array<{
+    studentId: string; fullName: string; attemptId: string | null; status: "NOT_STARTED" | "IN_PROGRESS" | "COMPLETED";
+    sections: Record<MockSection, { band: number | null; status: string | null; done: boolean }>;
+    overall: number | null;
+  }>;
 }
 export type MockResults = Partial<Record<MockSection, MockSectionResult>> & { overall?: number | null };
 
@@ -3964,6 +4063,8 @@ export interface PortalMockAttempt {
   sectionDone: Record<string, string>;
   results: MockResults;
   keys: Partial<Record<"listening" | "reading", string[]>>;
+  // Why each answer is right (finished Listening/Reading; null when none written).
+  explanations?: Partial<Record<"listening" | "reading", Array<string | null>>>;
   serverNow: string;
   aiFeedback: boolean;
 }
@@ -3976,6 +4077,8 @@ export interface PortalPractice {
   level: MockLevel | null;
   // AI-made practice sets left today (null when the AI is off).
   aiPractice: { limit: number; used: number; left: number } | null;
+  // Mock days of the student's groups (from a week back).
+  mockDays?: MockDay[];
   directions: Array<{
     subject: string;
     english: boolean;
@@ -4057,6 +4160,13 @@ export const mockTestsApi = {
   update: (id: string, data: { title?: string; subject?: string; status?: "DRAFT" | "PUBLISHED"; content?: MockContent | PracticeContent; level?: MockLevel | null; module?: "ACADEMIC" | "GENERAL" }) =>
     request<MockTest>(`/mock-tests/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
   remove: (id: string) => request<{ success: boolean }>(`/mock-tests/${id}`, { method: "DELETE" }),
+  // A whole test written by the AI for a band level (null: mixed); ready in a few minutes.
+  generate: (data: { level: MockLevel | null; module?: "ACADEMIC" | "GENERAL" }) =>
+    request<MockTestSummary>("/mock-tests/generate", { method: "POST", body: JSON.stringify(data) }),
+  // Writes the failed parts of an AI test again ("audio": reads the Listening
+  // parts without a recording aloud); no parts: everything still missing.
+  retryGeneration: (id: string, parts?: string[]) =>
+    request<MockTest>(`/mock-tests/${id}/generate/retry`, { method: "POST", body: JSON.stringify(parts?.length ? { parts } : {}) }),
   uploadAsset: (id: string, file: File) => {
     const form = new FormData();
     form.append("file", file);
@@ -4074,10 +4184,17 @@ export const mockTestsApi = {
   // Practice tests: points (0-10) per writing task of a section.
   reviewPractice: (attemptId: string, data: { section: string; scores: number[]; comment?: string }) =>
     request<MockAttemptDetail>(`/mock-tests/attempts/${attemptId}/review-practice`, { method: "POST", body: JSON.stringify(data) }),
+  sessions: () => request<MockSessionRow[]>("/mock-tests/sessions"),
+  createSession: (data: { testId: string; groupId: string; startsAt: string }) =>
+    request<MockSessionRow>("/mock-tests/sessions", { method: "POST", body: JSON.stringify(data) }),
+  session: (id: string) => request<MockSessionTable>(`/mock-tests/sessions/${id}`),
+  removeSession: (id: string) => request<{ ok: boolean }>(`/mock-tests/sessions/${id}`, { method: "DELETE" }),
+  studentProgress: (studentId: string) => request<MockProgress>(`/mock-tests/students/${studentId}/progress`),
 };
 
 export const portalMockApi = {
   list: () => request<PortalPractice>("/portal/mock-tests"),
+  progress: () => request<MockProgress>("/portal/mock-tests/progress"),
   start: (testId: string) => request<PortalAnyAttempt>(`/portal/mock-tests/${testId}/start`, { method: "POST" }),
   get: (attemptId: string) => request<PortalMockAttempt>(`/portal/mock-tests/attempts/${attemptId}`),
   getAny: (attemptId: string) => request<PortalAnyAttempt>(`/portal/mock-tests/attempts/${attemptId}`),
@@ -4363,6 +4480,8 @@ export interface ChatMessage {
   /** When a parent writes: the child. */
   senderAbout?: string | null;
   body: string;
+  /** A file sent with the message; `url` is a signed link that works for about 30 minutes. */
+  attachment?: { name: string; mime: string; size: number; url: string } | null;
   clientMessageId: string;
   createdAt: string;
   mine: boolean;
@@ -4395,6 +4514,8 @@ export interface ChatClient {
   open: (dto: ChatOpenDto) => Promise<ChatConversation>;
   messages: (id: string, q?: { before?: number; after?: number; limit?: number }) => Promise<ChatPage>;
   send: (id: string, body: string, clientMessageId: string) => Promise<{ message: ChatMessage; duplicate: boolean }>;
+  /** A file, with an optional caption. */
+  sendFile: (id: string, file: File, body: string, clientMessageId: string) => Promise<{ message: ChatMessage; duplicate: boolean }>;
   read: (id: string, seq: number) => Promise<{ lastReadSeq: number }>;
   unread: () => Promise<{ unread: number }>;
   contacts: (q?: string) => Promise<ChatContacts>;
@@ -4419,6 +4540,13 @@ function makeChatClient(side: "staff" | "cabinet"): ChatClient {
     },
     send: (id, body, clientMessageId) =>
       request<{ message: ChatMessage; duplicate: boolean }>(`${base}/conversations/${enc(id)}/messages`, { method: "POST", body: JSON.stringify({ body, clientMessageId }) }),
+    sendFile: (id, file, body, clientMessageId) => {
+      const form = new FormData();
+      form.append("body", body);
+      form.append("clientMessageId", clientMessageId);
+      form.append("file", file);
+      return request<{ message: ChatMessage; duplicate: boolean }>(`${base}/conversations/${enc(id)}/files`, { method: "POST", body: form });
+    },
     read: (id, seq) => request<{ lastReadSeq: number }>(`${base}/conversations/${enc(id)}/read`, { method: "POST", body: JSON.stringify({ seq }) }),
     unread: () => request<{ unread: number }>(`${base}/unread`),
     contacts: (q) => request<ChatContacts>(`${base}/contacts${q ? `?q=${enc(q)}` : ""}`),

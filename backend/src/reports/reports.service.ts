@@ -1,3 +1,4 @@
+import { isNewGroup } from '../groups/new-group';
 import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { and, eq, gte, inArray, isNull, lt, lte, sql } from 'drizzle-orm';
 import { DB, Database } from '../db/db.module';
@@ -108,6 +109,19 @@ export class ReportsService {
       ...(scope ? [scope.length ? inArray(groups.id, scope) : sql`false`] : []),
     ));
     const groupIds = groupRows.map((g) => g.id);
+    // Groups opened lately or not started yet: what the center's site shows
+    // as "our new groups", so staff know what visitors are offered.
+    const recent = await this.db.select({ id: groups.id, name: groups.name, maxStudents: groups.maxStudents, startDate: groups.startDate, createdAt: groups.createdAt, status: groups.status })
+      .from(groups).where(and(
+        eq(groups.tenantId, tenantId), isNull(groups.deletedAt), inArray(groups.status, ['ACTIVE', 'PLANNED']), eq(groups.isIndividual, false),
+        ...(scope ? [scope.length ? inArray(groups.id, scope) : sql`false`] : []),
+      ));
+    const recentSeats = recent.length ? await this.db.select({ groupId: enrollments.groupId, n: sql<number>`count(*)::int` }).from(enrollments)
+      .where(and(inArray(enrollments.groupId, recent.map((g) => g.id)), eq(enrollments.status, 'ACTIVE'))).groupBy(enrollments.groupId) : [];
+    const newGroups = recent.filter(isNewGroup)
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+      .slice(0, 6)
+      .map((g) => ({ id: g.id, name: g.name, startDate: g.startDate, students: recentSeats.find((s) => s.groupId === g.id)?.n ?? 0, maxStudents: g.maxStudents }));
 
     let activeStudents: number;
     if (scope) {
@@ -272,6 +286,7 @@ export class ReportsService {
           };
         })
         .sort((a, b) => (a.startTime ?? '').localeCompare(b.startTime ?? '')),
+      newGroups,
       groupFill: groupRows
         .map((g) => ({ id: g.id, name: g.name, students: seats.find((s) => s.groupId === g.id)?.n ?? 0, maxStudents: g.maxStudents }))
         .sort((a, b) => b.students - a.students)

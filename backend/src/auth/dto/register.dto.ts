@@ -47,11 +47,19 @@ export class RegisterDto {
   @IsString()
   @MaxLength(64)
   signupAttemptId?: string;
+
+  // The plan chosen on the pricing page (plans.key): the free trial runs on
+  // it. Unknown or inactive keys fall back to the default plan.
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  plan?: string;
 }
 
 export class SignupPhoneStartDto {
   @IsString()
   @MaxLength(30)
   phone: string;
-
+
+
 }

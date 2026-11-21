@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
 import DashboardShell from "@/components/DashboardShell";
 import Modal from "@/components/Modal";
 import Pagination, { usePagedSlice } from "@/components/Pagination";
@@ -9,10 +8,14 @@ import Select from "@/components/Select";
 import { certificatesApi, studentsApi, groupsApi, Certificate, Student, Group, ApiError, type MembershipStay } from "@/lib/api";
 import { useLanguage } from "@/lib/i18n-context";
 import { formatDate } from "@/lib/format-date";
+import { useAuth } from "@/lib/auth-context";
+import { certificateVerifyUrl } from "@/lib/domain";
 
 
 function CertificatesContent() {
   const { t } = useLanguage();
+  // Check links live on the center's own address (lib/domain.ts).
+  const { tenant } = useAuth();
   const [certs, setCerts] = useState<Certificate[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
@@ -172,7 +175,7 @@ function CertificatesContent() {
   }
 
   function copyVerificationLink(code: string) {
-    const url = `${window.location.origin}/verify/${code}`;
+    const url = certificateVerifyUrl(code, tenant?.subdomain);
     navigator.clipboard.writeText(url);
     setCopiedId(code);
     setTimeout(() => setCopiedId(null), 2500);
@@ -308,9 +311,10 @@ function CertificatesContent() {
 
               <div className="pt-4 border-t border-line flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
-                  <Link
-                    href={`/verify/${cert.code}`}
+                  <a
+                    href={certificateVerifyUrl(cert.code, tenant?.subdomain)}
                     target="_blank"
+                    rel="noopener noreferrer"
                     className="px-3 py-1.5 rounded-lg bg-primary-soft hover:bg-primary-soft text-primary text-xs font-bold inline-flex items-center gap-1.5 transition-all border border-primary-border"
                   >
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -319,7 +323,7 @@ function CertificatesContent() {
                       <line x1="10" y1="14" x2="21" y2="3" />
                     </svg>
                     {t("cert.view")}
-                  </Link>
+                  </a>
 
                   <button
                     onClick={() => copyVerificationLink(cert.code)}

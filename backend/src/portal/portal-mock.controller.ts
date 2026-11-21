@@ -23,6 +23,12 @@ export class PortalMockController {
     return this.service.forStudent(user.studentId, user.tenantId);
   }
 
+  // Bands over time and the weakest question types (parents may look).
+  @Get('progress')
+  progress(@PortalUser() user: PortalUserPayload) {
+    return this.service.progress(user.tenantId, user.studentId);
+  }
+
   // A practice set the AI makes for the student (their direction, a topic).
   @Post('generate')
   generate(@PortalUser() user: PortalUserPayload, @Body() dto: GeneratePracticeDto) {
@@ -80,6 +86,7 @@ export class PortalMockController {
       if (!file && !transcript) throw new BadRequestException('Javob yozib olinmadi');
       return await this.service.saveSpeaking(user.studentId, user.tenantId, id, key, {
         audio: file?.filename,
+        audioMime: file?.mimetype,
         transcript: typeof transcript === 'string' ? transcript : undefined,
         seconds: seconds !== undefined ? Number(seconds) : undefined,
       });

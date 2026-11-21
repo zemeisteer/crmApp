@@ -15,7 +15,14 @@ const ACCENT = "var(--primary)";
 const LANG_LABELS: Record<LandingLang, string> = { UZ: "O'zbekcha", RU: "Русский", EN: "English" };
 
 const CSS = `
-  .lp-root{--bg:var(--surface-muted);--text-2:var(--text-soft);--muted:var(--text-muted);--chip:var(--surface-muted);color:var(--text);background:var(--bg);font-family:'Inter',system-ui,sans-serif;min-height:100vh;display:flex;flex-direction:column;}
+  .lp-root{--bg:var(--surface-muted);--text-2:var(--text-soft);--muted:var(--text-muted);--chip:var(--surface-muted);
+    /* The dark band ("How it works", the closing call): ink with white text in the light theme,
+       a raised dark surface in the dark one, so the page never flips to a bright block at night. */
+    --band-bg:var(--ink);--band-fg:var(--on-ink);--band-soft:color-mix(in oklab,var(--on-ink) 78%,var(--ink));--band-btn:var(--on-ink);--band-btn-fg:var(--ink);
+    color:var(--text);background:var(--bg);font-family:'Inter',system-ui,sans-serif;min-height:100vh;display:flex;flex-direction:column;}
+  .lp-head{position:sticky;top:0;z-index:10;width:100%;background:color-mix(in oklab,var(--bg) 92%,transparent);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);border-bottom:1px solid var(--border);color:var(--text);}
+  .lp-nav a{color:var(--text-2);transition:color .15s ease;}
+  .lp-nav a:hover{color:var(--text);}
   .lp-root h1,.lp-root h2,.lp-root h3{font-family:'Manrope',system-ui,sans-serif;margin:0;}
   .lp-root a{color:inherit;text-decoration:none;}
   .lp-btn{cursor:pointer;border:none;transition:opacity .15s ease,transform .15s ease;display:inline-flex;align-items:center;justify-content:center;}
@@ -32,7 +39,7 @@ const CSS = `
   .lp-hero{display:flex;align-items:center;gap:64px;padding:88px 32px 64px;}
   .lp-split{display:flex;align-items:center;gap:64px;padding:96px 32px;}
   .lp-section{padding:96px 32px;box-sizing:border-box;width:100%;}
-  .lp-cta{max-width:1200px;margin:0 auto;background:${ACCENT};border-radius:24px;padding:56px;display:flex;align-items:center;justify-content:space-between;gap:24px;}
+  .lp-cta{max-width:1200px;margin:0 auto;background:var(--band-bg);border:1px solid var(--border);border-radius:24px;padding:56px;display:flex;align-items:center;justify-content:space-between;gap:24px;}
   @media (max-width:980px){
     .lp-grid4{grid-template-columns:repeat(2,minmax(0,1fr));}
     .lp-grid3{grid-template-columns:minmax(0,1fr);}
@@ -166,8 +173,9 @@ export default function Landing() {
         items: planFeatureLines(p, lang),
         highlight: p.popular,
         cta: L.choose,
+        href: `/plans/${encodeURIComponent(p.key.toLowerCase())}`,
       }))
-    : L.plans.map(([sub, ...items], i) => ({ name: planNames[i], price: planPrices[i], monthly: i < 2, sub, items, highlight: i === 1, cta: i === 2 ? L.contact : L.choose }));
+    : L.plans.map(([sub, ...items], i) => ({ name: planNames[i], price: planPrices[i], monthly: i < 2, sub, items, highlight: i === 1, cta: i === 2 ? L.contact : L.choose, href: "/register" }));
 
   const navLinks: [string, string][] = [
     ["#features", L.navFeatures],
@@ -179,19 +187,19 @@ export default function Landing() {
   ];
 
   return (
-    <div className="lp-root" ref={rootRef}>
+    <div className="lp-root force-light" ref={rootRef}>
       <style>{CSS}</style>
 
       {/* HEADER */}
-      <div style={{ position: "sticky", top: 0, zIndex: 10, width: "100%", background: "rgba(247,247,245,0.92)", backdropFilter: "blur(6px)", borderBottom: "1px solid var(--border)" }}>
+      <header className="lp-head">
         <div className="lp-wrap lp-header" style={{ padding: "18px 32px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
           <Link href="/" style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <div style={{ width: 32, height: 32, borderRadius: "var(--radius-sm)", background: ACCENT, display: "flex", alignItems: "center", justifyContent: "center" }}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--surface)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 10 12 5 2 10l10 5 10-5Z" /><path d="M6 12v5c0 1.5 2.7 3 6 3s6-1.5 6-3v-5" /></svg>
             </div>
-            <span style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 19, letterSpacing: "-0.02em" }}>TalimCRM</span>
+            <span style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 19, letterSpacing: "-0.02em", color: "var(--text)" }}>TalimCRM</span>
           </Link>
-          <nav className="lp-nav" aria-label={L.menu} style={{ display: "flex", alignItems: "center", gap: 28, fontSize: 14.5, fontWeight: 500, color: "var(--text-2)" }}>
+          <nav className="lp-nav" aria-label={L.menu} style={{ display: "flex", alignItems: "center", gap: 28, fontSize: 14.5, fontWeight: 500 }}>
             {navLinks.map(([href, label]) => (
               <a key={href} href={href}>{label}</a>
             ))}
@@ -214,7 +222,7 @@ export default function Landing() {
                 </div>
               )}
             </div>
-            <Link href="/login" className="lp-header-login" style={{ fontSize: 14.5, fontWeight: 600 }}>{L.login}</Link>
+            <Link href="/login" className="lp-header-login" style={{ fontSize: 14.5, fontWeight: 600, color: "var(--text)" }}>{L.login}</Link>
             <Link href="/register" className="lp-btn lp-start" style={{ background: ACCENT, color: "var(--on-ink)", fontSize: 14.5, fontWeight: 600, padding: "10px 18px", borderRadius: "var(--radius-sm)", whiteSpace: "nowrap" }}>{L.start}</Link>
             <button
               type="button"
@@ -240,7 +248,7 @@ export default function Landing() {
             <Link href="/register" onClick={() => setMenuOpen(false)}>{L.start}</Link>
           </nav>
         )}
-      </div>
+      </header>
 
       {/* HERO */}
       <div className="lp-wrap lp-hero">
@@ -329,18 +337,18 @@ export default function Landing() {
       </div>
 
       {/* HOW IT WORKS */}
-      <div id="how" className="lp-section" style={{ background: "var(--ink)" }}>
+      <div id="how" className="lp-section" style={{ background: "var(--band-bg)", borderTop: "1px solid var(--border)", borderBottom: "1px solid var(--border)" }}>
         <div className="lp-wrap" style={{ display: "flex", flexDirection: "column", gap: 56 }}>
           <div style={{ display: "flex", flexDirection: "column", gap: 12, maxWidth: 560 }}>
-            <span style={{ ...label, color: "var(--primary-border)" }}>{L.howLabel}</span>
-            <h2 style={{ fontSize: 34, fontWeight: 800, letterSpacing: "-0.02em", color: "var(--on-ink)" }}>{L.howTitle}</h2>
+            <span style={{ ...label, color: "var(--band-soft)" }}>{L.howLabel}</span>
+            <h2 style={{ fontSize: 34, fontWeight: 800, letterSpacing: "-0.02em", color: "var(--band-fg)" }}>{L.howTitle}</h2>
           </div>
           <div className="lp-grid3 lp-group" style={{ gap: 32 }}>
             {L.how.map(([title, desc], i) => (
               <div key={i} className="lp-reveal" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-                <div style={{ width: 44, height: 44, borderRadius: "50%", background: ACCENT, color: "var(--on-ink)", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 17 }}>{i + 1}</div>
-                <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 17, color: "var(--on-ink)" }}>{title}</div>
-                <div style={{ fontSize: 14, lineHeight: 1.6, color: "var(--text-faint)" }}>{desc}</div>
+                <div style={{ width: 44, height: 44, borderRadius: "50%", background: "var(--accent)", color: "var(--on-accent)", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 17 }}>{i + 1}</div>
+                <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 17, color: "var(--band-fg)" }}>{title}</div>
+                <div style={{ fontSize: 14, lineHeight: 1.6, color: "var(--band-soft)" }}>{desc}</div>
               </div>
             ))}
           </div>
@@ -406,7 +414,7 @@ export default function Landing() {
             <h2 style={{ fontSize: 34, fontWeight: 800, letterSpacing: "-0.02em" }}>{L.pricingTitle}</h2>
           </div>
           <div className="lp-grid3 lp-group" style={{ gap: 24, width: "100%" }}>
-            {cards.map(({ name, price, monthly, sub, items, highlight, cta }, i) => {
+            {cards.map(({ name, price, monthly, sub, items, highlight, cta, href }, i) => {
               const pro = highlight;
               return (
                 <div key={i} className="lp-reveal" style={{ border: pro ? `2px solid ${ACCENT}` : "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 28, display: "flex", flexDirection: "column", gap: 18, position: "relative" }}>
@@ -417,7 +425,7 @@ export default function Landing() {
                     {monthly && <span style={{ fontSize: 14, color: "var(--muted)" }}>{L.perMonth}</span>}
                   </div>
                   {sub && <div style={{ fontSize: 13, color: "var(--muted)" }}>{sub}</div>}
-                  <Link href="/register" className="lp-btn" style={{ background: pro ? ACCENT : "var(--chip)", color: pro ? "var(--on-ink)" : "var(--text)", fontSize: 14.5, fontWeight: 700, padding: 12, borderRadius: "var(--radius-sm)", marginTop: 6 }}>
+                  <Link href={href} className="lp-btn" style={{ background: pro ? ACCENT : "var(--chip)", color: pro ? "var(--on-ink)" : "var(--text)", fontSize: 14.5, fontWeight: 700, padding: 12, borderRadius: "var(--radius-sm)", marginTop: 6 }}>
                     {cta}
                   </Link>
                   <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 4 }}>
@@ -439,10 +447,10 @@ export default function Landing() {
       <div style={{ width: "100%", padding: "80px 16px", boxSizing: "border-box" }}>
         <div className="lp-cta lp-reveal">
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            <h2 style={{ fontSize: 28, fontWeight: 800, color: "var(--on-ink)", letterSpacing: "-0.02em" }}>{L.ctaTitle}</h2>
-            <div style={{ fontSize: 15, color: "var(--primary-soft)" }}>{L.ctaDesc}</div>
+            <h2 style={{ fontSize: 28, fontWeight: 800, color: "var(--band-fg)", letterSpacing: "-0.02em" }}>{L.ctaTitle}</h2>
+            <div style={{ fontSize: 15, color: "var(--band-soft)" }}>{L.ctaDesc}</div>
           </div>
-          <Link href="/register" className="lp-btn" style={{ background: "var(--surface)", color: ACCENT, fontSize: 15.5, fontWeight: 700, padding: "14px 28px", borderRadius: "var(--radius-sm)", whiteSpace: "nowrap" }}>{L.register}</Link>
+          <Link href="/register" className="lp-btn" style={{ background: "var(--band-btn)", color: "var(--band-btn-fg)", fontSize: 15.5, fontWeight: 700, padding: "14px 28px", borderRadius: "var(--radius-sm)", whiteSpace: "nowrap" }}>{L.register}</Link>
         </div>
       </div>
 

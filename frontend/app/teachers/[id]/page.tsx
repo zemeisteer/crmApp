@@ -1,5 +1,6 @@
 "use client";
 
+import TeacherProfileFields, { emptyProfile, profileBody, type TeacherProfile } from "@/components/teachers/TeacherProfileFields";
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
@@ -58,6 +59,7 @@ function TeacherDetailContent() {
   const [startDate, setStartDate] = useState("");
   const [salaryType, setSalaryType] = useState("FIXED");
   const [salaryValue, setSalaryValue] = useState("");
+  const [profile, setProfile] = useState<TeacherProfile>(emptyProfile);
   const [editError, setEditError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -198,6 +200,7 @@ function TeacherDetailContent() {
     setStartDate(teacher!.startDate ? String(teacher!.startDate).slice(0, 10) : "");
     setSalaryType(teacher!.salaryType || "FIXED");
     setSalaryValue(teacher!.salaryValue != null ? String(teacher!.salaryValue) : "");
+    setProfile({ score: teacher!.score ?? "", experienceYears: teacher!.experienceYears != null ? String(teacher!.experienceYears) : "", photoPath: teacher!.photoPath ?? "" });
     setEditError(null);
     setEditOpen(true);
   }
@@ -216,6 +219,7 @@ function TeacherDetailContent() {
         startDate: startDate || undefined,
         salaryType: salaryValue ? salaryType : undefined,
         salaryValue: salaryValue ? Number(salaryValue) : undefined,
+        ...profileBody(profile, true),
       });
       setEditOpen(false);
       load();
@@ -308,6 +312,12 @@ function TeacherDetailContent() {
                   estimate of our own that could disagree with it. */}
               {payrollLine ? `${formatMoney(payrollLine.calculatedSalary)} ${t("common.sumUnit")}` : "—"}
             </div>
+            {/* Why the amount is what it is: a fixed salary counts from the start day, and only once there are lessons. */}
+            {payrollLine?.details?.noLessons ? (
+              <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 4 }}>{t("teacherDetail.salaryNoLessons")}</div>
+            ) : payrollLine?.details?.workedFromDay ? (
+              <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 4 }}>{t("teacherDetail.salaryFromDay").replace("{day}", String(payrollLine.details.workedFromDay))}</div>
+            ) : null}
             {/* Payouts are made in Reports -> Payroll (installments, one expense each). */}
             {payrollLine && payrollLine.calculatedSalary > 0 ? (
               payrollLine.isPaid ? (
@@ -318,7 +328,7 @@ function TeacherDetailContent() {
                 <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                   {payrollLine.paidAmount > 0 && <span className="badge badge-warning">{t("teacherDetail.partPaid")}</span>}
                   <Link
-                    href="/reports?tab=payroll"
+                    href="/payments?tab=payroll"
                     className="btn"
                     style={{ background: ACCENT, color: "var(--on-ink)", border: "none", fontSize: 11.5, fontWeight: 700, padding: "6px 12px", borderRadius: "var(--radius-xs)" }}
                   >
@@ -491,6 +501,7 @@ function TeacherDetailContent() {
           <Field label={t("tch.startDate")}>
             <DatePicker value={startDate} onChange={setStartDate} />
           </Field>
+          <TeacherProfileFields subject={subject} value={profile} onChange={setProfile} />
           <Field label={t("teachers.fieldSalaryType")}>
             <Select
               options={[

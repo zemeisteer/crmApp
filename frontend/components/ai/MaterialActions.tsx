@@ -6,7 +6,7 @@ import MultiSelect from "@/components/MultiSelect";
 import Select from "@/components/Select";
 import DatePicker from "@/components/DatePicker";
 import QuestionDraftsModal from "@/components/tests/QuestionDraftsModal";
-import { ApiError, aiApi, examsApi, homeworkApi, type Exam, type Group } from "@/lib/api";
+import { ApiError, aiApi, examsApi, homeworkApi, type Exam, type Group, type Homework } from "@/lib/api";
 import { useLanguage } from "@/lib/i18n-context";
 import type { TestQuestion } from "@/lib/tests";
 import { useAuth } from "@/lib/auth-context";
@@ -44,13 +44,33 @@ export interface MaterialLike {
 // What a teacher can do with an AI material: give it to groups as homework
 // (the text becomes an attached PDF), turn it into exam questions, or
 // download it as a PDF. Until then a material is only visible to staff.
-export default function MaterialActions({ material, groups, defaultGroupId, onGiven }: { material: MaterialLike; groups: Group[]; defaultGroupId?: string; onGiven?: (entry: MaterialGiven) => void }) {
+export default function MaterialActions({ material, groups, defaultGroupId, onGiven, linkedHomework }: { material: MaterialLike; groups: Group[]; defaultGroupId?: string; onGiven?: (entry: MaterialGiven) => void; linkedHomework?: Homework | null }) {
   const { t, lang } = useLanguage();
   const { user } = useAuth();
   const [mode, setMode] = useState<null | "homework" | "exam">(null);
-  const [busy, setBusy] = useState<null | "pdf">(null);
+  const [busy, setBusy] = useState<null | "pdf" | "attach">(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // The homework this material was written for: the text goes onto it as its
+  // PDF (answer key cut off), so the students get it in that same homework
+  // instead of a second one. It replaces the homework's current attachment.
+  async function attachToLinked() {
+    if (!linkedHomework) return;
+    if (linkedHomework.attachmentName && !window.confirm(t("aim.attachReplace").replace("{name}", linkedHomework.attachmentName))) return;
+    setBusy("attach");
+    setError(null);
+    setNotice(null);
+    try {
+      await homeworkApi.attachText(linkedHomework.id, { title: linkedHomework.title, content: stripAnswerKey(material.content).text });
+      setNotice(t("aim.attachedTo").replace("{title}", linkedHomework.title));
+      onGiven?.({ groups: linkedHomework.group?.name ? [linkedHomework.group.name] : [], by: user?.fullName ?? "", at: new Date().toISOString() });
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : t("common.errorGeneric"));
+    } finally {
+      setBusy(null);
+    }
+  }
 
   async function downloadPdf() {
     setBusy("pdf");
@@ -67,6 +87,11 @@ export default function MaterialActions({ material, groups, defaultGroupId, onGi
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        {linkedHomework && (
+          <button type="button" className="btn" data-testid="attach-linked" disabled={busy !== null} onClick={attachToLinked} style={{ ...btn, background: ACCENT, color: "var(--on-ink)", border: "none" }}>
+            📎 {busy === "attach" ? "…" : t("aim.attachLinked").replace("{title}", linkedHomework.title)}
+          </button>
+        )}
         <button type="button" className="btn" onClick={() => { setNotice(null); setMode("homework"); }} style={{ ...btn, background: ACCENT, color: "var(--on-ink)", border: "none" }}>
           📤 {t("aim.toHomework")}
         </button>

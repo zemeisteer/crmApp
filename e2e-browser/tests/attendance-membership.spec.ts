@@ -48,6 +48,8 @@ test('two lessons of one day: different marks, one corrected, a credit for that 
   // --- 09:00: One is absent ---------------------------------------------------
   await expect(lesson).toContainText('09:00–10:00');
   await attRow(page, 'Att One').getByRole('button', { name: "Yo'q", exact: true }).click();
+  // Nothing is picked for the teacher: the rest are marked present here.
+  await page.getByRole('button', { name: '✓ Hammasi keldi' }).click();
   await save.click();
   await expect.poll(marks).toEqual(['one 09:00 ABSENT', 'two 09:00 PRESENT']);
 
@@ -55,8 +57,9 @@ test('two lessons of one day: different marks, one corrected, a credit for that 
   await lesson.click();
   await expect(page.getByRole('option')).toHaveCount(2);
   await page.getByRole('option', { name: /15:00–16:00/ }).click();
-  // Nothing is marked for this lesson yet: everyone starts as present.
+  // Nothing is marked for this lesson yet: Two is absent, the rest present in one click.
   await attRow(page, 'Att Two').getByRole('button', { name: "Yo'q", exact: true }).click();
+  await page.getByRole('button', { name: '✓ Hammasi keldi' }).click();
   // The keyboard saves too.
   await save.focus();
   await page.keyboard.press('Enter');
@@ -66,6 +69,8 @@ test('two lessons of one day: different marks, one corrected, a credit for that 
   await lesson.click();
   await page.getByRole('option', { name: /09:00–10:00/ }).click();
   await attRow(page, 'Att One').getByRole('button', { name: 'Kechikdi', exact: true }).click();
+  // Nothing is picked for the teacher: the rest are marked present here.
+  await page.getByRole('button', { name: '✓ Hammasi keldi' }).click();
   await save.click();
   await expect.poll(marks).toEqual(['one 09:00 LATE', 'one 15:00 PRESENT', 'two 09:00 PRESENT', 'two 15:00 ABSENT']);
 
@@ -97,6 +102,8 @@ test('two lessons of one day: different marks, one corrected, a credit for that 
   await lesson.click();
   await page.getByRole('option', { name: /15:00–16:00/ }).click();
   await attRow(page, 'Att Two').getByRole('button', { name: 'Bor', exact: true }).click();
+  // Nothing is picked for the teacher: the rest are marked present here.
+  await page.getByRole('button', { name: '✓ Hammasi keldi' }).click();
   await save.click();
   await expect(page.getByRole('alert').filter({ hasText: /qoplash krediti darsga yozilgan/ })).toBeVisible();
   expect(await marks()).toContain('two 15:00 ABSENT');
@@ -118,6 +125,8 @@ test('two lessons of one day: different marks, one corrected, a credit for that 
   await page.reload();
   await expect(lesson).toContainText('15:00–16:00');
   await attRow(page, 'Att One').getByRole('button', { name: 'Kechikdi', exact: true }).click();
+  // Nothing is picked for the teacher: the rest are marked present here.
+  await page.getByRole('button', { name: '✓ Hammasi keldi' }).click();
   await save.click();
   await expect.poll(marks).toEqual(['one 09:00 LATE', 'one 15:00 LATE', 'two 09:00 PRESENT', 'two 15:00 ABSENT']);
 

@@ -82,6 +82,7 @@ function activityTitle(a: LeadActivity, t: (k: TranslationKey) => string) {
     RESTORED: "adm.activity.restored",
     TRIAL_MISSED: "adm.activity.trialMissed",
     TRIAL_CANCELLED: "adm.activity.trialCancelled",
+    TRIAL_REOPENED: "adm.activity.trialReopened",
     RESCHEDULED: "adm.activity.rescheduled",
     PUBLIC_REAPPLY: "adm.activity.reapply",
     PLACEMENT_TEST: "adm.activity.placement",
@@ -105,7 +106,7 @@ function LeadProfile() {
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [tests, setTests] = useState<PlacementTestSummary[]>([]);
   const [viewAttempt, setViewAttempt] = useState<LeadPlacementAttempt | null>(null);
-  const [copied, setCopied] = useState(false);
+  const [copied, setCopied] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<{ status: number; message: string } | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -234,6 +235,8 @@ function LeadProfile() {
   const simpleMoves = (SIMPLE_MOVES[lead.status] ?? []).filter((s) => allowed.includes(s));
   const bookedTrial = lead.trials?.find((tr) => tr.status === "BOOKED");
   const canBookTrial = editable && !bookedTrial && (lead.status === "CONTACTED" || lead.status === "TRIAL_BOOKED");
+  // After a trial the lead did not come to, the next one is a second try.
+  const bookTrialLabel = lead.trials?.some((tr) => tr.status === "MISSED") ? t("adm.bookTrialAgain") : t("adm.bookTrial");
   const isOpen = OPEN_STATUSES.includes(lead.status);
 
   // Level test -> trial lesson in a matching group -> enrolment. A new lead
@@ -245,13 +248,21 @@ function LeadProfile() {
   }
 
   const attempts = lead.placementAttempts ?? [];
-  const interest = (lead.desiredSubject?.name ?? attempts[0]?.subject ?? lead.legacySubject ?? "").trim().toLowerCase();
+  // Every subject the lead asked for (an application can name several).
+  const subjectNames = [lead.desiredSubject?.name, ...(lead.extraSubjects ?? []).map((x) => x.name)].filter((x): x is string => Boolean(x?.trim()));
+  const interests = [...new Set((subjectNames.length ? subjectNames : [attempts[0]?.subject ?? lead.legacySubject ?? ""]).map((x) => x.trim().toLowerCase()).filter(Boolean))];
+  const matches = (subject: string, name = "") => {
+    const s = subject.trim().toLowerCase();
+    return interests.some((i) => s === i || name.toLowerCase().includes(i));
+  };
   const matchingGroups = groups
     .filter((g) => g.status !== "ARCHIVED" && g.status !== "COMPLETED")
-    .filter((g) => !interest || g.subject.trim().toLowerCase() === interest || g.name.toLowerCase().includes(interest))
-    .slice(0, 4);
+    .filter((g) => interests.length === 0 || matches(g.subject, g.name))
+    .slice(0, 6);
   const activeTests = tests.filter((x) => x.active);
-  const shareTest = activeTests.find((x) => interest && x.subject.trim().toLowerCase() === interest) ?? activeTests[0];
+  // One level test per subject asked for; any active test when none matches.
+  const subjectTests = interests.map((i) => activeTests.find((x) => x.subject.trim().toLowerCase() === i)).filter((x): x is (typeof activeTests)[number] => Boolean(x));
+  const shareTests = subjectTests.length ? [...new Map(subjectTests.map((x) => [x.token, x])).values()] : activeTests.slice(0, 1);
   const canTrialFlow = editable && !bookedTrial && (lead.status === "NEW" || lead.status === "CONTACTED" || lead.status === "TRIAL_BOOKED");
   const origin = lead.origin;
   const utm = origin?.utm ? [origin.utm.source, origin.utm.medium, origin.utm.campaign].filter(Boolean).join(" / ") : "";
@@ -297,7 +308,7 @@ function LeadProfile() {
               </button>
             )}
             {canBookTrial && (
-              <button type="button" className="btn" style={primaryBtn} onClick={() => openDialog({ kind: "trial" })}>{t("adm.bookTrial")}</button>
+              <button type="button" className="btn" style={primaryBtn} onClick={() => openDialog({ kind: "trial" })}>{bookTrialLabel}</button>
             )}
             {lead.status === "QUALIFIED" && can("admissions.convert") && (
               <button type="button" className="btn" style={{ ...primaryBtn, background: "var(--success)" }} onClick={() => setConvertOpen(true)}>{t("adm.convert")}</button>
@@ -361,7 +372,7 @@ function LeadProfile() {
               {detail(t("leads.fieldSource"), t(sourceKey(lead.source)))}
               {origin?.createdBy && detail(t("adm.originAddedBy"), origin.createdBy.fullName)}
               {utm && detail(t("adm.originAd"), utm)}
-              {detail(t("adm.originWant"), [lead.desiredSubject?.name ?? lead.legacySubject, lead.desiredCourse?.name, lead.preferredBranch?.name].filter(Boolean).join(" · ") || "—")}
+              {detail(t("adm.originWant"), [subjectNames.length ? subjectNames.join(", ") : lead.legacySubject, lead.desiredCourse?.name, lead.preferredBranch?.name].filter(Boolean).join(" · ") || "—")}
               {detail(t("adm.originDate"), formatDateTime(lead.createdAt, lang, tz))}
               {leadNote(lead.notes) && detail(t("leads.fieldNotes"), <span style={{ whiteSpace: "pre-wrap", fontWeight: 400 }}>{leadNote(lead.notes)}</span>)}
             </section>
@@ -374,20 +385,20 @@ function LeadProfile() {
               {attempts.length === 0 ? (
                 <div style={{ display: "grid", gap: 10 }}>
                   <p style={{ fontSize: 13, color: "var(--text-muted)", margin: 0 }}>{t("adm.testNone")}</p>
-                  {shareTest && (
-                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  {shareTests.map((shareTest) => (
+                    <div key={shareTest.token} style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                       <button
                         type="button"
                         className="btn"
                         style={ghostBtn}
                         onClick={() => {
                           navigator.clipboard?.writeText(placementLink(shareTest.token, tenant?.subdomain)).then(() => {
-                            setCopied(true);
-                            setTimeout(() => setCopied(false), 2000);
+                            setCopied(shareTest.token);
+                            setTimeout(() => setCopied(null), 2000);
                           }).catch(() => undefined);
                         }}
                       >
-                        🔗 {copied ? t("adm.testCopied") : `${t("adm.testCopy")}: ${shareTest.title}`}
+                        🔗 {copied === shareTest.token ? t("adm.testCopied") : `${t("adm.testCopy")}: ${shareTest.title}`}
                       </button>
                       <a
                         className="btn"
@@ -402,7 +413,7 @@ function LeadProfile() {
                         ✈️ Telegram
                       </a>
                     </div>
-                  )}
+                  ))}
                 </div>
               ) : (
                 <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gap: 10 }}>
@@ -545,13 +556,25 @@ function LeadProfile() {
                       <div style={{ fontSize: 12.5, color: "var(--text-muted)" }}>
                         {[tr.group?.name, tr.teacher?.fullName, tr.room?.name].filter(Boolean).join(" · ") || "—"}
                       </div>
-                      {tr.outcomeNote && <div style={{ fontSize: 12.5, color: "var(--text-muted)" }}>{tr.outcomeNote}</div>}
+                      {tr.outcomeNote && <div data-testid="trial-outcome" style={{ fontSize: 12.5, color: "var(--text-soft)", whiteSpace: "pre-line", marginTop: 4 }}>{tr.outcomeNote}</div>}
                       {editable && tr.status === "BOOKED" && (
                         <div className="adm-actions">
-                          <button type="button" className="btn" style={{ ...primaryBtn, padding: "6px 12px", fontSize: 12 }} disabled={busy} onClick={() => { if (trialHappened(tr.scheduledAt, t("adm.trialNotYet"))) run(() => leadsApi.attendTrial(lead.id, tr.id)); }}>{t("adm.trialAttend")}</button>
-                          <button type="button" className="btn" style={{ ...ghostBtn, padding: "6px 12px", fontSize: 12 }} disabled={busy} onClick={() => { if (trialHappened(tr.scheduledAt, t("adm.trialNotYet"))) run(() => leadsApi.missTrial(lead.id, tr.id)); }}>{t("adm.trialMiss")}</button>
+                          {/* Came or missed: only once the trial has begun (the server refuses earlier too). */}
+                          {new Date(tr.scheduledAt).getTime() <= Date.now() ? (
+                            <>
+                              <button type="button" className="btn" style={{ ...primaryBtn, padding: "6px 12px", fontSize: 12 }} disabled={busy} onClick={() => run(() => leadsApi.attendTrial(lead.id, tr.id))}>{t("adm.trialAttend")}</button>
+                              <button type="button" className="btn" style={{ ...ghostBtn, padding: "6px 12px", fontSize: 12 }} disabled={busy} onClick={() => run(() => leadsApi.missTrial(lead.id, tr.id))}>{t("adm.trialMiss")}</button>
+                            </>
+                          ) : (
+                            <span style={{ fontSize: 12, color: "var(--text-muted)", alignSelf: "center" }}>{t("adm.trialResultLater")}</span>
+                          )}
                           <button type="button" className="btn" style={{ ...ghostBtn, padding: "6px 12px", fontSize: 12 }} onClick={() => openDialog({ kind: "trial", reschedule: tr })}>{t("adm.trialReschedule")}</button>
                           <button type="button" className="btn" style={{ ...dangerBtn, padding: "6px 12px", fontSize: 12 }} disabled={busy} onClick={() => run(() => leadsApi.cancelTrial(lead.id, tr.id))}>{t("adm.trialCancel")}</button>
+                        </div>
+                      )}
+                      {editable && tr.status === "MISSED" && !bookedTrial && (
+                        <div className="adm-actions">
+                          <button type="button" className="btn" style={{ ...ghostBtn, padding: "6px 12px", fontSize: 12 }} disabled={busy} onClick={() => run(() => leadsApi.reopenTrial(lead.id, tr.id))}>↩ {t("adm.trialReopen")}</button>
                         </div>
                       )}
                     </li>
@@ -766,11 +789,6 @@ function LeadProfile() {
 
 // The outcome of a trial is normally recorded after it took place: for one
 // that is still ahead, ask before marking it attended or missed.
-function trialHappened(scheduledAt: string, question: string) {
-  if (new Date(scheduledAt).getTime() <= Date.now()) return true;
-  return window.confirm(question);
-}
-
 export default function LeadProfilePage() {
   return (
     <DashboardShell>

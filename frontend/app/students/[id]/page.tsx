@@ -19,7 +19,7 @@ import { useCenterClock } from "@/lib/use-center-clock";
 import { useLanguage } from "@/lib/i18n-context";
 import { MONTH_KEYS, type TranslationKey } from "@/lib/i18n";
 import { formatDate as fmtDate } from "@/lib/format-date";
-import { ROOT_DOMAIN } from "@/lib/domain";
+import { useCenterAddress } from "@/lib/use-center-host";
 import { useAuth } from "@/lib/auth-context";
 import { can } from "@/lib/access";
 import { useCustomFieldDefs } from "@/components/custom-fields/CustomFieldInputs";
@@ -68,7 +68,8 @@ function StudentDetailContent() {
   const id = params.id;
   const { t, lang } = useLanguage();
   const clock = useCenterClock();
-  const { user } = useAuth();
+  const { user, tenant } = useAuth();
+  const centerAddress = useCenterAddress();
   // Teachers see the center's own fields; editing is for who may edit students.
   const canEditStudent = can(user, "students.edit");
   const cfDefs = useCustomFieldDefs("STUDENT", { includeArchived: true });
@@ -766,11 +767,11 @@ function StudentDetailContent() {
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <span style={{ fontSize: 20 }}>🎓</span>
                 <div>
-                  <div style={{ fontWeight: 800, fontSize: 13, letterSpacing: "0.5px", textTransform: "uppercase" }}>TalimCRM Education</div>
+                  <div style={{ fontWeight: 800, fontSize: 13, letterSpacing: "0.5px", textTransform: "uppercase" }}>{tenant?.name ?? ""}</div>
                   <div style={{ fontSize: 10, opacity: 0.75 }}>{t("std.idCard")}</div>
                 </div>
               </div>
-              <span style={{ fontSize: 11, background: "rgba(255,255,255,0.2)", padding: "3px 8px", borderRadius: "var(--radius-xs)", fontWeight: 700 }}>STUDENT</span>
+              <span style={{ fontSize: 11, background: "rgba(255,255,255,0.2)", padding: "3px 8px", borderRadius: "var(--radius-xs)", fontWeight: 700 }}>{t("profile.role.STUDENT")}</span>
             </div>
 
             <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
@@ -780,7 +781,7 @@ function StudentDetailContent() {
                 <div style={{ marginTop: 10, fontSize: 11 }}>
                   <div style={{ opacity: 0.7 }}>{t("std.groups")}</div>
                   <div style={{ fontWeight: 600, marginTop: 2 }}>
-                    {enrollments.length > 0 ? enrollments.map(e => e.group.name).join(", ") : "Guruh yo'q"}
+                    {enrollments.length > 0 ? enrollments.map(e => e.group.name).join(", ") : t("std.noGroup")}
                   </div>
                 </div>
               </div>
@@ -799,7 +800,8 @@ function StudentDetailContent() {
 
             <div style={{ marginTop: 16, paddingTop: 10, borderTop: "1px solid rgba(255,255,255,0.15)", display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 10, opacity: 0.8 }}>
               <span>{t("std.scanHint")}</span>
-              <span>{ROOT_DOMAIN}</span>
+              {/* The center's own address: the card is the center's, not the platform's. */}
+              <span>{tenant?.subdomain ? centerAddress.host(tenant.subdomain) : ""}</span>
             </div>
           </div>
 

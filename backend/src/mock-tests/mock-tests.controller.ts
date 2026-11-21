@@ -9,6 +9,10 @@ import { Roles } from '../common/roles.decorator';
 import { CurrentUser } from '../common/current-user.decorator';
 import { attachmentStorage } from '../common/upload.util';
 import { MockTestsService } from './mock-tests.service';
+import { MockSessionsService } from './mock-sessions.service';
+import { MockGenerateService } from './mock-generate.service';
+import { GenerateMockTestDto, RetryMockGenerationDto } from './dto/mock-tests.dto';
+import { CreateMockSessionDto } from './dto/mock-tests.dto';
 import { CreateMockTestDto, GenerateMockQuestionsDto, RegradeMockAttemptDto, ReviewMockAttemptDto, ReviewPracticeDto, UpdateMockTestDto } from './dto/mock-tests.dto';
 import { AiService } from '../ai/ai.service';
 import { FilesService } from '../files/files.service';
@@ -24,6 +28,8 @@ const ASSET_TYPES = /^(audio\/(mpeg|mp3|mp4|x-m4a|aac|wav|x-wav|ogg|webm)|image\
 export class MockTestsController {
   constructor(
     private readonly service: MockTestsService,
+    private readonly sessions: MockSessionsService,
+    private readonly generator: MockGenerateService,
     private readonly imports: MockImportService,
     private readonly ai: AiService,
     private readonly files: FilesService,
@@ -35,6 +41,22 @@ export class MockTestsController {
   @Post('generate-questions')
   generateQuestions(@Body() dto: GenerateMockQuestionsDto) {
     return this.ai.generateExamQuestions({ subject: dto.subject, topic: dto.topic?.trim() || dto.subject, count: dto.count ?? 8, request: dto.request ?? null });
+  }
+
+  // A whole new test written by the AI for a band level (or mixed), from
+  // what a web search finds is current. It is ready after a few minutes.
+  @UsesAi()
+  @Post('generate')
+  generateTest(@CurrentUser('tenantId') tenantId: string, @Body() dto: GenerateMockTestDto) {
+    return this.generator.start(tenantId, dto);
+  }
+
+  // Writes the parts of an AI test that failed again (or the ones named;
+  // "audio" reads the Listening parts without a recording aloud).
+  @UsesAi()
+  @Post(':id/generate/retry')
+  retryGeneration(@CurrentUser('tenantId') tenantId: string, @Param('id') id: string, @Body() dto: RetryMockGenerationDto) {
+    return this.generator.retry(tenantId, id, dto.parts);
   }
 
   // Materials -> tests: PDF books/booklets (answer keys, audioscripts) and
@@ -63,6 +85,33 @@ export class MockTestsController {
   @Get('imports/:importId')
   importOne(@CurrentUser('tenantId') tenantId: string, @Param('importId') importId: string) {
     return this.imports.get(tenantId, importId);
+  }
+
+  // Mock days (a whole group sits one test at a set time).
+  @Get('sessions')
+  sessionList(@CurrentUser('tenantId') tenantId: string, @CurrentUser('sub') userId: string, @CurrentUser('role') role: string) {
+    return this.sessions.list(tenantId, { userId, role });
+  }
+
+  @Post('sessions')
+  sessionCreate(@CurrentUser('tenantId') tenantId: string, @CurrentUser('sub') userId: string, @CurrentUser('role') role: string, @Body() dto: CreateMockSessionDto) {
+    return this.sessions.create(tenantId, { userId, role }, dto);
+  }
+
+  @Get('sessions/:sessionId')
+  sessionResults(@CurrentUser('tenantId') tenantId: string, @CurrentUser('sub') userId: string, @CurrentUser('role') role: string, @Param('sessionId') id: string) {
+    return this.sessions.results(tenantId, { userId, role }, id);
+  }
+
+  @Delete('sessions/:sessionId')
+  sessionRemove(@CurrentUser('tenantId') tenantId: string, @CurrentUser('sub') userId: string, @CurrentUser('role') role: string, @Param('sessionId') id: string) {
+    return this.sessions.remove(tenantId, { userId, role }, id);
+  }
+
+  // One student's bands over time and their weakest question types.
+  @Get('students/:studentId/progress')
+  studentProgress(@CurrentUser('tenantId') tenantId: string, @Param('studentId') studentId: string) {
+    return this.service.progress(tenantId, studentId);
   }
 
   @Get()

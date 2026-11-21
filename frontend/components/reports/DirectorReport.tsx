@@ -1,12 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import MonthPicker from "@/components/MonthPicker";
 import { ApiError, reportsApi, type DirectorReportData } from "@/lib/api";
 import { useLanguage } from "@/lib/i18n-context";
 import { MONTH_KEYS, type TranslationKey } from "@/lib/i18n";
-import { formatDate } from "@/lib/format-date";
 
 // The director's page: money per month (collected vs still owed), debt that
 // has built up over months, and who left and why.
@@ -19,13 +18,11 @@ const short = (n: number, t: (k: TranslationKey) => string) =>
   n >= 1_000_000 ? `${Math.round(n / 100_000) / 10} ${t("common.mlnShort")}` : n >= 1000 ? `${Math.round(n / 1000)} ${t("common.thousandShort")}` : String(n);
 export const LEFT_REASONS = ["PRICE", "SCHEDULE", "MOVED", "RESULTS", "TEACHER", "GOAL_REACHED", "OTHER"] as const;
 
-export default function DirectorReport({ month, onMonth, onSms }: { month: string; onMonth: (m: string) => void; onSms: (s: { id: string; fullName: string; phone: string | null }) => void }) {
-  const { t, lang } = useLanguage();
+export default function DirectorReport({ month, onMonth }: { month: string; onMonth: (m: string) => void }) {
+  const { t } = useLanguage();
   const [data, setData] = useState<DirectorReportData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [onlyMulti, setOnlyMulti] = useState(false);
-  const [showAll, setShowAll] = useState(false);
   const [asTable, setAsTable] = useState(false);
 
   useEffect(() => {
@@ -47,11 +44,6 @@ export default function DirectorReport({ month, onMonth, onSms }: { month: strin
     return /^Iyu[nl]/i.test(full) ? `${full.slice(0, 2)}${full.slice(3, 4)}` : full.slice(0, 3);
   };
   const reasonLabel = (r: string) => t(`left.${r}` as TranslationKey);
-
-  const debtors = useMemo(() => {
-    const list = data?.debtors.items.filter((d) => !onlyMulti || d.monthsBehind >= 2) ?? [];
-    return showAll ? list : list.slice(0, 15);
-  }, [data, onlyMulti, showAll]);
 
   const now = data?.trend[data.trend.length - 1];
   const prev = data?.trend[data.trend.length - 2];
@@ -87,7 +79,7 @@ export default function DirectorReport({ month, onMonth, onSms }: { month: strin
                 <Legend color={COLLECTED} label={t("dir.collected")} />
                 <Legend color={UNPAID} label={t("dir.unpaid")} />
                 <button type="button" onClick={() => setAsTable((v) => !v)} style={{ border: "1px solid var(--border)", background: "var(--surface)", borderRadius: "var(--radius-xs)", padding: "5px 10px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
-                  {asTable ? `📊 ${t("dir.chart")}` : `☰ ${t("dir.table")}`}
+                  {asTable ? t("dir.chart") : t("dir.table")}
                 </button>
               </div>
             </div>
@@ -95,55 +87,9 @@ export default function DirectorReport({ month, onMonth, onSms }: { month: strin
           </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(420px, 100%), 1fr))", gap: 16, alignItems: "start" }}>
-            {/* Debtors */}
-            <div style={{ ...card, padding: 0, overflow: "hidden" }}>
-              <div style={{ padding: "16px 18px 10px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-                <div>
-                  <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 15 }}>💸 {t("dir.debtorsTitle")}</div>
-                  <div style={{ fontSize: 12.5, color: "var(--text-muted)" }}>{t("dir.debtorsHint")}</div>
-                </div>
-                <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 600, cursor: "pointer" }}>
-                  <input type="checkbox" checked={onlyMulti} onChange={(e) => setOnlyMulti(e.target.checked)} style={{ accentColor: COLLECTED }} />
-                  {t("dir.onlyMulti")}
-                </label>
-              </div>
-              {debtors.length === 0 ? (
-                <div style={{ padding: "8px 18px 20px", fontSize: 13.5, color: "var(--success)", fontWeight: 600 }}>✓ {t("dir.noDebtors")}</div>
-              ) : (
-                <div>
-                  {debtors.map((d) => (
-                    <div key={d.studentId} style={{ display: "flex", alignItems: "center", gap: 10, padding: "11px 18px", borderTop: "1px solid var(--border)" }}>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <Link href={`/students/${d.studentId}`} style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", textDecoration: "none" }}>{d.fullName}</Link>
-                        <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2, display: "flex", flexWrap: "wrap", gap: "2px 10px" }}>
-                          {d.groups.length > 0 && <span>{d.groups.join(", ")}</span>}
-                          <span>{t("dir.lastPaid")}: {d.lastPaymentAt ? formatDate(d.lastPaymentAt, lang, "short") : "—"}</span>
-                          {d.status !== "ACTIVE" && <span style={{ color: "var(--warning)" }}>{t(`stStatus.${d.status}` as TranslationKey)}</span>}
-                        </div>
-                      </div>
-                      <div style={{ textAlign: "right" }}>
-                        <div style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 15 }}>{money(d.totalDebt)}</div>
-                        <span style={{ fontSize: 11.5, fontWeight: 700, padding: "2px 8px", borderRadius: "var(--radius-pill)", ...(d.monthsBehind >= 2 ? { background: "var(--danger-soft)", color: "var(--danger)" } : { background: "var(--warning-soft)", color: "var(--warning)" }) }}>
-                          {t("dir.months").replace("{n}", String(d.monthsBehind))}
-                        </span>
-                      </div>
-                      <button type="button" title={t("dir.sms")} aria-label={t("dir.sms")} onClick={() => onSms({ id: d.studentId, fullName: d.fullName, phone: d.phone ?? d.parentPhone })} disabled={!d.phone && !d.parentPhone} style={{ width: 34, height: 34, flexShrink: 0, borderRadius: "var(--radius-sm)", border: "1px solid var(--border)", background: "var(--surface)", cursor: d.phone || d.parentPhone ? "pointer" : "default", opacity: d.phone || d.parentPhone ? 1 : 0.4 }}>
-                        💬
-                      </button>
-                    </div>
-                  ))}
-                  {!showAll && (data.debtors.items.filter((d) => !onlyMulti || d.monthsBehind >= 2).length > 15) && (
-                    <button type="button" onClick={() => setShowAll(true)} style={{ width: "100%", border: "none", borderTop: "1px solid var(--border)", background: "var(--surface-muted)", padding: 12, fontSize: 13, fontWeight: 700, color: COLLECTED, cursor: "pointer" }}>
-                      {t("dir.showAll")}
-                    </button>
-                  )}
-                </div>
-              )}
-            </div>
-
             {/* Churn */}
             <div style={card}>
-              <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 15 }}>🚪 {t("dir.churnTitle")}</div>
+              <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 15 }}>{t("dir.churnTitle")}</div>
               <div style={{ fontSize: 12.5, color: "var(--text-muted)", marginBottom: 12 }}>{t("dir.churnHint")}</div>
               <div style={{ display: "flex", gap: 10, marginBottom: 14 }}>
                 <div style={{ flex: 1, background: "var(--surface-muted)", borderRadius: "var(--radius-md)", padding: "10px 14px" }}>

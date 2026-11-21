@@ -5,6 +5,9 @@ import { App } from 'supertest/types';
 import { AppModule } from '../src/app.module.js';
 import { AiService } from '../src/ai/ai.service.js';
 import { MockTestsService } from '../src/mock-tests/mock-tests.service.js';
+import { eq } from 'drizzle-orm';
+import { DB, Database } from '../src/db/db.module.js';
+import { tenants } from '../src/db/schema.js';
 
 // IELTS mock tests: the center builds and publishes a test, a student of an
 // English group sits it in the cabinet section by section, Listening and
@@ -19,6 +22,8 @@ describe('IELTS mock tests (e2e)', () => {
   let testId: string;
   let english: string;
   let math: string;
+  // Student 5, signed in once and reused (portal sign-ins are rate limited).
+  let five: { kid: string; s: { Authorization: string } };
 
   async function studentIn(groupId: string, n: number) {
     const phone = `+99891${String(suffix + n).slice(-7)}`;
@@ -53,7 +58,8 @@ describe('IELTS mock tests (e2e)', () => {
     expect(created.status).toBe('DRAFT');
     expect(created.content.listening.parts[0].questions[0].correctAnswer).toBe('Carter');
     const list = (await http().get('/api/mock-tests').set(auth()).expect(200)).body;
-    expect(list.find((t: { id: string }) => t.id === testId).summary).toEqual({ listening: 12, reading: 9, writing: 2, speaking: 8 });
+    expect(list.find((t: { id: string }) => t.id === testId).summary).toEqual({ listening: 12, reading: 12, writing: 2, speaking: 8 });
+    // (In IELTS marks: the four-heading matching task counts four.)
     await http().patch(`/api/mock-tests/${testId}`).set(auth()).send({ status: 'PUBLISHED' }).expect(200);
     // An empty test cannot be published.
     const empty = (await http().post('/api/mock-tests').set(auth()).send({ title: 'Empty' }).expect(201)).body.id;
@@ -127,6 +133,9 @@ describe('IELTS mock tests (e2e)', () => {
       const { s } = await studentIn(english, 3);
       const att = (await http().post(`/api/portal/mock-tests/${testId}/start`).set(s).expect(201)).body;
       const base = `/api/portal/mock-tests/attempts/${att.id}`;
+      // Writing comes after Listening and Reading, as in the exam.
+      await http().post(`${base}/sections/writing/start`).set(s).expect(409);
+      for (const sec of ['listening', 'reading']) await http().post(`${base}/sections/${sec}/submit`).set(s).send({ answers: {} }).expect(201);
       const res = (await http().post(`${base}/sections/writing/submit`).set(s).send({ answers: { 0: 'The chart shows growth. '.repeat(40), 1: 'Education matters a lot. '.repeat(60) } }).expect(201)).body;
       expect(res.aiFeedback).toBe(true);
       expect(res.results.writing.status).toBe('PENDING');
@@ -241,5 +250,187 @@ describe('IELTS mock tests (e2e)', () => {
     expect(tests.find((t) => t.id === hard)).toMatchObject({ open: false });
     await http().post(`/api/portal/mock-tests/${hard}/start`).set(s).expect(403);
     await http().post(`/api/portal/mock-tests/${next}/start`).set(s).expect(201);
+  });
+
+  it('keeps the exam order, explains answers, counts question types and tracks progress', async () => {
+    five = await studentIn(english, 5);
+    const { kid, s } = five;
+    const t = (await http().get(`/api/mock-tests/${testId}`).set(auth()).expect(200)).body;
+    t.content.listening.parts[0].questions[0].explanation = 'The speaker spells C-A-R-T-E-R.';
+    await http().patch(`/api/mock-tests/${testId}`).set(auth()).send({ content: t.content }).expect(200);
+    const att = (await http().post(`/api/portal/mock-tests/${testId}/start`).set(s).expect(201)).body;
+    const base = `/api/portal/mock-tests/attempts/${att.id}`;
+    const refused = (await http().post(`${base}/sections/reading/start`).set(s).expect(409)).body;
+    expect(refused).toMatchObject({ code: 'SECTION_ORDER', section: 'listening' });
+    await http().post(`${base}/sections/reading/submit`).set(s).send({ answers: {} }).expect(409);
+    // Speaking is a separate appointment: open any time.
+    await http().post(`${base}/sections/speaking/start`).set(s).expect(201);
+    const res = (await http().post(`${base}/sections/listening/submit`).set(s).send({ answers: { 0: 'carter' } }).expect(201)).body;
+    expect(res.explanations.listening[0]).toBe('The speaker spells C-A-R-T-E-R.');
+    const kinds = res.results.listening.kinds as Array<{ kind: string; right: number; total: number }>;
+    expect(kinds.reduce((n, k) => n + k.total, 0)).toBe(res.keys.listening.length);
+    expect(kinds[0].right / kinds[0].total).toBeLessThanOrEqual(kinds[kinds.length - 1].right / kinds[kinds.length - 1].total);
+    await http().post(`${base}/sections/reading/start`).set(s).expect(201);
+
+    const mine = (await http().get('/api/portal/mock-tests/progress').set(s).expect(200)).body;
+    expect(mine.points).toHaveLength(1);
+    expect(mine.points[0]).toMatchObject({ attemptId: att.id, listening: res.results.listening.band, reading: null });
+    expect(mine.weak.listening.length).toBeGreaterThan(0);
+    const staff = (await http().get(`/api/mock-tests/students/${kid}/progress`).set(auth()).expect(200)).body;
+    expect(staff.points[0].attemptId).toBe(att.id);
+  });
+
+  it('a mock day: the group sees it coming, it opens at its time, the teacher follows one table', async () => {
+    const group = (await http().post('/api/groups').set(auth()).send({ name: 'IELTS mock day', subject: 'Ingliz tili' }).expect(201)).body.id;
+    const a = five;
+    await http().post(`/api/students/${a.kid}/enroll/${group}`).set(auth()).expect(201);
+    // The second student never signs in (sign-ins are rate limited).
+    const bKid = (await http().post('/api/students').set(auth()).send({ fullName: 'Mock Kid 7', phone: `+99891${String(suffix + 7).slice(-7)}` }).expect(201)).body.id as string;
+    await http().post(`/api/students/${bKid}/enroll/${group}`).set(auth()).expect(201);
+    const day = (await http().post('/api/mock-tests').set(auth()).send({ sample: true, title: 'Mock day test' }).expect(201)).body.id;
+    // A draft cannot be booked.
+    await http().post('/api/mock-tests/sessions').set(auth()).send({ testId: day, groupId: group, startsAt: new Date(Date.now() + 3600_000).toISOString() }).expect(409);
+    await http().patch(`/api/mock-tests/${day}`).set(auth()).send({ status: 'PUBLISHED' }).expect(200);
+    const later = (await http().post('/api/mock-tests/sessions').set(auth()).send({ testId: day, groupId: group, startsAt: new Date(Date.now() + 3600_000).toISOString() }).expect(201)).body;
+    const seen = (await http().get('/api/portal/mock-tests').set(a.s).expect(200)).body;
+    expect(seen.mockDays).toEqual([expect.objectContaining({ id: later.id, testId: day, testTitle: 'Mock day test', groupName: 'IELTS mock day' })]);
+    expect((await http().post(`/api/portal/mock-tests/${day}/start`).set(a.s).expect(403)).body.code).toBe('MOCK_DAY_NOT_YET');
+
+    // The teacher moves it to now: it opens.
+    await http().delete(`/api/mock-tests/sessions/${later.id}`).set(auth()).expect(200);
+    const now = (await http().post('/api/mock-tests/sessions').set(auth()).send({ testId: day, groupId: group, startsAt: new Date(Date.now() - 60_000).toISOString() }).expect(201)).body;
+    const att = (await http().post(`/api/portal/mock-tests/${day}/start`).set(a.s).expect(201)).body;
+    await http().post(`/api/portal/mock-tests/attempts/${att.id}/sections/listening/submit`).set(a.s).send({ answers: { 0: 'carter' } }).expect(201);
+
+    const table = (await http().get(`/api/mock-tests/sessions/${now.id}`).set(auth()).expect(200)).body;
+    expect(table).toMatchObject({ testTitle: 'Mock day test', groupName: 'IELTS mock day' });
+    expect(table.rows).toHaveLength(2);
+    const rowA = table.rows.find((r: { studentId: string }) => r.studentId === a.kid);
+    expect(rowA).toMatchObject({ attemptId: att.id, status: 'IN_PROGRESS' });
+    expect(rowA.sections.listening).toMatchObject({ done: true });
+    expect(table.rows.find((r: { studentId: string }) => r.studentId === bKid)).toMatchObject({ attemptId: null, status: 'NOT_STARTED' });
+    const list = (await http().get('/api/mock-tests/sessions').set(auth()).expect(200)).body;
+    expect(list.map((x: { id: string }) => x.id)).toContain(now.id);
+    await http().post('/api/mock-tests/sessions').set(auth()).send({ testId: day, groupId: group, startsAt: 'soon' }).expect(400);
+  });
+
+  it('saves a Speaking answer at once and puts the AI transcript in after, only where the center has AI on', async () => {
+    const ai = app.get(AiService);
+    const service = app.get(MockTestsService);
+    const calls: string[] = [];
+    let release!: () => void;
+    const gate = new Promise<void>((r) => { release = r; });
+    ai.transcribeAudio = async (_b: Buffer, mime: string) => { calls.push(mime); await gate; return 'Well, I live in Tashkent.'; };
+    const webm = Buffer.from([0x1a, 0x45, 0xdf, 0xa3, 0, 0, 0, 0]);
+    try {
+      // AI off: the browser's text stays and nothing is sent.
+      const off = five;
+      const attOff = (await http().post(`/api/portal/mock-tests/${testId}/start`).set(off.s).expect(201)).body;
+      await http().post(`/api/portal/mock-tests/attempts/${attOff.id}/speaking/0.1`).set(off.s).field('transcript', 'well i leave in tash kent')
+        .attach('audio', webm, { filename: 'a.webm', contentType: 'audio/webm' }).expect(201);
+      expect(calls).toHaveLength(0);
+
+      // AI on: the upload does not wait for the transcript.
+      Object.defineProperty(ai, 'isConfigured', { get: () => true, configurable: true });
+      await app.get<Database>(DB).update(tenants).set({ studentAiDailyLimit: 5 }).where(eq(tenants.subdomain, `mock-${suffix}`));
+      const base = `/api/portal/mock-tests/attempts/${attOff.id}`;
+      const started = Date.now();
+      await http().post(`${base}/speaking/0.2`).set(off.s).field('transcript', 'well i leave in tash kent')
+        .attach('audio', webm, { filename: 'a.webm', contentType: 'audio/webm' }).expect(201);
+      expect(Date.now() - started).toBeLessThan(5000);
+      await expect.poll(() => calls).toEqual(['audio/webm']);
+      let seen = (await http().get(base).set(off.s).expect(200)).body;
+      expect(seen.answers.speaking['0.2'].transcript).toBe('well i leave in tash kent');
+      release();
+      await service.transcriptsSettled(attOff.id);
+      seen = (await http().get(base).set(off.s).expect(200)).body;
+      expect(seen.answers.speaking['0.2'].transcript).toBe('Well, I live in Tashkent.');
+      expect(seen.answers.speaking['0.1'].transcript).toBe('well i leave in tash kent');
+    } finally {
+      release();
+      await app.get<Database>(DB).update(tenants).set({ studentAiDailyLimit: 0 }).where(eq(tenants.subdomain, `mock-${suffix}`));
+      delete (ai as unknown as Record<string, unknown>).isConfigured;
+      delete (ai as unknown as Record<string, unknown>).transcribeAudio;
+    }
+  });
+
+  it('writes a whole mock test for a level from current trends, as a draft, in the background', async () => {
+    const ai = app.get(AiService);
+    Object.defineProperty(ai, 'isConfigured', { get: () => true, configurable: true });
+    const qs = (from: number, n: number) => Array.from({ length: n }, (_, i) => ({ no: from + i, type: 'FILL_BLANK', prompt: `Item ${from + i}: ______`, correctAnswer: 'answer', explanation: 'It is said in the text.' }));
+    const words = (n: number) => 'The new library opened near the old station last spring. '.repeat(Math.ceil(n / 10));
+    const prompts: string[] = [];
+    // Reading Passage 2 comes back cut off (the token limit) until `fixed`.
+    let fixed = false;
+    ai.completeSearch = async () => { throw new Error('quota'); };
+    ai.completeText = async (prompt: string) => {
+      prompts.push(prompt);
+      const m = prompt.match(/numbered (\d+)-(\d+)/);
+      if (prompt.includes('Listening')) return JSON.stringify({ title: 'Part', transcript: `Anna: ${words(150)}\nTom: ${words(150)}`, questions: qs(Number(m![1]), 10) });
+      if (prompt.includes('Reading test')) {
+        const reply = JSON.stringify({ title: 'Passage', text: `A\n${words(300)}\n\nB\n${words(300)}`, questions: qs(Number(m![1]), Number(m![2]) - Number(m![1]) + 1) });
+        return prompt.includes('Passage 2') && !fixed ? reply.slice(0, 900) : reply;
+      }
+      if (prompt.includes('Writing section')) return JSON.stringify({ tasks: [{ title: 'Task 1', prompt: `The chart shows library visits.\n[Chart]\n${words(50)}`, minWords: 150 }, { title: 'Task 2', prompt: 'Some say libraries are no longer needed. Discuss both views and give your opinion.', minWords: 250 }] });
+      return JSON.stringify({ parts: [
+        { title: 'Part 1', questions: ['Where do you live?', 'Do you like it?', 'Do you work?', 'What do you study?', 'Do you read?', 'What do you do at weekends?'] },
+        { title: 'Part 2', questions: ['Describe a library you know.\nYou should say:\n- where it is\n- when you go\n- what you do there\nand explain why you like it.'] },
+        { title: 'Part 3', questions: ['Why read?', 'Are books dying?', 'Should libraries be free?', 'How will reading change?'] },
+      ] });
+    };
+    try {
+      const started = (await http().post('/api/mock-tests/generate').set(auth()).send({ level: 'B6' }).expect(201)).body;
+      expect(started.source).toBe('__GENERATING__');
+      await expect.poll(async () => (await http().get('/api/mock-tests').set(auth()).expect(200)).body.find((x: { id: string }) => x.id === started.id).source, { timeout: 20_000 }).not.toBe('__GENERATING__');
+      const done = (await http().get('/api/mock-tests').set(auth()).expect(200)).body.find((x: { id: string }) => x.id === started.id);
+      // Passage 2 failed: its slot is empty (27 of 40) and the failure is recorded, not dropped.
+      expect(done).toMatchObject({ status: 'DRAFT', level: 'B6', summary: { listening: 40, reading: 27, writing: 2, speaking: 11 } });
+      expect(done.source).toMatch(/^AI yozdi.*cathoven\.com/);
+      // It was asked for three times, the later tries saying it was cut off.
+      expect(prompts.filter((x) => x.includes('Passage 2'))).toHaveLength(3);
+      expect(prompts.filter((x) => x.includes('Passage 2') && x.includes('cut off'))).toHaveLength(2);
+      // The level steers every part.
+      expect(prompts.every((x) => x.includes('band 6.0-6.5'))).toBe(true);
+      let t = (await http().get(`/api/mock-tests/${started.id}`).set(auth()).expect(200)).body;
+      expect(t.content.listening.parts[0].questions[0].explanation).toBe('It is said in the text.');
+      expect(t.content.generation.failed).toEqual([{ key: 'reading.1', label: 'Reading Passage 2', error: 'the reply was cut off before the end' }]);
+      // No Gemini key here: no speech, the audioscripts are kept and the parts need audio.
+      expect(t.content.generation.tts).toBe('UNAVAILABLE');
+      expect(t.content.listening.parts.every((x: { transcript: string; audioPath: null }) => x.transcript.startsWith('Anna:') && x.audioPath === null)).toBe(true);
+      let refused = (await http().patch(`/api/mock-tests/${started.id}`).set(auth()).send({ status: 'PUBLISHED' }).expect(400)).body;
+      expect(refused.message).toMatch(/Reading Passage 2 yaratilmadi/);
+      // The editor's copy of the generation state is ignored.
+      const forged = { ...t.content, generation: { failed: [], running: [], tts: 'DONE' } };
+      await http().patch(`/api/mock-tests/${started.id}`).set(auth()).send({ content: forged }).expect(200);
+      t = (await http().get(`/api/mock-tests/${started.id}`).set(auth()).expect(200)).body;
+      expect(t.content.generation.failed).toHaveLength(1);
+
+      // Retrying the failed passage fills its slot.
+      fixed = true;
+      await http().post(`/api/mock-tests/${started.id}/generate/retry`).set(auth()).send({ parts: ['reading.9'] }).expect(400);
+      // Two retries sent together (a double click): one starts, the other is told to wait.
+      const pair = await Promise.all([0, 1].map(() => http().post(`/api/mock-tests/${started.id}/generate/retry`).set(auth()).send({ parts: ['reading.1'] })));
+      expect(pair.map((r) => r.status).sort()).toEqual([201, 409]);
+      const retrying = pair.find((r) => r.status === 201)!.body;
+      expect(retrying.content.generation.running).toEqual(['reading.1']);
+      await expect.poll(async () => (await http().get(`/api/mock-tests/${started.id}`).set(auth()).expect(200)).body.content.generation.running, { timeout: 20_000 }).toEqual([]);
+      t = (await http().get(`/api/mock-tests/${started.id}`).set(auth()).expect(200)).body;
+      expect(t.content.generation.failed).toEqual([]);
+      expect(t.content.reading.passages[1].questions).toHaveLength(13);
+      expect(t.content.reading.passages[1].text.length).toBeGreaterThan(1000);
+
+      // Still no audio: publishing waits for it.
+      refused = (await http().patch(`/api/mock-tests/${started.id}`).set(auth()).send({ status: 'PUBLISHED' }).expect(400)).body;
+      expect(refused.message).toMatch(/Listening audio kerak: Part 1, Part 2, Part 3, Part 4/);
+      const withAudio = structuredClone(t.content);
+      withAudio.listening.audioPath = 'sectionaudio01.mp3';
+      await http().patch(`/api/mock-tests/${started.id}`).set(auth()).send({ content: withAudio, status: 'PUBLISHED' }).expect(200);
+      // A bad level is refused.
+      await http().post('/api/mock-tests/generate').set(auth()).send({ level: 'B9' }).expect(400);
+    } finally {
+      delete (ai as unknown as Record<string, unknown>).isConfigured;
+      delete (ai as unknown as Record<string, unknown>).completeText;
+      delete (ai as unknown as Record<string, unknown>).completeSearch;
+    }
   });
 });

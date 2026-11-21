@@ -4,6 +4,7 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from '../src/app.module.js';
 import { configureApp } from '../src/app.setup.js';
+import { trialStarted } from './trial-started';
 
 // Custom fields at the edges: what happens to a lead-to-student mapping
 // when the student field changes under it, to values when something fails
@@ -32,6 +33,7 @@ describe('Custom fields: edges (e2e)', () => {
     const lead = (await http().post('/api/leads').set(bearer(owner)).send({ fullName: `Lead ${phoneN}`, phone: phone(), customFields }).expect(201)).body;
     await http().post(`/api/leads/${lead.id}/transition`).set(bearer(owner)).send({ toStatus: 'CONTACTED' }).expect(201);
     const t = await http().post(`/api/leads/${lead.id}/trials`).set(bearer(owner)).send({ scheduledAt: `${futureDay(25)}T${String(trialHour++ % 24).padStart(2, '0')}:00:00+05:00` }).expect(201);
+    await trialStarted(t.body.id);
     await http().post(`/api/leads/${lead.id}/trials/${t.body.id}/attend`).set(bearer(owner)).send({}).expect(201);
     await http().post(`/api/leads/${lead.id}/transition`).set(bearer(owner)).send({ toStatus: 'QUALIFIED' }).expect(201);
     return lead.id as string;

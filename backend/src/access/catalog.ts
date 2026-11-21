@@ -46,7 +46,7 @@ export const ACCESS_CATALOG: AccessKey[] = [
   { key: 'students.delete', area: 'students', template: [], routes: ['DELETE /api/students/:id', 'GET /api/students/trash', 'POST /api/students/:id/restore'] },
   { key: 'students.portalPin', area: 'students', template: [M, R], routes: ['GET /api/students/:id/portal-pin', 'POST /api/students/:id/portal-pin'] },
   { key: 'groups.view', area: 'students', template: ALL, routes: ['GET /api/groups', 'GET /api/groups/:id', 'GET /api/groups/:id/roster'] },
-  { key: 'groups.edit', area: 'students', template: [], routes: ['POST /api/groups', 'PATCH /api/groups/:id', 'GET /api/groups/schedule-conflicts'] },
+  { key: 'groups.edit', area: 'students', template: [], routes: ['POST /api/groups', 'PATCH /api/groups/:id', 'GET /api/groups/schedule-conflicts', 'GET /api/groups/teacher-availability'] },
   { key: 'groups.delete', area: 'students', template: [], routes: ['DELETE /api/groups/:id', 'GET /api/groups/trash', 'POST /api/groups/:id/restore'] },
   { key: 'groups.priceHistory', area: 'students', template: [M, A], routes: ['GET /api/groups/:id/price-history'] },
   { key: 'groups.setPrice', area: 'students', template: [A], routes: ['POST /api/groups/:id/price-history'] },
@@ -106,8 +106,10 @@ export const ACCESS_CATALOG: AccessKey[] = [
     key: 'mockTests.manage', area: 'teaching', template: [M, T],
     routes: [
       'GET /api/mock-tests', 'POST /api/mock-tests', 'GET /api/mock-tests/:id', 'PATCH /api/mock-tests/:id', 'POST /api/mock-tests/:id/asset', 'GET /api/mock-tests/:id/attempts',
-      'POST /api/mock-tests/generate-questions', 'POST /api/mock-tests/import', 'GET /api/mock-tests/imports', 'GET /api/mock-tests/imports/:importId',
+      'POST /api/mock-tests/generate-questions', 'POST /api/mock-tests/generate', 'POST /api/mock-tests/:id/generate/retry', 'POST /api/mock-tests/import', 'GET /api/mock-tests/imports', 'GET /api/mock-tests/imports/:importId',
       'GET /api/mock-tests/attempts/:attemptId', 'POST /api/mock-tests/attempts/:attemptId/review', 'POST /api/mock-tests/attempts/:attemptId/review-practice', 'POST /api/mock-tests/attempts/:attemptId/regrade',
+      'GET /api/mock-tests/sessions', 'POST /api/mock-tests/sessions', 'GET /api/mock-tests/sessions/:sessionId', 'DELETE /api/mock-tests/sessions/:sessionId',
+      'GET /api/mock-tests/students/:studentId/progress',
     ],
   },
   { key: 'mockTests.delete', area: 'teaching', template: [M], routes: ['DELETE /api/mock-tests/:id'] },
@@ -135,7 +137,7 @@ export const ACCESS_CATALOG: AccessKey[] = [
     routes: [
       'POST /api/leads', 'PATCH /api/leads/:id', 'POST /api/leads/:id/transition', 'POST /api/leads/:id/lose', 'POST /api/leads/:id/follow-up', 'POST /api/leads/:id/activities',
       'POST /api/leads/:id/trials/check', 'POST /api/leads/:id/trials', 'POST /api/leads/:id/trials/:trialId/reschedule', 'POST /api/leads/:id/trials/:trialId/attend',
-      'POST /api/leads/:id/trials/:trialId/miss', 'POST /api/leads/:id/trials/:trialId/cancel',
+      'POST /api/leads/:id/trials/:trialId/miss', 'POST /api/leads/:id/trials/:trialId/cancel', 'POST /api/leads/:id/trials/:trialId/reopen',
     ],
   },
   { key: 'leads.assign', area: 'admissions', template: [M], routes: ['POST /api/leads/:id/assign'] },
@@ -183,7 +185,7 @@ export const ACCESS_CATALOG: AccessKey[] = [
   {
     key: 'chat.use', area: 'center', template: ALL,
     routes: [
-      'GET /api/chat/conversations', 'POST /api/chat/conversations', 'GET /api/chat/conversations/:id/messages', 'POST /api/chat/conversations/:id/messages',
+      'GET /api/chat/conversations', 'POST /api/chat/conversations', 'GET /api/chat/conversations/:id/messages', 'POST /api/chat/conversations/:id/messages', 'POST /api/chat/conversations/:id/files',
       'POST /api/chat/conversations/:id/read', 'GET /api/chat/unread', 'GET /api/chat/contacts', 'GET /api/chat/stream',
     ],
   },
@@ -194,7 +196,7 @@ export const ACCESS_CATALOG: AccessKey[] = [
   // ---- Center ----
   { key: 'announcements.view', area: 'center', template: [T], routes: ['GET /api/announcements', 'GET /api/announcements/:id'] },
   { key: 'announcements.manage', area: 'center', template: [], routes: ['POST /api/announcements', 'DELETE /api/announcements/:id'] },
-  { key: 'import.run', area: 'center', template: [], routes: ['GET /api/import/:kind/template.xlsx', 'POST /api/import/:kind'] },
+  { key: 'import.run', area: 'center', template: [], routes: ['GET /api/import/:kind/template.xlsx', 'POST /api/import/:kind', 'POST /api/import/:kind/columns', 'GET /api/import/bundle/template.xlsx', 'POST /api/import/bundle'] },
   {
     key: 'signals.manage', area: 'center', template: [M],
     routes: ['GET /api/signals', 'PATCH /api/signals/:id'],

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import QuestionEditor, { emptyQuestion } from "@/components/tests/QuestionEditor";
 import Select from "@/components/Select";
 import DirectionSelect from "@/components/DirectionSelect";
@@ -10,6 +10,7 @@ import { useLanguage } from "@/lib/i18n-context";
 import { SECTION_ICON, sectionKey } from "@/components/mock-tests/sections";
 import { levelKey } from "@/components/mock-tests/levels";
 import { PrivateImg, PrivateAudio } from "@/components/PrivateFile";
+import { failedIn, isRunning, mergeRetried, partsNeedingAudio, sumMarks } from "@/lib/mock-generation";
 
 const ACCENT = "var(--primary)";
 const card: React.CSSProperties = { background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 16 };
@@ -50,6 +51,52 @@ export default function MockTestEditor({ test, onSaved }: { test: MockTest; onSa
     }
   }
 
+  // An AI test whose parts are being written again: check back until done,
+  // then take the rewritten slots (the teacher's other edits stay).
+  const running = content.generation?.running ?? [];
+  const runningRef = useRef<string[]>([]);
+  useEffect(() => {
+    if (!running.length) return;
+    runningRef.current = running;
+    const id = setInterval(async () => {
+      try {
+        const server = await mockTestsApi.get(test.id);
+        if (server.content.generation?.running.length) return;
+        setContent((c) => mergeRetried(c, server.content, runningRef.current));
+      } catch {
+        // try again on the next tick
+      }
+    }, 5000);
+    return () => clearInterval(id);
+  }, [running.join(","), test.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function retry(parts?: string[]) {
+    setBusy(true);
+    setMsg(null);
+    try {
+      const res = await mockTestsApi.retryGeneration(test.id, parts);
+      setContent((c) => ({ ...c, generation: res.content.generation }));
+    } catch (e) {
+      setMsg({ ok: false, text: e instanceof ApiError ? e.message : t("common.errorGeneric") });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const gen = content.generation;
+  const needAudio = partsNeedingAudio(content);
+  const failedNotes = (s: MockSection) => failedIn(content, s).map((f) => (
+    <div key={f.key} role="alert" style={{ ...card, display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", borderColor: "var(--danger-border)", background: "var(--danger-soft)" }}>
+      <div style={{ flex: "1 1 240px", minWidth: 0 }}>
+        <div style={{ fontWeight: 800, fontSize: 13.5, color: "var(--danger)" }}>⚠️ {f.label} {t("mock.gen.partFailed")}</div>
+        <div style={{ fontSize: 12, color: "var(--text-muted)" }}>{f.error}</div>
+      </div>
+      {isRunning(content, f.key)
+        ? <span style={{ fontSize: 12.5, fontWeight: 700, color: "var(--text-soft)" }}>⏳ {t("mock.gen.running")}</span>
+        : <button type="button" className="btn" disabled={busy || isRunning(content)} onClick={() => retry([f.key])} style={{ ...ghost, color: "var(--danger)" }}>↻ {t("mock.gen.retry")}</button>}
+    </div>
+  ));
+
   async function upload(file: File | undefined, apply: (path: string) => void) {
     if (!file) return;
     setBusy(true);
@@ -64,8 +111,9 @@ export default function MockTestEditor({ test, onSaved }: { test: MockTest; onSa
   }
 
   const counts: Record<MockSection, number> = {
-    listening: content.listening.parts.reduce((s, p) => s + p.questions.length, 0),
-    reading: content.reading.passages.reduce((s, p) => s + p.questions.length, 0),
+    // IELTS marks: a "choose TWO" question is two of the 40.
+    listening: content.listening.parts.reduce((s, p) => s + sumMarks(p.questions), 0),
+    reading: content.reading.passages.reduce((s, p) => s + sumMarks(p.questions), 0),
     writing: content.writing.tasks.length,
     speaking: content.speaking.parts.reduce((s, p) => s + p.questions.length, 0),
   };
@@ -125,10 +173,35 @@ export default function MockTestEditor({ test, onSaved }: { test: MockTest; onSa
         </div>
       </div>
 
+      {gen && (gen.failed.length > 0 || running.length > 0 || needAudio.length > 0) && (
+        <div data-testid="generation-status" style={{ ...card, display: "grid", gap: 8, borderColor: gen.failed.length ? "var(--danger-border)" : "var(--warning-border)", background: gen.failed.length ? "var(--danger-soft)" : "var(--warning-soft)" }}>
+          {gen.failed.length > 0 && (
+            <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+              <div style={{ flex: "1 1 260px", fontSize: 13.5 }}>
+                <div style={{ fontWeight: 800, color: "var(--danger)" }}>⚠️ {gen.failed.map((f) => f.label).join(", ")} {t("mock.gen.partFailed")}</div>
+                <div style={{ color: "var(--text-soft)", fontSize: 12.5 }}>{t("mock.gen.incomplete")}</div>
+              </div>
+              {!running.length && <button type="button" className="btn" disabled={busy} onClick={() => retry(gen.failed.map((f) => f.key))} style={{ ...ghost, color: "var(--danger)" }}>↻ {gen.failed.length > 1 ? t("mock.gen.retryAll") : t("mock.gen.retry")}</button>}
+            </div>
+          )}
+          {running.length > 0 && <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-soft)" }}>⏳ {t("mock.gen.running")}</div>}
+          {needAudio.length > 0 && (
+            <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+              <div style={{ flex: "1 1 260px", fontSize: 13 }}>
+                <div style={{ fontWeight: 800, color: "var(--warning)" }}>🔇 {t("mock.gen.audioNeeded")}: {needAudio.map((i) => content.listening.parts[i]?.title || `Part ${i + 1}`).join(", ")}</div>
+                <div style={{ color: "var(--text-soft)", fontSize: 12.5 }}>{gen.tts === "FAILED" ? t("mock.gen.audioFailed") : t("mock.gen.audioUnavailable")}{gen.tts === "FAILED" && gen.ttsError ? ` (${gen.ttsError})` : ""}</div>
+              </div>
+              {gen.tts === "FAILED" && !running.length && <button type="button" className="btn" disabled={busy} onClick={() => retry(["audio"])} style={ghost}>🎙 {t("mock.gen.audioRetry")}</button>}
+            </div>
+          )}
+        </div>
+      )}
+
       <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
         {(Object.keys(SECTION_ICON) as MockSection[]).map((s) => (
           <button key={s} type="button" onClick={() => setSection(s)} style={{ border: `1.5px solid ${section === s ? ACCENT : "var(--border)"}`, background: section === s ? "var(--primary-soft)" : "var(--surface)", color: section === s ? ACCENT : "var(--text-soft)", borderRadius: "var(--radius-sm)", padding: "9px 14px", fontWeight: 700, fontSize: 13.5, cursor: "pointer" }}>
             {SECTION_ICON[s]} {t(sectionKey(s))} <span style={{ color: "var(--text-muted)", fontWeight: 600 }}>{counts[s]}</span>
+            {(failedIn(content, s).length > 0 || (s === "listening" && needAudio.length > 0)) && <span aria-label={t("mock.gen.incomplete")} style={{ color: failedIn(content, s).length ? "var(--danger)" : "var(--warning)" }}> ⚠</span>}
           </button>
         ))}
       </div>
@@ -141,6 +214,8 @@ export default function MockTestEditor({ test, onSaved }: { test: MockTest; onSa
           <span style={{ color: "var(--text-muted)" }}>{t("mock.minutes")}</span>
         </div>
       )}
+
+      {failedNotes(section)}
 
       {section === "listening" && (
         <>
@@ -175,6 +250,7 @@ export default function MockTestEditor({ test, onSaved }: { test: MockTest; onSa
                     <input type="file" accept="audio/*" hidden onChange={(e) => upload(e.target.files?.[0], (path) => edit((c) => { c.listening.parts[pi].audioPath = path; return c; }))} />
                   </label>
                 )}
+                {needAudio.includes(pi) && <span style={{ fontSize: 12, fontWeight: 800, padding: "3px 10px", borderRadius: "var(--radius-pill)", background: "var(--warning-soft)", color: "var(--warning)", border: "1px solid var(--warning-border)" }}>🔇 {t("mock.gen.audioNeeded")}</span>}
               </div>
               <ImageField path={p.imagePath} onUpload={(f) => upload(f, (path) => edit((c) => { c.listening.parts[pi].imagePath = path; return c; }))} onClear={() => edit((c) => { c.listening.parts[pi].imagePath = null; return c; })} />
               <div>
@@ -322,6 +398,10 @@ export function QuestionsEditor({ questions, onChange, start = 0 }: { questions:
           {open === i && (
             <div style={{ padding: 10, borderTop: "1px solid var(--border)" }}>
               <QuestionEditor value={q} onChange={(nq) => set(i, nq)} excludeTypes={["ESSAY"]} />
+              <label style={{ display: "block", marginTop: 10 }}>
+                <span style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--text-soft)", marginBottom: 4 }}>💡 {t("mock.explanation")}</span>
+                <textarea className="field-input" data-testid="question-explanation" value={q.explanation ?? ""} onChange={(e) => set(i, { ...q, explanation: e.target.value || null })} rows={2} maxLength={2000} style={{ height: "auto", resize: "vertical" }} />
+              </label>
             </div>
           )}
         </div>

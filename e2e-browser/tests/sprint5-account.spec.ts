@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { API, centerUrl, cleanUpStagingCenters, expectCenterDashboard, loginOnMainSite, newCenter, TARGET } from './support';
+import { API, centerUrl, cleanUpStagingCenters, expectCenterDashboard, loginOnMainSite, mainUrl, newCenter, TARGET } from './support';
 
 // Sprint 5 through the pages: turning on two-step sign-in shows recovery
 // codes once and ends the other sessions; one of the codes signs in; a
@@ -117,9 +117,9 @@ test('platform admin: the trial deletion preview says what would happen and why;
   // Ended long enough ago to be in the preview (TRIAL_PURGE is off here: nothing is sent).
   await sql(`update tenants set trial_ends_at = now() - interval '200 days' where id = $1`, [ended.tenantId]);
 
-  await loginOnMainSite(page, admin.email);
-  await expectCenterDashboard(page, admin.sub);
-  await page.goto(centerUrl(admin.sub, '/admin/trials'));
+  // The platform panel: on the main site only.
+  await loginOnMainSite(page, admin.email, '/admin/trials');
+  await expect(page).toHaveURL(mainUrl('/admin/trials'));
   await expect(page.getByRole('heading', { name: 'Sinov va SMS nazorati' })).toBeVisible();
   await expect(page.getByRole('status').filter({ hasText: "TRIAL_PURGE o'chiq" })).toBeVisible();
   const row = page.getByRole('row').filter({ hasText: ended.sub });
@@ -158,9 +158,10 @@ test("plan entitlements: the platform admin unticks a feature in the plan editor
   await sql(`update tenants set plan = $1, status = 'ACTIVE' where id = $2`, [key, c.tenantId]);
   await sql(`update users set role = 'SUPERADMIN' where email = $1`, [admin.email]);
 
-  await loginOnMainSite(page, admin.email);
-  await expectCenterDashboard(page, admin.sub);
-  await page.goto(centerUrl(admin.sub, '/pricing'));
+  // The plan editor is part of the platform panel: on the main site only.
+  await loginOnMainSite(page, admin.email, '/admin/overview');
+  await expect(page).toHaveURL(mainUrl('/admin/overview'));
+  await page.goto(mainUrl('/pricing'));
   await page.getByTestId(`plan-${key}`).getByRole('button', { name: 'Tahrirlash' }).click();
   await page.getByLabel('Mock imtihonlar').uncheck();
   await page.getByLabel("O'quvchilar limiti").fill('5');
@@ -180,9 +181,8 @@ test('platform switches: the admin turns AI off for one center from the page; th
   const admin = await newCenter('flagadm');
   const c = await newCenter('flagctr');
   await sql(`update users set role = 'SUPERADMIN' where email = $1`, [admin.email]);
-  await loginOnMainSite(page, admin.email);
-  await expectCenterDashboard(page, admin.sub);
-  await page.goto(centerUrl(admin.sub, '/admin/flags'));
+  await loginOnMainSite(page, admin.email, '/admin/flags');
+  await expect(page).toHaveURL(mainUrl('/admin/flags'));
   await expect(page.getByRole('heading', { name: "Favqulodda to'xtatish" })).toBeVisible();
   const ai = page.getByTestId('flag-ai');
   await expect(ai.getByRole('switch')).toHaveAttribute('aria-checked', 'true');
@@ -194,6 +194,36 @@ test('platform switches: the admin turns AI off for one center from the page; th
   expect(refused.status).toBe(503);
   await ai.getByRole('listitem').filter({ hasText: c.sub }).getByRole('button', { name: 'Olib tashlash' }).click();
   await expect(ai.getByRole('listitem')).toHaveCount(0);
+});
+
+test('IP telephony is off until the platform admin turns it on for a center; the menu follows', async ({ page, browser }) => {
+  test.skip(TARGET !== 'local', 'needs the disposable local database');
+  const admin = await newCenter('teladm');
+  const c = await newCenter('telctr');
+  await sql(`update users set role = 'SUPERADMIN' where email = $1`, [admin.email]);
+  const entitled = async () => (await (await fetch(`${API}/auth/me`, { headers: { Authorization: `Bearer ${c.token}` } })).json()).tenant.entitlements.TELEPHONY === true;
+  expect(await entitled()).toBe(false);
+
+  // The platform admin turns it on for that one center.
+  await loginOnMainSite(page, admin.email, '/admin/flags');
+  await expect(page).toHaveURL(mainUrl('/admin/flags'));
+  const tel = page.getByTestId('flag-telephony');
+  await expect(tel.getByRole('switch')).toHaveAttribute('aria-checked', 'false');
+  await expect(tel).toContainText('Bu markazlarda baribir ishlaydi:');
+  await tel.getByText('Faqat bitta markaz uchun (ixtiyoriy)').click();
+  await tel.getByLabel('Markaz subdomeni').fill(c.sub);
+  await tel.getByRole('button', { name: "Qo'shish", exact: true }).click();
+  await expect(tel.getByRole('listitem').filter({ hasText: c.sub })).toBeVisible();
+  // The switch is read again within a few seconds.
+  await expect.poll(entitled, { timeout: 20_000 }).toBe(true);
+
+  // The center's menu now shows the calls page.
+  const ctx = await browser.newContext();
+  const cp = await ctx.newPage();
+  await loginOnMainSite(cp, c.email);
+  await expectCenterDashboard(cp, c.sub);
+  await expect(cp.locator('.sidebar').getByRole('link', { name: "Qo'ng'iroqlar", exact: true })).toHaveCount(1);
+  await ctx.close();
 });
 
 test("a center's own domain: added in the site settings, the DNS record to add is shown, not connected until proved", async ({ page }) => {

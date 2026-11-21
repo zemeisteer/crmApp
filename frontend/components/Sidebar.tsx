@@ -4,11 +4,12 @@ import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } fr
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
-import { authApi, fileUrl, planAllows, type PLAN_FEATURES } from "@/lib/api";
+import { authApi, fileUrl, planAllows, type Entitlements, type PLAN_FEATURES } from "@/lib/api";
 import { useLanguage } from "@/lib/i18n-context";
 import type { TranslationKey } from "@/lib/i18n";
 import type { Role, WorkspaceItem } from "@/lib/api";
-import { centerHost } from "@/lib/domain";
+import { useCenterAddress } from "@/lib/use-center-host";
+import { subdomainFromHost } from "@/lib/domain";
 import { useChatUnread, useChatUnreadRefresh } from "@/lib/chat-unread";
 
 
@@ -309,6 +310,18 @@ const NAV_ITEMS: NavItem[] = [
     ),
   },
   {
+    // The center's own plan, trial and payment (the plans page with Click/Payme/card).
+    href: "/pricing",
+    labelKey: "nav.billing" as TranslationKey,
+    roles: ["SUPERADMIN", "ADMIN"],
+    icon: (
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="2" y="5" width="20" height="14" rx="2" />
+        <path d="M2 10h20M6 15h4" />
+      </svg>
+    ),
+  },
+  {
     href: "/settings",
     labelKey: "nav.settings" as TranslationKey,
     roles: ["SUPERADMIN", "ADMIN"],
@@ -420,8 +433,22 @@ export function isPlatformMode(role?: Role, hasCenter?: boolean) {
  * through its address either. Pages that are not in the menu stay open (the
  * server still decides what data they get).
  */
+/**
+ * The plan feature a page needs when the center's plan leaves it out, else
+ * null. The menu hides such pages; this keeps them shut when opened by link.
+ */
+export function pathNotInPlan(pathname: string, entitlements: Entitlements | undefined): (typeof PLAN_FEATURES)[number] | null {
+  const item = NAV_ITEMS.find((i) => i.feature && (pathname === i.href || pathname.startsWith(`${i.href}/`)));
+  return item?.feature && !planAllows(entitlements, item.feature) ? item.feature : null;
+}
+
 export function canOpenPath(pathname: string, role?: Role, hasCenter = true, access?: string[]) {
   const under = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
+  // The platform panel never opens on a center's address (proxy.ts sends
+  // /admin there to the main domain; the API refuses it too).
+  if (under(SUPERADMIN_ITEM.href) && typeof window !== "undefined" && subdomainFromHost(window.location.host)) return false;
+  // One's own account opens for everyone signed in.
+  if (under("/profile")) return true;
   if (isPlatformMode(role, hasCenter)) return PLATFORM_ITEMS.some((i) => under(i.href));
   if (under(SUPERADMIN_ITEM.href)) return role === "SUPERADMIN";
   const item = NAV_ITEMS.find((i) => under(i.href));
@@ -482,6 +509,7 @@ const GROUP_OF: Record<string, (typeof NAV_GROUPS)[number]["id"]> = {
 export default function Sidebar({ open, onClose }: { open?: boolean; onClose?: () => void }) {
   const pathname = usePathname();
   const { user, tenant, logout, selectWorkspace } = useAuth();
+  const centerAt = useCenterAddress();
   // Other centers this person works in: switching moves the session there
   // (no second login). Empty for most people, so nothing is shown.
   const [otherCenters, setOtherCenters] = useState<WorkspaceItem[]>([]);
@@ -640,12 +668,8 @@ export default function Sidebar({ open, onClose }: { open?: boolean; onClose?: (
               </div>
             ))}
 
-            {user?.role === "SUPERADMIN" && tenant && (
-              <div className="rail-group">
-                <div className="rail-heading">{t("nav.groupPlatform")}</div>
-                {link(SUPERADMIN_ITEM.href, t(SUPERADMIN_ITEM.labelKey), SUPERADMIN_ITEM.icon, isActive(SUPERADMIN_ITEM.href))}
-              </div>
-            )}
+            {/* No platform section inside a center: the platform panel is
+                only on the main domain's /admin (also for a superadmin). */}
           </div>
 
           {otherCenters.length > 0 && (
@@ -658,7 +682,7 @@ export default function Sidebar({ open, onClose }: { open?: boolean; onClose?: (
                   onClick={() => switchTo(w.tenantId)}
                   disabled={switching !== null}
                   className="nav-item rail-item btn"
-                  title={centerHost(w.subdomain)}
+                  title={centerAt.host(w.subdomain)}
                   style={{ opacity: switching && switching !== w.tenantId ? 0.5 : 1 }}
                 >
                   <span className="rail-icon" aria-hidden="true">⇄</span>

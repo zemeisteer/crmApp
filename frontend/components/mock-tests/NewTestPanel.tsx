@@ -3,7 +3,8 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import DirectionSelect, { useDirectionOptions } from "@/components/DirectionSelect";
-import type { PracticeTemplate } from "@/lib/api";
+import { MOCK_LEVELS, type MockLevel, type PracticeTemplate } from "@/lib/api";
+import { levelKey } from "@/components/mock-tests/levels";
 import { useLanguage } from "@/lib/i18n-context";
 import type { TranslationKey } from "@/lib/i18n";
 
@@ -44,13 +45,17 @@ export function samplesFor(direction: string): Sample[] {
   return [...new Map(out.map((s) => [s.id, s])).values()];
 }
 
-export default function NewTestPanel({ busy, onCreate, onClose }: { busy: boolean; onCreate: (choice: NewTestChoice) => void; onClose: () => void }) {
+export default function NewTestPanel({ busy, onCreate, onGenerate, onClose }: { busy: boolean; onCreate: (choice: NewTestChoice) => void; onGenerate: (level: MockLevel | null, module: "ACADEMIC" | "GENERAL") => void; onClose: () => void }) {
   const { t } = useLanguage();
   const directions = useDirectionOptions();
   // Until one is picked, the first direction of the list is the choice.
   const [picked, setDirection] = useState("");
   const direction = picked || directions[0] || "";
   const samples = useMemo(() => (direction ? samplesFor(direction) : []), [direction]);
+  const english = /ingliz|english|ielts|cefr|англ/i.test(direction);
+  const [level, setLevel] = useState<MockLevel | null>(null);
+  const [module, setModule] = useState<"ACADEMIC" | "GENERAL">("ACADEMIC");
+  const chip = (on: boolean): React.CSSProperties => ({ border: `1.5px solid ${on ? ACCENT : "var(--border)"}`, background: on ? "var(--primary-soft)" : "var(--surface)", color: on ? ACCENT : "var(--text)", borderRadius: "var(--radius-pill)", padding: "7px 14px", fontWeight: 700, fontSize: 13, cursor: "pointer" });
 
   return (
     <div style={{ background: "var(--surface)", border: `1.5px solid ${ACCENT}`, borderRadius: "var(--radius-lg)", padding: 18, display: "grid", gap: 14 }}>
@@ -70,6 +75,24 @@ export default function NewTestPanel({ busy, onCreate, onClose }: { busy: boolea
           <Link href="/groups" style={{ color: ACCENT, fontWeight: 700 }}>{t("nav.groups")}</Link>
         </div>
       ) : (
+        <>
+        {english && (
+          <div data-testid="ai-generate" style={{ border: `1px solid ${ACCENT}`, background: "linear-gradient(135deg, var(--primary-soft), var(--surface))", borderRadius: "var(--radius-md)", padding: 16, display: "grid", gap: 12 }}>
+            <div>
+              <div style={{ fontSize: 15, fontWeight: 800 }}>✨ {t("mock.gen.title")}</div>
+              <div style={{ fontSize: 12.5, color: "var(--text-muted)", marginTop: 2, lineHeight: 1.5 }}>{t("mock.gen.text")}</div>
+            </div>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }} role="group" aria-label={t("mock.gen.level")}>
+              <button type="button" aria-pressed={level === null} onClick={() => setLevel(null)} style={chip(level === null)}>{t("mock.gen.mixed")}</button>
+              {MOCK_LEVELS.map((l) => <button key={l} type="button" aria-pressed={level === l} onClick={() => setLevel(l)} style={chip(level === l)}>{t(levelKey(l))}</button>)}
+            </div>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+              {(["ACADEMIC", "GENERAL"] as const).map((m) => <button key={m} type="button" aria-pressed={module === m} onClick={() => setModule(m)} style={chip(module === m)}>{m === "ACADEMIC" ? "Academic" : "General Training"}</button>)}
+              <button type="button" className="btn" disabled={busy} onClick={() => onGenerate(level, module)} style={{ marginLeft: "auto", background: ACCENT, color: "var(--on-ink)", border: "none", borderRadius: "var(--radius-sm)", padding: "10px 18px", fontWeight: 800, cursor: busy ? "wait" : "pointer" }}>✨ {t("mock.gen.go")}</button>
+            </div>
+            <div style={{ fontSize: 12, color: "var(--text-muted)" }}>ℹ️ {t("mock.gen.note")}</div>
+          </div>
+        )}
         <div>
           <div style={{ fontSize: 12.5, fontWeight: 700, color: "var(--text-soft)", marginBottom: 8 }}>{t("mock.samplesFor")}: <span style={{ color: ACCENT }}>{direction}</span></div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(230px, 1fr))", gap: 10 }}>
@@ -89,6 +112,7 @@ export default function NewTestPanel({ busy, onCreate, onClose }: { busy: boolea
             ))}
           </div>
         </div>
+        </>
       )}
     </div>
   );

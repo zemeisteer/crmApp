@@ -1,11 +1,14 @@
 import {
   BadRequestException,
   ForbiddenException,
+  HttpException,
+  HttpStatus,
   Inject,
   Injectable,
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
+import { clearPinFailures, pinLockRemainingMs, recordPinFailure } from './pin-lockout';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { and, asc, desc, eq, gt, gte, inArray, isNull, lte, or, sql, type AnyColumn } from 'drizzle-orm';
@@ -225,15 +228,27 @@ export class PortalService {
       codeRowId = row.id;
       allowed = matched.filter((s) => s.telegramChatId);
     } else if (body.pin) {
+      // Wrong PINs per phone, whatever address they come from (a PIN is 6
+      // digits); counted in the database, so every API instance agrees.
+      const pinKey = this.config.get<string>('JWT_SECRET') ?? '';
+      const wait = await pinLockRemainingMs(this.db, phone, pinKey);
+      if (wait > 0) {
+        throw new HttpException(
+          { code: 'PIN_LOCKED', message: `Juda ko'p noto'g'ri PIN. ${Math.ceil(wait / 60_000)} daqiqadan keyin qayta urinib ko'ring yoki Telegram kodi bilan kiring.` },
+          HttpStatus.TOO_MANY_REQUESTS,
+        );
+      }
       const pins = await this.pinsFor(matched.map((s) => s.id));
       for (const s of matched) {
         const hash = pins.get(s.id);
         if (hash && (await bcrypt.compare(body.pin.trim(), hash))) allowed.push(s);
       }
       if (allowed.length === 0) {
+        await recordPinFailure(this.db, phone, pinKey);
         recordSignInFailure('cabinet', phone, body.ip);
         throw new UnauthorizedException("PIN noto'g'ri");
       }
+      await clearPinFailures(this.db, phone, pinKey);
     } else {
       throw new BadRequestException('Kod yoki PIN kiriting');
     }

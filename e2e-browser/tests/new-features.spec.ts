@@ -49,8 +49,8 @@ test('a lead\'s other directions: kept when the main one is cleared, saved as sh
   await expect(others.getByRole('button', { name: /Shaxmat NF/ })).toHaveAttribute('aria-pressed', 'true');
 
   // The main direction is cleared: the other one is still shown, still chosen.
-  await form.getByRole('button', { name: 'Qiziqqan fan' }).click();
-  await page.getByRole('option', { name: '— Tanlanmagan —' }).click();
+  await form.getByRole('button', { name: 'Nimaga qiziqadi?' }).click();
+  await page.getByRole('option', { name: 'Fanni tanlang' }).click();
   await expect(others.getByRole('button', { name: /Shaxmat NF/ })).toHaveAttribute('aria-pressed', 'true');
   await form.getByRole('button', { name: 'Saqlash' }).click();
   await expect(form).toBeHidden();
@@ -97,4 +97,29 @@ test('the landing menu on a phone: opens, closes, and the page does not scroll s
   await button.click();
   await expect(button).toHaveAttribute('aria-expanded', 'false');
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
+});
+
+test('a new lead needs what they are interested in; it is saved and the trial lessons follow it', async ({ page }) => {
+  const a = await newCenter('nfint');
+  const eng = await api('POST', '/subjects', { token: a.token, body: { name: 'Ingliz INT' } });
+  await api('POST', '/subjects', { token: a.token, body: { name: 'Matematika INT' } });
+
+  await loginOnMainSite(page, a.email);
+  await expectCenterDashboard(page, a.sub);
+  await page.goto(centerUrl(a.sub, '/leads'));
+  await page.getByRole('button', { name: '+ Yangi lid' }).first().click();
+  const form = page.getByRole('dialog', { name: "Yangi lid qo'shish" });
+  // The subjects have loaded: the field is marked required.
+  await expect(form.getByText('Nimaga qiziqadi? *')).toBeVisible();
+  await form.locator('input.field-input').first().fill('Interest Lid');
+  await form.getByPlaceholder(/\+998/).first().fill('+998 90 444 55 66');
+  await form.getByRole('button', { name: 'Saqlash' }).click();
+  await expect(form.getByText('Nimaga qiziqishini tanlang')).toBeVisible();
+
+  await form.getByRole('button', { name: 'Nimaga qiziqadi?' }).click();
+  await page.getByRole('option', { name: 'Ingliz INT' }).click();
+  await form.getByRole('button', { name: 'Saqlash' }).click();
+  await expect(form).toBeHidden();
+  const leads = await api<{ items: Array<{ fullName: string; desiredSubjectId: string | null }> }>('GET', '/leads', { token: a.token });
+  expect(leads.items.find((l) => l.fullName === 'Interest Lid')?.desiredSubjectId).toBe(eng.id);
 });

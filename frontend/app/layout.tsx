@@ -5,6 +5,7 @@ import { AuthProvider } from "@/lib/auth-context";
 import { LanguageProvider } from "@/lib/i18n-context";
 import SmoothAnchors from "@/components/SmoothAnchors";
 import { ROOT_DOMAIN } from "@/lib/domain";
+import { THEME_BOOT_SCRIPT } from "@/lib/theme";
 
 // Where the browser supports it (Chrome and Firefox on Android), the page
 // itself is resized by the on-screen keyboard, so a field at the bottom of
@@ -32,10 +33,12 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  await headers();
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
   return (
-    <html lang="uz">
+    <html lang="uz" suppressHydrationWarning>
       <head>
+        {/* Light or dark before the first paint (lib/theme.ts). */}
+        <script nonce={nonce} dangerouslySetInnerHTML={{ __html: THEME_BOOT_SCRIPT }} />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link

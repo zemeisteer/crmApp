@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { tenantsApi } from "./api";
-import { subdomainFromHost } from "./domain";
+import { centerAddress, centerDomainSuffix, subdomainFromHost } from "./domain";
 
 export interface HostCenter {
   subdomain: string;
@@ -25,4 +25,24 @@ export function useCenterFromHost(): HostCenter | null {
     return () => { alive = false; };
   }, []);
   return center;
+}
+
+const noSubscribe = () => () => undefined;
+
+/** The host this page is open on (with its port), or null while rendering on the server. */
+export function useBrowserHost(): string | null {
+  return useSyncExternalStore(noSubscribe, () => window.location.host, () => null);
+}
+
+/**
+ * The address a center actually runs on, from this browser: `<sub>.localhost:<port>`
+ * on a dev machine, `<sub>.<ROOT_DOMAIN>` everywhere else (lib/domain.ts centerAddress).
+ */
+export function useCenterAddress() {
+  const here = useBrowserHost();
+  return {
+    host: (subdomain: string) => centerAddress(subdomain, here).host,
+    url: (subdomain: string) => centerAddress(subdomain, here).url,
+    suffix: centerDomainSuffix(here),
+  };
 }

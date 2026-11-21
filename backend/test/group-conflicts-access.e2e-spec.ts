@@ -76,6 +76,19 @@ describe('Group form conflict check: access and what it tells (e2e)', () => {
   afterAll(async () => { await app?.close(); });
 
   const lessonClash = { teacherId: undefined as unknown as string, days: DAYS[1], startTime: '10:30', endTime: '11:30' };
+
+  it('the teacher list says who is busy for the planned slot and with what, and who is free', async () => {
+    const qs = new URLSearchParams({ days: DAYS[1], startTime: '10:30', endTime: '11:30' }).toString();
+    const list = (await http().get(`/api/groups/teacher-availability?${qs}`).set(bearer(owner)).expect(200)).body as Array<{ teacherId: string; busyWith: string[] }>;
+    expect(list.find((x) => x.teacherId === tch1)?.busyWith).toEqual(['GCA Monday']);
+    expect(list.find((x) => x.teacherId === tch2)?.busyWith).toEqual([]);
+    // Editing the Monday group itself: its own lesson is not a clash.
+    const own = (await http().get(`/api/groups/teacher-availability?${qs}&excludeId=${gMon}`).set(bearer(owner)).expect(200)).body as Array<{ teacherId: string; busyWith: string[] }>;
+    expect(own.find((x) => x.teacherId === tch1)?.busyWith).toEqual([]);
+    // Another center: none of these teachers.
+    const other = (await http().get(`/api/groups/teacher-availability?${qs}`).set(bearer(ownerB)).expect(200)).body as Array<{ teacherId: string }>;
+    expect(other.map((x) => x.teacherId)).not.toContain(tch1);
+  });
   const studentClash = { days: DAYS[3], startTime: '10:30', endTime: '11:30' };
   const makeupClash = { days: DAYS[4], startTime: '14:00', endTime: '15:00' };
 

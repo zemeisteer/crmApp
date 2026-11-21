@@ -6,12 +6,16 @@ import { and, count, desc, eq, inArray, isNull, or, sql } from 'drizzle-orm';
 import { DB, Database } from '../db/db.module';
 import { aiUsage, enrollments, mockAttempts, mockTests, students, tenants } from '../db/schema';
 import { AiService } from '../ai/ai.service';
+import { readFile } from 'fs/promises';
+import { join } from 'path';
+import { UPLOAD_DIR } from '../common/upload.util';
 import {
   bandToLevel,
   isLevel,
   LEVELS,
   levelOpen,
   missingKeys,
+  marksOf,
   parseLevel,
   type Level,
   normalizeContent,
@@ -24,10 +28,16 @@ import {
   writingBand,
   roundBand,
   type MockContent,
+  blockedBy,
+  kindStats,
+  mergeKindStats,
+  type KindStat,
   type Section,
 } from './ielts';
 import { parseExaminerReply, speakingPrompt, writingPrompt, type ExaminerFeedback } from './examiner-prompts';
 import { SAMPLE_IELTS } from './sample-test';
+import { isPartKey, publishBlocker, slotComplete } from './generation';
+import { MockSessionsService } from './mock-sessions.service';
 import {
   normalizePractice,
   PRACTICE_KIND,
@@ -79,6 +89,8 @@ export interface SectionResult {
   // transcript alone - an estimate without pronunciation, not an exam band.
   basis?: 'TRANSCRIPT';
   late?: boolean;
+  // Listening/Reading: right / total per question type, weakest first.
+  kinds?: KindStat[];
 }
 export type Results = Partial<Record<Section, SectionResult>> & { overall?: number | null };
 
@@ -117,6 +129,7 @@ export class MockTestsService {
     @Inject(DB) private readonly db: Database,
     private readonly ai: AiService,
     private readonly files: FilesService,
+    private readonly sessions: MockSessionsService,
   ) {}
 
   // ---------------------------------------------------------------- staff
@@ -145,8 +158,9 @@ export class MockTestsService {
         ...r,
         attempts,
         summary: {
-          listening: sectionQuestions(c, 'listening').length,
-          reading: sectionQuestions(c, 'reading').length,
+          // In IELTS marks: a "choose TWO" question is two of the 40.
+          listening: sectionQuestions(c, 'listening').reduce((n, q) => n + marksOf(q), 0),
+          reading: sectionQuestions(c, 'reading').reduce((n, q) => n + marksOf(q), 0),
           writing: c.writing.tasks.length,
           speaking: c.speaking.parts.reduce((s, p) => s + p.questions.length, 0),
         },
@@ -207,11 +221,26 @@ export class MockTestsService {
     }
     if (dto.level !== undefined) set.level = isLevel(dto.level) ? dto.level : null;
     if (dto.module !== undefined) set.module = dto.module === 'GENERAL' ? 'GENERAL' : 'ACADEMIC';
-    if (dto.content !== undefined) set.content = JSON.stringify(normalizeContent(dto.content));
+    // An AI test's generation state is the server's: the editor's copy is
+    // ignored, and a part that failed counts as done once the teacher has
+    // filled its slot in by hand.
+    const stored = normalizeContent(parse(current.content, {}));
+    let next: MockContent | null = null;
+    if (dto.content !== undefined) {
+      next = normalizeContent(dto.content);
+      delete next.generation;
+      if (stored.generation) {
+        const module = set.module ?? current.module;
+        next.generation = { ...stored.generation, failed: stored.generation.failed.filter((f) => !isPartKey(f.key) || !slotComplete(next!, f.key, module)) };
+      }
+      set.content = JSON.stringify(next);
+    }
     if (dto.status !== undefined) {
       if (!['DRAFT', 'PUBLISHED'].includes(dto.status)) throw new BadRequestException("Holat noto'g'ri");
       if (dto.status === 'PUBLISHED') {
-        const c = normalizeContent(dto.content ?? parse(current.content, {}));
+        const c = next ?? stored;
+        const blocker = publishBlocker(c);
+        if (blocker) throw new BadRequestException(blocker);
         const empty = sectionQuestions(c, 'listening').length + sectionQuestions(c, 'reading').length + c.writing.tasks.length + c.speaking.parts.length === 0;
         if (empty) throw new BadRequestException("Bo'sh testni e'lon qilib bo'lmaydi");
         const missing = missingKeys(c);
@@ -420,7 +449,8 @@ export class MockTestsService {
         .sort((a, b) => Number(a.mine) - Number(b.mine) || rank(a) - rank(b)),
     }));
     const aiFeedback = await this.aiAvailable(tenantId);
-    return { directions, level, aiFeedback, aiPractice: aiFeedback ? await this.practiceQuota(studentId, tenantId) : null };
+    const mockDays = await this.sessions.forStudent(studentId, tenantId);
+    return { directions, level, mockDays, aiFeedback, aiPractice: aiFeedback ? await this.practiceQuota(studentId, tenantId) : null };
   }
 
   // Opens the unfinished sitting of this test, or starts a new one.
@@ -434,8 +464,36 @@ export class MockTestsService {
     const [open] = await this.db.select({ id: mockAttempts.id }).from(mockAttempts)
       .where(and(eq(mockAttempts.testId, testId), eq(mockAttempts.studentId, studentId), eq(mockAttempts.status, 'IN_PROGRESS')));
     if (open) return this.attemptForStudent(studentId, tenantId, open.id);
+    const opensAt = await this.sessions.notYet(studentId, tenantId, testId);
+    if (opensAt) throw new ForbiddenException({ code: 'MOCK_DAY_NOT_YET', opensAt: opensAt.toISOString(), message: "Bu test mock kuni uchun: belgilangan vaqtda ochiladi" });
     const [row] = await this.db.insert(mockAttempts).values({ tenantId, testId, studentId }).returning();
     return this.attemptForStudent(studentId, tenantId, row.id);
+  }
+
+  // A student's finished IELTS sittings over time (bands per skill) and the
+  // question types they get wrong most, over all of them.
+  async progress(tenantId: string, studentId: string) {
+    const rows = await this.db.select({ id: mockAttempts.id, results: mockAttempts.results, completedAt: mockAttempts.completedAt, createdAt: mockAttempts.createdAt, title: mockTests.title, kind: mockTests.kind, content: mockTests.content, sectionDone: mockAttempts.sectionDone })
+      .from(mockAttempts).innerJoin(mockTests, eq(mockTests.id, mockAttempts.testId))
+      .where(and(eq(mockAttempts.tenantId, tenantId), eq(mockAttempts.studentId, studentId)))
+      .orderBy(mockAttempts.createdAt);
+    const points: Array<{ attemptId: string; title: string; date: Date; overall: number | null } & Partial<Record<Section, number | null>>> = [];
+    const kinds: Record<'listening' | 'reading', KindStat[][]> = { listening: [], reading: [] };
+    for (const r of rows) {
+      if (isPractice(r.kind)) continue;
+      const res = parse<Results>(r.results, {});
+      const done = parse<Record<string, string>>(r.sectionDone, {});
+      if (!SECTIONS.some((s) => done[s])) continue;
+      let content: MockContent | null = null;
+      for (const s of ['listening', 'reading'] as const) {
+        const sr = res[s];
+        if (!sr?.marks) continue;
+        content ??= normalizeContent(parse(r.content, {}));
+        kinds[s].push(sr.kinds ?? kindStats(content, s, sr.marks));
+      }
+      points.push({ attemptId: r.id, title: r.title, date: r.completedAt ?? r.createdAt, overall: res.overall ?? null, ...Object.fromEntries(SECTIONS.map((s) => [s, res[s]?.band ?? null])) });
+    }
+    return { points, weak: { listening: mergeKindStats(kinds.listening), reading: mergeKindStats(kinds.reading) } };
   }
 
   async attemptForStudent(studentId: string, tenantId: string, attemptId: string) {
@@ -462,6 +520,14 @@ export class MockTestsService {
     const content = normalizeContent(parse(test.content, {}));
     // Keys are shown only for finished Listening/Reading (to learn from).
     const keys: Partial<Record<'listening' | 'reading', string[]>> = {};
+    // Why an answer is right, written by the teacher (or the import).
+    const explanations: Partial<Record<'listening' | 'reading', Array<string | null>>> = {};
+    const results = this.studentResults(parse<Results>(a.results, {}));
+    for (const s of ['listening', 'reading'] as const) {
+      if (done[s]) explanations[s] = sectionQuestions(content, s).map((q) => q.explanation ?? null);
+      // Older sittings were marked before types were counted.
+      if (done[s] && results[s]?.marks && !results[s]!.kinds) results[s]!.kinds = kindStats(content, s, results[s]!.marks!);
+    }
     for (const s of ['listening', 'reading'] as const) {
       if (done[s]) keys[s] = sectionQuestions(content, s).map((q) => (q.type === 'MATCHING' ? (q.pairs ?? []).map((p) => `${p.left} → ${p.right}`).join('; ') : q.options?.find((o) => o.id === q.correctAnswer)?.text ?? q.correctAnswer.split('|')[0]));
     }
@@ -472,8 +538,9 @@ export class MockTestsService {
       answers: parse<Answers>(a.answers, {}),
       sectionStarted: parse<Record<string, string>>(a.sectionStarted, {}),
       sectionDone: done,
-      results: this.studentResults(parse<Results>(a.results, {})),
+      results,
       keys,
+      explanations,
       serverNow: new Date().toISOString(),
       aiFeedback: await this.aiAvailable(tenantId),
     };
@@ -482,11 +549,17 @@ export class MockTestsService {
   // Starts a section's clock (once).
   async startSection(studentId: string, tenantId: string, attemptId: string, section: string) {
     await this.assertSectionOf(studentId, tenantId, attemptId, section);
-    await this.mutate(attemptId, tenantId, studentId, (a) => {
+    await this.mutate(attemptId, tenantId, studentId, async (a, tx) => {
       const done = parse<Record<string, string>>(a.sectionDone, {});
       if (done[section]) throw new ConflictException({ code: 'SECTION_DONE', message: "Bu bo'lim topshirilgan" });
+      const [test] = await tx.select({ kind: mockTests.kind, content: mockTests.content }).from(mockTests).where(eq(mockTests.id, a.testId));
       const started = parse<Record<string, string>>(a.sectionStarted, {});
       if (started[section]) return null;
+      if (!isPractice(test.kind)) {
+        // Listening, Reading, Writing in order, as in the exam.
+        const before = blockedBy(normalizeContent(parse(test.content, {})), section as Section, done);
+        if (before) throw new ConflictException({ code: 'SECTION_ORDER', section: before, message: "Avval oldingi bo'limni topshiring: imtihondagidek Listening, Reading, Writing tartibida" });
+      }
       started[section] = new Date().toISOString();
       return { sectionStarted: started };
     });
@@ -507,7 +580,7 @@ export class MockTestsService {
   }
 
   // One recorded Speaking answer (audio file and/or the browser transcript).
-  async saveSpeaking(studentId: string, tenantId: string, attemptId: string, key: string, data: { audio?: string; transcript?: string; seconds?: number }) {
+  async saveSpeaking(studentId: string, tenantId: string, attemptId: string, key: string, data: { audio?: string; audioMime?: string; transcript?: string; seconds?: number }) {
     if (!/^\d{1,2}\.\d{1,2}$/.test(key)) throw new BadRequestException("Savol raqami noto'g'ri");
     await this.assertSectionOf(studentId, tenantId, attemptId, 'speaking');
     await this.mutate(attemptId, tenantId, studentId, (a) => {
@@ -524,8 +597,53 @@ export class MockTestsService {
       };
       return { answers: all };
     });
-    if (data.audio) await this.files.register(tenantId, data.audio, 'MOCK_SPEAKING', attemptId, studentId);
+    if (data.audio) {
+      await this.files.register(tenantId, data.audio, 'MOCK_SPEAKING', attemptId, studentId);
+      // The recording is transcribed by the AI after the answer is saved, so
+      // the student never waits on it: the browser's live text often mishears
+      // a clear speaker. Only where the center has AI on.
+      if (await this.aiAvailable(tenantId)) this.track(attemptId, this.transcribeLater(tenantId, attemptId, key, data.audio, data.audioMime ?? 'audio/webm'));
+    }
     return { saved: true };
+  }
+
+  // Transcriptions still running, per attempt: the AI examiner waits for them.
+  private readonly transcribing = new Map<string, Set<Promise<void>>>();
+
+  private track(attemptId: string, job: Promise<void>) {
+    const set = this.transcribing.get(attemptId) ?? new Set<Promise<void>>();
+    set.add(job);
+    this.transcribing.set(attemptId, set);
+    void job.finally(() => {
+      set.delete(job);
+      if (set.size === 0) this.transcribing.delete(attemptId);
+    });
+  }
+
+  // Waits (up to `ms`) for this attempt's transcriptions to land.
+  async transcriptsSettled(attemptId: string, ms = 90_000) {
+    const set = this.transcribing.get(attemptId);
+    if (!set?.size) return;
+    await Promise.race([Promise.allSettled([...set]), new Promise((r) => setTimeout(r, ms))]);
+  }
+
+  // Replaces the browser's text with the AI's, if the answer still holds
+  // this recording (not re-recorded meanwhile). Failure keeps the browser's.
+  private async transcribeLater(tenantId: string, attemptId: string, key: string, audio: string, mime: string): Promise<void> {
+    try {
+      const bytes = await readFile(join(UPLOAD_DIR, audio)).catch(() => null);
+      const heard = bytes ? await this.ai.transcribeAudio(bytes, mime) : null;
+      if (!heard) return;
+      await this.mutate(attemptId, tenantId, null, (a) => {
+        const all = parse<Answers>(a.answers, {});
+        const cur = all.speaking?.[key];
+        if (!cur || cur.audio !== audio) return null;
+        all.speaking = { ...all.speaking, [key]: { ...cur, transcript: heard.trim().slice(0, 5000) } };
+        return { answers: all };
+      });
+    } catch (err) {
+      this.logger.warn(`speaking transcript not saved: ${(err as Error).message}`);
+    }
   }
 
   // Hands in a section: Listening/Reading are scored at once, Writing and
@@ -545,6 +663,8 @@ export class MockTestsService {
       if (answers !== undefined && section !== 'speaking') (all as Record<string, unknown>)[section] = this.cleanTextAnswers(answers);
       const [test] = await tx.select().from(mockTests).where(eq(mockTests.id, a.testId));
       const content = normalizeContent(parse(test.content, {}));
+      const before = blockedBy(content, section, done);
+      if (before) throw new ConflictException({ code: 'SECTION_ORDER', section: before, message: "Avval oldingi bo'limni topshiring: imtihondagidek Listening, Reading, Writing tartibida" });
       const started = parse<Record<string, string>>(a.sectionStarted, {});
       const minutes = section === 'speaking' ? null : content[section].durationMin;
       const late = !!(minutes && started[section] && Date.now() > Date.parse(started[section]) + minutes * 60_000 + GRACE_MS);
@@ -552,7 +672,7 @@ export class MockTestsService {
       const results = parse<Results>(a.results, {});
       if (section === 'listening' || section === 'reading') {
         const r = scoreObjective(content, section, all[section] ?? {}, test.module === 'GENERAL' ? 'GENERAL' : 'ACADEMIC');
-        results[section] = { status: 'DONE', band: r.band, raw: r.raw, max: r.max, marks: r.marks, gradedBy: 'AUTO', late };
+        results[section] = { status: 'DONE', band: r.band, raw: r.raw, max: r.max, marks: r.marks, kinds: kindStats(content, section, r.marks), gradedBy: 'AUTO', late };
       } else if (section === 'writing') {
         const tasks = content.writing.tasks.map((_, i) => ({ band: null, words: wordCount(all.writing?.[String(i)] ?? ''), feedback: null }));
         results.writing = { status: aiOn ? 'PENDING' : 'REVIEW', band: null, tasks, late };
@@ -746,6 +866,7 @@ export class MockTestsService {
   // ------------------------------------------------------------ AI marking
 
   async gradeWithAi(attemptId: string, section: 'writing' | 'speaking', charged = false) {
+    if (section === 'speaking') await this.transcriptsSettled(attemptId);
     const [a] = await this.db.select().from(mockAttempts).where(eq(mockAttempts.id, attemptId));
     if (!a) return;
     const [test] = await this.db.select().from(mockTests).where(eq(mockTests.id, a.testId));

@@ -102,9 +102,12 @@ function GroupsContent() {
   const [startDate, setStartDate] = useState("");
   const [monthlyPrice, setMonthlyPrice] = useState("");
   const [maxStudents, setMaxStudents] = useState("");
+  const [isIndividual, setIsIndividual] = useState(false);
   const [durationMonths, setDurationMonths] = useState("");
   const [description, setDescription] = useState("");
   const [scheduleConflicts, setScheduleConflicts] = useState<{ id: string; name: string }[]>([]);
+  // Busy or free for the chosen days and time, per teacher (null: not asked yet).
+  const [availability, setAvailability] = useState<Map<string, string[]> | null>(null);
   // A failed check is said, not shown as "no clash".
   const [conflictCheckError, setConflictCheckError] = useState<string | null>(null);
   const [conflictRetry, setConflictRetry] = useState(0);
@@ -112,6 +115,24 @@ function GroupsContent() {
   // names it come first (and alone), unless the user asks for everyone.
   const [allTeachers, setAllTeachers] = useState(false);
   const teacherChoice = pickTeachers(teachers, subject === OTHER_SUBJECT ? customSubject : subject, teacherId, allTeachers, t);
+
+  useEffect(() => {
+    if (days.length === 0 || !startTime) {
+      setAvailability(null);
+      return;
+    }
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      groupsApi
+        .teacherAvailability({ days: days.join(","), startTime, endTime: endTime || undefined, excludeId: editingId ?? undefined })
+        .then((res) => !cancelled && setAvailability(new Map(res.map((r) => [r.teacherId, r.busyWith]))))
+        .catch(() => !cancelled && setAvailability(null));
+    }, 300);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [days, startTime, endTime, editingId]);
 
   useEffect(() => {
     if (!teacherId || days.length === 0 || !startTime) {
@@ -197,6 +218,7 @@ function GroupsContent() {
     setStartDate("");
     setMonthlyPrice("");
     setMaxStudents("");
+    setIsIndividual(false);
     setDurationMonths("");
     setDescription("");
     setScheduleConflicts([]);
@@ -217,6 +239,7 @@ function GroupsContent() {
     setStartDate(g.startDate ? g.startDate.slice(0, 10) : "");
     setMonthlyPrice(g.monthlyPrice ? String(g.monthlyPrice) : "");
     setMaxStudents(g.maxStudents ? String(g.maxStudents) : "");
+    setIsIndividual(!!g.isIndividual);
     setDurationMonths(g.durationMonths ? String(g.durationMonths) : "");
     setDescription(g.description ?? "");
     setModalOpen(true);
@@ -239,11 +262,12 @@ function GroupsContent() {
     } else if (teachers.length === 0) errs.teacher = t("groups.errNoTeachers");
     else if (!teacherId) errs.teacher = t("groups.errTeacher");
     if (branches.length > 0 && !branchId) errs.branch = req;
-    if (days.length === 0) errs.days = t("groups.errDays");
-    if (!startTime) errs.startTime = req;
+    // An individual lesson: the times may be agreed with the teacher later.
+    if (days.length === 0 && !isIndividual) errs.days = t("groups.errDays");
+    if (!startTime && !isIndividual) errs.startTime = req;
     if (!startDate) errs.startDate = req;
     if (!monthlyPrice || Number(monthlyPrice) <= 0) errs.monthlyPrice = t("groups.errPrice");
-    if (!maxStudents || Number(maxStudents) <= 0) errs.maxStudents = t("groups.errSeats");
+    if (!isIndividual && (!maxStudents || Number(maxStudents) <= 0)) errs.maxStudents = t("groups.errSeats");
     return errs;
   }
 
@@ -278,7 +302,8 @@ function GroupsContent() {
         schedule: scheduleDays && startTime ? `${scheduleDays}, ${startTime}-${lessonEnd}` : undefined,
         startDate: startDate || undefined,
         monthlyPrice: monthlyPrice ? Number(monthlyPrice) : undefined,
-        maxStudents: maxStudents ? Number(maxStudents) : undefined,
+        maxStudents: isIndividual ? 1 : maxStudents ? Number(maxStudents) : undefined,
+        isIndividual,
         durationMonths: durationMonths ? Number(durationMonths) : undefined,
         description: description || undefined,
       };
@@ -406,7 +431,14 @@ function GroupsContent() {
               <tbody>
                 {pageItems.map((g) => (
                   <tr key={g.id}>
-                    <td style={{ fontWeight: 600 }}>{g.name}</td>
+                    <td style={{ fontWeight: 600 }}>
+                      {g.name}
+                      {g.isIndividual && (
+                        <span data-testid="individual-badge" style={{ marginLeft: 8, fontSize: 11, fontWeight: 700, color: "var(--primary)", background: "var(--primary-soft)", padding: "2px 8px", borderRadius: "var(--radius-pill)", whiteSpace: "nowrap" }}>
+                          👤 {t("groups.individualBadge")}
+                        </span>
+                      )}
+                    </td>
                     <td>
                       {g.teacher ? (
                         <Link
@@ -537,7 +569,17 @@ function GroupsContent() {
           ) : (
             <Field label={t("groups.fieldTeacher")} required error={fieldErrors.teacher}>
               <Select
-                options={[{ value: "", label: t("groups.notSelected") }, ...teacherChoice.list.map((tc) => ({ value: tc.id, label: tc.subject ? `${tc.fullName} · ${tc.subject}` : tc.fullName }))]}
+                options={[
+                  { value: "", label: t("groups.notSelected") },
+                  // Free ones first once the days and time are chosen; each says which.
+                  ...[...teacherChoice.list]
+                    .sort((a, b) => (availability ? Number((availability.get(a.id)?.length ?? 0) > 0) - Number((availability.get(b.id)?.length ?? 0) > 0) : 0))
+                    .map((tc) => {
+                      const base = tc.subject ? `${tc.fullName} · ${tc.subject}` : tc.fullName;
+                      const busy = availability?.get(tc.id);
+                      return { value: tc.id, label: !availability ? base : busy && busy.length ? `🔴 ${base} — ${t("groups.teacherBusy")}: ${busy.join(", ")}` : `🟢 ${base} — ${t("groups.teacherFree")}` };
+                    }),
+                ]}
                 value={teacherId}
                 onChange={setTeacherId}
               />
@@ -562,7 +604,14 @@ function GroupsContent() {
               />
             </Field>
           )}
-          <Field label={t("groups.fieldDays")} required error={fieldErrors.days}>
+          <label style={{ display: "flex", gap: 10, alignItems: "flex-start", fontSize: 13.5, cursor: "pointer", background: "var(--surface-muted)", padding: "10px 12px", borderRadius: "var(--radius-sm)" }}>
+            <input type="checkbox" checked={isIndividual} onChange={(e) => setIsIndividual(e.target.checked)} style={{ marginTop: 3 }} />
+            <span>
+              <b>{t("groups.individual")}</b>
+              <span style={{ display: "block", fontSize: 12.5, color: "var(--text-muted)", marginTop: 2 }}>{t("groups.individualHint")}</span>
+            </span>
+          </label>
+          <Field label={t("groups.fieldDays")} required={!isIndividual} error={fieldErrors.days}>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
               {WEEKDAYS.map((d, i) => (
                 <button
@@ -607,8 +656,8 @@ function GroupsContent() {
             <Field label={t("groups.fieldMonthlyPrice")} required error={fieldErrors.monthlyPrice}>
               <input className="field-input" type="number" min={0} value={monthlyPrice} onChange={(e) => setMonthlyPrice(e.target.value)} placeholder="500000" />
             </Field>
-            <Field label={t("groups.fieldMaxSeats")} required error={fieldErrors.maxStudents}>
-              <input className="field-input" type="number" min={1} value={maxStudents} onChange={(e) => setMaxStudents(e.target.value)} placeholder="15" />
+            <Field label={t("groups.fieldMaxSeats")} required={!isIndividual} error={fieldErrors.maxStudents}>
+              <input className="field-input" type="number" min={1} value={isIndividual ? "1" : maxStudents} disabled={isIndividual} onChange={(e) => setMaxStudents(e.target.value)} placeholder="15" />
             </Field>
           </div>
           <Field label={t("groups.fieldDuration")}>

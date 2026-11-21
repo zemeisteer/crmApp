@@ -66,7 +66,7 @@ export default function HeroSlides({ slides, accent }: { slides: Slide[]; accent
     <div
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
-      style={{ position: "relative", borderRadius: "var(--radius-lg)", overflow: "hidden", background: "var(--surface)", border: "1px solid var(--border)", boxShadow: "0 30px 60px -28px rgba(18,19,26,0.35)" }}
+      style={{ position: "relative", borderRadius: 20, overflow: "hidden", background: "var(--surface)", border: "1px solid var(--border)" }}
     >
       <div key={i} className="ps-slide" style={{ aspectRatio: "4 / 3", background: photo ? "var(--ink)" : `linear-gradient(160deg, color-mix(in srgb, ${accent} 10%, white), var(--surface))` }}>
         {photo ? (
@@ -83,7 +83,7 @@ export default function HeroSlides({ slides, accent }: { slides: Slide[]; accent
       </div>
       <div style={{ padding: "16px 18px 18px", display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 12 }}>
         <div style={{ minWidth: 0 }}>
-          <div style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 16.5 }}>{s.title}</div>
+          <div style={{ fontFamily: "var(--ps-display, var(--font-display))", fontWeight: 700, fontSize: 16.5 }}>{s.title}</div>
           <div style={{ fontSize: 13.5, color: "var(--text-soft)", marginTop: 3, lineHeight: 1.5 }}>{s.text}</div>
         </div>
         {slides.length > 1 && (

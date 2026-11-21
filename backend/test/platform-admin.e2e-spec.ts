@@ -55,6 +55,16 @@ describe('Platform admin (e2e)', () => {
     }
   });
 
+  it("platform data never answers a page on a center's address, even the superadmin's", async () => {
+    const res = await http().get('/api/platform/dashboard').set(bearer(sa)).set('Origin', 'http://alpha.localhost:3100');
+    expect([res.status, res.body.code]).toEqual([403, 'PLATFORM_MAIN_DOMAIN_ONLY']);
+    expect(JSON.stringify(res.body)).not.toContain('tenants');
+    const fwd = await http().get('/api/tenants').set(bearer(sa)).set('X-Forwarded-Host', 'alpha.localhost');
+    expect([fwd.status, fwd.body.code]).toEqual([403, 'PLATFORM_MAIN_DOMAIN_ONLY']);
+    // The main site (here: localhost) still gets it.
+    await http().get('/api/platform/dashboard').set(bearer(sa)).set('Origin', 'http://localhost:3100').expect(200);
+  });
+
   it('every platform route is for the platform admin alone', async () => {
     const routes: Array<[string, string, unknown?]> = [
       ['get', '/api/platform/dashboard'],
@@ -152,9 +162,10 @@ describe('Platform admin (e2e)', () => {
       expect(r.value).not.toContain(SECRET);
       expect(r.updatedBy).toBe(saId);
     }
-    const logs = await db.select().from(auditLogs).where(eq(auditLogs.entityType, 'platform_setting'));
-    expect(JSON.stringify(logs)).not.toContain(SECRET);
-    expect(logs.some((l) => (l.meta ?? '').includes('GEMINI_API_KEY'))).toBe(true);
+    // The audit row is written after the answer (fire-and-forget): wait for it.
+    const auditRows = () => db.select().from(auditLogs).where(eq(auditLogs.entityType, 'platform_setting'));
+    await expect.poll(async () => (await auditRows()).some((l) => (l.meta ?? '').includes('GEMINI_API_KEY')), { timeout: 10_000 }).toBe(true);
+    expect(JSON.stringify(await auditRows())).not.toContain(SECRET);
     // The server uses it from that moment.
     expect(process.env.GEMINI_API_KEY).toBe(SECRET);
 

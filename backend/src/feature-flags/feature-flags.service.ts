@@ -3,7 +3,7 @@ import { and, eq, isNull } from 'drizzle-orm';
 import { DB, Database } from '../db/db.module';
 import { featureFlags, tenants } from '../db/schema';
 import { AuditService } from '../audit/audit.service';
-import { FLAGS, clearFlagCache, flagOn, type FlagKey } from './flags';
+import { DEFAULT_ON, FLAGS, clearFlagCache, flagOn, type FlagKey } from './flags';
 
 @Injectable()
 export class FeatureFlagsService {
@@ -34,7 +34,7 @@ export class FeatureFlagsService {
       .leftJoin(tenants, eq(tenants.id, featureFlags.tenantId));
     return FLAGS.map((key) => ({
       key,
-      enabled: rows.find((r) => r.key === key && r.tenantId === null)?.enabled ?? true,
+      enabled: rows.find((r) => r.key === key && r.tenantId === null)?.enabled ?? DEFAULT_ON[key],
       overrides: rows.filter((r) => r.key === key && r.tenantId !== null).map((r) => ({ tenantId: r.tenantId!, name: r.name, subdomain: r.subdomain, enabled: r.enabled })),
     }));
   }

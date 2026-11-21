@@ -176,7 +176,8 @@ export class GroupsService {
           level: dto.level,
           teacherId: dto.teacherId || null,
           startDate: dto.startDate ? new Date(dto.startDate) : undefined,
-          maxStudents: dto.maxStudents ?? 20,
+          maxStudents: dto.isIndividual ? 1 : dto.maxStudents ?? 20,
+          isIndividual: !!dto.isIndividual,
           schedule: dto.schedule,
           scheduleDays: dto.scheduleDays,
           startTime: dto.startTime,
@@ -375,7 +376,8 @@ export class GroupsService {
           ...(dto.teacherId !== undefined ? { teacherId: dto.teacherId || null } : {}),
           ...(dto.branchId !== undefined ? { branchId: dto.branchId || null } : {}),
           ...(dto.startDate !== undefined ? { startDate: dto.startDate ? new Date(dto.startDate) : undefined } : {}),
-          ...(dto.maxStudents !== undefined ? { maxStudents: dto.maxStudents } : {}),
+          ...(dto.isIndividual !== undefined ? { isIndividual: dto.isIndividual } : {}),
+          ...(dto.isIndividual ? { maxStudents: 1 } : dto.maxStudents !== undefined ? { maxStudents: dto.maxStudents } : {}),
           ...(dto.schedule !== undefined ? { schedule: dto.schedule } : {}),
           ...(dto.scheduleDays !== undefined ? { scheduleDays: dto.scheduleDays } : {}),
           ...(dto.startTime !== undefined ? { startTime: dto.startTime } : {}),
@@ -546,5 +548,22 @@ export class GroupsService {
       }
     }
     return [...seen.values()];
+  }
+
+  /**
+   * Every teacher of the center for a planned slot: busy (with what) or
+   * free, so the group form can say it next to each name before one is
+   * picked. Same check, same redaction as findScheduleConflicts.
+   */
+  async teacherAvailability(tenantId: string, scheduleDays: string, startTime: string, excludeGroupId?: string, endTime?: string, viewer?: ConflictViewer) {
+    const list = await this.db.select({ id: teachers.id }).from(teachers)
+      .where(and(eq(teachers.tenantId, tenantId), isNull(teachers.deletedAt)))
+      .limit(200);
+    const out: Array<{ teacherId: string; busyWith: string[] }> = [];
+    for (const t of list) {
+      const conflicts = await this.findScheduleConflicts(tenantId, t.id, scheduleDays, startTime, excludeGroupId, endTime, viewer);
+      out.push({ teacherId: t.id, busyWith: conflicts.map((c) => c.name) });
+    }
+    return out;
   }
 }

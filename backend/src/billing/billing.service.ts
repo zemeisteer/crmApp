@@ -342,6 +342,9 @@ export class BillingService {
           error_note: 'Already paid',
         };
       }
+      if (tx.status === 'CANCELLED' || tx.status === 'FAILED') {
+        return { click_trans_id, merchant_trans_id, error: CLICK_ERROR.CANCELLED, error_note: 'Transaction cancelled' };
+      }
 
       await this.db
         .update(billingTransactions)
@@ -379,6 +382,23 @@ export class BillingService {
           error: CLICK_ERROR.ALREADY_PAID,
           error_note: 'Already paid',
         };
+      }
+      // A cancelled or failed transaction is never completed later.
+      if (tx.status === 'CANCELLED' || tx.status === 'FAILED') {
+        return { click_trans_id, merchant_trans_id, error: CLICK_ERROR.CANCELLED, error_note: 'Transaction cancelled' };
+      }
+      // Complete answers the Prepare this merchant gave (merchant_prepare_id = our transaction id).
+      if (merchant_prepare_id !== tx.id) {
+        return { click_trans_id, merchant_trans_id, error: CLICK_ERROR.TRANSACTION_NOT_FOUND, error_note: 'Transaction not found' };
+      }
+      // Click also sends Complete for a payment that failed on its side,
+      // with error < 0: the money was not taken, so nothing is recorded.
+      if (Number(body.error ?? 0) < 0) {
+        await this.db
+          .update(billingTransactions)
+          .set({ status: 'FAILED', updatedAt: new Date() })
+          .where(and(eq(billingTransactions.id, tx.id), ne(billingTransactions.status, 'PAID')));
+        return { click_trans_id, merchant_trans_id, error: CLICK_ERROR.CANCELLED, error_note: 'Transaction cancelled' };
       }
 
       await this.finalizePayment(tx.id, click_trans_id);
@@ -497,6 +517,9 @@ export class BillingService {
             id,
           };
         }
+        if (tx.status === 'CANCELLED' || tx.status === 'FAILED') {
+          return { error: { code: PAYME_ERROR.CANT_PERFORM_OPERATION, message: 'Transaction cancelled' }, id };
+        }
         if (tx.status === 'PAID') {
           // Idempotent retry
           return {
@@ -536,10 +559,22 @@ export class BillingService {
             id,
           };
         }
-        await this.db
+        // Paid already: the payment is recorded against the student's
+        // invoices. Payme is told it cannot be cancelled here (a refund is
+        // the center's to make), instead of marking the transaction cancelled
+        // while the payment stays.
+        if (tx.status === 'PAID') {
+          return { error: { code: PAYME_ERROR.CANT_CANCEL, message: 'Transaction already performed' }, id };
+        }
+        const [cancelled] = await this.db
           .update(billingTransactions)
           .set({ status: 'CANCELLED', updatedAt: new Date() })
-          .where(eq(billingTransactions.id, tx.id));
+          .where(and(eq(billingTransactions.id, tx.id), ne(billingTransactions.status, 'PAID')))
+          .returning({ id: billingTransactions.id });
+        // Performed meanwhile (a Perform raced this Cancel).
+        if (!cancelled) {
+          return { error: { code: PAYME_ERROR.CANT_CANCEL, message: 'Transaction already performed' }, id };
+        }
 
         this.audit.log({
           tenantId: tx.tenantId,

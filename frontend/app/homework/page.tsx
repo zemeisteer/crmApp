@@ -519,21 +519,6 @@ function HomeworkContent() {
   useEffect(() => setPage(1), [filterDirection, filterGroupId, search]);
   const pageItems = usePagedSlice(filtered, page);
 
-  // Completion rate per group: completed marks / total (homework × enrolled students).
-  const groupCompletionChart = useMemo(() => {
-    const byGroup: Record<string, { name: string; completed: number; total: number }> = {};
-    for (const h of items) {
-      if (!h.group) continue;
-      const key = h.groupId;
-      byGroup[key] = byGroup[key] || { name: h.group.name, completed: 0, total: 0 };
-      const completions = h.completions || [];
-      byGroup[key].completed += completions.filter((c) => c.completed).length;
-      byGroup[key].total += completions.length;
-    }
-    return Object.values(byGroup)
-      .filter((g) => g.total > 0)
-      .map((g) => ({ label: g.name, value: Math.round((g.completed / g.total) * 100) }));
-  }, [items]);
 
   // Demo-style summary: per homework, how many of the group's students
   // handed it in, and whether it is active, due today, done or overdue.
@@ -562,14 +547,27 @@ function HomeworkContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [items, groups, today]);
 
-  const homeworkCountChart = useMemo(() => {
-    const byGroup: Record<string, number> = {};
-    for (const h of items) {
+  // Both charts follow the filters above and show the same groups: every
+  // group with homework in view. Completion is the share of the group's
+  // students who handed each homework in (the same rule as the cards), so a
+  // group whose work is not marked yet shows 0% instead of being left out.
+  const { groupCompletionChart, homeworkCountChart } = useMemo(() => {
+    const byGroup = new Map<string, { name: string; count: number; shares: number[] }>();
+    for (const h of filtered) {
       if (!h.group) continue;
-      byGroup[h.group.name] = (byGroup[h.group.name] || 0) + 1;
+      const row = byGroup.get(h.groupId) ?? { name: h.group.name, count: 0, shares: [] };
+      row.count += 1;
+      const { size, done } = hwState(h);
+      if (size > 0) row.shares.push(Math.min(1, done / size));
+      byGroup.set(h.groupId, row);
     }
-    return Object.entries(byGroup).map(([label, value]) => ({ label, value }));
-  }, [items]);
+    const rows = [...byGroup.values()];
+    return {
+      groupCompletionChart: rows.map((g) => ({ label: g.name, value: g.shares.length ? Math.round((g.shares.reduce((x, y) => x + y, 0) / g.shares.length) * 100) : 0 })),
+      homeworkCountChart: rows.map((g) => ({ label: g.name, value: g.count })),
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filtered, groups, today]);
 
   return (
     <>

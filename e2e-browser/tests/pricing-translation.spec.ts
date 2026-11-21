@@ -1,5 +1,5 @@
 import { expect, test, type Page, type Route } from '@playwright/test';
-import { api, apiLogin, centerUrl, cleanUpStagingCenters, expectCenterDashboard, loginOnMainSite, newCenter, TARGET } from './support';
+import { api, apiLogin, cleanUpStagingCenters, loginOnMainSite, mainUrl, newCenter, TARGET } from './support';
 
 // The tariff form translates the Uzbek feature list into Russian and English.
 // The translator's answers are held here and let go one by one, late and in
@@ -50,10 +50,11 @@ test('tariff translations: late and reversed answers, typing meanwhile, a closed
   test.skip(TARGET !== 'local', 'needs the disposable local database');
   const admin = await newCenter('prtr');
   await promote(admin.email);
-  await loginOnMainSite(page, admin.email);
-  await expectCenterDashboard(page, admin.sub);
+  // The plan editor is part of the platform panel: on the main site only.
+  await loginOnMainSite(page, admin.email, '/admin/overview');
+  await expect(page).toHaveURL(mainUrl('/admin/overview'));
   const t = await holdTranslations(page);
-  await page.goto(centerUrl(admin.sub, '/pricing'));
+  await page.goto(mainUrl('/pricing'));
 
   const dialog = page.getByRole('dialog', { name: 'Yangi tarif' });
   const uz = dialog.getByLabel(/^Imkoniyatlar \(har birini/);

@@ -56,10 +56,6 @@ describe('Debtor reminders (e2e)', () => {
     ids.none = await add('Silent Kid', {});
     ids.paid = await add('Paid Kid', { phone: '+998901112244' });
     await db.update(students).set({ telegramChatId: '777000' }).where(eq(students.id, ids.tg));
-    const p = await preview();
-    const due = p.debtors.find((d: Row) => d.studentId === ids.paid).debt as number;
-    await http().post('/api/payments').set(as('OWNER')).send({ studentId: ids.paid, amount: due, forMonth: p.forMonth, method: 'CASH' }).expect(201);
-
     // Nothing leaves the machine: record what would be sent.
     const notifications = app.get(NotificationsService);
     sent = [];
@@ -68,6 +64,14 @@ describe('Debtor reminders (e2e)', () => {
       return {} as any;
     });
     tgSpy = vi.spyOn(app.get(TelegramService), 'isConfigured', 'get').mockReturnValue(true);
+
+    const p = await preview();
+    const due = p.debtors.find((d: Row) => d.studentId === ids.paid).debt as number;
+    await http().post('/api/payments').set(as('OWNER')).send({ studentId: ids.paid, amount: due, forMonth: p.forMonth, method: 'CASH' }).expect(201);
+    // The payment's receipt is sent in the background, after the request
+    // has answered: wait for it, so it is not counted as a reminder below.
+    await vi.waitFor(() => expect(sent.some((x: any) => x.event === 'PAYMENT_RECEIVED' && x.studentId === ids.paid)).toBe(true), { timeout: 10_000 });
+    sent.length = 0;
   });
 
   afterAll(async () => {

@@ -35,6 +35,32 @@ export function daysOf(text: string): string | null {
 }
 
 export type ImportKind = 'teachers' | 'groups' | 'students';
+
+/** The person's choice of columns: field key (or "cf:<custom field id>") -> the header of its column. */
+export type ColumnMapping = Record<string, string>;
+
+/** A mapping sent as JSON text with the file; null when none was sent. */
+export function parseMapping(kind: ImportKind, raw: unknown): ColumnMapping | null {
+  if (raw === undefined || raw === null || raw === '') return null;
+  let v: unknown;
+  try {
+    v = typeof raw === 'string' ? JSON.parse(raw) : raw;
+  } catch {
+    throw new Error("Ustunlar tanlovi noto'g'ri (JSON)");
+  }
+  if (!v || typeof v !== 'object' || Array.isArray(v)) throw new Error("Ustunlar tanlovi noto'g'ri");
+  const keys = new Set(COLUMNS[kind].map((c) => c.key));
+  const out: ColumnMapping = {};
+  const headers = new Set<string>();
+  for (const [k, h] of Object.entries(v as Record<string, unknown>).slice(0, 60)) {
+    if (typeof h !== 'string' || !h.trim() || h.length > 200) continue;
+    if (!keys.has(k) && !/^cf:[A-Za-z0-9_-]{1,64}$/.test(k)) throw new Error(`Noma'lum maydon: ${k}`);
+    if (headers.has(h)) throw new Error(`Bitta ustun ikki maydonga tanlangan: ${h}`);
+    headers.add(h);
+    out[k] = h;
+  }
+  return out;
+}
 export const MAX_ROWS = 2000;
 
 export interface Column {

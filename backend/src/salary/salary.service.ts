@@ -14,6 +14,9 @@ import {
 } from '../db/schema';
 import { DisburseSalaryDto } from './dto/salary.dto';
 import { LedgerService } from '../ledger/ledger.service';
+import { fixedShare } from './fixed-share';
+import { tenants } from '../db/schema';
+import { DEFAULT_TIMEZONE, isValidTimeZone } from '../common/timezone';
 import { AuditService } from '../audit/audit.service';
 import { reconcileLegacyPayroll, salaryExpenseTitle, type PayrollReconciliation } from './payroll-reconciliation';
 
@@ -47,6 +50,8 @@ export interface TeacherPayrollItem {
     unmatchedMarks: number;
     // Taken off for missed lessons (non per-lesson pay).
     deduction: number;
+    workedFromDay?: number | null;
+    noLessons?: boolean;
   };
 }
 
@@ -144,6 +149,8 @@ export class SalaryService {
     // 5. Fetch enrollments of this center
     const allEnrollments = await this.db.query.enrollments.findMany({ where: eq(enrollments.tenantId, tenantId) });
     const attendanceStats = await this.teacherAttendance.monthStats(tenantId, month);
+    const center = await this.db.query.tenants.findFirst({ where: eq(tenants.id, tenantId), columns: { timezone: true } });
+    const tz = isValidTimeZone(center?.timezone) ? center!.timezone : DEFAULT_TIMEZONE;
 
     const items: TeacherPayrollItem[] = [];
 
@@ -160,6 +167,8 @@ export class SalaryService {
       let groupRevenue = 0;
       let studentCount = 0;
       let deduction = 0;
+      let workedFromDay: number | null = null;
+      let noLessons = false;
 
       if (type === 'PER_LESSON') {
         // Lessons actually taught: planned, minus missed, plus covered for others.
@@ -168,7 +177,13 @@ export class SalaryService {
       } else {
         let base = 0;
         if (type === 'FIXED') {
-          base = rate;
+          // Only the days since the teacher started; nothing while they have
+          // no group and no lesson at all this month (nothing to pay for yet).
+          // No start date saved: the day the teacher was added (as the teacher page shows).
+          const share = fixedShare(rate, teacher.startDate ?? teacher.createdAt ?? null, month, tz);
+          workedFromDay = share.fromDay;
+          noLessons = teacherGroups.length === 0 && att.planned === 0 && att.substituted === 0;
+          base = noLessons ? 0 : share.amount;
         } else if (type === 'PERCENTAGE') {
           const enrolledStudentIds = new Set(
             allEnrollments.filter((e) => teacherGroupIds.has(e.groupId)).map((e) => e.studentId),
@@ -219,6 +234,9 @@ export class SalaryService {
           substitutedLessons: att.substituted,
           unmatchedMarks: att.unmatched,
           deduction,
+          // FIXED: paid from this day of the month (started mid-month); no lessons: nothing yet.
+          workedFromDay,
+          noLessons: type === 'FIXED' ? noLessons : undefined,
         },
       });
     }

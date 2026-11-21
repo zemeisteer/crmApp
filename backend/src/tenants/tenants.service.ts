@@ -1,3 +1,4 @@
+import { isNewGroup } from '../groups/new-group';
 import { BadRequestException, ConflictException, Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { and, asc, eq, inArray, isNotNull, isNull, ne, sql } from 'drizzle-orm';
 import * as bcrypt from 'bcrypt';
@@ -138,7 +139,7 @@ export class TenantsService {
     // 1. Groups / Courses: open groups only (archived / finished ones are
     // not advertised).
     const activeGroups = await this.db.query.groups.findMany({
-      where: and(eq(groups.tenantId, tenant.id), isNull(groups.deletedAt), inArray(groups.status, ['ACTIVE', 'PLANNED'])),
+      where: and(eq(groups.tenantId, tenant.id), isNull(groups.deletedAt), inArray(groups.status, ['ACTIVE', 'PLANNED']), eq(groups.isIndividual, false)),
       with: {
         teacher: { columns: { id: true, fullName: true, subject: true } },
         branch: { columns: { id: true, name: true, address: true } },
@@ -148,7 +149,7 @@ export class TenantsService {
     // 2. Teachers (active teachers without deletedAt, only safe public info)
     const activeTeachers = await this.db.query.teachers.findMany({
       where: and(eq(teachers.tenantId, tenant.id), isNull(teachers.deletedAt)),
-      columns: { id: true, fullName: true, subject: true, startDate: true },
+      columns: { id: true, fullName: true, subject: true, startDate: true, score: true, experienceYears: true, photoPath: true },
     });
 
     // 3. Branches
@@ -235,6 +236,9 @@ export class TenantsService {
         teacherName: g.teacher?.fullName,
         branchName: g.branch?.name,
         seatsLeft: g.maxStudents ? Math.max(0, g.maxStudents - (seats.find((x) => x.groupId === g.id)?.n ?? 0)) : null,
+        startDate: g.startDate,
+        // "Our new groups": opened in the last 30 days, or not started yet.
+        isNew: isNewGroup(g),
       })),
       teachers: activeTeachers,
       branches: activeBranches,
@@ -290,7 +294,8 @@ export class TenantsService {
       fullName: dto.fullName,
       phone: dto.phone,
       secondaryPhone: dto.parentPhone,
-      subjectText: dto.subject,
+      subjectText: dto.subjects?.[0] ?? dto.subject,
+      extraSubjectTexts: dto.subjects?.slice(1),
       branchId: dto.branchId,
       notes: dto.notes,
       utm: { source: dto.utmSource, medium: dto.utmMedium, campaign: dto.utmCampaign },

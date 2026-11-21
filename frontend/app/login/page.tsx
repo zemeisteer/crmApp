@@ -5,7 +5,8 @@ import Link from "next/link";
 import { useAuth, isWorkspaceSelection } from "@/lib/auth-context";
 import { useLanguage } from "@/lib/i18n-context";
 import { ApiError, WorkspaceItem } from "@/lib/api";
-import { centerHost, centerRedirectBase, forgetCenter, lastCenter, mainSiteUrl, subdomainFromHost } from "@/lib/domain";
+import { useCenterAddress } from "@/lib/use-center-host";
+import { centerRedirectBase, forgetCenter, lastCenter, mainSiteUrl, subdomainFromHost } from "@/lib/domain";
 import { useCenterFromHost } from "@/lib/use-center-host";
 
 const ACCENT = "var(--primary)";
@@ -35,6 +36,10 @@ const ROLE_LABELS: Record<string, Record<"UZ" | "RU" | "EN", string>> = {
 export default function LoginPage() {
   const { login, completeTwoFactorLogin, selectWorkspace, user, loading: authLoading } = useAuth();
   const { t, lang, setLang } = useLanguage();
+  const centerAt = useCenterAddress();
+  // On a center's own address (bilimdon.<root>): known after mount, as the host is.
+  const [onCenterSite, setOnCenterSite] = useState(false);
+  useEffect(() => setOnCenterSite(!!subdomainFromHost(window.location.host)), []);
   const [emailOrPhone, setEmailOrPhone] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -302,7 +307,7 @@ export default function LoginPage() {
                         {ws.name}
                       </div>
                       <div style={{ fontSize: 12.5, color: "var(--text-muted)", marginTop: 2 }}>
-                        {centerHost(ws.subdomain)}
+                        {centerAt.host(ws.subdomain)}
                       </div>
                     </div>
                   </div>
@@ -630,14 +635,21 @@ export default function LoginPage() {
               color: "var(--text-muted)",
             }}
           >
-            {t("auth.noAccount")}{" "}
-            <Link
-              href="/register"
-              id="start-free-link"
-              style={{ color: ACCENT, fontWeight: 700, textDecoration: "none" }}
-            >
-              {t("auth.tryFree")}
-            </Link>
+            {/* A center's own address signs its people in; new centers start on the main site. */}
+            {onCenterSite ? (
+              <span data-testid="center-login-hint">{t("auth.centerAccountHint")}</span>
+            ) : (
+              <>
+                {t("auth.noAccount")}{" "}
+                <Link
+                  href="/register"
+                  id="start-free-link"
+                  style={{ color: ACCENT, fontWeight: 700, textDecoration: "none" }}
+                >
+                  {t("auth.tryFree")}
+                </Link>
+              </>
+            )}
           </div>
         </form>
       </div>

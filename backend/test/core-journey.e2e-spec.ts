@@ -3,6 +3,7 @@ import { INestApplication, ValidationPipe } from '@nestjs/common';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from '../src/app.module.js';
+import { trialStarted } from './trial-started';
 
 // The path a pilot center walks on its first day, end to end through the
 // public API: set the center up, staff sign in, a lead comes in, has a trial
@@ -82,6 +83,7 @@ describe('Core journey: lead to paid student (e2e)', () => {
   it('4. a trial lesson is booked and attended', async () => {
     const day = new Date(Date.now() + 3 * 86_400_000 + 5 * 3_600_000).toISOString().slice(0, 10);
     const trial = (await http().post(`/api/leads/${leadId}/trials`).set(bearer(receptionist)).send({ scheduledAt: `${day}T07:00:00+05:00` }).expect(201)).body;
+    await trialStarted(trial.id);
     await http().post(`/api/leads/${leadId}/trials/${trial.id}/attend`).set(bearer(receptionist)).send({}).expect(201);
     expect((await http().get(`/api/leads/${leadId}`).set(bearer(owner)).expect(200)).body.status).toBe('TRIAL_ATTENDED');
     await http().post(`/api/leads/${leadId}/transition`).set(bearer(owner)).send({ toStatus: 'QUALIFIED' }).expect(201);

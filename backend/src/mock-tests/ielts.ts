@@ -51,6 +51,51 @@ export interface MockContent {
   reading: { durationMin: number; passages: ReadingPassage[] };
   writing: { durationMin: number; tasks: WritingTask[] };
   speaking: { parts: SpeakingPart[] };
+  // Only on a test the AI wrote (see generation.ts): parts that could not be
+  // written, parts being rewritten now, and whether the Listening audio was
+  // synthesized. Set by the server only; the editor's copy is ignored.
+  generation?: GenerationMeta;
+}
+
+export interface GenerationMeta {
+  failed: Array<{ key: string; label: string; error: string }>;
+  running: string[];
+  runningSince: string | null;
+  // DONE: every part has audio; UNAVAILABLE: no speech provider (no Gemini
+  // key); FAILED: the provider did not answer for some part.
+  tts: 'DONE' | 'UNAVAILABLE' | 'FAILED' | null;
+  ttsError: string | null;
+  // The topics the parts were written on (a retry writes on the same ones).
+  plan: GenerationPlan | null;
+}
+
+export interface GenerationPlan {
+  listening: string[];
+  reading: string[];
+  writing: { task1: string; task2: string };
+  speaking: { part1: string[]; part2: string; part3: string };
+}
+
+function normalizeGeneration(v: unknown): GenerationMeta | undefined {
+  if (!v || typeof v !== 'object') return undefined;
+  const g = v as Record<string, any>;
+  const tts = ['DONE', 'UNAVAILABLE', 'FAILED'].includes(g.tts) ? g.tts : null;
+  const p = g.plan && typeof g.plan === 'object' ? g.plan : null;
+  const list = (v: unknown, n: number) => arr(v).map((x) => str(x, 300)).filter(Boolean).slice(0, n);
+  const plan: GenerationPlan | null = p ? {
+    listening: list(p.listening, 4),
+    reading: list(p.reading, 3),
+    writing: { task1: str(p.writing?.task1, 300), task2: str(p.writing?.task2, 300) },
+    speaking: { part1: list(p.speaking?.part1, 3), part2: str(p.speaking?.part2, 300), part3: str(p.speaking?.part3, 300) },
+  } : null;
+  return {
+    failed: arr(g.failed).slice(0, 20).map((f: any) => ({ key: str(f?.key, 40), label: str(f?.label, 80), error: str(f?.error, 300) })).filter((f) => f.key),
+    running: arr(g.running).map((k) => str(k, 40)).filter(Boolean).slice(0, 20),
+    runningSince: str(g.runningSince, 40) || null,
+    tts,
+    ttsError: str(g.ttsError, 300) || null,
+    plan,
+  };
 }
 
 export const DEFAULT_DURATIONS = { listening: 30, reading: 60, writing: 60 } as const;
@@ -76,7 +121,9 @@ export function missingKeys(content: MockContent): number {
 // dropped, limits applied, questions validated with the shared model.
 export function normalizeContent(raw: unknown): MockContent {
   const r = (raw ?? {}) as Record<string, any>;
+  const generation = normalizeGeneration(r.generation);
   return {
+    ...(generation ? { generation } : {}),
     listening: {
       durationMin: num(r.listening?.durationMin, DEFAULT_DURATIONS.listening, 5, 90),
       audioPath: str(r.listening?.audioPath, 300) || null,
@@ -270,4 +317,64 @@ export function overallBand(bands: Partial<Record<Section, number | null>>): num
 
 export function wordCount(text: string): number {
   return (text.trim().match(/[\p{L}\p{N}'’-]+/gu) ?? []).length;
+}
+
+// ------------------------------------------------------ after the test
+
+// IELTS names for the question types, as a student meets them in a book.
+export function questionKind(q: TestQuestion, section: 'listening' | 'reading'): string {
+  switch (q.type) {
+    case 'TRUE_FALSE_NG': return /yes|no|writer|author|claim/i.test(`${q.instruction ?? ''} ${q.prompt}`) ? 'YES_NO_NG' : 'TFNG';
+    case 'TRUE_FALSE': return 'TFNG';
+    case 'MCQ': return 'MCQ';
+    case 'MCQ_MULTI': return 'MCQ_MULTI';
+    case 'MATCHING': return /heading/i.test(`${q.instruction ?? ''} ${q.prompt}`) ? 'HEADINGS' : 'MATCHING';
+    case 'FILL_BLANK': return section === 'listening' ? 'FORM_COMPLETION' : 'SENTENCE_COMPLETION';
+    default: return 'SHORT_ANSWER';
+  }
+}
+
+export interface KindStat { kind: string; right: number; total: number }
+
+// Right / total per question type: what to practise next. Weakest first.
+export function kindStats(content: MockContent, section: 'listening' | 'reading', marks: boolean[]): KindStat[] {
+  const by = new Map<string, KindStat>();
+  sectionQuestions(content, section).forEach((q, i) => {
+    const k = questionKind(q, section);
+    const s = by.get(k) ?? { kind: k, right: 0, total: 0 };
+    s.total += 1;
+    if (marks[i]) s.right += 1;
+    by.set(k, s);
+  });
+  return [...by.values()].sort((a, b) => a.right / a.total - b.right / b.total || b.total - a.total);
+}
+
+// Adds several sittings' stats together.
+export function mergeKindStats(lists: KindStat[][]): KindStat[] {
+  const by = new Map<string, KindStat>();
+  for (const s of lists.flat()) {
+    const m = by.get(s.kind) ?? { kind: s.kind, right: 0, total: 0 };
+    m.right += s.right;
+    m.total += s.total;
+    by.set(s.kind, m);
+  }
+  return [...by.values()].sort((a, b) => a.right / a.total - b.right / b.total || b.total - a.total);
+}
+
+// The real exam: Listening, Reading and Writing in that order, with no
+// going back; Speaking is a separate appointment. A section with no
+// questions is skipped.
+export const ORDERED: Section[] = ['listening', 'reading', 'writing'];
+
+export function sectionHasWork(content: MockContent, s: Section): boolean {
+  if (s === 'listening' || s === 'reading') return sectionQuestions(content, s).length > 0;
+  if (s === 'writing') return content.writing.tasks.length > 0;
+  return content.speaking.parts.some((p) => p.questions.length > 0);
+}
+
+// The section that must be handed in before `s` may start, or null.
+export function blockedBy(content: MockContent, s: Section, done: Record<string, string>): Section | null {
+  const i = ORDERED.indexOf(s);
+  if (i <= 0) return null;
+  return ORDERED.slice(0, i).find((p) => sectionHasWork(content, p) && !done[p]) ?? null;
 }

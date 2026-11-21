@@ -33,7 +33,9 @@ Xodimlarga ruxsatlar (Sozlamalar → Xodimlar va huquqlar):
 - `calls.make`: click-to-call. Standart holatda menejer va qabulxonada bor.
 - `calls.stats`: statistika. Standart holatda faqat direktor va admin.
 
-Tarif: `TELEPHONY` funksiyasi (Platforma → Tariflar). Kalit yozilmagan tarifda telefoniya yoqilgan hisoblanadi.
+**Kimda ishlaydi:** telefoniya standart bo'yicha **o'chiq**, chunki u platformaga pul turadi. Ikki yo'l bilan yoqiladi:
+- **Tarif orqali:** Platforma → Tariflar sahifasida tarifga "IP telefoniya" belgisi qo'yiladi (`TELEPHONY: true`). Shu tarifdagi hamma markazda ishlaydi.
+- **Bitta markaz uchun:** Platforma → Kalitlar → "IP telefoniya" bo'limida markaz subdomeni bilan qo'shiladi (`telephony` kaliti). Tarifi qanday bo'lishidan qat'i nazar, faqat shu markazda ishlaydi. Kalitni global yoqsangiz, hamma markazda ishlaydi.
 
 ## Qanday ishlaydi
 

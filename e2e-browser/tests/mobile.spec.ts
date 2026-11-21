@@ -22,7 +22,7 @@ test('the main pages fit a phone screen', async ({ page }) => {
   await expectCenterDashboard(page, a.sub);
   const paths = [
     '/dashboard', '/students', `/students/${kid.id}`, '/groups', `/groups/${group.id}`, '/teachers', `/teachers/${teacher.id}`,
-    '/schedule', '/payments', '/reports', '/reports?tab=payroll', '/leads', `/leads/${lead.id}`, '/homework', '/exams',
+    '/schedule', '/payments', '/reports', '/payments?tab=payroll', '/leads', `/leads/${lead.id}`, '/homework', '/exams',
     '/ai-materials', '/settings', '/announcements', '/makeups', '/calendar', '/messages', `/messages?c=${conv.id}`,
   ];
   const problems: string[] = [];

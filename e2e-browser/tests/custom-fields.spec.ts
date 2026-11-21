@@ -151,7 +151,8 @@ test("a lead's field is edited on the lead and carried into the student when con
 
   const lead = await api('POST', '/leads', { token: a.token, body: { fullName: 'Carry Lead', phone: '+998901112255', source: 'PHONE' } });
   await api('POST', `/leads/${lead.id}/transition`, { token: a.token, body: { toStatus: 'CONTACTED' } });
-  const trial = await api('POST', `/leads/${lead.id}/trials`, { token: a.token, body: { scheduledAt: new Date(Date.now() + 2 * 86_400_000).toISOString() } });
+  // A trial that began a minute ago: came/missed is marked only once it has begun.
+  const trial = await api('POST', `/leads/${lead.id}/trials`, { token: a.token, body: { scheduledAt: new Date(Date.now() - 60_000).toISOString() } });
   await api('POST', `/leads/${lead.id}/trials/${trial.id}/attend`, { token: a.token, body: {} });
   await api('POST', `/leads/${lead.id}/transition`, { token: a.token, body: { toStatus: 'QUALIFIED' } });
 

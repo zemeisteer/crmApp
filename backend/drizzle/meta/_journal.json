@@ -589,6 +589,48 @@
       "when": 1798000004000,
       "tag": "0083_allocation_waived",
       "breakpoints": true
+    },
+    {
+      "idx": 84,
+      "version": "7",
+      "when": 1798000005000,
+      "tag": "0084_group_individual",
+      "breakpoints": true
+    },
+    {
+      "idx": 85,
+      "version": "7",
+      "when": 1798000006000,
+      "tag": "0085_chat_attachments",
+      "breakpoints": true
+    },
+    {
+      "idx": 86,
+      "version": "7",
+      "when": 1798000007000,
+      "tag": "0086_makeup_auto_issue",
+      "breakpoints": true
+    },
+    {
+      "idx": 87,
+      "version": "7",
+      "when": 1798000008000,
+      "tag": "0087_teacher_profile",
+      "breakpoints": true
+    },
+    {
+      "idx": 88,
+      "version": "7",
+      "when": 1798000009000,
+      "tag": "0088_mock_sessions",
+      "breakpoints": true
+    },
+    {
+      "idx": 89,
+      "version": "7",
+      "when": 1798000010000,
+      "tag": "0089_portal_pin_failures",
+      "breakpoints": true
     }
   ]
 }

@@ -8,8 +8,9 @@ import { TEACHER_PUBLIC_COLUMNS } from '../common/teacher-columns';
 import { GenerateMaterialDto, PlacementTestDto } from './dto/ai.dto';
 import { bankFor, pickFromBank } from './placement-bank';
 import { normalizeQuestion, type TestQuestion } from '../common/test-questions';
-import { essayGradePrompt, generateTestPrompt, parseJsonArray, pdfExtractPrompt, textExtractPrompt } from './test-prompts';
+import { essayGradePrompt, generateTestPrompt, parseJsonArray, parseLooseJson, pdfExtractPrompt, textExtractPrompt } from './test-prompts';
 import { tutorPrompt, type TutorContext } from './tutor-prompt';
+import { pcmToWav, rateOf, speechRequest, ttsModels } from './tts';
 
 
 const MODEL = 'claude-sonnet-5';
@@ -95,7 +96,7 @@ export class AiService {
   // growing pauses, then on the lighter model. A dropped connection or a
   // request that hangs counts the same. The person sees a plain "busy, try
   // again" message, never the provider's raw error; the details go to the log.
-  private async completeGemini(apiKey: string, prompt: string, maxTokens: number, pdf?: Buffer): Promise<string> {
+  private async completeGemini(apiKey: string, prompt: string, maxTokens: number, pdf?: Buffer, fileMime = 'application/pdf'): Promise<string> {
     const primary = this.config.get<string>('GEMINI_MODEL') || 'gemini-flash-latest';
     const attempts = [
       { model: primary, wait: 0 },
@@ -115,7 +116,7 @@ export class AiService {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
           body: JSON.stringify({
-            contents: [{ role: 'user', parts: [...(pdf ? [{ inline_data: { mime_type: 'application/pdf', data: pdf.toString('base64') } }] : []), { text: prompt }] }],
+            contents: [{ role: 'user', parts: [...(pdf ? [{ inline_data: { mime_type: fileMime, data: pdf.toString('base64') } }] : []), { text: prompt }] }],
             generationConfig: { maxOutputTokens: Math.max(maxTokens, 2048) },
           }),
           signal: AbortSignal.timeout(pdf ? GEMINI_PDF_TIMEOUT_MS : GEMINI_TIMEOUT_MS),
@@ -181,16 +182,25 @@ ${studentSummaries.join('\n') || 'Guruhda o\'quvchi yo\'q.'}`;
 
   async generateMaterial(dto: GenerateMaterialDto) {
     const typeLabel =
-      dto.type === 'LESSON_PLAN' ? 'dars rejasi' : dto.type === 'HOMEWORK' ? 'uy vazifasi' : 'test (quiz)';
+      dto.type === 'LESSON_PLAN'
+        ? 'dars rejasi'
+        : dto.type === 'HOMEWORK'
+          ? 'uy vazifasi'
+          : dto.type === 'EXAM_DESCRIPTION'
+            ? "imtihon tavsifi (qisqa: nimalarni qamrab oladi, bo'limlari va savol turlari, qanday baholanadi; savollarning o'zi emas)"
+            : 'test (quiz)';
 
-    const prompt = `Sen tajribali o'qituvchisan. Quyidagi mavzu uchun ${typeLabel} tayyorla, o'zbek tilida, aniq va amaliy formatda (sarlavhalar va ro'yxatlar bilan):
+    const prompt = `Sen tajribali o'qituvchisan. Quyidagi mavzu uchun ${typeLabel} tayyorla, aniq va amaliy formatda (sarlavhalar va ro'yxatlar bilan).
+Til: o'qituvchi talabi qaysi tilda yozilgan bo'lsa, o'sha tilda; talab bo'lmasa - o'zbek tilida.
+Salomlashma, o'zingni tanishtirma, "tayyorlab berdim" kabi gaplar yozma: darhol materialning o'zidan boshla.
+O'qituvchi talabi bo'lsa, uni so'zma-so'z bajar (savollar soni, turi, mavzusi).
 
 Fan: ${dto.subject}
 Daraja: ${dto.level || "belgilanmagan"}
-Mavzu: ${dto.topic}${dto.customInstructions ? `\nO'qituvchi maxsus talabi / tafsifi: ${dto.customInstructions}` : ''}`;
+Mavzu: ${dto.topic}${dto.customInstructions ? `\nO'qituvchi talabi (eng muhimi): ${dto.customInstructions}` : ''}`;
 
     if (!this.aiConfigured()) throw aiOff();
-    const text = await this.complete(prompt, 1500);
+    const text = await this.complete(prompt, 8000);
     if (!text.trim()) throw new ServiceUnavailableException(AI_BUSY);
     return { material: text };
   }
@@ -204,13 +214,19 @@ Mavzu: ${dto.topic}${dto.customInstructions ? `\nO'qituvchi maxsus talabi / tafs
 
     if (!this.aiConfigured()) throw aiOff();
     const prompt = `Sen o'quv markazi uchun tajribali o'qituvchi yordamchisisan.
-Quyidagi guruh va fan uchun aniq, qiziqarli va professional uyga vazifa (homework) tavsiya et.
+Quyidagi guruh va fan uchun uyga vazifa (homework) TAYYORLA.
 Fan: ${subject}
 Guruh nomi: ${groupName || "umumiy"}
 Mavzu (agar ko'rsatilgan bo'lsa): ${topic || "navbatdagi mavzu"}
 Daraja: ${dto.level || "ko'rsatilmagan"}
-O'qituvchining talabi (eng muhimi, aynan shunga mos vazifa tuz): ${request || "yo'q"}
-Vazifa matni o'qituvchi talabidagi tilda bo'lsin.
+O'qituvchining talabi (ENG MUHIMI): ${request || "yo'q"}
+
+Qoidalar:
+- O'qituvchi talabini so'zma-so'z bajar: nechta savol/mashq so'ragan bo'lsa, aynan shuncha savol/mashqni O'ZING to'liq yozib ber (masalan "12 ta savol" - 12 ta tayyor savol, javob variantlari bilan). O'quvchiga "savol tuzing" deb topshirma, agar o'qituvchi aniq shuni so'ramagan bo'lsa.
+- Turli savol turlari so'ralgan bo'lsa (test, bo'sh joyni to'ldirish, to'g'ri/noto'g'ri, gap tuzish...), har birini ishlat va har bir savol oldida turini yoz.
+- Matn o'qituvchi talabi yozilgan tilda bo'lsin (inglizcha yozgan bo'lsa - inglizcha).
+- Salomlashish, o'zingni tanishtirish va keraksiz izoh yozma: faqat vazifaning o'zi.
+- Oxirida "## Answer key" (yoki talab tilida "Javoblar") bo'limi bo'lsin.
 
 Vazifaning o'zi (mashqlar, gaplar, misollar, matn) o'quvchiga PDF fayl bo'lib beriladi — uni "content" ga to'liq yoz:
 sarlavhalar "## " bilan, mashqlar raqamlangan, har bir mashqda aniq ko'rsatma va barcha gaplar/misollar bo'lsin (o'quvchi faqat shu faylga qarab bajara olsin).
@@ -223,14 +239,9 @@ Javobni FAQAT quyidagi JSON formatida ber (boshqa hech qanday so'z qo'shma):
 "content": "Vazifaning to'liq matni (qatorlar \\n bilan)",
 "dueDays": 3
 }`;
-    const text = await this.complete(prompt, 4000);
-    const match = text.match(/\{[\s\S]*\}/);
-    let parsed: { title?: unknown; description?: unknown; content?: unknown; dueDays?: number } | null = null;
-    try {
-      parsed = match ? JSON.parse(match[0]) : null;
-    } catch {
-      parsed = null; // not the JSON asked for: "busy, try again" below
-    }
+    const text = await this.complete(prompt, 8000);
+    // A model often puts raw line breaks inside the JSON strings: read it leniently.
+    const parsed = parseLooseJson(text) as { title?: unknown; description?: unknown; content?: unknown; dueDays?: number } | null;
     if (parsed) {
       return {
         title: String(parsed.title ?? '').slice(0, 160),
@@ -263,6 +274,143 @@ Javobni FAQAT quyidagi JSON formatida ber (boshqa hech qanday so'z qo'shma):
   }
 
   // Completion with an optional PDF attached (mock test imports).
+  /**
+   * What a student said in a Speaking recording, word for word (Gemini
+   * listens to the audio itself: far closer than the browser's live
+   * recognition, which often mishears accents). Null when there is no
+   * Gemini key, the file is too big, or the AI could not do it: the
+   * browser's transcript is kept then.
+   */
+  async transcribeAudio(audio: Buffer, mime: string): Promise<string | null> {
+    const key = this.config.get<string>('GEMINI_API_KEY');
+    if (!key || audio.length === 0 || audio.length > 14 * 1024 * 1024) return null;
+    const prompt = `Transcribe this recording of a student answering an IELTS Speaking question in English.
+Write exactly what is said, word for word, in English. Keep hesitations ("um", "uh") and repeated words as spoken; do not correct grammar.
+Output only the transcript, nothing else. If there is no speech, output nothing.`;
+    try {
+      const text = (await this.completeGemini(key, prompt, 4000, audio, mime.split(';')[0].trim() || 'audio/webm')).trim();
+      return text || null;
+    } catch (err) {
+      this.logger.warn(`Speaking transcription failed: ${err instanceof Error ? err.message : String(err)}`);
+      return null;
+    }
+  }
+
+  /** Whether an audioscript can be read aloud (Gemini TTS needs GEMINI_API_KEY). */
+  get canSynthesizeSpeech() {
+    return Boolean(this.config.get<string>('GEMINI_API_KEY'));
+  }
+
+  /**
+   * A Listening audioscript read aloud by Gemini TTS, as a WAV file (two
+   * voices for a two-person dialogue). Null when there is no Gemini key;
+   * throws when the provider does not deliver audio.
+   */
+  async synthesizeSpeech(transcript: string): Promise<{ bytes: Buffer; mime: string; ext: string } | null> {
+    const key = this.config.get<string>('GEMINI_API_KEY');
+    if (!key) return null;
+    const text = transcript.trim().slice(0, 20_000);
+    const models = ttsModels(this.config.get<string>('GEMINI_TTS_MODEL'));
+    let last = 'no audio';
+    for (const model of models) {
+      // A busy model gets one more try; a model that refuses the request
+      // (unknown, retired, a format it does not take) hands over at once.
+      for (let i = 0; i < 2; i++) {
+        if (i) await this.sleep(3000);
+        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
+          body: JSON.stringify(speechRequest(model, text)),
+          signal: AbortSignal.timeout(GEMINI_PDF_TIMEOUT_MS),
+        }).catch((err: Error) => {
+          last = `${model}: ${err.message}`;
+          return null;
+        });
+        if (!res) continue;
+        if (!res.ok) {
+          last = `${model} ${res.status}: ${(await res.text().catch(() => '')).slice(0, 200)}`;
+          if (res.status === 503 || res.status === 429 || res.status === 500) continue;
+          break;
+        }
+        const data = (await res.json().catch(() => null)) as { candidates?: Array<{ content?: { parts?: Array<{ inlineData?: { mimeType?: string; data?: string } }> } }> } | null;
+        if (!data) {
+          last = `${model}: the reply was not JSON`;
+          break;
+        }
+        const audio = data.candidates?.[0]?.content?.parts?.find((p) => p.inlineData?.data)?.inlineData;
+        if (!audio?.data) {
+          last = `${model}: the reply had no audio`;
+          break;
+        }
+        if (model !== models[0]) this.logger.warn(`Gemini TTS: ${models[0]} failed, ${model} read the audio`);
+        const raw = Buffer.from(audio.data, 'base64');
+        const mime = (audio.mimeType ?? '').toLowerCase();
+        if (mime.startsWith('audio/mpeg') || mime.startsWith('audio/mp3')) return { bytes: raw, mime: 'audio/mpeg', ext: '.mp3' };
+        if (mime.startsWith('audio/wav') || mime.startsWith('audio/x-wav')) return { bytes: raw, mime: 'audio/wav', ext: '.wav' };
+        return { bytes: pcmToWav(raw, rateOf(mime)), mime: 'audio/wav', ext: '.wav' };
+      }
+      this.logger.warn(`Gemini TTS (${model}) failed: ${last}`);
+    }
+    throw new ServiceUnavailableException(`Audio yaratilmadi (${last.slice(0, 120)})`);
+  }
+
+  // A reply grounded in a Google search, with the pages it relied on. Used
+  // to learn what IELTS topics and task types are current before writing a test.
+  async completeSearch(prompt: string, maxTokens: number): Promise<{ text: string; sources: Array<{ title: string; url: string }> }> {
+    if (!this.aiConfigured()) throw new ServiceUnavailableException('AI yoqilmagan');
+    // Claude's own web search first; Gemini's Google search when that fails or is off.
+    const claudeKey = this.config.get<string>('ANTHROPIC_API_KEY');
+    if (claudeKey) {
+      try {
+        const res = await new Anthropic({ apiKey: claudeKey }).messages.create({
+          model: MODEL,
+          max_tokens: Math.max(maxTokens, 2048),
+          tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 4 }] as never,
+          messages: [{ role: 'user', content: prompt }],
+        });
+        const seen = new Set<string>();
+        const sources: Array<{ title: string; url: string }> = [];
+        for (const block of res.content as Array<{ type: string; text?: string; content?: unknown }>) {
+          if (block.type === 'web_search_tool_result' && Array.isArray(block.content)) {
+            for (const r of block.content as Array<{ url?: string; title?: string }>) {
+              if (r.url && !seen.has(r.url)) { seen.add(r.url); sources.push({ title: r.title ?? '', url: r.url }); }
+            }
+          }
+        }
+        const text = (res.content as Array<{ type: string; text?: string }>).filter((b) => b.type === 'text').map((b) => b.text ?? '').join('');
+        if (text.trim()) return { text, sources };
+      } catch (err) {
+        this.logger.warn(`Claude web search unavailable: ${err instanceof Error ? err.message : String(err)}`);
+      }
+    }
+    const key = this.config.get<string>('GEMINI_API_KEY');
+    if (!key) throw new ServiceUnavailableException('AI qidiruvi mavjud emas');
+    const model = this.config.get<string>('GEMINI_MODEL') || 'gemini-flash-latest';
+    for (let i = 0; i < 3; i++) {
+      if (i) await this.sleep(2000 * i);
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
+        body: JSON.stringify({
+          contents: [{ role: 'user', parts: [{ text: prompt }] }],
+          tools: [{ google_search: {} }],
+          generationConfig: { maxOutputTokens: Math.max(maxTokens, 2048) },
+        }),
+        signal: AbortSignal.timeout(GEMINI_TIMEOUT_MS),
+      }).catch(() => null);
+      if (!res || res.status === 503 || res.status === 429 || res.status === 500) continue;
+      if (!res.ok) break;
+      const data = (await res.json()) as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> }; groundingMetadata?: { groundingChunks?: Array<{ web?: { uri?: string; title?: string } }> } }> };
+      const c = data.candidates?.[0];
+      const seen = new Set<string>();
+      const sources = (c?.groundingMetadata?.groundingChunks ?? [])
+        .map((g) => ({ title: g.web?.title ?? '', url: g.web?.uri ?? '' }))
+        .filter((x) => x.url && !seen.has(x.url) && !!seen.add(x.url));
+      return { text: c?.content?.parts?.map((p) => p.text ?? '').join('') ?? '', sources };
+    }
+    throw new ServiceUnavailableException(AI_BUSY);
+  }
+
   async completeWithPdf(prompt: string, maxTokens: number, pdf?: Buffer): Promise<string> {
     if (!this.aiConfigured()) throw new ServiceUnavailableException('AI yoqilmagan');
     return this.complete(prompt, maxTokens, pdf);

@@ -194,9 +194,12 @@ describe('Two-factor hardening (e2e)', () => {
       const email = `tf-ws-${suffix}@test.uz`;
       const a = (await http().post('/api/auth/register').send({ centerName: `TF ws ${suffix}`, subdomain: `tf-ws-${suffix}`, email, password: PASSWORD, fullName: 'TF Ws' }).expect(201)).body;
       const tenantId = a.tenant.id as string;
-      // The platform admin may open a center; from an unverified session the
-      // new session it gets is unverified too.
-      const sw = (await http().post('/api/auth/select-workspace').set(bearer(unverifiedToken)).send({ tenantId }).expect(201)).body;
+      // Not a member: the platform admin never opens someone else's center.
+      await http().post('/api/auth/select-workspace').set(bearer(unverifiedToken)).send({ tenantId }).expect(401);
+      // A center it belongs to: from an unverified session the new session
+      // it gets is unverified too.
+      await db.insert(organizationMemberships).values({ userId: saId, tenantId, role: 'ADMIN', status: 'ACTIVE' });
+      const sw =(await http().post('/api/auth/select-workspace').set(bearer(unverifiedToken)).send({ tenantId }).expect(201)).body;
       expect((await http().get('/api/platform/dashboard').set(bearer(sw.accessToken)).expect(403)).body.code).toBe('TWO_FACTOR_REQUIRED');
       // Nor can it hand itself off to the center's address.
       expect((await http().post('/api/auth/handoff').set(bearer(sw.accessToken)).expect(403)).body.code).toBe('TWO_FACTOR_REQUIRED');

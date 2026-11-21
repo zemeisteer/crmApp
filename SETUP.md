@@ -194,3 +194,48 @@ Bu kalitlarni `.env` o'rniga platforma admini panelidan ham kiritish mumkin: **A
 Domen sotib olish va DNS sozlash (`*.talimcrm.uz` wildcard, HTTPS) — bu Claude Code tomonidan bajarib bo'lmaydigan yagona bosqich, qo'lda amalga oshirilishi kerak.
 
 Dizayn-makketlar: `https://claude.ai/artifact/8KSxnc3d5eN1g71UTucyS5`.
+
+## 5. Claude Code uchun faqat o'qiydigan baza ulanishi (MCP)
+
+`.mcp.json`dagi `postgres-dev` serveri (Google MCP Toolbox, `@toolbox-sdk/server`) Claude Code'ga **faqat lokal dev bazani** so'rov bilan ko'rish imkonini beradi. U faqat SELECT huquqi bor alohida rol bilan ulanadi. Toolbox'ning o'zida read-only rejim yo'q (`execute_sql` vositasi bor), shuning uchun himoya shu rolning huquqlarida.
+
+**Qaysi baza.** Qulayi `talimcrm_dev`: unda faqat demo ma'lumot bor. `talimcrm`da eski lokal ma'lumot (minglab foydalanuvchi) saqlanadi, so'rov natijalari esa Claude'ga yuboriladi. Production yoki staging bazasini bu yerga hech qachon ulamang.
+
+**1. Rolni yarating** (bir marta, `postgres` superuser bilan; Windows'da `"C:\Program Files\PostgreSQL\<versiya>\bin\psql.exe" -U postgres -d talimcrm_dev`):
+
+```sql
+CREATE ROLE crm_mcp_readonly LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION CONNECTION LIMIT 3;
+\password crm_mcp_readonly
+-- parolni shu yerda kiriting: u SQL tarixida ham, faylda ham qolmaydi
+
+ALTER ROLE crm_mcp_readonly SET default_transaction_read_only = on;
+ALTER ROLE crm_mcp_readonly SET statement_timeout = '15s';
+ALTER ROLE crm_mcp_readonly SET idle_in_transaction_session_timeout = '30s';
+
+GRANT CONNECT ON DATABASE talimcrm_dev TO crm_mcp_readonly;
+GRANT USAGE ON SCHEMA public TO crm_mcp_readonly;
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO crm_mcp_readonly;
+GRANT SELECT ON ALL SEQUENCES IN SCHEMA public TO crm_mcp_readonly;
+-- keyingi migratsiyalar yaratadigan jadvallar uchun ham (migratsiyani bajaradigan rol nomini yozing):
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT SELECT ON TABLES TO crm_mcp_readonly;
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT SELECT ON SEQUENCES TO crm_mcp_readonly;
+```
+
+`default_transaction_read_only`ni sessiyaning o'zi o'chirib qo'yishi mumkin, shuning uchun asosiy himoya: rolda INSERT/UPDATE/DELETE/DDL huquqi yo'q. Tekshirish (xato berishi kerak):
+
+```sql
+SET ROLE crm_mcp_readonly;
+CREATE TABLE mcp_probe (id int);          -- ERROR: permission denied for schema public
+DELETE FROM tenants WHERE false;          -- ERROR: permission denied for table tenants
+RESET ROLE;
+```
+
+Rolni olib tashlash: `REASSIGN OWNED BY crm_mcp_readonly TO postgres; DROP OWNED BY crm_mcp_readonly; DROP ROLE crm_mcp_readonly;`
+
+**2. Muhit o'zgaruvchilari.** `.mcp.json`da parol yo'q: u `CRM_DEV_DB_PASSWORD` o'zgaruvchisidan olinadi. Qolganlarining standart qiymati bor (`CRM_DEV_DB_HOST`=127.0.0.1, `CRM_DEV_DB_PORT`=5432, `CRM_DEV_DB_NAME`=talimcrm_dev, `CRM_DEV_DB_USER`=crm_mcp_readonly). Windows'da (PowerShell), keyin Claude Code'ni qayta oching:
+
+```powershell
+[Environment]::SetEnvironmentVariable('CRM_DEV_DB_PASSWORD', '<rol paroli>', 'User')
+```
+
+O'zgaruvchi berilmasa server ulana olmaydi, boshqa hech narsa buzilmaydi. Claude Code loyihadagi `.mcp.json` serverlarini birinchi marta ishga tushirishdan oldin ruxsat so'raydi (`context7` va `postgres-dev`).

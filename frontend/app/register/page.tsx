@@ -1,10 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { subdomainFromHost } from "@/lib/domain";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
 import { useLanguage } from "@/lib/i18n-context";
-import { ApiError, authApi } from "@/lib/api";
+import { ApiError, authApi, plansApi, type Plan } from "@/lib/api";
 import PhoneInput from "@/components/PhoneInput";
 
 const ACCENT = "var(--primary)";
@@ -12,6 +14,23 @@ const ACCENT = "var(--primary)";
 export default function RegisterPage() {
   const { register } = useAuth();
   const { t, lang, setLang } = useLanguage();
+  // A new center is created on the main site; a center's own address only
+  // signs its people in (their logins come from the center's admin).
+  const router = useRouter();
+  useEffect(() => {
+    if (subdomainFromHost(window.location.host)) router.replace("/login");
+  }, [router]);
+  // The plan chosen on /plans/<key> ("Shu tarif bilan boshlash"): the free
+  // trial starts on it. Only an active plan from the public list is kept.
+  const [chosenPlan, setChosenPlan] = useState<Plan | null>(null);
+  useEffect(() => {
+    const wanted = new URLSearchParams(window.location.search).get("plan")?.trim().toLowerCase();
+    if (!wanted) return;
+    plansApi
+      .listPublic()
+      .then((list) => setChosenPlan(list.find((p) => p.key.toLowerCase() === wanted) ?? null))
+      .catch(() => undefined);
+  }, []);
   const [centerName, setCenterName] = useState("");
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
@@ -74,6 +93,7 @@ export default function RegisterPage() {
         phoneCode: phoneCode.trim(),
         // Ties the code to this sign-up; a retry of it gets the same center back.
         signupAttemptId: codeSent.attemptId,
+        plan: chosenPlan?.key,
       });
     } catch (err) {
       setError(err instanceof ApiError ? err.message : (lang === "UZ" ? "Xatolik yuz berdi" : lang === "RU" ? "Произошла ошибка" : "An error occurred"));
@@ -315,6 +335,17 @@ export default function RegisterPage() {
             <p style={{ fontSize: 14.5, color: "var(--text-muted)", lineHeight: 1.5 }}>
               {t("register.createCenterSubtitle")}
             </p>
+            {chosenPlan && (
+              <div
+                data-testid="register-plan"
+                style={{ marginTop: 6, padding: "12px 14px", borderRadius: "var(--radius-sm)", border: "1px solid var(--border)", background: "var(--surface-muted)" }}
+              >
+                <div style={{ fontSize: 15, fontWeight: 800, color: "var(--text)" }}>
+                  {t("register.trialOfPlan").replace("{plan}", chosenPlan.name)}
+                </div>
+                <div style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 2 }}>{t("register.trialOfPlanNote")}</div>
+              </div>
+            )}
           </div>
 
           {error && (

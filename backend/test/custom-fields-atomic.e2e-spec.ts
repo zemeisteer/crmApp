@@ -10,6 +10,7 @@ import { DB, type Database } from '../src/db/db.module.js';
 import { customFieldValues, enrollmentPeriods, leads, students } from '../src/db/schema.js';
 import { CustomFieldsService } from '../src/custom-fields/custom-fields.service.js';
 import { AuditService } from '../src/audit/audit.service.js';
+import { trialStarted } from './trial-started';
 
 // A change to a student or a lead and its custom values is one write: when
 // writing the custom values fails, nothing of the change is kept - not the
@@ -98,6 +99,7 @@ describe('Custom fields saved with the record, all or nothing (e2e)', () => {
     await http().post(`/api/leads/${lead.id}/transition`).set(auth()).send({ toStatus: 'CONTACTED' }).expect(201);
     const day = new Date(Date.now() + 20 * 86_400_000 + 5 * 3_600_000).toISOString().slice(0, 10);
     const trial = (await http().post(`/api/leads/${lead.id}/trials`).set(auth()).send({ scheduledAt: `${day}T15:00:00+05:00` }).expect(201)).body;
+    await trialStarted(trial.id);
     await http().post(`/api/leads/${lead.id}/trials/${trial.id}/attend`).set(auth()).send({}).expect(201);
     await http().post(`/api/leads/${lead.id}/transition`).set(auth()).send({ toStatus: 'QUALIFIED' }).expect(201);
     const before = (await db.select().from(students).where(eq(students.tenantId, l.tenantId))).length;

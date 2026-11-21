@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { Test, TestingModule } from '@nestjs/testing';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { eq, like } from 'drizzle-orm';
@@ -8,6 +9,7 @@ import { configureApp } from '../src/app.setup.js';
 import { DB, Database } from '../src/db/db.module.js';
 import { calendarConnections, tenants } from '../src/db/schema.js';
 import { CalendarSyncService } from '../src/calendar/calendar-sync.service.js';
+import { CalendarEventsService } from '../src/calendar/calendar-events.service.js';
 import { GOOGLE_CALENDAR_API, GoogleApiError, type GoogleCalendarApi, type GoogleEventBody } from '../src/calendar/google-calendar.api.js';
 
 /**
@@ -380,7 +382,21 @@ describe('Calendar: subscriptions and Google sync (e2e)', () => {
   });
 
   it("the center's time zone across a daylight-saving change: the feed and Google move each lesson to its own UTC time", async () => {
-    // New York leaves summer time on 2026-11-01: 16:00 is 20:00Z on Saturday 10-31 and 21:00Z on Monday 11-02.
+    // New York leaves summer time on the first Sunday of November: 16:00 is 20:00Z on the Saturday
+    // before and 21:00Z on the Monday after. The next such change is used, and the center's "today"
+    // is put two weeks before it, so the dates never fall out of the feed or sync window.
+    const ymd = (d: Date) => d.toISOString().slice(0, 10);
+    const fallBack = (y: number) => {
+      const d = new Date(Date.UTC(y, 10, 1));
+      d.setUTCDate(1 + ((7 - d.getUTCDay()) % 7));
+      return d;
+    };
+    const now = new Date();
+    let sun = fallBack(now.getUTCFullYear());
+    if (sun.getTime() - 86400000 <= now.getTime()) sun = fallBack(now.getUTCFullYear() + 1);
+    const day = (n: number) => ymd(new Date(sun.getTime() + n * 86400000));
+    const sat = day(-1), mon = day(1), compact = (d: string) => d.replace(/-/g, '');
+    const todaySpy = vi.spyOn(CalendarEventsService.prototype, 'today').mockResolvedValue(day(-14));
     const db = app.get<Database>(DB);
     const [tA] = await db.select({ id: tenants.id, tz: tenants.timezone }).from(tenants).where(eq(tenants.subdomain, `cal-a-${suffix}`));
     const tch = (await http().get('/api/teachers').set(bearer(ownerA)).expect(200)).body;
@@ -390,9 +406,9 @@ describe('Calendar: subscriptions and Google sync (e2e)', () => {
     try {
       const body = await ics(t1Url);
       const block = (date: string) => body.split('BEGIN:VEVENT').find((e) => e.includes('SUMMARY:Cal DST') && e.includes(`DTSTART:${date}`));
-      expect(block('20261031T200000Z')).toBeDefined(); // EDT, UTC-4
-      expect(block('20261102T210000Z')).toBeDefined(); // EST, UTC-5
-      expect(body).not.toContain('DTSTART:20261102T200000Z');
+      expect(block(`${compact(sat)}T200000Z`)).toBeDefined(); // EDT, UTC-4
+      expect(block(`${compact(mon)}T210000Z`)).toBeDefined(); // EST, UTC-5
+      expect(body).not.toContain(`DTSTART:${compact(mon)}T200000Z`);
       // Google (connected again: the test before disconnected it): the next pass writes the same instants.
       const { url } = (await http().post('/api/calendar/google/connect').set(bearer(t1)).send({}).expect(201)).body;
       await http().get(`/api/calendar/google/callback?code=good-code&state=${new URL(url).searchParams.get('state')}`).expect(302);
@@ -403,20 +419,21 @@ describe('Calendar: subscriptions and Google sync (e2e)', () => {
         const k = await key(gDst, date);
         return google.ours().find((e) => e.extendedProperties?.private?.key === k);
       };
-      expect((await of('2026-10-31'))?.start.dateTime).toBe('2026-10-31T20:00:00.000Z');
-      expect((await of('2026-11-02'))?.start.dateTime).toBe('2026-11-02T21:00:00.000Z');
+      expect((await of(sat))?.start.dateTime).toBe(`${sat}T20:00:00.000Z`);
+      expect((await of(mon))?.start.dateTime).toBe(`${mon}T21:00:00.000Z`);
       // Back to Tashkent (no daylight saving): the same lessons move to 11:00Z, in place, no copies.
       await db.update(tenants).set({ timezone: tA.tz }).where(eq(tenants.id, tA.id));
       const before = google.ours().length;
       await forceDue();
       await sync();
-      expect((await of('2026-11-02'))?.start.dateTime).toBe('2026-11-02T11:00:00.000Z');
+      expect((await of(mon))?.start.dateTime).toBe(`${mon}T11:00:00.000Z`);
       expect(google.ours().length).toBe(before);
     } finally {
       await db.update(tenants).set({ timezone: tA.tz }).where(eq(tenants.id, tA.id));
       await http().delete(`/api/groups/${gDst}`).set(bearer(ownerA));
       await forceDue();
       await sync();
+      todaySpy.mockRestore();
     }
   });
 

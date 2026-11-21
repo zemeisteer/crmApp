@@ -14,7 +14,7 @@ import {
 import { useLanguage } from "@/lib/i18n-context";
 import type { TranslationKey } from "@/lib/i18n";
 import PhoneInput from "@/components/PhoneInput";
-import { centerHost, ROOT_DOMAIN } from "@/lib/domain";
+import { useCenterAddress } from "@/lib/use-center-host";
 
 const ACCENT = "var(--primary)";
 
@@ -38,20 +38,21 @@ const DEFAULT_CATEGORY_SUBJECTS: Record<string, string[]> = {
   other: ["Shaxmat", "Notiqlik san'ati"],
 };
 
-const SUGGESTED_COURSES: Record<string, string[]> = {
-  "Ingliz tili (English)": ["General English", "Beginner (A1)", "Elementary (A2)", "Pre-Intermediate (B1)", "Speaking Club"],
-  "IELTS": ["IELTS Foundation (5.0 - 6.0)", "IELTS Graduation (6.5 - 7.5)", "IELTS Intensive", "Mock Exam Program"],
-  "Matematika": ["Asosiy Matematika", "Maktab kursi (5-11 sinf)", "Olimpiada matematikasi"],
-  "SAT": ["SAT Math", "SAT Digital Prep", "SAT Verbal"],
-  "Frontend Development": ["HTML, CSS & JavaScript", "React & Next.js", "Fullstack Web"],
-  "Python Dasturlash": ["Python asoslari", "Telegram bot yaratish", "Django Web"],
-};
+// The subjects a new center starts with for the directions it picked: the
+// first two of each (the rest are one click away as suggestions).
+const PREFILLED_PER_DIRECTION = 2;
+function subjectsForDirections(directions: string[]): string[] {
+  const out: string[] = [];
+  for (const d of directions) for (const name of (DEFAULT_CATEGORY_SUBJECTS[d] || []).slice(0, PREFILLED_PER_DIRECTION)) if (!out.includes(name)) out.push(name);
+  return out;
+}
 
+// Directions and subjects are one step; courses are added later in the app
+// (Fanlar va kurslar). A center that stopped on the old SUBJECTS/COURSES
+// steps comes back to the directions step.
 const STEPS = [
   { id: "PROFILE", label: "onb.stProfile" as TranslationKey },
-  { id: "CATEGORIES", label: "onb.stCategories" as TranslationKey },
-  { id: "SUBJECTS", label: "onb.stSubjects" as TranslationKey },
-  { id: "COURSES", label: "onb.stCourses" as TranslationKey },
+  { id: "CATEGORIES", label: "onb.stDirections" as TranslationKey },
   { id: "WORKSPACE", label: "onb.stWorkspace" as TranslationKey },
   { id: "BRANCH", label: "onb.stBranch" as TranslationKey },
   { id: "TEAM", label: "onb.stTeam" as TranslationKey },
@@ -61,7 +62,8 @@ const STEPS = [
 export default function OnboardingPage() {
   const { t } = useLanguage();
   const router = useRouter();
-  const { refreshMe } = useAuth();
+  const { refreshMe, openCenter } = useAuth();
+  const centerAt = useCenterAddress();
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [initialLoading, setInitialLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -74,43 +76,36 @@ export default function OnboardingPage() {
   const [timezone, setTimezone] = useState("Asia/Tashkent");
   const [currency, setCurrency] = useState("UZS");
 
-  // Step 2: Categories
+  // Step 2: Directions, and the subjects that follow from them
   const [selectedCategories, setSelectedCategories] = useState<string[]>(["languages", "mathematics"]);
-
-  // Step 3: Subjects
-  const [subjectsList, setSubjectsList] = useState<string[]>(["Ingliz tili (English)", "Matematika"]);
+  const [subjectsList, setSubjectsList] = useState<string[]>(() => subjectsForDirections(["languages", "mathematics"]));
   const [newSubjectInput, setNewSubjectInput] = useState("");
+  // Suggestions: the rest of the chosen directions' subjects.
+  const suggestedSubjects = Array.from(new Set(selectedCategories.flatMap((c) => DEFAULT_CATEGORY_SUBJECTS[c] || [])));
 
-  // Step 4: Courses
-  const [coursesMap, setCoursesMap] = useState<Record<string, string[]>>({
-    "Ingliz tili (English)": ["General English", "IELTS Foundation"],
-    "Matematika": ["Asosiy Matematika"],
-  });
-  const [newCourseInputs, setNewCourseInputs] = useState<Record<string, string>>({});
-
-  // Step 5: Workspace URL
+  // Step 3: Workspace URL
   const [workspaceSlug, setWorkspaceSlug] = useState("");
   const [slugChecking, setSlugChecking] = useState(false);
   const [slugAvailable, setSlugAvailable] = useState<boolean | null>(null);
   const [slugMessage, setSlugMessage] = useState<string | null>(null);
 
-  // Step 6: Branch
+  // Step 4: Branch
   const [branchName, setBranchName] = useState("Asosiy filial");
   const [branchAddress, setBranchAddress] = useState("");
   const [branchPhone, setBranchPhone] = useState("");
 
-  // Step 7: Team
+  // Step 5: Team
   const [invitedTeam, setInvitedTeam] = useState<{ role: Role; target: string }[]>([]);
   const [teamRole, setTeamRole] = useState<Role>("TEACHER");
   const [teamInput, setTeamInput] = useState("");
 
-  // Step 8: Students
+  // Step 6: Students
   const [studentMode, setStudentMode] = useState<"MANUAL" | "EXCEL" | "LATER">("LATER");
   const [manualStudentName, setManualStudentName] = useState("");
   const [manualStudentPhone, setManualStudentPhone] = useState("");
   const [manualStudentsList, setManualStudentsList] = useState<{ name: string; phone: string }[]>([]);
 
-  // Completion
+  // Completion (finalWorkspaceUrl holds the center's subdomain)
   const [isCompleted, setIsCompleted] = useState(false);
   const [finalWorkspaceUrl, setFinalWorkspaceUrl] = useState("");
 
@@ -128,15 +123,17 @@ export default function OnboardingPage() {
 
         if (t.teachingCategories && t.teachingCategories.length > 0) {
           setSelectedCategories(t.teachingCategories);
+          setSubjectsList(subjectsForDirections(t.teachingCategories));
         }
 
         // Determine step index based on backend state
         const stepName = t.onboardingStep || "PROFILE";
         if (stepName === "COMPLETED") {
           setIsCompleted(true);
-          setFinalWorkspaceUrl(centerHost(t.subdomain));
+          setFinalWorkspaceUrl(t.subdomain);
         } else {
-          const idx = STEPS.findIndex((s) => s.id === stepName);
+          const step = stepName === "SUBJECTS" || stepName === "COURSES" ? "CATEGORIES" : stepName;
+          const idx = STEPS.findIndex((s) => s.id === step);
           if (idx >= 0) setCurrentStepIndex(idx);
         }
       } catch {
@@ -174,12 +171,20 @@ export default function OnboardingPage() {
     return () => clearTimeout(timer);
   }, [workspaceSlug]);
 
+  // Picking a direction fills in its usual subjects; dropping it takes away
+  // the subjects only it suggested (ones typed by hand stay).
   function toggleCategory(catId: string) {
     if (selectedCategories.includes(catId)) {
       if (selectedCategories.length === 1) return; // keep at least 1
-      setSelectedCategories(selectedCategories.filter((c) => c !== catId));
+      const rest = selectedCategories.filter((c) => c !== catId);
+      const stillSuggested = new Set(rest.flatMap((c) => DEFAULT_CATEGORY_SUBJECTS[c] || []));
+      const own = new Set(DEFAULT_CATEGORY_SUBJECTS[catId] || []);
+      setSelectedCategories(rest);
+      setSubjectsList(subjectsList.filter((s) => !own.has(s) || stillSuggested.has(s)));
     } else {
       setSelectedCategories([...selectedCategories, catId]);
+      const add = subjectsForDirections([catId]).filter((s) => !subjectsList.includes(s));
+      setSubjectsList([...subjectsList, ...add]);
     }
   }
 
@@ -188,37 +193,11 @@ export default function OnboardingPage() {
     if (!trimmed || subjectsList.includes(trimmed)) return;
     setSubjectsList([...subjectsList, trimmed]);
     setNewSubjectInput("");
-    if (!coursesMap[trimmed]) {
-      setCoursesMap({ ...coursesMap, [trimmed]: [] });
-    }
   }
 
   function removeSubject(name: string) {
     if (subjectsList.length === 1) return;
     setSubjectsList(subjectsList.filter((s) => s !== name));
-    const nextMap = { ...coursesMap };
-    delete nextMap[name];
-    setCoursesMap(nextMap);
-  }
-
-  function addCourseToSubject(subject: string, courseName: string) {
-    const trimmed = courseName.trim();
-    if (!trimmed) return;
-    const existing = coursesMap[subject] || [];
-    if (existing.includes(trimmed)) return;
-    setCoursesMap({
-      ...coursesMap,
-      [subject]: [...existing, trimmed],
-    });
-    setNewCourseInputs({ ...newCourseInputs, [subject]: "" });
-  }
-
-  function removeCourseFromSubject(subject: string, courseName: string) {
-    const existing = coursesMap[subject] || [];
-    setCoursesMap({
-      ...coursesMap,
-      [subject]: existing.filter((c) => c !== courseName),
-    });
   }
 
   async function handleStep1Profile(e: React.FormEvent) {
@@ -242,21 +221,17 @@ export default function OnboardingPage() {
   }
 
   async function handleStep2Categories() {
+    if (subjectsList.length === 0) {
+      setError(t("onb.needSubject"));
+      return;
+    }
     setError(null);
     setSubmitting(true);
     try {
+      // The subjects first (safe to repeat), then the directions, which
+      // moves the center on to the workspace step.
+      await subjectsApi.bulk(subjectsList.map((name) => ({ name, courses: [] })));
       await onboardingApi.updateCategories(selectedCategories);
-      // Auto-populate subjects from chosen categories if empty
-      const suggestions: string[] = [];
-      selectedCategories.forEach((cat) => {
-        const list = DEFAULT_CATEGORY_SUBJECTS[cat] || [];
-        list.forEach((item) => {
-          if (!suggestions.includes(item)) suggestions.push(item);
-        });
-      });
-      if (subjectsList.length === 0 && suggestions.length > 0) {
-        setSubjectsList(suggestions.slice(0, 3));
-      }
       setCurrentStepIndex(2);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : t("common.errorGeneric"));
@@ -265,43 +240,7 @@ export default function OnboardingPage() {
     }
   }
 
-  async function handleStep3Subjects() {
-    if (subjectsList.length === 0) {
-      setError(t("onb.needSubject"));
-      return;
-    }
-    setError(null);
-    setSubmitting(true);
-    try {
-      await onboardingApi.advance("COURSES");
-      setCurrentStepIndex(3);
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : t("common.errorGeneric"));
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
-  async function handleStep4Courses() {
-    setError(null);
-    setSubmitting(true);
-    try {
-      // Bulk create real domain subjects and courses in backend
-      const bulkPayload = subjectsList.map((subj) => ({
-        name: subj,
-        courses: coursesMap[subj] || [],
-      }));
-      await subjectsApi.bulk(bulkPayload);
-      await onboardingApi.advance("WORKSPACE");
-      setCurrentStepIndex(4);
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : t("common.errorGeneric"));
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
-  async function handleStep5Workspace(e: React.FormEvent) {
+  async function handleStep3Workspace(e: React.FormEvent) {
     e.preventDefault();
     if (!slugAvailable) {
       setError(t("onb.badSlug"));
@@ -311,7 +250,7 @@ export default function OnboardingPage() {
     setSubmitting(true);
     try {
       await onboardingApi.updateWorkspace(workspaceSlug);
-      setCurrentStepIndex(5);
+      setCurrentStepIndex(3);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : t("common.errorGeneric"));
     } finally {
@@ -319,7 +258,7 @@ export default function OnboardingPage() {
     }
   }
 
-  async function handleStep6Branch(skip: boolean) {
+  async function handleStep4Branch(skip: boolean) {
     setError(null);
     setSubmitting(true);
     try {
@@ -332,7 +271,7 @@ export default function OnboardingPage() {
           phone: branchPhone,
         });
       }
-      setCurrentStepIndex(6);
+      setCurrentStepIndex(4);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : t("common.errorGeneric"));
     } finally {
@@ -361,7 +300,7 @@ export default function OnboardingPage() {
     }
   }
 
-  async function handleStep7Team(skip: boolean) {
+  async function handleStep5Team(skip: boolean) {
     setError(null);
     setSubmitting(true);
     try {
@@ -370,7 +309,7 @@ export default function OnboardingPage() {
       } else {
         await onboardingApi.advance("STUDENTS");
       }
-      setCurrentStepIndex(7);
+      setCurrentStepIndex(5);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : t("common.errorGeneric"));
     } finally {
@@ -378,13 +317,13 @@ export default function OnboardingPage() {
     }
   }
 
-  async function handleStep8Students() {
+  async function handleStep6Students() {
     setError(null);
     setSubmitting(true);
     try {
-      const res = await onboardingApi.complete();
+      await onboardingApi.complete();
       setIsCompleted(true);
-      setFinalWorkspaceUrl(res.workspaceUrl);
+      setFinalWorkspaceUrl(workspaceSlug);
       await refreshMe();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : t("common.errorGeneric"));
@@ -468,13 +407,13 @@ export default function OnboardingPage() {
                 {t("onb.wsUrl")}
               </span>
               <span style={{ fontSize: 16, fontWeight: 700, color: ACCENT }}>
-                {finalWorkspaceUrl || centerHost(workspaceSlug)}
+                {centerAt.host(finalWorkspaceUrl || workspaceSlug)}
               </span>
             </div>
             <button
               type="button"
               onClick={() => {
-                navigator.clipboard.writeText(`https://${finalWorkspaceUrl || centerHost(workspaceSlug)}`);
+                navigator.clipboard.writeText(centerAt.url(finalWorkspaceUrl || workspaceSlug));
                 alert(t("msg.urlCopied"));
               }}
               style={{
@@ -495,7 +434,7 @@ export default function OnboardingPage() {
           <button
             id="open-dashboard-btn"
             type="button"
-            onClick={() => router.push("/dashboard")}
+            onClick={() => void openCenter(finalWorkspaceUrl || workspaceSlug, "/dashboard")}
             style={{
               width: "100%",
               height: 50,
@@ -737,7 +676,7 @@ export default function OnboardingPage() {
             </form>
           )}
 
-          {/* STEP 2: What do you teach? */}
+          {/* STEP 2: Directions and their subjects (one step: never asked twice) */}
           {currentStepIndex === 1 && (
             <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
               <div>
@@ -804,51 +743,6 @@ export default function OnboardingPage() {
                     </button>
                   );
                 })}
-              </div>
-
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8 }}>
-                <button
-                  type="button"
-                  onClick={() => setCurrentStepIndex(0)}
-                  style={{ background: "transparent", border: "none", color: "var(--text-muted)", fontSize: 14, fontWeight: 600, cursor: "pointer" }}
-                >
-                  {t("onb.back")}
-                </button>
-                <button
-                  type="button"
-                  onClick={handleStep2Categories}
-                  disabled={submitting || selectedCategories.length === 0}
-                  style={{
-                    height: 46,
-                    padding: "0 28px",
-                    background: ACCENT,
-                    color: "var(--on-ink)",
-                    fontSize: 15,
-                    fontWeight: 700,
-                    borderRadius: "var(--radius-sm)",
-                    border: "none",
-                    cursor: "pointer",
-                  }}
-                >
-                  {submitting ? t("onb.saving") : t("onb.toSubjects")}
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* STEP 3: Subjects */}
-          {currentStepIndex === 2 && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
-              <div>
-                <span style={{ fontSize: 12, fontWeight: 700, color: ACCENT, textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                  {t("onb.step")} 3
-                </span>
-                <h2 style={{ fontSize: 24, fontWeight: 800, color: "var(--text)", marginTop: 4 }}>
-                  {t("onb.addSubjects")}
-                </h2>
-                <p style={{ fontSize: 14.5, color: "var(--text-muted)", marginTop: 2 }}>
-                  {t("onb.addSubjectsBody")}
-                </p>
               </div>
 
               {/* Add custom subject */}
@@ -924,7 +818,7 @@ export default function OnboardingPage() {
                   {t("onb.suggested")}
                 </span>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
-                  {["IELTS", "General English", "Matematika", "SAT", "Python", "Frontend", "Fizika", "Kimyo", "Nemis tili"].map((s) => (
+                  {suggestedSubjects.map((s) => (
                     <button
                       key={s}
                       type="button"
@@ -949,188 +843,15 @@ export default function OnboardingPage() {
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8 }}>
                 <button
                   type="button"
-                  onClick={() => setCurrentStepIndex(1)}
+                  onClick={() => setCurrentStepIndex(0)}
                   style={{ background: "transparent", border: "none", color: "var(--text-muted)", fontSize: 14, fontWeight: 600, cursor: "pointer" }}
                 >
                   {t("onb.back")}
                 </button>
                 <button
                   type="button"
-                  onClick={handleStep3Subjects}
-                  disabled={submitting}
-                  style={{
-                    height: 46,
-                    padding: "0 28px",
-                    background: ACCENT,
-                    color: "var(--on-ink)",
-                    fontSize: 15,
-                    fontWeight: 700,
-                    borderRadius: "var(--radius-sm)",
-                    border: "none",
-                    cursor: "pointer",
-                  }}
-                >
-                  {t("onb.toCourses")}
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* STEP 4: Courses / Programs */}
-          {currentStepIndex === 3 && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
-              <div>
-                <span style={{ fontSize: 12, fontWeight: 700, color: ACCENT, textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                  {t("onb.step")} 4
-                </span>
-                <h2 style={{ fontSize: 24, fontWeight: 800, color: "var(--text)", marginTop: 4 }}>
-                  {t("onb.courses")}
-                </h2>
-                <p style={{ fontSize: 14.5, color: "var(--text-muted)", marginTop: 2 }}>
-                  {t("onb.coursesBody")}
-                </p>
-              </div>
-
-              <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-                {subjectsList.map((subj) => {
-                  const courses = coursesMap[subj] || [];
-                  const inputVal = newCourseInputs[subj] || "";
-                  const popular = SUGGESTED_COURSES[subj] || [];
-
-                  return (
-                    <div
-                      key={subj}
-                      style={{
-                        background: "var(--surface-muted)",
-                        border: "1.5px solid var(--border)",
-                        borderRadius: "var(--radius-lg)",
-                        padding: "16px 18px",
-                        display: "flex",
-                        flexDirection: "column",
-                        gap: 12,
-                      }}
-                    >
-                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                        <span style={{ fontSize: 15, fontWeight: 800, color: "var(--text)" }}>
-                          📚 {subj}
-                        </span>
-                        <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
-                          {courses.length} ta kurs
-                        </span>
-                      </div>
-
-                      {/* Course tags */}
-                      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                        {courses.map((courseName) => (
-                          <div
-                            key={courseName}
-                            style={{
-                              background: "var(--surface)",
-                              border: "1px solid var(--border-strong)",
-                              borderRadius: "var(--radius-xs)",
-                              padding: "4px 10px",
-                              fontSize: 13,
-                              fontWeight: 600,
-                              color: "var(--text-soft)",
-                              display: "inline-flex",
-                              alignItems: "center",
-                              gap: 6,
-                            }}
-                          >
-                            <span>{courseName}</span>
-                            <button
-                              type="button"
-                              onClick={() => removeCourseFromSubject(subj, courseName)}
-                              style={{ background: "transparent", border: "none", color: "var(--text-faint)", cursor: "pointer", padding: 0 }}
-                            >
-                              &times;
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-
-                      {/* Add custom course input */}
-                      <div style={{ display: "flex", gap: 8 }}>
-                        <input
-                          value={inputVal}
-                          onChange={(e) => setNewCourseInputs({ ...newCourseInputs, [subj]: e.target.value })}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") {
-                              e.preventDefault();
-                              addCourseToSubject(subj, inputVal);
-                            }
-                          }}
-                          placeholder={`+ ${subj} uchun yangi kurs...`}
-                          style={{
-                            flex: 1,
-                            height: 36,
-                            padding: "0 12px",
-                            borderRadius: "var(--radius-xs)",
-                            border: "1px solid var(--border-strong)",
-                            fontSize: 13,
-                            background: "var(--surface)",
-                          }}
-                        />
-                        <button
-                          type="button"
-                          onClick={() => addCourseToSubject(subj, inputVal)}
-                          style={{
-                            padding: "0 12px",
-                            background: "var(--primary-soft)",
-                            color: ACCENT,
-                            borderRadius: "var(--radius-xs)",
-                            border: "none",
-                            fontWeight: 700,
-                            fontSize: 12.5,
-                            cursor: "pointer",
-                          }}
-                        >
-                          {t("onb.add")}
-                        </button>
-                      </div>
-
-                      {/* Popular suggestions */}
-                      {popular.length > 0 && (
-                        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center" }}>
-                          <span style={{ fontSize: 11.5, color: "var(--text-muted)" }}>{t("onb.suggestion")}</span>
-                          {popular.map((p) => (
-                            <button
-                              key={p}
-                              type="button"
-                              disabled={courses.includes(p)}
-                              onClick={() => addCourseToSubject(subj, p)}
-                              style={{
-                                fontSize: 11.5,
-                                padding: "2px 8px",
-                                borderRadius: "var(--radius-xs)",
-                                border: "1px dashed var(--text-faint)",
-                                background: courses.includes(p) ? "var(--border)" : "var(--surface)",
-                                color: courses.includes(p) ? "var(--text-faint)" : "var(--text-muted)",
-                                cursor: courses.includes(p) ? "default" : "pointer",
-                              }}
-                            >
-                              + {p}
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8 }}>
-                <button
-                  type="button"
-                  onClick={() => setCurrentStepIndex(2)}
-                  style={{ background: "transparent", border: "none", color: "var(--text-muted)", fontSize: 14, fontWeight: 600, cursor: "pointer" }}
-                >
-                  {t("onb.back")}
-                </button>
-                <button
-                  type="button"
-                  onClick={handleStep4Courses}
-                  disabled={submitting}
+                  onClick={handleStep2Categories}
+                  disabled={submitting || selectedCategories.length === 0 || subjectsList.length === 0}
                   style={{
                     height: 46,
                     padding: "0 28px",
@@ -1149,12 +870,12 @@ export default function OnboardingPage() {
             </div>
           )}
 
-          {/* STEP 5: Workspace URL */}
-          {currentStepIndex === 4 && (
-            <form onSubmit={handleStep5Workspace} style={{ display: "flex", flexDirection: "column", gap: 22 }}>
+          {/* STEP 3: Workspace URL */}
+          {currentStepIndex === 2 && (
+            <form onSubmit={handleStep3Workspace} style={{ display: "flex", flexDirection: "column", gap: 22 }}>
               <div>
                 <span style={{ fontSize: 12, fontWeight: 700, color: ACCENT, textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                  {t("onb.step")} 5
+                  {t("onb.step")} 3
                 </span>
                 <h2 style={{ fontSize: 24, fontWeight: 800, color: "var(--text)", marginTop: 4 }}>
                   {t("onb.chooseWs")}
@@ -1206,7 +927,7 @@ export default function OnboardingPage() {
                       whiteSpace: "nowrap",
                     }}
                   >
-                    .{ROOT_DOMAIN}
+                    {centerAt.suffix}
                   </span>
                 </div>
 
@@ -1240,7 +961,7 @@ export default function OnboardingPage() {
                 <div>
                   <div style={{ fontSize: 12, color: "var(--text-muted)" }}>{t("onb.preview")}</div>
                   <div style={{ fontSize: 14.5, fontWeight: 700, color: ACCENT }}>
-                    {centerHost(workspaceSlug || "bilimdon")}
+                    {centerAt.host(workspaceSlug || "bilimdon")}
                   </div>
                 </div>
               </div>
@@ -1248,7 +969,7 @@ export default function OnboardingPage() {
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8 }}>
                 <button
                   type="button"
-                  onClick={() => setCurrentStepIndex(3)}
+                  onClick={() => setCurrentStepIndex(1)}
                   style={{ background: "transparent", border: "none", color: "var(--text-muted)", fontSize: 14, fontWeight: 600, cursor: "pointer" }}
                 >
                   {t("onb.back")}
@@ -1274,12 +995,12 @@ export default function OnboardingPage() {
             </form>
           )}
 
-          {/* STEP 6: First Branch */}
-          {currentStepIndex === 5 && (
+          {/* STEP 4: First Branch */}
+          {currentStepIndex === 3 && (
             <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
               <div>
                 <span style={{ fontSize: 12, fontWeight: 700, color: ACCENT, textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                  {t("onb.step")} 6 {t("onb.optional")}
+                  {t("onb.step")} 4 {t("onb.optional")}
                 </span>
                 <h2 style={{ fontSize: 24, fontWeight: 800, color: "var(--text)", marginTop: 4 }}>
                   {t("onb.addBranch")}
@@ -1329,7 +1050,7 @@ export default function OnboardingPage() {
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8 }}>
                 <button
                   type="button"
-                  onClick={() => handleStep6Branch(true)}
+                  onClick={() => handleStep4Branch(true)}
                   style={{
                     background: "transparent",
                     border: "none",
@@ -1344,7 +1065,7 @@ export default function OnboardingPage() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => handleStep6Branch(false)}
+                  onClick={() => handleStep4Branch(false)}
                   disabled={submitting}
                   style={{
                     height: 46,
@@ -1364,12 +1085,12 @@ export default function OnboardingPage() {
             </div>
           )}
 
-          {/* STEP 7: Team */}
-          {currentStepIndex === 6 && (
+          {/* STEP 5: Team */}
+          {currentStepIndex === 4 && (
             <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
               <div>
                 <span style={{ fontSize: 12, fontWeight: 700, color: ACCENT, textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                  {t("onb.step")} 7 {t("onb.optional")}
+                  {t("onb.step")} 5 {t("onb.optional")}
                 </span>
                 <h2 style={{ fontSize: 24, fontWeight: 800, color: "var(--text)", marginTop: 4 }}>
                   {t("onb.inviteTeam")}
@@ -1451,7 +1172,7 @@ export default function OnboardingPage() {
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8 }}>
                 <button
                   type="button"
-                  onClick={() => handleStep7Team(true)}
+                  onClick={() => handleStep5Team(true)}
                   style={{
                     background: "transparent",
                     border: "none",
@@ -1466,7 +1187,7 @@ export default function OnboardingPage() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => handleStep7Team(false)}
+                  onClick={() => handleStep5Team(false)}
                   disabled={submitting}
                   style={{
                     height: 46,
@@ -1486,12 +1207,12 @@ export default function OnboardingPage() {
             </div>
           )}
 
-          {/* STEP 8: Students */}
-          {currentStepIndex === 7 && (
+          {/* STEP 6: Students */}
+          {currentStepIndex === 5 && (
             <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
               <div>
                 <span style={{ fontSize: 12, fontWeight: 700, color: ACCENT, textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                  {t("onb.step")} 8 {t("onb.final")}
+                  {t("onb.step")} 6 {t("onb.final")}
                 </span>
                 <h2 style={{ fontSize: 24, fontWeight: 800, color: "var(--text)", marginTop: 4 }}>
                   {t("onb.addStudents")}
@@ -1604,7 +1325,7 @@ export default function OnboardingPage() {
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8 }}>
                 <button
                   type="button"
-                  onClick={() => setCurrentStepIndex(6)}
+                  onClick={() => setCurrentStepIndex(4)}
                   style={{ background: "transparent", border: "none", color: "var(--text-muted)", fontSize: 14, fontWeight: 600, cursor: "pointer" }}
                 >
                   {t("onb.back")}
@@ -1612,7 +1333,7 @@ export default function OnboardingPage() {
                 <button
                   id="finish-onboarding-btn"
                   type="button"
-                  onClick={handleStep8Students}
+                  onClick={handleStep6Students}
                   disabled={submitting}
                   style={{
                     height: 48,

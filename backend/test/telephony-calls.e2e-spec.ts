@@ -9,7 +9,8 @@ import { and, eq } from 'drizzle-orm';
 import { AppModule } from '../src/app.module.js';
 import { configureApp } from '../src/app.setup.js';
 import { DB, type Database } from '../src/db/db.module.js';
-import { calls, leads } from '../src/db/schema.js';
+import { calls, featureFlags, leads } from '../src/db/schema.js';
+import { clearFlagCache } from '../src/feature-flags/flags.js';
 import { zadarmaWebhookSignature } from '../src/telephony/providers/zadarma.provider.js';
 
 // What staff do with calls (telephony step 3): the live popup reaches only
@@ -122,6 +123,9 @@ describe('Telephony calls (e2e)', () => {
     m2 = await invite(owner.token, 'MANAGER', 'm2');
     const b = await register('b');
     ownerB = b; tenantB = b.tenantId;
+    // Telephony is off until the platform turns it on for the center.
+    for (const tenantId of [tenantA, tenantB]) await db.insert(featureFlags).values({ tenantId, key: 'telephony', enabled: true });
+    clearFlagCache();
 
     hookA = (await http().put('/api/telephony/settings').set(bearer(owner.token)).send({ provider: 'MOCK', apiKey: 'keyA', apiSecret: SECRET_A }).expect(200)).body.webhookUrl.split('/webhook/')[1];
     hookB = (await http().put('/api/telephony/settings').set(bearer(ownerB.token)).send({ provider: 'MOCK', apiKey: 'keyB', apiSecret: SECRET_B }).expect(200)).body.webhookUrl.split('/webhook/')[1];

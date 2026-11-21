@@ -1,5 +1,5 @@
 import { BadRequestException, ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { and, asc, eq, gte, isNull, lt, ne, sql } from 'drizzle-orm';
+import { and, asc, eq, gte, inArray, isNull, lt, ne, or, sql } from 'drizzle-orm';
 import { DB, Database } from '../db/db.module';
 import { branches, courses, groups, leadTrials, rooms, schedules, subjects, teachers } from '../db/schema';
 import { AuditService } from '../audit/audit.service';
@@ -7,7 +7,20 @@ import { zonedParts } from '../common/timezone';
 import { ScheduleService, type ScheduleConflict } from '../schedule/schedule.service';
 import { AdmissionsEventsService } from './admissions-events.service';
 import { Actor, appTimestamps, isUniqueViolation, LeadRow, LeadsService, Tx } from './leads.service';
-import { BookTrialDto, RescheduleTrialDto } from './dto/lead.dto';
+import { BookTrialDto, RescheduleTrialDto, TrialFeedbackDto } from './dto/lead.dto';
+
+const ENGAGEMENT: Record<string, string> = { ACTIVE: 'faol', AVERAGE: "o'rtacha", PASSIVE: 'sust' };
+
+/** The teacher's feedback as the trial's outcome note (plain lines the lead page shows as is). */
+export function feedbackText(dto: TrialFeedbackDto): string {
+  const line = (label: string, v: string | undefined) => (v?.trim() ? `${label}: ${v.trim()}` : null);
+  return [
+    line('Bilim darajasi', dto.level),
+    line('Darsdagi faolligi', dto.engagement ? ENGAGEMENT[dto.engagement] : undefined),
+    line('Tavsiya', dto.recommendation),
+    line('Izoh', dto.note),
+  ].filter(Boolean).join('\n');
+}
 
 // Converts an instant to the center's wall-clock values the schedule engine
 // works with (lessons are stored as local "HH:MM" + weekday/date).
@@ -59,6 +72,71 @@ export class LeadTrialsService {
       orderBy: asc(leadTrials.scheduledAt),
       limit: 500,
     });
+  }
+
+  /**
+   * A teacher's coming trial lessons: booked with them by name or in one of
+   * their groups, from a few hours ago (a lesson under way) for two weeks.
+   * Who comes and when only - no phone, no admissions history.
+   */
+  async forTeacher(tenantId: string, userId: string) {
+    const [teacher] = await this.db.select({ id: teachers.id }).from(teachers)
+      .where(and(eq(teachers.tenantId, tenantId), eq(teachers.userId, userId), isNull(teachers.deletedAt)));
+    if (!teacher) return [];
+    const own = await this.db.select({ id: groups.id }).from(groups)
+      .where(and(eq(groups.tenantId, tenantId), eq(groups.teacherId, teacher.id), isNull(groups.deletedAt)));
+    const now = Date.now();
+    const rows = await this.db.query.leadTrials.findMany({
+      where: and(
+        eq(leadTrials.tenantId, tenantId),
+        // Coming ones, and those of the last three days (feedback after the lesson).
+        inArray(leadTrials.status, ['BOOKED', 'ATTENDED']),
+        gte(leadTrials.scheduledAt, new Date(now - 3 * 86_400_000)),
+        lt(leadTrials.scheduledAt, new Date(now + 14 * 86_400_000)),
+        own.length ? or(eq(leadTrials.teacherId, teacher.id), inArray(leadTrials.groupId, own.map((g) => g.id))) : eq(leadTrials.teacherId, teacher.id),
+      ),
+      with: { lead: { columns: { fullName: true } }, group: { columns: { id: true, name: true } }, room: { columns: { name: true } } },
+      orderBy: asc(leadTrials.scheduledAt),
+      limit: 50,
+    });
+    return rows.map((r) => ({
+      id: r.id,
+      scheduledAt: r.scheduledAt,
+      durationMinutes: r.durationMinutes,
+      name: r.lead?.fullName ?? '',
+      group: r.group ? { id: r.group.id, name: r.group.name } : null,
+      room: r.room?.name ?? null,
+      status: r.status,
+      outcomeNote: r.outcomeNote,
+    })).filter((r) => r.status === 'BOOKED' || new Date(r.scheduledAt).getTime() <= now);
+  }
+
+  /**
+   * The trial's teacher writes how it went. A trial still BOOKED is marked
+   * attended with it (the lead moves on, as when staff mark it); an attended
+   * one gets its note replaced. Only a trial booked with this teacher, or in
+   * one of their groups.
+   */
+  async teacherFeedback(tenantId: string, userId: string, trialId: string, dto: TrialFeedbackDto) {
+    const text = feedbackText(dto);
+    if (!text) throw new BadRequestException("Kamida bitta maydonni to'ldiring");
+    const [teacher] = await this.db.select({ id: teachers.id }).from(teachers)
+      .where(and(eq(teachers.tenantId, tenantId), eq(teachers.userId, userId), isNull(teachers.deletedAt)));
+    if (!teacher) throw new NotFoundException('Sinov darsi topilmadi');
+    const own = await this.db.select({ id: groups.id }).from(groups)
+      .where(and(eq(groups.tenantId, tenantId), eq(groups.teacherId, teacher.id), isNull(groups.deletedAt)));
+    const [t] = await this.db.select().from(leadTrials).where(and(
+      eq(leadTrials.tenantId, tenantId),
+      eq(leadTrials.id, trialId),
+      own.length ? or(eq(leadTrials.teacherId, teacher.id), inArray(leadTrials.groupId, own.map((g) => g.id))) : eq(leadTrials.teacherId, teacher.id),
+    ));
+    if (!t) throw new NotFoundException('Sinov darsi topilmadi');
+    if (t.status === 'BOOKED') return this.attend(tenantId, { userId, permissions: [] }, t.leadId, t.id, text);
+    if (t.status !== 'ATTENDED') throw new ConflictException({ code: 'TRIAL_NOT_ATTENDED', message: `Sinov darsi holati: ${t.status}` });
+    const [updated] = await this.db.update(leadTrials).set({ outcomeNote: text, updatedAt: new Date() })
+      .where(and(eq(leadTrials.id, t.id), eq(leadTrials.tenantId, tenantId))).returning();
+    await this.leadsService.recordActivity(this.db, { tenantId, leadId: t.leadId, actorUserId: userId, type: 'NOTE', body: text, metadata: { trialId: t.id } });
+    return updated;
   }
 
   // ---- validation ----
@@ -189,6 +267,13 @@ export class LeadTrialsService {
     }
   }
 
+  /** Came or missed is known only once the trial has begun. */
+  private requireStarted(trial: TrialRow) {
+    if (trial.scheduledAt.getTime() > Date.now()) {
+      throw new ConflictException({ code: 'TRIAL_NOT_STARTED', message: "Sinov darsi hali boshlanmagan: natijani dars boshlangandan keyin belgilang" });
+    }
+  }
+
   // ---- commands ----
 
   async book(tenantId: string, actor: Actor, leadId: string, dto: BookTrialDto) {
@@ -282,6 +367,7 @@ export class LeadTrialsService {
       if (lead.archivedAt) throw new ConflictException({ code: 'LEAD_ARCHIVED', message: 'Lid arxivlangan' });
       const t = await this.getTrial(tx, tenantId, leadId, trialId);
       this.requireBooked(t);
+      this.requireStarted(t);
       const [updated] = await tx.update(leadTrials)
         .set({ status: 'ATTENDED', outcomeNote: note?.trim() || t.outcomeNote, updatedAt: new Date() })
         .where(and(eq(leadTrials.id, t.id), eq(leadTrials.status, 'BOOKED')))
@@ -305,6 +391,7 @@ export class LeadTrialsService {
       await this.leadsService.getLeadRow(tx, tenantId, leadId, { lock: true });
       const t = await this.getTrial(tx, tenantId, leadId, trialId);
       this.requireBooked(t);
+      if (status === 'MISSED') this.requireStarted(t);
       const [updated] = await tx.update(leadTrials)
         .set({ status, outcomeNote: note?.trim() || t.outcomeNote, updatedAt: new Date() })
         .where(eq(leadTrials.id, t.id))
@@ -316,6 +403,30 @@ export class LeadTrialsService {
       return updated;
     });
     this.audit.log({ tenantId, userId: actor.userId, action: status === 'MISSED' ? 'trial_missed' : 'trial_cancel', entityType: 'lead_trial', entityId: trialId, meta: { leadId } });
+    return trial;
+  }
+
+  /**
+   * "Kelmadi" pressed by mistake: the trial is booked again, so its result
+   * can be marked. Only a missed one, on a lead still open, and only while
+   * no other trial is booked for it (one booked trial per lead).
+   */
+  async reopen(tenantId: string, actor: Actor, leadId: string, trialId: string) {
+    const trial = await this.db.transaction(async (tx) => {
+      const lead = await this.leadsService.getLeadRow(tx, tenantId, leadId, { lock: true });
+      if (lead.archivedAt) throw new ConflictException({ code: 'LEAD_ARCHIVED', message: 'Lid arxivlangan' });
+      const t = await this.getTrial(tx, tenantId, leadId, trialId);
+      if (t.status !== 'MISSED') throw new ConflictException({ code: 'TRIAL_NOT_MISSED', message: "Faqat \"Kelmadi\" deb belgilangan sinovni qaytarish mumkin" });
+      const [other] = await tx.select({ id: leadTrials.id }).from(leadTrials)
+        .where(and(eq(leadTrials.tenantId, tenantId), eq(leadTrials.leadId, leadId), eq(leadTrials.status, 'BOOKED')));
+      if (other) throw new ConflictException({ code: 'TRIAL_ALREADY_BOOKED', message: 'Bu lidda boshqa sinov darsi belgilangan' });
+      const [updated] = await tx.update(leadTrials).set({ status: 'BOOKED', updatedAt: new Date() }).where(eq(leadTrials.id, t.id)).returning();
+      await this.leadsService.recordActivity(tx, {
+        tenantId, leadId, actorUserId: actor.userId, type: 'NOTE', body: null, metadata: { kind: 'TRIAL_REOPENED', trialId: t.id },
+      });
+      return updated;
+    });
+    this.audit.log({ tenantId, userId: actor.userId, action: 'trial_reopen', entityType: 'lead_trial', entityId: trialId, meta: { leadId } });
     return trial;
   }
 

@@ -252,6 +252,8 @@ export const tenants = pgTable('tenants', {
   timezone: text('timezone').notNull().default('Asia/Tashkent'),
   // Make-up credits expire this many days after they are issued; null: never.
   makeupCreditDays: integer('makeup_credit_days'),
+  // A student marked absent gets a make-up credit at once (off: staff issue each one).
+  makeupAutoIssue: boolean('makeup_auto_issue').notNull().default(false),
   // Public site content written by the center (JSON, see tenants/site-content.ts).
   siteContent: text('site_content'),
   // Questions a student may ask the AI tutor in Telegram per day (0 = off).
@@ -567,6 +569,12 @@ export const teachers = pgTable('teachers', {
   email: text('email'),
   birthDate: timestamp('birth_date'),
   startDate: timestamp('start_date'),
+  // Shown on the center's site: the teacher's own result in what they teach
+  // ("IELTS 8.0", "SAT 1520", "TORFL C1"), years of teaching, and a photo
+  // (a public site picture, uploaded like the gallery's).
+  score: text('score'),
+  experienceYears: integer('experience_years'),
+  photoPath: text('photo_path'),
   salaryType: text('salary_type'),
   salaryValue: integer('salary_value'),
   // Retry protection for the create form (the same pattern as payments):
@@ -594,6 +602,9 @@ export const groups = pgTable('groups', {
   status: text('status').notNull().default('ACTIVE'), // 'PLANNED' | 'ACTIVE' | 'COMPLETED' | 'ARCHIVED'
   startDate: timestamp('start_date'),
   maxStudents: integer('max_students').notNull().default(20),
+  // One student, a price of its own, the times agreed with the teacher (days
+  // and time may stay empty). Kept to one seat; not advertised on the site.
+  isIndividual: boolean('is_individual').notNull().default(false),
   schedule: text('schedule'),
   scheduleDays: text('schedule_days'), // comma-separated: "MON,WED,FRI"
   startTime: text('start_time'), // "16:00"
@@ -1286,6 +1297,18 @@ export const portalLoginCodes = pgTable('portal_login_codes', {
   phoneIdx: index('portal_login_codes_phone_idx').on(t.phone),
 }));
 
+// One row per wrong cabinet PIN, keyed by a hash of the phone typed (the
+// number itself is not stored). Sign-in before the account is known, so it
+// spans centers like portal_login_codes and carries no tenant_id. Rows past
+// the lockout window are deleted by the sign-in that notices them.
+export const portalPinFailures = pgTable('portal_pin_failures', {
+  id: text('id').primaryKey().$defaultFn(() => createId()),
+  phoneHash: text('phone_hash').notNull(),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+}, (t) => ({
+  phoneIdx: index('portal_pin_failures_phone_idx').on(t.phoneHash, t.createdAt),
+}));
+
 // Whether the teacher taught a given group's lesson on a date. ABSENT
 // lessons are taken off the payroll; a substitute gets the lesson instead
 // (per-lesson pay).
@@ -1745,6 +1768,22 @@ export const aiUsage = pgTable('ai_usage', {
 }, (t) => ({
   pk: primaryKey({ columns: [t.studentId, t.kind, t.day] }),
   tenantIdx: index('ai_usage_tenant_idx').on(t.tenantId),
+}));
+
+// A mock day: one test sat by a whole group at a set time. Before
+// `startsAt` the group's students see it coming but cannot open it; the
+// teacher follows the group's sittings in one table.
+export const mockSessions = pgTable('mock_sessions', {
+  id: text('id').primaryKey().$defaultFn(() => createId()),
+  tenantId: text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  testId: text('test_id').notNull().references(() => mockTests.id, { onDelete: 'cascade' }),
+  groupId: text('group_id').notNull().references(() => groups.id, { onDelete: 'cascade' }),
+  startsAt: timestamp('starts_at').notNull(),
+  createdBy: text('created_by').references(() => users.id, { onDelete: 'set null' }),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+}, (t) => ({
+  tenantIdx: index('mock_sessions_tenant_idx').on(t.tenantId, t.startsAt),
+  groupIdx: index('mock_sessions_group_idx').on(t.groupId),
 }));
 
 // One student's sitting of a mock test. JSON columns: answers per section,
@@ -2529,6 +2568,13 @@ export const chatMessages = pgTable('chat_messages', {
   senderPerson: text('sender_person'),
   senderAbout: text('sender_about'),
   body: text('body').notNull(),
+  // A file sent with the message (stored name, the name it was sent with,
+  // its type and size). Opened only through a signed link handed out with
+  // the message list, i.e. after the reader's access was checked.
+  attachmentPath: text('attachment_path'),
+  attachmentName: text('attachment_name'),
+  attachmentMime: text('attachment_mime'),
+  attachmentSize: integer('attachment_size'),
   clientMessageId: text('client_message_id').notNull(),
   createdAt: timestamp('created_at').notNull().defaultNow(),
 }, (t) => ({

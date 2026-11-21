@@ -76,8 +76,10 @@ Fan: ${opts.subject}
 ${opts.topic ? `Mavzu: ${opts.topic}\n` : ''}Daraja: ${opts.level ?? "noma'lum — osondan qiyinga, barcha darajalarni qamrab ol"}
 Savollar soni: ${opts.count}
 Til: ${lang} (til fanining o'zi bo'lsa, savollar o'sha tilda bo'lsin).
-${opts.request ? `O'qituvchi talabi (eng muhimi): ${opts.request}\n` : ''}
-Talablar:
+${opts.request ? `O'qituvchi talabi (ENG MUHIMI): ${opts.request}
+Talab mavzu, savol turi, til yoki boshqa narsani aytgan bo'lsa, AYNAN shunga amal qil: yuqoridagi mavzu va pastdagi qoidalardan ustun turadi (masalan "faqat test (MCQ)" deyilsa - hammasi MCQ).
+` : ''}
+Talablar (o'qituvchi talabi boshqacha demagan bo'lsa):
 - Savol turlari ARALASH bo'lsin (kamida 4-5 xil tur): MCQ, TRUE_FALSE_NG yoki TRUE_FALSE, FILL_BLANK, MATCHING, WORD_ORDER, ERROR_CORRECTION, WORD_FORMATION va h.k. — fanga mosini tanla (matematikada masala va qisqa javob ko'proq).
 - Savollarni bo'limlarga ajrat ("section" va "instruction"); bir bo'limda bir xil tur.
 - Til fanida bitta qisqa o'qish matni ("passage") va unga 2-4 ta savol bo'lsin.
@@ -102,6 +104,45 @@ O'quvchi javobi:
 ${opts.answer.slice(0, 6000)}
 """
 Javobni FAQAT JSON ko'rinishida ber: {"score": 0 dan ${opts.maxPoints} gacha butun son, "comment": "o'zbek tilida 1-3 jumla: nima yaxshi, nimani tuzatish kerak"}`;
+}
+
+/**
+ * The JSON object in a model reply, read leniently: raw line breaks and tabs
+ * inside strings (which models often write) are escaped first. Null when
+ * there is no object to read.
+ */
+export function parseLooseJson(text: string): Record<string, unknown> | null {
+  const start = text.indexOf('{');
+  const end = text.lastIndexOf('}');
+  if (start < 0 || end <= start) return null;
+  const raw = text.slice(start, end + 1);
+  try {
+    return JSON.parse(raw);
+  } catch {
+    // Escape control characters that sit inside string literals.
+    let out = '';
+    let inString = false;
+    let escaped = false;
+    for (const ch of raw) {
+      if (inString) {
+        if (escaped) { out += ch; escaped = false; continue; }
+        if (ch === '\\') { out += ch; escaped = true; continue; }
+        if (ch === '"') { inString = false; out += ch; continue; }
+        if (ch === '\n') { out += '\\n'; continue; }
+        if (ch === '\r') continue;
+        if (ch === '\t') { out += '\\t'; continue; }
+        out += ch;
+      } else {
+        if (ch === '"') inString = true;
+        out += ch;
+      }
+    }
+    try {
+      return JSON.parse(out);
+    } catch {
+      return null;
+    }
+  }
 }
 
 // Pulls the JSON array out of a model reply; if the reply was cut off

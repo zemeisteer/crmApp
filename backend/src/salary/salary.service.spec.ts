@@ -29,6 +29,9 @@ describe('SalaryService', () => {
         enrollments: {
           findMany: vi.fn(),
         },
+        tenants: {
+          findFirst: vi.fn().mockResolvedValue({ timezone: 'Asia/Tashkent' }),
+        },
       },
       insert: vi.fn().mockReturnValue({
         values: vi.fn().mockReturnValue({

@@ -2,6 +2,14 @@ import * as bcrypt from 'bcryptjs';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { PortalService } from './portal.service';
 
+// The PIN lockout reads and writes its own table (pin-lockout.spec.ts and
+// test/portal-pin-lock.e2e-spec.ts cover it); here the sign-in itself is the subject.
+vi.mock('./pin-lockout', () => ({
+  pinLockRemainingMs: vi.fn(async () => 0),
+  recordPinFailure: vi.fn(async () => undefined),
+  clearPinFailures: vi.fn(async () => undefined),
+}));
+
 describe('PortalService', () => {
   let service: PortalService;
   let mockDb: any;

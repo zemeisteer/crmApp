@@ -1,0 +1,19 @@
+{
+  "mcpServers": {
+    "context7": {
+      "command": "npx",
+      "args": ["-y", "@upstash/context7-mcp@4.7.0"]
+    },
+    "postgres-dev": {
+      "command": "npx",
+      "args": ["-y", "@toolbox-sdk/server@1.17.0", "--prebuilt", "postgres", "--stdio"],
+      "env": {
+        "POSTGRES_HOST": "${CRM_DEV_DB_HOST:-127.0.0.1}",
+        "POSTGRES_PORT": "${CRM_DEV_DB_PORT:-5432}",
+        "POSTGRES_DATABASE": "${CRM_DEV_DB_NAME:-talimcrm_dev}",
+        "POSTGRES_USER": "${CRM_DEV_DB_USER:-crm_mcp_readonly}",
+        "POSTGRES_PASSWORD": "${CRM_DEV_DB_PASSWORD}"
+      }
+    }
+  }
+}

@@ -12,6 +12,18 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["--prefix", "frontend", "run", "dev"],
       "port": 3000
+    },
+    {
+      "name": "dev-backend",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "../crmApp-dev/backend", "run", "start:dev"],
+      "port": 4100
+    },
+    {
+      "name": "dev-frontend",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "../crmApp-dev/frontend", "run", "dev", "--", "-p", "3100"],
+      "port": 3100
     }
   ]
 }

@@ -133,6 +133,8 @@ export class TeachersService {
             phone: blankToNull(dto.phone),
             email: blankToNull(dto.email),
             subject: blankToNull(dto.subject),
+            score: blankToNull(dto.score),
+            photoPath: blankToNull(dto.photoPath),
             birthDate: dto.birthDate ? new Date(dto.birthDate) : undefined,
             startDate: dto.startDate ? new Date(dto.startDate) : undefined,
             idempotencyKey: key,
@@ -161,6 +163,8 @@ export class TeachersService {
       .update(teachers)
       .set({
         ...dto,
+        ...(dto.score !== undefined ? { score: blankToNull(dto.score) } : {}),
+        ...(dto.photoPath !== undefined ? { photoPath: blankToNull(dto.photoPath) } : {}),
         birthDate: dto.birthDate ? new Date(dto.birthDate) : undefined,
         startDate: dto.startDate ? new Date(dto.startDate) : undefined,
         updatedAt: new Date(),
