@@ -195,7 +195,8 @@ export default function StudentPortalPage() {
         forMonth: payments.forMonth,
       });
       if (res.url) {
-        window.open(res.url, "_blank");
+        // A payment page of another company: it gets no handle on this tab.
+        window.open(res.url, "_blank", "noopener,noreferrer");
       }
     } catch {
       setPayError(t("ptl.linkError"));
