@@ -1,6 +1,7 @@
 // What a center writes about itself for its public site (Settings → Site).
 // Stored as JSON on tenants.site_content; everything is cleaned and capped
 // here so the public page never shows unbounded or unexpected data.
+import { normalizeHttpUrl } from '../common/http-url';
 
 export interface SiteContent {
   heroTitle: string | null;
@@ -48,17 +49,7 @@ const list = <T>(v: unknown, max: number, map: (x: Record<string, unknown>) => T
     .filter((x): x is T => x !== null)
     .slice(0, max);
 // Only http(s) links end up as hrefs on the public page.
-const url = (v: unknown) => {
-  const s = str(v, 300);
-  if (!s) return null;
-  const withScheme = /^https?:\/\//i.test(s) ? s : `https://${s}`;
-  try {
-    const u = new URL(withScheme);
-    return u.protocol === 'https:' || u.protocol === 'http:' ? u.toString() : null;
-  } catch {
-    return null;
-  }
-};
+const url = (v: unknown) => normalizeHttpUrl(str(v, 300));
 
 export function normalizeSiteContent(raw: unknown): SiteContent {
   const r = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {};

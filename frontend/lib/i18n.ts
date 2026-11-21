@@ -964,6 +964,7 @@ export const dict = {
   "std.linkExpiry": { UZ: "Amal qilish muddati: 15 daqiqa (bir martalik)", RU: "Действует 15 минут (одноразовая)", EN: "Valid for 15 minutes (one-time)" },
   "std.linkHint": { UZ: "O'quvchini Telegram botga xavfsiz ulash uchun yuqoridagi tugmani bosing.", RU: "Нажмите кнопку выше, чтобы безопасно подключить ученика к Telegram-боту.", EN: "Press the button above to securely connect the student to the Telegram bot." },
   "std.idCardTitle": { UZ: "O'quvchi guvohnomasi (QR)", RU: "Удостоверение ученика (QR)", EN: "Student ID card (QR)" },
+  "std.qrAlt": { UZ: "O'quvchi QR kodi", RU: "QR-код ученика", EN: "Student QR code" },
   "std.noGroup": { UZ: "Guruh yo'q", RU: "Нет группы", EN: "No group" },
   "std.idCard": { UZ: "O'quvchi guvohnomasi", RU: "Удостоверение ученика", EN: "Student ID card" },
   "std.groups": { UZ: "Guruhlar:", RU: "Группы:", EN: "Groups:" },

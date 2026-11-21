@@ -20,3 +20,8 @@ test("each nonce is new and long enough", () => {
   assert.notEqual(a, newNonce());
   assert.ok(Buffer.from(a, "base64").length === 16);
 });
+
+test("images come from this site, data/blob URLs and the API only: no third-party image service", () => {
+  const img = contentSecurityPolicy("n", "https://api.example.uz/api").split("; ").find((d) => d.startsWith("img-src"))!;
+  assert.equal(img, "img-src 'self' data: blob: https://api.example.uz");
+});
