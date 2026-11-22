@@ -1873,3 +1873,57 @@ a.dash-row:hover .dash-row-title {
     box-shadow: none;
   }
 }
+
+/* ========================================================================= */
+/* Public pages (main landing, plan pages, legal pages, a center's site):     */
+/* the purple design the owner approved (2026-11). Scoped to .pub-theme so    */
+/* the dashboard keeps its own tokens; always light.                          */
+/* ========================================================================= */
+.pub-theme {
+  --pub-primary: #5238d8;
+  --pub-primary-hover: #4329c4;
+  --pub-primary-soft: #eeebff;
+  --pub-primary-tint: #f3f1ff;
+  --pub-bg: #f8f7ff;
+  --pub-surface: #ffffff;
+  --pub-ink: #171638;
+  --pub-text: #3f3e5c;
+  --pub-muted: #6f6d8c;
+  --pub-border: #e7e4f6;
+  --pub-success: #16a36a;
+  --pub-success-soft: #e3f7ee;
+  --pub-warning: #f5a524;
+  --pub-warning-soft: #fff3dc;
+  --pub-pink: #ec4899;
+  --pub-pink-soft: #fde7f2;
+  --pub-sky: #0ea5e9;
+  --pub-sky-soft: #e0f3fc;
+  --pub-band: #171638;
+  --pub-on-primary: #ffffff;
+  --pub-shadow: 0 24px 60px -28px rgba(55, 38, 160, 0.35);
+  --pub-shadow-sm: 0 10px 30px -18px rgba(55, 38, 160, 0.3);
+  --pub-radius: 20px;
+  --pub-radius-lg: 24px;
+  --pub-radius-sm: 14px;
+  --pub-font: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --pub-font-display: "Manrope", "Inter", system-ui, sans-serif;
+  /* The app's own tokens follow the public palette inside a public page, so
+     shared pieces (cards, buttons, tables) take its look too. */
+  --primary: var(--pub-primary);
+  --primary-hover: var(--pub-primary-hover);
+  --primary-soft: var(--pub-primary-soft);
+  --primary-border: var(--pub-border);
+  --bg: var(--pub-bg);
+  --surface: var(--pub-surface);
+  --surface-muted: var(--pub-bg);
+  --border: var(--pub-border);
+  --text: var(--pub-ink);
+  --text-soft: var(--pub-text);
+  --text-muted: var(--pub-muted);
+  --font-display: var(--pub-font-display);
+  --radius-lg: var(--pub-radius);
+  color-scheme: light;
+  background: var(--pub-bg);
+  color: var(--pub-ink);
+  font-family: var(--pub-font);
+}

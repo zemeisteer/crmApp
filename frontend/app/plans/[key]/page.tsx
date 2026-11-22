@@ -7,6 +7,7 @@ import { plansApi, type Plan, PLAN_FEATURES, PLAN_LIMITS, planAllows } from "@/l
 import { planFeatureLines } from "@/lib/plans";
 import { useLanguage } from "@/lib/i18n-context";
 import type { TranslationKey } from "@/lib/i18n";
+import PublicShell from "@/components/public/PublicShell";
 
 const ACCENT = "var(--primary)";
 const money = (n: number) => new Intl.NumberFormat("uz-UZ").format(n).replace(/,/g, " ");
@@ -18,7 +19,7 @@ const money = (n: number) => new Intl.NumberFormat("uz-UZ").format(n).replace(/,
  */
 export default function PlanPage() {
   const { key } = useParams<{ key: string }>();
-  const { t, lang, setLang } = useLanguage();
+  const { t, lang } = useLanguage();
   const [plans, setPlans] = useState<Plan[] | null>(null);
   const [failed, setFailed] = useState(false);
 
@@ -39,20 +40,14 @@ export default function PlanPage() {
     return p.popular ? t("planPage.forGrowing") : t("planPage.forLarge");
   };
 
-  const wrap: React.CSSProperties = { maxWidth: 980, margin: "0 auto", padding: "0 20px" };
+  const wrap: React.CSSProperties = { maxWidth: 1040, margin: "0 auto", padding: "0 20px", width: "100%", boxSizing: "border-box" };
   const card: React.CSSProperties = { background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 24 };
 
   return (
-    <div style={{ minHeight: "100vh", background: "var(--bg)", color: "var(--text)" }}>
-      <header style={{ ...wrap, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "20px 20px" }}>
+    <PublicShell>
+      <div style={{ ...wrap, padding: "28px 20px 16px" }}>
         <Link href="/#pricing" style={{ fontSize: 14, fontWeight: 700, color: "var(--text-soft)", textDecoration: "none" }}>← {t("planPage.allPlans")}</Link>
-        <div role="group" aria-label={t("nav.language")} style={{ display: "flex", gap: 4 }}>
-          {(["UZ", "RU", "EN"] as const).map((l) => (
-            <button key={l} type="button" onClick={() => setLang(l)} aria-pressed={lang === l} style={{ border: "1px solid var(--border)", background: lang === l ? "var(--ink)" : "var(--surface)", color: lang === l ? "var(--on-ink)" : "var(--text-soft)", fontSize: 12, fontWeight: 700, padding: "5px 10px", borderRadius: "var(--radius-pill)", cursor: "pointer" }}>{l}</button>
-          ))}
-        </div>
-      </header>
-
+      </div>
       <main style={{ ...wrap, display: "flex", flexDirection: "column", gap: 20, paddingBottom: 60 }}>
         {failed ? (
           <div style={card}>{t("common.errorGeneric")}</div>
@@ -163,6 +158,6 @@ export default function PlanPage() {
           </>
         )}
       </main>
-    </div>
+    </PublicShell>
   );
 }
