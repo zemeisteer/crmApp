@@ -55,7 +55,7 @@ const CSS = `
   .lp-partners{padding:8px 0 40px;}
   .lp-partners-label{text-align:center;font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--pub-muted);}
   .lp-logos{margin-top:22px;display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px;}
-  .lp-logos span{height:64px;display:flex;align-items:center;justify-content:center;border-radius:16px;background:var(--pub-surface);border:1px solid var(--pub-border);font-family:var(--pub-font-display);font-weight:800;font-size:16px;letter-spacing:-0.01em;color:color-mix(in oklab,var(--pub-muted) 80%,var(--pub-bg));text-align:center;padding:0 10px;}
+  .lp-logos span{height:64px;display:flex;align-items:center;justify-content:center;border-radius:16px;background:var(--pub-surface);border:1px solid var(--pub-border);font-family:var(--pub-font-display);font-weight:800;font-size:16px;letter-spacing:-0.01em;color:var(--pub-muted);text-align:center;padding:0 10px;}
   .lp-stats{margin-top:20px;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;}
   .lp-stats div{padding:22px 24px;}
   .lp-stats b{display:block;font-family:var(--pub-font-display);font-size:30px;font-weight:800;color:var(--pub-primary);letter-spacing:-0.03em;}
