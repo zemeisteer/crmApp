@@ -3919,9 +3919,24 @@ export interface PracticeContent {
     title: string;
     durationMin: number;
     instruction: string | null;
-    parts: Array<{ title: string; text: string | null; imagePath: string | null; questions: import("./tests").TestQuestion[] }>;
+    parts: Array<{ title: string; text: string | null; imagePath: string | null; questions: import("./tests").TestQuestion[]; spec?: PracticePartSpec | null }>;
     tasks: Array<{ title: string; prompt: string; minWords: number; rubric: string | null; imagePath: string | null }>;
   }>;
+  exam?: { id: string; level: string | null } | null;
+}
+// What a part made from an exam template should hold (the AI fills it).
+export interface PracticePartSpec { type: string; count: number; instruction: string; text: string | null; hint: string | null }
+// One exam a test can be built from (backend exam-catalog.ts).
+export interface ExamInfo {
+  id: string;
+  language: string;
+  name: string;
+  about: string;
+  levels: string[];
+  ielts: boolean;
+  durationMin: number;
+  questions: number;
+  sections: Array<{ title: string; durationMin: number; parts: Array<{ title: string; type: string; count: number }>; task: boolean }>;
 }
 export interface PracticeTest extends Omit<MockTest, "content"> {
   content: PracticeContent;
@@ -4155,8 +4170,12 @@ export const mockTestsApi = {
   importStatus: (id: string) => request<MockImport>(`/mock-tests/imports/${id}`),
   list: () => request<MockTestSummary[]>("/mock-tests"),
   get: (id: string) => request<MockTest>(`/mock-tests/${id}`),
-  create: (data: { title?: string; subject?: string; sample?: boolean; kind?: "IELTS" | "PRACTICE"; template?: PracticeTemplate }) =>
+  create: (data: { title?: string; subject?: string; sample?: boolean; kind?: "IELTS" | "PRACTICE"; template?: PracticeTemplate; exam?: string; examLevel?: string | null }) =>
     request<MockTest>("/mock-tests", { method: "POST", body: JSON.stringify(data) }),
+  // The exams that fit a direction first, then the others.
+  exams: (subject: string) => request<{ fit: ExamInfo[]; other: ExamInfo[] }>(`/mock-tests/exams?subject=${encodeURIComponent(subject)}`),
+  // The AI writes every empty part of a test made from an exam (in the background).
+  fill: (id: string) => request<MockTest>(`/mock-tests/${id}/fill`, { method: "POST" }),
   update: (id: string, data: { title?: string; subject?: string; status?: "DRAFT" | "PUBLISHED"; content?: MockContent | PracticeContent; level?: MockLevel | null; module?: "ACADEMIC" | "GENERAL" }) =>
     request<MockTest>(`/mock-tests/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
   remove: (id: string) => request<{ success: boolean }>(`/mock-tests/${id}`, { method: "DELETE" }),

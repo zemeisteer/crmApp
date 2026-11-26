@@ -46,6 +46,7 @@ import {
   practiceMissingKeys,
   practiceOverall,
   practiceTemplate,
+  examTemplate,
   publicPractice,
   scorePracticeSection,
   sectionIndex,
@@ -173,10 +174,11 @@ export class MockTestsService {
     return { ...row, content: contentOf(row.kind, row.content) };
   }
 
-  async create(tenantId: string, dto: { title?: string; subject?: string; sample?: boolean; content?: unknown; level?: string | null; module?: string; kind?: string; template?: string }) {
+  async create(tenantId: string, dto: { title?: string; subject?: string; sample?: boolean; content?: unknown; level?: string | null; module?: string; kind?: string; template?: string; exam?: string; examLevel?: string }) {
     if (isPractice(dto.kind)) {
       const subject = dto.subject?.trim().slice(0, 120) || 'Umumiy';
-      const tpl = practiceTemplate(dto.template ?? templateFor(subject));
+      if (dto.exam && !examTemplate(dto.exam, dto.examLevel)) throw new BadRequestException("Bunday imtihon shabloni yo'q");
+      const tpl = (dto.exam ? examTemplate(dto.exam, dto.examLevel) : null) ?? practiceTemplate(dto.template ?? templateFor(subject));
       const content = dto.content !== undefined ? normalizePractice(dto.content) : tpl.content;
       const [row] = await this.db.insert(mockTests).values({
         tenantId, kind: PRACTICE_KIND, title: (dto.title?.trim() || tpl.title).slice(0, 200), subject, content: JSON.stringify(content),

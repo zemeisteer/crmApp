@@ -1,5 +1,6 @@
 import { gradeAnswer, normalizeQuestion, publicQuestion, type TestQuestion } from '../common/test-questions';
 import { wordCount } from './ielts';
+import { examById, type ExamPartSpec } from './exam-catalog';
 
 // Practice tests for any direction (general English, math, SAT,
 // programming...): timed sections, each with parts (an optional text or
@@ -17,6 +18,9 @@ export interface PracticePart {
   text: string | null;
   imagePath: string | null;
   questions: TestQuestion[];
+  // From an exam template: the question type and count this part should
+  // have (the AI fills it; the editor shows it). Not sent to students.
+  spec?: { type: string; count: number; instruction: string; text: string | null; hint: string | null } | null;
 }
 
 export interface PracticeTask {
@@ -37,6 +41,8 @@ export interface PracticeSection {
 
 export interface PracticeContent {
   sections: PracticeSection[];
+  // The exam and level the test was made from (exam-catalog.ts).
+  exam?: { id: string; level: string | null } | null;
 }
 
 // Section keys the API and the answers use: "s0", "s1", ...
@@ -55,9 +61,18 @@ const num = (v: unknown, def: number, min: number, max: number) => {
 };
 const arr = (v: unknown): unknown[] => (Array.isArray(v) ? v : []);
 
+function normalizeSpec(v: any): PracticePart['spec'] {
+  if (!v || typeof v !== 'object') return null;
+  const type = str(v.type, 40);
+  if (!type) return null;
+  return { type, count: num(v.count, 5, 1, 80), instruction: str(v.instruction, 500), text: str(v.text, 20) || null, hint: str(v.hint, 500) || null };
+}
+
 export function normalizePractice(raw: unknown): PracticeContent {
   const r = (raw ?? {}) as Record<string, any>;
+  const examId = str(r.exam?.id, 40);
   return {
+    ...(examId ? { exam: { id: examId, level: str(r.exam?.level, 40) || null } } : {}),
     sections: arr(r.sections).slice(0, MAX_SECTIONS).map((s: any, si: number) => ({
       title: str(s?.title, 200) || `Section ${si + 1}`,
       durationMin: num(s?.durationMin, 20, 1, 180),
@@ -70,6 +85,7 @@ export function normalizePractice(raw: unknown): PracticeContent {
           .map((q) => normalizeQuestion(q, { requireAnswer: false }))
           .filter((q): q is TestQuestion => q !== null && q.type !== 'ESSAY')
           .slice(0, 80),
+        ...(normalizeSpec(p?.spec) ? { spec: normalizeSpec(p?.spec) } : {}),
       })),
       tasks: arr(s?.tasks).slice(0, 4).map((t: any, ti: number) => ({
         title: str(t?.title, 200) || `Task ${ti + 1}`,
@@ -242,6 +258,33 @@ export function practiceTemplate(name: string | undefined): { title: string; con
       })),
     }),
   };
+}
+
+// A test with an exam's real structure: every part knows its question
+// type and count (empty until the AI or the teacher fills it).
+export function examTemplate(examId: string, level: string | null | undefined): { title: string; content: PracticeContent } | null {
+  const exam = examById(examId);
+  if (!exam || exam.ielts) return null;
+  const lvl = level && exam.levels.includes(level) ? level : null;
+  const spec = (p: ExamPartSpec) => ({ type: p.type, count: p.count, instruction: p.instruction, text: p.text ?? null, hint: p.hint ?? null });
+  return {
+    title: `${exam.name}${lvl ? ` · ${lvl}` : ''}`,
+    content: normalizePractice({
+      exam: { id: exam.id, level: lvl },
+      sections: exam.sections.map((s) => ({
+        title: s.title,
+        durationMin: s.durationMin,
+        instruction: s.instruction ?? null,
+        parts: s.parts.map((p) => ({ title: p.title, text: null, questions: [], spec: spec(p) })),
+        tasks: s.task ? [{ title: 'Task', prompt: s.task.prompt, minWords: s.task.minWords }] : [],
+      })),
+    }),
+  };
+}
+
+// Parts of a test made from an exam that still have no questions.
+export function emptySpecParts(c: PracticeContent): Array<{ s: number; p: number }> {
+  return c.sections.flatMap((sec, s) => sec.parts.map((part, p) => ({ s, p, part })).filter((x) => x.part.spec && x.part.questions.length === 0).map(({ s, p }) => ({ s, p })));
 }
 
 // Which template fits a direction (group subject), for the staff editor

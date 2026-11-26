@@ -40,14 +40,27 @@ function MockTestsContent() {
   useEffect(load, [load]);
 
   // The direction comes first; the starting point is one that fits it.
-  async function create({ subject, sample, template }: NewTestChoice) {
+  async function create({ subject, sample, template, exam, examLevel, fill }: NewTestChoice) {
     setBusy(true);
     setError(null);
     setPicking(false);
     try {
-      const created = template
-        ? await mockTestsApi.create({ kind: "PRACTICE", template, subject })
-        : await mockTestsApi.create({ sample, subject });
+      const created = exam
+        ? await mockTestsApi.create({ kind: "PRACTICE", exam, examLevel, subject })
+        : template
+          ? await mockTestsApi.create({ kind: "PRACTICE", template, subject })
+          : await mockTestsApi.create({ sample, subject });
+      if (exam && fill) {
+        // The AI writes every part in the background; the list shows it as "being written".
+        // When it cannot start, the empty structure opens with the reason.
+        try {
+          await mockTestsApi.fill(created.id);
+          load();
+          return;
+        } catch (e) {
+          setError(e instanceof ApiError ? e.message : t("common.errorGeneric"));
+        }
+      }
       setOpen(created);
       setTab("edit");
       load();

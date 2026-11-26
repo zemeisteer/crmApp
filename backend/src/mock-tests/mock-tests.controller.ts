@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, Delete, Get, Param, Patch, Post, UploadedFile, UploadedFiles, UseGuards, UseInterceptors } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Delete, Get, Param, Patch, Post, Query, UploadedFile, UploadedFiles, UseGuards, UseInterceptors } from '@nestjs/common';
 import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import { MockImportService } from './import/mock-import.service';
 import { unlink } from 'fs/promises';
@@ -11,6 +11,8 @@ import { attachmentStorage } from '../common/upload.util';
 import { MockTestsService } from './mock-tests.service';
 import { MockSessionsService } from './mock-sessions.service';
 import { MockGenerateService } from './mock-generate.service';
+import { MockFillService } from './mock-fill';
+import { examsFor } from './exam-catalog';
 import { GenerateMockTestDto, RetryMockGenerationDto } from './dto/mock-tests.dto';
 import { CreateMockSessionDto } from './dto/mock-tests.dto';
 import { CreateMockTestDto, GenerateMockQuestionsDto, RegradeMockAttemptDto, ReviewMockAttemptDto, ReviewPracticeDto, UpdateMockTestDto } from './dto/mock-tests.dto';
@@ -30,6 +32,7 @@ export class MockTestsController {
     private readonly service: MockTestsService,
     private readonly sessions: MockSessionsService,
     private readonly generator: MockGenerateService,
+    private readonly filler: MockFillService,
     private readonly imports: MockImportService,
     private readonly ai: AiService,
     private readonly files: FilesService,
@@ -41,6 +44,21 @@ export class MockTestsController {
   @Post('generate-questions')
   generateQuestions(@Body() dto: GenerateMockQuestionsDto) {
     return this.ai.generateExamQuestions({ subject: dto.subject, topic: dto.topic?.trim() || dto.subject, count: dto.count ?? 8, request: dto.request ?? null });
+  }
+
+  // The exams a test can be built from: the ones that fit the direction
+  // first (English: IELTS, CEFR, General English; Russian: CEFR, TRKI...).
+  @Get('exams')
+  exams(@Query('subject') subject?: string) {
+    return examsFor(String(subject ?? '').slice(0, 120));
+  }
+
+  // The AI writes the questions of every empty part of a test made from an
+  // exam template, all parts at once, in the background.
+  @UsesAi()
+  @Post(':id/fill')
+  fill(@CurrentUser('tenantId') tenantId: string, @Param('id') id: string) {
+    return this.filler.start(tenantId, id);
   }
 
   // A whole new test written by the AI for a band level (or mixed), from
