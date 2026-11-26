@@ -1927,3 +1927,20 @@ a.dash-row:hover .dash-row-title {
   color: var(--pub-ink);
   font-family: var(--pub-font);
 }
+
+.dark .pub-theme:not(.force-light) {
+  --pub-primary-soft: #2a2560;
+  --pub-primary-tint: #221f4a;
+  --pub-bg: #100f24;
+  --pub-surface: #1a1934;
+  --pub-ink: #f1f0ff;
+  --pub-text: #c9c7e6;
+  --pub-muted: #9997b8;
+  --pub-border: #2c2a4d;
+  --pub-success-soft: #12372a;
+  --pub-warning-soft: #3a2d12;
+  --pub-pink-soft: #3a1830;
+  --pub-sky-soft: #10304a;
+  --pub-band: #0a0918;
+  color-scheme: dark;
+}
