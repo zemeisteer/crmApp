@@ -122,6 +122,7 @@ export function practiceMarks(q: TestQuestion) {
 // writing tasks by "t0", "t1".
 export function publicPractice(c: PracticeContent) {
   return {
+    exam: c.exam ?? null,
     sections: c.sections.map((s, si) => {
       let n = 0;
       let idx = 0;

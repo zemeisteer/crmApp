@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import QuestionInput from "@/components/tests/QuestionInput";
 import PracticeExam from "@/components/portal/PracticeExam";
+import ExamOverview, { type OverviewItem } from "@/components/portal/ExamOverview";
 import { ApiError, portalMockApi, practiceResult, type PortalPracticeAttempt, type PortalPracticeSection } from "@/lib/api";
 import { useLanguage } from "@/lib/i18n-context";
 import { PORTAL_ACCENT as ACCENT, portalCard as card } from "@/components/portal/PortalTabs";
@@ -126,44 +127,42 @@ export default function PracticeRunner({ initial, readOnly, onExit }: { initial:
       {error && <div role="alert" style={{ ...card, color: "var(--danger)", fontSize: 13 }}>{error}</div>}
 
       {!open && (
-        <>
-          {overall != null && (
-            <div style={{ ...card, display: "flex", alignItems: "center", gap: 16, background: "linear-gradient(135deg, var(--primary-soft), var(--surface))" }}>
-              <div style={{ width: 76, height: 76, borderRadius: "50%", display: "grid", placeItems: "center", background: "var(--surface)", border: `4px solid ${percentColor(overall)}`, fontSize: 22, fontWeight: 800, color: percentColor(overall) }}>{overall}%</div>
-              <div>
-                <div style={{ fontSize: 17, fontWeight: 800 }}>{t("prx.overall")}</div>
-                <div style={{ fontSize: 13, color: "var(--text-muted)" }}>{t("prx.overallHint")}</div>
-              </div>
-            </div>
-          )}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 12 }}>
-            {sections.map((s) => {
-              const r = practiceResult(a.results, s.key);
-              const qn = s.parts.reduce((n, p) => n + p.questions.reduce((m, q) => m + q.span, 0), 0);
-              return (
-                <div key={s.key} style={{ ...card, display: "flex", flexDirection: "column", gap: 10 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
-                    <div style={{ fontSize: 15.5, fontWeight: 800 }}>{s.title}</div>
-                    {done(s.key) && <span style={{ fontSize: 19, fontWeight: 800, color: percentColor(r?.percent) }}>{r?.percent != null ? `${r.percent}%` : r?.status === "PENDING" ? "⏳" : "✓"}</span>}
-                  </div>
-                  <div style={{ fontSize: 12.5, color: "var(--text-muted)" }}>
-                    {[qn ? `${qn} ${t("pmk.questions")}` : null, s.tasks.length ? `${s.tasks.length} ${t("pmk.tasks")}` : null].filter(Boolean).join(" · ")} · ⏱ {s.durationMin} {t("pmk.min")}
-                  </div>
-                  {done(s.key) && (
-                    <div style={{ fontSize: 12.5, fontWeight: 700, color: r?.status === "REVIEW" ? "var(--warning)" : r?.status === "PENDING" ? ACCENT : "var(--success)" }}>
-                      {r?.status === "PENDING" ? t("prx.aiMarking") : r?.status === "REVIEW" ? t("pmk.teacherMarks") : `${Math.round((r?.raw ?? 0) * 10) / 10}/${r?.max ?? 0} ${t("prx.points")}`}
-                    </div>
-                  )}
-                  <button type="button" disabled={readOnly && !done(s.key)} onClick={() => setOpen(s.key)}
-                    style={{ marginTop: "auto", background: done(s.key) ? "var(--surface)" : ACCENT, color: done(s.key) ? "var(--text)" : "var(--on-ink)", border: done(s.key) ? "1px solid var(--border)" : "none", borderRadius: "var(--radius-sm)", padding: "10px 14px", fontWeight: 700, cursor: "pointer", opacity: readOnly && !done(s.key) ? 0.5 : 1 }}>
-                    {done(s.key) ? `📊 ${t("pmk.review")}` : started(s.key) ? `▶ ${t("pmk.continue")}` : `▶ ${t("pmk.startSection")}`}
-                  </button>
-                </div>
-              );
-            })}
-          </div>
-          <div style={{ fontSize: 12.5, color: "var(--text-muted)", lineHeight: 1.5 }}>ℹ️ {t("pmk.rules")}</div>
-        </>
+        <ExamOverview
+          title={a.test.title}
+          tags={[a.test.subject, ...(a.test.content.exam?.level ? [a.test.content.exam.level] : [])]}
+          stats={[
+            `⏱ ${sections.reduce((n, s) => n + s.durationMin, 0)} ${t("pmk.min")}`,
+            `📚 ${sections.length} ${t("pmk.sections")}`,
+            `❓ ${sections.reduce((n, s) => n + s.parts.reduce((m, p) => m + p.questions.reduce((k, q) => k + q.span, 0), 0), 0)} ${t("pmk.questions")}`,
+          ]}
+          result={overall != null ? { value: `${overall}%`, label: t("prx.overall"), hint: t("prx.overallHint"), color: percentColor(overall) } : null}
+          items={sections.map((s): OverviewItem => {
+            const r = practiceResult(a.results, s.key);
+            const qn = s.parts.reduce((n, p) => n + p.questions.reduce((m, q) => m + q.span, 0), 0);
+            const d = deadline(s);
+            return {
+              key: s.key,
+              icon: s.tasks.length && !qn ? "✍️" : /math|matem|матем/i.test(s.title) ? "📐" : /read|чтен|lesen|okuma|읽기|読解|阅读|القراءة/i.test(s.title) ? "📖" : "📝",
+              title: s.title,
+              meta: `${[qn ? `${qn} ${t("pmk.questions")}` : null, s.tasks.length ? `${s.tasks.length} ${t("pmk.tasks")}` : null].filter(Boolean).join(" · ")} · ⏱ ${s.durationMin} ${t("pmk.min")}`,
+              state: done(s.key) ? (r?.status === "PENDING" ? "pending" : r?.status === "REVIEW" ? "review" : "done") : started(s.key) ? "started" : "todo",
+              leftMs: started(s.key) && !done(s.key) && d ? d - now : null,
+              score: done(s.key) && r?.percent != null ? `${r.percent}%` : null,
+              scoreColor: percentColor(r?.percent),
+              note: done(s.key) ? (r?.status === "PENDING" ? t("prx.aiMarking") : r?.status === "REVIEW" ? t("pmk.teacherMarks") : `${Math.round((r?.raw ?? 0) * 10) / 10}/${r?.max ?? 0} ${t("prx.points")}`) : null,
+              cta: {
+                label: done(s.key) ? `📊 ${t("pmk.review")}` : started(s.key) ? `▶ ${t("pmk.continue")}` : `▶ ${t("pmk.startSection")}`,
+                onClick: () => setOpen(s.key),
+                disabled: readOnly && !done(s.key),
+              },
+            };
+          })}
+          tips={[
+            { icon: "⏱", title: t("pmk.tipTimerT"), text: t("pmk.tipTimer") },
+            { icon: "💾", title: t("pmk.tipSaveT"), text: t("pmk.tipSave") },
+            { icon: "📊", title: t("pmk.tipResultT"), text: t("pmk.tipResult") },
+          ]}
+        />
       )}
 
       {current && !done(current.key) && !readOnly && (

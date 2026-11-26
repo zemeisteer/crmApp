@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import QuestionInput from "@/components/tests/QuestionInput";
 import ExamMode from "@/components/portal/ExamMode";
+import ExamOverview, { type OverviewItem } from "@/components/portal/ExamOverview";
 import FeedbackView, { bandColor } from "@/components/mock-tests/FeedbackView";
 import { SECTION_ICON, sectionKey } from "@/components/mock-tests/sections";
 import { ApiError, MOCK_SECTIONS, portalMockApi, type MockKindStat, type MockSection, type PortalMockAttempt } from "@/lib/api";
@@ -140,6 +141,9 @@ export default function MockRunner({ initial, readOnly, onExit }: { initial: Por
   }, [a.id, answers, apply, t]);
 
   const overall = a.results.overall;
+  const countOf = (s: MockSection) => s === "listening" ? content.listening.parts.reduce((n, p) => n + p.questions.length, 0)
+    : s === "reading" ? content.reading.passages.reduce((n, p) => n + p.questions.length, 0)
+    : s === "writing" ? content.writing.tasks.length : content.speaking.parts.reduce((n, p) => n + p.questions.length, 0);
   // Listening, Reading, Writing in order (as the server enforces); a
   // section with nothing in it is skipped. Speaking is free.
   const hasWork = (s: MockSection) => s === "listening" ? content.listening.parts.some((p) => p.questions.length) : s === "reading" ? content.reading.passages.some((p) => p.questions.length) : s === "writing" ? content.writing.tasks.length > 0 : true;
@@ -168,48 +172,44 @@ export default function MockRunner({ initial, readOnly, onExit }: { initial: Por
       {error && <div role="alert" style={{ ...card, color: "var(--danger)", fontSize: 13 }}>{error}</div>}
 
       {!section && (
-        <>
-          {overall != null && (
-            <div style={{ ...card, display: "flex", alignItems: "center", gap: 16, background: "linear-gradient(135deg, var(--primary-soft), var(--surface))" }}>
-              <div style={{ width: 76, height: 76, borderRadius: "50%", display: "grid", placeItems: "center", background: "var(--surface)", border: `4px solid ${bandColor(overall)}`, fontSize: 26, fontWeight: 800, color: bandColor(overall) }}>{overall}</div>
-              <div>
-                <div style={{ fontSize: 17, fontWeight: 800 }}>{t("pmk.overallBand")}</div>
-                <div style={{ fontSize: 13, color: "var(--text-muted)" }}>{t("pmk.overallHint")}</div>
-              </div>
-            </div>
-          )}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))", gap: 12 }}>
-            {MOCK_SECTIONS.map((s) => {
-              const r = a.results[s];
-              const count = s === "listening" ? content.listening.parts.reduce((n, p) => n + p.questions.length, 0)
-                : s === "reading" ? content.reading.passages.reduce((n, p) => n + p.questions.length, 0)
-                : s === "writing" ? content.writing.tasks.length : content.speaking.parts.reduce((n, p) => n + p.questions.length, 0);
-              if (count === 0) return null;
-              return (
-                <div key={s} style={{ ...card, display: "flex", flexDirection: "column", gap: 10 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <div style={{ fontSize: 16, fontWeight: 800 }}>{SECTION_ICON[s]} {t(sectionKey(s))}</div>
-                    {done(s) && <span style={{ fontSize: 20, fontWeight: 800, color: bandColor(r?.band) }}>{r?.band ?? (r?.status === "PENDING" ? "⏳" : "✓")}</span>}
-                  </div>
-                  <div style={{ fontSize: 12.5, color: "var(--text-muted)" }}>
-                    {count} {s === "writing" ? t("pmk.tasks") : t("pmk.questions")} · ⏱ {minutes(s)} {t("pmk.min")}
-                  </div>
-                  {done(s) ? (
-                    <div style={{ fontSize: 12.5, color: r?.status === "REVIEW" ? "var(--warning)" : r?.status === "PENDING" ? ACCENT : "var(--success)", fontWeight: 700 }}>
-                      {r?.status === "PENDING" ? t("pmk.aiMarking") : r?.status === "REVIEW" ? t("pmk.teacherMarks") : r?.raw !== undefined ? `${r.raw}/${r.max} ${t("pmk.correct")}` : t("pmk.marked")}
-                    </div>
-                  ) : null}
-                  {!done(s) && blocker(s) && <div data-testid={`order-${s}`} style={{ fontSize: 12.5, color: "var(--text-muted)", fontWeight: 700 }}>🔒 {t("pmk.orderLocked").replace("{s}", t(sectionKey(blocker(s)!)))}</div>}
-                  <button type="button" disabled={busy || (readOnly && !done(s) && !started(s)) || (!readOnly && !done(s) && !!blocker(s))} onClick={() => setSection(s)}
-                    style={{ marginTop: "auto", background: done(s) ? "var(--surface)" : ACCENT, color: done(s) ? "var(--text)" : "var(--on-ink)", border: done(s) ? "1px solid var(--border)" : "none", borderRadius: "var(--radius-sm)", padding: "10px 14px", fontWeight: 700, cursor: "pointer" }}>
-                    {done(s) ? `📊 ${t("pmk.review")}` : started(s) ? `▶ ${t("pmk.continue")}` : `▶ ${t("pmk.startSection")}`}
-                  </button>
-                </div>
-              );
-            })}
-          </div>
-          <div style={{ fontSize: 12.5, color: "var(--text-muted)", lineHeight: 1.5 }}>ℹ️ {t("pmk.rules")} {t("pmk.orderHint")}</div>
-        </>
+        <ExamOverview
+          title={a.test.title}
+          tags={[a.test.subject, "IELTS", a.test.module === "GENERAL" ? "General Training" : "Academic"]}
+          stats={[
+            `⏱ ${MOCK_SECTIONS.filter((s) => countOf(s) > 0).reduce((n, s) => n + minutes(s), 0)} ${t("pmk.min")}`,
+            `📚 ${MOCK_SECTIONS.filter((s) => countOf(s) > 0).length} ${t("pmk.sections")}`,
+          ]}
+          result={overall != null ? { value: String(overall), label: t("pmk.overallBand"), hint: t("pmk.overallHint"), color: bandColor(overall) } : null}
+          items={MOCK_SECTIONS.filter((s) => countOf(s) > 0).map((s): OverviewItem => {
+            const r = a.results[s];
+            const lock = !done(s) ? blocker(s) : null;
+            const state = done(s) ? (r?.status === "PENDING" ? "pending" : r?.status === "REVIEW" ? "review" : "done") : lock && !readOnly ? "locked" : started(s) ? "started" : "todo";
+            return {
+              key: s,
+              icon: SECTION_ICON[s],
+              title: t(sectionKey(s)),
+              meta: `${countOf(s)} ${s === "writing" ? t("pmk.tasks") : t("pmk.questions")} · ⏱ ${minutes(s)} ${t("pmk.min")}`,
+              state,
+              leftMs: started(s) && !done(s) ? deadline(s)! - now : null,
+              score: done(s) ? (r?.band != null ? String(r.band) : null) : null,
+              scoreColor: bandColor(r?.band),
+              note: done(s)
+                ? r?.status === "PENDING" ? t("pmk.aiMarking") : r?.status === "REVIEW" ? t("pmk.teacherMarks") : r?.raw !== undefined ? `${r.raw}/${r.max} ${t("pmk.correct")}` : t("pmk.marked")
+                : lock ? `🔒 ${t("pmk.orderLocked").replace("{s}", t(sectionKey(lock)))}` : null,
+              noteTestId: !done(s) && lock ? `order-${s}` : undefined,
+              cta: {
+                label: done(s) ? `📊 ${t("pmk.review")}` : started(s) ? `▶ ${t("pmk.continue")}` : `▶ ${t("pmk.startSection")}`,
+                onClick: () => setSection(s),
+                disabled: busy || (readOnly && !done(s) && !started(s)) || (!readOnly && !done(s) && !!lock),
+              },
+            };
+          })}
+          tips={[
+            { icon: "⏱", title: t("pmk.tipTimerT"), text: t("pmk.tipTimer") },
+            { icon: "💾", title: t("pmk.tipSaveT"), text: t("pmk.tipSave") },
+            { icon: "🧭", title: t("pmk.tipOrderT"), text: t("pmk.orderHint") },
+          ]}
+        />
       )}
 
       {section && !done(section) && !readOnly && (

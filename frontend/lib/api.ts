@@ -4047,7 +4047,7 @@ export interface PortalPracticeSection {
 export interface PortalPracticeAttempt {
   id: string;
   status: "IN_PROGRESS" | "COMPLETED";
-  test: { id: string; title: string; kind: "PRACTICE"; subject: string; level: null; module: string; content: { sections: PortalPracticeSection[] } };
+  test: { id: string; title: string; kind: "PRACTICE"; subject: string; level: null; module: string; content: { sections: PortalPracticeSection[]; exam?: { id: string; level: string | null } | null } };
   answers: Record<string, Record<string, string>>;
   sectionStarted: Record<string, string>;
   sectionDone: Record<string, string>;
