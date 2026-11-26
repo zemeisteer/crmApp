@@ -25,6 +25,9 @@ export class CreateMockTestDto {
   @IsOptional() @IsIn(['IELTS', 'PRACTICE']) kind?: string;
   // PRACTICE: starting layout (SAT, ENGLISH, MATH, PROGRAMMING, GENERAL).
   @IsOptional() @IsIn(['SAT', 'ENGLISH', 'MATH', 'PROGRAMMING', 'GENERAL']) template?: string;
+  // PRACTICE: an exam's real structure (exam-catalog.ts) and the level it is for.
+  @IsOptional() @IsString() @MaxLength(40) exam?: string;
+  @IsOptional() @IsString() @MaxLength(40) examLevel?: string;
 }
 
 export class UpdateMockTestDto {

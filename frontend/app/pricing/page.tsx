@@ -9,6 +9,7 @@ import Select from "@/components/Select";
 import { useAuth } from "@/lib/auth-context";
 import { platformBillingApi, plansApi, Plan, ApiError, PLAN_FEATURES, PLAN_LIMITS, planAllows, type Entitlements, type PlatformCardView } from "@/lib/api";
 import PlatformCardPay from "@/components/billing/PlatformCardPay";
+import TenantPricingView from "@/components/billing/TenantPricingView";
 import type { TranslationKey } from "@/lib/i18n";
 import { useCenterClock } from "@/lib/use-center-clock";
 import { formatDate } from "@/lib/format-date";
@@ -81,111 +82,14 @@ function TenantPricing() {
     <>
       <div style={{ padding: "var(--page-head-pad)" }}>
         <h1 className="page-title">{t("pricing.title")}</h1>
-        <div style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 2 }}>
-          {t("pricing.currentPlan")}: <strong>{tenant?.plan}</strong> · {t("pricing.status")}: <strong>{tenant?.status}</strong>
-          {tenant?.billing?.paidUntil && <> · <span data-testid="paid-until">{t("billing.paidUntil").replace("{date}", formatDate(tenant.billing.paidUntil, lang))}</span></>}
-        </div>
+        <div style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 2 }}>{t("pricing.subtitle")}</div>
       </div>
 
       <div style={{ flex: 1, minHeight: 0, padding: "var(--page-pad)", overflow: "auto", boxSizing: "border-box" }}>
         {loading ? (
           <div style={{ color: "var(--text-muted)", fontSize: 14 }}>{t("common.loading")}</div>
         ) : (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 16, maxWidth: 960 }}>
-            {plans.map((p) => {
-              const isCurrent = tenant?.plan === p.key;
-              return (
-                <div
-                  key={p.id}
-                  style={{
-                    background: "var(--surface)",
-                    border: p.popular ? `2px solid ${ACCENT}` : "1px solid var(--border)",
-                    borderRadius: "var(--radius-lg)",
-                    padding: 24,
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: 16,
-                    position: "relative",
-                  }}
-                >
-                  {p.popular && (
-                    <span style={{ position: "absolute", top: -12, left: 24, background: ACCENT, color: "var(--on-ink)", fontSize: 11, fontWeight: 700, padding: "4px 12px", borderRadius: "var(--radius-pill)" }}>
-                      {t("pricing.mostPopular")}
-                    </span>
-                  )}
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                    <div style={{ fontSize: 17, fontWeight: 800, fontFamily: "var(--font-display)" }}>{p.name}</div>
-                    {isCurrent && <span className="badge badge-success">{t("pricing.currentPlanBadge")}</span>}
-                  </div>
-                  <div>
-                    <span style={{ fontSize: 28, fontWeight: 800, fontFamily: "var(--font-display)" }}>
-                      {p.price === 0 ? t("pricing.free") : formatMoney(p.price)}
-                    </span>
-                    {p.price > 0 && <span style={{ fontSize: 13, color: "var(--text-muted)" }}> {t("pricing.perMonth")}</span>}
-                  </div>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
-                    {planFeatureLines(p, lang).map((f) => (
-                      <div key={f} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "var(--text-soft)" }}>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--success)" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M20 6 9 17l-5-5" />
-                        </svg>
-                        {f}
-                      </div>
-                    ))}
-                  </div>
-                  {isCurrent && p.price > 0 ? (
-                    <button
-                      className="btn"
-                      onClick={() => openPay(p.key)}
-                      style={{ background: "var(--surface)", color: ACCENT, border: `1.5px solid ${ACCENT}`, fontSize: 13, fontWeight: 700, padding: "10px 16px", borderRadius: "var(--radius-sm)" }}
-                    >
-                      {t("pcp.renew")}
-                    </button>
-                  ) : isCurrent ? null : p.price === 0 ? (
-                    <span style={{ fontSize: 12, color: "var(--text-muted)" }}>{t("pricing.autoOnSignup")}</span>
-                  ) : (
-                    <button
-                      className="btn"
-                      onClick={() => openPay(p.key)}
-                      style={{ background: ACCENT, color: "var(--on-ink)", border: "none", fontSize: 13, fontWeight: 700, padding: "10px 16px", borderRadius: "var(--radius-sm)" }}
-                    >
-                      {t("pricing.activate")}
-                    </button>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        )}
-        {cardView && cardView.claims.length > 0 && (
-          <div style={{ marginTop: 22, maxWidth: 960, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: 18, display: "flex", flexDirection: "column", gap: 8 }} data-testid="platform-card-claims">
-            <div style={{ fontWeight: 800, fontSize: 14 }}>💳 {t("pcp.mine")}</div>
-            {cardView.claims.map((c) => (
-              <div key={c.id} style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", fontSize: 13, padding: "8px 10px", borderRadius: "var(--radius-sm)", background: "var(--surface-muted)" }}>
-                <span>{c.forMonth} · {c.plan} · {formatMoney(c.amount)} · {formatDate(c.createdAt, lang)}</span>
-                <span style={{ fontWeight: 700, color: c.status === "CONFIRMED" ? "var(--success)" : c.status === "REJECTED" ? "var(--danger)" : "var(--warning)" }}>
-                  {t(`ct.s.${c.status}` as TranslationKey)}{c.status === "REJECTED" && c.rejectReason ? `: ${c.rejectReason}` : ""}
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
-        {cardView && cardView.history.length > 0 && (
-          <div style={{ marginTop: 16, maxWidth: 960, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 16, padding: 18, display: "flex", flexDirection: "column", gap: 8 }} data-testid="platform-payment-history">
-            <div style={{ fontWeight: 800, fontSize: 14 }}>🧾 {t("ph.subHistory")}</div>
-            {cardView.history.map((h) => (
-              <div key={h.id} style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", fontSize: 13, padding: "8px 10px", borderRadius: 10, background: "var(--surface-muted)" }}>
-                <span>
-                  <b>{h.forMonth}</b> · {h.plan} · {t(`ph.m.${h.method}` as TranslationKey)}
-                  {h.paidAt ? ` · ${formatDate(h.paidAt, lang)}` : ""}
-                </span>
-                <span style={{ fontWeight: 700 }}>
-                  {formatMoney(h.amount)}
-                  {h.periodEnd && <span style={{ fontWeight: 500, color: "var(--text-muted)" }}> · {t("ph.until").replace("{date}", formatDate(h.periodEnd, lang))}</span>}
-                </span>
-              </div>
-            ))}
-          </div>
+          <TenantPricingView tenant={tenant} plans={plans} cardView={cardView} lang={lang} t={t} onPay={openPay} />
         )}
       </div>
 

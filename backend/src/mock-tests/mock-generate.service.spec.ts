@@ -111,4 +111,46 @@ describe('MockGenerateService: Listening audio', () => {
     // 9 parts x 3 tries.
     expect(ai.completeText).toHaveBeenCalledTimes(27);
   });
+
+  it('writes all nine parts at once, not three at a time', async () => {
+    let inFlight = 0;
+    let most = 0;
+    const ai = {
+      completeText: vi.fn(async () => {
+        inFlight++;
+        most = Math.max(most, inFlight);
+        await new Promise((r) => setTimeout(r, 5));
+        inFlight--;
+        return 'not json';
+      }),
+      canSynthesizeSpeech: false,
+    };
+    const { svc } = service(ai);
+    const topics = {
+      listening: [],
+      reading: [],
+      writing: { task1: 'a', task2: 'b' },
+      speaking: { part1: ['x'], part2: 'y', part3: 'z' },
+    };
+    await expect(
+      svc.writeContent('t1', 'm1', topics, null, 'ACADEMIC'),
+    ).rejects.toThrow();
+    expect(most).toBe(9);
+  });
+
+  it('reads the Listening parts aloud at the same time, not one after another', async () => {
+    let inFlight = 0;
+    let most = 0;
+    const synthesizeSpeech = vi.fn(async () => {
+      inFlight++;
+      most = Math.max(most, inFlight);
+      await new Promise((r) => setTimeout(r, 5));
+      inFlight--;
+      return { bytes: Buffer.from('RIFF'), mime: 'audio/wav', ext: '.wav' };
+    });
+    const { svc } = service({ canSynthesizeSpeech: true, synthesizeSpeech });
+    const out = await svc.addAudio('t1', 'm1', content());
+    expect(most).toBe(4);
+    expect(out.generation?.tts).toBe('DONE');
+  });
 });

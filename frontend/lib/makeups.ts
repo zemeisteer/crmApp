@@ -80,3 +80,26 @@ export function googleReturn(search: string): GoogleReturn | null {
   const v = new URLSearchParams(search).get("google");
   return v === "connected" || v === "denied" || v === "expired" || v === "error" || v === "unverified" || v === "switching" ? v : null;
 }
+
+/**
+ * The teachers offered for a separate make-up session: the missed group's own
+ * teacher first, then the others who teach its direction (their profile's
+ * subject, or a group of that subject). Empty when the direction is unknown
+ * or nobody teaches it (the caller then offers everyone).
+ */
+export function subjectTeachers<T extends { id: string; subject?: string | null }>(
+  teachers: T[],
+  groups: Array<{ id: string; subject: string; teacher?: { id: string } | null }>,
+  originGroupId: string,
+): { ownTeacherId: string | null; fitting: T[] } {
+  const origin = groups.find((g) => g.id === originGroupId);
+  const ownTeacherId = origin?.teacher?.id ?? null;
+  const subject = origin?.subject.trim().toLowerCase() ?? "";
+  const fits = (x: T) =>
+    x.id === ownTeacherId ||
+    (subject !== "" &&
+      ((x.subject ?? "").trim().toLowerCase() === subject ||
+        groups.some((g) => g.teacher?.id === x.id && g.subject.trim().toLowerCase() === subject)));
+  const fitting = teachers.filter(fits).sort((a, b) => Number(b.id === ownTeacherId) - Number(a.id === ownTeacherId));
+  return { ownTeacherId, fitting };
+}

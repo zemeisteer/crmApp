@@ -5,10 +5,11 @@ import { MockTestsController } from './mock-tests.controller';
 import { MockImportService } from './import/mock-import.service';
 import { MockSessionsService } from './mock-sessions.service';
 import { MockGenerateService } from './mock-generate.service';
+import { MockFillService } from './mock-fill';
 
 @Module({
   imports: [AiModule],
-  providers: [MockTestsService, MockImportService, MockSessionsService, MockGenerateService],
+  providers: [MockTestsService, MockImportService, MockSessionsService, MockGenerateService, MockFillService],
   controllers: [MockTestsController],
   exports: [MockTestsService, MockSessionsService],
 })

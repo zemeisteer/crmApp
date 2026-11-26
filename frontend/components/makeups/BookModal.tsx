@@ -8,7 +8,7 @@ import TimePicker from "@/components/TimePicker";
 import { groupsApi, lessonsApi, makeupsApi, scheduleApi, teachersApi, type Group, type LessonOccurrence, type MakeupCredit, type MakeupMode, type Room, type Teacher } from "@/lib/api";
 import { useLanguage } from "@/lib/i18n-context";
 import { useCenterClock } from "@/lib/use-center-clock";
-import { addDays, validTimeRange } from "@/lib/makeups";
+import { addDays, validTimeRange, subjectTeachers } from "@/lib/makeups";
 import { matchesSubject } from "@/lib/subject";
 import { centerWallClock } from "@/lib/center-time";
 import { ACCENT, Notice, dayLabel, errorText, lbl, primaryBtn } from "./shared";
@@ -36,6 +36,10 @@ export default function BookModal({ credit, onClose, onBooked }: { credit: Makeu
   // The direction of the missed lesson: groups of it are offered first.
   const [originSubject, setOriginSubject] = useState<string | null>(null);
   const [otherSubjects, setOtherSubjects] = useState(false);
+  // Who teaches the missed lesson's direction: its group's own teacher, then
+  // the others who teach that subject (their profile, or a group of it).
+  const [allGroups, setAllGroups] = useState<Group[]>([]);
+  const [otherTeachers, setOtherTeachers] = useState(false);
   const [shownDays, setShownDays] = useState(PAGE_DAYS);
   const [lessons, setLessons] = useState<LessonOccurrence[] | null>(null);
   const [lessonsError, setLessonsError] = useState(false);
@@ -57,6 +61,7 @@ export default function BookModal({ credit, onClose, onBooked }: { credit: Makeu
       .list()
       .then((list) => {
         if (!alive) return;
+        setAllGroups(list);
         setOriginSubject(list.find((g) => g.id === credit.originGroupId)?.subject ?? null);
         setGroups(list.filter((g) => g.id !== credit.originGroupId && g.status !== "COMPLETED" && g.status !== "ARCHIVED"));
       })
@@ -125,6 +130,9 @@ export default function BookModal({ credit, onClose, onBooked }: { credit: Makeu
   // Groups of the missed lesson's direction first; the rest on request.
   const sameSubject = (groups ?? []).filter((g) => originSubject && matchesSubject(g.subject, originSubject));
   const groupChoices = otherSubjects || sameSubject.length === 0 ? groups ?? [] : sameSubject;
+
+  const { ownTeacherId, fitting } = subjectTeachers(teachers ?? [], allGroups, credit.originGroupId);
+  const teacherChoices = otherTeachers || fitting.length === 0 ? teachers ?? [] : fitting;
   const lessonKey = (l: LessonOccurrence) => `${l.date}|${l.startTime}|${l.scheduleId ?? ""}`;
 
   async function submit(e: React.FormEvent) {
@@ -288,10 +296,28 @@ export default function BookModal({ credit, onClose, onBooked }: { credit: Makeu
                 sheetTitle={t("mk.teacher")}
                 placeholder={teachers === null ? t("common.loading") : t("mk.chooseTeacher")}
                 disabled={teachers === null}
-                options={(teachers ?? []).map((x) => ({ value: x.id, label: x.fullName }))}
+                options={teacherChoices.map((x) => ({ value: x.id, label: x.id === ownTeacherId ? `${x.fullName} · ${t("mk.groupTeacher")}` : x.fullName }))}
                 value={teacherId}
                 onChange={setTeacherId}
               />
+              {teachers !== null && originSubject && (
+                <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 6, lineHeight: 1.5 }}>
+                  {fitting.length === 0
+                    ? t("mk.noSubjectTeachers").replace("{subject}", originSubject)
+                    : otherTeachers
+                      ? t("mk.allTeachersShown")
+                      : t("mk.subjectTeachersShown").replace("{subject}", originSubject)}
+                  {fitting.length > 0 && fitting.length < teachers.length && (
+                    <button
+                      type="button"
+                      onClick={() => setOtherTeachers((v) => !v)}
+                      style={{ marginLeft: 8, background: "none", border: "none", padding: 0, color: ACCENT, fontWeight: 600, cursor: "pointer", fontSize: 12 }}
+                    >
+                      {otherTeachers ? t("mk.onlySubjectTeachers") : t("mk.showAllTeachers")}
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
             <div role="group" aria-label={t("mk.roomOptional")}>
               <span style={lbl}>{t("mk.roomOptional")}</span>

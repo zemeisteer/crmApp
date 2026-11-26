@@ -59,3 +59,27 @@ test("the outcome of Google's consent screen is read from the address", () => {
   assert.equal(googleReturn("?google=hacked"), null);
   assert.equal(googleReturn(""), null);
 });
+
+test("a separate make-up offers the group's own teacher first, then those who teach the direction", async () => {
+  const { subjectTeachers } = await import("./makeups.ts");
+  const teachers = [
+    { id: "aziza", subject: "Ingliz tili" },
+    { id: "gulnora", subject: null },
+    { id: "jamshid", subject: "Matematika" },
+    { id: "nodira", subject: "rus tili " },
+    { id: "kamol", subject: null },
+  ];
+  const groups = [
+    { id: "rus-1", subject: "Rus tili", teacher: { id: "gulnora" } },
+    { id: "rus-2", subject: "Rus tili", teacher: { id: "kamol" } },
+    { id: "eng", subject: "Ingliz tili", teacher: { id: "aziza" } },
+  ];
+  const r = subjectTeachers(teachers, groups, "rus-1");
+  assert.equal(r.ownTeacherId, "gulnora");
+  // Own teacher first; Kamol teaches a Russian group; Nodira's profile says Russian.
+  assert.deepEqual(r.fitting.map((x) => x.id), ["gulnora", "nodira", "kamol"]);
+  // A group nobody else teaches the subject of: just its own teacher.
+  assert.deepEqual(subjectTeachers(teachers, groups, "eng").fitting.map((x) => x.id), ["aziza"]);
+  // An unknown group: nothing fits (the dialog then offers everyone).
+  assert.deepEqual(subjectTeachers(teachers, groups, "gone").fitting, []);
+});

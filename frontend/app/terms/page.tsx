@@ -2,14 +2,15 @@
 
 import Link from "next/link";
 import { useLanguage } from "@/lib/i18n-context";
+import PublicShell from "@/components/public/PublicShell";
 
 const ACCENT = "var(--primary)";
 
 export default function TermsPage() {
   const { t } = useLanguage();
   return (
-    <div style={{ minHeight: "100vh", background: "var(--surface-muted)" }}>
-      <div style={{ maxWidth: 720, margin: "0 auto", padding: "48px 24px" }}>
+    <PublicShell cta={false}>
+      <div style={{ maxWidth: 760, margin: "40px auto 72px", padding: "40px 36px", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 24, boxSizing: "border-box", width: "calc(100% - 32px)" }}>
         <Link href="/" style={{ fontSize: 13, fontWeight: 600, color: ACCENT }}>
           {t("legal.backToHome")}
         </Link>
@@ -39,6 +40,6 @@ export default function TermsPage() {
           </section>
         </div>
       </div>
-    </div>
+    </PublicShell>
   );
 }

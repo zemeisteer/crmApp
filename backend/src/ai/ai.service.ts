@@ -75,8 +75,11 @@ export class AiService {
   }
 
   // The SDK itself retries overloads, rate limits and dropped connections.
+  // Streamed: the SDK refuses a plain request whose max_tokens could run
+  // past 10 minutes (an IELTS Reading passage asks for 24 000), so those
+  // parts always failed on Claude.
   private async completeAnthropic(apiKey: string, prompt: string, maxTokens: number, pdf?: Buffer): Promise<string> {
-    const res = await new Anthropic({ apiKey }).messages.create({
+    const res = await new Anthropic({ apiKey }).messages.stream({
       model: MODEL,
       max_tokens: maxTokens,
       messages: [{
@@ -88,7 +91,7 @@ export class AiService {
             ]
           : prompt,
       }],
-    });
+    }).finalMessage();
     return res.content.find((b) => b.type === 'text')?.text ?? '';
   }
 

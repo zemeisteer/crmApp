@@ -15,6 +15,14 @@ export const GENERATING = '__GENERATING__';
 export const FAILED = '__FAILED__';
 // A retry that has not finished after this long is treated as lost (server restart).
 const RUNNING_STALE_MS = 15 * 60_000;
+// The live trend search gets this long; then the bundled trends are used.
+export const TREND_SEARCH_MS = 30_000;
+
+const within = <T>(p: Promise<T>, ms: number): Promise<T> =>
+  new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`no answer in ${ms / 1000} s`)), ms);
+    p.then((v) => { clearTimeout(timer); resolve(v); }, (e) => { clearTimeout(timer); reject(e); });
+  });
 
 const asStrings = (v: unknown, n: number) => (Array.isArray(v) ? v.map((x) => String(x)).filter(Boolean).slice(0, n) : []);
 const host = (url: string) => {
@@ -68,7 +76,7 @@ export class MockGenerateService {
     let sources: Array<{ title: string; url: string }> = [];
     let live = false;
     try {
-      const res = await this.ai.completeSearch(trendsPrompt(level, module), 3000);
+      const res = await within(this.ai.completeSearch(trendsPrompt(level, module), 3000), TREND_SEARCH_MS);
       found = parseJsonObject(res.text) ?? {};
       sources = res.sources;
       live = sources.length > 0 && asStrings(found.reading, 3).length > 0;
@@ -98,7 +106,22 @@ export class MockGenerateService {
   /** The whole test: every part, then the audio. Exported for tests through `writeContent`. */
   async writeContent(tenantId: string, id: string, topics: Topics, level: string | null, module: string): Promise<MockContent> {
     const specs = PART_KEYS.map((k) => specFor(k, topics, level, module));
-    const results = await pool(specs.map((s) => () => runPart(this.ai, s)));
+    // All nine parts are written at once, and each Listening part is read
+    // aloud as soon as it is ready (while the other parts are still being
+    // written): the test takes about as long as its slowest part.
+    const recordings: Array<Promise<{ i: number; path: string | null; error: string | null }>> = [];
+    const results = await pool(
+      specs.map((s) => async () => {
+        const r = await runPart(this.ai, s);
+        if (r.ok && s.key.startsWith('listening') && this.ai.canSynthesizeSpeech) {
+          const i = Number(s.key.split('.')[1]);
+          const transcript = applyResults(normalizeContent({ generation: emptyMeta() }), [r]).listening.parts[i]?.transcript;
+          if (transcript) recordings.push(this.record(tenantId, id, transcript).then((path) => ({ i, path, error: null }), (err: Error) => ({ i, path: null, error: err.message })));
+        }
+        return r;
+      }),
+      PART_KEYS.length,
+    );
     for (const r of results) {
       if (!r.ok) this.logger.warn(`mock ${id}: ${partLabel(r.key)} failed after ${r.attempts} tries: ${r.error}`);
     }
@@ -108,6 +131,11 @@ export class MockGenerateService {
     }
     let content = applyResults(normalizeContent({ generation: emptyMeta() }), results);
     content.generation!.plan = topics;
+    for (const rec of await Promise.all(recordings)) {
+      if (rec.path && content.listening.parts[rec.i]) content.listening.parts[rec.i].audioPath = rec.path;
+      else if (rec.error) this.logger.warn(`mock ${id}: audio for Listening Part ${rec.i + 1} failed: ${rec.error}`);
+    }
+    // Parts whose recording failed get one more try here (and the status).
     content = await this.addAudio(tenantId, id, content);
     return content;
   }
@@ -143,21 +171,29 @@ export class MockGenerateService {
       return c;
     }
     let error: string | null = null;
-    for (const i of todo) {
-      try {
-        const audio = await this.ai.synthesizeSpeech(c.listening.parts[i].transcript!);
-        if (!audio) continue;
-        const name = await saveGeneratedFile(audio.bytes, audio.ext);
-        await this.files.register(tenantId, name, 'MOCK_ASSET', id);
-        c.listening.parts[i].audioPath = name;
-      } catch (err) {
-        error = (err as Error).message;
-        this.logger.warn(`mock ${id}: audio for Listening Part ${i + 1} failed: ${error}`);
-      }
-    }
+    await Promise.all(
+      todo.map(async (i) => {
+        try {
+          const name = await this.record(tenantId, id, c.listening.parts[i].transcript!);
+          if (name) c.listening.parts[i].audioPath = name;
+        } catch (err) {
+          error = (err as Error).message;
+          this.logger.warn(`mock ${id}: audio for Listening Part ${i + 1} failed: ${error}`);
+        }
+      }),
+    );
     gen.tts = partsWithoutAudio(c).length ? 'FAILED' : 'DONE';
     gen.ttsError = gen.tts === 'FAILED' ? (error ?? 'audio yaratilmadi').slice(0, 300) : null;
     return c;
+  }
+
+  /** Reads a transcript aloud and stores it as an asset of the test; null without audio. */
+  private async record(tenantId: string, id: string, transcript: string): Promise<string | null> {
+    const audio = await this.ai.synthesizeSpeech(transcript);
+    if (!audio) return null;
+    const name = await saveGeneratedFile(audio.bytes, audio.ext);
+    await this.files.register(tenantId, name, 'MOCK_ASSET', id);
+    return name;
   }
 
   /**
@@ -201,7 +237,7 @@ export class MockGenerateService {
     // The parts are written again on the topics they had.
     const plan = normalizeContent(parse(row?.content ?? '{}')).generation?.plan;
     const topics = parts.length ? plan ?? (await this.topics(level, module)).topics : null;
-    const results = topics ? await pool(parts.map((k) => () => runPart(this.ai, specFor(k, topics, level, module)))) : [];
+    const results = topics ? await pool(parts.map((k) => () => runPart(this.ai, specFor(k, topics, level, module))), PART_KEYS.length) : [];
     // The teacher may have edited other parts meanwhile: only these slots change.
     let updated = await this.merge(id, (c) => applyResults(c, results));
     if (audio || results.some((r) => r.ok && r.key.startsWith('listening'))) {
